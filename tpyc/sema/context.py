@@ -1494,8 +1494,9 @@ class SemanticContext:
         warns HERE, at declaration time, so a library author reads the copy
         contract without instantiating anything; the warning stands whatever
         the instantiations turn out to be, and a non-copyable one (`@nocopy`,
-        or a record with `__del__`) later rewrites this same diagnostic into
-        the located error.
+        or a record with `__del__`) later answers the obligation with the
+        located error, which `apply_own_copy_verdicts` puts in this
+        diagnostic's place.
 
         Returns True without warning under a `T: ValueType` bound, which
         makes the copy unobservable. `copy()` at the site is the other
@@ -1517,9 +1518,32 @@ class SemanticContext:
         self.diagnostics.append(diag)
         obligation = own_copy.OwnCopyObligation(
             display_type=display, target_type=target, dest=dest, kind=kind,
-            hint=hint, diag=diag, diagnostics=self.diagnostics)
+            hint=hint, diag=diag)
         self.own_copy_obligations.append(obligation)
         return True
+
+    def apply_own_copy_verdicts(self, verdicts: 'own_copy.OwnCopyVerdicts') -> None:
+        """Compose this module's diagnostics from its hedges and the verdicts.
+
+        A hedge some instantiation answered is replaced, at its position, by
+        the verdicts in the order they resolved; a hedge the loop-copy path
+        withdrew is no longer in the list and so gets nothing. Runs after
+        every module's discharge, since the verdicts come from any module
+        that instantiated this one's bodies, and before the duplicate
+        collapse, so a body analyzed once per clone still collapses to one
+        report.
+        """
+        promoted: IdentityMap = IdentityMap()
+        for obligation in self.own_copy_obligations:
+            replacement = verdicts.promoted(obligation)
+            if replacement:
+                promoted[obligation.diag] = replacement
+        if not promoted:
+            return
+        composed: list[Diagnostic] = []
+        for diag in self.diagnostics:
+            composed.extend(promoted.get(diag, (diag,)))
+        self.diagnostics[:] = composed
 
     def record_own_copy_instantiation(
         self, callee: object, subst: 'dict[str, TpyType | int]',

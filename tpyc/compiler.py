@@ -22,6 +22,7 @@ from .identity_map import IdentityMap, IdentitySet
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.reach_analysis import compute_reached_symbols
+from .sema.own_copy import OwnCopyVerdicts
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .frontend_plugin import (
@@ -708,6 +709,9 @@ class Compiler:
         # exports.records by reference, so the same RecordInfo appears in
         # multiple ModuleInfo.records dicts.
         self._resolved_self_ref_records: IdentitySet = IdentitySet()
+        # A program's answers to the owning-slot copy obligations it reached;
+        # the obligations themselves belong to the declaring bodies.
+        self.own_copy_verdicts: OwnCopyVerdicts = OwnCopyVerdicts()
         # Public-surface -> raw-private-submodule reverse map used by
         # `_canonicalize_import_sources` when a dependent's surface
         # module (e.g. `typing`) is not yet sema-analyzed but its
@@ -1000,12 +1004,14 @@ class Compiler:
         only once every module's propagation has run.
         """
         # One seen-set across the whole workspace, so a generic imported by
-        # N modules is walked once rather than N times.
+        # N modules is walked once rather than N times; one verdict table,
+        # since the module that composes a verdict is not the one that gave it.
         own_copy_seen: set = set()
         for module_name in self.compile_order:
             analyzer = self.modules[module_name].analyzer
             if analyzer is not None:
-                analyzer.discharge_own_copy_verdicts(own_copy_seen)
+                analyzer.discharge_own_copy_verdicts(own_copy_seen,
+                                                     self.own_copy_verdicts)
         for module_name in self.compile_order:
             analyzer = self.modules[module_name].analyzer
             if analyzer is not None:

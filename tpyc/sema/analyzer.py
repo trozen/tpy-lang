@@ -272,6 +272,7 @@ class SemanticAnalyzer:
         # run (the Compiler drives it; `finalize_borrow_checks` covers
         # ad-hoc single-analyzer use).
         self._own_copy_discharged = False
+        self._own_copy_verdicts: 'own_copy.OwnCopyVerdicts | None' = None
 
         # Layer 1: No dependencies on other analyzers
         self.type_ops = TypeOperations(self.ctx)
@@ -948,24 +949,31 @@ class SemanticAnalyzer:
             self._PHASE_PHASE2_FIXPOINT,
         )
 
-    def discharge_own_copy_verdicts(self, seen: 'set | None' = None) -> None:
+    def discharge_own_copy_verdicts(
+        self, seen: 'set | None' = None,
+        verdicts: 'own_copy.OwnCopyVerdicts | None' = None,
+    ) -> None:
         """Answer every owning-slot copy obligation this module instantiates.
 
         `Compiler._finalize_workspace` drives this for every module before
         any module's `finalize_borrow_checks`: an obligation recorded in a
-        dependency is discharged from here, so the dependency must not have
-        collapsed -- or withdrawn -- its diagnostics yet. It passes one
-        workspace-wide `seen` set so a generic several modules instantiate at
-        the same args is walked once. An analyzer used without a Compiler
-        falls back to its own set.
+        dependency is answered from here, into the compilation's `verdicts`
+        table, and the dependency composes its diagnostics from that table
+        only once every module has discharged. It passes one workspace-wide
+        `seen` set so a generic several modules instantiate at the same args
+        is walked once. An analyzer used without a Compiler falls back to its
+        own set and table.
         """
         if self._own_copy_discharged:
             return
         self._own_copy_discharged = True
         if seen is None:
             seen = set()
+        if verdicts is None:
+            verdicts = own_copy.OwnCopyVerdicts()
+        self._own_copy_verdicts = verdicts
         for edge in self.ctx.own_copy_roots:
-            own_copy.discharge_edge(self.ctx, self.type_ops, edge, seen)
+            own_copy.discharge_edge(self.ctx, self.type_ops, edge, seen, verdicts)
 
     def finalize_borrow_checks(self) -> None:
         """Emit / suppress deferred borrow warnings using fully-propagated
@@ -979,6 +987,7 @@ class SemanticAnalyzer:
         (Phase 6 acceptance criterion).
         """
         self.discharge_own_copy_verdicts()
+        self.ctx.apply_own_copy_verdicts(self._own_copy_verdicts)
         self.calls.resolve_pending_borrow_checks()
         self.calls.resolve_pending_match_subject_checks()
         # Last diagnostic-emitting step for this analyzer, so it is where a

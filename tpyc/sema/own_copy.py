@@ -14,14 +14,22 @@ out a non-copyable payload; it does not state an intent to copy.
 Whether the copy is LEGAL is still the instantiation's to answer, because
 only it knows the payload. So the sink also records the site as an
 obligation, and a non-copyable instantiation (`@nocopy`, or a record with
-`__del__`, which deletes the generated copy ctor) rewrites that same
-diagnostic into the located `cannot copy non-copyable type 'X'` error --
-one diagnostic object, one line, promoted in place. A copyable instantiation
-rewrites nothing: it has nothing to add to what the hedge already said.
+`__del__`, which deletes the generated copy ctor) gives it a verdict: the
+located `cannot copy non-copyable type 'X'` error, which takes the hedge's
+line in the declaring module's output. A copyable instantiation adds
+nothing: it has nothing to say beyond what the hedge already said.
 
-The obligation holds the `Diagnostic` the sink emitted, not its index: the
-loop-copy suppression in `statements.py` deletes by index while a body is
-analysed, so an index recorded here would drift onto an unrelated line.
+The obligation is a fact of the declaring body and never changes; the
+verdict is a fact of the program that instantiated it, so it lives in that
+compilation's `OwnCopyVerdicts` table, keyed on the obligation by identity.
+A stdlib generic instantiated by user code therefore keeps its own state
+untouched, which is what lets an analyzed module outlive one compilation.
+The module's final diagnostics are composed from its hedges and the table
+(`apply_own_copy_verdicts` in `context.py`), and the obligation holds the
+`Diagnostic` the sink emitted, not its index: the loop-copy suppression in
+`statements.py` deletes by index while a body is analysed, so an index
+recorded here would drift onto an unrelated line, and a hedge that was
+withdrawn that way is simply absent when the verdicts are composed.
 
 It is a channel of its own rather than one of the two nearby ones because
 what it defers is different: `representational_type_params` stamps a codegen
@@ -30,9 +38,10 @@ will run itself, while this defers a PROMOTION the instantiation supplies to
 a diagnostic already in the list. See docs/ARCHITECTURE.md for the
 comparison.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from ..diagnostics import Diagnostic, DiagnosticLevel, NOCOPY_REMEDIATION_HINT
+from ..identity_map import IdentityMap
 from ..typesys import NominalType, TpyType, TypeParamRef
 
 # The hedge clause. The body cannot know whether the payload is a value type,
@@ -46,9 +55,13 @@ KIND_SLOT = "slot"
 KIND_ELEMENTS = "elements"
 
 
-@dataclass
+@dataclass(frozen=True, eq=False)
 class OwnCopyObligation:
-    """One owning-slot copy site in a body whose payload is still open."""
+    """One owning-slot copy site in a body whose payload is still open.
+
+    Frozen: it belongs to the declaring body, and the bodies of a library
+    module are analyzed once for every program that imports it.
+    """
 
     display_type: TpyType
     target_type: TpyType
@@ -56,14 +69,34 @@ class OwnCopyObligation:
     kind: str
     hint: str
     diag: Diagnostic
-    diagnostics: list[Diagnostic]
-    # Messages already applied, so two calls at the same type report once and
-    # two calls at different types report twice (the corpus has one such line).
-    applied: set[str] = field(default_factory=set)
-    # Whether the placeholder is still in the diagnostics list; resolved once,
-    # at the first discharge, since the only withdrawal happens during body
-    # analysis.
-    alive: bool | None = None
+
+
+class OwnCopyVerdicts:
+    """What one compilation's instantiations told the obligations they reached.
+
+    Per compilation, keyed on the obligation by identity, so a program's
+    verdict never lands on the declaring body's objects. Two calls at the
+    same type report once and two calls at different types report twice, in
+    the order they resolved (the corpus has one such line).
+    """
+
+    def __init__(self) -> None:
+        self._by_obligation: IdentityMap = IdentityMap()
+
+    def record(self, obligation: OwnCopyObligation, level: DiagnosticLevel,
+               message: str) -> None:
+        verdicts = self._by_obligation.setdefault(obligation, [])
+        if any(m == message for _, m in verdicts):
+            return
+        verdicts.append((level, message))
+
+    def promoted(self, obligation: OwnCopyObligation) -> list[Diagnostic]:
+        """The diagnostics that take the hedge's place, at the hedge's line."""
+        return [Diagnostic(level, message, obligation.diag.loc)
+                for level, message in self._by_obligation.get(obligation, ())]
+
+    def __len__(self) -> int:
+        return len(self._by_obligation)
 
 
 @dataclass(frozen=True, eq=False)
@@ -187,15 +220,8 @@ def _still_open(display: TpyType, target: TpyType) -> bool:
 
 
 def _apply(ctx, type_ops, obligation: OwnCopyObligation,
-           subst: dict) -> None:
-    """Give one obligation the verdict this instantiation implies."""
-    if obligation.alive is None:
-        obligation.alive = any(d is obligation.diag
-                               for d in obligation.diagnostics)
-    if not obligation.alive:
-        # The loop-copy path already withdrew the placeholder: consuming
-        # iteration moves the element, so there is no copy to report.
-        return
+           subst: dict, verdicts: OwnCopyVerdicts) -> None:
+    """Record the verdict this instantiation implies for one obligation."""
     display = type_ops.substitute_types(obligation.display_type, subst)
     target = type_ops.substitute_types(obligation.target_type, subst)
     if _still_open(display, target):
@@ -210,25 +236,13 @@ def _apply(ctx, type_ops, obligation: OwnCopyObligation,
     level, message = slot_message(display, target, obligation.dest,
                                   obligation.kind, obligation.hint,
                                   non_copyable=True)
-    if message in obligation.applied:
-        return
-    if not obligation.applied:
-        obligation.diag.level = level
-        obligation.diag.message = message
-    else:
-        # Two non-copyable instantiations of one body: report both, in the
-        # order they resolved.
-        index = next(i for i, d in enumerate(obligation.diagnostics)
-                     if d is obligation.diag)
-        obligation.diagnostics.insert(
-            index + len(obligation.applied),
-            Diagnostic(level, message, obligation.diag.loc))
-    obligation.applied.add(message)
+    verdicts.record(obligation, level, message)
 
 
-def _discharge_function(ctx, type_ops, fi, subst: dict, seen: set) -> None:
+def _discharge_function(ctx, type_ops, fi, subst: dict, seen: set,
+                        verdicts: OwnCopyVerdicts) -> None:
     for obligation in fi.own_copy_obligations:
-        _apply(ctx, type_ops, obligation, subst)
+        _apply(ctx, type_ops, obligation, subst, verdicts)
     for forward in fi.own_copy_forwards:
         composed = tuple(
             (name, type_ops.substitute_types(value, subst))
@@ -236,7 +250,7 @@ def _discharge_function(ctx, type_ops, fi, subst: dict, seen: set) -> None:
         )
         discharge_edge(ctx, type_ops,
                        OwnCopyEdge(forward.callee, composed, forward.is_record),
-                       seen)
+                       seen, verdicts)
 
 
 def _record_methods(record_info):
@@ -251,9 +265,9 @@ def _record_methods(record_info):
 
 
 def _discharge_record(ctx, type_ops, record_info, subst: dict,
-                      seen: set) -> None:
+                      seen: set, verdicts: OwnCopyVerdicts) -> None:
     for fi in _record_methods(record_info):
-        _discharge_function(ctx, type_ops, fi.root, subst, seen)
+        _discharge_function(ctx, type_ops, fi.root, subst, seen, verdicts)
     # An ancestor named only through an intermediate generic (`class Kid(
     # Mid[Cell])` over `class Mid[T](Base[T])`) is never spelled at concrete
     # args anywhere, so its instantiation exists only as this composition.
@@ -272,14 +286,16 @@ def _discharge_record(ctx, type_ops, record_info, subst: dict,
         if not composed:
             continue
         discharge_edge(ctx, type_ops,
-                       OwnCopyEdge(parent_info, composed, True), seen)
+                       OwnCopyEdge(parent_info, composed, True), seen, verdicts)
 
 
-def discharge_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set) -> None:
+def discharge_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
+                   verdicts: OwnCopyVerdicts) -> None:
     """Discharge one instantiation, and everything it instantiates in turn.
 
     `seen` stops a self-recursive generic (`f[T]` calling `f[T]`) and keeps
-    a diamond of forwards from being walked twice.
+    a diamond of forwards from being walked twice; `verdicts` is the
+    compilation's table the walk records into.
     """
     key = edge.key()
     if key in seen:
@@ -287,8 +303,8 @@ def discharge_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set) -> None:
     seen.add(key)
     subst = dict(edge.subst)
     if edge.is_record:
-        _discharge_record(ctx, type_ops, edge.callee, subst, seen)
+        _discharge_record(ctx, type_ops, edge.callee, subst, seen, verdicts)
     else:
-        _discharge_function(ctx, type_ops, edge.callee, subst, seen)
+        _discharge_function(ctx, type_ops, edge.callee, subst, seen, verdicts)
 
 

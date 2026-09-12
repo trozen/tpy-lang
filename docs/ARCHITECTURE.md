@@ -382,10 +382,11 @@ Top-level analyzers (one module each):
 still a type parameter. The sinks warn at the body line, hedged, at
 DECLARATION time (a library author has no instantiation to consult), and also
 record the site as an obligation so that a non-copyable instantiation
-(`@nocopy`, or a record with `__del__`) can promote that same
-diagnostic to the located error. A copyable instantiation promotes
-nothing. It is a leaf module (it imports only
-`diagnostics` and `typesys`) so `compatibility`, `statements`,
+(`@nocopy`, or a record with `__del__`) can answer it with the located
+error, which takes the hedge's line when the declaring module composes its
+diagnostics. A copyable instantiation answers nothing. It is a leaf module
+(it imports only `diagnostics`, `typesys` and `identity_map`) so
+`compatibility`, `statements`,
 `expressions`, `type_ops` and `methods` can all reach it, and it owns
 `contains_reference_type` -- the recursive copy predicate -- so the site that
 records and the pass that answers cannot ask different questions.
@@ -404,10 +405,13 @@ difference is what each one defers:
   a CHECK the analyzer will run itself, once cross-module mutation facts are
   final.
 - `own_copy` defers a PROMOTION the instantiation supplies to a diagnostic
-  already in the list. The discharge rewrites that diagnostic in place, which
-  is what keeps the line where the body put it: emitting at finalize time
-  instead would move the promoted line to the end of its module's list and
-  reorder the rest.
+  already in the list. The obligation is a frozen fact of the declaring body;
+  the verdict is recorded in the compilation's `OwnCopyVerdicts` table, keyed
+  on the obligation by identity, and the declaring module composes its final
+  diagnostics from the two (`apply_own_copy_verdicts`), replacing the hedge
+  at its own position. That keeps the line where the body put it without a
+  program writing into the bodies it instantiates, so a library module's
+  analysis carries nothing of any one program.
 
 A further deferred verdict needs no fourth shape -- record the question as an
 obligation, hold its diagnostic, and add a route that discharges it.
