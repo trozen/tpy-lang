@@ -20,6 +20,16 @@ int32_t drop(std::vector<P>&& xs) {
     return ::tpy::__len__(store);
 }
 
+// def hold(p: Own[P]) -> Int32:
+int32_t hold(P&& p) {
+    // store: list[P] = []
+    std::vector<P> store = std::vector<P>{};
+    // store.append(p)
+    store.push_back(std::move(p));
+    // return len(store)
+    return ::tpy::__len__(store);
+}
+
 // def main():
 void main() {
     // xs = [P()]
@@ -31,6 +41,17 @@ void main() {
     std::cout << drop(std::move(__tmp_1)) << "\n";
     // print(n.vals[0])
     std::cout << ::tpy::__getitem__(n.vals, 0) << "\n";
+    // # The take_ptr source: the Ptr is read after the consume, so the same
+    // # retraction applies to a record local at its own last use.
+    // q = P()
+    P q = P();
+    // ptr = take_ptr(q)
+    P* ptr = &q;
+    // print(hold(q))  # tpyc: warning(/copies/)
+    P __tmp_2 = q;
+    std::cout << hold(std::move(__tmp_2)) << "\n";
+    // print(ptr.vals[0])
+    std::cout << ::tpy::__getitem__(ptr->vals, 0) << "\n";
 }
 
 void __tpy_init() {

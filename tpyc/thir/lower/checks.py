@@ -2129,6 +2129,30 @@ def _record_rvalue_source_shape(init: TpyExpr, analyzer) -> bool:
     # the bare emit does not reproduce -- mirror free-call lowering's pin.
     return _rvalue_free_call_shape(init, analyzer)
 
+
+def _own_return_call_shape(e: TpyExpr, analyzer) -> bool:
+    """A free call whose CALLEE DECLARES the ownership transfer (`-> Own[T]`):
+    `copy(p)` and a `-> Own[Point]` factory alike, the shape an owning sink
+    may take BY VALUE.
+
+    Keyed on the declared return, never on `is_rvalue_source`: that is True
+    for a BORROWING callee too, and admitting one at an owning slot turns a
+    rejected aliasing bug into a silently warned copy
+    (BUGS.md#own-slot-borrow-call-result). The type verdict on the slot and
+    the render both live at the caller -- like `_record_rvalue_source_shape`
+    this is shallow, and the consuming lowering arm validates the arguments.
+    """
+    if not isinstance(e, TpyCall):
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    fi = e.resolved_function_info
+    if fi is None or fi.is_constructor or not _call_arity_ok(e, fi):
+        return False
+    return isinstance(unwrap_readonly(unwrap_ref_type(
+        unwrap_send_sync(fi.return_type))), OwnType)
+
+
 def _method_recv_field_write_ok(target: TpyExpr, declared: dict[str, TpyType],
                                 analyzer) -> bool:
     """A field-write target whose RECEIVER is a method call returning a
@@ -4667,7 +4691,7 @@ def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                 and _witness("arg.native_union_name"))
 
 def _lambda_routable(a: TpyExpr, analyzer, *,
-                     self_this: bool = False) -> bool:
+                     self_capturable: bool = False) -> bool:
     """The lambda-expression shapes `_lower_lambda` renders:
     a closure with a non-void, non-pointer-tuple return and param types in the
     families the body emit renders without seeding (value scalars / Char /
@@ -4682,11 +4706,10 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
     shape lowering then rejects)."""
     if not isinstance(a, TpyLambda):
         return False
-    # A captured `self` spells `this` in the capture list -- admitted only
-    # where the caller confirmed the receiver IS that pointer (a plain method
-    # or the simple-generator wrapper). A resumable coro's `__self` frame
-    # field is a different receiver render.
-    if "self" in a.captured_names and not self_this:
+    # A captured `self` needs a receiver HANDLE the closure can copy --
+    # admitted only where the caller confirmed the enclosing body holds one
+    # (a plain method, the simple-generator wrapper, or a frame's `__self`).
+    if "self" in a.captured_names and not self_capturable:
         return False
     rt = a.inferred_return_type
     if rt is None:
@@ -4808,13 +4831,13 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        temps_ok: bool,
                        narrowed: 'set[str] | frozenset[str]',
                        param_names: 'set[str] | frozenset[str]' = frozenset(),
-                       self_this: bool = False) -> bool:
+                       self_capturable: bool = False) -> bool:
     """The plain (non-native, non-marker) free-callee family's arg rows --
     the reference ladder the other families were copied from.
     Rows: `_PLAIN_ARG_SINK`."""
     return arg_ok(_PLAIN_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
-                  temps_ok=temps_ok, self_this=self_this)
+                  temps_ok=temps_ok, self_capturable=self_capturable)
 
 
 def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10711,9 +10734,11 @@ def _r_func_ref(req: _ArgReq) -> bool:
 
 
 def _r_lambda(req: _ArgReq) -> bool:
-    # `self_this` defaults False, which is what every family but `plain`
-    # spelled -- so threading it here leaves the shape one shared cell.
-    return _lambda_routable(req.a, req.analyzer, self_this=req.self_this)
+    # `self_capturable` defaults False, which is what every family but
+    # `plain` spelled -- so threading it here leaves the shape one shared
+    # cell.
+    return _lambda_routable(req.a, req.analyzer,
+                            self_capturable=req.self_capturable)
 
 
 def _r_callable_value_pass(req: _ArgReq) -> bool:
@@ -12647,8 +12672,9 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
     note=lambda req: ("call.arg_shape."
                       + _type_family_tag(req.ptype, req.analyzer)),
     rows=(
-        # The only family that reads `self_this`: a lambda capturing `self`
-        # spells `this`, which is the enclosing body's receiver render.
+        # The only family that reads `self_capturable`: a lambda capturing
+        # `self` copies the enclosing body's receiver handle, which only the
+        # call site knows the body has.
         _ArgRow("lambda", _r_lambda),
         _ArgRow("func_ref", _r_func_ref),
         _ArgRow("callable_value_pass", _r_callable_value_pass),

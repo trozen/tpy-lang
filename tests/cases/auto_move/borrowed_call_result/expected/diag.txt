@@ -1,1 +1,2 @@
-main.py:27: warning: copies list[P] into owned storage; use copy() to make this explicit
+main.py:35: warning: copies list[P] into owned storage; use copy() to make this explicit
+main.py:42: warning: copies P into owned storage; use copy() to make this explicit

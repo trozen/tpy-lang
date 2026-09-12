@@ -8,9 +8,14 @@
 namespace tpyapp::main {
 
 struct C;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_relay_twice;
+struct __gen_Holder_relay;
+
+__gen_relay_twice relay_twice(std::vector<std::tuple<int32_t, C>>& items);
 void main();
 
 // class C:
@@ -29,9 +34,88 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+// class Holder:
+struct Holder {
+    // items: list[tuple[Int32, C]]
+    std::vector<std::tuple<int32_t, C>> items;
+
+    // def __init__(self, items: Own[list[tuple[Int32, C]]]) -> None:
+    Holder() = default;
+    explicit Holder(std::vector<std::tuple<int32_t, C>>&& items);
+
+    __gen_Holder_relay relay();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// Generator: relay_twice
+struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std::tuple<int32_t, C*>> {
+    int32_t __state;
+    std::vector<std::tuple<int32_t, C>>& items;
+    std::tuple<int32_t, C>* pair = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_relay_twice(std::vector<std::tuple<int32_t, C>>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __next__();
+    __gen_relay_twice& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_relay_twice&) {
+        return os << "<generator relay_twice>";
+    }
+};
+
+// Generator: Holder.relay
+struct __gen_Holder_relay : public ::tpy::next_iter_mixin<__gen_Holder_relay, std::tuple<int32_t, C*>> {
+    int32_t __state;
+    Holder& __self;
+    std::tuple<int32_t, C>* pair = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_Holder_relay(Holder& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __next__();
+    __gen_Holder_relay& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Holder_relay&) {
+        return os << "<generator Holder.relay>";
+    }
+};
+
+inline __gen_Holder_relay Holder::relay() {
+    return __gen_Holder_relay(*this);
+}
+
 
 // def __init__(self, v: Int32) -> None:
 inline C::C(int32_t v) : v(v) {}
+
+// def __init__(self, items: Own[list[tuple[Int32, C]]]) -> None:
+inline Holder::Holder(std::vector<std::tuple<int32_t, C>>&& items) : items(std::move(items)) {}
 inline auto storage_relay(std::vector<std::tuple<int32_t, C>>& items) {
     return ::tpy::make_generator<std::tuple<int32_t, C*>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<int32_t, C*>> {

@@ -1,0 +1,1 @@
+main.py:92: warning: Escaping closure captures local 'step' by value, but 'step' is reassigned after the closure is created; the closure keeps the value from capture time (CPython would observe the later value). Capture a fresh local that is not reassigned (e.g. `snap = step`), or use copy() to make the snapshot explicit.

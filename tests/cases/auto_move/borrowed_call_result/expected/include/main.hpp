@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 P& first(std::vector<P>& xs);
 int32_t drop(std::vector<P>&& xs);
+int32_t hold(P&& p);
 void main();
 
 // class P:

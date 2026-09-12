@@ -92,6 +92,7 @@ from ...typesys import (
     resolve_int_literals,
     substitute_type_params_simple,
     unwrap_optional_own,
+    unwrap_own,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -269,6 +270,7 @@ from .predicates import (
     _container_opt_record_elem,
     _container_value_opt_scalar_elem,
     _const_index,
+    _cpp_noncopyable_type,
     _ctor_arg_slot_ok,
     _int_type_param_value,
     _dict_view_iterable_ok,
@@ -10828,14 +10830,81 @@ def _borrow_tuple_bare_names(lc: '_LowerCtx',
     return frozenset(names)
 
 
-def _self_captures_this(lc: '_LowerCtx') -> bool:
-    """Whether a `self` captured by a LAMBDA spells `this` in the capture
-    list. Both the plain method receiver (`this`) and the simple-generator
-    wrapper (`(*this)`) hold the receiver POINTER, so both capture it that
-    way -- only the body READ spelling differs, and that comes from
-    `lc.self_cpp`. The resumable frame's `__self` member is a different
-    receiver entirely and stays out."""
-    return lc.self_receiver == "self" and lc.self_cpp in ("this", "(*this)")
+def _self_capture_cpp(lc: '_LowerCtx') -> 'str | None':
+    """The capture-list entry that hands a LAMBDA the enclosing receiver, or
+    None when this body holds none it can reach. A plain method (`this`) and
+    the simple-generator wrapper (`(*this)`) hold the receiver POINTER, so
+    the lambda copies that pointer; a resumable frame holds the receiver as
+    its `__self` reference member, so the lambda binds the same referent --
+    a copy of the HANDLE, never of the frame that stores it. The body read
+    spelling comes from `lc.self_cpp` and matches the entry's name."""
+    if lc.self_receiver != "self":
+        return None
+    if lc.self_cpp in ("this", "(*this)"):
+        return "this"
+    if lc.self_cpp == "__self":
+        return "&__self = __self"
+    return None
+
+
+def _uncopyable_capture(name: str, declared: dict[str, TpyType],
+                        lc: '_LowerCtx') -> bool:
+    """Whether a BY-VALUE capture entry for `name` would be a copy C++ has
+    deleted. The wrappers peel first: it is the payload, not the wrapper,
+    that the snapshot copies. `RefType` is in the chain because an ordinary
+    (non-`Own`) reference-type PARAM is declared wrapped in one -- without
+    the peel the question was asked of an opaque wrapper, answered False,
+    and a `[g]` over a record with `__del__` reached the toolchain.
+
+    A value TUPLE is asked of its elements: they are embedded inline, so one
+    non-copyable element makes the tuple non-copyable."""
+    dt = declared.get(name)
+    if dt is None:
+        return False
+    payload = unwrap_own(unwrap_readonly(unwrap_ref_type(dt)))
+    if isinstance(payload, TupleType):
+        return payload.has_nested_element(
+            lambda e: _cpp_noncopyable_type(
+                unwrap_own(unwrap_readonly(unwrap_ref_type(e))), lc.analyzer))
+    return _cpp_noncopyable_type(payload, lc.analyzer)
+
+
+def _capture_entry_cpp(name: str, lc: '_LowerCtx',
+                       declared: dict[str, TpyType],
+                       by_value: bool) -> str:
+    """The capture-list entry that hands a LAMBDA the name `name`, in either
+    lane. An ordinary variable names itself (`[n]` / `[&n]`); a name the
+    enclosing RESUMABLE FRAME owns is a member, not a variable, so `[n]` is
+    ill-formed C++ and the entry names the member in an init-capture instead.
+    The MODE is the sync one in both -- `by_value` is the lambda's own
+    `captures_by_value` -- so the same source gets the same binding whether or
+    not the enclosing body suspends: an escaping (`Callable`) closure
+    snapshots, a non-escaping (`Fn`) one binds a reference, which for a
+    borrowed param is the caller's object and for a frame local is the frame's
+    own storage. Capturing the frame itself would be neither, and would tie
+    the closure to a frame it does not own (a stored closure outlives it; a
+    copied frame leaves it pointing at the original).
+
+    Three names have no entry. A by-value entry over a type C++ cannot copy is
+    an ill-formed copy in both lanes, so both reject here rather than hand it
+    to the toolchain. A frame member whose read spelling is not the bare name
+    (a `frame_slot<T>` local reads `(*n)`) would need that spelling in the
+    initializer and the bare one in the body, which no single entry gives. And
+    a frame member of unknown type is one this lane cannot vouch for -- an
+    ordinary variable without a declared type is merely unproven, and keeps
+    the entry the pre-frame lane always emitted."""
+    cpp = escape_cpp_name(name)
+    if by_value and _uncopyable_capture(name, declared, lc):
+        raise ThirUnsupported("expr.lambda")
+    if name not in lc.frame_field_names:
+        return f"{'' if by_value else '&'}{cpp}"
+    if name not in lc.plain_frame_fields:
+        raise ThirUnsupported("expr.lambda")
+    if not by_value:
+        return f"&{cpp} = {cpp}"
+    if name not in declared:
+        raise ThirUnsupported("expr.lambda")
+    return f"{cpp} = {cpp}"
 
 
 def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
@@ -10853,7 +10922,9 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
     render (beyond the builtin-print closure)."""
     analyzer = lc.analyzer
     loc = getattr(e, "loc", None)
-    if not _lambda_routable(e, analyzer, self_this=_self_captures_this(lc)):
+    self_cap = _self_capture_cpp(lc)
+    if not _lambda_routable(e, analyzer,
+                            self_capturable=self_cap is not None):
         raise ThirUnsupported("expr.lambda")
     ret_type = e.inferred_return_type
     params_cpp: list[str] = []
@@ -10876,15 +10947,19 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
             params_cpp.append(ptype.to_cpp_param(cpp_name))
         body_declared[pname] = ptype
     if e.captured_names:
-        # A captured `self` IS the receiver pointer, so it spells `this` in
-        # both capture modes -- alias semantics either way. The gate admits
-        # the shape only where the
-        # receiver IS that pointer (`_self_captures_this`).
-        prefix = "" if e.captures_by_value else "&"
-        capture = "[" + ", ".join(
-            "this" if (n == lc.self_receiver and _self_captures_this(lc))
-            else f"{prefix}{escape_cpp_name(n)}"
-            for n in e.captured_names) + "]"
+        # The receiver is a handle the closure copies; a resumable frame's
+        # own members name themselves in an init-capture. Everything else is a
+        # variable the enclosing scope names directly.
+        parts: list[str] = []
+        for n in e.captured_names:
+            if n == lc.self_receiver and self_cap is not None:
+                entry = self_cap
+            else:
+                entry = _capture_entry_cpp(n, lc, declared,
+                                           e.captures_by_value)
+            if entry not in parts:
+                parts.append(entry)
+        capture = "[" + ", ".join(parts) + "]"
     else:
         capture = "[]"
     if is_void_like_type(ret_type):
@@ -12757,7 +12832,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                 a, ptype, declared, analyzer, temps_ok=temp_args,
                 narrowed=frozenset(lc.narrow.narrowed),
                 param_names=lc.prescan.param_names,
-                self_this=_self_captures_this(lc))
+                self_capturable=_self_capture_cpp(lc) is not None)
             if not ok and _borrow_tuple_name_arg(
                     a, ptype, declared, _borrow_tuple_bare_names(lc, declared),
                     analyzer):
@@ -15793,9 +15868,17 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
     if (_tparam_value(st)
             and isinstance(src, (TpyName, TpyFieldAccess))
             and not (isinstance(src, TpyName)
-                     and (src.name in lc.pointers
-                          or src.name in lc.narrow.narrowed))):
-        return _open_t_copy("call.copy_tparam")
+                     and src.name in lc.narrow.narrowed)):
+        # A POINTER-FORM name (a resumable frame's loop var, say) is the same
+        # source one indirection down, and the general tail's name read
+        # already spells it (`T((*x))`). The concrete families need their own
+        # `copy_*_ptr` rows only because a concrete record/container name
+        # reads BARE and has to ask for the deref; an open `T` is spelled
+        # through the `val_or_ptr_t<T>` traits, never as a bare `T*`.
+        return _open_t_copy(
+            "call.copy_tparam_ptr"
+            if isinstance(src, TpyName) and src.name in lc.pointers
+            else "call.copy_tparam")
     if (_tparam_value(st)
             and isinstance(src, (TpyCall, TpyMethodCall))):
         # The inner call lowers through its own arms -- an Fn-param
@@ -16045,11 +16128,14 @@ def _cond_mixed_walrus_temps(cond: THIRExpr, *,
     registers a pending temp at EMIT time counts: THIRArgTemp, a
     temp-bearing THIRUnionArgLift, and THIRVarargPack (its per-arg hoist).
 
-    `walrus_nested_ok` (the single-eval `if` head only): a temp nested
-    INSIDE a walrus's own value evaluates before the assignment on both
-    paths, so it does not make the shape mixed -- the walrus predecl and
-    the temp flush together at the statement's flush point in decl order.
-    A while head never sets it: ANY walrus+temp mix there keeps the legacy
+    `walrus_nested_ok` (the single-eval `if` head and its resumable Branch
+    twin): a temp nested INSIDE a walrus's own value evaluates before the
+    assignment on both paths, so it does not make the shape mixed -- the
+    walrus predecl and the temp flush together at the statement's flush
+    point in decl order. Only the SYNC head ever meets that shape: a frame
+    walrus lowers its value with no flush right, so a temp inside one
+    rejects at the walrus before any condition is assembled. A while head
+    never sets the flag: ANY walrus+temp mix there keeps the legacy
     pre-loop single-eval flush (a known residual)."""
     has_walrus = False
     has_temp = False

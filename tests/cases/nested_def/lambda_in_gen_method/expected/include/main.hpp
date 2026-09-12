@@ -7,12 +7,73 @@
 
 namespace tpyapp::main {
 
+struct Pt;
+struct Registry;
 struct C;
+struct D;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_two_yield;
+struct __gen_store;
+struct __gen_cell;
+struct __gen_ref_capture;
+struct __gen_own_capture;
+struct __gen_D_emit;
+
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v);
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply_fn(__F0&& f, int32_t v);
+int32_t push(std::vector<int32_t>& ys, int32_t v);
+__gen_two_yield two_yield(int32_t n);
+__gen_store store(int32_t n, Registry& r);
+__gen_cell cell();
+__gen_ref_capture ref_capture(std::vector<int32_t>& xs);
+__gen_own_capture own_capture(Pt p);
 void main();
+
+// class Pt(ValueType):
+struct Pt {
+    // x: Int32
+    int32_t x;
+
+    // def __init__(self, x: Int32) -> None:
+    Pt() = default;
+    explicit Pt(int32_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pt";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
+    ::tpy::print_object_default(os, "Pt", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Pt> : std::true_type {};
+
+namespace tpyapp::main {
+
+
+// class Registry:
+struct Registry {
+    // cb: Callable[[Int32], Int32]
+    std::function<int32_t(int32_t)> cb;
+
+    // def __init__(self) -> None:
+    Registry();
+
+    // def register(self, f: Callable[[Int32], Int32]) -> None:
+    void register_(const std::function<int32_t(int32_t)>& f);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Registry";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
+    ::tpy::print_object_default(os, "Registry", obj);
+    return os;
+}
 
 // class C:
 struct C {
@@ -43,8 +104,194 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
+// class D:
+struct D {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self) -> None:
+    D();
+
+    __gen_D_emit emit();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.D";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const D& obj) {
+    ::tpy::print_object_default(os, "D", obj);
+    return os;
+}
+
+// Generator: two_yield
+struct __gen_two_yield : public ::tpy::next_iter_mixin<__gen_two_yield, int32_t> {
+    int32_t __state;
+    int32_t n;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_two_yield(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_two_yield& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_two_yield&) {
+        return os << "<generator two_yield>";
+    }
+};
+
+// Generator: store
+struct __gen_store : public ::tpy::next_iter_mixin<__gen_store, int32_t> {
+    int32_t __state;
+    int32_t n;
+    Registry& r;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_store(int32_t n_, Registry& r)
+        : __state(S_INITIAL), n(std::move(n_)), r(r) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_store& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_store&) {
+        return os << "<generator store>";
+    }
+};
+
+// Generator: cell
+struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
+    int32_t __state;
+    int32_t step;
+    std::function<int32_t(int32_t)> f;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_cell()
+        : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_cell& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_cell&) {
+        return os << "<generator cell>";
+    }
+};
+
+// Generator: ref_capture
+struct __gen_ref_capture : public ::tpy::next_iter_mixin<__gen_ref_capture, int32_t> {
+    int32_t __state;
+    std::vector<int32_t>& xs;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_ref_capture(std::vector<int32_t>& xs)
+        : __state(S_INITIAL), xs(xs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_ref_capture& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_ref_capture&) {
+        return os << "<generator ref_capture>";
+    }
+};
+
+// Generator: own_capture
+struct __gen_own_capture : public ::tpy::next_iter_mixin<__gen_own_capture, int32_t> {
+    int32_t __state;
+    Pt p;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_own_capture(Pt&& p_)
+        : __state(S_INITIAL), p(std::move(p_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_own_capture& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_own_capture&) {
+        return os << "<generator own_capture>";
+    }
+};
+
+// Generator: D.emit
+struct __gen_D_emit : public ::tpy::next_iter_mixin<__gen_D_emit, int32_t> {
+    int32_t __state;
+    D& __self;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_D_emit(D& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_D_emit& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_D_emit&) {
+        return os << "<generator D.emit>";
+    }
+};
+
+inline __gen_D_emit D::emit() {
+    return __gen_D_emit(*this);
+}
+
+
+// def __init__(self, x: Int32) -> None:
+inline Pt::Pt(int32_t x) : x(x) {}
+
+// def __init__(self) -> None:
+inline Registry::Registry() : cb([](int32_t x) -> int32_t { return x; }) {}
+
+// def register(self, f: Callable[[Int32], Int32]) -> None:
+inline void Registry::register_(const std::function<int32_t(int32_t)>& f) {
+    // self.cb = f
+    this->cb = f;
+}
 
 // def __init__(self) -> None:
 inline C::C() : n(10) {}
+
+// def __init__(self) -> None:
+inline D::D() : n(10) {}
+// def apply_fn(f: Fn[[Int32], Int32], v: Int32) -> Int32:
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply_fn(__F0&& f, int32_t v) {
+    // return f(v)
+    return f(v);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

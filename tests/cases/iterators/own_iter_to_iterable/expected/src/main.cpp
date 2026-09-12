@@ -24,6 +24,30 @@ void main() {
         // print(it.key, it.tag)
         std::cout << it.key << " " << it.tag << "\n";
     }
+    // # The frame path yields COPIES too -- mutating the source afterwards
+    // # leaves the collected values alone.
+    // src: list[Item] = [Item(5, 50)]
+    std::vector<Item> src = {Item(5, 50)};
+    // kept = list(each_twice(src))
+    std::vector<Item> kept = ::tpy::construct<std::vector<Item>>(each_twice<Item>(src));
+    // src[0].tag = 999
+    ::tpy::__getitem__(src, 0).tag = 999;
+    // print("frame", [k.tag for k in kept], src[0].tag)
+    std::cout << "frame" << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto& __obj_1 = kept;
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            const auto& k = *__beg_1;
+            __result.push_back(k.tag);
+        }
+        std::move(__result);
+    })) << " " << ::tpy::__getitem__(src, 0).tag << "\n";
+    // print("frame_scalar", total(each_twice(nums)))
+    auto __tmp_2 = each_twice<int32_t>(nums);
+    std::cout << "frame_scalar" << " " << total(__tmp_2) << "\n";
 }
 
 void __tpy_init() {

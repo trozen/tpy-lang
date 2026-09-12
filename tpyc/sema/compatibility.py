@@ -506,11 +506,24 @@ class TypeCompatibility:
             sink_owns = self._sink_owns_its_value(
                 expected, coercion_ctx, target_is_storage_form)
 
-        # OwnType from name lookup (implicit owned local) should not
-        # shortcircuit the Own[T] coercion path -- that path emits copy
-        # warnings when storing at non-last-use.
+        # A NAME feeding a slot that owns it must reach the Own[T] coercion
+        # path even when the types are already equal: that path is where the
+        # source's consumption is DECIDED -- the copy warning at a non-last-use
+        # and, through `is_auto_move_use`, the hidden-borrow demotion that
+        # retracts a last-use mark while a call-result borrow of the local is
+        # live. Skipping it hands codegen an unretracted mark and it moves the
+        # storage out from under the borrow.
+        # A tuple keeps its per-element `Own` markers when the local is bound
+        # from an owning CALL (`t = mk(i)`), so its type collapses equal to the
+        # owning slot's and the equality shortcut would skip the whole decision;
+        # a literal init drops the markers and only reaches the path by
+        # mismatch. Tuples are the only equal-shape carrier: an `Own` under a
+        # local's Optional/container is rejected as redundant at declaration.
         if actual == expected:
-            if not (isinstance(actual, OwnType) and isinstance(source_expr, TpyName)):
+            owning_name_source = isinstance(source_expr, TpyName) and (
+                isinstance(actual, OwnType)
+                or (isinstance(actual, TupleType) and actual.has_nested_own_element()))
+            if not owning_name_source:
                 return None
         # Send[T] / Sync[T] marker wrappers. The wrapper has no C++
         # representation; the conversion into a marker-typed slot is the

@@ -310,11 +310,11 @@ class TestTransparentWrapperTemps:
             validate_resumable_body("f", body)
 
     def test_coerced_temp_outside_a_flush_position_raises(self):
-        # A resumable CONDITION has no flush point, and transparency does not
-        # manufacture one.
+        # A resumable RETURN VALUE has no flush point (the scaffolding binds
+        # it into its own slot), and transparency does not manufacture one.
         body = THIRResumableBody(
-            leaves={}, conds={1: self._coerced_temp()}, await_args={},
-            return_values={})
+            leaves={}, conds={}, await_args={},
+            return_values={1: self._coerced_temp()})
         with pytest.raises(THIRValidationError,
                            match="THIRArgTemp outside a call arg"):
             validate_resumable_body("f", body)

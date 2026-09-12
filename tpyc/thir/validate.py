@@ -612,8 +612,6 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
         _walk(owner, stmt)
     # Temp-free seams: their lowering never grants a flush right, so an
     # arg temp reaching one is a lowering bug.
-    for expr in body.conds.values():
-        _walk(owner, expr)
     for expr in body.return_values.values():
         _walk(owner, expr)
     for expr in body.yield_values.values():
@@ -622,16 +620,22 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     # renders the capture into an `auto* p = ...;` line with no flush point.
     for stmt in body.deferred_returns.values():
         _walk(owner, stmt)
-    # Flushable seams: the sub-coro emplace, the await operand and the sync
-    # for-head source are statement positions where the skeleton flushes
-    # temps ahead of the line. Both maps below pool entries from several
-    # populate sites of which exactly ONE grants temps -- `suspend_exprs`
-    # holds the await operand (flushable) plus the bound-method receiver;
-    # `region_exprs` the sync for-head iterable (flushable) plus the range
-    # bounds, the with-manager and the async-for iterable. Pooling by
-    # expression identity leaves no way to tell them apart here, so both are
-    # walked at the looser right: a temp reaching one of the four temp-free
-    # seams, where the skeleton has no flush point, is NOT caught.
+    # Flushable seams: the Branch condition, the sub-coro emplace, the await
+    # operand and the sync for-head source are positions where the skeleton
+    # flushes temps ahead of the line. For a condition the flush lands INSIDE
+    # the `case` block, so its temp is rebuilt on every re-entry -- which is
+    # what a fresh container argument in a loop head means.
+    for expr in body.conds.values():
+        _walk(owner, expr, argtemp_ok=True)
+    # Both maps below pool entries from several populate sites of which
+    # exactly ONE grants temps -- `suspend_exprs` holds the await operand
+    # (flushable) plus the bound-method receiver; `region_exprs` the sync
+    # for-head iterable (flushable) plus the range bounds, the with-manager
+    # and the async-for iterable. Pooling by expression identity leaves no way to
+    # tell them apart here, so both are walked at the looser right: a temp
+    # reaching one of the four temp-free seams pooled in (the bound-method
+    # receiver, the range bounds, the with-manager and the async-for
+    # iterable), where the skeleton has no flush point, is NOT caught.
     for args in body.await_args.values():
         # The tuple IS the emplace's arg list, so it is walked the way the
         # call-node arm walks a call's args.

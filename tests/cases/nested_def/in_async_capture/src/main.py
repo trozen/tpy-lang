@@ -1,6 +1,7 @@
 # Nested defs in an async def are frame members: they capture frame-field
 # locals (mutation visible after the call) and stay callable across awaits.
 import asyncio
+from typing import Callable
 from tpy import Int32, Own
 
 
@@ -35,9 +36,23 @@ async def across_await() -> Int32:
     return first + scaled(2)
 
 
+def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+    return f(v)
+
+
+# A LAMBDA at the same position reads a frame MEMBER, which has no variable
+# form: the capture is an init-capture snapshot of the member, and it stays
+# valid across the await without holding the frame.
+async def lambda_capture(n: Int32) -> Int32:
+    first = apply(lambda x: x + n, 1)  # tpyc: ok
+    await asyncio.sleep(0)
+    return first + apply(lambda x: x + n, 2)
+
+
 async def main() -> None:
     print((await capture_mutate()).n)
     print(await across_await())
+    print(await lambda_capture(10))
 
 
 asyncio.run(main())

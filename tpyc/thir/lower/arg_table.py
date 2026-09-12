@@ -70,10 +70,11 @@ class _ArgReq(NamedTuple):
     # `locals_` / `narrowed`, not a capability: the borrow-tuple rows read it
     # to tell a storage-form tuple name from a borrow-form one.
     storage_tuple_locals: 'frozenset[str] | set[str]' = frozenset()
-    # Whether a captured `self` in a lambda arg spells `this` at THIS call
-    # site. Per-call context, not a capability: it is a property of the
-    # enclosing body's receiver, and only the plain free-call site knows it.
-    self_this: bool = False
+    # Whether a captured `self` in a lambda arg has a receiver handle to
+    # copy at THIS call site. Per-call context, not a capability: it is a
+    # property of the enclosing body's receiver, and only the plain
+    # free-call site knows it.
+    self_capturable: bool = False
     # The slot BEFORE type-param substitution, for the generic free-call
     # family: its rows decide against the substituted slot (which is what
     # `ptype` carries there), but its prologue and its borrow-tuple row ask
@@ -214,7 +215,7 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
            narrowed: 'frozenset[str] | set[str]',
            temps_ok: bool,
            storage_tuple_locals: 'frozenset[str] | set[str]' = frozenset(),
-           self_this: bool = False,
+           self_capturable: bool = False,
            open_ptype: 'TpyType | None' = None,
            index: int = -1,
            overload: object = None,
@@ -229,7 +230,7 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
     """Walk `sink`'s rows in order; `note_detail(sink.note)` on no match."""
     req = _ArgReq(a, ptype, locals_, analyzer, param_names, narrowed,
                   sink.mutated_slots and is_mutated, temps_ok,
-                  storage_tuple_locals, self_this, open_ptype, index,
+                  storage_tuple_locals, self_capturable, open_ptype, index,
                   overload, frame_capturing, mutation_unknown,
                   inline_narrowed, movable_locals, pointers, func_name)
     return _walk(sink, req)

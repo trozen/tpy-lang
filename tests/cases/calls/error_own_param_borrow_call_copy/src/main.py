@@ -3,10 +3,9 @@
 # function, a method and a constructor alike. Codegen then rejects the shape,
 # which is what keeps the copy from being observable; the reject is also what
 # makes this an error_ case. Compilation stops at the FIRST reject, so only
-# the `via_free` leg on line 40 is asserted here -- `via_method` and
-# `via_ctor` are the same slot at the other two callee kinds and are pinned
-# by the unit-level warning check in `tpyc/test_operator_borrow_binding.py`
-# (the harness drops warnings from a failing compile, see TODO.md).
+# the `via_free` leg carries the error annotation; `via_method` and
+# `via_ctor` are the same slot at the other two callee kinds, and all three
+# pin the warning.
 from tpy import Int32, Own
 
 
@@ -42,16 +41,16 @@ def keep(p: Own[Payload]) -> Own[Payload]:
 
 
 def via_free(h: Holder) -> None:
-    d = keep(h.borrow())  # tpyc: error(/not yet supported by C\+\+ code generation/)
+    d = keep(h.borrow())  # tpyc: error(/not yet supported by C\+\+ code generation/) warning(/copies Payload into owned storage/)
     print(d.v)
 
 
 def via_method(h: Holder, s: Sink) -> None:
-    s.replace(h.borrow())
+    s.replace(h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
 
 
 def via_ctor(h: Holder) -> None:
-    s = Sink(h.borrow())
+    s = Sink(h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
     print(s.p.v)
 
 

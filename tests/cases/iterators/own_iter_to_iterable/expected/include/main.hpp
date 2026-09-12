@@ -11,6 +11,11 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template <typename T>
+struct __gen_each_twice;
+
+template <typename T>
+__gen_each_twice<T> each_twice(std::vector<T>& xs);
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs);
 void main();
@@ -38,6 +43,74 @@ struct Item {
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     ::tpy::print_object_default(os, "Item", obj);
     return os;
+}
+
+// Generator: each_twice
+template <typename T>
+struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> {
+    int32_t __state;
+    std::vector<T>& xs;
+    T* x = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_each_twice(std::vector<T>& xs)
+        : __state(S_INITIAL), xs(xs) {}
+
+    std::expected<T, ::tpy::StopIteration> __next__();
+    __gen_each_twice& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_each_twice<T>&) {
+        return os << "<generator each_twice>";
+    }
+};
+// def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+template <typename T>
+std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_it_0.emplace((xs).begin());
+        __for_end_0.emplace((xs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // yield copy(x)  # tpyc: ok
+        __state = S_RESUME_1;
+        return T((*x));
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = &(*((*__for_it_0))++);
+        // yield copy(x)  # tpyc: ok
+        __state = S_RESUME_0;
+        return T((*x));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+template <typename T>
+__gen_each_twice<T> each_twice(std::vector<T>& xs) {
+    return __gen_each_twice<T>(xs);
 }
 
 

@@ -1,0 +1,5 @@
+The frame lambda snapshots its capture where a CPython cell reads it
+live -- the declared divergence, warned at the capture point. The
+`copied` section adds the unwarned half: a by-value snapshot of a
+reference-type member copies where CPython aliases
+(BUGS.md#escaping-capture-mutation-snapshot).

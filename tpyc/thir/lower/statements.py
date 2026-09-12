@@ -314,6 +314,7 @@ from .predicates import (
     _optional_borrow_tuple,
     _own_stripped_tuple_eq,
     _mixed_own_storage_source,
+    _alias_field_source_ok,
     _f2_reseat_ok,
     _facts_have_concrete,
     _facts_emit_alias,
@@ -5007,7 +5008,10 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
            for n in stmt.captured_names):
         note_detail("nesteddef.narrowed_capture")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    # Capture list, spelled from the node facts.
+    # Capture list, spelled from the node facts. A by-value entry here is NOT
+    # checked for copyability the way the lambda entry builder checks its own
+    # (BUGS.md#nesteddef-copy-capture-uncheckable): a captured record with
+    # `__del__` is spelled bare and g++ rejects the deleted copy.
     if stmt.captured_names:
         if stmt.escapes:
             parts = []
@@ -6743,7 +6747,11 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
             loc=stmt.loc,
             no_source_comment=getattr(stmt, "no_source_comment", False))
     elif (isinstance(init, TpyFieldAccess)
-            and _f2_reseat_ok(init, declared, analyzer)):
+            and _alias_field_source_ok(init, declared, analyzer)):
+        # A reference FIELD source (`a = self.plain`): the alias takes the
+        # field's address (`a = &(__self.plain);`), so it stays LIVE -- a
+        # later write through the field is observed through the alias, as
+        # CPython's name binding does.
         src = _lower_field_source(init, lc, declared)
     elif isinstance(init, TpyName) and init.name == lc.self_receiver:
         # The frame already borrows the live receiver; its local alias

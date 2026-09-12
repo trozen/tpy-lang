@@ -16,10 +16,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_capture_mutate;
 struct __coro_across_await;
+struct __coro_lambda_capture;
 struct __coro_main;
 
 __coro_capture_mutate capture_mutate();
 __coro_across_await across_await();
+int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v);
+__coro_lambda_capture lambda_capture(int32_t n);
 __coro_main main();
 
 // class Box:
@@ -88,20 +91,48 @@ struct __coro_across_await {
     }
 };
 
+// Async coroutine: lambda_capture
+struct __coro_lambda_capture {
+    int32_t __state;
+    bool __cancel_pending;
+    int32_t n;
+    int32_t first;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_lambda_capture(int32_t n_)
+        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_lambda_capture&) {
+        return os << "<coroutine lambda_capture>";
+    }
+};
+
 // Async coroutine: main
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> __await_lift_0;
     int32_t __await_lift_1;
+    int32_t __await_lift_2;
     std::optional<__coro_capture_mutate> __sub_0;
     std::optional<__coro_across_await> __sub_1;
+    std::optional<__coro_lambda_capture> __sub_2;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_RESUME_1 = 2,
-        S_DONE = 3,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
     };
 
     __coro_main()

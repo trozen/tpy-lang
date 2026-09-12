@@ -426,13 +426,18 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
                   # storage->borrow lift a bare name cannot carry (the
                   # loop-var relay fences pin that boundary).
                   and not yt_bare.has_pointer_repr_element()
-                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                      body_declared.get(yv_src.name))))
+                  and collapse_tuple_own_elements(unwrap_readonly(
+                      unwrap_ref_type(unwrap_send_sync(
+                          body_declared.get(yv_src.name)))))
                   == collapse_tuple_own_elements(yt_bare)):
                 # A STORAGE-form Own-element tuple NAME (`yield t` off
                 # `t = (i, Box(...))`) at the matching STORAGE slot: the
                 # binding already holds the form the slot spells -- the
-                # bare name render (`auto __val = t;`).
+                # bare name render (`auto __val = t;`). Both sides collapse
+                # because per-element `Own` is an ownership spelling, not a
+                # C++ shape: a literal init drops the markers, an owning-CALL
+                # init (`t = mk(i)`) keeps them, and both bind the same
+                # storage tuple.
                 yv = _lower_expr(yv_src, lc, body_declared)
                 _witness("sgen.tuple_yield_storage_name")
             elif (isinstance(yv_src, TpyName)

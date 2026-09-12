@@ -13,9 +13,12 @@ struct Bumper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_alias_param;
 struct __gen_Holder_direct;
 struct __gen_Holder_via_alias;
+struct __gen_Holder_live_alias;
 
+__gen_alias_param alias_param(Holder& h);
 void main();
 
 // class Holder:
@@ -34,9 +37,11 @@ struct Holder {
 
     // def simple_alias(self) -> Iterator[Int32]:
     auto simple_alias() const {
-        // # Guards the const borrow-local spelling only: the simple-gen lambda
-        // # captures `a` by value (the documented escaping-closure snapshot), so
-        // # field mutations after creation are NOT observed here (BUGS.md).
+        // # Single yield, so this one takes the simple-gen lambda, which
+        // # captures `a` by value (the documented escaping-closure snapshot):
+        // # field mutations after creation are NOT observed here
+        // # (BUGS.md#sgen-proto-param-alias-copy). `live_alias` below is the
+        // # frame twin, where the alias is live.
         // a = self.plain
         const std::vector<int32_t>& a = (*this).plain;
         return ::tpy::make_generator<int32_t>(
@@ -51,6 +56,8 @@ struct Holder {
             }
         );
     }
+
+    __gen_Holder_live_alias live_alias();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -106,6 +113,30 @@ inline std::ostream& operator<<(std::ostream& os, const Bumper& obj) {
     ::tpy::print_object_default(os, "Bumper", obj);
     return os;
 }
+
+// Generator: alias_param
+struct __gen_alias_param : public ::tpy::next_iter_mixin<__gen_alias_param, int32_t> {
+    int32_t __state;
+    Holder& h;
+    std::vector<int32_t>* a = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_alias_param(Holder& h)
+        : __state(S_INITIAL), h(h) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_alias_param& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_alias_param&) {
+        return os << "<generator alias_param>";
+    }
+};
 
 // Generator: Holder.direct
 struct __gen_Holder_direct : public ::tpy::next_iter_mixin<__gen_Holder_direct, int32_t> {
@@ -168,6 +199,34 @@ struct __gen_Holder_via_alias : public ::tpy::next_iter_mixin<__gen_Holder_via_a
 
 inline __gen_Holder_via_alias Holder::via_alias() const {
     return __gen_Holder_via_alias(*this);
+}
+
+// Generator: Holder.live_alias
+struct __gen_Holder_live_alias : public ::tpy::next_iter_mixin<__gen_Holder_live_alias, int32_t> {
+    int32_t __state;
+    Holder& __self;
+    std::vector<int32_t>* a = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Holder_live_alias(Holder& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Holder_live_alias& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Holder_live_alias&) {
+        return os << "<generator Holder.live_alias>";
+    }
+};
+
+inline __gen_Holder_live_alias Holder::live_alias() {
+    return __gen_Holder_live_alias(*this);
 }
 
 

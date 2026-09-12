@@ -407,6 +407,51 @@ The capture mode depends on the variable's type and whether the closure escapes:
 | Records (value types) | by copy `[r]` | by copy `[r]` |
 | Records (reference types) | by ref `[&r]` | by copy `[r]` (deep copy) |
 
+**Inside a generator or `async def`**, the enclosing body's params and locals
+are MEMBERS of the resumable frame, and a member has no variable form to name
+in a capture list. The entry names it in a C++ init-capture instead -- but the
+MODE is the one the table above gives, so the same source gets the same binding
+whether or not the enclosing body suspends:
+
+| Frame member | Non-escaping (`Fn`) | Escaping (`Callable`) |
+|--------------|---------------------|-----------------------|
+| any plain member `n` | `[&n = n]` (a reference to the member) | `[n = n]` (by-value snapshot) |
+| the receiver `self` | `[&__self = __self]` | `[&__self = __self]` |
+
+The escaping column is what lets such a lambda be handed to a callee that
+stores it: the closure owns its captures and is safe to outlive the frame. The
+non-escaping column is what keeps a borrowed reference-type param usable --
+`[&xs = xs]` binds the caller's object, so a mutation through the closure is
+visible to the caller exactly as it is in the sync twin, where a blanket
+snapshot would silently copy the container. Capturing the frame (`[this]`)
+would be neither: a stored closure would dangle once the generator's frame
+goes, and copying a started generator would leave the copy's closure pointing
+at the original frame. (Yielding a `Callable`, or returning one from an
+`async def`, still rejects -- but on the yield/return SLOT TYPE, which a
+non-capturing lambda hits too, not on what the closure captured.) The receiver
+is a handle in both modes -- the frame holds `self` as a reference member, and
+the lambda copies that reference, the same aliasing a sync method's `this`
+capture gives.
+
+A capture C++ cannot copy has no entry at the ESCAPING mode, and rejects at the
+lambda in BOTH lanes -- a `@nocopy` type, or a record with `__del__` (whose copy
+constructor C++ deletes), with `Own[T]` peeled to its payload before that
+verdict and the `__copy__` escape hatch honored. The by-value entry would be an
+ill-formed copy either way, so it is diagnosed here rather than handed to the
+toolchain. (The escaping `by move` row of the table above is what a nested `def`
+does; a lambda does not move-capture yet, and even where it did, an
+`std::function` slot demands a copy-constructible closure -- see the
+`std::move_only_function` item in TODO.md.)
+
+One further frame member has no entry: one whose READ spelling is not the bare
+name. A reference-type frame LOCAL lives in a `tpy::frame_slot<T>` and reads
+`(*ys)`, so no single entry serves both the initializer and the body.
+
+Because the escaping capture is by value, the stale-value-capture warning below
+is correct inside a frame too: a captured frame local reassigned after the
+capture point warns, and TPy reads the snapshot where CPython's cell reads
+the later value.
+
 **Rationale**:
 - Value types are cheap to copy, so always capture by copy (eliminates lifetime concerns)
 - Non-escaping closures can safely capture by reference (lifetime bounded by the call)
@@ -456,10 +501,11 @@ capture point (`_warn_stale_value_captures` in `tpyc/sema/analyzer.py`, covering
 escaping lambdas and escaping nested defs). The acknowledgment is to capture a fresh,
 non-reassigned local (`snap = k`, optionally via `copy()`), which eliminates the
 divergence. Two sibling cases are not yet warned (both tracked in `BUGS.md`): **in-place
-mutation** of a captured container/record (the mutation-after-capture fact is untracked --
-`closure_written_names` sees only `nonlocal`/`global` rebinds), and **loop-variable
-capture** (`for k in ...: append(lambda: k)`), whose rebinding is the loop back-edge rather
-than a later statement.
+mutation** of a captured container/record (`BUGS.md#escaping-capture-mutation-snapshot`;
+the mutation-after-capture fact is untracked -- `closure_written_names` sees only
+`nonlocal`/`global` rebinds), and **loop-variable capture** (`for k in ...: append(lambda: k)`),
+whose rebinding is the loop back-edge rather than a later statement. Both hold in a
+resumable frame as well as a sync body.
 
 ### Dangling Reference Prevention
 

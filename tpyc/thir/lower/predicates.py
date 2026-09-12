@@ -7342,6 +7342,20 @@ def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool
     return (_field_receiver_ok(init, declared, analyzer)
             and _f1_record(analyzer.get_expr_type(init), analyzer))
 
+def _alias_field_source_ok(init: TpyExpr, declared: dict[str, TpyType],
+                           analyzer) -> bool:
+    """`_f2_reseat_ok`'s reference-AXIS sibling: an lvalue field read off an
+    F1-record receiver whose field is any reference type -- record or
+    container alike -- so an alias local binds `a = &(recv.field);`.
+
+    A separate predicate rather than a widening of `_f2_reseat_ok`: that one
+    gates the sync pointer-local RESEAT, whose container flavor has its own
+    emit, so the two axes must not move together. Both halves here take the
+    identical FIELD-source render, which is why one predicate spans them
+    (docs/PITFALLS.md#same-construct-every-position)."""
+    return (_field_receiver_ok(init, declared, analyzer)
+            and _f1_ref(analyzer.get_expr_type(init), analyzer))
+
 def _f1_param_lvalue_reseat_ok(init: TpyExpr, pointee: TpyType,
                                declared: dict[str, TpyType], lc, analyzer) -> bool:
     """A pointer-repr `Optional` local reseat source that lifts via `&(name)`: a

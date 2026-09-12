@@ -1,2 +1,3 @@
-main.py:33: warning: copies Payload into owned storage; use copy() to make this explicit
-main.py:32: error: in function 'each': this construct is not yet supported by C++ code generation (res.yield_type)
+main.py:37: warning: copies Payload into owned storage; use copy() to make this explicit
+main.py:38: warning: copies Payload into owned storage; use copy() to make this explicit
+main.py:36: error: in function 'each': this construct is not yet supported by C++ code generation (res.yield_type)

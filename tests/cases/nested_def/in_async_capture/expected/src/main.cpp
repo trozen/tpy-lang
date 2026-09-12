@@ -87,6 +87,44 @@ __coro_across_await across_await() {
     return __coro_across_await();
 }
 
+// def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
+    // return f(v)
+    return f(v);
+}
+
+// async def lambda_capture(n: Int32) -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_lambda_capture::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // first = apply(lambda x: x + n, 1)  # tpyc: ok
+        first = apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // return first + apply(lambda x: x + n, 2)
+        __state = S_DONE;
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(first, apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 2)));
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def lambda_capture(n: Int32) -> Int32:
+__coro_lambda_capture lambda_capture(int32_t n) {
+    return __coro_lambda_capture(n);
+}
+
 // async def main() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -115,6 +153,18 @@ __coro_across_await across_await() {
         __sub_1.reset();
         // print(await across_await())
         std::cout << __await_lift_1 << "\n";
+        // print(await lambda_capture(10))
+        __sub_2.emplace(10);
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_2 = std::move(__r2).value();
+        __sub_2.reset();
+        // print(await lambda_capture(10))
+        std::cout << __await_lift_2 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

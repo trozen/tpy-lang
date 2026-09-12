@@ -9,7 +9,24 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply_fn(__F0&& f, int32_t v);
+int32_t push_to(std::vector<int32_t>& ys, int32_t v);
+int32_t sync_ref_capture(std::vector<int32_t>& xs);
 void main();
+
+// def apply_fn(f: Fn[[Int32], Int32], v: Int32) -> Int32:
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply_fn(__F0&& f, int32_t v) {
+    // return f(v)
+    return f(v);
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

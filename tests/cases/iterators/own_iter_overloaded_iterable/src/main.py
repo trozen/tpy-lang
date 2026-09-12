@@ -20,6 +20,14 @@ def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
         yield copy(x)
 
 
+# TWO yields, so this body takes the RESUMABLE FRAME: the loop var is a `T*`
+# frame field, and the open-T copy must carry the deref (`T((*x))`).
+def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+    for x in xs:
+        yield copy(x)  # tpyc: ok
+        yield copy(x)  # tpyc: ok
+
+
 @overload
 def total(xs: Iterable[Own[Int32]]) -> Int32: ...
 @overload
@@ -52,6 +60,10 @@ def main() -> None:
 
     items: list[Item] = [Item(3), Item(1), Item(2)]
     print(keysum(each(items)))  # tpyc: ok
+
+    # Same overload resolution with the frame-shaped generator on the left.
+    print(total(each_twice(nums)))     # tpyc: ok
+    print(keysum(each_twice(items)))   # tpyc: ok
 
 
 main()

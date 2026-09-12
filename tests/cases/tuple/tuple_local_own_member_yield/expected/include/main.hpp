@@ -8,15 +8,36 @@
 namespace tpyapp::main {
 
 struct Box;
+struct Src;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen_twice;
+struct __gen_gen_call_init;
+struct __gen_gen_call_init_borrowed;
+struct __gen_gen_call_init_borrow_dead;
+struct __gen_gen_preloop;
+struct __gen_gen_live;
+struct __gen_Src_pairs;
+
+int32_t first_item(const Box& b);
+std::tuple<int32_t, Box> mk(int32_t v);
+__gen_gen_twice gen_twice(int32_t n);
+__gen_gen_call_init gen_call_init(int32_t n);
+__gen_gen_call_init_borrowed gen_call_init_borrowed(int32_t n);
+__gen_gen_call_init_borrow_dead gen_call_init_borrow_dead(int32_t n);
+__gen_gen_preloop gen_preloop(int32_t n);
+__gen_gen_live gen_live(int32_t n);
 void main();
 
 // class Box:
 struct Box {
     // val: Int32
     int32_t val;
+    // # A heap member, so a slot moved out from under a live borrow is observable
+    // # (the borrowed read sees the stolen buffer) rather than silently fine.
+    // items: list[Int32]
+    std::vector<int32_t> items;
 
     // def __init__(self, v: Int32) -> None:
     Box() = default;
@@ -29,9 +50,226 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+// class Src:
+struct Src {
+    // base: Int32
+    int32_t base;
+
+    // def __init__(self, base: Int32) -> None:
+    Src() = default;
+    explicit Src(int32_t base);
+
+    __gen_Src_pairs pairs(int32_t n) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Src";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
+    ::tpy::print_object_default(os, "Src", obj);
+    return os;
+}
+
+// Generator: gen_twice
+struct __gen_gen_twice : public ::tpy::next_iter_mixin<__gen_gen_twice, std::tuple<int32_t, Box>> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> u;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_twice(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
+    __gen_gen_twice& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_twice&) {
+        return os << "<generator gen_twice>";
+    }
+};
+
+// Generator: gen_call_init
+struct __gen_gen_call_init : public ::tpy::next_iter_mixin<__gen_gen_call_init, std::tuple<int32_t, Box>> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> v;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_call_init(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
+    __gen_gen_call_init& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_call_init&) {
+        return os << "<generator gen_call_init>";
+    }
+};
+
+// Generator: gen_call_init_borrowed
+struct __gen_gen_call_init_borrowed : public ::tpy::next_iter_mixin<__gen_gen_call_init_borrowed, std::tuple<int32_t, Box>> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
+    Box* saved;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> u;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_call_init_borrowed(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
+    __gen_gen_call_init_borrowed& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_call_init_borrowed&) {
+        return os << "<generator gen_call_init_borrowed>";
+    }
+};
+
+// Generator: gen_call_init_borrow_dead
+struct __gen_gen_call_init_borrow_dead : public ::tpy::next_iter_mixin<__gen_gen_call_init_borrow_dead, std::tuple<int32_t, Box>> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
+    Box* saved;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> u;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_call_init_borrow_dead(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
+    __gen_gen_call_init_borrow_dead& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_call_init_borrow_dead&) {
+        return os << "<generator gen_call_init_borrow_dead>";
+    }
+};
+
+// Generator: gen_preloop
+struct __gen_gen_preloop : public ::tpy::next_iter_mixin<__gen_gen_preloop, std::tuple<int32_t, Box>> {
+    int32_t __state;
+    int32_t n;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
+    int32_t _;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_preloop(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
+    __gen_gen_preloop& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_preloop&) {
+        return os << "<generator gen_preloop>";
+    }
+};
+
+// Generator: gen_live
+struct __gen_gen_live : public ::tpy::next_iter_mixin<__gen_gen_live, std::tuple<int32_t, Box>> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> u;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_live(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
+    __gen_gen_live& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_live&) {
+        return os << "<generator gen_live>";
+    }
+};
+
+// Generator: Src.pairs
+struct __gen_Src_pairs : public ::tpy::next_iter_mixin<__gen_Src_pairs, std::tuple<int32_t, Box>> {
+    int32_t __state;
+    const Src& __self;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
+    ::tpy::frame_slot<std::tuple<int32_t, Box>> u;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_Src_pairs(const Src& __self, int32_t n_)
+        : __state(S_INITIAL), __self(__self), n(std::move(n_)) {}
+
+    std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
+    __gen_Src_pairs& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Src_pairs&) {
+        return os << "<generator Src.pairs>";
+    }
+};
+
+inline __gen_Src_pairs Src::pairs(int32_t n) const {
+    return __gen_Src_pairs(*this, n);
+}
+
 
 // def __init__(self, v: Int32) -> None:
-inline Box::Box(int32_t v) : val(v) {}
+inline Box::Box(int32_t v) : val(v), items(std::vector<int32_t>{v}) {}
+
+// def __init__(self, base: Int32) -> None:
+inline Src::Src(int32_t base) : base(base) {}
 inline auto gen(int32_t n) {
     // i = Int32(0)
     int32_t i = 0;
@@ -40,6 +278,24 @@ inline auto gen(int32_t n) {
             while ((i < n)) {
                 // t = (i, Box(i * 10))
                 auto t = std::tuple<int32_t, Box>{i, Box((::tpy::mul_check<int32_t>(i, 10)))};
+                auto __val = t;
+                // i += 1
+                i = ::tpy::add_check<int32_t>(i, 1);
+                return std::optional<std::tuple<int32_t, Box>>(__val);
+            }
+            return std::nullopt;
+        }
+    );
+}
+
+inline auto gen_call_init_once(int32_t n) {
+    // i = Int32(0)
+    int32_t i = 0;
+    return ::tpy::make_generator<std::tuple<int32_t, Box>>(
+        [n, i]() mutable -> std::optional<std::tuple<int32_t, Box>> {
+            while ((i < n)) {
+                // t = mk(i)
+                std::tuple<int32_t, Box> t = mk(i);
                 auto __val = t;
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);

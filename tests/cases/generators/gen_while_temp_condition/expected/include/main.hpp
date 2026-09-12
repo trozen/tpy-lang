@@ -9,8 +9,64 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_fresh_each_pull_framed;
+struct __gen_if_cond_temp;
+
 ::tpy::BigInt eat(std::vector<::tpy::BigInt>& xs);
+__gen_fresh_each_pull_framed fresh_each_pull_framed();
+__gen_if_cond_temp if_cond_temp(::tpy::BigInt n);
 void main();
+
+// Generator: fresh_each_pull_framed
+struct __gen_fresh_each_pull_framed : public ::tpy::next_iter_mixin<__gen_fresh_each_pull_framed, ::tpy::BigInt> {
+    int32_t __state;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_fresh_each_pull_framed()
+        : __state(S_INITIAL) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_fresh_each_pull_framed& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_fresh_each_pull_framed&) {
+        return os << "<generator fresh_each_pull_framed>";
+    }
+};
+
+// Generator: if_cond_temp
+struct __gen_if_cond_temp : public ::tpy::next_iter_mixin<__gen_if_cond_temp, ::tpy::BigInt> {
+    int32_t __state;
+    ::tpy::BigInt n;
+    ::tpy::BigInt i;
+    ::tpy::frame_slot<::tpy::BigInt> __for_i_0;
+    ::tpy::frame_slot<::tpy::BigInt> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_if_cond_temp(::tpy::BigInt n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_if_cond_temp& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_if_cond_temp&) {
+        return os << "<generator if_cond_temp>";
+    }
+};
 
 inline auto fresh_each_pull() {
     return ::tpy::make_generator<::tpy::BigInt>(

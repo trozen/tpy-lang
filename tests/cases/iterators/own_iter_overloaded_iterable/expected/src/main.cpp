@@ -18,6 +18,13 @@ void main() {
     // print(keysum(each(items)))  # tpyc: ok
     auto __tmp_2 = each<Item>(items);
     std::cout << keysum(__tmp_2) << "\n";
+    // # Same overload resolution with the frame-shaped generator on the left.
+    // print(total(each_twice(nums)))     # tpyc: ok
+    auto __tmp_3 = each_twice<int32_t>(nums);
+    std::cout << total(__tmp_3) << "\n";
+    // print(keysum(each_twice(items)))   # tpyc: ok
+    auto __tmp_4 = each_twice<Item>(items);
+    std::cout << keysum(__tmp_4) << "\n";
 }
 
 void __tpy_init() {

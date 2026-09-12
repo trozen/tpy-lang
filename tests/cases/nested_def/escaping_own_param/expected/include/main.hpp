@@ -8,10 +8,13 @@
 namespace tpyapp::main {
 
 struct Config;
+struct Pt;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 std::function<int32_t()> make_getter(Config&& cfg);
+int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v);
+int32_t own_value(Pt p);
 void main();
 
 // class Config:
@@ -30,8 +33,33 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+// class Pt(ValueType):
+struct Pt {
+    // x: Int32
+    int32_t x;
+
+    // def __init__(self, x: Int32) -> None:
+    Pt() = default;
+    explicit Pt(int32_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pt";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
+    ::tpy::print_object_default(os, "Pt", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Pt> : std::true_type {};
+
+namespace tpyapp::main {
+
+
 
 // def __init__(self, v: Int32) -> None:
 inline Config::Config(int32_t v) : value(v) {}
+
+// def __init__(self, x: Int32) -> None:
+inline Pt::Pt(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

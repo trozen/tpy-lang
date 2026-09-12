@@ -17,6 +17,93 @@ namespace tpyapp::main {
     return ::tpy::BigInt(n);
 }
 
+// def fresh_each_pull_framed() -> Iterator[int]:
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_framed::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // yield 2
+        __state = S_RESUME_1;
+        return ::tpy::BigInt(2);
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        std::vector<::tpy::BigInt> __tmp_2 = {1, 2};
+        if ((eat(__tmp_2) > 1)) {
+            // yield 1
+            __state = S_RESUME_0;
+            return ::tpy::BigInt(1);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def fresh_each_pull_framed() -> Iterator[int]:
+__gen_fresh_each_pull_framed fresh_each_pull_framed() {
+    return __gen_fresh_each_pull_framed();
+}
+
+// def if_cond_temp(n: int) -> Iterator[int]:
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_i_0.emplace(::tpy::BigInt(0));
+        __for_stop_0.emplace(static_cast<::tpy::BigInt>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        std::vector<::tpy::BigInt> __tmp_3 = {1, 2, 3};
+        if ((eat(__tmp_3) > 2)) {
+            // yield i
+            __state = S_RESUME_0;
+            return i;
+        } else {
+            __state = S_JOIN_1;
+            continue;
+        }
+    }
+    case S_JOIN_1: {
+        // yield -i
+        __state = S_RESUME_1;
+        return -(i);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def if_cond_temp(n: int) -> Iterator[int]:
+__gen_if_cond_temp if_cond_temp(::tpy::BigInt n) {
+    return __gen_if_cond_temp(n);
+}
+
 // def main():
 void main() {
     // pulls = 0
@@ -52,6 +139,29 @@ void main() {
         std::cout << v << "\n";
         }
     }
+    // framed = 0
+    int32_t framed = 0;
+    // for _ in fresh_each_pull_framed():
+    {
+        auto __src_4 = fresh_each_pull_framed();
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            const ::tpy::BigInt& _ = ::tpy::unwrap_ref(*__r_5);
+        // framed += 1
+        framed = ::tpy::add_check<int32_t>(framed, 1);
+        // if framed >= 5:
+        if ((framed >= 5)) {
+            // break
+            break;
+        }
+        }
+    }
+    // print("framed", framed)
+    std::cout << "framed" << " " << framed << "\n";
+    // print("if_cond", list(if_cond_temp(2)))
+    std::cout << "if_cond" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(if_cond_temp(::tpy::BigInt(2)))) << "\n";
 }
 
 void __tpy_init() {
