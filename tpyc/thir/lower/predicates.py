@@ -4366,10 +4366,11 @@ def _value_opt_span(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
 def _value_opt_tuple(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[value tuple]` binding type (`tup:
     tuple[int, int32] | None` -> `std::optional<std::tuple<...>>` by value),
-    or None. Scoped like the Span kind: only the WHOLE-optional read routes
-    (the bare binding into a same-optional slot / the has_value None test);
-    a narrowed read carries a deref render no arm claims, so name lowering
-    keeps rejecting it."""
+    or None. Keyed on the declared type, never registered as a binding:
+    the WHOLE-optional read routes bare (the binding into a same-optional
+    slot / the has_value None test) and the name arm derefs a NARROWED
+    read (`(*r)` -- the tuple its std::get / arg-slot / unpack-holder
+    consumers read)."""
     if not isinstance(t, TpyType):
         return None
     t = unwrap_readonly(unwrap_send_sync(t))
@@ -4465,6 +4466,32 @@ def _value_opt_scalar_name(e: TpyExpr, declared: dict[str, TpyType],
     if not (isinstance(e, TpyName) and e.name in declared):
         return None
     return _value_opt_scalar(declared[e.name], analyzer)
+
+def _narrowed_value_opt_tuple_read(
+        binding_type: 'TpyType | None', read_type: 'TpyType | None',
+        analyzer) -> 'TupleType | None':
+    """The inner value tuple of a NARROWED read off a binding DECLARED a
+    value-repr `Optional[value tuple]` (`a, b = r` after `if r is not None`),
+    or None. The Optional narrow lives in sema's retyped read, not in the
+    isinstance-alias set, so the verdict is: declared optional, read
+    non-optional. The ONE owner of that verdict -- the name arm's deref
+    render (`(*r)`) and the unpack source that binds off it both ask here."""
+    vot = _value_opt_tuple(binding_type, analyzer)
+    if vot is None or read_type is None:
+        return None
+    if isinstance(unwrap_readonly(unwrap_send_sync(read_type)), OptionalType):
+        return None
+    return _value_tuple(unwrap_readonly(vot.inner), analyzer)
+
+def _narrowed_value_opt_tuple_name(
+        e: TpyExpr, declared: dict[str, TpyType],
+        analyzer) -> 'TupleType | None':
+    """`_narrowed_value_opt_tuple_read` keyed on a bare NAME's declared type
+    and sema's read type."""
+    if not (isinstance(e, TpyName) and e.name in declared):
+        return None
+    return _narrowed_value_opt_tuple_read(
+        declared[e.name], analyzer.get_expr_type(e), analyzer)
 
 def _none_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None',
                         analyzer) -> 'OptionalType | None':

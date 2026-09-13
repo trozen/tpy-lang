@@ -373,6 +373,7 @@ from .predicates import (
     _param_is_const,
     _value_opt_scalar,
     _value_opt_tuple,
+    _narrowed_value_opt_tuple_name,
     _value_opt_bytes,
     _value_opt_string_owned,
     _value_opt_str,
@@ -2364,7 +2365,9 @@ def _tuple_unpack_source(
     """The value-scalar tuple type of an admitted `a, b = <source>` source, or
     None. Four source shapes are admitted:
 
-    - a bare name (or synthetic loop var) -> `const auto& __tup_N = name;`;
+    - a bare name (or synthetic loop var) -> `const auto& __tup_N = name;`
+      (a NARROWED value-repr `Optional[value tuple]` name binds the same
+      holder off the name arm's deref read: `const auto& __tup_N = (*name);`);
     - a value-tuple-returning free call -> `auto __tup_N = f(args);`;
     - a value-tuple-returning method call -> `auto __tup_N = obj.m(args);`
       (the same rvalue capture; storage_ret_ok threads the tuple return
@@ -2389,6 +2392,14 @@ def _tuple_unpack_source(
             _kind_detail("tuple_unpack.src_", v)
             return None
         src_raw: 'TpyType | None' = declared[v.name]
+        # A value-repr `Optional[value tuple]` binding read under its None
+        # narrow (`r: tuple[..] | None` after `if r is not None`): the name
+        # arm's deref read (`(*r)`) is the tuple the holder binds, so the
+        # source lowers as an expression rather than a bare name. Pointer-
+        # repr Optional tuples are the borrow-tuple family (their own arms).
+        _nvot = _narrowed_value_opt_tuple_name(v, declared, analyzer)
+        if _nvot is not None:
+            src_raw = _nvot
     elif isinstance(v, (TpyCall, TpyMethodCall)):
         # The method arm is the free-call sibling: `a, b = obj.pair()` binds
         # the same `auto __tup_N = <rvalue call>;` capture. The owned-tuple
@@ -10357,9 +10368,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # only an optional binding takes the whole-optional copy; a
                 # plain-T binding reads the narrowed inner ((*p)).
                 # A value-repr `Optional[value tuple]` target is asked off its
-                # DECLARED type rather than the binding registry: the tuple
-                # kind admits the whole-optional copy only, and registering it
-                # would hand its narrowed reads a deref render no arm claims.
+                # DECLARED type rather than the binding registry: the name
+                # arm keys its deref-on-narrow read on the declared type
+                # too, so the tuple kind is never registered as a binding.
                 if (stmt.name in declared
                         and not _value_opt_target_binding(stmt.name, lc)
                         and _value_opt_tuple(declared[stmt.name],
@@ -12213,6 +12224,41 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                      is ValueOptKind.SCALAR)):
                 note_detail("return.optval_coerced_param")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+        ret_vot = lc.prescan.ret_value_opt_tuple
+        if stmt.value is not None and ret_vot is not None:
+            # A value-repr Optional[value tuple] return (`std::optional<
+            # std::tuple<...>>`): `None` -> the STORAGE None literal
+            # (`std::nullopt`); a tuple LITERAL renders the spelled
+            # brace-init against the INNER tuple slot (the optional's
+            # converting ctor absorbs it, as the scalar row's bare scalar
+            # is absorbed); an un-narrowed value-tuple NAME rides the
+            # generic tail bare. The scalar value-opt row's tuple twin.
+            _vot_inner = _value_tuple(unwrap_readonly(ret_vot.inner),
+                                      analyzer)
+            assert _vot_inner is not None
+            if isinstance(stmt.value, TpyNoneLiteral):
+                _witness("ret.value_opt_tuple_none")
+                return THIRReturn(
+                    value=THIRLiteral(result_type=ret_vot, value=None,
+                                      form=Form.STORAGE, loc=loc), loc=loc)
+            if isinstance(stmt.value, TpyTupleLiteral):
+                try:
+                    value = _lower_tuple_literal(
+                        stmt.value, _vot_inner, lc, declared,
+                        use=_ExprUse(allow_temps=True))
+                except ThirUnsupported as ex:
+                    raise ThirUnsupported(stmt_reject_reason(
+                        stmt, f"return.tuple_source:{ex.reason}")) from None
+                _witness("ret.value_opt_tuple_literal")
+                return THIRReturn(value=value, loc=loc)
+            if not (isinstance(stmt.value, TpyName)
+                    and stmt.value.name not in narrowed
+                    and stmt.value.name in declared
+                    and _value_tuple(declared[stmt.value.name], analyzer)
+                    is not None):
+                note_detail("return.tuple_source")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            _witness("ret.value_opt_tuple_name")
         ret_vopt_view = lc.prescan.ret_value_opt_view
         if stmt.value is not None and ret_vopt_view is not None:
             # `None` -> `std::nullopt` (STORAGE None literal, target-typed); a
@@ -14414,9 +14460,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             else TupleSourceBind.NAME_COPY)
             else:
                 src_bind = TupleSourceBind.NAME_CREF
+            narrowed_vot_src = None
+            if (src_bind is TupleSourceBind.NAME_CREF
+                    and _narrowed_value_opt_tuple_name(
+                        stmt.value, declared, analyzer) is not None):
+                # A narrowed value-repr `Optional[value tuple]` name: the
+                # holder const-ref-binds the name arm's deref read
+                # (`const auto& __tup_N = (*r);`) -- the deref verdict is
+                # the name arm's, never spelled here, and the const-ref
+                # bind keeps a str element from copying into the holder.
+                # A view target aliases that storage, so a reseat of the
+                # source while the target is live is UB:
+                # BUGS.md#tuple-unpack-view-outlives-reseat.
+                narrowed_vot_src = _lower_expr(stmt.value, lc, declared)
+                _witness("stmt.tuple_unpack.narrowed_value_opt_source")
             return THIRTupleUnpack(
                 source=stmt.value.name, targets=tuple(stmt.targets),
                 target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
+                source_expr=narrowed_vot_src,
                 source_cpp=lc.prescan.global_cpp.get(stmt.value.name),
                 source_bind=src_bind,
                 source_wrap_cpp=source_wrap_cpp,

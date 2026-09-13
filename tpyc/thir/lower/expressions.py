@@ -458,6 +458,7 @@ from .predicates import (
     _value_opt_scalar,
     _value_opt_span,
     _value_opt_tuple,
+    _narrowed_value_opt_tuple_read,
     _value_opt_tuple_pass_arg,
     _view_inner_value_opt,
     _value_opt_string_owned,
@@ -5497,10 +5498,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # derefs `(*coord)` -- the std::get / arg-slot consumers read
             # the bare tuple; a whole-optional read (the None test, the
             # whole-binding write) stays the bare optional. The value-tuple
-            # twin of the nullable BORROW-tuple arm above.
+            # twin of the nullable BORROW-tuple arm above. The narrowed
+            # verdict is the predicate's, shared with the unpack source.
             _vot_narrowed = (
-                not isinstance(unwrap_readonly(rtype), OptionalType)
-                and not allow_whole_optional)
+                not allow_whole_optional
+                and _narrowed_value_opt_tuple_read(binding_type, rtype,
+                                                   analyzer) is not None)
             _witness("name.opt_vtuple_deref" if _vot_narrowed
                      else "name.opt_vtuple_whole")
             return THIRName(result_type=rtype, name=e.name, cpp=gcpp,

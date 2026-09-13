@@ -1397,6 +1397,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # return: `return std::move((*x));` (the Optional[Own[Payload]] param).
     "ret.record_value_opt_name",
     "ret.value_opt_field",
+    # Value-repr Optional[value tuple] return slot (`-> tuple[float, int32] |
+    # None`): `None` -> `std::nullopt`, a tuple literal spells the inner
+    # tuple's brace-init, an un-narrowed value-tuple name passes bare.
+    "ret.value_opt_tuple_none",
+    "ret.value_opt_tuple_literal",
+    "ret.value_opt_tuple_name",
     # Value-repr Optional[view] return (str or bytes): `None` -> `std::nullopt`,
     # a same-family Optional[view] param -> the view->owned arg-split shim
     # (THIROptViewArg), and a str/bytes literal -> bare owned literal.
@@ -2509,6 +2515,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # A non-name unpack source (lowering): a value-tuple-returning call or a
     # value-tuple field read -> `auto __tup_N = <expr>;` (value capture).
     "stmt.tuple_unpack.rvalue_source",
+    # A value-repr Optional[value tuple] NAME read under its None narrow: the
+    # holder const-ref-binds the name arm's deref read
+    # (`const auto& __tup_N = (*r);`).
+    "stmt.tuple_unpack.narrowed_value_opt_source",
     # An Own[F1-record] unpack element moved out of a call-rvalue source
     # (lowering): `Rec a = std::move(std::get<i>(__tup_N));`.
     "stmt.tuple_unpack.own_target",

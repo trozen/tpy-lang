@@ -2365,7 +2365,8 @@ class TupleSourceBind(Enum):
     validated in __post_init__):
 
         NAME_CREF     -> const auto& __tup_N = <src>;      (src: source /
-                         source_cpp spelling override)
+                         source_cpp spelling override, or source_expr --
+                         a narrowed value-opt tuple name's deref read)
         RVALUE        -> auto __tup_N = <source_expr>;
         ONESHOT_DEREF -> auto&& __tup_N = (*<source>);     (consumable
                          one-shot `__await_lift_*` frame_slot; owned
@@ -2472,15 +2473,20 @@ class THIRTupleUnpack(THIRStmt):
     def __post_init__(self) -> None:
         # The payload/discriminator pairings the old boolean pile left
         # unchecked: each source form consumes exactly its own payload.
-        # STORAGE_WRAP takes either a NAME source or an expression source
-        # (`a0, b0 = pairs[0]` lifts the rendered element read).
+        # STORAGE_WRAP and NAME_CREF take either a NAME source or an
+        # expression source (`a0, b0 = pairs[0]` lifts the rendered element
+        # read; a narrowed value-opt tuple name const-ref-binds its deref).
         if self.source_bind is TupleSourceBind.STORAGE_WRAP:
             if self.source_wrap_cpp is None:
                 raise ValueError("STORAGE_WRAP requires source_wrap_cpp")
         else:
-            if (self.source_expr is not None) != (
-                    self.source_bind is TupleSourceBind.RVALUE):
-                raise ValueError("source_expr belongs to RVALUE sources only")
+            if self.source_bind is TupleSourceBind.RVALUE:
+                if self.source_expr is None:
+                    raise ValueError("RVALUE requires source_expr")
+            elif (self.source_expr is not None
+                  and self.source_bind is not TupleSourceBind.NAME_CREF):
+                raise ValueError(
+                    "source_expr belongs to RVALUE / NAME_CREF sources only")
             if self.source_wrap_cpp is not None:
                 raise ValueError("source_wrap_cpp belongs to STORAGE_WRAP only")
         bad = {b for b in self.binds

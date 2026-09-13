@@ -4168,18 +4168,22 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         sb = stmt.source_bind
         src = (stmt.source_cpp if stmt.source_cpp is not None
                else escape_cpp_name(stmt.source))
+
+        def expr_src() -> str:
+            # An expression source renders like a bare expr statement: its
+            # arg temps flush before the holder line.
+            cpp = _emit_expr(stmt.source_expr, state)
+            state.temps.flush(out, indent)
+            return cpp
+
         if sb is TupleSourceBind.STORAGE_WRAP:
             if stmt.source_expr is not None:
-                # An expression source (`pairs[0]`): render + flush its
-                # temps like the RVALUE arm, then lift the whole element.
-                src = _emit_expr(stmt.source_expr, state)
-                state.temps.flush(out, indent)
+                # An expression source (`pairs[0]`) lifts the whole element.
+                src = expr_src()
             out.write(f"{indent}auto {tmp} = ::tpy::tuple_to_pointer<"
                       f"{stmt.source_wrap_cpp}>({src});\n")
         elif sb is TupleSourceBind.RVALUE:
-            src_cpp = _emit_expr(stmt.source_expr, state)
-            state.temps.flush(out, indent)
-            out.write(f"{indent}auto {tmp} = {src_cpp};\n")
+            out.write(f"{indent}auto {tmp} = {expr_src()};\n")
         elif sb is TupleSourceBind.ONESHOT_DEREF:
             out.write(f"{indent}auto&& {tmp} = "
                       f"(*{escape_cpp_name(stmt.source)});\n")
@@ -4190,6 +4194,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif sb is TupleSourceBind.NAME_COPY:
             out.write(f"{indent}auto {tmp} = {src};\n")
         else:
+            if stmt.source_expr is not None:
+                # A narrowed value-opt tuple name: the holder const-ref-binds
+                # the name arm's deref read (`(*r)`) -- no copy.
+                src = expr_src()
             out.write(f"{indent}const auto& {tmp} = {src};\n")
         for i, (name, cpp) in enumerate(zip(stmt.targets, stmt.target_cpps)):
             if name is None:

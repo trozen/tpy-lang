@@ -61,6 +61,7 @@ from .predicates import (
     _resolved_str_value,
     _span_return,
     _value_opt_scalar,
+    _value_opt_tuple,
     _value_opt_view,
     _generic_value_tuple_return,
     _own_storage_tuple_return,
@@ -524,6 +525,7 @@ class _Prescan:
                  "ret_dyn_borrow", "ret_dyn_own",
                  "ret_supported", "ret_callable",
                  "ret_value_opt", "ret_value_opt_view",
+                 "ret_value_opt_tuple",
                  "value_opt_params", "param_names",
                  "own_tuple_params",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
@@ -661,6 +663,13 @@ class _Prescan:
         # lands bare (the owned literal / implicit conversion). The owned-view
         # twin of ret_value_opt.
         self.ret_value_opt_view = _value_opt_view(rt, analyzer)
+        # The value-repr Optional[value tuple] return slot (`-> tuple[float,
+        # int32] | None` -> `std::optional<std::tuple<...>>`): `return None`
+        # -> `std::nullopt`, a tuple literal spells the inner tuple's
+        # brace-init, an un-narrowed value-tuple name passes bare (the
+        # optional's converting ctor absorbs both). The tuple twin of
+        # ret_value_opt.
+        self.ret_value_opt_tuple = _value_opt_tuple(rt, analyzer)
         # F3: the function's borrow-form pointer-repr tuple return slot, if any
         # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
         # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
@@ -807,6 +816,7 @@ class _Prescan:
             or self.ret_ptr_opt is not None
             or self.ret_value_opt is not None
             or self.ret_value_opt_view is not None
+            or self.ret_value_opt_tuple is not None
             or self.ret_borrow_tuple is not None
             or self.ret_record_borrow is not None
             or self.ret_union_borrow is not None

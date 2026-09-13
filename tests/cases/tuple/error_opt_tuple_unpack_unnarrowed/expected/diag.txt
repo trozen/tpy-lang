@@ -1,0 +1,1 @@
+main.py:7: error: Cannot unpack non-tuple type tuple[float, int32] | None
