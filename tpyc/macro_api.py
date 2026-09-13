@@ -1875,7 +1875,10 @@ class AstBuilder:
         return TpyExprStmt(expr=expr)
 
     def return_(self, value: Expr | None = None) -> Stmt:
-        return TpyReturn(value=value)
+        # A bare return carries the canonical None operand, as the parser's
+        # does.
+        return TpyReturn(value=value if value is not None
+                         else TpyNoneLiteral())
 
     def if_(self, condition: Expr, then_body: list[Stmt],
             else_body: list[Stmt] | None = None) -> Stmt:

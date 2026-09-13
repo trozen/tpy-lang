@@ -1,0 +1,25 @@
+free body
+init 1
+method 2
+static body
+try body
+try finally
+with body
+exit body
+match zero
+match other
+closure inner
+unann body
+er body
+er caught
+gen [1, 2] [3]
+async body
+opt_async_finally done
+opt_async_finally done
+opt_async_finally 1 None
+opt_int_bare 1 None
+init 10
+opt_rec_bare 11 True
+opt_int_none 1 None
+opt_str_none yes None
+union_bare 1 neg None

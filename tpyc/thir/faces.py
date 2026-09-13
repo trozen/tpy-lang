@@ -931,6 +931,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `obj.__delattr__("attr");` statement
     "ret.any_subscript",            # `return d[k]` at an Any return slot ->
                                     # bare `::tpy::__getitem__(d, k)`
+    "ret.void",                     # `return` / `return None` at a void
+                                    # slot (-> None, unannotated, generator)
     "ret.any_name",                 # `return a` -- a bare Any value name
     "ret.any_wrap",                 # non-Any value at an Any return slot ->
                                     # `return ::tpy::make_any(..);`

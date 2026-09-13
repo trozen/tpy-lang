@@ -483,9 +483,12 @@ def _body_contains_yield(stmts: list[TpyStmt]) -> bool:
 def _check_no_return_value_in_generator(
     stmts: list[TpyStmt], func_name: str,
 ) -> None:
-    """Reject 'return value' inside a generator function body."""
+    """Reject 'return value' inside a generator function body. A `None`
+    operand is the canonical bare return (the parser synthesizes it), which
+    Python allows in a generator."""
     for stmt in stmts:
-        if isinstance(stmt, TpyReturn) and stmt.value is not None:
+        if (isinstance(stmt, TpyReturn)
+                and not isinstance(stmt.value, TpyNoneLiteral)):
             # Create a minimal object with lineno for ParseError
             err = ParseError(
                 f"Generator function '{func_name}' cannot use 'return' with a value")
@@ -3667,7 +3670,12 @@ class Parser:
             return TpyExprStmt(self._parse_expr(node.value), loc=loc)
 
         elif isinstance(node, ast.Return):
-            value = self._parse_expr(node.value) if node.value else None
+            # Python gives `return` and `return None` one meaning, so a bare
+            # return carries a synthesized None operand: every downstream
+            # consumer sees the one canonical form instead of each handling
+            # the spelling it happens to know.
+            value = (self._parse_expr(node.value) if node.value
+                     else TpyNoneLiteral(loc=loc))
             return TpyReturn(value, loc=loc)
 
         elif isinstance(node, ast.Assert):

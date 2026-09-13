@@ -14,6 +14,7 @@ from ...parse.nodes import (
     TpyAssert,
     TpyAssign,
     body_writes_name as _body_writes_name,
+    is_none_return,
     written_names as _written_names,
     TpyAugAssign,
     TpyAwait,
@@ -7247,6 +7248,23 @@ def _fn_return_type(lc: _LowerCtx) -> 'TpyType | None':
             if isinstance(lc.func.return_type, TpyType) else None)
 
 
+def _return_carries_value(stmt: TpyReturn, lc: _LowerCtx) -> bool:
+    """Whether a return renders an operand. The parser canonicalizes the
+    bare `return` to `return None`, so the void form is decided here, once:
+    a `None` operand at a slot that takes no value -- `-> None`, an
+    unannotated def, a generator's end-of-iteration return -- is the bare
+    `return`. At any other slot the literal is a real value (an Optional's
+    nullopt, a None-union's monostate) and rides the operand arms."""
+    if not is_none_return(stmt):
+        return True
+    if lc.func.is_generator:
+        return False
+    rt = _fn_return_type(lc)
+    if rt is not None:
+        rt = unwrap_readonly(unwrap_ref_type(rt))
+    return rt is not None and not is_void_like_type(rt)
+
+
 def _lower_btuple_reassigned_decl(stmt: TpyVarDecl, vtu: TupleType,
                                   lc: _LowerCtx, declared: dict,
                                   loc) -> 'THIRVarDecl | None':
@@ -7653,9 +7671,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # Generator helper returns render the fixed __finally_stop
                 # pair (the hook's in_generator_finally_helper arm); an async
                 # helper return (the Poll-replay render) stays a named rung.
-                # Bare-only is exact: sema rejects return-with-value in
-                # generators.
-                if not lc.func.is_generator or stmt.value is not None:
+                # Bare-only is exact: the parser rejects return-with-value
+                # in generators.
+                if (not lc.func.is_generator
+                        or _return_carries_value(stmt, lc)):
                     raise ThirUnsupported("res.finally_return")
                 node = THIRResumableReturn(ast_stmt=stmt, value=None, loc=loc)
                 lc.nested_returns.append(node)
@@ -7665,8 +7684,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # Unreachable in a LEAF (a suspension splits the compound);
                 # reject rather than assert if a CFG change ever leaks one.
                 raise ThirUnsupported("res.leaf_return")
-            value = (None if stmt.value is None
-                     else _lower_resumable_return_value(stmt, lc, declared))
+            value = (_lower_resumable_return_value(stmt, lc, declared)
+                     if _return_carries_value(stmt, lc) else None)
             node = THIRResumableReturn(
                 ast_stmt=stmt, value=value, loc=loc,
                 deferred=_resumable_deferred_recipe(stmt, lc, declared))
@@ -11572,6 +11591,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         begin_stmt()
         if lc.overload_stub_return is not None:
             stmt = _overload_adjusted_return(stmt, lc)
+        if not _return_carries_value(stmt, lc):
+            _witness("ret.void")
+            return THIRReturn(value=None, loc=loc)
         if (lc.func.is_consuming and isinstance(stmt.value, TpyFieldAccess)
                 and isinstance(stmt.value.obj, TpyName)
                 and stmt.value.obj.name == "self"):

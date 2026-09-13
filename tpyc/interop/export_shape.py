@@ -22,7 +22,7 @@ from ..modules import (
 )
 from ..parse.nodes import (
     TpyCoerce, TpyFieldAccess, TpyName, TpyReturn, walk_body_stmts,
-    is_docstring,
+    is_docstring, is_none_return,
 )
 from ..type_def_registry import _boundary_inner
 from ..typesys import NominalType, OwnType, ReadonlyType
@@ -267,7 +267,7 @@ def view_safe_borrow_returns(fn: 'TpyFunction',
     walk_body_stmts(
         fn.body, lambda _e: None,
         lambda s: returns.append(s)
-        if isinstance(s, TpyReturn) and s.value is not None else None)
+        if isinstance(s, TpyReturn) and not is_none_return(s) else None)
     if not returns:
         return False
     for r in returns:

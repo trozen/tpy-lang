@@ -198,6 +198,7 @@ from .statements import (
     _nested_def_lowering_scope,
     _persistent_alias_name,
     _resumable_deferred_recipe,
+    _return_carries_value,
     _var_decl_type,
 )
 
@@ -2278,12 +2279,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         t = bb.terminator
         if isinstance(t, rcfg.ReturnT):
             ret = t.return_stmt
-            _rt = (unwrap_ref_type(func.return_type)
-                   if isinstance(func.return_type, TpyType) else None)
-            if ret.value is None or isinstance(_rt, VoidType):
+            if not _return_carries_value(ret, lc):
                 # Void scaffolding is skeleton-only -- a Void slot never
-                # renders its value (`return None` included; the skeleton
-                # keys POLL_VOID_READY_RETURN on VoidType, not on the value).
+                # renders its value (the skeleton keys POLL_VOID_READY_RETURN
+                # on VoidType, not on the value).
                 return
             if isinstance(ret.value, TpyAwait):
                 # RETURN-kind await: `_emit_resume_core` fully emits the

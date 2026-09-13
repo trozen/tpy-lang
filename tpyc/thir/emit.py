@@ -4601,8 +4601,11 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
         out.write(f"{INDENT * indent_level}{content}\n")
     out.write(body_buf.getvalue())
     # Void @error_return functions return `{}` at the end -- the implicit
-    # success value, emitted unconditionally.
-    if fn.error_return_cpp and isinstance(fn.return_type, VoidType):
+    # success value. A body that already terminates on every path (the
+    # same fact sema uses to skip the implicit return) would make it a
+    # dead second return.
+    if (fn.error_return_cpp and isinstance(fn.return_type, VoidType)
+            and not fn.body_terminates):
         out.write(f"{INDENT * indent_level}return {{}};\n")
         _witness("er.void_tail")
 

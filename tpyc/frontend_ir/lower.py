@@ -553,7 +553,9 @@ def _lower_stmt(
             stmt.body, name_to_origin, plugin_name, fm, diags)
         return TpyForEach(var=stmt.var, iterable=it, body=body, loc=loc)
     if isinstance(stmt, Return):
-        value = None
+        # A bare return carries the canonical None operand, as the parser's
+        # does.
+        value = TpyNoneLiteral(loc=loc)
         if stmt.value is not None:
             value = _lower_expr(stmt.value, name_to_origin,
                                 plugin_name, fm, diags)

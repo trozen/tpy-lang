@@ -12,6 +12,7 @@ from __future__ import annotations
 from tpyc.liveness import analyze_last_uses
 from tpyc.parse.nodes import (
     TpyExceptHandler, TpyFunction, TpyMethodCall, TpyName, TpyNestedDef,
+    TpyNoneLiteral,
     TpyPassStmt, TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl,
 )
 
@@ -83,7 +84,7 @@ class TestNestedDefCaptures:
             _decl("b", None),
             _decl("c", consumed),
             _nested_def("inner", [TpyReturn(value=TpyName(name="b"))]),
-            TpyReturn(value=None),
+            TpyReturn(value=TpyNoneLiteral()),
         ])
         assert not _is_last_use(marks, consumed)
 
@@ -91,7 +92,7 @@ class TestNestedDefCaptures:
         consumed = TpyName(name="b")
         marks = analyze_last_uses([
             _decl("b", None),
-            _nested_def("inner", [TpyReturn(value=None)]),
+            _nested_def("inner", [TpyReturn(value=TpyNoneLiteral())]),
             _decl("c", consumed),
             TpyReturn(value=TpyName(name="c")),
         ])

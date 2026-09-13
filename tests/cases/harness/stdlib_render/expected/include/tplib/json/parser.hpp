@@ -355,7 +355,6 @@ inline std::expected<void, JsonError> JsonReader::read_null() {
         return {};
     }
     return ::tpy::make_unexpected(JsonError("expected 'null'", this->_pos));
-    return {};
 }
 
 // # -- internal helpers --

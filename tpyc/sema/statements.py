@@ -11,8 +11,9 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType,
     FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
-    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType, VoidType,
+    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
     is_c_abi_allowed, c_abi_type_hint, C_ABI_TYPE_ERROR,
+    is_void_like_type,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     RecursiveAliasInstanceType,
     collapse_tuple_own_elements, type_contains_own,
@@ -1322,7 +1323,13 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
-                expected = unwrap_ref_type(self.ctx.func.current_function.return_type) if self.ctx.func.current_function else VOID
+                fn = self.ctx.func.current_function
+                # A generator's `return` ends iteration and carries no value
+                # (the parser rejects any operand but the canonical None), so
+                # its slot is void, not the declared Iterator type.
+                expected = (unwrap_ref_type(fn.return_type)
+                            if fn is not None and not fn.is_generator
+                            else VOID)
                 ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
                 stmt.value_type = ret_type
                 self._mark_finally_deferred_return(stmt, ret_type, expected)
@@ -3237,7 +3244,7 @@ class StatementAnalyzer:
         if func.is_generator or func.is_stub:
             return None
         rt = unwrap_own(unwrap_ref_type(unwrap_readonly(func.return_type)))
-        if rt is None or isinstance(rt, (VoidType, NoneType)):
+        if rt is None or is_void_like_type(rt):
             return None
         if stmts_terminate(func.body):
             return None

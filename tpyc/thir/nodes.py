@@ -3279,7 +3279,9 @@ class THIRFunction:
     """`error_return_cpp` is the @error_return error type's C++ render
     (`error_return_to_cpp`), None for
     ordinary functions. It seeds the emit state: bare `return` renders
-    `return {};`, a void body appends the trailing `return {};` success, and
+    `return {};`, a void body appends the trailing `return {};` success
+    (unless `body_terminates` -- the `stmts_terminate` fact of the source
+    body, computed at lowering -- says the end is unreachable), and
     propagate checks read it as the innermost disposition."""
     name: str
     params: tuple[THIRParam, ...]
@@ -3287,6 +3289,7 @@ class THIRFunction:
     body: tuple[THIRStmt, ...]
     layout: THIRFunctionLayout
     error_return_cpp: 'str | None' = None
+    body_terminates: bool = False
 
 
 @dataclass(frozen=True)

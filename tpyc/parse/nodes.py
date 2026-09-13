@@ -881,6 +881,17 @@ class TpyReturn(TpyStmt):
         return [self.value] if self.value else []
 
 
+def is_none_return(stmt: TpyReturn) -> bool:
+    """Whether the return's operand is the None literal -- the canonical
+    spelling of a bare `return` (every producer synthesizes it), so this is
+    the ONE test for "this return names no value"; whether a None operand
+    renders a value is decided by the return slot's type, not here."""
+    v = stmt.value
+    while isinstance(v, TpyCoerce):
+        v = v.expr
+    return v is None or isinstance(v, TpyNoneLiteral)
+
+
 @dataclass
 class TpyYield(TpyStmt):
     """Yield statement in a generator function."""

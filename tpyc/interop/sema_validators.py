@@ -10,7 +10,9 @@ methods passing its `ctx`.
 from typing import TYPE_CHECKING
 
 from ..diagnostics import SemanticError
-from ..parse.nodes import RecordLinkage, TpyReturn, walk_body_stmts
+from ..parse.nodes import (
+    RecordLinkage, TpyReturn, is_none_return, walk_body_stmts,
+)
 from ..type_def_registry import (
     _boundary_inner, is_bool_type, is_dict, is_exposed_class,
     is_fixed_int_type, is_function_boundary_marshallable,
@@ -75,7 +77,7 @@ def warn_export_class_return_alias(ctx: 'SemanticContext',
         walk_body_stmts(
             body, lambda _e: None,
             lambda s: found.append(s)
-            if isinstance(s, TpyReturn) and s.value is not None else None)
+            if isinstance(s, TpyReturn) and not is_none_return(s) else None)
         return found
 
     def first_return(body) -> 'TpyReturn | None':

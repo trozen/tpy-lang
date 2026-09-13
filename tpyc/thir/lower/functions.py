@@ -5,6 +5,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
+from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
     SourceLocation,
@@ -1060,6 +1061,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             body=param_copies + body,
             layout=THIRFunctionLayout(),
             error_return_cpp=lc.error_return_cpp,
+            body_terminates=stmts_terminate(func.body),
         )
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
