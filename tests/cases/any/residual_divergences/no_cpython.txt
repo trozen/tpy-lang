@@ -1,0 +1,1 @@
+char is a TPy-only type and the record identity fallback is a documented divergence from CPython.

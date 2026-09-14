@@ -11,11 +11,12 @@ from .typesys import (
     NominalType, PtrType, OptionalType, OwnType, is_readonly_ptr,
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
     is_integer_type, unwrap_readonly, AnyType, same_nominal_symbol_loose,
-    BYTES,
+    VIEW_TYPE_FAMILIES,
 )
 from .type_def_registry import (
     is_array, is_span, is_list, is_dict, is_set, int_traits_of,
     is_fixed_int_type, is_big_int_type, is_float64_type, is_float32_type,
+    is_float_category, is_bool_type,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
     is_basic_slice_type, is_slice_type, view_to_owned_conv,
@@ -720,28 +721,34 @@ def _any_storage_form(
 
     The expression must produce a value whose decayed C++ type is the
     intended storage typeid -- argument deduction in `make_any<T>(value)`
-    picks T from this expression. Three flavours of conversion happen
-    here:
+    picks T from this expression, so the typeid is spelled from the
+    resolved TPy type wherever the rendered expression could deduce
+    differently, never trusted to deduction:
 
     - Literal-typed sources (IntLiteralType / FloatLiteralType /
       LiteralType) resolve to their canonical storage type so the typeid
       is stable regardless of which literal value triggered the coercion
       (`x: Any = 42` and `[42]: list[Any]` both store BigInt).
 
-    - str-like sources are always wrapped in `std::string{...}` because
-      string-literal expressions lower to `const char*`. Without this,
-      argument deduction would pick `const char*` and the cell's typeid
-      would mismatch the canonical `std::string`. The redundant
-      std::string copy when the source is already a std::string variable
-      is accepted; correctness over micro-efficiency.
+    - Scalars (fixed-width ints, floats, bool, char) are spelled with
+      their C++ type: a fixed-int constructor over a literal folds to the
+      bare literal (`int64(1)` renders `1`), which deduces `int`.
 
-    - Bytes-like view/span sources are converted to the owning buffer;
-      bytes/bytearray at value positions already own theirs and pass through.
+    - str / bytes sources store the family's OWNED form whatever position
+      they come from: a literal (`const char*`), a view (a param, or a
+      LOCAL whose storage sema left pending), or an owned value (where
+      the construction is a copy; correctness over micro-efficiency).
 
     - Container literals reach codegen as raw brace-init expressions
       (`{1, 2, 3}`); make_any's argument deduction can't pick a type
       from a braced-init, so we prefix with the explicit C++ container
       type. For non-literal sources the same prefix is just a copy ctor.
+
+    The bare tail below -- records, `Span` and `Array` -- is the UN-SPELLED
+    remainder: it stores whatever C++ value the expression produced. That is
+    right for the two owning members and wrong for `Span`, whose view is
+    copied into a cell that outlives the buffer
+    (`BUGS.md#span-into-any-stores-view`).
     """
     if isinstance(actual, IntLiteralType):
         # TPy's `int` annotation is BigInt; storing IntLiteral sources as
@@ -752,15 +759,17 @@ def _any_storage_form(
         return f"static_cast<double>({e})"
     if isinstance(actual, LiteralType):
         return _any_storage_form(e, actual.base_type, c)
-    if is_str_view_type(actual) or is_str_type(actual) or is_string_type(actual):
-        return f"std::string({e})"
-    if is_bytes_view_type(actual):
-        # A view has no owned type of its own; the family's is `bytes`.
-        return f"{view_to_owned_conv(BYTES)}({e})"
-    if is_bytes_type(actual) or is_bytearray_type(actual):
+    if (is_fixed_int_type(actual) or is_float_category(actual)
+            or is_bool_type(actual) or is_char_type(actual)):
+        return f"{actual.to_cpp()}({e})"
+    if is_bytearray_type(actual):
+        # A reference type with its own storage form, not the family's.
         if c == CoercionContext.ARG:
             return f"{view_to_owned_conv(actual)}({e})"
         return e
+    fam = next((f for f in VIEW_TYPE_FAMILIES if f.is_any_member(actual)), None)
+    if fam is not None:
+        return f"{view_to_owned_conv(fam.owned_type)}({e})"
     if is_list(actual) or is_dict(actual) or is_set(actual):
         cpp = actual.to_cpp()
         return f"{cpp}{e}" if e.startswith("{") else f"{cpp}({e})"

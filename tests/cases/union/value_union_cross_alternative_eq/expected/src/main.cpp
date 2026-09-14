@@ -222,10 +222,82 @@ bool t_int_f64(const ::tpy::BigInt& a, double b) {
     return (static_cast<double>(a) == b);
 }
 
+// # `int` against a float compares EXACTLY in the leaf, as CPython does: the
+// # float is decomposed, never the int rounded to a double. The twin still
+// # rounds (BUGS.md#int-float-compare-rounds-bigint), so only the union answer
+// # is printed at a value beyond 2**53.
+// def u_int_lt(a: int | float64, b: int | float64) -> bool:
+//     return a < b  # tpyc: ok
+bool u_int_lt(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b) {
+    return (a < b);
+}
+
+// def u_int_le(a: int | float64, b: int | float64) -> bool:
+//     return a <= b  # tpyc: ok
+bool u_int_le(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b) {
+    return (a <= b);
+}
+
+// def u_int_gt(a: int | float64, b: int | float64) -> bool:
+//     return a > b  # tpyc: ok
+bool u_int_gt(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b) {
+    return (a > b);
+}
+
+// def u_int_ge(a: int | float64, b: int | float64) -> bool:
+//     return a >= b  # tpyc: ok
+bool u_int_ge(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b) {
+    return (a >= b);
+}
+
+// def u_int_ne(a: int | float64, b: int | float64) -> bool:
+//     return a != b  # tpyc: ok
+bool u_int_ne(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b) {
+    return (a != b);
+}
+
 // def u_ne(a: int32 | float64, b: int32 | float64) -> bool:
 //     return a != b  # tpyc: ok
 bool u_ne(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     return (a != b);
+}
+
+// # A FIXED-WIDTH int alternative against a float is exact too, not only `int`:
+// # at 2**53 + 1 the twin's rounding to a double would answer equal.
+// def u_i64_f64(a: int64 | float64, b: int64 | float64) -> bool:
+//     return a == b  # tpyc: ok
+bool u_i64_f64(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b) {
+    return (a == b);
+}
+
+// def u_i64_ne(a: int64 | float64, b: int64 | float64) -> bool:
+//     return a != b  # tpyc: ok
+bool u_i64_ne(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b) {
+    return (a != b);
+}
+
+// def u_i64_lt(a: int64 | float64, b: int64 | float64) -> bool:
+//     return a < b  # tpyc: ok
+bool u_i64_lt(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b) {
+    return (a < b);
+}
+
+// def u_i64_le(a: int64 | float64, b: int64 | float64) -> bool:
+//     return a <= b  # tpyc: ok
+bool u_i64_le(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b) {
+    return (a <= b);
+}
+
+// def u_i64_gt(a: int64 | float64, b: int64 | float64) -> bool:
+//     return a > b  # tpyc: ok
+bool u_i64_gt(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b) {
+    return (a > b);
+}
+
+// def u_i64_ge(a: int64 | float64, b: int64 | float64) -> bool:
+//     return a >= b  # tpyc: ok
+bool u_i64_ge(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b) {
+    return (a >= b);
 }
 
 // # readonly[] is a const qualifier, not a shape change, so it routes the same.
@@ -484,6 +556,20 @@ __coro_amain amain(::tpy::Union<double, int32_t> x, ::tpy::Union<double, int32_t
 //     print("family uint32|int32", u_u32_i32(u32, i32), t_u32_i32(u32, i32))
 //     print("family int|float64", u_int_f64(big, f64), t_int_f64(big, f64))
 //     print("ne", u_ne(x, y))
+//     big53: int = 9007199254740993
+//     f53: float64 = 9007199254740992.0
+//     p70: int = 2 ** 70
+//     fp70: float64 = 2.0 ** 70
+//     inf = float("inf")
+//     print("exact int|float64", u_int_f64(big53, f53), u_int_ne(big53, f53),
+//           u_int_f64(p70, fp70), u_int_f64(big, 1.5))
+//     print("exact ordering", u_int_lt(big53, f53), u_int_le(big53, f53),
+//           u_int_gt(big53, f53), u_int_ge(big53, f53))
+//     print("exact fractional", u_int_lt(big, 1.5), u_int_le(big, 1.5),
+//           u_int_gt(big, 1.5), u_int_ge(big, 1.5), u_int_lt(2, 1.5),
+//           u_int_ge(2, 1.5))
+//     print("exact inf", u_int_lt(p70, inf), u_int_gt(p70, inf),
+//           u_int_gt(p70, -inf), u_int_f64(p70, inf))
 //     print("readonly", u_readonly(x, y))
 //     print("same alternative", u_i32_f64(i32, i32), u_ne(i32, i32))
 //
@@ -540,6 +626,21 @@ __coro_amain amain(::tpy::Union<double, int32_t> x, ::tpy::Union<double, int32_t
 //     nan_u: int32 | float64 = nan
 //     print("nan le", u_le(nan_u, f64), t_le(nan, f64))
 //     print("nan ge", u_ge(nan_u, f64), t_ge(nan, f64))
+//     # The section above holds a float on BOTH sides, so it never reaches the
+//     # int-against-float arm; these rows put an INT alternative opposite the
+//     # NaN, where it is unequal to and unordered against everything.
+//     print("nan int|float64", u_int_f64(big, nan), u_int_ne(big, nan),
+//           u_int_lt(big, nan), u_int_le(big, nan), u_int_gt(big, nan),
+//           u_int_ge(big, nan))
+//     i64_53: int64 = 9007199254740993
+//     print("nan int64|float64", u_i64_f64(i64, nan), u_i64_ne(i64, nan),
+//           u_i64_lt(i64, nan), u_i64_le(i64, nan), u_i64_gt(i64, nan),
+//           u_i64_ge(i64, nan))
+//     print("exact int64|float64", u_i64_f64(i64_53, f53), u_i64_ne(i64_53, f53))
+//     print("exact int64 ordering", u_i64_lt(i64_53, f53), u_i64_le(i64_53, f53),
+//           u_i64_gt(i64_53, f53), u_i64_ge(i64_53, f53))
+//     print("exact int64 fractional", u_i64_lt(i64, 1.5), u_i64_le(i64, 1.5),
+//           u_i64_gt(i64, 1.5), u_i64_ge(i64, 1.5))
 //
 //     n: int32 | str = 1
 //     s: int32 | str = "a"
@@ -605,12 +706,57 @@ void main() {
     ::tpy::Union<double, ::tpy::BigInt> __tmp_12 = f64;
     std::cout << "family int|float64" << " " << ::tpy::print_bool(u_int_f64(__tmp_11, __tmp_12)) << " " << ::tpy::print_bool(t_int_f64(big, f64)) << "\n";
     std::cout << "ne" << " " << ::tpy::print_bool(u_ne(x, y)) << "\n";
+    ::tpy::BigInt big53 = ::tpy::BigInt(static_cast<int64_t>(9007199254740993LL));
+    double f53 = 9007199254740992.0;
+    ::tpy::BigInt p70 = ((::tpy::BigInt(2)).pow(::tpy::BigInt(70)));
+    double fp70 = (std::pow(2.0, 70));
+    double inf = std::numeric_limits<double>::infinity();
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_13 = big53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_14 = f53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_15 = big53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_16 = f53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_17 = p70;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_18 = fp70;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_19 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_20 = 1.5;
+    std::cout << "exact int|float64" << " " << ::tpy::print_bool(u_int_f64(__tmp_13, __tmp_14)) << " " << ::tpy::print_bool(u_int_ne(__tmp_15, __tmp_16)) << " " << ::tpy::print_bool(u_int_f64(__tmp_17, __tmp_18)) << " " << ::tpy::print_bool(u_int_f64(__tmp_19, __tmp_20)) << "\n";
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_21 = big53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_22 = f53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_23 = big53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_24 = f53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_25 = big53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_26 = f53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_27 = big53;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_28 = f53;
+    std::cout << "exact ordering" << " " << ::tpy::print_bool(u_int_lt(__tmp_21, __tmp_22)) << " " << ::tpy::print_bool(u_int_le(__tmp_23, __tmp_24)) << " " << ::tpy::print_bool(u_int_gt(__tmp_25, __tmp_26)) << " " << ::tpy::print_bool(u_int_ge(__tmp_27, __tmp_28)) << "\n";
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_29 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_30 = 1.5;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_31 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_32 = 1.5;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_33 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_34 = 1.5;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_35 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_36 = 1.5;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_37 = 2;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_38 = 1.5;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_39 = 2;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_40 = 1.5;
+    std::cout << "exact fractional" << " " << ::tpy::print_bool(u_int_lt(__tmp_29, __tmp_30)) << " " << ::tpy::print_bool(u_int_le(__tmp_31, __tmp_32)) << " " << ::tpy::print_bool(u_int_gt(__tmp_33, __tmp_34)) << " " << ::tpy::print_bool(u_int_ge(__tmp_35, __tmp_36)) << " " << ::tpy::print_bool(u_int_lt(__tmp_37, __tmp_38)) << " " << ::tpy::print_bool(u_int_ge(__tmp_39, __tmp_40)) << "\n";
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_41 = p70;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_42 = inf;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_43 = p70;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_44 = inf;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_45 = p70;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_46 = -(inf);
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_47 = p70;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_48 = inf;
+    std::cout << "exact inf" << " " << ::tpy::print_bool(u_int_lt(__tmp_41, __tmp_42)) << " " << ::tpy::print_bool(u_int_gt(__tmp_43, __tmp_44)) << " " << ::tpy::print_bool(u_int_gt(__tmp_45, __tmp_46)) << " " << ::tpy::print_bool(u_int_f64(__tmp_47, __tmp_48)) << "\n";
     std::cout << "readonly" << " " << ::tpy::print_bool(u_readonly(x, y)) << "\n";
-    ::tpy::Union<double, int32_t> __tmp_13 = i32;
-    ::tpy::Union<double, int32_t> __tmp_14 = i32;
-    ::tpy::Union<double, int32_t> __tmp_15 = i32;
-    ::tpy::Union<double, int32_t> __tmp_16 = i32;
-    std::cout << "same alternative" << " " << ::tpy::print_bool(u_i32_f64(__tmp_13, __tmp_14)) << " " << ::tpy::print_bool(u_ne(__tmp_15, __tmp_16)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_49 = i32;
+    ::tpy::Union<double, int32_t> __tmp_50 = i32;
+    ::tpy::Union<double, int32_t> __tmp_51 = i32;
+    ::tpy::Union<double, int32_t> __tmp_52 = i32;
+    std::cout << "same alternative" << " " << ::tpy::print_bool(u_i32_f64(__tmp_49, __tmp_50)) << " " << ::tpy::print_bool(u_ne(__tmp_51, __tmp_52)) << "\n";
     std::vector<::tpy::Union<double, int32_t>> xs = {1};
     std::vector<::tpy::Union<double, int32_t>> ys = {1.0};
     std::cout << "list" << " " << ::tpy::print_bool(list_eq(xs, ys)) << "\n";
@@ -648,38 +794,88 @@ void main() {
     std::vector<ShapeTree> st2 = {Circle(3)};
     std::vector<ShapeTree> st3 = {Square(3)};
     std::cout << "record alias" << " " << ::tpy::print_bool(shape_tree_eq(st1, st2)) << " " << ::tpy::print_bool(shape_tree_eq(st1, st3)) << "\n";
-    ::tpy::Union<double, int32_t> __tmp_17 = f64;
-    ::tpy::Union<double, int32_t> __tmp_18 = i32;
-    ::tpy::Union<double, int32_t> __tmp_19 = i32;
-    ::tpy::Union<double, int32_t> __tmp_20 = 2.5;
-    std::cout << "lt" << " " << ::tpy::print_bool(u_lt(__tmp_17, __tmp_18)) << " " << ::tpy::print_bool(u_lt(__tmp_19, __tmp_20)) << "\n";
-    ::tpy::Union<double, int32_t> __tmp_21 = i32;
-    ::tpy::Union<double, int32_t> __tmp_22 = f64;
-    std::cout << "le" << " " << ::tpy::print_bool(u_le(__tmp_21, __tmp_22)) << "\n";
-    ::tpy::Union<double, int32_t> __tmp_23 = i32;
-    ::tpy::Union<double, int32_t> __tmp_24 = 0.5;
-    std::cout << "gt" << " " << ::tpy::print_bool(u_gt(__tmp_23, __tmp_24)) << "\n";
-    ::tpy::Union<double, int32_t> __tmp_25 = i32;
-    ::tpy::Union<double, int32_t> __tmp_26 = f64;
-    std::cout << "ge" << " " << ::tpy::print_bool(u_ge(__tmp_25, __tmp_26)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_53 = f64;
+    ::tpy::Union<double, int32_t> __tmp_54 = i32;
+    ::tpy::Union<double, int32_t> __tmp_55 = i32;
+    ::tpy::Union<double, int32_t> __tmp_56 = 2.5;
+    std::cout << "lt" << " " << ::tpy::print_bool(u_lt(__tmp_53, __tmp_54)) << " " << ::tpy::print_bool(u_lt(__tmp_55, __tmp_56)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_57 = i32;
+    ::tpy::Union<double, int32_t> __tmp_58 = f64;
+    std::cout << "le" << " " << ::tpy::print_bool(u_le(__tmp_57, __tmp_58)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_59 = i32;
+    ::tpy::Union<double, int32_t> __tmp_60 = 0.5;
+    std::cout << "gt" << " " << ::tpy::print_bool(u_gt(__tmp_59, __tmp_60)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_61 = i32;
+    ::tpy::Union<double, int32_t> __tmp_62 = f64;
+    std::cout << "ge" << " " << ::tpy::print_bool(u_ge(__tmp_61, __tmp_62)) << "\n";
     double nan = std::numeric_limits<double>::quiet_NaN();
     ::tpy::Union<double, int32_t> nan_u = nan;
-    ::tpy::Union<double, int32_t> __tmp_27 = f64;
-    std::cout << "nan le" << " " << ::tpy::print_bool(u_le(nan_u, __tmp_27)) << " " << ::tpy::print_bool(t_le(nan, f64)) << "\n";
-    ::tpy::Union<double, int32_t> __tmp_28 = f64;
-    std::cout << "nan ge" << " " << ::tpy::print_bool(u_ge(nan_u, __tmp_28)) << " " << ::tpy::print_bool(t_ge(nan, f64)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_63 = f64;
+    std::cout << "nan le" << " " << ::tpy::print_bool(u_le(nan_u, __tmp_63)) << " " << ::tpy::print_bool(t_le(nan, f64)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_64 = f64;
+    std::cout << "nan ge" << " " << ::tpy::print_bool(u_ge(nan_u, __tmp_64)) << " " << ::tpy::print_bool(t_ge(nan, f64)) << "\n";
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_65 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_66 = nan;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_67 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_68 = nan;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_69 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_70 = nan;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_71 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_72 = nan;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_73 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_74 = nan;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_75 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_76 = nan;
+    std::cout << "nan int|float64" << " " << ::tpy::print_bool(u_int_f64(__tmp_65, __tmp_66)) << " " << ::tpy::print_bool(u_int_ne(__tmp_67, __tmp_68)) << " " << ::tpy::print_bool(u_int_lt(__tmp_69, __tmp_70)) << " " << ::tpy::print_bool(u_int_le(__tmp_71, __tmp_72)) << " " << ::tpy::print_bool(u_int_gt(__tmp_73, __tmp_74)) << " " << ::tpy::print_bool(u_int_ge(__tmp_75, __tmp_76)) << "\n";
+    int64_t i64_53 = static_cast<int64_t>(9007199254740993);
+    ::tpy::Union<double, int64_t> __tmp_77 = i64;
+    ::tpy::Union<double, int64_t> __tmp_78 = nan;
+    ::tpy::Union<double, int64_t> __tmp_79 = i64;
+    ::tpy::Union<double, int64_t> __tmp_80 = nan;
+    ::tpy::Union<double, int64_t> __tmp_81 = i64;
+    ::tpy::Union<double, int64_t> __tmp_82 = nan;
+    ::tpy::Union<double, int64_t> __tmp_83 = i64;
+    ::tpy::Union<double, int64_t> __tmp_84 = nan;
+    ::tpy::Union<double, int64_t> __tmp_85 = i64;
+    ::tpy::Union<double, int64_t> __tmp_86 = nan;
+    ::tpy::Union<double, int64_t> __tmp_87 = i64;
+    ::tpy::Union<double, int64_t> __tmp_88 = nan;
+    std::cout << "nan int64|float64" << " " << ::tpy::print_bool(u_i64_f64(__tmp_77, __tmp_78)) << " " << ::tpy::print_bool(u_i64_ne(__tmp_79, __tmp_80)) << " " << ::tpy::print_bool(u_i64_lt(__tmp_81, __tmp_82)) << " " << ::tpy::print_bool(u_i64_le(__tmp_83, __tmp_84)) << " " << ::tpy::print_bool(u_i64_gt(__tmp_85, __tmp_86)) << " " << ::tpy::print_bool(u_i64_ge(__tmp_87, __tmp_88)) << "\n";
+    ::tpy::Union<double, int64_t> __tmp_89 = i64_53;
+    ::tpy::Union<double, int64_t> __tmp_90 = f53;
+    ::tpy::Union<double, int64_t> __tmp_91 = i64_53;
+    ::tpy::Union<double, int64_t> __tmp_92 = f53;
+    std::cout << "exact int64|float64" << " " << ::tpy::print_bool(u_i64_f64(__tmp_89, __tmp_90)) << " " << ::tpy::print_bool(u_i64_ne(__tmp_91, __tmp_92)) << "\n";
+    ::tpy::Union<double, int64_t> __tmp_93 = i64_53;
+    ::tpy::Union<double, int64_t> __tmp_94 = f53;
+    ::tpy::Union<double, int64_t> __tmp_95 = i64_53;
+    ::tpy::Union<double, int64_t> __tmp_96 = f53;
+    ::tpy::Union<double, int64_t> __tmp_97 = i64_53;
+    ::tpy::Union<double, int64_t> __tmp_98 = f53;
+    ::tpy::Union<double, int64_t> __tmp_99 = i64_53;
+    ::tpy::Union<double, int64_t> __tmp_100 = f53;
+    std::cout << "exact int64 ordering" << " " << ::tpy::print_bool(u_i64_lt(__tmp_93, __tmp_94)) << " " << ::tpy::print_bool(u_i64_le(__tmp_95, __tmp_96)) << " " << ::tpy::print_bool(u_i64_gt(__tmp_97, __tmp_98)) << " " << ::tpy::print_bool(u_i64_ge(__tmp_99, __tmp_100)) << "\n";
+    ::tpy::Union<double, int64_t> __tmp_101 = i64;
+    ::tpy::Union<double, int64_t> __tmp_102 = 1.5;
+    ::tpy::Union<double, int64_t> __tmp_103 = i64;
+    ::tpy::Union<double, int64_t> __tmp_104 = 1.5;
+    ::tpy::Union<double, int64_t> __tmp_105 = i64;
+    ::tpy::Union<double, int64_t> __tmp_106 = 1.5;
+    ::tpy::Union<double, int64_t> __tmp_107 = i64;
+    ::tpy::Union<double, int64_t> __tmp_108 = 1.5;
+    std::cout << "exact int64 fractional" << " " << ::tpy::print_bool(u_i64_lt(__tmp_101, __tmp_102)) << " " << ::tpy::print_bool(u_i64_le(__tmp_103, __tmp_104)) << " " << ::tpy::print_bool(u_i64_gt(__tmp_105, __tmp_106)) << " " << ::tpy::print_bool(u_i64_ge(__tmp_107, __tmp_108)) << "\n";
     ::tpy::Union<int32_t, std::string> n = 1;
     ::tpy::Union<int32_t, std::string> s = "a";
-    ::tpy::Union<Fixed, Zone> __tmp_29 = Fixed(1);
-    ::tpy::Union<Fixed, Zone> __tmp_30 = Fixed(2);
-    std::cout << "value record lt" << " " << value_record_lt(__tmp_29, __tmp_30) << "\n";
-    ::tpy::Union<Marked, Tagged> __tmp_31 = Tagged(1);
-    ::tpy::Union<Marked, Tagged> __tmp_32 = Tagged(1);
-    ::tpy::Union<Marked, Tagged> __tmp_33 = Tagged(1);
-    ::tpy::Union<Marked, Tagged> __tmp_34 = Tagged(2);
-    ::tpy::Union<Marked, Tagged> __tmp_35 = Tagged(1);
-    ::tpy::Union<Marked, Tagged> __tmp_36 = Marked(1);
-    std::cout << "custom_ne" << " " << ::tpy::print_bool(dunder_ne(__tmp_31, __tmp_32)) << " " << ::tpy::print_bool(dunder_ne(__tmp_33, __tmp_34)) << " " << ::tpy::print_bool(dunder_ne(__tmp_35, __tmp_36)) << "\n";
+    ::tpy::Union<Fixed, Zone> __tmp_109 = Fixed(1);
+    ::tpy::Union<Fixed, Zone> __tmp_110 = Fixed(2);
+    std::cout << "value record lt" << " " << value_record_lt(__tmp_109, __tmp_110) << "\n";
+    ::tpy::Union<Marked, Tagged> __tmp_111 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_112 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_113 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_114 = Tagged(2);
+    ::tpy::Union<Marked, Tagged> __tmp_115 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_116 = Marked(1);
+    std::cout << "custom_ne" << " " << ::tpy::print_bool(dunder_ne(__tmp_111, __tmp_112)) << " " << ::tpy::print_bool(dunder_ne(__tmp_113, __tmp_114)) << " " << ::tpy::print_bool(dunder_ne(__tmp_115, __tmp_116)) << "\n";
     std::cout << "unorderable" << " " << str_int_cmp(n, s, 0) << " " << str_int_cmp(n, s, 1) << " " << str_int_cmp(n, s, 2) << " " << str_int_cmp(n, s, 3) << "\n";
     std::cout << "str_int_eq" << " " << ::tpy::print_bool(str_int_eq(n, s)) << " " << ::tpy::print_bool(str_int_eq(s, s)) << " " << ::tpy::print_bool(str_int_eq(n, n)) << "\n";
 }

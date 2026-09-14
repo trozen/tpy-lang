@@ -25,7 +25,7 @@ void main() {
     std::cout << b << "\n";
     std::cout << c << "\n";
     std::cout << d << "\n";
-    std::vector<::tpy::Any> items = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("two")), ::tpy::make_any(true)};
+    std::vector<::tpy::Any> items = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("two")), ::tpy::make_any(bool(true))};
     std::cout << ::tpy::__len__(items) << "\n";
 }
 

@@ -13,7 +13,8 @@
  *
  * Depends on: dunder.hpp (__str__, __repr__, __hash__), builtins.hpp
  * (to_bool), core.hpp (raise<E>, tpy_panic, demangle_type_name),
- * type_name.hpp (user-facing TPy type names).
+ * type_name.hpp (user-facing TPy type names), value_compare.hpp (the
+ * cross-type numeric equality leaf, shared with the value union).
  */
 
 #pragma once
@@ -22,12 +23,16 @@
 #include <concepts>
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
+#include <variant>
+
+#include "value_compare.hpp"
 
 namespace tpy {
 
@@ -66,6 +71,13 @@ struct Any {
 // corresponding compile-time concept (operator== / tpy::__hash__). When
 // null, the runtime path panics or returns False per the design doc.
 
+// A number's canonical value for a comparison across two cells of
+// DIFFERENT types: Python's numeric tower compares by value, so `1`,
+// `True` and `1.0` are one key. Integers widen to BigInt and floats to
+// double, the two spellings the comparison leaf (value_compare.hpp)
+// already knows how to pair.
+using AnyNumber = std::variant<BigInt, double>;
+
 struct AnyOps {
     void (*print)(std::ostream&, const std::any&);
     void (*str)(std::string&, const std::any&);
@@ -73,6 +85,7 @@ struct AnyOps {
     bool (*to_bool)(const std::any&);
     bool (*equals)(const std::any&, const std::any&);   // null if T not Eq
     std::uint64_t (*hash)(const std::any&);             // null if T not Hashable
+    AnyNumber (*as_number)(const std::any&);            // null if T not a number
     // User-facing TPy type name of the cell's T (e.g. "int", "str",
     // "module.MyClass"). Cold-path; only consulted by panic messages.
     std::string (*type_name)();
@@ -219,6 +232,33 @@ constexpr std::uint64_t (*hash_slot_for() noexcept)(const std::any&) {
     }
 }
 
+// Numbers only: `char` is a C++ integer but a TPy str-of-one, and the
+// value-union leaf keeps it out of the tower for the same reason
+// (`vc_char_vs_number`), so the two type-erased forms agree.
+template <typename T>
+concept any_number_capable =
+    std::same_as<T, bool> || vc_cmp_integer<T> || vc_bigint<T>
+    || std::is_floating_point_v<T>;
+
+template <typename T>
+constexpr AnyNumber (*as_number_slot_for() noexcept)(const std::any&) {
+    if constexpr (vc_bigint<T>) {
+        return +[](const std::any& a) -> AnyNumber {
+            return std::any_cast<const T&>(a);
+        };
+    } else if constexpr (std::is_floating_point_v<T>) {
+        return +[](const std::any& a) -> AnyNumber {
+            return static_cast<double>(std::any_cast<const T&>(a));
+        };
+    } else if constexpr (any_number_capable<T>) {
+        return +[](const std::any& a) -> AnyNumber {
+            return vc_to_bigint(std::any_cast<const T&>(a));
+        };
+    } else {
+        return nullptr;
+    }
+}
+
 template <typename T>
 constexpr std::string (*type_name_slot_for() noexcept)() {
     return +[]() -> std::string { return ::tpy::type_name<T>(); };
@@ -243,6 +283,7 @@ inline constexpr AnyOps any_ops_for = {
     /*to_bool=*/detail::to_bool_slot_for<T>(),
     /*equals=*/detail::equals_slot_for<T>(),
     /*hash=*/detail::hash_slot_for<T>(),
+    /*as_number=*/detail::as_number_slot_for<T>(),
     /*type_name=*/detail::type_name_slot_for<T>(),
 };
 
@@ -307,15 +348,25 @@ T any_cast_or_panic(Any&& a) {
 // any_eq / any_eq_concrete / any_hash
 // ---------------------------------------------------------------------
 //
-// `==` semantics: type-mismatch returns False (Python behaviour for
-// non-promotable types). When the equals slot is null (T isn't Eq),
-// also False -- the only honest answer when T has no notion of equality.
-// Empty/moved-from Any is never equal to anything (also returns False).
+// `==` semantics: two cells of ONE type compare through that type's `==`
+// (null slot -> False, the only honest answer when T has no notion of
+// equality). Two cells of DIFFERENT types are equal only when both are
+// numbers with the same value -- the value union's rule, reached through
+// the same leaf -- and False otherwise (Python: values of unrelated types
+// are never equal). Empty/moved-from Any is never equal to anything.
 
 inline bool any_eq(const Any& a, const Any& b) {
     if (a.empty() || b.empty()) return false;
-    if (a.value.type() != b.value.type()) return false;
-    if (a.ops == nullptr || a.ops->equals == nullptr) return false;
+    if (a.ops == nullptr || b.ops == nullptr) return false;
+    if (a.value.type() != b.value.type()) {
+        if (a.ops->as_number == nullptr || b.ops->as_number == nullptr) {
+            return false;
+        }
+        return std::visit(
+            [](const auto& x, const auto& y) { return detail::py_eq(x, y); },
+            a.ops->as_number(a.value), b.ops->as_number(b.value));
+    }
+    if (a.ops->equals == nullptr) return false;
     return a.ops->equals(a.value, b.value);
 }
 
@@ -405,8 +456,8 @@ inline bool to_bool(const Any& a) {
     return a.ops->to_bool(a.value);
 }
 
-// Equality: typeid-checked. Type mismatch returns False (Python
-// behaviour for incomparable types); null equals slot also False.
+// Equality: see any_eq. `!=` is the C++20 rewrite of `==`, which is the
+// derivation CPython performs for a type with no `__ne__`.
 
 inline bool operator==(const Any& a, const Any& b) {
     return any_eq(a, b);

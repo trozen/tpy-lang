@@ -72,8 +72,30 @@ bool t_u32_i32(uint32_t a, int32_t b);
 bool u_int_f64(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b);
 // def t_int_f64(a: int, b: float64) -> bool:
 bool t_int_f64(const ::tpy::BigInt& a, double b);
+// def u_int_lt(a: int | float64, b: int | float64) -> bool:
+bool u_int_lt(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b);
+// def u_int_le(a: int | float64, b: int | float64) -> bool:
+bool u_int_le(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b);
+// def u_int_gt(a: int | float64, b: int | float64) -> bool:
+bool u_int_gt(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b);
+// def u_int_ge(a: int | float64, b: int | float64) -> bool:
+bool u_int_ge(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b);
+// def u_int_ne(a: int | float64, b: int | float64) -> bool:
+bool u_int_ne(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b);
 // def u_ne(a: int32 | float64, b: int32 | float64) -> bool:
 bool u_ne(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+// def u_i64_f64(a: int64 | float64, b: int64 | float64) -> bool:
+bool u_i64_f64(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b);
+// def u_i64_ne(a: int64 | float64, b: int64 | float64) -> bool:
+bool u_i64_ne(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b);
+// def u_i64_lt(a: int64 | float64, b: int64 | float64) -> bool:
+bool u_i64_lt(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b);
+// def u_i64_le(a: int64 | float64, b: int64 | float64) -> bool:
+bool u_i64_le(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b);
+// def u_i64_gt(a: int64 | float64, b: int64 | float64) -> bool:
+bool u_i64_gt(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b);
+// def u_i64_ge(a: int64 | float64, b: int64 | float64) -> bool:
+bool u_i64_ge(const ::tpy::Union<double, int64_t>& a, const ::tpy::Union<double, int64_t>& b);
 // def u_readonly(a: readonly[int32 | float64], b: readonly[int32 | float64]) -> bool:
 bool u_readonly(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
 // def list_eq(xs: list[int32 | float64], ys: list[int32 | float64]) -> bool:

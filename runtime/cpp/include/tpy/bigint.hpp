@@ -613,11 +613,26 @@ public:
         return signum() != 0;
     }
 
+    // By VALUE, not by encoding: anything in int64 range hashes as
+    // std::hash<int64_t> whether it sits in the small word or on the heap
+    // (the small range stops at INT64_MAX >> 1), which is the hash every
+    // fixed-width int, bool and integral float share -- so equality across
+    // the numeric tower implies hash equality. Only a value outside int64
+    // hashes its limbs.
     uint64_t hash() const noexcept {
         if (is_small()) {
             return std::hash<int64_t>{}(small_value());
         }
         const HeapBig* p = heap_ptr();
+        if (p->len == 1) {
+            uint64_t mag = p->limbs[0];
+            if (p->sign > 0 && mag <= static_cast<uint64_t>(INT64_MAX)) {
+                return std::hash<int64_t>{}(static_cast<int64_t>(mag));
+            }
+            if (p->sign < 0 && mag <= SMALL_MIN_MAG * 2) {
+                return std::hash<int64_t>{}(static_cast<int64_t>(uint64_t(0) - mag));
+            }
+        }
         uint64_t h = 0;
         h ^= std::hash<int8_t>{}(p->sign) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
         for (uint32_t i = 0; i < p->len; ++i) {

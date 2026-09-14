@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(d)
 //     print(lst)
 void main() {
-    ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"name", ::tpy::make_any(std::string("tpy"))}, {"version", ::tpy::make_any(::tpy::BigInt(1))}, {"debug", ::tpy::make_any(true)}});
+    ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"name", ::tpy::make_any(std::string("tpy"))}, {"version", ::tpy::make_any(::tpy::BigInt(1))}, {"debug", ::tpy::make_any(bool(true))}});
     std::vector<::tpy::Any> lst = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("hi")), ::tpy::make_any(nullptr), ::tpy::make_any(static_cast<double>(2.5))};
     std::cout << ::tpy::DictPrinter(d) << "\n";
     std::cout << ::tpy::ListPrinter(lst) << "\n";

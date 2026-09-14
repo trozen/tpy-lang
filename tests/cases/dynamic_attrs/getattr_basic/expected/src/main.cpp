@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     print(host)
 //     print(port)
 void main() {
-    Config cfg = Config(::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(8080)}}));
+    Config cfg = Config(::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(int32_t(8080))}}));
     std::string host = ::tpy::any_cast_or_panic<std::string>(cfg.__getattr__("host"));
     int32_t port = ::tpy::any_cast_or_panic<int32_t>(cfg.__getattr__("port"));
     std::cout << host << "\n";

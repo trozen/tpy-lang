@@ -2,10 +2,9 @@
 # already typed Any, and a local at a __setattr__ whose value param is a
 # concrete str rather than Any.
 #
-# The remaining combination -- a str LOCAL into an Any value slot -- is
-# absent on purpose: it stores a view and panics on read-back
-# (BUGS.md#any-str-local-stores-view), at every into-Any sink rather than at
-# this one. Add the leg here when that entry is fixed.
+# A str LOCAL into an Any value slot is the into-Any coerce's own concern,
+# pinned at every sink (this one included, as the Any param) by
+# tests/cases/any/str_local_storage_owns.
 from typing import Any, cast
 
 from tpy import int32

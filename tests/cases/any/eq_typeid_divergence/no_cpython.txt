@@ -1,2 +1,0 @@
-CPython returns True for Any(1) == Any(1.0); TPy returns False (typeid-based).
-This is the documented divergence in docs/ANY_TYPE_DESIGN.md.

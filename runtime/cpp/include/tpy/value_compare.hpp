@@ -9,9 +9,13 @@
  * The leaf is defined as "the answer the monomorphic twin gives": for one
  * pair of alternative types, whatever the compiler emits when the user
  * writes that comparison on two plain variables of those types. That is why
- * a mixed-sign integer pair goes through `std::cmp_*` and an `int` (BigInt)
- * against a float goes through `static_cast<double>` -- those are the twin's
- * renders. A composite alternative (a `std::vector` member of a recursive
+ * a mixed-sign integer pair goes through `std::cmp_*` -- the twin's render.
+ * The pairs where the leaf is CPython's answer rather than the twin's are an
+ * integer against a float -- `int` (BigInt) and every fixed width alike: the
+ * twin still rounds the int to a double
+ * (`BUGS.md#int-float-compare-rounds-bigint`), the leaf compares exactly.
+ * That is deliberate and must not be "fixed" toward the twin. A composite
+ * alternative (a `std::vector` member of a recursive
  * alias) needs no recursion here: the leaf reaches its own `operator==`,
  * which reaches the element's, which is a `Union` again.
  *
@@ -21,6 +25,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -62,6 +67,13 @@ concept vc_mixed_sign =
 
 template<typename T>
 concept vc_bigint = std::same_as<std::remove_cv_t<T>, BigInt>;
+
+// Python's numeric tower on the integer side: every fixed-width int plus
+// `bool` (Python's bool IS an int, so `True == 1.0`), minus the character
+// types, which are `str` in Python and never compare numerically.
+template<typename T>
+concept vc_py_integer =
+    vc_cmp_integer<T> || std::same_as<std::remove_cv_t<T>, bool>;
 
 // A `char` opposite a number is Python's `str` opposite `int`/`float`: never
 // equal, never ordered. Without this leg the leaf would compare the two
@@ -116,6 +128,135 @@ inline BigInt vc_to_bigint(const T& x) {
     }
 }
 
+enum class CmpOp { Lt, Le, Gt, Ge };
+
+constexpr const char* cmp_op_name(CmpOp op) {
+    switch (op) {
+        case CmpOp::Lt: return "<";
+        case CmpOp::Le: return "<=";
+        case CmpOp::Gt: return ">";
+        default:        return ">=";
+    }
+}
+
+// The operator itself, never a reduction onto `<`: `a <= b` and `!(b < a)`
+// disagree when an operand is NaN, and the twin renders the operator.
+template<CmpOp Op, typename X, typename Y>
+inline bool apply_cmp(const X& x, const Y& y) {
+    if constexpr (Op == CmpOp::Lt) return x < y;
+    else if constexpr (Op == CmpOp::Le) return x <= y;
+    else if constexpr (Op == CmpOp::Gt) return x > y;
+    else if constexpr (Op == CmpOp::Ge) return x >= y;
+    else static_assert(vc_always_false<X, Y>, "unhandled comparison operator");
+}
+
+// The four outcomes of comparing two numbers Python's way. `Unordered` is
+// the NaN row: every operator but `!=` answers False on it, which no
+// three-valued sign can express.
+enum class NumOrder { Less, Equal, Greater, Unordered };
+
+// An integer against a float compares EXACTLY, as CPython's
+// float_richcompare does: the float is decomposed, never the int rounded to
+// a double (which would make `2**53 + 1 == 2.0**53` True). Written as ONE
+// three-way answer because a comparison must not allocate: the six operators
+// are derived from it, and the whole int64 range is settled without
+// constructing a BigInt.
+//
+// `2^63` and `-2^63` are exactly representable as doubles, so the two range
+// guards are exact and everything they let through truncates into int64
+// without overflow. A float with a fractional part equals no int and sits
+// strictly between the two ints it truncates toward, so once `a == trunc(b)`
+// the fraction's sign is the answer.
+inline NumOrder vc_i64_cmp_float(std::int64_t a, double b) noexcept {
+    if (std::isnan(b)) return NumOrder::Unordered;
+    if (b >= 9223372036854775808.0) return NumOrder::Less;      // +inf too
+    if (b < -9223372036854775808.0) return NumOrder::Greater;   // -inf too
+    const double t = std::trunc(b);
+    const std::int64_t ti = static_cast<std::int64_t>(t);
+    if (a < ti) return NumOrder::Less;
+    if (a > ti) return NumOrder::Greater;
+    if (b > t) return NumOrder::Less;
+    if (b < t) return NumOrder::Greater;
+    return NumOrder::Equal;
+}
+
+// The unsigned twin, for a `uint64` above INT64_MAX that the signed form
+// could not hold. `2^64` is exactly representable, so the upper guard is
+// exact as well.
+inline NumOrder vc_u64_cmp_float(std::uint64_t a, double b) noexcept {
+    if (std::isnan(b)) return NumOrder::Unordered;
+    if (b >= 18446744073709551616.0) return NumOrder::Less;     // +inf too
+    if (b < 0.0) return NumOrder::Greater;                      // -inf too
+    const double t = std::trunc(b);
+    const std::uint64_t tu = static_cast<std::uint64_t>(t);
+    if (a < tu) return NumOrder::Less;
+    if (a > tu) return NumOrder::Greater;
+    if (b > t) return NumOrder::Less;
+    if (b < t) return NumOrder::Greater;
+    return NumOrder::Equal;
+}
+
+// Every integral width reaches one of the two cores: only a `uint64` can
+// hold a value int64 cannot, so it alone needs the unsigned form.
+template<typename T>
+inline NumOrder vc_int_cmp_float(T a, double b) noexcept {
+    if constexpr (std::is_signed_v<T> || sizeof(T) < sizeof(std::uint64_t)) {
+        return vc_i64_cmp_float(static_cast<std::int64_t>(a), b);
+    } else {
+        return vc_u64_cmp_float(static_cast<std::uint64_t>(a), b);
+    }
+}
+
+template<CmpOp Op>
+inline bool vc_order_to_bool(NumOrder o) noexcept {
+    if (o == NumOrder::Unordered) return false;
+    if constexpr (Op == CmpOp::Lt) return o == NumOrder::Less;
+    else if constexpr (Op == CmpOp::Le) return o != NumOrder::Greater;
+    else if constexpr (Op == CmpOp::Gt) return o == NumOrder::Greater;
+    else return o != NumOrder::Less;
+}
+
+// `int` (BigInt) against a float. A BigInt inside int64 range -- which is
+// every ordinary program value -- answers through the allocation-free core;
+// only a genuinely big one falls back to decomposing the float into limbs.
+// `BigInt::from_float` is exact for every integral double, and `<` / `>=`
+// need the float's ceiling where `<=` / `>` need its floor.
+inline bool vc_bigint_eq_float(const BigInt& a, double b) {
+    std::int64_t ai;
+    if (a.to_i64_checked(ai)) {
+        return vc_i64_cmp_float(ai, b) == NumOrder::Equal;
+    }
+    if (!std::isfinite(b) || std::trunc(b) != b) return false;
+    return a == BigInt::from_float(b);
+}
+
+template<CmpOp Op>
+inline bool vc_bigint_cmp_float(const BigInt& a, double b) {
+    std::int64_t ai;
+    if (a.to_i64_checked(ai)) {
+        return vc_order_to_bool<Op>(vc_i64_cmp_float(ai, b));
+    }
+    if (std::isnan(b)) return false;
+    if (std::isinf(b)) {
+        return (Op == CmpOp::Lt || Op == CmpOp::Le) ? b > 0 : b < 0;
+    }
+    if constexpr (Op == CmpOp::Lt || Op == CmpOp::Ge) {
+        return apply_cmp<Op>(a, BigInt::from_ceil(b));
+    } else {
+        return apply_cmp<Op>(a, BigInt::from_floor(b));
+    }
+}
+
+// The float-on-the-left spelling of the same comparison, with the operator
+// mirrored.
+template<CmpOp Op>
+constexpr CmpOp vc_mirror_op() {
+    if constexpr (Op == CmpOp::Lt) return CmpOp::Gt;
+    else if constexpr (Op == CmpOp::Le) return CmpOp::Ge;
+    else if constexpr (Op == CmpOp::Gt) return CmpOp::Lt;
+    else return CmpOp::Le;
+}
+
 // Python equality at ONE pair of alternative types.
 template<typename A, typename B>
 inline bool py_eq(const A& a, const B& b) {
@@ -124,13 +265,17 @@ inline bool py_eq(const A& a, const B& b) {
     } else if constexpr (vc_mixed_sign<A, B>) {
         return std::cmp_equal(a, b);
     } else if constexpr (vc_bigint<A> && std::is_floating_point_v<B>) {
-        return static_cast<double>(a) == b;
+        return vc_bigint_eq_float(a, static_cast<double>(b));
     } else if constexpr (std::is_floating_point_v<A> && vc_bigint<B>) {
-        return a == static_cast<double>(b);
+        return vc_bigint_eq_float(b, static_cast<double>(a));
     } else if constexpr (vc_bigint<A> && vc_cmp_integer<B>) {
         return a == vc_to_bigint(b);
     } else if constexpr (vc_cmp_integer<A> && vc_bigint<B>) {
         return vc_to_bigint(a) == b;
+    } else if constexpr (vc_py_integer<A> && std::is_floating_point_v<B>) {
+        return vc_int_cmp_float(a, static_cast<double>(b)) == NumOrder::Equal;
+    } else if constexpr (std::is_floating_point_v<A> && vc_py_integer<B>) {
+        return vc_int_cmp_float(b, static_cast<double>(a)) == NumOrder::Equal;
     } else if constexpr (requires { { a == b } -> std::convertible_to<bool>; }) {
         return a == b;
     } else if constexpr (!vc_same_alternative<A, B>) {
@@ -165,40 +310,22 @@ inline bool py_ne(const A& a, const B& b) {
     } else if constexpr (vc_mixed_sign<A, B>) {
         return !std::cmp_equal(a, b);
     } else if constexpr (vc_bigint<A> && std::is_floating_point_v<B>) {
-        return static_cast<double>(a) != b;
+        return !vc_bigint_eq_float(a, static_cast<double>(b));
     } else if constexpr (std::is_floating_point_v<A> && vc_bigint<B>) {
-        return a != static_cast<double>(b);
+        return !vc_bigint_eq_float(b, static_cast<double>(a));
     } else if constexpr (vc_bigint<A> && vc_cmp_integer<B>) {
         return a != vc_to_bigint(b);
     } else if constexpr (vc_cmp_integer<A> && vc_bigint<B>) {
         return vc_to_bigint(a) != b;
+    } else if constexpr (vc_py_integer<A> && std::is_floating_point_v<B>) {
+        return vc_int_cmp_float(a, static_cast<double>(b)) != NumOrder::Equal;
+    } else if constexpr (std::is_floating_point_v<A> && vc_py_integer<B>) {
+        return vc_int_cmp_float(b, static_cast<double>(a)) != NumOrder::Equal;
     } else if constexpr (requires { { a != b } -> std::convertible_to<bool>; }) {
         return a != b;
     } else {
         return !py_eq(a, b);
     }
-}
-
-enum class CmpOp { Lt, Le, Gt, Ge };
-
-constexpr const char* cmp_op_name(CmpOp op) {
-    switch (op) {
-        case CmpOp::Lt: return "<";
-        case CmpOp::Le: return "<=";
-        case CmpOp::Gt: return ">";
-        default:        return ">=";
-    }
-}
-
-// The operator itself, never a reduction onto `<`: `a <= b` and `!(b < a)`
-// disagree when an operand is NaN, and the twin renders the operator.
-template<CmpOp Op, typename X, typename Y>
-inline bool apply_cmp(const X& x, const Y& y) {
-    if constexpr (Op == CmpOp::Lt) return x < y;
-    else if constexpr (Op == CmpOp::Le) return x <= y;
-    else if constexpr (Op == CmpOp::Gt) return x > y;
-    else if constexpr (Op == CmpOp::Ge) return x >= y;
-    else static_assert(vc_always_false<X, Y>, "unhandled comparison operator");
 }
 
 template<CmpOp Op, typename A, typename B>
@@ -244,13 +371,18 @@ inline bool py_cmp(const A& a, const B& b) {
         else if constexpr (Op == CmpOp::Gt) return std::cmp_greater(a, b);
         else return std::cmp_greater_equal(a, b);
     } else if constexpr (vc_bigint<A> && std::is_floating_point_v<B>) {
-        return apply_cmp<Op>(static_cast<double>(a), b);
+        return vc_bigint_cmp_float<Op>(a, static_cast<double>(b));
     } else if constexpr (std::is_floating_point_v<A> && vc_bigint<B>) {
-        return apply_cmp<Op>(a, static_cast<double>(b));
+        return vc_bigint_cmp_float<vc_mirror_op<Op>()>(b, static_cast<double>(a));
     } else if constexpr (vc_bigint<A> && vc_cmp_integer<B>) {
         return apply_cmp<Op>(a, vc_to_bigint(b));
     } else if constexpr (vc_cmp_integer<A> && vc_bigint<B>) {
         return apply_cmp<Op>(vc_to_bigint(a), b);
+    } else if constexpr (vc_py_integer<A> && std::is_floating_point_v<B>) {
+        return vc_order_to_bool<Op>(vc_int_cmp_float(a, static_cast<double>(b)));
+    } else if constexpr (std::is_floating_point_v<A> && vc_py_integer<B>) {
+        return vc_order_to_bool<vc_mirror_op<Op>()>(
+            vc_int_cmp_float(b, static_cast<double>(a)));
     } else {
         return apply_cmp<Op>(a, b);
     }

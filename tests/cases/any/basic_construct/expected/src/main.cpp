@@ -16,7 +16,7 @@ void main() {
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
     ::tpy::Any c = ::tpy::make_any(static_cast<double>(3.14));
     ::tpy::Any d = ::tpy::make_any(std::monostate{});
-    ::tpy::Any e = ::tpy::make_any(true);
+    ::tpy::Any e = ::tpy::make_any(bool(true));
     std::cout << "constructed" << "\n";
 }
 

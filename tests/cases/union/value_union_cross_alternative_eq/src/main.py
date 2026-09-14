@@ -136,8 +136,58 @@ def t_int_f64(a: int, b: float64) -> bool:
     return a == b  # tpyc: ok
 
 
+# `int` against a float compares EXACTLY in the leaf, as CPython does: the
+# float is decomposed, never the int rounded to a double. The twin still
+# rounds (BUGS.md#int-float-compare-rounds-bigint), so only the union answer
+# is printed at a value beyond 2**53.
+def u_int_lt(a: int | float64, b: int | float64) -> bool:
+    return a < b  # tpyc: ok
+
+
+def u_int_le(a: int | float64, b: int | float64) -> bool:
+    return a <= b  # tpyc: ok
+
+
+def u_int_gt(a: int | float64, b: int | float64) -> bool:
+    return a > b  # tpyc: ok
+
+
+def u_int_ge(a: int | float64, b: int | float64) -> bool:
+    return a >= b  # tpyc: ok
+
+
+def u_int_ne(a: int | float64, b: int | float64) -> bool:
+    return a != b  # tpyc: ok
+
+
 def u_ne(a: int32 | float64, b: int32 | float64) -> bool:
     return a != b  # tpyc: ok
+
+
+# A FIXED-WIDTH int alternative against a float is exact too, not only `int`:
+# at 2**53 + 1 the twin's rounding to a double would answer equal.
+def u_i64_f64(a: int64 | float64, b: int64 | float64) -> bool:
+    return a == b  # tpyc: ok
+
+
+def u_i64_ne(a: int64 | float64, b: int64 | float64) -> bool:
+    return a != b  # tpyc: ok
+
+
+def u_i64_lt(a: int64 | float64, b: int64 | float64) -> bool:
+    return a < b  # tpyc: ok
+
+
+def u_i64_le(a: int64 | float64, b: int64 | float64) -> bool:
+    return a <= b  # tpyc: ok
+
+
+def u_i64_gt(a: int64 | float64, b: int64 | float64) -> bool:
+    return a > b  # tpyc: ok
+
+
+def u_i64_ge(a: int64 | float64, b: int64 | float64) -> bool:
+    return a >= b  # tpyc: ok
 
 
 # readonly[] is a const qualifier, not a shape change, so it routes the same.
@@ -405,6 +455,20 @@ def main() -> None:
     print("family uint32|int32", u_u32_i32(u32, i32), t_u32_i32(u32, i32))
     print("family int|float64", u_int_f64(big, f64), t_int_f64(big, f64))
     print("ne", u_ne(x, y))
+    big53: int = 9007199254740993
+    f53: float64 = 9007199254740992.0
+    p70: int = 2 ** 70
+    fp70: float64 = 2.0 ** 70
+    inf = float("inf")
+    print("exact int|float64", u_int_f64(big53, f53), u_int_ne(big53, f53),
+          u_int_f64(p70, fp70), u_int_f64(big, 1.5))
+    print("exact ordering", u_int_lt(big53, f53), u_int_le(big53, f53),
+          u_int_gt(big53, f53), u_int_ge(big53, f53))
+    print("exact fractional", u_int_lt(big, 1.5), u_int_le(big, 1.5),
+          u_int_gt(big, 1.5), u_int_ge(big, 1.5), u_int_lt(2, 1.5),
+          u_int_ge(2, 1.5))
+    print("exact inf", u_int_lt(p70, inf), u_int_gt(p70, inf),
+          u_int_gt(p70, -inf), u_int_f64(p70, inf))
     print("readonly", u_readonly(x, y))
     print("same alternative", u_i32_f64(i32, i32), u_ne(i32, i32))
 
@@ -461,6 +525,21 @@ def main() -> None:
     nan_u: int32 | float64 = nan
     print("nan le", u_le(nan_u, f64), t_le(nan, f64))
     print("nan ge", u_ge(nan_u, f64), t_ge(nan, f64))
+    # The section above holds a float on BOTH sides, so it never reaches the
+    # int-against-float arm; these rows put an INT alternative opposite the
+    # NaN, where it is unequal to and unordered against everything.
+    print("nan int|float64", u_int_f64(big, nan), u_int_ne(big, nan),
+          u_int_lt(big, nan), u_int_le(big, nan), u_int_gt(big, nan),
+          u_int_ge(big, nan))
+    i64_53: int64 = 9007199254740993
+    print("nan int64|float64", u_i64_f64(i64, nan), u_i64_ne(i64, nan),
+          u_i64_lt(i64, nan), u_i64_le(i64, nan), u_i64_gt(i64, nan),
+          u_i64_ge(i64, nan))
+    print("exact int64|float64", u_i64_f64(i64_53, f53), u_i64_ne(i64_53, f53))
+    print("exact int64 ordering", u_i64_lt(i64_53, f53), u_i64_le(i64_53, f53),
+          u_i64_gt(i64_53, f53), u_i64_ge(i64_53, f53))
+    print("exact int64 fractional", u_i64_lt(i64, 1.5), u_i64_le(i64, 1.5),
+          u_i64_gt(i64, 1.5), u_i64_ge(i64, 1.5))
 
     n: int32 | str = 1
     s: int32 | str = "a"

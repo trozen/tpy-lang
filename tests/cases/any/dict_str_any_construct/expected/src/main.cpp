@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     print(cfg)
 //     print(len(cfg))
 void main() {
-    ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"name", ::tpy::make_any(std::string("tpy"))}, {"version", ::tpy::make_any(::tpy::BigInt(1))}, {"debug", ::tpy::make_any(true)}});
+    ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"name", ::tpy::make_any(std::string("tpy"))}, {"version", ::tpy::make_any(::tpy::BigInt(1))}, {"debug", ::tpy::make_any(bool(true))}});
     std::cout << ::tpy::DictPrinter(cfg) << "\n";
     std::cout << ::tpy::__len__(cfg) << "\n";
 }

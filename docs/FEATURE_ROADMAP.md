@@ -661,7 +661,10 @@ originally-cited motivations: `json.loads` -> recursive `JsonValue` ADT;
   runtime panic-on-mismatch semantics. mypy/pyright already cannot check
   casts on `Any`, panic-test cases skip the cpy phase, and the divergence
   is consistent with auto-coerce. No `lib/cpy/` shim needed.
-- `==` / `!=` via ops `equals` slot (type mismatch -> False).
+- `==` / `!=` via ops `equals` slot for a SAME-type pair; a cross-type pair
+  goes through the `as_number` slot instead, so the numeric tower compares
+  by value (`Any(1) == Any(1.0) == Any(True)`, exactly at `2**53 + 1`) and
+  only a pair with no numeric reading answers False.
   `equals` / `hash` slots are conditionally generated (null if T isn't Eq /
   Hashable; runtime panic on use).
 - `x is None` allowed; general `x is y` rejected at compile time.

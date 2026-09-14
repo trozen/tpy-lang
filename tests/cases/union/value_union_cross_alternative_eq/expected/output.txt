@@ -16,6 +16,10 @@ family uint8|int32 True True
 family uint32|int32 True True
 family int|float64 True True
 ne False
+exact int|float64 False True True False
+exact ordering False False True True
+exact fractional True True False False False True
+exact inf True False True False
 readonly True
 same alternative True False
 list True
@@ -36,6 +40,11 @@ gt True
 ge True
 nan le False False
 nan ge False False
+nan int|float64 False True False False False False
+nan int64|float64 False True False False False False
+exact int64|float64 False True
+exact int64 ordering False False True True
+exact int64 fractional True True False False
 value record lt TypeError
 custom_ne True False True
 unorderable TypeError TypeError TypeError TypeError

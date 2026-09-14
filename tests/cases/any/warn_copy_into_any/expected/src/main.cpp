@@ -86,7 +86,7 @@ void warn_set_not_last_use() {
 //     print(s)
 void no_warn_str_not_last_use() {
     std::string_view s = "hello";
-    ::tpy::Any a = ::tpy::make_any(s);
+    ::tpy::Any a = ::tpy::make_any(std::string(s));
     std::cout << s << "\n";
 }
 
@@ -96,7 +96,7 @@ void no_warn_str_not_last_use() {
 //     print(x)
 void no_warn_int_not_last_use() {
     int32_t x = 42;
-    ::tpy::Any a = ::tpy::make_any(x);
+    ::tpy::Any a = ::tpy::make_any(int32_t(x));
     std::cout << x << "\n";
 }
 

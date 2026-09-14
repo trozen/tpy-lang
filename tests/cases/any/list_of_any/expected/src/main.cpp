@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     items: list[Any] = [1, "hello", 3.14, None, True]
 //     print(len(items))
 void main() {
-    std::vector<::tpy::Any> items = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("hello")), ::tpy::make_any(static_cast<double>(3.14)), ::tpy::make_any(nullptr), ::tpy::make_any(true)};
+    std::vector<::tpy::Any> items = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("hello")), ::tpy::make_any(static_cast<double>(3.14)), ::tpy::make_any(nullptr), ::tpy::make_any(bool(true))};
     std::cout << ::tpy::__len__(items) << "\n";
 }
 

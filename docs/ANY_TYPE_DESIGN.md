@@ -27,7 +27,6 @@
 | F-string format spec (`f"{any_var:>10}"`) | Needs richer dispatch than the print slot. |
 | Stdlib stubs returning `Any` (`json.loads`, `pickle`, etc.) | Exercised after v1 lands. Most are better served by typed alternatives (recursive ADTs, macros) -- only add `Any`-typed stubs when no alternative fits. |
 | Pickling / serialization | Out of scope. |
-| Cross-type numeric equality on `Any` (`Any(1) == Any(1.0)` -> True) | Would need a "category" tag on `AnyOps` and cross-promotion logic in the equals slot. Cost on every `==`; CPython compat win is real but rarely matters in the dict[str, Any] use case. Defer; users extract first. |
 | TPy-friendly type names in `cast`/`hash` exception messages | Messages now go through `tpy::demangle_type_name(typeid::name())` (see `core.hpp`), so users see `tpy::BigInt` and `std::__cxx1112basic_string<...>` instead of the mangled form. The standard-library types are still verbose; a TPy-side typeid -> friendly-name registry seeded by `any_ops_for<T>` instantiations would render `str` instead of `std::__cxx11::basic_string<...>`. Defer until the verbose names cause real friction. |
 
 ## Vision
@@ -288,35 +287,46 @@ These work on raw `Any` without narrowing:
 | `repr(x)` | `tpy::any_to_repr(x)` |
 | `f"{x}"` | reuses `print` / `str` slot |
 | `bool(x)`, `if x:`, `not x` | `x.ops->to_bool(x.value)` |
-| `x == y`, `x != y` | `tpy::any_eq(x, y)` -- type mismatch / null slot -> False |
+| `x == y`, `x != y` | `tpy::any_eq(x, y)` -- one type: its `==` (null slot -> False); two types: equal only as numbers of one value, else False |
 | `hash(x)` | `tpy::any_hash(x)` -- raises `TypeError("unhashable type: '<demangled>'")` if `ops->hash == nullptr` (catchable) |
 | `x is None`, `x is not None` | `x.value.has_value() && x.value.type() == typeid(NoneType)` |
 
 `Any` automatically satisfies the `Hashable` and `Eq` concepts at the
 *type system* level, but *runtime* hash may raise `TypeError` (catchable)
-if the contained concrete type doesn't support the operation. `==` for
-mismatched types returns False (no exception). This is the trade-off for
-allowing storage of arbitrary types.
+if the contained concrete type doesn't support the operation. `==` across
+two unrelated contained types returns False (no exception). This is the
+trade-off for allowing storage of arbitrary types.
 
-**`==` semantics**: `tpy::any_eq` checks `a.value.type() == b.value.type()`
-first; if they differ, returns False. Otherwise dispatches to the `equals`
-slot. If the `equals` slot is null (T isn't Eq), returns False (the only
-honest answer when T has no notion of equality).
+**`==` semantics**: `tpy::any_eq` compares two cells of ONE type through
+the `equals` slot (null when T isn't Eq -> False, the only honest answer
+when T has no notion of equality). Two cells of DIFFERENT types compare
+the way the value union does: each `AnyOps` carries an `as_number` slot
+(populated for bool, the fixed-width ints, `int` and the floats -- not
+`char`, which is a str-of-one) that yields the canonical `BigInt` /
+`double`, and the pair goes through `tpy::detail::py_eq`
+(`value_compare.hpp`), the same leaf `::tpy::Union`'s operators visit
+down to -- exactly, for an integer against a float: `2**53 + 1 !=
+2.0**53`, for `int` and every fixed width alike, and without allocating.
+So `Any(1) == Any(1.0) == Any(True)`, and `hash` agrees: an integer hashes
+by VALUE whatever its width or `BigInt` encoding (`std::hash<int64_t>` in
+int64 range, the limbs beyond), and `__hash__(double)` hashes a finite
+integral-valued float as the `int` it equals.
+`dict[Any, V]` and `set[Any]` therefore dedupe `1`, `1.0` and `True` into
+one key, as CPython does. `!=` is the C++20 rewrite of `==`.
 
-**Divergence from CPython**: typeid-based equality means `Any(1) == Any(1.0)`
-is **False** in TPy, where CPython returns True. Same for `Any(True) == Any(1)`
-and `hash(Any(1)) != hash(Any(1.0))`. This is consistent with the auto-coerce
-divergence (`n: int = any_var` raises `TypeError` in TPy where CPython silently assigns) --
-TPy treats stored typeid as part of the equality and hash identity. Cross-type
-numeric equality requires extracting first (`cast(float, x) == 1.0`).
-A regression test pins this behavior so it isn't accidentally "fixed" toward
-CPython parity. (Full Python numeric coercion across `Any` operands is in
-Future Extensions.) The sibling type-erased form has since gone the other
-way: a value union compares BY VALUE across alternatives through
-`::tpy::Union`'s own operators, so `int32 | float64` holding 1 equals one
-holding 1.0. The
-two forms therefore disagree today; `BUGS.md#any-eq-compares-typeid-not-value`
-tracks settling `Any` the same way.
+On that int-against-float row `Any` and the value-union leaf are
+deliberately MORE CPython-correct than the unboxed monomorphic compare,
+which still rounds the integer to a double
+(`BUGS.md#int-float-compare-rounds-bigint`). The monomorphic side is what
+must move; nobody should "fix" these two toward the rounding twin.
+
+**Residual divergences from CPython** (both acknowledged, not planned):
+two cells of one record type with no `__eq__` compare False where CPython
+falls back to identity -- `Any` owns copies, so identity is unanswerable;
+and `char` `'a'` against `str` `"a"` compares False where CPython (which
+has no `char`) returns True. The auto-coerce divergence (`n: int = any_var`
+raises `TypeError` in TPy where CPython silently assigns) is unrelated to
+equality and stands.
 
 **`x is None` only**: `is` for any other RHS is a compile error in v1.
 Worded diagnostic: `is is only supported with None on Any -- did you mean
@@ -442,9 +452,14 @@ owning type, not the view type.
 
 | Source static type | Stored type (typeid) | Notes |
 |---|---|---|
-| `str` / `StrView` (`std::string_view`) | `std::string` | Copies the view contents into an owned string. |
-| `bytes` / `BytesView` (`::tpy::BytesView`) | `tpy::Bytes` | Copies into the owning bytes type. |
+| `str` / `StrView` / `String` / a str LOCAL whose storage is still pending | `std::string` | The family's owned form; a view copies, an owned source is a copy too. |
+| `bytes` / `BytesView` / a pending bytes LOCAL | `tpy::Bytes` | Same rule for the bytes family; `bytearray` is a reference type and stays itself. |
+| Fixed-width ints, floats, `bool`, `char` | the TPy type's own C++ type | Spelled explicitly (`int64_t(1)`): a fixed-int ctor over a literal folds to the bare literal, which would deduce `int`. |
 | All other copyable types | unchanged | Stored as-is. |
+
+The typeid is always spelled from the RESOLVED TPy type at the storage
+site (`_any_storage_form` in `tpyc/coercions.py`), never trusted to
+`make_any`'s argument deduction.
 
 Symmetrically, `cast(str, x)` and `isinstance(x, str)` check
 `typeid(std::string)` and expose a `StrView` borrowed from the contained

@@ -10,6 +10,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -565,15 +566,32 @@ std::string __repr__(const std::variant<Ts...>& v) {
 // tpy::__hash__
 // =============================================
 
-// Integral types (int8_t through uint64_t, bool, char)
+// Integral types (int8_t through uint64_t, bool, char) hash by VALUE, not
+// by width: an int64-range value as std::hash<int64_t>, a uint64 above
+// INT64_MAX as the BigInt it widens to -- BigInt::hash() takes the same
+// two paths -- so every spelling of one number in the tower hashes alike,
+// which is what a dict keyed on a value union or an Any needs from the
+// equality leaf's `1 == 1.0 == True`.
 template<typename T>
     requires std::integral<T>
 uint64_t __hash__(T x) {
-    return static_cast<uint64_t>(std::hash<T>{}(x));
+    if constexpr (std::is_signed_v<T> || sizeof(T) < sizeof(int64_t)) {
+        return static_cast<uint64_t>(std::hash<int64_t>{}(static_cast<int64_t>(x)));
+    } else {
+        if (x <= static_cast<T>(INT64_MAX)) {
+            return static_cast<uint64_t>(std::hash<int64_t>{}(static_cast<int64_t>(x)));
+        }
+        return BigInt(static_cast<uint64_t>(x)).hash();
+    }
 }
 
-// Floating-point
+// Floating-point. A finite integral-valued float hashes as the int it
+// equals: Python's `hash(1.0) == hash(1) == hash(True)`, the contract the
+// equality leaf already commits to.
 inline uint64_t __hash__(double x) {
+    if (std::isfinite(x) && x == std::trunc(x)) {
+        return BigInt::from_float(x).hash();
+    }
     return static_cast<uint64_t>(std::hash<double>{}(x));
 }
 

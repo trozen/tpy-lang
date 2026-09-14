@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     a: Any = b"hi"
 //     print(a)
 void main() {
-    ::tpy::Any a = ::tpy::make_any(::tpy::bytes_literal_owned("hi", 2));
+    ::tpy::Any a = ::tpy::make_any(::tpy::Bytes(::tpy::bytes_literal_owned("hi", 2)));
     std::cout << a << "\n";
 }
 

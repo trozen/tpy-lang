@@ -1,0 +1,15 @@
+tower True True True True True
+tower-ne False False
+bool True True True
+none False True
+str True True True
+str-vs-int False
+record True False
+list True False
+ne False True True
+dict 1 bool bool bool
+set 1
+hash True True True
+exact False True True True
+exact-int64 False True
+hash-by-value True True

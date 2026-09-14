@@ -21,7 +21,7 @@ void main() {
     Bag b = Bag();
     b.__setattr__("lit", ::tpy::make_any(::tpy::BigInt(1)));
     int32_t n = 7;
-    b.__setattr__("port", ::tpy::make_any(n));
+    b.__setattr__("port", ::tpy::make_any(int32_t(n)));
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(9));
     b.__setattr__("raw", a);
     std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("lit")) << " " << ::tpy::any_cast_or_panic<int32_t>(b.__getattr__("port")) << " " << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("raw")) << "\n";
