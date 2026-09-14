@@ -46,6 +46,13 @@ class ScopeTracker:
         """
         inner_scope = Scope(self.ctx.func.current_scope)
         old_scope = self.ctx.func.current_scope
+        old_ns = self.ctx.func.current_ns
+        if old_ns:
+            # The body's namespace region: its bindings do not outlive the
+            # loop here -- a read after the loop promotes them from the
+            # pending table instead, as function-scoped locals.
+            inner_scope.namespace = Namespace(parent=old_ns)
+            self.ctx.func.current_ns = inner_scope.namespace
         self.ctx.func.current_scope = inner_scope
         self.ctx.func.loop_depth += 1
         try:
@@ -53,6 +60,7 @@ class ScopeTracker:
         finally:
             self.ctx.func.loop_depth -= 1
             self.ctx.func.current_scope = old_scope
+            self.ctx.func.current_ns = old_ns
             self.ctx.func.borrow_tracker.remove_borrower(ITER_BORROWER)
 
     @contextmanager
@@ -80,6 +88,13 @@ class ScopeTracker:
         """Create an inner scope for a comprehension (no loop_depth bump)."""
         inner_scope = Scope(self.ctx.func.current_scope)
         old_scope = self.ctx.func.current_scope
+        old_ns = self.ctx.func.current_ns
+        if old_ns:
+            # Nothing harvests this region; it exists so `loop_var` binds
+            # the comprehension variable into an enclosing region in every
+            # construct, and the variable does not leak past the expression.
+            inner_scope.namespace = Namespace(parent=old_ns)
+            self.ctx.func.current_ns = inner_scope.namespace
         self.ctx.func.current_scope = inner_scope
         self.ctx.in_comprehension += 1
         try:
@@ -88,6 +103,7 @@ class ScopeTracker:
         finally:
             self.ctx.in_comprehension -= 1
             self.ctx.func.current_scope = old_scope
+            self.ctx.func.current_ns = old_ns
 
     @contextmanager
     def lambda_scope(self) -> Iterator[Scope]:
@@ -152,11 +168,10 @@ class ScopeTracker:
         scope.define(name, var_type)
         old_depth = self.ctx.func.var_scope_depth.get(name)
         self.ctx.func.var_scope_depth[name] = depth
-        old_ns = self.ctx.func.current_ns
+        # The enclosing loop / comprehension body already opened the
+        # namespace region the variable belongs to.
         if self.ctx.func.current_ns:
-            inner_ns = Namespace(parent=self.ctx.func.current_ns)
-            inner_ns.bind_variable(name, var_type)
-            self.ctx.func.current_ns = inner_ns
+            self.ctx.func.current_ns.bind_variable(name, var_type)
         if is_foreach:
             self.ctx.func.loop_vars.add(name)
         was_assigned = name in self.ctx.func.definitely_assigned
@@ -168,7 +183,6 @@ class ScopeTracker:
                 self.ctx.func.loop_vars.discard(name)
             if not was_assigned:
                 self.ctx.func.definitely_assigned.discard(name)
-            self.ctx.func.current_ns = old_ns
             if old_depth is not None:
                 self.ctx.func.var_scope_depth[name] = old_depth
             else:
@@ -240,6 +254,7 @@ class ScopeTracker:
             node
         )
         self.ctx.func.hoisted_vars.add(source_name)
+        self.ctx.func.escape_warned_aliases.add((target_name, source_name))
         # Hoisted vars become pointer-locals -- strip Own[T] wrapper
         # since they can no longer own their storage.
         if self.ctx.func.current_scope:

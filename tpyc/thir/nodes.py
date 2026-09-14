@@ -2315,10 +2315,13 @@ class THIRWhile(THIRStmt):
     `THIRNarrowAlias` leading the body, exactly like a narrowed if branch),
     reassign-only body -- a plain C++ `while (cond) { ... }`. `orelse` is the
     while/else block: a bare `{...}` after the loop + its `__after_else_N:;`
-    label (a break jumps the label, skipping the block)."""
+    label (a break jumps the label, skipping the block). `hoist_decls`
+    mirrors `THIRForEach.hoist_decls`: a var first-declared in the body
+    and read after the loop predecls before it."""
     condition: THIRExpr
     body: tuple[THIRStmt, ...]
     orelse: tuple[THIRStmt, ...] = ()
+    hoist_decls: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

@@ -972,7 +972,8 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
                  "ptr_const" if _match_capture_borrows_const(stmt, name, lc)
                  else "ptr"))
             continue
-        if _statements._opt_storage_hoist_flavor(name, vtype, lc) is None:
+        if (_statements._nonvalue_hoist_flavor(name, vtype, lc)
+                is _statements.HoistFlavor.OPT_STORAGE):
             hoist_declared.append((name, vtype, "opt_storage"))
             continue
         if ptr_slot_ok and name in prescan.rvalue_reassigned:

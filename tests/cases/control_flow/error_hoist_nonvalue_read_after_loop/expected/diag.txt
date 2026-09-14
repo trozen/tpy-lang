@@ -1,1 +1,0 @@
-main.py:14: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.for_each:foreach.hoist_type)

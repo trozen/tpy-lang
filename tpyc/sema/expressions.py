@@ -739,17 +739,30 @@ class ExpressionAnalyzer:
                 f"variable '{expr.name}' may not be assigned at this point", expr)
 
     def _promote_pending_loop_var(self, name: str) -> bool:
-        """Promote a pending for-loop-scoped variable if present.
+        """Promote a pending loop-scoped variable if present.
 
-        Returns True if the variable was promoted (added to scope and
-        definitely_assigned, registered for codegen pre-declaration).
+        Returns True if the variable was promoted: added to scope and
+        registered for codegen pre-declaration, and marked assigned when
+        every loop on the way out provably ran.
         """
-        pending = self.ctx.func.pending_loop_vars.pop(name, None)
+        pending = self.ctx.func.pending_loop_vars.get(name)
         if pending is None:
             return False
-        var_type, loop_stmt, orig_stmt = pending
+        var_type, loop_stmt, orig_stmt, proven = pending
+        # A body-declared local stays in the table: the promotion defines
+        # it in the scope only, and the table is what the frame-local hoist
+        # and its resolution sinks read -- popped, a local read after a
+        # loop that suspends would be a case-block local read from another
+        # case. The loop VARIABLE pops: its frame placement is the
+        # for-head's own (hoist_loop_var below), a field here would be a
+        # dead second one.
+        if orig_stmt is not None:
+            del self.ctx.func.pending_loop_vars[name]
         self.ctx.func.current_scope.define(name, var_type)
-        self.ctx.func.definitely_assigned.add(name)
+        # Bound under a `while` sema could not prove ran: visible, but the
+        # read is the definite-assignment reject.
+        if proven:
+            self.ctx.func.definitely_assigned.add(name)
         # Register for codegen pre-declaration
         self.ctx.record_branch_decls(loop_stmt, {name: var_type})
         # NB: a str/bytes view target first-declared in a loop BODY from an

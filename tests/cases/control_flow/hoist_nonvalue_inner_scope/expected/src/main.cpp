@@ -525,6 +525,114 @@ std::expected<int32_t, MyErr> error_return_body(int32_t i) {
     return i;
 }
 
+// # With body, pointer-repr Optional hoisted at the with (`Pic* p;`), None on
+// # one path, read after the block.
+// def with_optional(k: int32) -> None:
+//     with CM(1) as n:
+//         p: Optional[Pic] = Pic(k + n)  # tpyc: ok
+//         if k == 1:
+//             p = None
+//     if p is not None:
+//         p.n += 1
+//         print("with_optional", p.n)
+//     else:
+//         print("with_optional none")
+void with_optional(int32_t k) {
+    std::optional<Pic> __slot_1;
+    Pic* p;
+    auto __ctx_2 = CM(1);
+    auto n = __ctx_2.__enter__();
+    try {
+        p = &*(__slot_1 = Pic((::tpy::add_check<int32_t>(k, n))));
+        if ((k == 1)) {
+            p = nullptr;
+        }
+        goto __with_exit_2;
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
+    } catch (...) {
+        __ctx_2.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
+    if ((p != nullptr)) {
+        p->n = ::tpy::add_check<int32_t>(p->n, 1);
+        std::cout << "with_optional" << " " << p->n << "\n";
+    } else {
+        std::cout << "with_optional none" << "\n";
+    }
+}
+
+// # Try body, the same Optional hoist with the handler's sibling decl.
+// def try_optional(k: int32) -> None:
+//     try:
+//         p: Optional[Pic] = Pic(k)  # tpyc: ok
+//         if k == 1:
+//             p = None
+//     except ValueError:
+//         p: Optional[Pic] = None
+//     if p is not None:
+//         p.n += 1
+//         print("try_optional", p.n)
+//     else:
+//         print("try_optional none")
+void try_optional(int32_t k) {
+    std::optional<Pic> __slot_1;
+    Pic* p;
+    {
+        try {
+            p = &*(__slot_1 = Pic(k));
+            if ((k == 1)) {
+                p = nullptr;
+            }
+        } catch (const ::tpy::ValueError&) {
+            p = nullptr;
+        }
+    }
+    if ((p != nullptr)) {
+        p->n = ::tpy::add_check<int32_t>(p->n, 1);
+        std::cout << "try_optional" << " " << p->n << "\n";
+    } else {
+        std::cout << "try_optional none" << "\n";
+    }
+}
+
+// # With body, a readonly alias bound in both arms: the const pointer hoist
+// # (`const Pic* f;`) that still observes its source.
+// def with_const_alias(flag: bool, a: readonly[Pic], b: readonly[Pic]) -> None:
+//     with CM(1) as n:
+//         if flag:
+//             f = a  # tpyc: ok
+//         else:
+//             f = b
+//         print("with_const_alias", f.n + n)
+//     print("with_const_alias", f.n)
+void with_const_alias(bool flag, const Pic& a, const Pic& b) {
+    const Pic* f;
+    auto __ctx_3 = CM(1);
+    auto n = __ctx_3.__enter__();
+    try {
+        if (flag) {
+            f = &(a);
+        } else {
+            f = &(b);
+        }
+        std::cout << "with_const_alias" << " " << (::tpy::add_check<int32_t>(f->n, n)) << "\n";
+        goto __with_exit_3;
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
+    } catch (...) {
+        __ctx_3.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
+    std::cout << "with_const_alias" << " " << f->n << "\n";
+}
+
 // def main() -> None:
 //     for_record()
 //     for_list()
@@ -547,6 +655,12 @@ std::expected<int32_t, MyErr> error_return_body(int32_t i) {
 //     print("ctor_method", b.total)
 //     with_body()
 //     try_body()
+//     with_optional(0)
+//     with_optional(1)
+//     try_optional(0)
+//     try_optional(1)
+//     with_const_alias(True, Pic(1), Pic(2))
+//     with_const_alias(False, Pic(3), Pic(4))
 //     match_arm(0)
 //     match_arm(1)
 //     closure()
@@ -576,6 +690,12 @@ void main() {
     std::cout << "ctor_method" << " " << b.total << "\n";
     ::tpyapp::main::with_body();
     ::tpyapp::main::try_body();
+    ::tpyapp::main::with_optional(0);
+    ::tpyapp::main::with_optional(1);
+    ::tpyapp::main::try_optional(0);
+    ::tpyapp::main::try_optional(1);
+    ::tpyapp::main::with_const_alias(true, Pic(1), Pic(2));
+    ::tpyapp::main::with_const_alias(false, Pic(3), Pic(4));
     ::tpyapp::main::match_arm(0);
     ::tpyapp::main::match_arm(1);
     ::tpyapp::main::closure();

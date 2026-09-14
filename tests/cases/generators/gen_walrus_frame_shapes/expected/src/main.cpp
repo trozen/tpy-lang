@@ -514,6 +514,82 @@ __gen_exc_binding exc_binding() {
     return __gen_exc_binding();
 }
 
+// # ... the `for` spelling: the handler-only name is a body local of the loop
+// # (bound in its namespace alone), so it reaches the frame the same way.
+// def exc_binding_for() -> Iterator[int32]:
+//     yield -1                                                   # -> S_RESUME_0
+//     for i in range(2):
+//         try:
+//             yield raiser(i)                                    # -> S_RESUME_1
+//         except Boom as err:
+//             print("caught", (caught := err).msg)   # tpyc: ok
+//             yield 0                                            # -> S_RESUME_2
+//             print("exc resume", caught.msg)
+std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding_for::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_RESUME_0;
+        return -1;
+    }
+    case S_RESUME_0: {  // after: yield -1
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(2));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: yield raiser(i)
+        try {
+            __state = S_JOIN_1;
+            continue;
+        } catch (const Boom& err) {
+            std::cout << "caught" << " " << caught.emplace(err).msg << "\n";
+            __state = S_RESUME_2;
+            return 0;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_RESUME_2: {  // after: yield 0
+        std::cout << "exc resume" << " " << (*caught).msg << "\n";
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        __state = S_JOIN_2;
+        continue;
+    }
+    case S_JOIN_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        try {
+            __state = S_RESUME_1;
+            return ::tpyapp::main::raiser(i);
+        } catch (const Boom& err) {
+            std::cout << "caught" << " " << caught.emplace(err).msg << "\n";
+            __state = S_RESUME_2;
+            return 0;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def exc_binding_for() -> Iterator[int32]:
+__gen_exc_binding_for exc_binding_for() {
+    return __gen_exc_binding_for();
+}
+
 // def main() -> None:
 //     for a in val_scalar():
 //         print("got", a)
@@ -543,6 +619,8 @@ __gen_exc_binding exc_binding() {
 //         print("got", h)
 //
 //     for x in exc_binding():
+//         print("got", x)
+//     for x in exc_binding_for():
 //         print("got", x)
 //
 //     s = Src(2)
@@ -646,14 +724,24 @@ void main() {
         std::cout << "got" << " " << x << "\n";
         }
     }
-    Src s = Src(2);
     {
-        auto __src_18 = s.gen();
+        auto __src_18 = ::tpyapp::main::exc_binding_for();
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
         for (;;) {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
-            int32_t m = ::tpy::unwrap_ref(*__r_19);
+            int32_t x = ::tpy::unwrap_ref(*__r_19);
+        std::cout << "got" << " " << x << "\n";
+        }
+    }
+    Src s = Src(2);
+    {
+        auto __src_20 = s.gen();
+        auto&& __itr_20 = ::tpy::__iter__(__src_20);
+        for (;;) {
+            auto __r_21 = __itr_20.__next__();
+            if (!__r_21.has_value()) break;
+            int32_t m = ::tpy::unwrap_ref(*__r_21);
         std::cout << "got" << " " << m << "\n";
         }
     }

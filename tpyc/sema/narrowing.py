@@ -18,7 +18,7 @@ from ..typesys import (
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
-    TpyIntLiteral, TpyCoerce, TpyNamedExpr,
+    TpyIntLiteral, TpyCoerce, TpyNamedExpr, TpyBoolLiteral, TpyChainedCompare,
 )
 from .literal_utils import literal_value_from_expr
 from .value_range import ValueRange
@@ -568,6 +568,60 @@ class NarrowingTracker:
         return set(), set()
 
     # -- Integer range facts from conditions ----------------------------
+
+    def condition_provably_true(self, condition: TpyExpr) -> bool:
+        """Whether `condition` holds on entry given the value ranges proven
+        so far: a `True` literal, a conjunction or disjunction of such, or
+        an integer comparison the operand ranges decide (`i = 0; while
+        i < 3`). A while head's answer to "does the body run at least
+        once" -- what lets a body-bound name count as assigned after the
+        loop without a runtime check."""
+        return self._range_truth(condition) is True
+
+    def _range_truth(self, expr: TpyExpr) -> bool | None:
+        if isinstance(expr, TpyBoolLiteral):
+            return expr.value
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            inner = self._range_truth(expr.operand)
+            return None if inner is None else not inner
+        if isinstance(expr, TpyBinOp):
+            if expr.op in ("&&", "||"):
+                left = self._range_truth(expr.left)
+                right = self._range_truth(expr.right)
+                if expr.op == "&&":
+                    if left is True and right is True:
+                        return True
+                    if left is False or right is False:
+                        return False
+                    return None
+                if left is True or right is True:
+                    return True
+                if left is False and right is False:
+                    return False
+                return None
+            return self._comparison_truth(expr)
+        if isinstance(expr, TpyChainedCompare) and expr.pairs:
+            truths = [self._comparison_truth(p) for p in expr.pairs]
+            if all(t is True for t in truths):
+                return True
+            if any(t is False for t in truths):
+                return False
+        return None
+
+    def _operand_range(self, expr: TpyExpr) -> ValueRange | None:
+        literal_val = self._extract_int_literal(expr)
+        if literal_val is not None:
+            return ValueRange.from_literal(literal_val)
+        if isinstance(expr, TpyName) and self._is_integer_typed(expr):
+            return self.ctx.func.value_ranges.get(expr.name)
+        return None
+
+    def _comparison_truth(self, expr: TpyBinOp) -> bool | None:
+        left = self._operand_range(expr.left)
+        right = self._operand_range(expr.right)
+        if left is None or right is None:
+            return None
+        return left.compare(expr.op, right)
 
     def condition_range_facts(
         self, condition: TpyExpr,

@@ -1,1 +1,1 @@
-main.py:17: error: variable 'kept' may not be assigned at this point
+main.py:22: error: variable 'kept' may not be assigned at this point

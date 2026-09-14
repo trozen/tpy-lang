@@ -155,6 +155,11 @@ class Namespace:
             return self.parent.lookup(name)
         return None
 
+    def own_variables(self) -> dict[str, TpyType]:
+        """The VARIABLE bindings of this level only, without parents."""
+        return {name: b.type for name, b in self._bindings.items()
+                if b.kind == BindingKind.VARIABLE and b.type is not None}
+
     def lookup_local(self, name: str) -> Optional[NameBinding]:
         """Look up a name only in this namespace (not parents).
 

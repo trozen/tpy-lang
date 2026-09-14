@@ -142,6 +142,47 @@ class ValueRange:
             non_zero=a.non_zero or b.non_zero,
         )
 
+    def compare(self, op: str, other: ValueRange) -> bool | None:
+        """Whether `self <op> other` holds for every pair of values in the
+        two ranges (True), for none (False), or depends (None). A symbolic
+        `len(x) - 1` upper bound decides nothing numerically."""
+        l_lo, l_hi = self.lo, (None if self.hi_len_of else self.hi)
+        r_lo, r_hi = other.lo, (None if other.hi_len_of else other.hi)
+
+        def below(a_hi: int | None, b_lo: int | None) -> bool:
+            return a_hi is not None and b_lo is not None and a_hi < b_lo
+
+        def at_most(a_hi: int | None, b_lo: int | None) -> bool:
+            return a_hi is not None and b_lo is not None and a_hi <= b_lo
+
+        if op == "<":
+            if below(l_hi, r_lo):
+                return True
+            if at_most(r_hi, l_lo):
+                return False
+        elif op == "<=":
+            if at_most(l_hi, r_lo):
+                return True
+            if below(r_hi, l_lo):
+                return False
+        elif op == ">":
+            if below(r_hi, l_lo):
+                return True
+            if at_most(l_hi, r_lo):
+                return False
+        elif op == ">=":
+            if at_most(r_hi, l_lo):
+                return True
+            if below(l_hi, r_lo):
+                return False
+        elif op in ("==", "!="):
+            disjoint = below(l_hi, r_lo) or below(r_hi, l_lo)
+            same = (l_lo is not None and l_lo == l_hi == r_lo == r_hi)
+            if op == "==":
+                return True if same else (False if disjoint else None)
+            return True if disjoint else (False if same else None)
+        return None
+
     def with_non_zero(self, nz: bool = True) -> ValueRange:
         """Return a copy with non_zero set."""
         if self.non_zero == nz:

@@ -15,6 +15,12 @@ inline constexpr std::string_view __name__ = "__main__";
 void loop_carried_section();
 // def for_carried_section() -> None:
 void for_carried_section();
+// def foreign_origin_section(xs: list[Point]) -> None:
+void foreign_origin_section(std::vector<Point>& xs);
+// def hoisted_body_bind_section() -> None:
+void hoisted_body_bind_section();
+// def two_alias_section() -> None:
+void two_alias_section();
 // def main() -> None:
 void main();
 

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     # `compiler` imports this module (through sema), so the driver types the
     # diagnostic walk names are only reachable to a type checker.
     from collections.abc import Callable, Iterable
+    from .namespace import Namespace
 
     from .compiler import CompiledModule, Compiler
 
@@ -139,10 +140,14 @@ class SemanticError(Exception):
 
 @dataclass
 class Scope:
-    """A scope containing variable bindings."""
+    """A scope containing variable bindings. `namespace` is the namespace
+    region a loop body opens alongside the scope: what the body binds only
+    there (a walrus target, a handler-only name) is harvested from it."""
     parent: Optional[Scope] = None
     bindings: dict[str, TpyType] = field(default_factory=dict)
     depth: int = field(init=False)
+    namespace: Optional['Namespace'] = field(default=None, repr=False,
+                                             compare=False)
 
     def __post_init__(self) -> None:
         self.depth = (self.parent.depth + 1) if self.parent else 0

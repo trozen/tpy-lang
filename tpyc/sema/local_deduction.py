@@ -638,7 +638,7 @@ class LocalTypeDeduction:
             self.ctx.func.current_ns.update_variable_type_recursive(name, resolved)
         entry = self.ctx.func.pending_loop_vars.get(name)
         if entry is not None:
-            self.ctx.func.pending_loop_vars[name] = (resolved, entry[1], entry[2])
+            self.ctx.func.pending_loop_vars[name] = (resolved, *entry[1:])
 
     def _apply_container_resolution(
         self,
@@ -1376,11 +1376,11 @@ class LocalTypeDeduction:
                     )
 
         loop_vars = self.ctx.func.pending_loop_vars
-        for name, (vtype, s1, s2) in list(loop_vars.items()):
+        for name, (vtype, *rest) in list(loop_vars.items()):
             if vtype is not None:
                 resolved = self._deep_resolve_pending(vtype)
                 if resolved is not vtype:
-                    loop_vars[name] = (resolved, s1, s2)
+                    loop_vars[name] = (resolved, *rest)
 
         # Branch-decl snapshots capture binding types before the deferred
         # container resolution; codegen renders them directly (predecl /

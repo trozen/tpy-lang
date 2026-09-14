@@ -1584,6 +1584,8 @@ class StatementAnalyzer:
             # Save namespace types -- loop_scope() restores scope bindings
             # automatically, but namespace mutations inside the loop persist.
             ns_types_before_while = self._save_ns_var_types()
+            # Decided before the body: the ranges after it are the loop's.
+            runs_once = self.narrowing.condition_provably_true(stmt.condition)
             body_kills = collect_fact_kills(stmt.body,
                                             extra_exprs=[stmt.condition])
             # An `isinstance` fold rests on the loop-entry narrowing of its
@@ -1591,7 +1593,7 @@ class StatementAnalyzer:
             # loop-invariant, so drop the static fold and re-check each
             # iteration (else codegen emits an exit-less `while (true)`).
             self._unfold_loop_killed_isinstance(stmt.condition, body_kills.names)
-            with self.scopes.loop_scope(stmt.body):
+            with self.scopes.loop_scope(stmt.body) as inner_scope:
                 self.init.apply_loop_entry_facts(
                     before,
                     condition_type_facts=then_type_facts,
@@ -1612,6 +1614,11 @@ class StatementAnalyzer:
             # by loop_scope context manager)
             self._restore_ns_var_types(ns_types_before_while)
             self._sync_promoted_var_types()
+            # Python locals are function-scoped: what the body binds stays
+            # readable after the loop, promoted on first use like a for
+            # body's bindings.
+            self._propagate_loop_body_vars(stmt, inner_scope,
+                                           runs_once=runs_once)
             for s in stmt.orelse:
                 self.analyze_stmt(s)
         elif isinstance(stmt, TpyForEach):
@@ -3483,27 +3490,43 @@ class StatementAnalyzer:
 
     def _propagate_loop_body_vars(self, stmt: TpyStmt,
                                    inner_scope: 'Scope',
-                                   skip_var: str | None = None) -> None:
-        """Store body-declared variables from a for-loop scope as pending.
+                                   skip_var: str | None = None, *,
+                                   runs_once: bool = True) -> None:
+        """Store a loop body's declared variables as pending.
 
-        Variables are lazily promoted to the parent scope when first
-        referenced after the loop.
+        Both loop kinds call this. Variables are lazily promoted to the
+        parent scope when first referenced after the loop. `runs_once` is
+        whether the body provably ran: a `while` head sema cannot prove
+        leaves its names unproven, so the promotion does not mark them
+        assigned. (A `for` over an iterable no fact proves non-empty is
+        taken as run -- BUGS.md#zero-trip-loop-body-local-read.)
 
         skip_var: loop variable name to exclude (already handled by caller).
         """
-        for name, var_type in inner_scope.bindings.items():
+        body_bindings = dict(inner_scope.bindings)
+        if inner_scope.namespace is not None:
+            # A name the body binds in the namespace alone (a walrus target,
+            # a handler-only name) is as much a body local as a declared one.
+            for name, var_type in inner_scope.namespace.own_variables().items():
+                body_bindings.setdefault(name, var_type)
+        for name, var_type in body_bindings.items():
             if name == skip_var:
                 continue
             if name in self.ctx.func.global_declarations:
                 continue
             resolved = self._resolve_literal_type(var_type)
-            self.ctx.func.pending_loop_vars[name] = (resolved, stmt, None)
+            self.ctx.func.pending_loop_vars[name] = (resolved, stmt, None,
+                                                     runs_once)
 
         # Re-parent any pending vars from nested loops to this (outer) loop,
         # so they get pre-declared before this loop if referenced after it.
-        for name, (vtype, loop_stmt, orig_stmt) in list(self.ctx.func.pending_loop_vars.items()):
+        # A name whose inner loop ran is still unproven past an outer loop
+        # that may not have.
+        for name, (vtype, loop_stmt, orig_stmt, proven) in list(
+                self.ctx.func.pending_loop_vars.items()):
             if loop_stmt is not stmt and name not in inner_scope.bindings:
-                self.ctx.func.pending_loop_vars[name] = (vtype, stmt, orig_stmt)
+                self.ctx.func.pending_loop_vars[name] = (
+                    vtype, stmt, orig_stmt, proven and runs_once)
 
     def _propagate_for_loop_scope(self, stmt: TpyForEach,
                                    inner_scope: 'Scope',
@@ -3517,7 +3540,8 @@ class StatementAnalyzer:
         if ((not stmt.is_tuple_unpack or is_generator)
                 and var_name not in self.ctx.func.global_declarations):
             resolved = self._resolve_literal_type(elem_type)
-            self.ctx.func.pending_loop_vars[var_name] = (resolved, stmt, stmt)
+            self.ctx.func.pending_loop_vars[var_name] = (resolved, stmt, stmt,
+                                                         True)
 
         self._propagate_loop_body_vars(stmt, inner_scope, skip_var=var_name)
 

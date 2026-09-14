@@ -246,6 +246,10 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
     std::optional<std::function<void(const ::tpy::OSError&)>> onerror;
     bool followlinks;
     ::tpy::frame_slot<std::vector<::tpy::Union<_WalkEmit, _WalkExpand>>> bstack;
+    ::tpy::frame_slot<std::vector<std::string>> stack;
+    ::tpy::frame_slot<DirEntry> be;
+    bool bis_dir;
+    std::string bchild;
     ::tpy::frame_slot<::tpy::Union<_WalkEmit, _WalkExpand>> item;
     ::tpy::frame_slot<std::vector<std::string>> bdirs;
     ::tpy::frame_slot<std::vector<std::string>> bfiles;
@@ -254,18 +258,14 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
     ::tpy::frame_slot<std::vector<std::string>> bfilenames;
     ::tpy::frame_slot<std::vector<DirEntry>> bentries;
     int32_t bi;
-    std::string bchild;
-    ::tpy::frame_slot<std::vector<std::string>> stack;
+    ::tpy::frame_slot<DirEntry> e;
+    bool is_dir;
+    std::string child;
     std::string cur;
     ::tpy::frame_slot<std::vector<std::string>> dirnames;
     ::tpy::frame_slot<std::vector<std::string>> filenames;
     ::tpy::frame_slot<std::vector<DirEntry>> entries;
     int32_t i;
-    std::string child;
-    ::tpy::frame_slot<DirEntry> be;
-    bool bis_dir;
-    ::tpy::frame_slot<DirEntry> e;
-    bool is_dir;
 
     enum : int32_t {
         S_INITIAL = 0,

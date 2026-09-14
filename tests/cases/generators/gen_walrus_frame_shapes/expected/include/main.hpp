@@ -22,6 +22,7 @@ struct __gen_opt_ptr;
 struct __gen_borrow_tuple;
 struct __gen_own_tuple;
 struct __gen_exc_binding;
+struct __gen_exc_binding_for;
 struct __gen_Src_gen;
 
 // def val_scalar() -> Iterator[int32]:
@@ -54,6 +55,8 @@ __gen_own_tuple own_tuple();
 int32_t raiser(int32_t i);
 // def exc_binding() -> Iterator[int32]:
 __gen_exc_binding exc_binding();
+// def exc_binding_for() -> Iterator[int32]:
+__gen_exc_binding_for exc_binding_for();
 // def main() -> None:
 void main();
 
@@ -340,6 +343,36 @@ struct __gen_exc_binding : public ::tpy::next_iter_mixin<__gen_exc_binding, int3
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_exc_binding&) {
         return os << "<generator exc_binding>";
+    }
+};
+
+// def exc_binding_for() -> Iterator[int32]:
+struct __gen_exc_binding_for : public ::tpy::next_iter_mixin<__gen_exc_binding_for, int32_t> {
+    int32_t __state;
+    int32_t i;
+    ::tpy::frame_slot<Boom> caught;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_JOIN_0 = 4,
+        S_JOIN_1 = 5,
+        S_JOIN_2 = 6,
+        S_DONE = 7,
+    };
+
+    __gen_exc_binding_for()
+        : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_exc_binding_for& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_exc_binding_for&) {
+        return os << "<generator exc_binding_for>";
     }
 };
 

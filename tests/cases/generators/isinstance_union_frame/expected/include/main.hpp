@@ -60,9 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Emit& obj) {
 struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<::tpy::Union<Emit, Push>>> work;
+    ::tpy::BigInt n;
     ::tpy::frame_slot<::tpy::Union<Emit, Push>> t;
     int32_t total;
-    ::tpy::BigInt n;
 
     enum : int32_t {
         S_INITIAL = 0,

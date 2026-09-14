@@ -849,7 +849,12 @@ class FunctionTrackingState:
     # --- Control flow ---
     super_init_call: TpyMethodCall | None = None
     super_del_call: TpyMethodCall | None = None
-    pending_loop_vars: dict[str, tuple[TpyType, TpyStmt, TpyStmt | None]] = field(default_factory=dict)
+    # name -> (type, loop stmt, loop-var stmt or None, proven): a loop body's
+    # bindings, promoted into scope by the first read after the loop. `proven`
+    # is whether every loop on the way out provably ran; a read after a
+    # `while` sema could not prove promotes the name but leaves it unassigned,
+    # so the read is the definite-assignment reject.
+    pending_loop_vars: dict[str, tuple[TpyType, TpyStmt, TpyStmt | None, bool]] = field(default_factory=dict)
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
     consumed_loop_vars: set[str] = field(default_factory=set)
@@ -866,6 +871,9 @@ class FunctionTrackingState:
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)
     hoisted_vars: set[str] = field(default_factory=set)
+    # (alias, source) pairs the scope-escape check warned about: the
+    # alias-rebind pass owes those no second warning at the source's rebind.
+    escape_warned_aliases: set[tuple[str, str]] = field(default_factory=set)
     rvalue_vars: set[str] = field(default_factory=set)
     owned_locals: set[str] = field(default_factory=set)
     # Accumulator: all locals that were ever owned. Survives FlowFacts

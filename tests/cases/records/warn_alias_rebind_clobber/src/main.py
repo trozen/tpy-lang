@@ -40,9 +40,51 @@ def for_carried_section() -> None:
     print("for_carried:", q.x, p.x)
 
 
+# The rebind site is reached with storage it does not own on the first
+# iteration (`p = xs[0]`), so it stays OWN -- but its own slot is still
+# reused on the next iteration while `q` reads it.
+def foreign_origin_section(xs: list[Point]) -> None:
+    p = xs[0]
+    q = take_ptr(p)
+    for i in range(2):
+        p = Point(i)  # tpyc: warning(/will not keep the object it was given/)
+        print("foreign_origin_iter:", q.x)
+        q = take_ptr(p)
+    print("foreign_origin:", q.x, p.x)
+
+
+# The loop body's FIRST bind of `p` (hoisted before the loop for the read
+# after it) runs again on the next iteration and reuses its slot the same way.
+def hoisted_body_bind_section() -> None:
+    other = Point(41)
+    q = take_ptr(other)
+    for i in range(2):
+        p = Point(i)  # tpyc: warning(/will not keep the object it was given/)
+        print("hoisted_body_bind_iter:", q.x)
+        q = take_ptr(p)
+    print("hoisted_body_bind:", q.x, p.x)
+
+
+# Two holders of the body-bound `p`: the scope-escape check warns for
+# `saved` at its alias site, and the rebind still warns for `other`, which
+# keeps the object of ONE iteration and reads the site's slot after that.
+def two_alias_section() -> None:
+    saved = Point(50)
+    for i in range(3):
+        p = Point(i)  # tpyc: warning(/'other' will not keep the object/)
+        saved = p  # tpyc: warning(/'saved' will not keep the object/)
+        if i == 0:
+            other = p
+    other.x += 100
+    print("two_alias:", saved.x, other.x)
+
+
 def main() -> None:
     loop_carried_section()
     for_carried_section()
+    foreign_origin_section([Point(40)])
+    hoisted_body_bind_section()
+    two_alias_section()
 
 
 main()

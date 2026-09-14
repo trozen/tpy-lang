@@ -403,6 +403,15 @@ class _Replay:
         if value is not None:
             self.expr_effects(value, st, stmt, top_is_bind=True)
         site = getattr(stmt, "rebind_storage", None) is not None and node is stmt
+        # A first bind inside a loop body runs again on the next iteration
+        # and reuses its storage like any rebind. Nothing before it can be
+        # written in place, so it is no storage decision -- but a holder
+        # still reading the previous iteration's object is the same
+        # clobber question, asked of the same site.
+        if (not site and node is stmt and self.loops
+                and kind is BindKind.RVALUE
+                and is_reference_local(self.local_type(name, value))):
+            site = True
         if site:
             prev = self.site_states.get(stmt)
             if prev is None:
@@ -495,6 +504,12 @@ class _Replay:
     # -- the decision --
 
     def decide(self) -> None:
+        """Set IN_PLACE on every stamped site the replay proves, and warn
+        on the residual clobber at every site. The two are separate
+        questions: a site some path reaches with storage it does not own
+        stays OWN, yet its own slot is still reused when it runs again,
+        and a holder that still reads the previous object is clobbered
+        all the same."""
         for stmt in self.sites:
             name = stmt.name if isinstance(stmt, TpyVarDecl) else stmt.target.name  # type: ignore[union-attr]
             value = stmt.init if isinstance(stmt, TpyVarDecl) else stmt.value
@@ -504,15 +519,21 @@ class _Replay:
             # None: liveness never walked the body -- decide, but stay quiet.
             live = stmt.live_names_after
             origins = st.origins.get(name)
-            if not origins or (origins & _NOT_OWNED):
+            if not origins:
                 continue
             var_type = self.local_type(name, value)
-            if self.in_place_unrenderable(var_type, origins):
-                continue
+            decidable = (getattr(stmt, "rebind_storage", None) is not None
+                         and not (origins & _NOT_OWNED)
+                         and not self.in_place_unrenderable(var_type, origins))
             own = False
             clobbered: dict[str, BorrowKind] = {}
             prefix = name + "."
             site_id = self.ids.get(stmt)
+            # `outer = p` with `p` bound in the loop body is diagnosed at the
+            # alias site by the scope-escape check, which hoists `p` for it;
+            # the clobber this site would report for THAT holder is the same
+            # alias. Keyed on the pair: another holder of `p` is not covered.
+            escape_warned = self.ctx.func.escape_warned_aliases
             for holder, loans in st.loans.items():
                 immortal = (holder == _ESCAPED
                             or holder.startswith(ITER_BORROWER))
@@ -527,9 +548,11 @@ class _Replay:
                     # after the site runs again: one slot cannot hold both.
                     if (read_again and not immortal
                             and kind is not BorrowKind.OPAQUE
-                            and site_id in lorigins):
+                            and site_id in lorigins
+                            and not (kind is BorrowKind.ALIAS
+                                     and (holder, name) in escape_warned)):
                         clobbered[holder] = kind
-            if not own:
+            if decidable and not own:
                 stmt.rebind_storage = RebindStorage.IN_PLACE
             if clobbered:
                 self.warn(stmt, name, var_type, clobbered)

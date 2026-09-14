@@ -759,10 +759,10 @@ struct __gen_Response_iter_content : public ::tpy::next_iter_mixin<__gen_Respons
     Response& __self;
     int32_t chunk_size;
     ::tpystd::http::client::HTTPResponse* r = nullptr;
-    ::tpy::Bytes chunk;
     ::tpy::Bytes data;
     int32_t n;
     int32_t pos;
+    ::tpy::Bytes chunk;
     int32_t end;
 
     enum : int32_t {
@@ -798,9 +798,10 @@ struct __gen_Response_iter_lines : public ::tpy::next_iter_mixin<__gen_Response_
     ::tpy::frame_slot<::tpy::ByteArray> pending;
     ::tpy::Bytes tail;
     int32_t tend;
-    ::tpy::Bytes chunk;
+    int32_t end;
     ::tpy::Bytes buf;
     int32_t nl;
+    ::tpy::Bytes chunk;
     ::tpy::frame_slot<__gen_Response_iter_content> __for_src_0;
     ::tpy::frame_slot<::tpy::iter_next_t<__gen_Response_iter_content>> __for_r_0;
 

@@ -1495,7 +1495,7 @@ class SemanticAnalyzer:
         for name, binding in local_ns.all_bindings().items():
             if keep(name) and binding.type is not None and not binding.frame_exempt:
                 locals_dict[name] = binding.type
-        for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
+        for name, (vtype, _, _, _) in self.ctx.func.pending_loop_vars.items():
             if keep(name) and vtype is not None:
                 locals_dict[name] = vtype
         _assert_no_pending_locals(locals_dict, func.name)

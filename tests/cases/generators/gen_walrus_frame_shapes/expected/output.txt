@@ -50,6 +50,11 @@ got 0
 exc resume bad
 got -1
 got 0
+caught bad
+got 0
+exc resume bad
+got -1
+got 0
 method resume 0
 got 10
 method resume 10

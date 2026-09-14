@@ -2029,6 +2029,8 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
 def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitState) -> None:
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
+    for name, cpp_type in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name};\n")
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     # The restructured head: anonymous cond temps re-evaluate
     # per iteration, so they live in the loop head behind `while (true)` with

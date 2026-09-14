@@ -72,9 +72,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<st
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<int32_t, std::vector<int32_t>*>> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<int32_t>> stack;
+    int32_t k;
     int32_t cur;
     ::tpy::frame_slot<std::vector<int32_t>> kids;
-    int32_t k;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -150,9 +150,11 @@ The tracker compares `var_scope_depth` entries. Two outcomes:
 The rebind-site sibling of the same hazard is the alias-rebind storage pass
 (`sema/alias_rebind.py`): after the body walk it replays the loans the tracker
 stamped on each statement, decides per rvalue rebind whether the write goes in
-place or into storage of its own, and warns only for the loop-carried clobber
-a site slot cannot avoid. The two coexist; folding `check_escape` into the
-pass is a TODO.md entry.
+place or into storage of its own, and warns for the loop-carried clobber a
+site slot cannot avoid -- at every site that runs again, a loop body's first
+bind included, whatever storage other paths bring to it. The two coexist
+(the pass skips the alias `check_escape` already warned about); folding
+`check_escape` into the pass is a TODO.md entry.
 
 **Provenance tracking** (`param_derived`, `safe_to_return`): two flow-sensitive
 facts, now the `param_derived` / `safe_to_return` fields of the per-local

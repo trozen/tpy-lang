@@ -4,7 +4,8 @@ branches, loops, with, try, raise, and narrowing statements.
 
 from __future__ import annotations
 import copy
-from collections.abc import Set as AbstractSet
+from enum import Enum, auto
+from collections.abc import Mapping, Set as AbstractSet
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -2698,64 +2699,68 @@ def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
 
 def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
                           lc: '_LowerCtx', witness_tag: str,
-                          opt_storage: 'AbstractSet[str]' = frozenset(),
-                          borrow_tuple: 'AbstractSet[str]' = frozenset(),
-                          branch_borrow_tuple: 'AbstractSet[str]' = (
-                              frozenset()),
-                          pointer: 'AbstractSet[str]' = frozenset(),
-                          const_pointer: 'AbstractSet[str]' = frozenset(),
-                          ptr_null: 'AbstractSet[str]' = frozenset()
+                          flavors: 'Mapping[str, HoistFlavor]' = {}
                           ) -> list[tuple[str, str]]:
-    """Chain-head predecls for the branch-first-decls shared by if / try /
-    with. A name spells its sema-resolved view type (render_type's default
-    resolves neither PendingStr nor PendingBytes), enters the CALLER's
-    `declared` at function scope, and keeps the raw binding type there --
-    the same shape a normal str/bytes first-decl stores. A name already in
-    `declared` (bound outside an enclosing loop) skips its predecl -- it is
-    already declared. The witness distinguishes the call site.
-    Names in `opt_storage` (with-family non-value hoists, admitted by
-    `_opt_storage_hoist_flavor`) take the OPTIONAL_STORAGE entry instead
-    of the value render; names in `borrow_tuple` (for-each hoisted ptr-repr
-    tuple loop vars) predecl the borrow form (`std::tuple<..., T*> name;`),
-    registered into `declared` only -- reads key on the declared TupleType
-    like the if-cascade's borrow-tuple arm, while `branch_borrow_tuple` is
-    the branch-BOUND sibling that also carries the mixed-own and const
-    registrations; names in `pointer` (with-family borrow-only hoists --
-    hoisted with-as targets) predecl the pointer local (`T* name;`),
-    mirroring the if cascade's non-slot pointer row."""
+    """Chain-head predecls for the branch-first-decls shared by try / with /
+    for-each. A name spells its sema-resolved view type (render_type's
+    default resolves neither PendingStr nor PendingBytes), enters the
+    CALLER's `declared` at function scope, and keeps the raw binding type
+    there -- the same shape a normal str/bytes first-decl stores. A name
+    already in `declared` (bound outside an enclosing loop) skips its
+    predecl -- it is already declared. The witness distinguishes the call
+    site. `flavors` carries each non-VALUE name's admitted flavor (the
+    ladder's `_nonvalue_hoist_flavor` verdict, or the tuple / unpack-target
+    flavors its own predicates admit); a name absent from it takes the
+    plain value render."""
     hoist_decls: list[tuple[str, str]] = []
     for name, raw in hoists.items():
         if name in declared:
             continue
         vtype = unwrap_ref_type(raw)
-        if name in opt_storage:
+        flavor = flavors.get(name, HoistFlavor.VALUE)
+        if flavor is HoistFlavor.OPT_STORAGE:
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
             hoist_decls.append(_optional_storage_hoist_entry(
                 name, vtype, declared, lc))
             _witness("with.hoist_optional_storage")
             continue
-        if name in borrow_tuple:
+        if flavor is HoistFlavor.BORROW_TUPLE:
+            # A for-each hoisted ptr-repr tuple loop var predecls the borrow
+            # form (`std::tuple<..., T*> name;`), registered into `declared`
+            # only -- reads key on the declared TupleType like the
+            # if-cascade's borrow-tuple arm.
             declared[name] = vtype
             hoist_decls.append((name, vtype.to_cpp_return()))
             _witness("foreach.hoist_borrow_tuple")
             continue
-        if name in branch_borrow_tuple:
+        if flavor is HoistFlavor.BRANCH_BORROW_TUPLE:
+            # The branch-BOUND sibling, which also carries the mixed-own
+            # and const registrations.
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
             hoist_decls.append(_borrow_tuple_hoist_entry(
                 name, vtype, declared, lc, "try.hoist_mixed_own_tuple",
                 None))
             _witness("try.hoist_borrow_tuple")
             continue
-        if name in pointer:
+        if flavor is HoistFlavor.POINTER:
+            # The pointer local (`T* name;`) of a reassigned or borrow-only
+            # hoist, the if cascade's non-slot pointer row: rvalue reseats
+            # ride the BRANCH_RVALUE arm and take the alias-rebind verdict.
+            # A pointer-repr Optional is the same nullable pointer over its
+            # inner; `declared` keeps the Optional so reads narrow on it.
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
-            hoist_decls.append((name, f"{lc.render_type(vtype)}*"))
+            pointee = vtype
+            if (isinstance(vtype, OptionalType)
+                    and vtype.uses_pointer_repr()):
+                pointee = vtype.inner
+            hoist_decls.append((name, f"{lc.render_type(pointee)}*"))
             lc.pointers.add(name)
             lc.promote_movable(name)
             lc.branch_hoisted.add(name)
             declared[name] = vtype
             _witness("with.hoist_ptr_local")
             continue
-        if name in ptr_null:
+        if flavor is HoistFlavor.PTR_NULL:
             # The hoisted container unpack-target flavor: a
             # null-initialized pointer predecl (the ForEach node's
             # hoist_ptr_inits spells `= nullptr`); the loop head re-points
@@ -2767,7 +2772,7 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             declared[name] = vtype
             _witness("foreach.hoist_ptr_null")
             continue
-        if name in const_pointer:
+        if flavor is HoistFlavor.CONST_POINTER:
             # The CONST borrow-decl flavor (`const Tree<int32_t>* v;` --
             # sema's stmt-borrow const bit): same pointer local, const
             # spelling and registration; never movable.
@@ -2779,6 +2784,7 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             declared[name] = vtype
             _witness("try.hoist_const_ptr")
             continue
+        assert flavor is HoistFlavor.VALUE, (name, flavor)
         hoist_decls.append(_value_hoist_entry(name, vtype, declared, lc))
     if hoist_decls:
         _witness(witness_tag)
@@ -3140,33 +3146,101 @@ def _optional_storage_hoist_entry(name: str, var_type: TpyType,
     return (name, f"std::optional<{lc.render_type(var_type)}>")
 
 
-def _opt_storage_hoist_flavor(name: str, var_type: TpyType,
-                              lc: '_LowerCtx') -> 'str | None':
-    """The OPTIONAL_STORAGE hoist admission SHARED by the if cascade and
-    the with family -- None when the single-bind plain-nonvalue flavor
-    applies, else the reject kind ('resumable' | 'move_through' | 'const'
-    | 'other'). Callers map kinds to their own reject policies (the if
-    cascade's per-rung ThirUnsupported tags; the with loop's single
-    with.hoist reject) so the CONDITIONS are written once and cannot
-    drift. Reassigned / borrow-only names are the pointer flavor
-    ('other'); a borrow-decl const bit is the const rung; resumable
-    bodies have no function-top drain for the hoist line."""
+class HoistFlavor(Enum):
+    """How a branch-first non-value hoist predecls at its chain head -- one
+    verdict for the if, try, with, for-each and match ladders. The reject
+    kinds are mapped to each ladder's own reject tag."""
+    VALUE = auto()               # `{cpp} name;` -- the _try_hoist_type_ok family
+    OPT_STORAGE = auto()         # `std::optional<T> name;`, bound once
+    POINTER = auto()             # `T* name;`, reassigned or borrow-only
+    CONST_POINTER = auto()       # `const T* name;`, a const borrow decl
+    PTR_NULL = auto()            # `T* name = nullptr;`, a hoisted unpack target
+    BORROW_TUPLE = auto()        # `std::tuple<..., T*> name;`, a loop var
+    BRANCH_BORROW_TUPLE = auto() # the branch-bound borrow tuple
+    RESUMABLE = auto()           # reject: no function-top drain for the line
+    MOVE_THROUGH = auto()        # reject: the plain storage decl, another arm
+    CONST_REBOUND = auto()       # reject: a const borrow decl rebound to rvalues
+    NOT_PLAIN = auto()           # reject: no non-value flavor for this type
+
+
+_HOIST_ADMITTED = frozenset((HoistFlavor.OPT_STORAGE, HoistFlavor.POINTER,
+                             HoistFlavor.CONST_POINTER))
+
+
+def _hoist_ladder_head(name: str, raw: TpyType, declared: dict[str, TpyType],
+                       lc: '_LowerCtx', stmt: TpyStmt, reject_tag: str
+                       ) -> 'TpyType | None':
+    """The head every hoist ladder (for-each, while, try, with) walks for
+    one hoisted name: a name already declared hoists nowhere, a native
+    global rejects, a value-family type takes the plain render -- all
+    three answer None (no flavor entry). The bare type comes back for the
+    construct's own rungs and `_admit_nonvalue_hoist`."""
+    if name in declared:
+        return None
+    if name in lc.prescan.native_globals:
+        note_detail(reject_tag)
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    bare = unwrap_ref_type(raw)
+    if _try_hoist_type_ok(bare, lc.analyzer):
+        return None
+    return bare
+
+
+def _admit_nonvalue_hoist(name: str, bare: TpyType, lc: '_LowerCtx',
+                          stmt: TpyStmt, reject_tag: str, *,
+                          leaf_ok: bool = False) -> HoistFlavor:
+    """The shared non-value admission every ladder ends in: the classifier's
+    verdict when it is a flavor `_lower_hoist_predecls` renders, else the
+    construct's reject. `leaf_ok` opens the RESUMABLE kind for a resumable
+    LEAF as OPT_STORAGE (the loop ladders: a loop-head hoisted var is a
+    leaf-local in every constructed shape -- in-loop awaits included, an
+    ablation showed a frame_slots exclusion here is DEAD -- and a
+    frame-field flavor, should one ever arise, is caught by the corpus
+    snapshots rather than mis-rendering silently)."""
+    resolved = resolve_pending_container(bare, lc.analyzer) or bare
+    flavor = _nonvalue_hoist_flavor(name, resolved, lc)
+    if (leaf_ok and flavor is HoistFlavor.RESUMABLE
+            and lc.resumable_leaf_mode and is_plain_nonvalue(resolved)):
+        flavor = HoistFlavor.OPT_STORAGE
+    if flavor in _HOIST_ADMITTED:
+        return flavor
+    note_detail(reject_tag)
+    raise ThirUnsupported(stmt_reject_reason(stmt))
+
+
+def _nonvalue_hoist_flavor(name: str, var_type: TpyType,
+                           lc: '_LowerCtx') -> HoistFlavor:
+    """The non-value hoist admission SHARED by every ladder: the flavor a
+    branch-first non-value hoist predecls as, else the reject kind. Callers
+    map reject kinds to their own reject policies (the if cascade's
+    per-rung ThirUnsupported tags; the other ladders' single reject) so
+    the CONDITIONS are written once and cannot drift. A plain non-value
+    bound once is OPT_STORAGE; reassigned or borrow-only it is the POINTER
+    flavor, as is a pointer-repr Optional (the nullable pointer-local over
+    its inner); a borrow-decl const bit is CONST_POINTER, unless rvalue
+    reseats would write through it; resumable bodies have no function-top
+    drain for the hoist line."""
     analyzer = lc.analyzer
-    if not is_plain_nonvalue(var_type):
-        return "other"
+    ptr_opt = (isinstance(var_type, OptionalType)
+               and var_type.uses_pointer_repr()
+               and not isinstance(var_type.inner, ReadonlyType))
+    if not (ptr_opt or is_plain_nonvalue(var_type)):
+        return HoistFlavor.NOT_PLAIN
     if lc.func.is_generator or lc.func.is_async:
-        return "resumable"
+        return HoistFlavor.RESUMABLE
     if name in lc.prescan.move_through:
-        return "move_through"
+        return HoistFlavor.MOVE_THROUGH
     borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
     if borrow_decls.get(name, False):
-        return "const"
-    if (name in lc.prescan.reassigned
+        return (HoistFlavor.CONST_REBOUND
+                if name in lc.prescan.rvalue_reassigned
+                else HoistFlavor.CONST_POINTER)
+    if (ptr_opt or name in lc.prescan.reassigned
             or (name in borrow_decls
                 and name not in analyzer.function_ever_owned_locals.get(
                     lc.func, set()))):
-        return "other"
-    return None
+        return HoistFlavor.POINTER
+    return HoistFlavor.OPT_STORAGE
 
 
 def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
@@ -3287,23 +3361,26 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
         if isinstance(resolve_type, ReadonlyType):
             note_detail("if.hoist_const")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        if is_plain_nonvalue(var_type) or resolve_type is not var_type:
-            if lc.func.is_generator or lc.func.is_async:
+        flavor = _nonvalue_hoist_flavor(name, var_type, lc)
+        if flavor is not HoistFlavor.NOT_PLAIN:
+            if flavor is HoistFlavor.RESUMABLE:
                 # Both non-value flavors hoist storage to function top on
                 # reseats; resumable leaves cannot drain those lines.
                 note_detail("if.hoist_nonvalue_resumable")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            if name in lc.prescan.move_through:
+            if flavor is HoistFlavor.MOVE_THROUGH:
                 # `_needs_indirection` exempts move-through names -- they
                 # take the plain storage decl, a different arm.
                 note_detail("if.hoist_move_through")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            borrow_only = (name in borrow_decls and name not in ever_owned)
-            if borrow_decls.get(name, False):
+            if flavor in (HoistFlavor.CONST_POINTER,
+                          HoistFlavor.CONST_REBOUND):
                 # The CONST borrow-decl flavor (`const Reg* view;` -- sema's
                 # stmt-borrow const bit): same pointer local, const spelling
                 # and registration; never movable (the with/try families'
-                # const_pointer rung).
+                # const_pointer rung). An rvalue reseat of it writes the
+                # owned slot's address through the const pointer, so the
+                # rebound kind rides too.
                 hoist_decls.append(
                     (name, f"const {lc.render_type(resolve_type)}*"))
                 lc.pointers.add(name)
@@ -3312,15 +3389,10 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                 declared[name] = var_type
                 _witness("if.hoist_const_ptr")
                 continue
-            reassigned = name in lc.prescan.reassigned
             cpp = lc.render_type(resolve_type)
-            if _opt_storage_hoist_flavor(name, var_type, lc) is None:
+            if flavor is HoistFlavor.OPT_STORAGE:
                 # OPTIONAL_STORAGE: single-bind rvalue local -- plain
                 # assigns engage the optional, reads deref through it.
-                # (The resumable/move-through/const kinds were rejected
-                # above with their per-rung tags; the shared verdict keeps
-                # the ARM condition itself in lockstep with the with
-                # family.)
                 hoist_decls.append(_optional_storage_hoist_entry(
                     name, var_type, declared, lc))
                 _witness("if.hoist_optional_storage")
@@ -9327,6 +9399,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         result_type=pointee, value=src, form=Form.BORROW,
                         is_const=stmt.name in lc.const_locals, loc=loc),
                     loc=loc)
+            # An OPTIONAL_STORAGE source sits in `pointers` for its deref
+            # reads, but it is `std::optional<T>`, not a `T*`: the pointer
+            # local lifts off it (`alias = ::tpy::optional_to_ptr(p);`),
+            # the F1 storage-optional read, never the bare pointer copy.
+            if (isinstance(stmt.init, TpyName)
+                    and stmt.init.name in lc.optional_locals
+                    and stmt.init.name not in lc.narrow.narrowed):
+                src_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    declared[stmt.init.name])))
+                _witness("reseat.opt_storage_lift")
+                return THIRAssign(
+                    target=THIRName(result_type=vtype, name=stmt.name,
+                                    loc=loc),
+                    value=THIRFormConvert(
+                        result_type=OptionalType(src_t),
+                        value=_lower_expr(stmt.init, lc, declared,
+                                          allow_whole_optional=True),
+                        form=Form.BORROW, loc=loc),
+                    loc=loc)
             # A pointer-NAME copy reseat (`saved = p;` -- both `T*` locals):
             # the bare pointer copies, no address-of (a pointer-local source
             # renders the name verbatim).
@@ -14113,8 +14204,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         _witness("stmt.del_attr_multi")
         return THIRDelItem(calls=tuple(lowered_dels), loc=loc)
     if isinstance(stmt, TpyWhile):
-        if analyzer.if_branch_decls.get(stmt):
-            raise ThirUnsupported("stmt.while")
+        # Body-declared locals read after the loop predecl before it, the
+        # for-each ladder minus its loop-var flavors: the value family, and
+        # the shared non-value admission (the RESUMABLE kind opens for leaf
+        # mode as OPT_STORAGE, as at the for head).
+        while_hoists = analyzer.if_branch_decls.get(stmt, {})
+        while_flavors: dict[str, HoistFlavor] = {}
+        for _hname, _hraw in while_hoists.items():
+            _hbare = _hoist_ladder_head(_hname, _hraw, declared, lc, stmt,
+                                        "while.hoist_type")
+            if _hbare is None:
+                continue
+            while_flavors[_hname] = _admit_nonvalue_hoist(
+                _hname, _hbare, lc, stmt, "while.hoist_type", leaf_ok=True)
+        while_hoist_decls = tuple(
+            _lower_hoist_predecls(while_hoists, declared, lc,
+                                  "while.hoist_decl", while_flavors))
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         oinfo = (_or_chain_narrow_info(stmt.condition, declared, analyzer)
                  if info is None else None)
@@ -14204,6 +14309,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             body=body,
             orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                       "loop.while_else"),
+            hoist_decls=while_hoist_decls,
             loc=loc,
         )
     if isinstance(stmt, TpyAssert):
@@ -14676,17 +14782,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # the post-loop reads see them. Gated to the plain-value predecl family;
         # includes the loop var itself when it is hoisted (used after the loop).
         foreach_hoists = analyzer.if_branch_decls.get(stmt, {})
-        borrow_tuple_hoists: set[str] = set()
+        foreach_flavors: dict[str, HoistFlavor] = {}
         ptr_null_hoists: set[str] = set()
-        opt_storage_hoists: set[str] = set()
         for _hname, _hraw in foreach_hoists.items():
-            if _hname in declared:
-                continue
-            if _hname in lc.prescan.native_globals:
-                note_detail("foreach.hoist_type")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _hbare = unwrap_ref_type(_hraw)
-            if _try_hoist_type_ok(_hbare, analyzer):
+            _hbare = _hoist_ladder_head(_hname, _hraw, declared, lc, stmt,
+                                        "foreach.hoist_type")
+            if _hbare is None:
                 continue
             # A hoisted ptr-repr tuple loop var predecls the borrow form
             # (the if-cascade's borrow-tuple arm, loop flavor): the head
@@ -14695,7 +14796,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if (isinstance(_hbare, TupleType)
                     and _hbare.has_pointer_repr_element()
                     and _borrow_tuple_hoist_ok(_hname, _hbare, lc)):
-                borrow_tuple_hoists.add(_hname)
+                foreach_flavors[_hname] = HoistFlavor.BORROW_TUPLE
                 continue
             # A hoisted CONTAINER ref-target of the for-head unpack
             # (`for k, v in d.items(): ...; v.append(6)` post-loop):
@@ -14713,32 +14814,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and (_hi := stmt.body[0].targets.index(_hname))
                     < len(stmt.body[0].is_ref)
                     and stmt.body[0].is_ref[_hi]):
+                foreach_flavors[_hname] = HoistFlavor.PTR_NULL
                 ptr_null_hoists.add(_hname)
                 continue
-            # The OPTIONAL_STORAGE flavor (the if/try/with sites' shared
-            # classifier, threaded to the for-head): a hoisted non-value
-            # loop var / loop-body decl predecls `std::optional<T> name;`,
-            # binds per-iteration through the shared hoisted loop-var
-            # render, and post-loop reads deref via lc.pointers. The
-            # RESUMABLE rung opens for LEAF mode: a for-head hoisted var
-            # is a leaf-local in every constructed shape (in-loop awaits
-            # included -- ablation showed a frame_slots exclusion here is
-            # DEAD), and a frame-field flavor, should one ever arise, is
-            # caught by the corpus snapshots rather than mis-rendering
-            # silently.
-            _osf = _opt_storage_hoist_flavor(_hname, _hbare, lc)
-            if (_osf is None
-                    or (_osf == "resumable" and lc.resumable_leaf_mode)):
-                opt_storage_hoists.add(_hname)
-                continue
-            note_detail("foreach.hoist_type")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
+            # A hoisted loop var / loop-body decl predecls before the loop,
+            # binds per iteration through the in-body reseat arms, and
+            # post-loop reads deref via lc.pointers.
+            foreach_flavors[_hname] = _admit_nonvalue_hoist(
+                _hname, _hbare, lc, stmt, "foreach.hoist_type", leaf_ok=True)
         foreach_hoist_decls = tuple(
             _lower_hoist_predecls(foreach_hoists, declared, lc,
-                                  "foreach.hoist_decl",
-                                  opt_storage=opt_storage_hoists,
-                                  borrow_tuple=borrow_tuple_hoists,
-                                  ptr_null=ptr_null_hoists))
+                                  "foreach.hoist_decl", foreach_flavors))
         body_declared = dict(declared)
         body_declared[stmt.var] = et
         # Frame-field shadowing: in a resumable
@@ -15626,16 +15712,8 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         note_detail("try.return_handlers")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     hoists = lc.analyzer.if_branch_decls.get(stmt, {})
-    opt_storage_hoists: set[str] = set()
-    btuple_hoists: set[str] = set()
-    pointer_hoists: set[str] = set()
-    const_pointer_hoists: set[str] = set()
+    try_flavors: dict[str, HoistFlavor] = {}
     for name, raw in hoists.items():
-        if name in declared:
-            continue
-        if name in lc.prescan.native_globals:
-            note_detail("try.hoist")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
         # A try inside a branch / loop hoists here rather than at function
         # top: the predecl is emitted at the try itself, so the C++ scope
         # IS the enclosing block. The name enters
@@ -15643,13 +15721,10 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         # Python's function scope; that gap is fail-safe, since a read after
         # the branch finds no binding and rejects (`name.global_read`) rather
         # than mis-rendering.
-        if _try_hoist_type_ok(unwrap_ref_type(raw), lc.analyzer):
+        bare = _hoist_ladder_head(name, raw, declared, lc, stmt, "try.hoist")
+        if bare is None:
             continue
-        # Non-value single-bind hoists take the if flavor's OPTIONAL_STORAGE
-        # predecl, the same widening the with family already carries.
-        var_type = unwrap_ref_type(raw)
-        var_type = (resolve_pending_container(var_type, lc.analyzer)
-                    or var_type)
+        var_type = resolve_pending_container(bare, lc.analyzer) or bare
         # The if cascade's borrow-form tuple hoist (`std::tuple<..., T*>
         # p;`), sibling row -- this predecl sits AT the try, so its C++
         # scope matches. An OWNING tuple-call source is left out: its
@@ -15658,41 +15733,21 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
                 and var_type.has_pointer_repr_element()
                 and _borrow_tuple_hoist_ok(name, var_type, lc,
                                            mixed_call_ok=True)):
-            btuple_hoists.add(name)
+            try_flavors[name] = HoistFlavor.BRANCH_BORROW_TUPLE
             continue
-        flavor = _opt_storage_hoist_flavor(name, var_type, lc)
-        if flavor is None:
-            opt_storage_hoists.add(name)
-            continue
-        # Borrow-only / reassigned plain non-value hoists take the pointer
-        # predecl (`std::vector<int32_t>* v;`, the body bind reseating
-        # `v = &(...)`) -- the with family's pointer flavor. An
-        # rvalue-reassigned name rides too: its reseats allocate the
-        # FUNCTION-TOP `__slot_N` lazily (the BRANCH_RVALUE arm), so no
-        # THIRTry field is needed -- the slot predecls above the try
-        # (`std::optional<std::vector<int32_t>> __slot_1;`).
-        if flavor == "other" and is_plain_nonvalue(var_type):
-            # (The pointer predecl entry registers the rebind-slot model
-            # itself -- verified by ablation.)
-            pointer_hoists.add(name)
-            continue
-        # The CONST borrow-decl sibling (`const Tree<int32_t>* v;`).
-        if (flavor == "const" and is_plain_nonvalue(var_type)
-                and name not in lc.prescan.rvalue_reassigned):
-            const_pointer_hoists.add(name)
-            continue
-        note_detail("try.hoist")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+        # The OPTIONAL_STORAGE predecl, the pointer predecl of a borrow-only
+        # / reassigned hoist (an rvalue-reassigned name's reseats allocate
+        # the FUNCTION-TOP `__slot_N` lazily through the BRANCH_RVALUE arm,
+        # so no THIRTry field is needed), or the const borrow-decl pointer.
+        try_flavors[name] = _admit_nonvalue_hoist(name, var_type, lc, stmt,
+                                                  "try.hoist")
     lc.unhandled_hoists.difference_update(hoists)
     for handler in stmt.handlers:
         if (handler.binding
                 and _handler_binding_type(handler, lc.analyzer) is None):
             raise ThirUnsupported(stmt_reject_reason(stmt))
     hoist_decls = _lower_hoist_predecls(hoists, declared, lc, "try.hoist_decl",
-                                        opt_storage=opt_storage_hoists,
-                                        branch_borrow_tuple=btuple_hoists,
-                                        pointer=pointer_hoists,
-                                        const_pointer=const_pointer_hoists)
+                                        try_flavors)
     body_terminates = try_terminates_ignoring_finally(stmt)
     if stmt.tier == "finally_only":
         _witness("try.finally_only")
@@ -15881,43 +15936,25 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         owned_ctx = rcfg.resumable_state(lc.func).with_owned_ctx_map.get(
             stmt)
     hoists = lc.analyzer.if_branch_decls.get(stmt, {})
-    opt_storage_hoists: set[str] = set()
-    pointer_hoists: set[str] = set()
+    with_flavors: dict[str, HoistFlavor] = {}
     for name, raw in hoists.items():
-        if name in declared:
-            continue
-        if name in lc.prescan.native_globals:
-            note_detail("with.hoist")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
         # A with inside a branch / loop hoists here rather than at function
         # top, like the try sibling: the predecl is emitted at the with
         # itself, so the C++ scope IS the enclosing block, and the name
         # enters the caller's branch-local `declared` -- narrower than
         # Python's function scope, but fail-safe (a read after the branch
         # finds no binding and rejects rather than mis-rendering).
-        if _try_hoist_type_ok(unwrap_ref_type(raw), lc.analyzer):
+        bare = _hoist_ladder_head(name, raw, declared, lc, stmt, "with.hoist")
+        if bare is None:
             continue
-        # Non-value single-bind hoists take the if flavor's OPTIONAL_STORAGE
-        # predecl (`std::optional<T> a;` before the with header, the body
-        # decl lowers as the plain engaging assign).
-        var_type = unwrap_ref_type(raw)
-        var_type = (resolve_pending_container(var_type, lc.analyzer)
-                    or var_type)
-        flavor = _opt_storage_hoist_flavor(name, var_type, lc)
-        if flavor is None:
-            opt_storage_hoists.add(name)
-            continue
-        # Borrow-only / reassigned plain non-value hoists take the if
-        # flavor's pointer predecl (`T* name;`; a with-as target is
-        # borrow-only by sema's stmt-borrow fact, so this is the hoisted
-        # with-target arm). An rvalue-reassigned name rides too, like the
-        # try sibling: its reseats allocate the FUNCTION-TOP `__slot_N`
-        # lazily (the BRANCH_RVALUE arm), so no THIRWith field is needed.
-        if flavor == "other" and is_plain_nonvalue(var_type):
-            pointer_hoists.add(name)
-            continue
-        note_detail("with.hoist")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+        # `std::optional<T> a;` before the with header (the body decl
+        # lowering as the plain engaging assign), or the pointer predecl --
+        # a with-as target is borrow-only by sema's stmt-borrow fact, so
+        # this is the hoisted with-target arm, and an rvalue-reassigned
+        # name's reseats allocate the FUNCTION-TOP `__slot_N` lazily
+        # through the BRANCH_RVALUE arm, so no THIRWith field is needed.
+        with_flavors[name] = _admit_nonvalue_hoist(name, bare, lc, stmt,
+                                                   "with.hoist")
     lc.unhandled_hoists.difference_update(hoists)
     items: list[THIRWithItem] = []
     for item_idx, item in enumerate(stmt.items):
@@ -16093,9 +16130,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     if len(stmt.items) > 1:
         _witness("with.multi")
     hoist_decls = _lower_hoist_predecls(hoists, declared, lc,
-                                        "with.hoist_decl",
-                                        opt_storage=opt_storage_hoists,
-                                        pointer=pointer_hoists)
+                                        "with.hoist_decl", with_flavors)
     n_returns_before = len(lc.nested_returns)
     body = _lower_scoped_stmts(stmt.body, lc, dict(declared),
                                loop_depth=loop_depth)

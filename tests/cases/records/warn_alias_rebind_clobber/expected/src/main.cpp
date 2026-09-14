@@ -55,12 +55,92 @@ void for_carried_section() {
     std::cout << "for_carried:" << " " << q->x << " " << p->x << "\n";
 }
 
+// # The rebind site is reached with storage it does not own on the first
+// # iteration (`p = xs[0]`), so it stays OWN -- but its own slot is still
+// # reused on the next iteration while `q` reads it.
+// def foreign_origin_section(xs: list[Point]) -> None:
+//     p = xs[0]
+//     q = take_ptr(p)
+//     for i in range(2):
+//         p = Point(i)  # tpyc: warning(/will not keep the object it was given/)
+//         print("foreign_origin_iter:", q.x)
+//         q = take_ptr(p)
+//     print("foreign_origin:", q.x, p.x)
+void foreign_origin_section(std::vector<Point>& xs) {
+    std::optional<Point> __slot_1;
+    Point* p = &(::tpy::__getitem__(xs, 0));
+    Point* q = &(*p);
+    for (int32_t i = 0; i < 2; ++i) {
+        p = &*(__slot_1 = Point(i));
+        std::cout << "foreign_origin_iter:" << " " << ::tpy::deref_check(q).x << "\n";
+        q = &(*p);
+    }
+    std::cout << "foreign_origin:" << " " << q->x << " " << p->x << "\n";
+}
+
+// # The loop body's FIRST bind of `p` (hoisted before the loop for the read
+// # after it) runs again on the next iteration and reuses its slot the same way.
+// def hoisted_body_bind_section() -> None:
+//     other = Point(41)
+//     q = take_ptr(other)
+//     for i in range(2):
+//         p = Point(i)  # tpyc: warning(/will not keep the object it was given/)
+//         print("hoisted_body_bind_iter:", q.x)
+//         q = take_ptr(p)
+//     print("hoisted_body_bind:", q.x, p.x)
+void hoisted_body_bind_section() {
+    Point other = Point(41);
+    Point* q = &other;
+    std::optional<Point> p;
+    for (int32_t i = 0; i < 2; ++i) {
+        p = Point(i);
+        std::cout << "hoisted_body_bind_iter:" << " " << ::tpy::deref_check(q).x << "\n";
+        q = &(*p);
+    }
+    std::cout << "hoisted_body_bind:" << " " << q->x << " " << p->x << "\n";
+}
+
+// # Two holders of the body-bound `p`: the scope-escape check warns for
+// # `saved` at its alias site, and the rebind still warns for `other`, which
+// # keeps the object of ONE iteration and reads the site's slot after that.
+// def two_alias_section() -> None:
+//     saved = Point(50)
+//     for i in range(3):
+//         p = Point(i)  # tpyc: warning(/'other' will not keep the object/)
+//         saved = p  # tpyc: warning(/'saved' will not keep the object/)
+//         if i == 0:
+//             other = p
+//     other.x += 100
+//     print("two_alias:", saved.x, other.x)
+void two_alias_section() {
+    std::optional<Point> __slot_2;
+    Point __slot_1 = Point(50);
+    Point* saved = &__slot_1;
+    Point* other;
+    for (int32_t i = 0; i < 3; ++i) {
+        Point* p = &*(__slot_2 = Point(i));
+        saved = p;
+        if ((i == 0)) {
+            other = p;
+        }
+    }
+    other->x = ::tpy::add_check<int32_t>(other->x, 100);
+    std::cout << "two_alias:" << " " << saved->x << " " << other->x << "\n";
+}
+
 // def main() -> None:
 //     loop_carried_section()
 //     for_carried_section()
+//     foreign_origin_section([Point(40)])
+//     hoisted_body_bind_section()
+//     two_alias_section()
 void main() {
     ::tpyapp::main::loop_carried_section();
     ::tpyapp::main::for_carried_section();
+    std::vector<Point> __tmp_1 = {Point(40)};
+    ::tpyapp::main::foreign_origin_section(__tmp_1);
+    ::tpyapp::main::hoisted_body_bind_section();
+    ::tpyapp::main::two_alias_section();
 }
 
 // main()

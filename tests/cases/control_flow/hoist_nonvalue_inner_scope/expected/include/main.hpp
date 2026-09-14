@@ -75,6 +75,12 @@ void closure();
 // @error_return(MyErr)
 // def error_return_body(i: int32) -> int32:
 std::expected<int32_t, MyErr> error_return_body(int32_t i);
+// def with_optional(k: int32) -> None:
+void with_optional(int32_t k);
+// def try_optional(k: int32) -> None:
+void try_optional(int32_t k);
+// def with_const_alias(flag: bool, a: readonly[Pic], b: readonly[Pic]) -> None:
+void with_const_alias(bool flag, const Pic& a, const Pic& b);
 // def main() -> None:
 void main();
 

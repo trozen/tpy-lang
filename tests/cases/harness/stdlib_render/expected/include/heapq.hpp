@@ -55,10 +55,10 @@ struct __gen_merge : public ::tpy::next_iter_mixin<__gen_merge<T>, T> {
     int32_t __state;
     ::tpy::varargs<const std::vector<T>> iterables;
     ::tpy::frame_slot<std::vector<int32_t>> cursors;
-    int32_t best;
-    int32_t i;
     ::tpy::frame_slot<std::vector<T>> src;
     int32_t c;
+    int32_t best;
+    int32_t i;
 
     enum : int32_t {
         S_INITIAL = 0,

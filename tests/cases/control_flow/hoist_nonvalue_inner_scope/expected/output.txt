@@ -38,6 +38,18 @@ with_body 2
 with_body exit 1
 try_body 2
 try_body 3
+with_body exit 1
+with_optional 2
+with_body exit 1
+with_optional none
+try_optional 1
+try_optional none
+with_const_alias 2
+with_body exit 1
+with_const_alias 1
+with_const_alias 5
+with_body exit 1
+with_const_alias 4
 match_arm 11
 match_arm other
 closure 8

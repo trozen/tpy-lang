@@ -1186,6 +1186,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # predecls before the loop (lowering; the branch-decl predecls, shared with
     # the if/try/with hoist family). Includes the loop var when hoisted.
     "foreach.hoist_decl",
+    "while.hoist_decl",             # body-declared var read after a while loop -> predecl before it
     # Loop else blocks (lowering; the bare `{...}` past the loop's close
     # brace + its `__after_else_N:;` label -- run on normal completion,
     # jumped past by a break).
@@ -2370,6 +2371,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.param_name",            # `x = b;` over a record param's T& lvalue
     "reseat.borrow_call",           # `x = pick(s);` -> `x = &(pick(s));`
     "reseat.subscript_elem",        # `p = xs[i];` -> `p = &(__getitem__(...));`
+    "reseat.opt_storage_lift",      # `alias = p;` off an OPTIONAL_STORAGE local -> `optional_to_ptr(p)`
     "reseat.narrow_alias_addr",     # `form = data;` off a narrowed union ->
                                     # `form = &(__data);`
     "reseat.dunder_borrow",         # `c = a + b;` -> `c = &(((a) + (b)));`,

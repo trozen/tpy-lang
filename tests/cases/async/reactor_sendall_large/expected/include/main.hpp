@@ -67,9 +67,9 @@ struct __coro_receiver {
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
     int32_t pos;
     int32_t mismatches;
+    int32_t i;
     ::tpy::Bytes chunk;
     int32_t n;
-    int32_t i;
     std::optional<::tpystd::asyncio::_SockRecv> __sub_0;
 
     enum : int32_t {

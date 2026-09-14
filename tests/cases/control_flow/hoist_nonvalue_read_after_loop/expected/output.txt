@@ -1,0 +1,51 @@
+free_two_arms 102
+free_rebind_after 2 2
+free_rebind_after 10 3
+free_alias_holder 7 7
+free_alias_const 7
+free_list [1, 0, 1]
+free_list [9]
+free_dict [(1, 10), (7, 7)]
+free_optional True
+free_optional 10
+free_box 11
+nested_inner_read 106
+nested_inner_read 116
+nested_outer_read 111 111
+nested_outer_read 9 111
+nested_three_deep 1112
+nested_outer_bind_inner_rebind 1
+nested_outer_bind_inner_rebind 11
+nested_outer_bind_inner_rebind 111
+while_two_arms 102
+while_rebind_after 2 2
+while_rebind_after 10 2
+while_true_break 101
+while_in_for 111
+for_in_while 111
+while_unpack 10 10
+comp_walrus_in_loop 10 [0, 10]
+method 99 99
+method 9 99
+ctor 22
+gen 0
+gen 1
+gen 11
+gen 9
+gen_while 0
+gen_while 1
+gen_while 11
+gen_while 9
+gen_for_single 0
+gen_for_single 11
+gen_for_single 112
+gen_while_single v
+gen_while_single v
+gen_while_single v1101
+nested_def 32
+with_body 6
+try_finally 42
+try_finally done
+error_return 52
+match_arm 62
+match_arm other

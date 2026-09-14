@@ -7,7 +7,7 @@
 # Destructor order of the superseded object under an in-iteration alias is
 # NOT pinned here: BUGS.md#loop-if-hoist-alias-early-del.
 from typing import Optional, Protocol
-from tpy import int32, Own, ReturnException, dynamic, error_return, nocopy
+from tpy import int32, Own, ReturnException, dynamic, error_return, nocopy, readonly
 
 
 @nocopy
@@ -319,6 +319,47 @@ def error_return_body(i: int32) -> int32:
     return i
 
 
+# With body, pointer-repr Optional hoisted at the with (`Pic* p;`), None on
+# one path, read after the block.
+def with_optional(k: int32) -> None:
+    with CM(1) as n:
+        p: Optional[Pic] = Pic(k + n)  # tpyc: ok
+        if k == 1:
+            p = None
+    if p is not None:
+        p.n += 1
+        print("with_optional", p.n)
+    else:
+        print("with_optional none")
+
+
+# Try body, the same Optional hoist with the handler's sibling decl.
+def try_optional(k: int32) -> None:
+    try:
+        p: Optional[Pic] = Pic(k)  # tpyc: ok
+        if k == 1:
+            p = None
+    except ValueError:
+        p: Optional[Pic] = None
+    if p is not None:
+        p.n += 1
+        print("try_optional", p.n)
+    else:
+        print("try_optional none")
+
+
+# With body, a readonly alias bound in both arms: the const pointer hoist
+# (`const Pic* f;`) that still observes its source.
+def with_const_alias(flag: bool, a: readonly[Pic], b: readonly[Pic]) -> None:
+    with CM(1) as n:
+        if flag:
+            f = a  # tpyc: ok
+        else:
+            f = b
+        print("with_const_alias", f.n + n)
+    print("with_const_alias", f.n)
+
+
 def main() -> None:
     for_record()
     for_list()
@@ -341,6 +382,12 @@ def main() -> None:
     print("ctor_method", b.total)
     with_body()
     try_body()
+    with_optional(0)
+    with_optional(1)
+    try_optional(0)
+    try_optional(1)
+    with_const_alias(True, Pic(1), Pic(2))
+    with_const_alias(False, Pic(3), Pic(4))
     match_arm(0)
     match_arm(1)
     closure()

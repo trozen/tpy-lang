@@ -160,6 +160,19 @@ def exc_binding() -> Iterator[int32]:
         i += 1
 
 
+# ... the `for` spelling: the handler-only name is a body local of the loop
+# (bound in its namespace alone), so it reaches the frame the same way.
+def exc_binding_for() -> Iterator[int32]:
+    yield -1
+    for i in range(2):
+        try:
+            yield raiser(i)
+        except Boom as err:
+            print("caught", (caught := err).msg)   # tpyc: ok
+            yield 0
+            print("exc resume", caught.msg)
+
+
 # -- generator METHOD: the frame carries `__self` too, same field machinery.
 class Src:
     n: int32
@@ -205,6 +218,8 @@ def main() -> None:
         print("got", h)
 
     for x in exc_binding():
+        print("got", x)
+    for x in exc_binding_for():
         print("got", x)
 
     s = Src(2)

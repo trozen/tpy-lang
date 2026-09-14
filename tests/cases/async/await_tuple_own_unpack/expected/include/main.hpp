@@ -132,12 +132,12 @@ struct __coro_main_coro {
     ::tpy::frame_slot<Counter> c;
     int32_t tag;
     int32_t i;
-    ::tpy::frame_slot<Counter> d;
-    int32_t k;
     int32_t a;
     int32_t b;
     std::vector<int32_t>* lst = nullptr;
     int32_t m;
+    ::tpy::frame_slot<Counter> d;
+    int32_t k;
     ::tpy::frame_slot<std::tuple<Counter, int32_t>> __await_lift_0;
     ::tpy::frame_slot<std::tuple<Counter, int32_t>> __await_lift_1;
     std::tuple<int32_t, int32_t> __await_lift_2;

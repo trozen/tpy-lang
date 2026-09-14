@@ -1,2 +1,6 @@
 main.py:25: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
 main.py:37: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:50: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:62: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:75: warning: 'saved' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value
+main.py:74: warning: 'other' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'other' with copy(p), or bind the new value to a name of its own

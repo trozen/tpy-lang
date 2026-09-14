@@ -4,3 +4,10 @@ loop_carried: 1 1
 for_carried_iter: 30
 for_carried_iter: 1
 for_carried: 1 1
+foreign_origin_iter: 40
+foreign_origin_iter: 1
+foreign_origin: 1 1
+hoisted_body_bind_iter: 41
+hoisted_body_bind_iter: 1
+hoisted_body_bind: 1 1
+two_alias: 102 102

@@ -1097,7 +1097,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
     }
     case S_JOIN_1: {
         if ((nl >= 0)) {
-            int32_t end = nl;
+            end = nl;
             if (((end > 0) && (::tpy::bytes_getitem(buf, (::tpy::sub_check<int32_t>(end, 1))) == 13))) {
                 end = (::tpy::sub_check<int32_t>(end, 1));
             }

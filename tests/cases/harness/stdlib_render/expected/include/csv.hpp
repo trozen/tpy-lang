@@ -289,15 +289,15 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
     bool doublequote;
     bool skipinitialspace;
     std::string line;
-    ::tpy::frame_slot<std::vector<std::string>> row;
-    ::tpy::frame_slot<std::vector<std::string>> parts;
+    bool ended;
     int32_t i;
     int32_t n;
+    std::string_view c;
     bool in_quotes;
     bool at_field_start;
-    bool ended;
+    ::tpy::frame_slot<std::vector<std::string>> parts;
     bool blank;
-    std::string_view c;
+    ::tpy::frame_slot<std::vector<std::string>> row;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -525,15 +525,15 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
     bool doublequote;
     bool skipinitialspace;
     std::string line;
-    ::tpy::frame_slot<std::vector<std::string>> row;
-    ::tpy::frame_slot<std::vector<std::string>> parts;
+    bool ended;
     int32_t i;
     int32_t n;
+    std::string_view c;
     bool in_quotes;
     bool at_field_start;
-    bool ended;
+    ::tpy::frame_slot<std::vector<std::string>> parts;
     bool blank;
-    std::string_view c;
+    ::tpy::frame_slot<std::vector<std::string>> row;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -749,6 +749,7 @@ struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReade
     int32_t __state;
     DictReader<W>& __self;
     bool first;
+    std::string name;
     ::tpy::frame_slot<std::vector<std::string>> row;
     int32_t h;
     int32_t hn;
@@ -841,7 +842,7 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
             i = 0;
             m = ::tpy::__len__(__self.fieldnames);
             while ((i < m)) {
-                std::string name = ::tpy::__getitem__(__self.fieldnames, i);
+                name = ::tpy::__getitem__(__self.fieldnames, i);
                 ::tpy::__setitem__((*out), name, (((i < ::tpy::__len__((*row)))) ? (::tpy::__getitem__((*row), i)) : ("")));
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
