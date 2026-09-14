@@ -82,8 +82,8 @@ void nested_raise() {
 //     print(nested_return())
 //     nested_raise()
 void main() {
-    std::cout << nested_return() << "\n";
-    nested_raise();
+    std::cout << ::tpyapp::main::nested_return() << "\n";
+    ::tpyapp::main::nested_raise();
 }
 
 // main()
@@ -92,7 +92,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

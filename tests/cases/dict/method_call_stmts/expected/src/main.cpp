@@ -41,12 +41,12 @@ void wipe(::tpy::ordered_map<int32_t, int32_t>& d) {
 //     print(len(scores))
 void main() {
     ::tpy::ordered_map<int32_t, int32_t> scores = ::tpy::ordered_map<int32_t, int32_t>({{1, 100}, {2, 200}, {3, 300}, {4, 400}});
-    drop(scores, 1);
+    ::tpyapp::main::drop(scores, 1);
     std::cout << ::tpy::__len__(scores) << "\n";
-    std::cout << take(scores, 2) << "\n";
-    std::cout << peek(scores, 3) << "\n";
-    std::cout << peek(scores, 9) << "\n";
-    wipe(scores);
+    std::cout << ::tpyapp::main::take(scores, 2) << "\n";
+    std::cout << ::tpyapp::main::peek(scores, 3) << "\n";
+    std::cout << ::tpyapp::main::peek(scores, 9) << "\n";
+    ::tpyapp::main::wipe(scores);
     std::cout << ::tpy::__len__(scores) << "\n";
 }
 
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

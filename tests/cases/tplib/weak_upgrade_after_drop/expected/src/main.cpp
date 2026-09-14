@@ -28,7 +28,7 @@ namespace tpyapp::main {
 //     print("--- done ---")
 void main() {
     std::cout << "--- pre ---" << "\n";
-    ::tpystd::tplib::rc::Weak<Cell> w = make_weak_after_rc_dies();
+    ::tpystd::tplib::rc::Weak<Cell> w = ::tpyapp::main::make_weak_after_rc_dies();
     std::cout << "--- post ---" << "\n";
     std::optional<::tpystd::tplib::rc::Rc<Cell>> upgraded = w.upgrade();
     if ((!upgraded.has_value())) {
@@ -49,7 +49,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

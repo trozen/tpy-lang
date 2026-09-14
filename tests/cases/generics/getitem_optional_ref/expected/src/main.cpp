@@ -47,7 +47,7 @@ void main() {
     if ((m == nullptr)) {
         std::cout << "miss" << "\n";
     }
-    peek(b);
+    ::tpyapp::main::peek(b);
     GenBox<int32_t, Rec> g = GenBox<int32_t, Rec>(1, Rec(20));
     Rec* q = g[1];
     if ((q != nullptr)) {
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

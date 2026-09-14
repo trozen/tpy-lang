@@ -159,7 +159,7 @@ std::string early_return_helper() {
 //     val = early_return_helper()
 //     print(val)
 void test_early_return() {
-    std::string val = early_return_helper();
+    std::string val = ::tpyapp::main::early_return_helper();
     std::cout << val << "\n";
 }
 
@@ -227,8 +227,8 @@ std::string nested_with_all_return(bool flag) {
 //     print(nested_with_all_return(True))
 //     print(nested_with_all_return(False))
 void test_nested_with_all_return() {
-    std::cout << nested_with_all_return(true) << "\n";
-    std::cout << nested_with_all_return(false) << "\n";
+    std::cout << ::tpyapp::main::nested_with_all_return(true) << "\n";
+    std::cout << ::tpyapp::main::nested_with_all_return(false) << "\n";
 }
 
 // def test_body_var_survives_scope() -> None:
@@ -532,35 +532,35 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
+    ::tpyapp::main::test_basic();
     std::cout << "---" << "\n";
-    test_no_as();
+    ::tpyapp::main::test_no_as();
     std::cout << "---" << "\n";
-    test_enter_returns_different_type();
+    ::tpyapp::main::test_enter_returns_different_type();
     std::cout << "---" << "\n";
-    test_multiple_ctx_managers();
+    ::tpyapp::main::test_multiple_ctx_managers();
     std::cout << "---" << "\n";
-    test_variable_visible_after();
+    ::tpyapp::main::test_variable_visible_after();
     std::cout << "---" << "\n";
-    test_early_return();
+    ::tpyapp::main::test_early_return();
     std::cout << "---" << "\n";
-    test_nested_with_all_return();
+    ::tpyapp::main::test_nested_with_all_return();
     std::cout << "---" << "\n";
-    test_body_var_survives_scope();
+    ::tpyapp::main::test_body_var_survives_scope();
     std::cout << "---" << "\n";
-    test_body_record_var_survives_scope();
+    ::tpyapp::main::test_body_record_var_survives_scope();
     std::cout << "---" << "\n";
-    test_reuse_with_var_name();
+    ::tpyapp::main::test_reuse_with_var_name();
     std::cout << "---" << "\n";
-    test_exception_in_body();
+    ::tpyapp::main::test_exception_in_body();
     std::cout << "---" << "\n";
-    test_exception_multi();
+    ::tpyapp::main::test_exception_multi();
     std::cout << "---" << "\n";
-    test_with_in_try_finally();
+    ::tpyapp::main::test_with_in_try_finally();
     std::cout << "---" << "\n";
-    test_break_in_with();
+    ::tpyapp::main::test_break_in_with();
     std::cout << "---" << "\n";
-    test_continue_in_with();
+    ::tpyapp::main::test_continue_in_with();
 }
 
 } // namespace tpyapp::main

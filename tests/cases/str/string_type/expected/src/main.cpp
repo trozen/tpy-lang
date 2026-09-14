@@ -49,10 +49,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_string_basic();
-    test_string_from_int();
-    test_string_from_bool();
-    test_string_getitem();
+    ::tpyapp::main::test_string_basic();
+    ::tpyapp::main::test_string_from_int();
+    ::tpyapp::main::test_string_from_bool();
+    ::tpyapp::main::test_string_getitem();
 }
 
 } // namespace tpyapp::main

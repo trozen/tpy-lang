@@ -27,11 +27,11 @@ std::string describe(Pet& p) {
 //     print(describe(Hamster()))
 void main() {
     Dog __tmp_1{Dog()};
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
     Cat __tmp_2{Cat()};
-    std::cout << describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
     Hamster __tmp_3{Hamster()};
-    std::cout << describe(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n";
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

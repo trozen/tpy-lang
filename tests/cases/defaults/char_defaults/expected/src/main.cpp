@@ -23,10 +23,10 @@ std::string bracket(std::string_view text, char open_ch, char close_ch) {
 //     print(bracket("hello"))
 //     print(bracket("hello", '[', ']'))
 void main() {
-    greet();
-    greet('A');
-    std::cout << bracket("hello") << "\n";
-    std::cout << bracket("hello", '[', ']') << "\n";
+    ::tpyapp::main::greet();
+    ::tpyapp::main::greet('A');
+    std::cout << ::tpyapp::main::bracket("hello") << "\n";
+    std::cout << ::tpyapp::main::bracket("hello", '[', ']') << "\n";
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

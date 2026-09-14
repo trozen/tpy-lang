@@ -58,12 +58,12 @@ void exempt_copy(const P& p) {
 //     exempt_copy(P(8))
 void main() {
     std::vector<std::tuple<int32_t, P>> src = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(5)})};
-    list_literal(src);
-    dict_value(src);
-    via_append(src);
-    exempt_fresh(0);
+    ::tpyapp::main::list_literal(src);
+    ::tpyapp::main::dict_value(src);
+    ::tpyapp::main::via_append(src);
+    ::tpyapp::main::exempt_fresh(0);
     P __tmp_1 = P(8);
-    exempt_copy(__tmp_1);
+    ::tpyapp::main::exempt_copy(__tmp_1);
 }
 
 // main()
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

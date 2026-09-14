@@ -19,7 +19,7 @@ int32_t shout(std::string_view a, std::string_view b, bool c) {
 // def main() -> None:
 //     print(shout("ab", "cd", True))
 void main() {
-    std::cout << shout("ab", "cd", true) << "\n";
+    std::cout << ::tpyapp::main::shout("ab", "cd", true) << "\n";
 }
 
 // main()
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -77,7 +77,7 @@ __coro_total total(const std::vector<Point>& ps) {
 //     print(asyncio.run(total(pts)))
 void main() {
     std::vector<Point> pts = ::tpy::make_vector<Point>(Point(1), Point(2));
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(total(pts))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::total(pts))) << "\n";
 }
 
 // # An async frame's loop var over a `readonly` reference element: the advance
@@ -93,7 +93,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

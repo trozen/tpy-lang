@@ -15,7 +15,7 @@ int32_t read_mixed(const std::tuple<A, const A*>& p) {
 //     print(read_mixed((A(1), keep)))
 void main() {
     A keep = A(2);
-    std::cout << read_mixed(std::tuple<A, A*>{A(1), &(keep)}) << "\n";
+    std::cout << ::tpyapp::main::read_mixed(std::tuple<A, A*>{A(1), &(keep)}) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

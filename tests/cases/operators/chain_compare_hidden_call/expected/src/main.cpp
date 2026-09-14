@@ -54,7 +54,7 @@ void main() {
     bool out_of_range = ({ auto&& _cmp1 = p.mid(); (1 < _cmp1) && (_cmp1 < 3); });
     std::cout << "out of range:" << " " << ::tpy::print_bool(out_of_range) << " " << "calls:" << " " << calls << "\n";
     order = ::tpy::BigInt(0);
-    bool ordered = ({ auto&& _cmp0 = p.first(); auto&& _cmp1 = bump(::tpy::BigInt(2), ::tpy::BigInt(5)); (_cmp0 < _cmp1) && (_cmp1 < bump(::tpy::BigInt(3), ::tpy::BigInt(10))); });
+    bool ordered = ({ auto&& _cmp0 = p.first(); auto&& _cmp1 = ::tpyapp::main::bump(::tpy::BigInt(2), ::tpy::BigInt(5)); (_cmp0 < _cmp1) && (_cmp1 < ::tpyapp::main::bump(::tpy::BigInt(3), ::tpy::BigInt(10))); });
     std::cout << "ordered:" << " " << ::tpy::print_bool(ordered) << " " << "order:" << " " << order << "\n";
     calls = 0;
     bool short_ = ((1 < 0) && (::tpy::BigInt(0) < p.mid()));
@@ -84,7 +84,7 @@ void __tpy_init() {
 
     calls = 0;
     order = ::tpy::BigInt(0);
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

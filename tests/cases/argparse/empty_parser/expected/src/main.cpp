@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    __tpy_builder_argparse_parse_1(__tmp_1);
+    ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
     std::cout << "ok" << "\n";
     return 0;
 }
@@ -28,7 +28,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     int32_t __tpy_argparse_h = 0;
     while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
         if (((argv[static_cast<std::size_t>(__tpy_argparse_h)] == "-h") || (argv[static_cast<std::size_t>(__tpy_argparse_h)] == "--help"))) {
-            __tpy_builder_argparse_help_1();
+            ::tpyapp::main::__tpy_builder_argparse_help_1();
         }
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
@@ -48,7 +48,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

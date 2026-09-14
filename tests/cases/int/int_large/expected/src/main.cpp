@@ -12,7 +12,7 @@ namespace tpyapp::main {
     if ((n <= 1)) {
         return ::tpy::BigInt(1);
     }
-    return ((n) * (factorial(((n) - (::tpy::BigInt(1))))));
+    return ((n) * (::tpyapp::main::factorial(((n) - (::tpy::BigInt(1))))));
 }
 
 // # 20! fits in 63-bit small int
@@ -31,10 +31,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << factorial(::tpy::BigInt(20)) << "\n";
-    std::cout << factorial(::tpy::BigInt(25)) << "\n";
-    std::cout << factorial(::tpy::BigInt(50)) << "\n";
-    std::cout << factorial(::tpy::BigInt(100)) << "\n";
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(20)) << "\n";
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(25)) << "\n";
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(50)) << "\n";
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(100)) << "\n";
 }
 
 } // namespace tpyapp::main

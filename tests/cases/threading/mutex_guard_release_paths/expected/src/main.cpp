@@ -68,8 +68,8 @@ void append_then_raise(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& m
 //         print(n, total)     # 3 elements; 0 + 1 + 2 = 3
 void main() {
     ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({0});
-    append_then_return(m);
-    append_then_raise(m);
+    ::tpyapp::main::append_then_return(m);
+    ::tpyapp::main::append_then_raise(m);
     int32_t n;
     int32_t total;
     auto __ctx_3 = m.lock();
@@ -107,7 +107,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tpy::sync::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

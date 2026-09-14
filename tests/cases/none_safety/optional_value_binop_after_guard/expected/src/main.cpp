@@ -22,8 +22,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << add_after_guard(2) << "\n";
-    std::cout << add_after_guard(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::add_after_guard(2) << "\n";
+    std::cout << ::tpyapp::main::add_after_guard(std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

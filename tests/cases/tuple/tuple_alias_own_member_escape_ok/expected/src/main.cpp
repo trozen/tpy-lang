@@ -20,7 +20,7 @@ std::tuple<Box, int32_t> make() {
 //     got, n = make()
 //     print(got.val + n)
 void main() {
-    auto __tup_1 = make();
+    auto __tup_1 = ::tpyapp::main::make();
     Box got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     std::cout << (::tpy::add_check<int32_t>(got.val, n)) << "\n";
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

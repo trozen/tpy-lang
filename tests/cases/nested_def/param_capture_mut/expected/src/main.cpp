@@ -24,7 +24,7 @@ void fill(std::vector<int32_t>& xs, int32_t v) {
 //     print(xs)
 void main() {
     std::vector<int32_t> xs = std::vector<int32_t>{};
-    fill(xs, 7);
+    ::tpyapp::main::fill(xs, 7);
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

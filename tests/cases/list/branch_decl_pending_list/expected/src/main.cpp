@@ -133,16 +133,16 @@ namespace tpyapp::main {
 //     print(pick_with())
 //     print(pick_loop())
 void main() {
-    std::cout << pick_list(true) << "\n";
-    std::cout << pick_list(false) << "\n";
-    std::cout << pick_dict(true) << "\n";
-    std::cout << pick_dict(false) << "\n";
-    std::cout << pick_set(true) << "\n";
-    std::cout << pick_set(false) << "\n";
-    std::cout << pick_try(false) << "\n";
-    std::cout << pick_try(true) << "\n";
-    std::cout << pick_with() << "\n";
-    std::cout << pick_loop() << "\n";
+    std::cout << ::tpyapp::main::pick_list(true) << "\n";
+    std::cout << ::tpyapp::main::pick_list(false) << "\n";
+    std::cout << ::tpyapp::main::pick_dict(true) << "\n";
+    std::cout << ::tpyapp::main::pick_dict(false) << "\n";
+    std::cout << ::tpyapp::main::pick_set(true) << "\n";
+    std::cout << ::tpyapp::main::pick_set(false) << "\n";
+    std::cout << ::tpyapp::main::pick_try(false) << "\n";
+    std::cout << ::tpyapp::main::pick_try(true) << "\n";
+    std::cout << ::tpyapp::main::pick_with() << "\n";
+    std::cout << ::tpyapp::main::pick_loop() << "\n";
 }
 
 // main()
@@ -151,7 +151,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

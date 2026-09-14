@@ -482,7 +482,7 @@ def test_for_each_gen_call_container_literal_arg_routes():
         "    return t\n",
         "routed")
     flush = body.index("std::vector<int32_t> __tmp_1 = {1, 2, 3};")
-    src = body.index("auto __src_0 = gen(__tmp_1);")
+    src = body.index("auto __src_0 = ::tpyapp::main::gen(__tmp_1);")
     # The rvalue brace scope, past the function's own opening brace.
     scope = body.index("{\n", body.index("{\n") + 1)
     assert scope < flush < src
@@ -504,7 +504,7 @@ def test_iterator_object_decl_routes():
         "        t = t + v\n"
         "    return t\n",
         "routed")
-    assert "auto it = gen(n);\n" in body
+    assert "auto it = ::tpyapp::main::gen(n);\n" in body
     assert "auto& __src_0 = it;\n" in body
     assert compiler._thir_face_witnesses.get("decl.iterator_object") == 1
 
@@ -576,7 +576,8 @@ def test_for_each_gen_call_record_rvalue_arg_routes():
         "        t = t + x\n"
         "    return t\n",
         "routed")
-    assert body.index("__tmp_1") < body.index("auto __src_0 = gen(__tmp_1);")
+    assert body.index("__tmp_1") < body.index(
+        "auto __src_0 = ::tpyapp::main::gen(__tmp_1);")
 
 
 def test_for_each_container_route_literal_arg_still_rejects():

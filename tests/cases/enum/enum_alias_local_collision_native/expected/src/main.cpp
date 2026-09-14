@@ -60,8 +60,8 @@ std::string native_label(::lib::Color c) {
 //     local: Color = Color.CYAN
 //     print(local.name, local.value)
 void main() {
-    std::cout << native_label(::lib::Color::RED) << "\n";
-    std::cout << native_label(::lib::Color::GREEN) << "\n";
+    std::cout << ::tpyapp::main::native_label(::lib::Color::RED) << "\n";
+    std::cout << ::tpyapp::main::native_label(::lib::Color::GREEN) << "\n";
     std::cout << static_cast<int32_t>(::lib::Color::RED) << "\n";
     Color local = Color::CYAN;
     std::cout << ::tpy::EnumUtil<Color>::name(local) << " " << static_cast<int32_t>(local) << "\n";
@@ -79,7 +79,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::nativelib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

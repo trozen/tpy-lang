@@ -28,7 +28,7 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = {1};
     log = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

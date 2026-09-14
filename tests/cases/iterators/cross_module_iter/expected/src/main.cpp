@@ -39,7 +39,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::bag::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

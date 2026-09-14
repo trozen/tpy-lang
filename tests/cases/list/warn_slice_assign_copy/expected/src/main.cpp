@@ -55,10 +55,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_warn_non_last_use();
-    test_no_warn_last_use();
-    test_no_warn_literal();
-    test_no_warn_explicit_copy();
+    ::tpyapp::main::test_warn_non_last_use();
+    ::tpyapp::main::test_no_warn_last_use();
+    ::tpyapp::main::test_no_warn_literal();
+    ::tpyapp::main::test_no_warn_explicit_copy();
 }
 
 } // namespace tpyapp::main

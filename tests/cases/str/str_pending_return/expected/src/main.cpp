@@ -28,8 +28,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << make_greeting("world") << "\n";
-    std::cout << echo("test") << "\n";
+    std::cout << ::tpyapp::main::make_greeting("world") << "\n";
+    std::cout << ::tpyapp::main::echo("test") << "\n";
 }
 
 } // namespace tpyapp::main

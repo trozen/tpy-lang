@@ -16,7 +16,7 @@ int32_t use(const ::tpyapp::_bindings::pcre2::Code& c) {
 void main() {
     std::cout << ::tpyapp::_bindings::pcre2::compile_pattern("hello") << "\n";
     ::tpyapp::_bindings::pcre2::Code __tmp_1 = ::tpyapp::_bindings::pcre2::Code(7);
-    std::cout << use(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use(__tmp_1) << "\n";
 }
 
 // # `from pkg import submod` binds submod as a usable namespace:
@@ -35,7 +35,7 @@ void __tpy_init() {
 
     ::tpyapp::_bindings::__tpy_init();
     ::tpyapp::_bindings::pcre2::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

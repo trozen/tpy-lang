@@ -24,11 +24,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
         f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
         step = 100;
         __state = S_RESUME_0;
-        return apply(f, 1);
+        return ::tpyapp::main::apply(f, 1);
     }
     case S_RESUME_0: {  // after: yield apply(f, 1)
         __state = S_RESUME_1;
-        return apply(f, 2);
+        return ::tpyapp::main::apply(f, 2);
     }
     case S_RESUME_1: {  // after: yield apply(f, 2)
         __state = S_DONE;
@@ -62,12 +62,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_copied::__next__() {
     case S_INITIAL: {  // entry
         f = [xs = xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); };
         __state = S_RESUME_0;
-        return apply(f, 0);
+        return ::tpyapp::main::apply(f, 0);
     }
     case S_RESUME_0: {  // after: yield apply(f, 0)
         ::tpy::__setitem__(xs, 0, 99);
         __state = S_RESUME_1;
-        return apply(f, 0);
+        return ::tpyapp::main::apply(f, 0);
     }
     case S_RESUME_1: {  // after: yield apply(f, 0)
         __state = S_DONE;
@@ -94,7 +94,7 @@ __gen_copied copied(std::vector<int32_t>& xs) {
 //     print("copied after", src)
 void main() {
     {
-        auto __src_0 = cell();
+        auto __src_0 = ::tpyapp::main::cell();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -105,7 +105,7 @@ void main() {
     }
     std::vector<int32_t> src = {1, 2};
     {
-        auto __src_2 = copied(src);
+        auto __src_2 = ::tpyapp::main::copied(src);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -123,7 +123,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -40,13 +40,13 @@ int32_t use_int(int32_t x) {
 //     print(c.items[1].value)
 void main() {
     Box b = Box(42);
-    std::cout << consume(std::move(b)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(b)) << "\n";
     Box b2 = Box(99);
-    std::cout << consume(Box(b2)) << "\n";
+    std::cout << ::tpyapp::main::consume(Box(b2)) << "\n";
     std::cout << b2.value << "\n";
     int32_t n = 7;
     int32_t __tmp_1 = n;
-    std::cout << use_int(std::move(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::use_int(std::move(__tmp_1)) << "\n";
     Container<Box> c = Container<Box>();
     Box b3 = Box(10);
     Box b4 = Box(20);
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

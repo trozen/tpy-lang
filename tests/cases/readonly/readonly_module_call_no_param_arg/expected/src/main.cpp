@@ -21,7 +21,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::helpers::__tpy_init();
-    ok();
+    ::tpyapp::main::ok();
     std::cout << 0 << "\n";
 }
 

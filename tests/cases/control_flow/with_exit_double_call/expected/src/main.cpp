@@ -38,8 +38,8 @@ void fall_through(bool do_raise) {
 //     fall_through(False)
 //     fall_through(True)
 void main() {
-    fall_through(false);
-    fall_through(true);
+    ::tpyapp::main::fall_through(false);
+    ::tpyapp::main::fall_through(true);
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -54,8 +54,8 @@ void __tpy_init() {
     V = &*(__global_slot_1 = Box(2));
     singleton = V;
     pair = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box*, Box*>{V, V});
-    mixed = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed((*V)));
-    main();
+    mixed = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed((*V)));
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

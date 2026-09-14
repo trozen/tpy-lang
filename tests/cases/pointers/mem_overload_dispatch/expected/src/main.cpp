@@ -61,10 +61,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_array_overload();
-    test_list_overload();
-    test_str_overload();
-    test_store_and_load();
+    ::tpyapp::main::test_array_overload();
+    ::tpyapp::main::test_list_overload();
+    ::tpyapp::main::test_str_overload();
+    ::tpyapp::main::test_store_and_load();
 }
 
 } // namespace tpyapp::main

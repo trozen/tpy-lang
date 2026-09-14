@@ -72,11 +72,11 @@ int32_t finally_returns(int32_t n) {
 //     print(find_or_die([5, 6, 7], 6))
 //     print(finally_returns(9))
 void main() {
-    std::cout << spin(0) << "\n";
-    std::cout << nested_break_ok(2) << "\n";
+    std::cout << ::tpyapp::main::spin(0) << "\n";
+    std::cout << ::tpyapp::main::nested_break_ok(2) << "\n";
     std::vector<int32_t> __tmp_1 = {5, 6, 7};
-    std::cout << find_or_die(__tmp_1, 6) << "\n";
-    std::cout << finally_returns(9) << "\n";
+    std::cout << ::tpyapp::main::find_or_die(__tmp_1, 6) << "\n";
+    std::cout << ::tpyapp::main::finally_returns(9) << "\n";
 }
 
 // main()
@@ -85,7 +85,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -61,7 +61,7 @@ int32_t addall(::tpy::varargs<const int32_t> nums) {
 std::string reassign_view_param(std::string_view __param_p) {
     std::string p = std::string(__param_p);
     std::array<const std::string, 1> __tmp_1{"!"};
-    p = joins(p, ::tpy::varargs<const std::string>(__tmp_1));
+    p = ::tpyapp::main::joins(p, ::tpy::varargs<const std::string>(__tmp_1));
     return std::string(p);
 }
 
@@ -69,14 +69,14 @@ std::string reassign_view_param(std::string_view __param_p) {
 //     return joins("x", sv)              # view arg into *parts: str
 std::string from_str_view(std::string_view sv) {
     std::array<const std::string, 1> __tmp_2{std::string(sv)};
-    return joins("x", ::tpy::varargs<const std::string>(__tmp_2));
+    return ::tpyapp::main::joins("x", ::tpy::varargs<const std::string>(__tmp_2));
 }
 
 // def from_bytes_view(bv: BytesView) -> int32:
 //     return total_len(b"x", bv)         # view arg into *parts: bytes
 int32_t from_bytes_view(::tpy::BytesView bv) {
     std::array<const ::tpy::Bytes, 1> __tmp_3{::tpy::Bytes(bv)};
-    return total_len(::tpy::bytes_literal("x", 1), ::tpy::varargs<const ::tpy::Bytes>(__tmp_3));
+    return ::tpyapp::main::total_len(::tpy::bytes_literal("x", 1), ::tpy::varargs<const ::tpy::Bytes>(__tmp_3));
 }
 
 // def loop_var_into_join(names: list[str]) -> None:
@@ -94,7 +94,7 @@ void loop_var_into_join(const std::vector<std::string>& names) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view d = *__beg_0;
         std::array<const std::string, 1> __tmp_4{std::string(d)};
-        out.push_back(joins("/", ::tpy::varargs<const std::string>(__tmp_4)));
+        out.push_back(::tpyapp::main::joins("/", ::tpy::varargs<const std::string>(__tmp_4)));
     }
     auto& __obj_1 = out;
     auto __beg_1 = __obj_1.begin();
@@ -128,19 +128,19 @@ std::string method_view_vararg(std::string_view sv) {
 //     ns.append("b")
 //     loop_var_into_join(ns)
 void main() {
-    std::cout << from_str_view("hi") << "\n";
-    std::cout << reassign_view_param("p") << "\n";
-    std::cout << method_view_vararg("v") << "\n";
-    std::cout << from_bytes_view(::tpy::bytes_literal("hello", 5)) << "\n";
+    std::cout << ::tpyapp::main::from_str_view("hi") << "\n";
+    std::cout << ::tpyapp::main::reassign_view_param("p") << "\n";
+    std::cout << ::tpyapp::main::method_view_vararg("v") << "\n";
+    std::cout << ::tpyapp::main::from_bytes_view(::tpy::bytes_literal("hello", 5)) << "\n";
     ::tpy::String owned = (::tpy::str_concat("a", "b"));
     std::array<const std::string, 2> __tmp_6{owned, "q"};
-    std::cout << joins("p", ::tpy::varargs<const std::string>(__tmp_6)) << "\n";
+    std::cout << ::tpyapp::main::joins("p", ::tpy::varargs<const std::string>(__tmp_6)) << "\n";
     std::array<const int32_t, 3> __tmp_7{1, 2, 3};
-    std::cout << addall(::tpy::varargs<const int32_t>(__tmp_7)) << "\n";
+    std::cout << ::tpyapp::main::addall(::tpy::varargs<const int32_t>(__tmp_7)) << "\n";
     std::vector<std::string> ns = std::vector<std::string>{};
     ns.push_back("a");
     ns.push_back("b");
-    loop_var_into_join(ns);
+    ::tpyapp::main::loop_var_into_join(ns);
 }
 
 // main()
@@ -149,7 +149,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     print("done")
 void main() {
     Box<int32_t> b = Box<int32_t>(42);
-    Wrapper<Box<int32_t>, int32_t> w = wrap_with_tag<Box<int32_t>, int32_t>(std::move(b), 99);
+    Wrapper<Box<int32_t>, int32_t> w = ::tpyapp::main::wrap_with_tag<Box<int32_t>, int32_t>(std::move(b), 99);
     std::cout << w.inner.val << "\n";
     std::cout << w.tag << "\n";
     std::cout << "done" << "\n";
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

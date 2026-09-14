@@ -38,7 +38,7 @@ void main() {
         auto& __c = *std::get<Rect*>(c);
         std::cout << "no" << "\n";
     }
-    std::cout << describe(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n";
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

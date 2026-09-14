@@ -38,7 +38,7 @@ __gen_tails tails(std::string_view s) {
 void main() {
     {
         std::string __tmp_1 = "hello";
-        auto __src_0 = tails(__tmp_1);
+        auto __src_0 = ::tpyapp::main::tails(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

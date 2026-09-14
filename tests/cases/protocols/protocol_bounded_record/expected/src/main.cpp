@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     print(pair.second)
 void main() {
     DefaultPairFactory factory = DefaultPairFactory();
-    SortedPair<int32_t> pair = create_pair<DefaultPairFactory>(factory, 30, 10);
+    SortedPair<int32_t> pair = ::tpyapp::main::create_pair<DefaultPairFactory>(factory, 30, 10);
     std::cout << pair.first << "\n";
     std::cout << pair.second << "\n";
 }
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -311,7 +311,7 @@ __coro_amain amain() {
 void main() {
     {
         std::string __tmp_1 = "z";
-        auto __src_0 = gen(__tmp_1, true);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -322,7 +322,7 @@ void main() {
     }
     {
         std::string __tmp_2 = "z";
-        auto __src_2 = gen(__tmp_2, false);
+        auto __src_2 = ::tpyapp::main::gen(__tmp_2, false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -333,7 +333,7 @@ void main() {
     }
     {
         std::string __tmp_3 = "c";
-        auto __src_4 = gen(__tmp_3, false);
+        auto __src_4 = ::tpyapp::main::gen(__tmp_3, false);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -342,7 +342,7 @@ void main() {
         std::cout << v << "\n";
         }
     }
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 
 // # A str-literal `match` whose arms suspend: the discriminator switch carries
@@ -357,7 +357,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

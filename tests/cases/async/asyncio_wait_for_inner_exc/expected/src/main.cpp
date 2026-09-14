@@ -71,7 +71,7 @@ __coro_fails fails() {
     }
     case S_JOIN_1: {
         try {
-            __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(fails()), 5.0);
+            __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::fails()), 5.0);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
@@ -96,7 +96,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Inner exception path: if the awaited coroutine raises a non-cancel
@@ -111,7 +111,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

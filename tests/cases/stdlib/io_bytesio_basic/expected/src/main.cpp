@@ -114,15 +114,15 @@ void context_manager_and_close() {
 //     print("---")
 //     context_manager_and_close()
 void main() {
-    basic_write_read();
+    ::tpyapp::main::basic_write_read();
     std::cout << "---" << "\n";
-    initial_value_and_overwrite();
+    ::tpyapp::main::initial_value_and_overwrite();
     std::cout << "---" << "\n";
-    seek_then_read();
+    ::tpyapp::main::seek_then_read();
     std::cout << "---" << "\n";
-    readline_iteration();
+    ::tpyapp::main::readline_iteration();
     std::cout << "---" << "\n";
-    context_manager_and_close();
+    ::tpyapp::main::context_manager_and_close();
 }
 
 // # io.BytesIO -- write/read/seek/iter + context manager + closed errors.
@@ -135,7 +135,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::io::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

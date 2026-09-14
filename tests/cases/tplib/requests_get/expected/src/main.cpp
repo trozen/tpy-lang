@@ -85,7 +85,7 @@ void __tpy_init() {
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
     ::tpystd::json::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

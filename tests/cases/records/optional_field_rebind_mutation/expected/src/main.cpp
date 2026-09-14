@@ -32,7 +32,7 @@ void test(Holder& h) {
 //     test(Holder())
 void main() {
     Holder __tmp_1 = Holder();
-    test(__tmp_1);
+    ::tpyapp::main::test(__tmp_1);
 }
 
 // main()
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

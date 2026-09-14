@@ -22,16 +22,16 @@ namespace tpyapp::main {
 //     e: int32 = make_default(42)
 //     print(e)
 void main() {
-    int32_t a = make_default<int32_t>();
+    int32_t a = ::tpyapp::main::make_default<int32_t>();
     std::cout << a << "\n";
-    std::string b = make_default<std::string>();
+    std::string b = ::tpyapp::main::make_default<std::string>();
     std::cout << b << "\n";
     std::cout << ::tpy::__len__(b) << "\n";
-    bool c = make_default<bool>();
+    bool c = ::tpyapp::main::make_default<bool>();
     std::cout << ::tpy::print_bool(c) << "\n";
-    int32_t d = make_default<int32_t>(42);
+    int32_t d = ::tpyapp::main::make_default<int32_t>(42);
     std::cout << d << "\n";
-    int32_t e = make_default<int32_t>(42);
+    int32_t e = ::tpyapp::main::make_default<int32_t>(42);
     std::cout << e << "\n";
 }
 
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

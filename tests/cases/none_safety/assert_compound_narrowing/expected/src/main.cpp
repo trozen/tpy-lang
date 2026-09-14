@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << clamp_positive(5) << "\n";
+    std::cout << ::tpyapp::main::clamp_positive(5) << "\n";
 }
 
 } // namespace tpyapp::main

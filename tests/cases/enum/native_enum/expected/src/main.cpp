@@ -75,8 +75,8 @@ void main() {
     ::ns::E e = ::ns::E::A;
     std::cout << ::tpy::__repr__(e) << "\n";
     std::cout << ::tpy::__repr__(::ns::E::B) << "\n";
-    std::cout << label(e) << "\n";
-    std::cout << label(::ns::E::B) << "\n";
+    std::cout << ::tpyapp::main::label(e) << "\n";
+    std::cout << ::tpyapp::main::label(::ns::E::B) << "\n";
     std::cout << ::tpy::EnumUtil<::ns::E>::name(e) << "\n";
     std::cout << static_cast<int32_t>(e) << "\n";
 }
@@ -94,7 +94,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

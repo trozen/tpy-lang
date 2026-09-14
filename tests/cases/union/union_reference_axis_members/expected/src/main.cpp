@@ -53,15 +53,15 @@ void touch(::tpy::Union<std::array<int32_t, 2>*, std::vector<int32_t>*> u) {
 void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> u{&(ba)};
-    grow(u);
+    ::tpyapp::main::grow(u);
     std::cout << ::tpy::__len__(ba) << "\n";
     std::vector<int32_t> xs = {1, 2};
     ::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> v{&(xs)};
-    grow(v);
+    ::tpyapp::main::grow(v);
     std::cout << ::tpy::__len__(xs) << "\n";
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
     ::tpy::Union<std::array<int32_t, 2>*, std::vector<int32_t>*> ua{&(a)};
-    touch(ua);
+    ::tpyapp::main::touch(ua);
     std::cout << ::tpy::__getitem__(a, 0) << "\n";
 }
 
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

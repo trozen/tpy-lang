@@ -58,10 +58,10 @@ void annotated_list() {
 //     literal_set()
 //     annotated_list()
 void main() {
-    literal_list();
-    literal_dict();
-    literal_set();
-    annotated_list();
+    ::tpyapp::main::literal_list();
+    ::tpyapp::main::literal_dict();
+    ::tpyapp::main::literal_set();
+    ::tpyapp::main::annotated_list();
 }
 
 // main()
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

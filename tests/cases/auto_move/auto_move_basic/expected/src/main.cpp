@@ -21,7 +21,7 @@ void main() {
     Point p = Point();
     p.x = 10;
     p.y = 32;
-    int32_t result = consume(std::move(p));
+    int32_t result = ::tpyapp::main::consume(std::move(p));
     std::cout << result << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

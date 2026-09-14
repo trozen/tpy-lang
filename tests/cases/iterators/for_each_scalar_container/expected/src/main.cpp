@@ -64,11 +64,11 @@ int32_t keysum(const ::tpy::ordered_map<int32_t, int32_t>& d) {
 //     print(keysum(scores))
 void main() {
     std::vector<int32_t> xs = {1, -2, 3, -4, 5};
-    std::cout << total(xs) << "\n";
-    std::cout << count_pos(xs) << "\n";
+    std::cout << ::tpyapp::main::total(xs) << "\n";
+    std::cout << ::tpyapp::main::count_pos(xs) << "\n";
     std::cout << ::tpy::__len__(xs) << "\n";
     ::tpy::ordered_map<int32_t, int32_t> scores = ::tpy::ordered_map<int32_t, int32_t>({{10, 100}, {20, 200}});
-    std::cout << keysum(scores) << "\n";
+    std::cout << ::tpyapp::main::keysum(scores) << "\n";
 }
 
 // main()
@@ -77,7 +77,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

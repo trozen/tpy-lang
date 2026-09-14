@@ -78,10 +78,10 @@ void main() {
     c.safe_subscript_assign();
     c.aug_assign_field_container();
     c.field_reassign_while_borrowed();
-    ptr_to_field();
-    ptr_to_field_no_conflict();
-    external_field_path();
-    reassign_clears_borrow();
+    ::tpyapp::main::ptr_to_field();
+    ::tpyapp::main::ptr_to_field_no_conflict();
+    ::tpyapp::main::external_field_path();
+    ::tpyapp::main::reassign_clears_borrow();
 }
 
 // main()
@@ -90,7 +90,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

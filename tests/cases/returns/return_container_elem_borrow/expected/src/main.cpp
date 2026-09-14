@@ -27,7 +27,7 @@ void main() {
     ::tpy::__setitem__(row, 0, 99);
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(f.data, 1), 0) << "\n";
     std::vector<std::vector<int32_t>> rows = {{5, 6}, {7, 8}};
-    std::vector<int32_t>& got = pick(rows, 0);
+    std::vector<int32_t>& got = ::tpyapp::main::pick(rows, 0);
     ::tpy::__setitem__(got, 1, 60);
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 1) << "\n";
 }
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

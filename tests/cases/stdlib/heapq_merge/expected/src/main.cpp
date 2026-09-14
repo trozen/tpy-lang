@@ -150,7 +150,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::heapq::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

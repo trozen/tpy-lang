@@ -30,11 +30,11 @@ std::tuple<int32_t, Box*> ret_alias(Holder& h) {
 //     print(h2.pair[1].val)
 void main() {
     Holder h = Holder(Box(5));
-    auto t = ret_field(h);
+    auto t = ::tpyapp::main::ret_field(h);
     std::get<1>(t)->val = 99;
     std::cout << std::get<1>(h.pair).val << "\n";
     Holder h2 = Holder(Box(7));
-    auto u = ret_alias(h2);
+    auto u = ::tpyapp::main::ret_alias(h2);
     std::get<1>(u)->val = 42;
     std::cout << std::get<1>(h2.pair).val << "\n";
 }
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

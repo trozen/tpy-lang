@@ -59,7 +59,7 @@ void test_dict_ctor_last_use_no_warn() {
 //     d = dict(make_pairs())  # tpyc: ok
 //     print(len(d))
 void test_dict_ctor_rvalue_no_warn() {
-    ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(make_pairs());
+    ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(::tpyapp::main::make_pairs());
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
@@ -112,20 +112,20 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_dict_ctor_ref_value_warns();
-    test_dict_ctor_value_types_no_warn();
-    test_dict_ctor_copy_no_warn();
-    test_dict_ctor_last_use_no_warn();
-    test_dict_ctor_rvalue_no_warn();
+    ::tpyapp::main::test_dict_ctor_ref_value_warns();
+    ::tpyapp::main::test_dict_ctor_value_types_no_warn();
+    ::tpyapp::main::test_dict_ctor_copy_no_warn();
+    ::tpyapp::main::test_dict_ctor_last_use_no_warn();
+    ::tpyapp::main::test_dict_ctor_rvalue_no_warn();
     std::vector<std::tuple<std::string, Node>> __tmp_1 = {::tpy::tuple_to_storage<std::tuple<std::string, Node>>(std::tuple<std::string, Node>{"a", Node(1)})};
-    test_dict_ctor_generic_warns<std::string, Node>(__tmp_1);
-    test_dict_ctor_nested_tuple_warns();
-    test_dict_ctor_list_value_warns();
-    test_dict_ctor_nested_value_no_warn();
+    ::tpyapp::main::test_dict_ctor_generic_warns<std::string, Node>(__tmp_1);
+    ::tpyapp::main::test_dict_ctor_nested_tuple_warns();
+    ::tpyapp::main::test_dict_ctor_list_value_warns();
+    ::tpyapp::main::test_dict_ctor_nested_value_no_warn();
     std::vector<std::tuple<std::string, Node>> __tmp_2 = {::tpy::tuple_to_storage<std::tuple<std::string, Node>>(std::tuple<std::string, Node>{"a", Node(1)})};
-    test_dict_ctor_partial_generic_warns<Node>(__tmp_2);
+    ::tpyapp::main::test_dict_ctor_partial_generic_warns<Node>(__tmp_2);
     std::vector<std::tuple<std::string, std::tuple<std::string, Node>>> __tmp_3 = {std::tuple<std::string, std::tuple<std::string, Node>>{"a", ::tpy::tuple_to_storage<std::tuple<std::string, Node>>(std::tuple<std::string, Node>{"b", Node(1)})}};
-    test_dict_ctor_nested_generic_warns<std::string, Node>(__tmp_3);
+    ::tpyapp::main::test_dict_ctor_nested_generic_warns<std::string, Node>(__tmp_3);
 }
 
 } // namespace tpyapp::main

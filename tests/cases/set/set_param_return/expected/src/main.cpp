@@ -29,11 +29,11 @@ int32_t get_size(const ::tpy::ordered_set<int32_t>& s) {
 //     print(s)
 //     print(get_size(s))
 void main() {
-    ::tpy::ordered_set<int32_t> s = make_set();
+    ::tpy::ordered_set<int32_t> s = ::tpyapp::main::make_set();
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    add_to_set(s, 4);
+    ::tpyapp::main::add_to_set(s, 4);
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    std::cout << get_size(s) << "\n";
+    std::cout << ::tpyapp::main::get_size(s) << "\n";
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -49,11 +49,11 @@ void check_and_or(const std::vector<::tpy::BigInt>& items, const std::vector<::t
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
     std::vector<::tpy::BigInt> __tmp_2 = std::vector<::tpy::BigInt>{};
-    check_list(__tmp_1, __tmp_2);
-    check_str("hello", "");
+    ::tpyapp::main::check_list(__tmp_1, __tmp_2);
+    ::tpyapp::main::check_str("hello", "");
     std::vector<::tpy::BigInt> __tmp_3 = {1};
     std::vector<::tpy::BigInt> __tmp_4 = std::vector<::tpy::BigInt>{};
-    check_and_or(__tmp_3, __tmp_4);
+    ::tpyapp::main::check_and_or(__tmp_3, __tmp_4);
 }
 
 // main()
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

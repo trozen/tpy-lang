@@ -26,9 +26,9 @@ std::function<int32_t(int32_t)> make_doubler() {
 //     print(maybe_apply(doubler, 5))
 //     print(maybe_apply(None, 5))
 void main() {
-    std::function<int32_t(int32_t)> doubler = make_doubler();
-    std::cout << maybe_apply(doubler, 5) << "\n";
-    std::cout << maybe_apply(std::nullopt, 5) << "\n";
+    std::function<int32_t(int32_t)> doubler = ::tpyapp::main::make_doubler();
+    std::cout << ::tpyapp::main::maybe_apply(doubler, 5) << "\n";
+    std::cout << ::tpyapp::main::maybe_apply(std::nullopt, 5) << "\n";
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

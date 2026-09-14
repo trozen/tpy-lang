@@ -41,7 +41,7 @@ void main() {
     Box shared = Box(5);
     Box other = Box(0);
     {
-        auto __src_0 = gen(std::tuple<int32_t, Box*>{0, &(other)}, shared, false);
+        auto __src_0 = ::tpyapp::main::gen(std::tuple<int32_t, Box*>{0, &(other)}, shared, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

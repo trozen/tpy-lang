@@ -17,8 +17,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_bool(gt_pair(3, 1)) << "\n";
-    std::cout << ::tpy::print_bool(gt_pair(std::nullopt, 1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::gt_pair(3, 1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::gt_pair(std::nullopt, 1)) << "\n";
 }
 
 } // namespace tpyapp::main

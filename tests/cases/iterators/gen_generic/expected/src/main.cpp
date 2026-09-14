@@ -42,7 +42,7 @@ namespace tpyapp::main {
 //         print("len", t)
 void main() {
     {
-        auto __src_0 = repeat<int32_t>(42, 3);
+        auto __src_0 = ::tpyapp::main::repeat<int32_t>(42, 3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -52,7 +52,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = repeat<std::string>("hi", 2);
+        auto __src_2 = ::tpyapp::main::repeat<std::string>("hi", 2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -63,7 +63,7 @@ void main() {
     }
     std::array<std::string, 3> words = {"hello", "world", "foo"};
     {
-        auto __src_4 = enumerate<std::string>(words);
+        auto __src_4 = ::tpyapp::main::enumerate<std::string>(words);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -77,7 +77,7 @@ void main() {
     }
     std::array<int32_t, 3> nums = {10, 20, 30};
     {
-        auto __src_6 = enumerate<int32_t>(nums);
+        auto __src_6 = ::tpyapp::main::enumerate<int32_t>(nums);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -90,8 +90,8 @@ void main() {
         }
     }
     {
-        auto __tmp_1 = repeat<std::string>("x", 3);
-        auto __src_8 = enumerate<std::string>(__tmp_1);
+        auto __tmp_1 = ::tpyapp::main::repeat<std::string>("x", 3);
+        auto __src_8 = ::tpyapp::main::enumerate<std::string>(__tmp_1);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -105,7 +105,7 @@ void main() {
     }
     Bin b = Bin();
     {
-        auto __src_10 = bump_each<Bin>(b, 2);
+        auto __src_10 = ::tpyapp::main::bump_each<Bin>(b, 2);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -116,7 +116,7 @@ void main() {
     }
     std::cout << "bump total" << " " << b.total << "\n";
     {
-        auto __src_12 = size_each<Bin>(b, 2);
+        auto __src_12 = ::tpyapp::main::size_each<Bin>(b, 2);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -127,7 +127,7 @@ void main() {
     }
     std::string_view word = "ro";
     {
-        auto __src_14 = len_each<std::string_view>(word, 2);
+        auto __src_14 = ::tpyapp::main::len_each<std::string_view>(word, 2);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -144,7 +144,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -24,7 +24,7 @@ int32_t use(::tpystd::tplib::box::Box<Sink>& s, ::tpy::ordered_map<std::string, 
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 2}, {"b", 3}});
     ::tpystd::tplib::box::Box<Sink> box = ::tpystd::tplib::box::Box<Counter>(Counter(10));
-    std::cout << use(box, d) << "\n";
+    std::cout << ::tpyapp::main::use(box, d) << "\n";
     std::cout << ::tpy::print_bool((d.contains("seen"))) << " " << ::tpy::__len__(d) << "\n";
     std::vector<std::string> tags = {"ab", "cde"};
     std::cout << box.get().width(tags) << "\n";
@@ -39,7 +39,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -93,8 +93,8 @@ void main() {
     std::cout << h.dup() << "\n";
     std::cout << h.dup_via_module() << "\n";
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << sum_copied(__tmp_1) << "\n";
-    std::cout << consume() << "\n";
+    std::cout << ::tpyapp::main::sum_copied(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::consume() << "\n";
     std::optional<Color> c = ::tpy::EnumUtil<Color>::try_parse("RED");
     std::cout << ::tpy::print_bool((c.has_value())) << "\n";
     std::optional<Color> miss = ::tpy::EnumUtil<Color>::try_parse("PURPLE");
@@ -113,7 +113,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

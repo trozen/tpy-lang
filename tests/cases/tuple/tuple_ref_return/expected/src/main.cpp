@@ -20,7 +20,7 @@ std::tuple<Point*, bool> find(Point& p) {
 //     print(result[0])
 void main() {
     Point p = Point(1, 2);
-    auto result = find(p);
+    auto result = ::tpyapp::main::find(p);
     std::cout << (*std::get<0>(result)) << "\n";
     std::cout << ::tpy::print_bool(std::get<1>(result)) << "\n";
     p.x = 42;
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

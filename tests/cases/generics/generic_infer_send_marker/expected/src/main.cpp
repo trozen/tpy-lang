@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     x = fwd(Item(7))    # tpyc: ok
 //     print(x.v)
 void main() {
-    Item x = fwd<Item>(Item(::tpy::BigInt(7)));
+    Item x = ::tpyapp::main::fwd<Item>(Item(::tpy::BigInt(7)));
     std::cout << x.v << "\n";
 }
 
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

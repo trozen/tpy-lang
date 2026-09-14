@@ -25,7 +25,7 @@ void __tpy_init() {
 
     ::tpyapp::fa::__tpy_init();
     ::tpyapp::fb::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

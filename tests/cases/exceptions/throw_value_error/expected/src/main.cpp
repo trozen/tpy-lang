@@ -25,10 +25,10 @@ namespace tpyapp::main {
 //     except ValueError as e:
 //         print("caught:", str(e))
 void main() {
-    std::cout << parse_positive("42") << "\n";
+    std::cout << ::tpyapp::main::parse_positive("42") << "\n";
     {
         try {
-            std::cout << parse_positive("") << "\n";
+            std::cout << ::tpyapp::main::parse_positive("") << "\n";
         } catch (const ::tpy::ValueError& e) {
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

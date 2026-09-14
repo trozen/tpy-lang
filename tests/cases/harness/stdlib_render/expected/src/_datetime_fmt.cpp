@@ -182,7 +182,7 @@ std::string _strftime(std::string_view fmt, int32_t y, int32_t mo, int32_t d, in
             out += std::format("{}", y);
         } else if ((c == 'z')) {
             if (has_tz) {
-                out += _offset_str(off_us, "");
+                out += ::tpystd::_datetime_fmt::_offset_str(off_us, "");
             }
         } else if ((c == 'Z')) {
             if (has_tz) {
@@ -291,7 +291,7 @@ std::string _tz_label(const ::tpy::BigInt& off_us) {
     if ((off_us == 0)) {
         return "UTC";
     }
-    return (::tpy::str_concat("UTC", _offset_str(off_us, ":")));
+    return (::tpy::str_concat("UTC", ::tpystd::_datetime_fmt::_offset_str(off_us, ":")));
 }
 
 // from _datetime_cal import (

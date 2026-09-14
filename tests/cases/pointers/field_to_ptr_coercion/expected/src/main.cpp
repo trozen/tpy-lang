@@ -23,7 +23,7 @@ int32_t read_inner(const Inner* p) {
 //     print(outer.inner.x)
 void test_field_to_ptr() {
     Outer outer = Outer(42);
-    modify_inner(&outer.inner);
+    ::tpyapp::main::modify_inner(&outer.inner);
     std::cout << outer.inner.x << "\n";
 }
 
@@ -34,7 +34,7 @@ void test_field_to_ptr() {
 //     print(result)
 void test_field_to_const_ptr() {
     Outer outer = Outer(100);
-    int32_t result = read_inner(&outer.inner);
+    int32_t result = ::tpyapp::main::read_inner(&outer.inner);
     std::cout << result << "\n";
 }
 
@@ -45,7 +45,7 @@ void test_field_to_const_ptr() {
 //     print(arr[1].x)
 void test_subscript_to_ptr() {
     std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
-    modify_inner(&::tpy::__getitem__(arr, 1));
+    ::tpyapp::main::modify_inner(&::tpy::__getitem__(arr, 1));
     std::cout << ::tpy::__getitem__(arr, 1).x << "\n";
 }
 
@@ -62,11 +62,11 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "=== field to ptr ===" << "\n";
-    test_field_to_ptr();
+    ::tpyapp::main::test_field_to_ptr();
     std::cout << "=== field to const ptr ===" << "\n";
-    test_field_to_const_ptr();
+    ::tpyapp::main::test_field_to_const_ptr();
     std::cout << "=== subscript to ptr ===" << "\n";
-    test_subscript_to_ptr();
+    ::tpyapp::main::test_subscript_to_ptr();
 }
 
 } // namespace tpyapp::main

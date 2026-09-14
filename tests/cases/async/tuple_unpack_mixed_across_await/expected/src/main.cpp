@@ -18,7 +18,7 @@ std::tuple<::tpy::BigInt, Box*> pick(std::vector<Box>& items, const ::tpy::BigIn
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __tup_1 = pick(items, ::tpy::BigInt(0));
+        auto __tup_1 = ::tpyapp::main::pick(items, ::tpy::BigInt(0));
         tag = std::get<0>(__tup_1);
         it = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -92,7 +92,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 
 } // namespace tpyapp::main

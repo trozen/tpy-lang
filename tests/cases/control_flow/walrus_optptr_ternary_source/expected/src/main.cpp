@@ -68,7 +68,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     case S_JOIN_0: {
         if ((i < 2)) {
             __state = S_RESUME_1;
-            return value_of((m = ((flag) ? (&(::tpy::__getitem__(nodes, i))) : (nullptr))));
+            return ::tpyapp::main::value_of((m = ((flag) ? (&(::tpy::__getitem__(nodes, i))) : (nullptr))));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -92,10 +92,10 @@ __gen_walk walk(std::vector<Node>& nodes, bool flag) {
 //         print(a)
 //     print(nodes[0].v, nodes[1].v)
 void main() {
-    std::cout << pick(true) << " " << pick(false) << "\n";
+    std::cout << ::tpyapp::main::pick(true) << " " << ::tpyapp::main::pick(false) << "\n";
     std::vector<Node> nodes = {Node(1), Node(2)};
     {
-        auto __src_0 = walk(nodes, true);
+        auto __src_0 = ::tpyapp::main::walk(nodes, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -113,7 +113,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -22,8 +22,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << safe_add(5) << "\n";
-    std::cout << safe_add(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::safe_add(5) << "\n";
+    std::cout << ::tpyapp::main::safe_add(std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

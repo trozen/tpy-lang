@@ -57,15 +57,15 @@ int32_t borrow_union(::tpy::Union<const A*, const B*> u) {
 //     # slot needs to_ptr_variant; the bare value-variant doesn't convert.
 //     return borrow_union(u)
 int32_t forward_to_borrow(::tpy::Union<A, B>&& u) {
-    return borrow_union(::tpy::to_const_ptr_variant(u));
+    return ::tpyapp::main::borrow_union(::tpy::to_const_ptr_variant(u));
 }
 
 // def test_body_isinstance_narrowing() -> None:
 //     print(describe(A(7)))
 //     print(describe(B(11)))
 void test_body_isinstance_narrowing() {
-    std::cout << describe(A(7)) << "\n";
-    std::cout << describe(B(11)) << "\n";
+    std::cout << ::tpyapp::main::describe(A(7)) << "\n";
+    std::cout << ::tpyapp::main::describe(B(11)) << "\n";
 }
 
 // def test_return_into_pointer_variant_receiver() -> None:
@@ -74,16 +74,16 @@ void test_body_isinstance_narrowing() {
 //     print(describe(pick(True)))
 //     print(describe(pick(False)))
 void test_return_into_pointer_variant_receiver() {
-    std::cout << describe(pick(true)) << "\n";
-    std::cout << describe(pick(false)) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpyapp::main::pick(true)) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpyapp::main::pick(false)) << "\n";
 }
 
 // def test_forward_to_borrow_slot() -> None:
 //     print(forward_to_borrow(A(13)))
 //     print(forward_to_borrow(B(17)))
 void test_forward_to_borrow_slot() {
-    std::cout << forward_to_borrow(A(13)) << "\n";
-    std::cout << forward_to_borrow(B(17)) << "\n";
+    std::cout << ::tpyapp::main::forward_to_borrow(A(13)) << "\n";
+    std::cout << ::tpyapp::main::forward_to_borrow(B(17)) << "\n";
 }
 
 // def main() -> None:
@@ -91,9 +91,9 @@ void test_forward_to_borrow_slot() {
 //     test_return_into_pointer_variant_receiver()
 //     test_forward_to_borrow_slot()
 void main() {
-    test_body_isinstance_narrowing();
-    test_return_into_pointer_variant_receiver();
-    test_forward_to_borrow_slot();
+    ::tpyapp::main::test_body_isinstance_narrowing();
+    ::tpyapp::main::test_return_into_pointer_variant_receiver();
+    ::tpyapp::main::test_forward_to_borrow_slot();
 }
 
 // main()
@@ -102,7 +102,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

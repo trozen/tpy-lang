@@ -111,7 +111,7 @@ void __tpy_init() {
 
     ::tpystd::sys::__tpy_init();
     ::tpyapp::helper::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

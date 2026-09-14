@@ -72,10 +72,10 @@ void main() {
     ::tpy::Union<Cat*, Dog*> c1 = ::tpy::to_ptr_variant(__slot_3);
     ::tpy::Union<Cat, Dog> __slot_4 = Cat("Luna");
     ::tpy::Union<Cat*, Dog*> c2 = ::tpy::to_ptr_variant(__slot_4);
-    std::cout << describe(d1.as_const()) << "\n";
-    std::cout << describe(d2.as_const()) << "\n";
-    std::cout << describe(c1.as_const()) << "\n";
-    std::cout << describe(c2.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(d1.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(d2.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(c1.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(c2.as_const()) << "\n";
 }
 
 // # match/case with guard clauses (if conditions)
@@ -87,7 +87,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

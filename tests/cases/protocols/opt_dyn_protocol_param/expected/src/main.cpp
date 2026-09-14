@@ -42,15 +42,15 @@ std::string describe(Pet* p) {
 //     print(describe(None))
 void main() {
     Dog __tmp_1 = Dog("rex");
-    std::cout << greet(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::greet(&(__tmp_1)) << "\n";
     Fish __tmp_2 = Fish();
-    std::cout << greet(&(__tmp_2)) << "\n";
-    std::cout << greet(nullptr) << "\n";
+    std::cout << ::tpyapp::main::greet(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::greet(nullptr) << "\n";
     Dog __tmp_3 = Dog("fido");
-    std::cout << describe(&(__tmp_3)) << "\n";
+    std::cout << ::tpyapp::main::describe(&(__tmp_3)) << "\n";
     Fish __tmp_4 = Fish();
-    std::cout << describe(&(__tmp_4)) << "\n";
-    std::cout << describe(nullptr) << "\n";
+    std::cout << ::tpyapp::main::describe(&(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::describe(nullptr) << "\n";
 }
 
 // main()
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -62,14 +62,14 @@ void main() {
     ::tpy::Union<std::monostate, Dog, int32_t> __slot_2 = Dog("Rex");
     ::tpy::Union<std::monostate, Dog*, int32_t*> b = ::tpy::to_ptr_variant(__slot_2);
     ::tpy::Union<std::monostate, Dog*, int32_t*> c = std::monostate{};
-    std::cout << describe(a.as_const()) << "\n";
-    std::cout << describe(b.as_const()) << "\n";
-    std::cout << describe(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(a.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(b.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n";
     int32_t __tmp_1 = 1;
-    process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_1});
+    ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_1});
     Dog __tmp_2 = Dog("Buddy");
-    process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_2});
-    process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}});
+    ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_2});
+    ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}});
 }
 
 // main()
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

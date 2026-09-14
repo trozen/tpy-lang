@@ -79,8 +79,8 @@ inline void Buf::load(::tpy::BytesView src) {
 //     self.a = mk_arr()
 //     self.ba = mk_ba()
 inline void Buf::own_call() {
-    this->a = mk_arr();
-    this->ba = mk_ba();
+    this->a = ::tpyapp::main::mk_arr();
+    this->ba = ::tpyapp::main::mk_ba();
 }
 
 // def repeat(self) -> None:
@@ -98,7 +98,7 @@ inline void Buf::repeat() {
 //     # copy-vs-alias split, which CPython would resolve the other way.
 //     self.a = borrow_arr(x)  # tpyc: warning(/copies Array\[int32, 4\] into field/)
 inline void Buf::alias(std::array<int32_t, 4>& x) {
-    this->a = borrow_arr(x);
+    this->a = ::tpyapp::main::borrow_arr(x);
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -51,8 +51,8 @@ __gen_first_only first_only(std::vector<P>& items) {
 void main() {
     std::vector<P> points = {P(1), P(2), P(3)};
     {
-        auto __tmp_1 = first_only(points);
-        auto __src_0 = relay(__tmp_1);
+        auto __tmp_1 = ::tpyapp::main::first_only(points);
+        auto __src_0 = ::tpyapp::main::relay(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -81,7 +81,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

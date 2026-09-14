@@ -41,7 +41,7 @@ void test_null_constructors() {
 void test_ptr_explicit() {
     Point pt = Point(10, 20);
     Point* pp = &pt;
-    read_via_ptr(pp);
+    ::tpyapp::main::read_via_ptr(pp);
 }
 
 // def test_ptr_inferred() -> None:
@@ -51,7 +51,7 @@ void test_ptr_explicit() {
 void test_ptr_inferred() {
     Point pt = Point(30, 40);
     Point* pp = &pt;
-    read_via_ptr(pp);
+    ::tpyapp::main::read_via_ptr(pp);
 }
 
 // def test_constptr_explicit() -> None:
@@ -61,7 +61,7 @@ void test_ptr_inferred() {
 void test_constptr_explicit() {
     Point pt = Point(50, 60);
     const Point* cp = &pt;
-    read_via_constptr(cp);
+    ::tpyapp::main::read_via_constptr(cp);
 }
 
 // def test_constptr_inferred() -> None:
@@ -71,7 +71,7 @@ void test_constptr_explicit() {
 void test_constptr_inferred() {
     Point pt = Point(70, 80);
     const Point* cp = &pt;
-    read_via_constptr(cp);
+    ::tpyapp::main::read_via_constptr(cp);
 }
 
 // def test_ptr_write() -> None:
@@ -97,12 +97,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_null_constructors();
-    test_ptr_explicit();
-    test_ptr_inferred();
-    test_constptr_explicit();
-    test_constptr_inferred();
-    test_ptr_write();
+    ::tpyapp::main::test_null_constructors();
+    ::tpyapp::main::test_ptr_explicit();
+    ::tpyapp::main::test_ptr_inferred();
+    ::tpyapp::main::test_constptr_explicit();
+    ::tpyapp::main::test_constptr_inferred();
+    ::tpyapp::main::test_ptr_write();
 }
 
 } // namespace tpyapp::main

@@ -48,10 +48,10 @@ void test_replace_nonempty() {
 //     test_count_nonempty()
 //     test_replace_nonempty()
 void main() {
-    test_count_empty();
-    test_replace_empty();
-    test_count_nonempty();
-    test_replace_nonempty();
+    ::tpyapp::main::test_count_empty();
+    ::tpyapp::main::test_replace_empty();
+    ::tpyapp::main::test_count_nonempty();
+    ::tpyapp::main::test_replace_nonempty();
 }
 
 // main()
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

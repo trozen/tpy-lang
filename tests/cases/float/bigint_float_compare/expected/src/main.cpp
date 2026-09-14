@@ -50,9 +50,9 @@ void test_float_gt_int() {
 //     test_ordering()
 //     test_float_gt_int()
 void main() {
-    test_eq();
-    test_ordering();
-    test_float_gt_int();
+    ::tpyapp::main::test_eq();
+    ::tpyapp::main::test_ordering();
+    ::tpyapp::main::test_float_gt_int();
 }
 
 // main()
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

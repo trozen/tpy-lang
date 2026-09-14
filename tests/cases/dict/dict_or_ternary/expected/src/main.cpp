@@ -87,21 +87,21 @@ void __tpy_init() {
     d1 = &__global_slot_1;
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_2 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
     d2 = &__global_slot_2;
-    test_or((*d1), (*d2));
-    test_and((*d1), (*d2));
-    test_ternary((*d1), (*d2), true);
-    test_literal_or();
-    test_literal_ternary(true);
+    ::tpyapp::main::test_or((*d1), (*d2));
+    ::tpyapp::main::test_and((*d1), (*d2));
+    ::tpyapp::main::test_ternary((*d1), (*d2), true);
+    ::tpyapp::main::test_literal_or();
+    ::tpyapp::main::test_literal_ternary(true);
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_3 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     ta1 = &__global_slot_3;
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_4 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
     tb1 = &__global_slot_4;
-    test_ternary_alias((*ta1), (*tb1), true);
+    ::tpyapp::main::test_ternary_alias((*ta1), (*tb1), true);
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_5 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     ta2 = &__global_slot_5;
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_6 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
     tb2 = &__global_slot_6;
-    test_ternary_alias((*ta2), (*tb2), false);
+    ::tpyapp::main::test_ternary_alias((*ta2), (*tb2), false);
 }
 
 } // namespace tpyapp::main

@@ -52,14 +52,14 @@ void main() {
     ::tpy::__setitem__(b.cells, 0, 99);
     std::cout << ::tpy::print_bool(a.same_cells(b)) << "\n";
     std::cout << a.spare_total() << "\n";
-    std::array<int32_t, 3> made = fresh();
+    std::array<int32_t, 3> made = ::tpyapp::main::fresh();
     std::cout << ::tpy::__getitem__(made, 0) << " " << ::tpy::__getitem__(made, 2) << "\n";
-    std::array<int32_t, 3>* got = first_or_none(a, true);
+    std::array<int32_t, 3>* got = ::tpyapp::main::first_or_none(a, true);
     if ((got != nullptr)) {
         ::tpy::__setitem__((*got), 1, 42);
     }
     std::cout << ::tpy::__getitem__(a.cells, 1) << "\n";
-    std::cout << ::tpy::print_bool((first_or_none(a, false) == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((::tpyapp::main::first_or_none(a, false) == nullptr)) << "\n";
     std::array<int32_t, 3> xs = {5, 6, 7};
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(xs));
     std::cout << al[0] << " " << ::tpy::__len__(al) << "\n";
@@ -77,7 +77,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

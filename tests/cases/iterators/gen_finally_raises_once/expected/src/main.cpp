@@ -61,7 +61,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_normal_exit::__next__()
 }
 
 void __gen_normal_exit::__finally_0() {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // def normal_exit() -> Iterator[int]:
@@ -125,7 +125,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__(
 }
 
 void __gen_handler_exit::__finally_0() {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // def handler_exit() -> Iterator[int]:
@@ -175,7 +175,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__next__()
 }
 
 void __gen_return_exit::__finally_0() {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // def return_exit() -> Iterator[int]:
@@ -309,7 +309,7 @@ void __gen_nested_exit::__finally_0() {
 }
 void __gen_nested_exit::__finally_1() {
     std::cout << "inner fin" << "\n";
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // def nested_exit() -> Iterator[int]:
@@ -389,7 +389,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_break_exit::__next__() 
 
 void __gen_break_exit::__finally_0() {
     if ((i == 1)) {
-        throw Err(bump());
+        throw Err(::tpyapp::main::bump());
     }
 }
 
@@ -452,7 +452,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_continue_exit::__next__
 }
 
 void __gen_continue_exit::__finally_0() {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // def continue_exit() -> Iterator[int]:
@@ -469,20 +469,20 @@ __gen_continue_exit continue_exit() {
 //     run("break_exit", break_exit())
 //     run("continue_exit", continue_exit())
 void main() {
-    auto __tmp_1 = normal_exit();
-    run("normal_exit", __tmp_1);
-    auto __tmp_2 = handler_exit();
-    run("handler_exit", __tmp_2);
-    auto __tmp_3 = return_exit();
-    run("return_exit", __tmp_3);
-    auto __tmp_4 = with_exit();
-    run("with_exit", __tmp_4);
-    auto __tmp_5 = nested_exit();
-    run("nested_exit", __tmp_5);
-    auto __tmp_6 = break_exit();
-    run("break_exit", __tmp_6);
-    auto __tmp_7 = continue_exit();
-    run("continue_exit", __tmp_7);
+    auto __tmp_1 = ::tpyapp::main::normal_exit();
+    ::tpyapp::main::run("normal_exit", __tmp_1);
+    auto __tmp_2 = ::tpyapp::main::handler_exit();
+    ::tpyapp::main::run("handler_exit", __tmp_2);
+    auto __tmp_3 = ::tpyapp::main::return_exit();
+    ::tpyapp::main::run("return_exit", __tmp_3);
+    auto __tmp_4 = ::tpyapp::main::with_exit();
+    ::tpyapp::main::run("with_exit", __tmp_4);
+    auto __tmp_5 = ::tpyapp::main::nested_exit();
+    ::tpyapp::main::run("nested_exit", __tmp_5);
+    auto __tmp_6 = ::tpyapp::main::break_exit();
+    ::tpyapp::main::run("break_exit", __tmp_6);
+    auto __tmp_7 = ::tpyapp::main::continue_exit();
+    ::tpyapp::main::run("continue_exit", __tmp_7);
 }
 
 // _code = 0
@@ -494,7 +494,7 @@ void __tpy_init() {
     initialized = true;
 
     _code = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

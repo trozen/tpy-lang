@@ -55,7 +55,7 @@ namespace tpyapp::main {
 // def forward(data: bytes) -> int:
 //     return len(first_or_empty(data))   # real bytes value into bytes|None param
 ::tpy::BigInt forward(::tpy::BytesView data) {
-    return ::tpy::BigInt(::tpy::__len__(first_or_empty(data)));
+    return ::tpy::BigInt(::tpy::__len__(::tpyapp::main::first_or_empty(data)));
 }
 
 // def gen(b: bytes | None) -> Iterator[int]:
@@ -112,19 +112,19 @@ __gen_gen gen(std::optional<::tpy::BytesView> b) {
 //         total += v
 //     print(total)
 void main() {
-    std::cout << ::tpy::__len__(first_or_empty(::tpy::bytes_literal_owned("hello", 5))) << "\n";
-    std::cout << ::tpy::__len__(first_or_empty(std::nullopt)) << "\n";
-    std::cout << collect(::tpy::bytes_literal_owned("xy", 2)) << "\n";
-    std::cout << reassigned(std::nullopt) << "\n";
-    std::cout << reassigned_plain(::tpy::bytes_literal("ab", 2), true) << " " << reassigned_plain(::tpy::bytes_literal("abc", 3), false) << "\n";
-    std::cout << forward(::tpy::bytes_literal("world", 5)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::first_or_empty(::tpy::bytes_literal_owned("hello", 5))) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::first_or_empty(std::nullopt)) << "\n";
+    std::cout << ::tpyapp::main::collect(::tpy::bytes_literal_owned("xy", 2)) << "\n";
+    std::cout << ::tpyapp::main::reassigned(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::reassigned_plain(::tpy::bytes_literal("ab", 2), true) << " " << ::tpyapp::main::reassigned_plain(::tpy::bytes_literal("abc", 3), false) << "\n";
+    std::cout << ::tpyapp::main::forward(::tpy::bytes_literal("world", 5)) << "\n";
     Holder h = Holder();
     h.store(::tpy::bytes_literal_owned("abc", 3));
     std::cout << ::tpy::__len__(h.data) << "\n";
     int32_t total = 0;
     {
         ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("Q", 1);
-        auto __src_0 = gen(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -142,7 +142,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -269,7 +269,7 @@ int32_t inner_len(::tpy::param_val_or_ref_t<T> x) {
 //     return inner_len(x)
 template<::tpystd::typing::Sized T>
 int32_t outer_len(::tpy::param_val_or_ref_t<T> x) {
-    return inner_len<T>(x);
+    return ::tpyapp::main::inner_len<T>(x);
 }
 // def clone_it[T: Clonable](item: T) -> Own[T]:
 //     return item.clone()  # Return type should be Own[T], not Own[Clonable]

@@ -38,9 +38,9 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
 //     print(describe(Dog("Rex")))
 void main() {
     Cat __tmp_1 = Cat(::tpy::BigInt(9));
-    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
     Dog __tmp_2 = Dog("Rex");
-    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

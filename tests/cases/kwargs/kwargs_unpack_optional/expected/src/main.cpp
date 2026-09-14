@@ -27,11 +27,11 @@ void start_safe(const Config& kwargs) {
 //     start_safe()
 void main() {
     Config __tmp_1 = Config("localhost", 8080);
-    start(__tmp_1);
+    ::tpyapp::main::start(__tmp_1);
     Config __tmp_2 = Config("example.com", std::nullopt);
-    start_safe(__tmp_2);
+    ::tpyapp::main::start_safe(__tmp_2);
     Config __tmp_3 = Config(std::nullopt, std::nullopt);
-    start_safe(__tmp_3);
+    ::tpyapp::main::start_safe(__tmp_3);
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

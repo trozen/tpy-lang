@@ -213,22 +213,22 @@ void teardown(std::string_view root) {
 void main() {
     ::tpy::String root = (::tpy::str_concat(::tpy::stdlib::os::getcwd(), "/tpy_oswalk_bu_tree"));
     if (::tpy::stdlib::os::path_exists(root)) {
-        teardown(root);
+        ::tpyapp::main::teardown(root);
     }
-    build(root);
-    auto __obj_0 = walk_rows(root);
+    ::tpyapp::main::build(root);
+    auto __obj_0 = ::tpyapp::main::walk_rows(root);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view r = *__beg_0;
         std::cout << r << "\n";
     }
-    std::cout << "post-order ok:" << " " << ::tpy::print_bool(order_ok(root)) << "\n";
-    teardown(root);
+    std::cout << "post-order ok:" << " " << ::tpy::print_bool(::tpyapp::main::order_ok(root)) << "\n";
+    ::tpyapp::main::teardown(root);
     std::string_view missing = "tpy_oswalk_bu_missing";
-    ::tpy::BigInt n1 = yields(missing, report);
+    ::tpy::BigInt n1 = ::tpyapp::main::yields(missing, report);
     std::cout << "named yields:" << " " << n1 << "\n";
-    ::tpy::BigInt n2 = yields(missing, std::nullopt);
+    ::tpy::BigInt n2 = ::tpyapp::main::yields(missing, std::nullopt);
     std::cout << "default yields:" << " " << n2 << "\n";
 }
 
@@ -244,7 +244,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::os::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

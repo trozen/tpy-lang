@@ -13,7 +13,7 @@ void take_mut(Node* p) {
 // def helper(n: Node) -> None:
 //     take_mut(n)
 void helper(Node& n) {
-    take_mut(&n);
+    ::tpyapp::main::take_mut(&n);
 }
 
 // def main() -> None:
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

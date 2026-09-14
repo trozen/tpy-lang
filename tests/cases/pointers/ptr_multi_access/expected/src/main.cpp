@@ -26,8 +26,8 @@ void use_methods(Point* p) {
 void test() {
     Point pt = Point(3, 7);
     Point* p = &pt;
-    use_fields(p);
-    use_methods(p);
+    ::tpyapp::main::use_fields(p);
+    ::tpyapp::main::use_methods(p);
 }
 
 // test()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

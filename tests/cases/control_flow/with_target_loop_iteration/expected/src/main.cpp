@@ -53,7 +53,7 @@ int32_t run() {
 // def main() -> None:
 //     print(run())
 void main() {
-    std::cout << run() << "\n";
+    std::cout << ::tpyapp::main::run() << "\n";
 }
 
 // main()
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

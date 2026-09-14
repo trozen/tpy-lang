@@ -110,7 +110,7 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -200,10 +200,10 @@ void bare_context_trusts_nothing() {
 //     default_context_rejects_self_signed()
 //     bare_context_trusts_nothing()
 void main() {
-    write_fixtures();
-    bundle_embedded();
-    default_context_rejects_self_signed();
-    bare_context_trusts_nothing();
+    ::tpyapp::main::write_fixtures();
+    ::tpyapp::main::bundle_embedded();
+    ::tpyapp::main::default_context_rejects_self_signed();
+    ::tpyapp::main::bare_context_trusts_nothing();
 }
 
 // import ssl
@@ -218,7 +218,7 @@ void __tpy_init() {
 
     ::tpystd::ssl::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

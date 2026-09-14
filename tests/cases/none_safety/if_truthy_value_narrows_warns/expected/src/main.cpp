@@ -23,9 +23,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << score(3) << "\n";
-    std::cout << score(0) << "\n";
-    std::cout << score(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::score(3) << "\n";
+    std::cout << ::tpyapp::main::score(0) << "\n";
+    std::cout << ::tpyapp::main::score(std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

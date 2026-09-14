@@ -18,7 +18,7 @@ std::tuple<Box*, int32_t> relay(Holder& h) {
 //     print(t[1])
 void main() {
     Holder h = Holder(Box(5), 42);
-    auto t = relay(h);
+    auto t = ::tpyapp::main::relay(h);
     std::get<0>(t)->val = 99;
     std::cout << h.box.val << "\n";
     std::cout << std::get<1>(t) << "\n";
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

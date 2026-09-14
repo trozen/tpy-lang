@@ -59,8 +59,8 @@ void for_carried_section() {
 //     loop_carried_section()
 //     for_carried_section()
 void main() {
-    loop_carried_section();
-    for_carried_section();
+    ::tpyapp::main::loop_carried_section();
+    ::tpyapp::main::for_carried_section();
 }
 
 // main()
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

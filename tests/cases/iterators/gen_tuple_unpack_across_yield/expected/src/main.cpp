@@ -18,7 +18,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __tup_1 = make_pair();
+        auto __tup_1 = ::tpyapp::main::make_pair();
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         __state = S_RESUME_0;
@@ -52,7 +52,7 @@ __gen_g g() {
 //         print(v)
 void main() {
     {
-        auto __src_0 = g();
+        auto __src_0 = ::tpyapp::main::g();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

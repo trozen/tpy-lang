@@ -156,25 +156,25 @@ void main() {
     al.append(1);
     al.append(2);
     al.append(3);
-    drop_from(al, 2);
+    ::tpyapp::main::drop_from(al, 2);
     std::cout << "scalar" << " " << ::tpy::__len__(al) << " " << al[0] << " " << al[1] << "\n";
-    drop_literal(al);
+    ::tpyapp::main::drop_literal(al);
     std::cout << "scalar" << " " << ::tpy::__len__(al) << " " << al[0] << "\n";
     Labels<int32_t, 4> box = Labels<int32_t, 4>();
     box.add(7);
     box.add(8);
-    drop_from_record(box, 7);
+    ::tpyapp::main::drop_from_record(box, 7);
     std::cout << "scalar" << " " << ::tpy::__len__(box.items) << " " << box.items[0] << "\n";
     std::cout << "scalar" << " " << box.tag_len("abcd") << "\n";
     ::tpystd::tplib::array_list::ArrayList<std::string, 4> sl = ::tpystd::tplib::array_list::ArrayList<std::string, 4>();
     sl.append("a");
     sl.append("b");
     sl.append("c");
-    drop_str_param(sl, "a");
+    ::tpyapp::main::drop_str_param(sl, "a");
     std::cout << "lib_str" << " " << ::tpy::__len__(sl) << " " << sl[0] << "\n";
-    drop_str_local(sl);
+    ::tpyapp::main::drop_str_local(sl);
     std::cout << "lib_str" << " " << ::tpy::__len__(sl) << " " << sl[0] << "\n";
-    drop_str_slice(sl, "cd");
+    ::tpyapp::main::drop_str_slice(sl, "cd");
     std::cout << "lib_str" << " " << ::tpy::__len__(sl) << "\n";
     ::tpystd::tplib::array_list::ArrayList<std::string, 4> tl = ::tpystd::tplib::array_list::ArrayList<std::string, 4>();
     tl.append("a");
@@ -190,9 +190,9 @@ void main() {
     ul.add("x");
     ul.add("y");
     std::string_view key = "x";
-    std::cout << "user_str" << " " << ::tpy::print_bool(has_str(ul, key)) << "\n";
+    std::cout << "user_str" << " " << ::tpy::print_bool(::tpyapp::main::has_str(ul, key)) << "\n";
     ul.drop(key);
-    std::cout << "user_str" << " " << ::tpy::__len__(ul.items) << " " << ul.items[0] << " " << ::tpy::print_bool(has_str(ul, key)) << "\n";
+    std::cout << "user_str" << " " << ::tpy::__len__(ul.items) << " " << ul.items[0] << " " << ::tpy::print_bool(::tpyapp::main::has_str(ul, key)) << "\n";
     StrLabels tu = StrLabels();
     tu.add("x");
     tu.add("y");
@@ -203,15 +203,15 @@ void main() {
     bl.append(::tpy::bytes_literal_owned("a", 1));
     bl.append(::tpy::bytes_literal_owned("b", 1));
     ::tpy::BytesView bk = ::tpy::bytes_literal("a", 1);
-    drop_bytes(bl, bk);
+    ::tpyapp::main::drop_bytes(bl, bk);
     std::cout << "lib_bytes" << " " << ::tpy::__len__(bl) << " " << ::tpy::BytesPrinter(bl[0]) << "\n";
     std::vector<std::string> names = {"p", "q"};
     std::string_view nk = "p";
-    std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<std::string>(names, nk)) << "\n";
-    std::cout << "free_fn" << " " << ::tpy::print_bool(has_item_str(names, nk)) << "\n";
+    std::cout << "free_fn" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>(names, nk)) << "\n";
+    std::cout << "free_fn" << " " << ::tpy::print_bool(::tpyapp::main::has_item_str(names, nk)) << "\n";
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("p", 1), ::tpy::bytes_literal_owned("q", 1)};
     ::tpy::BytesView bnk = ::tpy::bytes_literal("p", 1);
-    std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<::tpy::Bytes>(keys, bnk)) << "\n";
+    std::cout << "free_fn" << " " << ::tpy::print_bool(::tpyapp::main::has_item<::tpy::Bytes>(keys, bnk)) << "\n";
 }
 
 // from tplib import ArrayList
@@ -223,7 +223,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

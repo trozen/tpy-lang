@@ -15,8 +15,8 @@ std::string point_str(const ::tpy::BigInt& x, const ::tpy::BigInt& y, const ::tp
 //     print(point_str(z=3, x=1, y=2))
 //     print(point_str(y=20, z=30, x=10))
 void main() {
-    std::cout << point_str(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
-    std::cout << point_str(::tpy::BigInt(10), ::tpy::BigInt(20), ::tpy::BigInt(30)) << "\n";
+    std::cout << ::tpyapp::main::point_str(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
+    std::cout << ::tpyapp::main::point_str(::tpy::BigInt(10), ::tpy::BigInt(20), ::tpy::BigInt(30)) << "\n";
 }
 
 // main()
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

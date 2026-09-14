@@ -113,7 +113,7 @@ inline Counter::Counter(int32_t n) : n(n) {}
 // def bump_via_union(self) -> None:
 //     bump_counter(self)
 inline void Counter::bump_via_union() {
-    bump_counter(::tpy::Union<A*, Counter*>{&((*this))});
+    ::tpyapp::main::bump_counter(::tpy::Union<A*, Counter*>{&((*this))});
 }
 
 // def __init__(self, m: int32, n: int32) -> None:
@@ -131,7 +131,7 @@ inline void Pair::bump_picked(bool flip) {
     if (flip) {
         p = &(this->a2);
     }
-    bump(::tpy::Union<A*, B*>{&((*p))});
+    ::tpyapp::main::bump(::tpy::Union<A*, B*>{&((*p))});
 }
 void __tpy_init();
 } // namespace tpyapp::main

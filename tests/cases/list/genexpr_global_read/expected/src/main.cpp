@@ -30,7 +30,7 @@ int32_t bump() {
 // def main() -> None:
 //     print(bump(), limit)
 void main() {
-    std::cout << bump() << " " << limit << "\n";
+    std::cout << ::tpyapp::main::bump() << " " << limit << "\n";
 }
 
 // limit: int32 = int32(3)
@@ -44,7 +44,7 @@ void __tpy_init() {
 
     limit = 3;
     scale = 2;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

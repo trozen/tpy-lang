@@ -23,9 +23,9 @@ int32_t classify(::tpy::Union<A*, B*, C*, D*> v) {
 //     print(classify(D(5)))
 void main() {
     A __tmp_1 = A(1);
-    std::cout << classify(::tpy::Union<A*, B*, C*, D*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::classify(::tpy::Union<A*, B*, C*, D*>{&__tmp_1}) << "\n";
     D __tmp_2 = D(5);
-    std::cout << classify(::tpy::Union<A*, B*, C*, D*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::classify(::tpy::Union<A*, B*, C*, D*>{&__tmp_2}) << "\n";
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

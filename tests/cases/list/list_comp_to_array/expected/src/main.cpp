@@ -247,18 +247,18 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    range_basic();
-    range_transform();
-    range_empty();
-    range_two_arg();
-    array_source();
-    array_filter_fallback();
-    range_three_arg();
-    range_negative_step();
-    range_empty_negative();
-    explicit_array_annotation();
-    fallback_mutation();
-    explicit_list_annotation();
+    ::tpyapp::main::range_basic();
+    ::tpyapp::main::range_transform();
+    ::tpyapp::main::range_empty();
+    ::tpyapp::main::range_two_arg();
+    ::tpyapp::main::array_source();
+    ::tpyapp::main::array_filter_fallback();
+    ::tpyapp::main::range_three_arg();
+    ::tpyapp::main::range_negative_step();
+    ::tpyapp::main::range_empty_negative();
+    ::tpyapp::main::explicit_array_annotation();
+    ::tpyapp::main::fallback_mutation();
+    ::tpyapp::main::explicit_list_annotation();
 }
 
 } // namespace tpyapp::main

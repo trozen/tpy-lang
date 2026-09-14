@@ -73,10 +73,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_literal_iter();
-    test_var_iter();
-    test_empty_literal();
-    test_single_char();
+    ::tpyapp::main::test_literal_iter();
+    ::tpyapp::main::test_var_iter();
+    ::tpyapp::main::test_empty_literal();
+    ::tpyapp::main::test_single_char();
 }
 
 } // namespace tpyapp::main

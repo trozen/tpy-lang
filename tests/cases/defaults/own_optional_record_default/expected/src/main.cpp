@@ -27,8 +27,8 @@ Holder store(std::optional<Rec>&& r) {
 void main() {
     std::cout << Holder().value() << "\n";
     std::cout << Holder(Rec(7)).value() << "\n";
-    std::cout << store(std::nullopt).value() << "\n";
-    Holder kept = store(Rec(4));
+    std::cout << ::tpyapp::main::store(std::nullopt).value() << "\n";
+    Holder kept = ::tpyapp::main::store(Rec(4));
     std::cout << kept.value() << "\n";
     if ((kept.slot.has_value())) {
         (*kept.slot).v = 9;
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

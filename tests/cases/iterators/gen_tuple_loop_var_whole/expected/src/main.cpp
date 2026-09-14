@@ -305,7 +305,7 @@ __coro_async_section async_section() {
 void main() {
     std::vector<std::tuple<int32_t, A>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{1, A(10)}), ::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{2, A(20)})};
     {
-        auto __src_0 = walk_free(xs);
+        auto __src_0 = ::tpyapp::main::walk_free(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -317,7 +317,7 @@ void main() {
     std::cout << "free src" << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << " " << std::get<1>(::tpy::__getitem__(xs, 1)).v << "\n";
     std::vector<std::tuple<int32_t, int32_t>> vs = {std::tuple<int32_t, int32_t>{1, 10}, std::tuple<int32_t, int32_t>{2, 20}};
     {
-        auto __src_2 = walk_value(vs);
+        auto __src_2 = ::tpyapp::main::walk_value(vs);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -348,10 +348,10 @@ void main() {
         std::cout << "readonly" << " " << n << "\n";
         }
     }
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_section()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_section()));
     ::tpy::ordered_map<int32_t, A> d = ::tpy::ordered_map<int32_t, A>({{7, A(70)}});
     {
-        auto __src_8 = walk_items(d);
+        auto __src_8 = ::tpyapp::main::walk_items(d);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -452,7 +452,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

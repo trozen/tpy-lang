@@ -52,7 +52,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // async def add(self, n: int32) -> None:
@@ -97,7 +97,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     total = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -34,8 +34,8 @@ void test_protocol() {
 //     test_static()
 //     test_protocol()
 void main() {
-    test_static();
-    test_protocol();
+    ::tpyapp::main::test_static();
+    ::tpyapp::main::test_protocol();
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

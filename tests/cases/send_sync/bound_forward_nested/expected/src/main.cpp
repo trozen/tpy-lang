@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     w = Wrap(7)
 //     print(w.inner.item)
 void main() {
-    forward<int32_t>(5);
+    ::tpyapp::main::forward<int32_t>(5);
     Wrap<int32_t> w = Wrap<int32_t>(7);
     std::cout << w.inner.item << "\n";
 }
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

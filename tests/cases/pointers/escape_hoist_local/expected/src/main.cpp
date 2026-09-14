@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    loop_escape();
+    ::tpyapp::main::loop_escape();
 }
 
 } // namespace tpyapp::main

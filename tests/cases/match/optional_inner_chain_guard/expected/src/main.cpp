@@ -237,14 +237,14 @@ __gen_gen gen(std::optional<std::string_view> x, bool flag) {
 //     for v in gen("a", False):
 //         print(v)
 void main() {
-    std::cout << folded("a", true) << " " << folded("a", false) << " " << folded(std::nullopt, true) << " " << folded("z", true) << "\n";
-    std::cout << folded_or("b", true) << " " << folded_or("b", false) << " " << folded_or(std::nullopt, false) << "\n";
-    std::cout << folded_later("b", true) << " " << folded_later("b", false) << " " << folded_later("a", true) << "\n";
-    std::cout << wildcard_guard("z", true) << " " << wildcard_guard("z", false) << "\n";
-    std::cout << binding_guard("a", true) << " " << binding_guard("a", false) << "\n";
+    std::cout << ::tpyapp::main::folded("a", true) << " " << ::tpyapp::main::folded("a", false) << " " << ::tpyapp::main::folded(std::nullopt, true) << " " << ::tpyapp::main::folded("z", true) << "\n";
+    std::cout << ::tpyapp::main::folded_or("b", true) << " " << ::tpyapp::main::folded_or("b", false) << " " << ::tpyapp::main::folded_or(std::nullopt, false) << "\n";
+    std::cout << ::tpyapp::main::folded_later("b", true) << " " << ::tpyapp::main::folded_later("b", false) << " " << ::tpyapp::main::folded_later("a", true) << "\n";
+    std::cout << ::tpyapp::main::wildcard_guard("z", true) << " " << ::tpyapp::main::wildcard_guard("z", false) << "\n";
+    std::cout << ::tpyapp::main::binding_guard("a", true) << " " << ::tpyapp::main::binding_guard("a", false) << "\n";
     {
         std::string __tmp_1 = "a";
-        auto __src_0 = gen(__tmp_1, true);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -255,7 +255,7 @@ void main() {
     }
     {
         std::string __tmp_2 = "a";
-        auto __src_2 = gen(__tmp_2, false);
+        auto __src_2 = ::tpyapp::main::gen(__tmp_2, false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -272,7 +272,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

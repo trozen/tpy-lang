@@ -34,7 +34,7 @@ int32_t via_loop(const std::vector<Box>& xs) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
         std::array<const Box*, 1> __tmp_1{&b};
-        total = ::tpy::add_check<int32_t>(total, take_mut(::tpy::varargs<const Box>(__tmp_1)));
+        total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::take_mut(::tpy::varargs<const Box>(__tmp_1)));
     }
     return total;
 }
@@ -48,7 +48,7 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(5));
     items.push_back(Box(6));
-    std::cout << via_loop(items) << "\n";
+    std::cout << ::tpyapp::main::via_loop(items) << "\n";
 }
 
 // main()
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

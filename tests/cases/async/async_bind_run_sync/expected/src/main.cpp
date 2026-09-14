@@ -29,7 +29,7 @@ __coro_add_one add_one(::tpy::BigInt n) {
 //     c = add_one(41)
 //     print(asyncio.run(c))
 void main() {
-    std::optional<__coro_add_one> c = add_one(::tpy::BigInt(41));
+    std::optional<__coro_add_one> c = ::tpyapp::main::add_one(::tpy::BigInt(41));
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))) << "\n";
 }
 
@@ -44,7 +44,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

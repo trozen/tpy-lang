@@ -46,9 +46,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
-    test_negative_index();
-    test_first_element();
+    ::tpyapp::main::test_basic();
+    ::tpyapp::main::test_negative_index();
+    ::tpyapp::main::test_first_element();
 }
 
 } // namespace tpyapp::main

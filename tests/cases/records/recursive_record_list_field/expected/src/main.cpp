@@ -25,9 +25,9 @@ void add(Node& parent, const Node& child) {
 void main() {
     Node root = Node(1);
     Node leaf = Node(2);
-    add(root, leaf);
+    ::tpyapp::main::add(root, leaf);
     Node __tmp_1 = Node(3);
-    add(root, __tmp_1);
+    ::tpyapp::main::add(root, __tmp_1);
     ::tpy::__getitem__(root.children, 0).val = 20;
     ::tpy::__getitem__(root.children, 0).children.push_back(Node(99));
     ::tpy::BigInt total = ::tpy::BigInt(root.val);
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

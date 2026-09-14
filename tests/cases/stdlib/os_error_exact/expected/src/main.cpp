@@ -59,7 +59,7 @@ void teardown(std::string_view base) {
 //     teardown(base)
 void main() {
     std::string_view base = "tpy_os_error_exact";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
     ::tpystd::os::mkdir(base);
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/d")));
     {
@@ -102,7 +102,7 @@ void main() {
         }
     }
     std::cout << ::tpy::print_bool((::tpy_const_eperm == 1)) << " " << ::tpy::print_bool((::tpy_const_eacces == 13)) << " " << ::tpy::print_bool((::tpy_const_eisdir == 21)) << " " << ::tpy::print_bool((::tpy_const_enotdir == 20)) << " " << ::tpy::print_bool((::tpy_const_etimedout > 0)) << "\n";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
 }
 
 // # CPython-exact OSError text and attributes from real os/file failures:
@@ -121,7 +121,7 @@ void __tpy_init() {
 
     ::tpystd::errno_mod::__tpy_init();
     ::tpystd::os::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

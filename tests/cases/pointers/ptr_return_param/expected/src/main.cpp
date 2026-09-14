@@ -27,9 +27,9 @@ Point* addr_global() {
 //     print(p2.y)  # tpyc: nullable(p2)
 void main() {
     Point local = Point(10, 20);
-    Point* p1 = addr_param(local);
+    Point* p1 = ::tpyapp::main::addr_param(local);
     std::cout << ::tpy::deref_check(p1).x << "\n";
-    Point* p2 = addr_global();
+    Point* p2 = ::tpyapp::main::addr_global();
     std::cout << ::tpy::deref_check(p2).y << "\n";
 }
 
@@ -43,7 +43,7 @@ void __tpy_init() {
 
     static Point __global_slot_1 = Point(1, 2);
     global_pt = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

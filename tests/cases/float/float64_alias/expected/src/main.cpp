@@ -24,7 +24,7 @@ void test_star_import() {
 // def main() -> None:
 //     test_star_import()
 void main() {
-    test_star_import();
+    ::tpyapp::main::test_star_import();
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

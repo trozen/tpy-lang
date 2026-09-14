@@ -18,7 +18,7 @@ std::tuple<int32_t, Box> make_pair(int32_t n) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t.emplace(make_pair(9));
+        t.emplace(::tpyapp::main::make_pair(9));
         std::get<1>((*t)).val = 50;
         __state = S_RESUME_0;
         return std::get<0>((*t));
@@ -47,7 +47,7 @@ __gen_gen gen() {
 //         print(v)
 void main() {
     {
-        auto __src_0 = gen();
+        auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

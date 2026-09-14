@@ -28,10 +28,10 @@ TD make() {
 //         print("name operand ok")
 //     print("total:", calls)
 void main() {
-    if ((static_cast<void>(make()), true)) {
+    if ((static_cast<void>(::tpyapp::main::make()), true)) {
         std::cout << "in:" << " " << calls << "\n";
     }
-    if ((static_cast<void>(make()), false)) {
+    if ((static_cast<void>(::tpyapp::main::make()), false)) {
         std::cout << "unreachable" << "\n";
     }
     std::cout << "not in:" << " " << calls << "\n";
@@ -51,7 +51,7 @@ void __tpy_init() {
     initialized = true;
 
     calls = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

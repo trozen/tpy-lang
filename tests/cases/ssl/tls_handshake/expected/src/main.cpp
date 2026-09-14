@@ -116,11 +116,11 @@ void handshake_ok() {
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    if ((!(drive(cli, srv)))) {
+    if ((!(::tpyapp::main::drive(cli, srv)))) {
         std::cout << "FAIL: handshake did not converge" << "\n";
         return;
     }
-    std::cout << "handshake:" << " " << tls_ver(cli.version()) << "\n";
+    std::cout << "handshake:" << " " << ::tpyapp::main::tls_ver(cli.version()) << "\n";
     cli.setblocking(true);
     srv.setblocking(true);
     cli.sendall(::tpy::bytes_literal("hello tls", 9));
@@ -233,8 +233,8 @@ void cert_none() {
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    if (drive(cli, srv)) {
-        std::cout << "no-verify handshake:" << " " << tls_ver(cli.version()) << "\n";
+    if (::tpyapp::main::drive(cli, srv)) {
+        std::cout << "no-verify handshake:" << " " << ::tpyapp::main::tls_ver(cli.version()) << "\n";
     } else {
         std::cout << "FAIL: no-verify handshake did not converge" << "\n";
     }
@@ -246,10 +246,10 @@ void cert_none() {
 //     hostname_mismatch()
 //     cert_none()
 void main() {
-    write_fixtures();
-    handshake_ok();
-    hostname_mismatch();
-    cert_none();
+    ::tpyapp::main::write_fixtures();
+    ::tpyapp::main::handshake_ok();
+    ::tpyapp::main::hostname_mismatch();
+    ::tpyapp::main::cert_none();
 }
 
 // import ssl
@@ -264,7 +264,7 @@ void __tpy_init() {
 
     ::tpystd::ssl::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

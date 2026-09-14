@@ -23,7 +23,7 @@ int32_t process(bool flag) {
 // def main() -> None:
 //     print(process(True))
 void main() {
-    std::cout << process(true) << "\n";
+    std::cout << ::tpyapp::main::process(true) << "\n";
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

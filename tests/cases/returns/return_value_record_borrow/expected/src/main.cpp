@@ -20,7 +20,7 @@ D first(const std::vector<D>& xs) {
 //     # A by-value record call result handed straight to the return slot.
 //     return first(xs)  # tpyc: ok
 D again(const std::vector<D>& xs) {
-    return first(xs);
+    return ::tpyapp::main::first(xs);
 }
 
 // def widen(a: D, b: D) -> D | E:
@@ -55,14 +55,14 @@ void main() {
     std::cout << ((a) + (b)).k << "\n";
     D lo = D(3);
     D hi = D(5);
-    std::cout << pick(hi, lo).n << "\n";
+    std::cout << ::tpyapp::main::pick(hi, lo).n << "\n";
     std::vector<D> xs = {D(7), D(8)};
-    std::cout << first(xs).n << "\n";
-    std::cout << again(xs).n << "\n";
-    D got = first(xs);
+    std::cout << ::tpyapp::main::first(xs).n << "\n";
+    std::cout << ::tpyapp::main::again(xs).n << "\n";
+    D got = ::tpyapp::main::first(xs);
     ::tpy::__setitem__(xs, 0, D(99));
-    std::cout << got.n << " " << first(xs).n << "\n";
-    ::tpy::Union<D, E> w = widen(lo, hi);
+    std::cout << got.n << " " << ::tpyapp::main::first(xs).n << "\n";
+    ::tpy::Union<D, E> w = ::tpyapp::main::widen(lo, hi);
     if (std::holds_alternative<D>(w)) {
         auto& __w = std::get<D>(w);
         std::cout << __w.n << "\n";
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

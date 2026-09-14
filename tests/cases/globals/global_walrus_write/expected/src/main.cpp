@@ -65,12 +65,12 @@ void then_plain() {
 //     print("after plain:", counter)
 //     print("comprehension:", in_comprehension(), seen)
 void main() {
-    std::cout << "store:" << " " << store() << "\n";
-    std::cout << "observed:" << " " << observe() << "\n";
-    std::cout << "loop:" << " " << loop_until() << " " << limit << "\n";
-    then_plain();
+    std::cout << "store:" << " " << ::tpyapp::main::store() << "\n";
+    std::cout << "observed:" << " " << ::tpyapp::main::observe() << "\n";
+    std::cout << "loop:" << " " << ::tpyapp::main::loop_until() << " " << limit << "\n";
+    ::tpyapp::main::then_plain();
     std::cout << "after plain:" << " " << counter << "\n";
-    std::cout << "comprehension:" << " " << in_comprehension() << " " << seen << "\n";
+    std::cout << "comprehension:" << " " << ::tpyapp::main::in_comprehension() << " " << seen << "\n";
 }
 
 // counter = 0
@@ -86,7 +86,7 @@ void __tpy_init() {
     counter = 0;
     limit = 0;
     seen = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

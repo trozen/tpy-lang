@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Box b = Box();
     b.value = 42;
-    std::cout << take_optional<Box>(std::move(b), 99) << "\n";
+    std::cout << ::tpyapp::main::take_optional<Box>(std::move(b), 99) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

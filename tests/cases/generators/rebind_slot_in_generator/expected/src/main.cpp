@@ -184,7 +184,7 @@ __gen_before_while_after_drain before_while_after_drain(int32_t n) {
 //         print("after_drain:", got)
 void main() {
     {
-        auto __src_0 = decl_inside_while(3);
+        auto __src_0 = ::tpyapp::main::decl_inside_while(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -195,7 +195,7 @@ void main() {
     }
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3};
-        auto __src_2 = decl_inside_for(__tmp_1);
+        auto __src_2 = ::tpyapp::main::decl_inside_for(__tmp_1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -205,7 +205,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = before_while(2);
+        auto __src_4 = ::tpyapp::main::before_while(2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -215,7 +215,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = before_while_after_drain(2);
+        auto __src_6 = ::tpyapp::main::before_while_after_drain(2);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -232,7 +232,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

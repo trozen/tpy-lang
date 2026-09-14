@@ -15,7 +15,7 @@ std::string greet(std::string_view name) {
 // def main() -> None:
 //     print(greet("world"))
 void main() {
-    std::cout << greet("world") << "\n";
+    std::cout << ::myproject::core::greet("world") << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::myproject::core::main();
 }
 
 } // namespace myproject::core

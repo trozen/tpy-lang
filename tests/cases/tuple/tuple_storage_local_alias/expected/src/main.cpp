@@ -47,9 +47,9 @@ void chain_alias() {
 //     from_field()
 //     chain_alias()
 void main() {
-    from_list();
-    from_field();
-    chain_alias();
+    ::tpyapp::main::from_list();
+    ::tpyapp::main::from_field();
+    ::tpyapp::main::chain_alias();
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

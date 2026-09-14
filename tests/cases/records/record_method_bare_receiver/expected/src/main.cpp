@@ -53,16 +53,16 @@ int32_t inherited(FancyCounter& f, int32_t k) {
 void main() {
     Counter a = Counter(3);
     Counter b = Counter(4);
-    std::cout << combine(a, b) << "\n";
+    std::cout << ::tpyapp::main::combine(a, b) << "\n";
     std::cout << a.get() << "\n";
     std::cout << b.get() << "\n";
     Counter c = Counter(10);
-    std::cout << narrowed_receiver(::tpy::Union<Counter*, Label*>{&(c)}) << "\n";
+    std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&(c)}) << "\n";
     std::cout << c.get() << "\n";
     Label __tmp_1 = Label("abc");
-    std::cout << narrowed_receiver(::tpy::Union<Counter*, Label*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&__tmp_1}) << "\n";
     FancyCounter f = FancyCounter(20);
-    std::cout << inherited(f, 2) << "\n";
+    std::cout << ::tpyapp::main::inherited(f, 2) << "\n";
     std::cout << f.get() << "\n";
 }
 
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

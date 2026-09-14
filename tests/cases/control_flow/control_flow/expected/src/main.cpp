@@ -104,20 +104,20 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << classify(-5) << "\n";
-    std::cout << classify(0) << "\n";
-    std::cout << classify(5) << "\n";
-    std::cout << check_range(5) << "\n";
-    std::cout << check_range(15) << "\n";
-    std::cout << check_bounds(-1) << "\n";
-    std::cout << check_bounds(50) << "\n";
-    std::cout << check_bounds(101) << "\n";
-    std::cout << complex_condition(1, 1) << "\n";
-    std::cout << complex_condition(-1, 1) << "\n";
-    std::cout << complex_condition(0, 0) << "\n";
-    std::cout << nested_else_if(1, 0) << "\n";
-    std::cout << nested_else_if(-1, 1) << "\n";
-    std::cout << nested_else_if(-1, -1) << "\n";
+    std::cout << ::tpyapp::main::classify(-5) << "\n";
+    std::cout << ::tpyapp::main::classify(0) << "\n";
+    std::cout << ::tpyapp::main::classify(5) << "\n";
+    std::cout << ::tpyapp::main::check_range(5) << "\n";
+    std::cout << ::tpyapp::main::check_range(15) << "\n";
+    std::cout << ::tpyapp::main::check_bounds(-1) << "\n";
+    std::cout << ::tpyapp::main::check_bounds(50) << "\n";
+    std::cout << ::tpyapp::main::check_bounds(101) << "\n";
+    std::cout << ::tpyapp::main::complex_condition(1, 1) << "\n";
+    std::cout << ::tpyapp::main::complex_condition(-1, 1) << "\n";
+    std::cout << ::tpyapp::main::complex_condition(0, 0) << "\n";
+    std::cout << ::tpyapp::main::nested_else_if(1, 0) << "\n";
+    std::cout << ::tpyapp::main::nested_else_if(-1, 1) << "\n";
+    std::cout << ::tpyapp::main::nested_else_if(-1, -1) << "\n";
 }
 
 } // namespace tpyapp::main

@@ -31,9 +31,9 @@ void __tpy_init() {
     initialized = true;
 
     x = ::tpy::BigInt(0);
-    update(::tpy::BigInt(42));
+    ::tpyapp::main::update(::tpy::BigInt(42));
     std::cout << x << "\n";
-    update(::tpy::BigInt(-1));
+    ::tpyapp::main::update(::tpy::BigInt(-1));
     std::cout << x << "\n";
 }
 

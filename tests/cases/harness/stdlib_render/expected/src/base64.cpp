@@ -149,8 +149,8 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
         int32_t c1 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1))));
         int32_t c2 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2))));
         int32_t c3 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 3))));
-        int32_t d0 = _b64_char_to_value(c0, c62, c63);
-        int32_t d1 = _b64_char_to_value(c1, c62, c63);
+        int32_t d0 = ::tpystd::base64::_b64_char_to_value(c0, c62, c63);
+        int32_t d1 = ::tpystd::base64::_b64_char_to_value(c1, c62, c63);
         if ((c2 == _PAD)) {
             if (((c3 != _PAD) || ((::tpy::add_check<int32_t>(i, 4)) != n))) {
                 throw ::tpy::ValueError("Invalid base64 padding");
@@ -160,12 +160,12 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
             if (((::tpy::add_check<int32_t>(i, 4)) != n)) {
                 throw ::tpy::ValueError("Invalid base64 padding");
             }
-            int32_t e2 = _b64_char_to_value(c2, c62, c63);
+            int32_t e2 = ::tpystd::base64::_b64_char_to_value(c2, c62, c63);
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(d0, 2)) | (::tpy::rshift_check<int32_t>(d1, 4)))) & 255))));
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(d1 & 15)), 4)) | (::tpy::rshift_check<int32_t>(e2, 2)))) & 255))));
         } else {
-            int32_t f2 = _b64_char_to_value(c2, c62, c63);
-            int32_t f3 = _b64_char_to_value(c3, c62, c63);
+            int32_t f2 = ::tpystd::base64::_b64_char_to_value(c2, c62, c63);
+            int32_t f3 = ::tpystd::base64::_b64_char_to_value(c3, c62, c63);
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(d0, 2)) | (::tpy::rshift_check<int32_t>(d1, 4)))) & 255))));
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(d1 & 15)), 4)) | (::tpy::rshift_check<int32_t>(f2, 2)))) & 255))));
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(f2 & 3)), 6)) | f3)) & 255))));
@@ -252,9 +252,9 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 //     return _b64_encode(data, _build_altchars_alphabet(altchars))
 ::tpy::Bytes b64encode(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars) {
     if ((!altchars.has_value())) {
-        return _b64_encode(data, _B64_STD);
+        return ::tpystd::base64::_b64_encode(data, _B64_STD);
     }
-    return _b64_encode(data, _build_altchars_alphabet((*altchars)));
+    return ::tpystd::base64::_b64_encode(data, ::tpystd::base64::_build_altchars_alphabet((*altchars)));
 }
 
 // @dispatch
@@ -280,56 +280,56 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
         c63 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem((*altchars), 1));
     }
     if (validate) {
-        return _b64_decode(data, c62, c63);
+        return ::tpystd::base64::_b64_decode(data, c62, c63);
     }
-    return _b64_decode(_filter_b64_input(data, c62, c63), c62, c63);
+    return ::tpystd::base64::_b64_decode(::tpystd::base64::_filter_b64_input(data, c62, c63), c62, c63);
 }
 
 // @dispatch
 // def b64decode(data: str, altchars: bytes | None = None, validate: bool = False) -> bytes:
 //     return b64decode(data.encode(), altchars, validate)
 ::tpy::Bytes b64decode(std::string_view data, std::optional<::tpy::BytesView> altchars, bool validate) {
-    return b64decode(::tpy::bytes_from_str(data), altchars ? std::make_optional(::tpy::Bytes(*altchars)) : std::nullopt, validate);
+    return ::tpystd::base64::b64decode(::tpy::bytes_from_str(data), altchars ? std::make_optional(::tpy::Bytes(*altchars)) : std::nullopt, validate);
 }
 
 // def standard_b64encode(data: bytes) -> bytes:
 //     return _b64_encode(data, _B64_STD)
 ::tpy::Bytes standard_b64encode(::tpy::BytesView data) {
-    return _b64_encode(data, _B64_STD);
+    return ::tpystd::base64::_b64_encode(data, _B64_STD);
 }
 
 // @dispatch
 // def standard_b64decode(data: bytes) -> bytes:
 //     return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH)
 ::tpy::Bytes standard_b64decode(::tpy::BytesView data) {
-    return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH);
+    return ::tpystd::base64::_b64_decode(::tpystd::base64::_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH);
 }
 
 // @dispatch
 // def standard_b64decode(data: str) -> bytes:
 //     return standard_b64decode(data.encode())
 ::tpy::Bytes standard_b64decode(std::string_view data) {
-    return standard_b64decode(::tpy::bytes_from_str(data));
+    return ::tpystd::base64::standard_b64decode(::tpy::bytes_from_str(data));
 }
 
 // def urlsafe_b64encode(data: bytes) -> bytes:
 //     return _b64_encode(data, _B64_URL)
 ::tpy::Bytes urlsafe_b64encode(::tpy::BytesView data) {
-    return _b64_encode(data, _B64_URL);
+    return ::tpystd::base64::_b64_encode(data, _B64_URL);
 }
 
 // @dispatch
 // def urlsafe_b64decode(data: bytes) -> bytes:
 //     return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER)
 ::tpy::Bytes urlsafe_b64decode(::tpy::BytesView data) {
-    return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER);
+    return ::tpystd::base64::_b64_decode(::tpystd::base64::_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER);
 }
 
 // @dispatch
 // def urlsafe_b64decode(data: str) -> bytes:
 //     return urlsafe_b64decode(data.encode())
 ::tpy::Bytes urlsafe_b64decode(std::string_view data) {
-    return urlsafe_b64decode(::tpy::bytes_from_str(data));
+    return ::tpystd::base64::urlsafe_b64decode(::tpy::bytes_from_str(data));
 }
 
 // def b16encode(data: bytes) -> bytes:
@@ -397,8 +397,8 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
     ::tpy::ByteArray result = ::tpy::ByteArray();
     int32_t i = 0;
     while ((i < n)) {
-        int32_t hi = _b16_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i)), casefold);
-        int32_t lo = _b16_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1)))), casefold);
+        int32_t hi = ::tpystd::base64::_b16_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i)), casefold);
+        int32_t lo = ::tpystd::base64::_b16_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1)))), casefold);
         result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(hi, 4)) | lo)) & 255))));
         i = ::tpy::add_check<int32_t>(i, 2);
     }
@@ -409,7 +409,7 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
 // def b16decode(data: str, casefold: bool = False) -> bytes:
 //     return b16decode(data.encode(), casefold)
 ::tpy::Bytes b16decode(std::string_view data, bool casefold) {
-    return b16decode(::tpy::bytes_from_str(data), casefold);
+    return ::tpystd::base64::b16decode(::tpy::bytes_from_str(data), casefold);
 }
 
 // def b32encode(data: bytes) -> bytes:
@@ -619,16 +619,16 @@ int32_t _b32_char_to_value(int32_t c) {
 //     return _b32decode_impl(data)
 ::tpy::Bytes b32decode(::tpy::BytesView data, bool casefold, std::optional<::tpy::BytesView> map01) {
     if ((casefold || (map01.has_value()))) {
-        return _b32decode_impl(_b32_preprocess(data, casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt));
+        return ::tpystd::base64::_b32decode_impl(::tpystd::base64::_b32_preprocess(data, casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt));
     }
-    return _b32decode_impl(data);
+    return ::tpystd::base64::_b32decode_impl(data);
 }
 
 // @dispatch
 // def b32decode(data: str, casefold: bool = False, map01: bytes | None = None) -> bytes:
 //     return b32decode(data.encode(), casefold, map01)
 ::tpy::Bytes b32decode(std::string_view data, bool casefold, std::optional<::tpy::BytesView> map01) {
-    return b32decode(::tpy::bytes_from_str(data), casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt);
+    return ::tpystd::base64::b32decode(::tpy::bytes_from_str(data), casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt);
 }
 
 // def _b32decode_impl(data: bytes) -> bytes:
@@ -696,7 +696,7 @@ int32_t _b32_char_to_value(int32_t c) {
         std::vector<int32_t> vals = {0, 0, 0, 0, 0, 0, 0, 0};
         int32_t k = 0;
         while ((k < (::tpy::sub_check<int32_t>(8, pad)))) {
-            ::tpy::__setitem__(vals, k, _b32_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, k))))));
+            ::tpy::__setitem__(vals, k, ::tpystd::base64::_b32_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, k))))));
             k = ::tpy::add_check<int32_t>(k, 1);
         }
         result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(::tpy::__getitem__(vals, 0), 3)) | (::tpy::rshift_check<int32_t>(::tpy::__getitem__(vals, 1), 2)))) & 255))));
@@ -741,7 +741,7 @@ int32_t _b32_char_to_value(int32_t c) {
 //         result.append(uint8(_NEWLINE))
 //     return bytes(result)
 ::tpy::Bytes encodebytes(::tpy::BytesView data) {
-    ::tpy::Bytes encoded = _b64_encode(data, _B64_STD);
+    ::tpy::Bytes encoded = ::tpystd::base64::_b64_encode(data, _B64_STD);
     int32_t n = ::tpy::__len__(encoded);
     ::tpy::ByteArray result = ::tpy::ByteArray();
     int32_t i = 0;
@@ -761,7 +761,7 @@ int32_t _b32_char_to_value(int32_t c) {
 //     # MIME-style: tolerate newlines and whitespace in input.
 //     return b64decode(data)
 ::tpy::Bytes decodebytes(::tpy::BytesView data) {
-    return b64decode(data);
+    return ::tpystd::base64::b64decode(data);
 }
 
 // _B64_STD: bytes = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"

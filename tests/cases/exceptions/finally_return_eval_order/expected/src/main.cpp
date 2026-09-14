@@ -48,7 +48,7 @@ namespace tpyapp::main {
     {
         bool __fin_ran_2 = false;
         try {
-            [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = bump();
+            [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = ::tpyapp::main::bump();
             __fin_ran_2 = true;
             return ::tpy::BigInt(99);
         } catch (...) {
@@ -64,8 +64,8 @@ namespace tpyapp::main {
 //     print(f())
 //     print(g())
 void main() {
-    std::cout << f() << "\n";
-    std::cout << g() << "\n";
+    std::cout << ::tpyapp::main::f() << "\n";
+    std::cout << ::tpyapp::main::g() << "\n";
 }
 
 // main()
@@ -74,7 +74,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

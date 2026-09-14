@@ -23,9 +23,9 @@ void g(const C& a) {
 //     f()
 //     g(C(2.0))
 void main() {
-    f();
+    ::tpyapp::main::f();
     C __tmp_1 = C(2.0);
-    g(__tmp_1);
+    ::tpyapp::main::g(__tmp_1);
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

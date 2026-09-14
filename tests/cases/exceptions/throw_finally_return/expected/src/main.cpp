@@ -138,15 +138,15 @@ std::optional<int32_t> return_optional(bool flag) {
 //     if r2 is None:
 //         print("none")
 void main() {
-    std::cout << return_from_try() << "\n";
-    std::cout << return_from_except() << "\n";
-    std::cout << return_from_multiple_paths(true) << "\n";
-    std::cout << return_from_multiple_paths(false) << "\n";
-    std::optional<int32_t> r = return_optional(true);
+    std::cout << ::tpyapp::main::return_from_try() << "\n";
+    std::cout << ::tpyapp::main::return_from_except() << "\n";
+    std::cout << ::tpyapp::main::return_from_multiple_paths(true) << "\n";
+    std::cout << ::tpyapp::main::return_from_multiple_paths(false) << "\n";
+    std::optional<int32_t> r = ::tpyapp::main::return_optional(true);
     if ((r.has_value())) {
         std::cout << ::tpy::print_optional_val(r) << "\n";
     }
-    std::optional<int32_t> r2 = return_optional(false);
+    std::optional<int32_t> r2 = ::tpyapp::main::return_optional(false);
     if ((!r2.has_value())) {
         std::cout << "none" << "\n";
     }
@@ -158,7 +158,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

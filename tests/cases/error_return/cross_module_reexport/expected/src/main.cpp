@@ -43,7 +43,7 @@ void main() {
     ::tpy::BigInt v;
     {
         {
-            auto __try_tmp_4 = parse_pair("10", "20");
+            auto __try_tmp_4 = ::tpyapp::main::parse_pair("10", "20");
             if (!__try_tmp_4.has_value()) goto __except_3;
             v = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -58,7 +58,7 @@ void main() {
     ::tpy::BigInt v2;
     {
         {
-            auto __try_tmp_6 = parse_pair("10", "");
+            auto __try_tmp_6 = ::tpyapp::main::parse_pair("10", "");
             if (!__try_tmp_6.has_value()) goto __except_5;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
@@ -81,7 +81,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::errors_impl::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

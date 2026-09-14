@@ -137,24 +137,24 @@ void __tpy_init() {
     d = ::tpy::div_check<int32_t>(17, 3);
     e = ::tpy::pow_check<int32_t>(2, 10);
     n = 5;
-    result1 = takes_int32(n);
+    result1 = ::tpyapp::main::takes_int32(n);
     std::cout << result1 << "\n";
-    result2 = return_as_int32(::tpy::BigInt(10));
+    result2 = ::tpyapp::main::return_as_int32(::tpy::BigInt(10));
     std::cout << result2 << "\n";
-    result3 = var_decl_test(::tpy::BigInt(15));
+    result3 = ::tpyapp::main::var_decl_test(::tpy::BigInt(15));
     std::cout << result3 << "\n";
-    result4 = assign_test(::tpy::BigInt(20));
+    result4 = ::tpyapp::main::assign_test(::tpy::BigInt(20));
     std::cout << result4 << "\n";
-    result5 = loop_test(::tpy::BigInt(3));
+    result5 = ::tpyapp::main::loop_test(::tpy::BigInt(3));
     std::cout << result5 << "\n";
-    result6 = constructor_test(::tpy::BigInt(25));
+    result6 = ::tpyapp::main::constructor_test(::tpy::BigInt(25));
     std::cout << result6 << "\n";
     std::cout << a << "\n";
     std::cout << b << "\n";
     std::cout << c << "\n";
     std::cout << d << "\n";
     std::cout << e << "\n";
-    std::cout << literal_ops_local() << "\n";
+    std::cout << ::tpyapp::main::literal_ops_local() << "\n";
 }
 
 } // namespace tpyapp::main

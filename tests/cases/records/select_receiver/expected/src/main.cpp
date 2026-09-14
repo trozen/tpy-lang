@@ -52,12 +52,12 @@ void walrus_str() {
 //     ternary_str(False)
 //     walrus_str()
 void main() {
-    ternary_record(true);
-    ternary_record(false);
-    walrus_record();
-    ternary_str(true);
-    ternary_str(false);
-    walrus_str();
+    ::tpyapp::main::ternary_record(true);
+    ::tpyapp::main::ternary_record(false);
+    ::tpyapp::main::walrus_record();
+    ::tpyapp::main::ternary_str(true);
+    ::tpyapp::main::ternary_str(false);
+    ::tpyapp::main::walrus_str();
 }
 
 // main()
@@ -66,7 +66,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

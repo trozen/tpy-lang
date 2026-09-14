@@ -255,7 +255,7 @@ __gen_owned_param_stays_bare owned_param_stays_bare(std::string_view s) {
 //         print(v)
 void main() {
     {
-        auto __src_0 = static_source_view();
+        auto __src_0 = ::tpyapp::main::static_source_view();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -265,7 +265,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = static_bytes_view();
+        auto __src_2 = ::tpyapp::main::static_bytes_view();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -276,7 +276,7 @@ void main() {
     }
     {
         std::string __tmp_1 = "borrowed";
-        auto __src_4 = explicit_view_local(__tmp_1);
+        auto __src_4 = ::tpyapp::main::explicit_view_local(__tmp_1);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -287,7 +287,7 @@ void main() {
     }
     {
         Holder __tmp_2 = Holder("managed");
-        auto __src_6 = with_view_target(__tmp_2);
+        auto __src_6 = ::tpyapp::main::with_view_target(__tmp_2);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -297,7 +297,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = peephole_view(2);
+        auto __src_8 = ::tpyapp::main::peephole_view(2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -308,7 +308,7 @@ void main() {
     }
     {
         std::string __tmp_3 = "kept";
-        auto __src_10 = owned_param_stays_bare(__tmp_3);
+        auto __src_10 = ::tpyapp::main::owned_param_stays_bare(__tmp_3);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -325,7 +325,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -26,9 +26,9 @@ void mutate_ref(Ref& r) {
 //     print(read_ref(r))
 void main() {
     Ref r = Ref(Point(10, 20));
-    std::cout << read_ref(r) << "\n";
-    mutate_ref(r);
-    std::cout << read_ref(r) << "\n";
+    std::cout << ::tpyapp::main::read_ref(r) << "\n";
+    ::tpyapp::main::mutate_ref(r);
+    std::cout << ::tpyapp::main::read_ref(r) << "\n";
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

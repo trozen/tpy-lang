@@ -23,7 +23,7 @@ namespace tpyapp::main {
 void main() {
     Outer o = Outer(::tpy::BigInt(5));
     std::cout << o.peek_x() << "\n";
-    std::cout << read_only(o) << "\n";
+    std::cout << ::tpyapp::main::read_only(o) << "\n";
     o.tags.push_back(9);
     std::cout << o.tag_count() << "\n";
     o.bump();
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

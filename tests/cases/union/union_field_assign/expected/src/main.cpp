@@ -47,7 +47,7 @@ void main() {
         auto& __p = *std::get<Cat*>(p);
         std::cout << __p.name << "\n";
     }
-    z.pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(identity(new_pet));
+    z.pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(::tpyapp::main::identity(new_pet));
     ::tpy::Union<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z.pet);
     if (std::holds_alternative<Cat*>(p2)) {
         auto& __p2 = *std::get<Cat*>(p2);
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

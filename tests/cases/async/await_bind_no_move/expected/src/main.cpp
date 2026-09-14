@@ -51,7 +51,7 @@ int32_t size_of(Payload&& p) {
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
         Payload __tmp_1 = (*p);
-        first = size_of(std::move(__tmp_1));
+        first = ::tpyapp::main::size_of(std::move(__tmp_1));
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(first, ::tpy::__len__((*p).items)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -99,7 +99,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # The inverse of await_bind_move: an await-bound local used AGAIN after a sink
@@ -115,7 +115,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

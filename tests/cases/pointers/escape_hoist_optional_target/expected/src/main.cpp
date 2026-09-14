@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    optional_target();
+    ::tpyapp::main::optional_target();
 }
 
 } // namespace tpyapp::main

@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(n.vals[0])
 void main() {
     std::vector<P> xs = {P()};
-    P& n = first(xs);
+    P& n = ::tpyapp::main::first(xs);
     std::vector<P> __tmp_1 = xs;
-    std::cout << drop(std::move(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::drop(std::move(__tmp_1)) << "\n";
     std::cout << ::tpy::__getitem__(n.vals, 0) << "\n";
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

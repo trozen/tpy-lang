@@ -61,7 +61,7 @@ void main() {
             return std::nullopt;
         }
     );
-    std::cout << sum_items(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_1) << "\n";
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
     auto __tmp_2 = [&items]() {
         auto& __src = items;
@@ -75,7 +75,7 @@ void main() {
             }
         );
     }();
-    std::cout << sum_items(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_2) << "\n";
     auto __tmp_3 = ::tpy::make_generator<int32_t>(
         [__i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -87,7 +87,7 @@ void main() {
             return std::nullopt;
         }
     );
-    std::cout << sum_items(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_3) << "\n";
     auto __tmp_4 = ::tpy::make_generator<int32_t>(
         [__i = static_cast<int32_t>(5), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -97,7 +97,7 @@ void main() {
             return std::nullopt;
         }
     );
-    std::cout << sum_items(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_4) << "\n";
     auto __tmp_5 = ::tpy::make_generator<int32_t>(
         [__i = static_cast<int32_t>(0), __stop = static_cast<int32_t>(10), __step = static_cast<int32_t>(2)]() mutable -> std::optional<int32_t> {
             ::tpy::range_check_step_nonzero(__step);
@@ -110,7 +110,7 @@ void main() {
             return std::nullopt;
         }
     );
-    std::cout << sum_items(__tmp_5) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_5) << "\n";
     auto __tmp_6 = ::tpy::make_generator<int32_t>(
         [__i = static_cast<int32_t>(10), __stop = static_cast<int32_t>(0), __step = static_cast<int32_t>(-2)]() mutable -> std::optional<int32_t> {
             ::tpy::range_check_step_nonzero(__step);
@@ -123,7 +123,7 @@ void main() {
             return std::nullopt;
         }
     );
-    std::cout << sum_items(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_6) << "\n";
     auto __tmp_7 = ::tpy::make_generator<int32_t>(std::in_place, []() {
         return [__st = ::tpy::genexpr_state{std::array<int32_t, 3>{10, 20, 30}}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
@@ -135,7 +135,7 @@ void main() {
             return std::nullopt;
         };
     });
-    std::cout << sum_items(__tmp_7) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_7) << "\n";
     auto __tmp_8 = ::tpy::make_generator<int32_t>(std::in_place, []() {
         return [__st = ::tpy::genexpr_state{std::array<int32_t, 5>{1, 2, 3, 4, 5}}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
@@ -150,7 +150,7 @@ void main() {
             return std::nullopt;
         };
     });
-    std::cout << sum_items(__tmp_8) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_8) << "\n";
     int32_t multiplier = 3;
     auto __tmp_9 = ::tpy::make_generator<int32_t>(
         [&multiplier, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
@@ -161,7 +161,7 @@ void main() {
             return std::nullopt;
         }
     );
-    std::cout << sum_items(__tmp_9) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_9) << "\n";
     auto __tmp_10 = [&items, &multiplier]() {
         auto& __src = items;
         return ::tpy::make_generator<int32_t>(
@@ -174,7 +174,7 @@ void main() {
             }
         );
     }();
-    std::cout << sum_items(__tmp_10) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_10) << "\n";
     int32_t threshold = 3;
     auto __tmp_11 = ::tpy::make_generator<int32_t>(
         [&threshold, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
@@ -187,7 +187,7 @@ void main() {
             return std::nullopt;
         }
     );
-    std::cout << sum_items(__tmp_11) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_11) << "\n";
     auto __tmp_12 = [&items, &threshold]() {
         auto& __src = items;
         return ::tpy::make_generator<int32_t>(
@@ -202,7 +202,7 @@ void main() {
             }
         );
     }();
-    std::cout << sum_items(__tmp_12) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_12) << "\n";
     std::vector<int32_t> nums = {1, 2, 3};
     std::cout << ::tpy::str_join(", ", [&nums]() {
         auto& __src = nums;
@@ -230,7 +230,7 @@ void main() {
             }
         );
     }();
-    std::cout << sum_items(__tmp_13) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_13) << "\n";
 }
 
 // main()
@@ -239,7 +239,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

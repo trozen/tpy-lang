@@ -109,22 +109,22 @@ int32_t sum_boxes(const std::vector<::tpystd::tplib::box::Box<Inner>>& boxes) {
 //     print(sum_boxes(boxes))
 void main() {
     Outer o = Outer(5);
-    std::cout << read_through_get(o) << "\n";
-    write_through_get(o);
-    std::cout << read_through_get(o) << "\n";
-    mutate_through_get(o);
-    aug_through_get(o);
-    std::cout << read_through_get(o) << "\n";
-    alias_write(o);
-    std::cout << alias_read(o) << "\n";
-    elem_alias_write(o);
+    std::cout << ::tpyapp::main::read_through_get(o) << "\n";
+    ::tpyapp::main::write_through_get(o);
+    std::cout << ::tpyapp::main::read_through_get(o) << "\n";
+    ::tpyapp::main::mutate_through_get(o);
+    ::tpyapp::main::aug_through_get(o);
+    std::cout << ::tpyapp::main::read_through_get(o) << "\n";
+    ::tpyapp::main::alias_write(o);
+    std::cout << ::tpyapp::main::alias_read(o) << "\n";
+    ::tpyapp::main::elem_alias_write(o);
     std::cout << ::tpy::__getitem__(o.items, 0).v << "\n";
     Cell c = Cell(2);
-    std::cout << read_user_accessor(c) << "\n";
-    write_user_accessor(c);
-    std::cout << peek_user_accessor(c) << "\n";
+    std::cout << ::tpyapp::main::read_user_accessor(c) << "\n";
+    ::tpyapp::main::write_user_accessor(c);
+    std::cout << ::tpyapp::main::peek_user_accessor(c) << "\n";
     std::vector<::tpystd::tplib::box::Box<Inner>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<Inner>>(::tpystd::tplib::box::Box<Inner>(Inner(1)), ::tpystd::tplib::box::Box<Inner>(Inner(2)), ::tpystd::tplib::box::Box<Inner>(Inner(3)));
-    std::cout << sum_boxes(boxes) << "\n";
+    std::cout << ::tpyapp::main::sum_boxes(boxes) << "\n";
 }
 
 // from tplib.box import Box
@@ -137,7 +137,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

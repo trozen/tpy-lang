@@ -117,14 +117,14 @@ void main() {
     ::tpy::Union<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
     ::tpy::Union<Cat, Dog> __slot_3 = Cat("Luna");
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_3);
-    std::cout << classify(d1.as_const(), true) << "\n";
-    std::cout << classify(d2.as_const(), true) << "\n";
-    std::cout << classify(d2.as_const(), false) << "\n";
-    std::cout << classify(c.as_const(), true) << "\n";
-    std::cout << classify(c.as_const(), false) << "\n";
-    std::cout << as_guard(d1.as_const()) << "\n";
-    std::cout << as_guard(d2.as_const()) << "\n";
-    std::cout << as_guard(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::classify(d1.as_const(), true) << "\n";
+    std::cout << ::tpyapp::main::classify(d2.as_const(), true) << "\n";
+    std::cout << ::tpyapp::main::classify(d2.as_const(), false) << "\n";
+    std::cout << ::tpyapp::main::classify(c.as_const(), true) << "\n";
+    std::cout << ::tpyapp::main::classify(c.as_const(), false) << "\n";
+    std::cout << ::tpyapp::main::as_guard(d1.as_const()) << "\n";
+    std::cout << ::tpyapp::main::as_guard(d2.as_const()) << "\n";
+    std::cout << ::tpyapp::main::as_guard(c.as_const()) << "\n";
 }
 
 // # match/case with wildcard guard and as-pattern on union subjects
@@ -136,7 +136,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

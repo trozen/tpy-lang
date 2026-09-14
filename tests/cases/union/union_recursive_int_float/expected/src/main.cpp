@@ -119,21 +119,21 @@ std::string kind(const V& v) {
 //     print(d)
 //     print(kind(d))
 void main() {
-    V a = make_int();
-    V b = make_float();
+    V a = ::tpyapp::main::make_int();
+    V b = ::tpyapp::main::make_float();
     std::cout << ::tpy::__str__(a) << "\n";
     std::cout << ::tpy::__str__(b) << "\n";
-    std::cout << kind(a) << "\n";
-    std::cout << kind(b) << "\n";
-    V n = make_null();
+    std::cout << ::tpyapp::main::kind(a) << "\n";
+    std::cout << ::tpyapp::main::kind(b) << "\n";
+    V n = ::tpyapp::main::make_null();
     std::cout << ::tpy::__str__(n) << "\n";
-    std::cout << kind(n) << "\n";
-    V xs = make_mixed_list();
+    std::cout << ::tpyapp::main::kind(n) << "\n";
+    V xs = ::tpyapp::main::make_mixed_list();
     std::cout << ::tpy::__str__(xs) << "\n";
-    std::cout << kind(xs) << "\n";
-    V d = make_mixed_dict();
+    std::cout << ::tpyapp::main::kind(xs) << "\n";
+    V d = ::tpyapp::main::make_mixed_dict();
     std::cout << ::tpy::__str__(d) << "\n";
-    std::cout << kind(d) << "\n";
+    std::cout << ::tpyapp::main::kind(d) << "\n";
 }
 
 // main()
@@ -142,7 +142,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

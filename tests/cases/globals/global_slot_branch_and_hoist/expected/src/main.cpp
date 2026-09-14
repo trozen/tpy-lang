@@ -103,7 +103,7 @@ void __tpy_init() {
     if (flag) {
         static Node __global_slot_6 = Node(7);
         q = &__global_slot_6;
-        q = find((*pool), 5);
+        q = ::tpyapp::main::find((*pool), 5);
     }
     if ((q != nullptr)) {
         q->x = ::tpy::add_check<int32_t>(q->x, 100);

@@ -257,7 +257,7 @@ inline const Cell& Holder::get() const {
 //     d = bump(copy(self.cell))  # tpyc: ok
 //     print("method:", self.cell.n, d.n)
 inline void Holder::sec_method() const {
-    Cell d = bump(Cell(this->cell));
+    Cell d = ::tpyapp::main::bump(Cell(this->cell));
     std::cout << "method:" << " " << this->cell.n << " " << d.n << "\n";
 }
 
@@ -267,7 +267,7 @@ inline void Holder::sec_method() const {
 //     d = bump(copy(self.get()))  # tpyc: ok
 //     print("borrow-ret:", self.get().n, d.n)
 inline void Holder::sec_borrow_ret() const {
-    Cell d = bump(Cell(this->get()));
+    Cell d = ::tpyapp::main::bump(Cell(this->get()));
     std::cout << "borrow-ret:" << " " << this->get().n << " " << d.n << "\n";
 }
 

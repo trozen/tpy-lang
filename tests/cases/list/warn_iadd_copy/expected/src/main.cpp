@@ -70,7 +70,7 @@ void test_iadd_last_use_no_warn() {
 //     print(len(a))
 void test_iadd_rvalue_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
-    ::tpy::list_extend(a, make_nodes());
+    ::tpy::list_extend(a, ::tpyapp::main::make_nodes());
     ::tpy::list_extend(a, std::vector<Node>{Node(2)});
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -114,16 +114,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_iadd_ref_type_warns();
-    test_iadd_value_type_no_warn();
-    test_iadd_copy_no_warn();
-    test_iadd_last_use_no_warn();
-    test_iadd_rvalue_no_warn();
-    test_iadd_range_no_warn();
-    test_iadd_span_warns();
+    ::tpyapp::main::test_iadd_ref_type_warns();
+    ::tpyapp::main::test_iadd_value_type_no_warn();
+    ::tpyapp::main::test_iadd_copy_no_warn();
+    ::tpyapp::main::test_iadd_last_use_no_warn();
+    ::tpyapp::main::test_iadd_rvalue_no_warn();
+    ::tpyapp::main::test_iadd_range_no_warn();
+    ::tpyapp::main::test_iadd_span_warns();
     std::vector<Node> __tmp_1 = {Node(1)};
     std::vector<Node> __tmp_2 = {Node(2)};
-    test_iadd_generic_warns<Node>(__tmp_1, __tmp_2);
+    ::tpyapp::main::test_iadd_generic_warns<Node>(__tmp_1, __tmp_2);
 }
 
 } // namespace tpyapp::main

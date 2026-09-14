@@ -25,7 +25,7 @@ int32_t run(bool fail) {
     int32_t x;
     {
         try {
-            x = risky(fail);
+            x = ::tpyapp::main::risky(fail);
         } catch (const ::tpy::OSError&) {
             x = -1;
         }
@@ -37,8 +37,8 @@ int32_t run(bool fail) {
 //     print(run(False))
 //     print(run(True))
 void main() {
-    std::cout << run(false) << "\n";
-    std::cout << run(true) << "\n";
+    std::cout << ::tpyapp::main::run(false) << "\n";
+    std::cout << ::tpyapp::main::run(true) << "\n";
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

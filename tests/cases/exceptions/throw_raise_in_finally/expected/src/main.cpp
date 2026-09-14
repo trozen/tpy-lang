@@ -60,8 +60,8 @@ void test_raise_in_finally_no_exception() {
 //     test_raise_in_finally()
 //     test_raise_in_finally_no_exception()
 void main() {
-    test_raise_in_finally();
-    test_raise_in_finally_no_exception();
+    ::tpyapp::main::test_raise_in_finally();
+    ::tpyapp::main::test_raise_in_finally_no_exception();
 }
 
 // main()
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

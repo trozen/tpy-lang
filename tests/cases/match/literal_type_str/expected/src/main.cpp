@@ -42,12 +42,12 @@ void with_wildcard(std::string_view mode) {
 //     with_wildcard("a")
 //     with_wildcard("b")
 void main() {
-    classify("r");
-    classify("w");
-    classify("rb");
-    classify("wb");
-    with_wildcard("a");
-    with_wildcard("b");
+    ::tpyapp::main::classify("r");
+    ::tpyapp::main::classify("w");
+    ::tpyapp::main::classify("rb");
+    ::tpyapp::main::classify("wb");
+    ::tpyapp::main::with_wildcard("a");
+    ::tpyapp::main::with_wildcard("b");
 }
 
 // main()
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

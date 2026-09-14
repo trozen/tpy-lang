@@ -336,7 +336,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __await_lift_11 = std::move(__r14).value();
         __sub_14.reset();
         std::cout << "free:" << " " << __await_lift_11 << "\n";
-        free_pending.emplace(nested_compute((*inner)));
+        free_pending.emplace(::tpyapp::main::nested_compute((*inner)));
         (*inner).value = ::tpy::BigInt(70);
         __state = S_RESUME_15;
         continue;
@@ -357,7 +357,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __await_lift_13 = std::move(__r16).value();
         __sub_16.reset();
         std::cout << "free await:" << " " << __await_lift_13 << " " << (*inner).value << "\n";
-        generic_pending.emplace(nested_echo<int32_t>((*inner), 7));
+        generic_pending.emplace(::tpyapp::main::nested_echo<int32_t>((*inner), 7));
         (*inner).value = ::tpy::BigInt(80);
         __state = S_RESUME_17;
         continue;
@@ -506,7 +506,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = delegated(inner);
+        auto __src_2 = ::tpyapp::main::delegated(inner);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -517,7 +517,7 @@ void main() {
         }
     }
     std::cout << "delegated receiver:" << " " << inner.value << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_sections()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_sections()));
 }
 
 // async def compute(self, delta: int) -> int:
@@ -786,7 +786,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::nested_case::helpers::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

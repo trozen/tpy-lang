@@ -38,7 +38,7 @@ __coro_compute compute() {
 //     result = asyncio.run(compute())
 //     print(result)
 void main() {
-    ::tpy::BigInt result = ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(compute()));
+    ::tpy::BigInt result = ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::compute()));
     std::cout << result << "\n";
 }
 
@@ -52,7 +52,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

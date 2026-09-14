@@ -61,7 +61,7 @@ void borrow_call_rebind(Counter& seed) {
     Counter* result = &(seed);
     int32_t i = 0;
     while ((i < 2)) {
-        result = &(pick(seed));
+        result = &(::tpyapp::main::pick(seed));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     result->bump();
@@ -89,12 +89,12 @@ void none_reassign(bool flag) {
 //     none_reassign(True)
 //     none_reassign(False)
 void main() {
-    alias_survives_rebind();
-    rebind_in_loop();
+    ::tpyapp::main::alias_survives_rebind();
+    ::tpyapp::main::rebind_in_loop();
     Counter __tmp_1 = Counter(7);
-    borrow_call_rebind(__tmp_1);
-    none_reassign(true);
-    none_reassign(false);
+    ::tpyapp::main::borrow_call_rebind(__tmp_1);
+    ::tpyapp::main::none_reassign(true);
+    ::tpyapp::main::none_reassign(false);
 }
 
 // main()
@@ -103,7 +103,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

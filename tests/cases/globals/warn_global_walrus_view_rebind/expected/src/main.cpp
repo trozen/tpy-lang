@@ -36,8 +36,8 @@ std::string label;
 //     print("walrus:", via_walrus())
 //     print("label:", label)
 void main() {
-    std::cout << "plain:" << " " << plain() << "\n";
-    std::cout << "walrus:" << " " << via_walrus() << "\n";
+    std::cout << "plain:" << " " << ::tpyapp::main::plain() << "\n";
+    std::cout << "walrus:" << " " << ::tpyapp::main::via_walrus() << "\n";
     std::cout << "label:" << " " << label << "\n";
 }
 
@@ -50,7 +50,7 @@ void __tpy_init() {
     initialized = true;
 
     label = "hello world";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

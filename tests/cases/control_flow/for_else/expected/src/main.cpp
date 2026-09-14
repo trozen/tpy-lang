@@ -208,15 +208,15 @@ void var_decl_in_else() {
 //     var_decl_in_else()
 void main() {
     std::vector<int32_t> nums = {1, 2, 3};
-    search_break(nums, 2);
-    search_break(nums, 99);
-    no_break();
-    with_continue();
-    nested_inner_else();
-    nested_outer_else();
-    nested_both_else();
-    empty_iterable();
-    var_decl_in_else();
+    ::tpyapp::main::search_break(nums, 2);
+    ::tpyapp::main::search_break(nums, 99);
+    ::tpyapp::main::no_break();
+    ::tpyapp::main::with_continue();
+    ::tpyapp::main::nested_inner_else();
+    ::tpyapp::main::nested_outer_else();
+    ::tpyapp::main::nested_both_else();
+    ::tpyapp::main::empty_iterable();
+    ::tpyapp::main::var_decl_in_else();
 }
 
 // main()
@@ -225,7 +225,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

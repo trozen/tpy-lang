@@ -23,7 +23,7 @@ std::tuple<Box, Box*> make_none() {
 //         e.val = 42
 //     return p[0].val
 int32_t write_through(Box& b) {
-    auto p = make_mixed(b);
+    auto p = ::tpyapp::main::make_mixed(b);
     Box* e = std::get<1>(p);
     if ((e != nullptr)) {
         e->val = 42;
@@ -39,7 +39,7 @@ int32_t write_through(Box& b) {
 //         return p[1].val  # tpyc: warning(/Potential None access/)
 //     return -1
 int32_t read_direct(Box& b) {
-    auto p = make_mixed(b);
+    auto p = ::tpyapp::main::make_mixed(b);
     if ((std::get<1>(p) != nullptr)) {
         return ::tpy::deref_check(std::get<1>(p)).val;
     }
@@ -53,7 +53,7 @@ int32_t read_direct(Box& b) {
 //         return p[0].val
 //     return -1
 int32_t none_element() {
-    auto p = make_none();
+    auto p = ::tpyapp::main::make_none();
     Box* e = std::get<1>(p);
     if ((e == nullptr)) {
         return std::get<0>(p).val;
@@ -68,9 +68,9 @@ int32_t none_element() {
 //     print("none:", none_element())
 void main() {
     Box b = Box(7);
-    std::cout << "write:" << " " << write_through(b) << " " << b.val << "\n";
-    std::cout << "read:" << " " << read_direct(b) << "\n";
-    std::cout << "none:" << " " << none_element() << "\n";
+    std::cout << "write:" << " " << ::tpyapp::main::write_through(b) << " " << b.val << "\n";
+    std::cout << "read:" << " " << ::tpyapp::main::read_direct(b) << "\n";
+    std::cout << "none:" << " " << ::tpyapp::main::none_element() << "\n";
 }
 
 // main()
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

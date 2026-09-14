@@ -24,7 +24,7 @@ void __tpy_init() {
 
     ::tpyapp::mypackage::__tpy_init();
     ::tpyapp::mypackage::consumer::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

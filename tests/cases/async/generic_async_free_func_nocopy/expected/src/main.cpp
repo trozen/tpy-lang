@@ -39,7 +39,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Generic async free function over a non-value type (Box[T] is @nocopy):
@@ -59,7 +59,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -19,7 +19,7 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            std::cout << force_miss("missing") << "\n";
+            std::cout << ::tpyapp::main::force_miss("missing") << "\n";
         } catch (const ::tpy::KeyError& e) {
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

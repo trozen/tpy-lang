@@ -31,7 +31,7 @@ void test_methods(std::string_view s) {
 //     test_methods(sv)
 void main() {
     std::string_view sv = "hello";
-    test_methods(sv);
+    ::tpyapp::main::test_methods(sv);
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

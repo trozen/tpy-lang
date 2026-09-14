@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    f(::tpy::BigInt(42));
+    ::tpyapp::main::f(::tpy::BigInt(42));
 }
 
 } // namespace tpyapp::main

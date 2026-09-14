@@ -43,8 +43,8 @@ namespace tpyapp::main {
 //     print(mixed(True))
 //     print(both_lvalue(True))
 void main() {
-    std::cout << mixed(true) << "\n";
-    std::cout << both_lvalue(true) << "\n";
+    std::cout << ::tpyapp::main::mixed(true) << "\n";
+    std::cout << ::tpyapp::main::both_lvalue(true) << "\n";
 }
 
 // main()
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

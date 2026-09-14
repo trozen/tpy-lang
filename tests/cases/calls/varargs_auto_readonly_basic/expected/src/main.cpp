@@ -25,7 +25,7 @@ int32_t sum_all(::tpy::varargs<const Box> items) {
 //     return sum_all(b, c)
 int32_t via_param(const Box& b, const Box& c) {
     std::array<const Box*, 2> __tmp_1{&b, &c};
-    return sum_all(::tpy::varargs<const Box>(__tmp_1));
+    return ::tpyapp::main::sum_all(::tpy::varargs<const Box>(__tmp_1));
 }
 
 // def main() -> None:
@@ -35,7 +35,7 @@ int32_t via_param(const Box& b, const Box& c) {
 void main() {
     Box x = Box(3);
     Box y = Box(4);
-    std::cout << via_param(x, y) << "\n";
+    std::cout << ::tpyapp::main::via_param(x, y) << "\n";
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

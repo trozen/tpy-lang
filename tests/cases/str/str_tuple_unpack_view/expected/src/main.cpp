@@ -22,7 +22,7 @@ std::tuple<std::string, std::string> get_pair() {
 //     for k, v in d.items():
 //         print(k, v)
 void main() {
-    auto __tup_1 = get_pair();
+    auto __tup_1 = ::tpyapp::main::get_pair();
     std::string_view a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
     std::cout << a << "\n";
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

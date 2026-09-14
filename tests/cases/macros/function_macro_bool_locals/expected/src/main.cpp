@@ -19,8 +19,8 @@ bool pick(bool use_first) {
 //     print(1 if pick(True) else 0)
 //     print(1 if pick(False) else 0)
 void main() {
-    std::cout << ((pick(true)) ? (1) : (0)) << "\n";
-    std::cout << ((pick(false)) ? (1) : (0)) << "\n";
+    std::cout << ((::tpyapp::main::pick(true)) ? (1) : (0)) << "\n";
+    std::cout << ((::tpyapp::main::pick(false)) ? (1) : (0)) << "\n";
 }
 
 // # A @function_macro deduces the type of string-literal bool locals: it retypes
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

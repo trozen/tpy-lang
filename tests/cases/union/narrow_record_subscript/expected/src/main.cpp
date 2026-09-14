@@ -22,7 +22,7 @@ namespace tpyapp::main {
 //         v.xs[1] = 99  # mutate through the narrowed reference
 //         print(v[1])   # 99 -- proves v aliases the union member, not a copy
 void main() {
-    ::tpy::Union<Bag, ::tpy::BigInt> __slot_1 = get(true);
+    ::tpy::Union<Bag, ::tpy::BigInt> __slot_1 = ::tpyapp::main::get(true);
     ::tpy::Union<Bag*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<Bag*>(v)) {
         auto& __v = *std::get<Bag*>(v);
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

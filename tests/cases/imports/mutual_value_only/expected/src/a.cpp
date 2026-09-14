@@ -15,7 +15,7 @@ int32_t K() {
 // def K_then_H() -> int32:
 //     return K() + H()
 int32_t K_then_H() {
-    return (::tpy::add_check<int32_t>(K(), ::tpyapp::b::H()));
+    return (::tpy::add_check<int32_t>(::tpyapp::a::K(), ::tpyapp::b::H()));
 }
 
 // from b import H

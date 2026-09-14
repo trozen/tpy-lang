@@ -94,7 +94,7 @@ template<typename T>
 //     return p  # tpyc: ok
 template<typename T>
 ::tpy::val_or_ref_t<T> get_first_generic(std::vector<T>& items) {
-    ::tpy::val_or_ref_t<T> p = first<T>(items);
+    ::tpy::val_or_ref_t<T> p = ::tpyapp::main::first<T>(items);
     return p;
 }
 // # (d2) Return-through-local: generic method caller (TpyMethodCall in is_param_derived_expr).

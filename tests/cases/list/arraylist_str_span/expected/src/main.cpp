@@ -42,7 +42,7 @@ void main() {
     std::cout << std::string(::tpy::__str__(a)) << "\n";
     std::span<int32_t> s = a.__span__();
     std::cout << ::tpy::__len__(s) << "\n";
-    std::cout << sum_span(s) << "\n";
+    std::cout << ::tpyapp::main::sum_span(s) << "\n";
 }
 
 // from tplib import ArrayList
@@ -54,7 +54,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

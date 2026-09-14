@@ -96,7 +96,7 @@ inline int32_t Holder::peek() const {
 // def arg_weight(self, k: str) -> int32:
 //     return weight_of(self.store[k])
 inline int32_t Holder::arg_weight(std::string_view k) const {
-    return weight_of(::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(this->store, k)));
+    return ::tpyapp::main::weight_of(::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(this->store, k)));
 }
 
 // def bump(self, k: str) -> None:

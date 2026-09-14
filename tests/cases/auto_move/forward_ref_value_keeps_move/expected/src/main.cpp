@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(n)
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
-    int32_t n = count(xs);
-    std::cout << drop(std::move(xs)) << "\n";
+    int32_t n = ::tpyapp::main::count(xs);
+    std::cout << ::tpyapp::main::drop(std::move(xs)) << "\n";
     std::cout << n << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -1,0 +1,15 @@
+invoke: user body
+invoke: 102
+apply: 1004
+callable_value: 8
+find: 1
+count: 2
+as_span: 3
+push: [4, 5, 4, 9]
+generator: 6
+comprehension: 12
+nested_def: 8
+recursion: 10
+generic: 7
+method: 30
+async: 12

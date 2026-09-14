@@ -42,9 +42,9 @@ int32_t counter{};
 //     print("nested:", nested_shadow())
 //     print("module untouched:", observe(), counter)
 void main() {
-    std::cout << "shadow:" << " " << shadow() << "\n";
-    std::cout << "nested:" << " " << nested_shadow() << "\n";
-    std::cout << "module untouched:" << " " << observe() << " " << counter << "\n";
+    std::cout << "shadow:" << " " << ::tpyapp::main::shadow() << "\n";
+    std::cout << "nested:" << " " << ::tpyapp::main::nested_shadow() << "\n";
+    std::cout << "module untouched:" << " " << ::tpyapp::main::observe() << " " << counter << "\n";
 }
 
 // counter = 5
@@ -56,7 +56,7 @@ void __tpy_init() {
     initialized = true;
 
     counter = 5;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

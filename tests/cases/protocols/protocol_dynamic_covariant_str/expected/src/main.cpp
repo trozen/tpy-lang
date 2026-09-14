@@ -17,13 +17,13 @@ void greet(Named& x) {
 //     greet(Fish("Nemo"))
 void main() {
     ::tpy::Adapter<Named, Dog> __tmp_1{Dog("Rex")};
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
     ::tpy::Adapter<Named, Cat> __tmp_2{Cat("Whiskers")};
-    greet(__tmp_2);
+    ::tpyapp::main::greet(__tmp_2);
     Bird __tmp_3{Bird("Tweety")};
-    greet(__tmp_3);
+    ::tpyapp::main::greet(__tmp_3);
     Fish __tmp_4{Fish("Nemo")};
-    greet(__tmp_4);
+    ::tpyapp::main::greet(__tmp_4);
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

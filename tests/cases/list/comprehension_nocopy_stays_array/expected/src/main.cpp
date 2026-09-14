@@ -54,9 +54,9 @@ void main() {
         total = ::tpy::add_check<int32_t>(total, h.v);
     }
     std::cout << total << "\n";
-    bump_all(xs);
+    ::tpyapp::main::bump_all(xs);
     std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 3).v << "\n";
-    doubled(xs);
+    ::tpyapp::main::doubled(xs);
 }
 
 // main()
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

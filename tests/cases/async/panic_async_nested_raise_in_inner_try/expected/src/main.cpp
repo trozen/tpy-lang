@@ -143,7 +143,7 @@ __coro_caller caller() {
 // def main() -> None:
 //     asyncio.run(caller())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(caller()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::caller()));
 }
 
 // # Raise in the innermost try body; both nested suspending `finally`
@@ -157,7 +157,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -34,7 +34,7 @@ void poke(Outer& o) {
 //     poke(Outer())
 void main() {
     Outer __tmp_1 = Outer();
-    poke(__tmp_1);
+    ::tpyapp::main::poke(__tmp_1);
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

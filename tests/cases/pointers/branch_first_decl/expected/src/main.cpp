@@ -184,25 +184,25 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << value_type_branches(true) << "\n";
-    std::cout << value_type_branches(false) << "\n";
-    std::cout << else_returns(true) << "\n";
-    std::cout << else_returns(false) << "\n";
-    std::cout << multi_var(true) << "\n";
-    std::cout << multi_var(false) << "\n";
-    rvalue_branch(true);
-    rvalue_branch(false);
-    reassign_after(true);
-    reassign_after(false);
-    std::cout << nested_if(true, true) << "\n";
-    std::cout << nested_if(true, false) << "\n";
-    std::cout << nested_if(false, true) << "\n";
+    std::cout << ::tpyapp::main::value_type_branches(true) << "\n";
+    std::cout << ::tpyapp::main::value_type_branches(false) << "\n";
+    std::cout << ::tpyapp::main::else_returns(true) << "\n";
+    std::cout << ::tpyapp::main::else_returns(false) << "\n";
+    std::cout << ::tpyapp::main::multi_var(true) << "\n";
+    std::cout << ::tpyapp::main::multi_var(false) << "\n";
+    ::tpyapp::main::rvalue_branch(true);
+    ::tpyapp::main::rvalue_branch(false);
+    ::tpyapp::main::reassign_after(true);
+    ::tpyapp::main::reassign_after(false);
+    std::cout << ::tpyapp::main::nested_if(true, true) << "\n";
+    std::cout << ::tpyapp::main::nested_if(true, false) << "\n";
+    std::cout << ::tpyapp::main::nested_if(false, true) << "\n";
     static std::vector<Point> __global_slot_1 = {Point(5, 6), Point(7, 8)};
     pts = &__global_slot_1;
-    param_branch((*pts), true);
-    param_branch((*pts), false);
-    mixed_init((*pts), true);
-    mixed_init((*pts), false);
+    ::tpyapp::main::param_branch((*pts), true);
+    ::tpyapp::main::param_branch((*pts), false);
+    ::tpyapp::main::mixed_init((*pts), true);
+    ::tpyapp::main::mixed_init((*pts), false);
 }
 
 } // namespace tpyapp::main

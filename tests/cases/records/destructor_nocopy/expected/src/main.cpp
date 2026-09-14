@@ -19,9 +19,9 @@ void consume(Handle&& h) {
 //     print("done")
 void main() {
     Handle h = Handle(1);
-    consume(std::move(h));
+    ::tpyapp::main::consume(std::move(h));
     std::cout << "---" << "\n";
-    consume(Handle(2));
+    ::tpyapp::main::consume(Handle(2));
     std::cout << "done" << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

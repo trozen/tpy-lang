@@ -20,7 +20,7 @@ namespace tpyapp::main {
 //     print(sum([]))
 void main() {
     auto __tmp_1 = std::vector<double>{};
-    std::cout << pick(__tmp_1, 1.0) << "\n";
+    std::cout << ::tpyapp::main::pick(__tmp_1, 1.0) << "\n";
     std::cout << ::tpy::builtin_sum<int32_t>(std::vector<int32_t>{}) << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

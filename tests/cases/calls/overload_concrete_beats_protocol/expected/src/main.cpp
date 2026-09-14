@@ -16,7 +16,7 @@ std::string describe(Dog& x) {
 //     print(describe(d))
 void main() {
     Dog d = Dog();
-    std::cout << describe(d) << "\n";
+    std::cout << ::tpyapp::main::describe(d) << "\n";
 }
 
 // main()
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

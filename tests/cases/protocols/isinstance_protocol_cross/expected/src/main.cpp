@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     cross_protocol(nums)
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
-    cross_protocol(nums);
+    ::tpyapp::main::cross_protocol(nums);
 }
 
 // main()
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

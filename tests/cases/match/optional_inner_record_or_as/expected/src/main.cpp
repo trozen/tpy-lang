@@ -38,10 +38,10 @@ int32_t pick(const Leaf* x) {
 //     print(pick(None))
 void main() {
     Leaf __tmp_1 = Leaf(2);
-    std::cout << pick(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::pick(&(__tmp_1)) << "\n";
     Leaf __tmp_2 = Leaf(7);
-    std::cout << pick(&(__tmp_2)) << "\n";
-    std::cout << pick(nullptr) << "\n";
+    std::cout << ::tpyapp::main::pick(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::pick(nullptr) << "\n";
 }
 
 // main()
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

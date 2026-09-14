@@ -41,7 +41,7 @@ void main() {
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 99);
     std::cout << ::tpy::ListPrinter(rows) << "\n";
     std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3, 4}};
-    take(__tmp_1);
+    ::tpyapp::main::take(__tmp_1);
     std::vector<std::array<int32_t, 2>> lits = {{1, 2}};
     lits.push_back({3, 4});
     std::cout << ::tpy::ListPrinter(lits) << "\n";
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

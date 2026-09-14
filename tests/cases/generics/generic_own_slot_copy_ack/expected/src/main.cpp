@@ -17,7 +17,7 @@ int32_t dup_bounded_twin(IntHolder& h) {
 void sec_value_bound() {
     VHolder<int32_t> b = VHolder<int32_t>(7);
     IntHolder t = IntHolder(7);
-    std::cout << "value-bound:" << " " << dup_bounded<int32_t>(b) << " " << dup_bounded_twin(t) << "\n";
+    std::cout << "value-bound:" << " " << ::tpyapp::main::dup_bounded<int32_t>(b) << " " << ::tpyapp::main::dup_bounded_twin(t) << "\n";
 }
 
 // def sec_callable_value() -> None:
@@ -31,10 +31,10 @@ void sec_value_bound() {
 void sec_callable_value() {
     std::vector<int32_t> xs = {1};
     std::vector<Cell> g = std::vector<Cell>{};
-    apply_generic<int32_t, Cell>(xs, [](int32_t v) -> Cell { return Cell(v); }, g);
+    ::tpyapp::main::apply_generic<int32_t, Cell>(xs, [](int32_t v) -> Cell { return Cell(v); }, g);
     std::vector<Cell> t = std::vector<Cell>{};
-    apply_twin(xs, [](int32_t v) -> Cell { return Cell(v); }, t);
-    std::cout << "callable-value:" << " " << ::tpy::__getitem__(g, 0).n << " " << ::tpy::__getitem__(t, 0).n << " " << ret_generic<int32_t, Cell>(3, [](int32_t v) -> Cell { return Cell(v); }).n << " " << ret_twin(3, [](int32_t v) -> Cell { return Cell(v); }).n << "\n";
+    ::tpyapp::main::apply_twin(xs, [](int32_t v) -> Cell { return Cell(v); }, t);
+    std::cout << "callable-value:" << " " << ::tpy::__getitem__(g, 0).n << " " << ::tpy::__getitem__(t, 0).n << " " << ::tpyapp::main::ret_generic<int32_t, Cell>(3, [](int32_t v) -> Cell { return Cell(v); }).n << " " << ::tpyapp::main::ret_twin(3, [](int32_t v) -> Cell { return Cell(v); }).n << "\n";
 }
 
 // def sec_ack() -> None:
@@ -46,7 +46,7 @@ void sec_callable_value() {
 void sec_ack() {
     GHolder<Cell> g = GHolder<Cell>(Cell(1));
     std::vector<Cell> xs = std::vector<Cell>{};
-    collect_ack<Cell>(g, xs);
+    ::tpyapp::main::collect_ack<Cell>(g, xs);
     g.borrow().n = 99;
     std::cout << "ack:" << " " << g.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n";
 }
@@ -58,7 +58,7 @@ void sec_ack() {
 //     print("moved:", xs[0].n)
 void sec_moved() {
     std::vector<Cell> xs = std::vector<Cell>{};
-    relay_owned<Cell>(Cell(1), xs);
+    ::tpyapp::main::relay_owned<Cell>(Cell(1), xs);
     ::tpy::__getitem__(xs, 0).n = 5;
     std::cout << "moved:" << " " << ::tpy::__getitem__(xs, 0).n << "\n";
 }
@@ -69,10 +69,10 @@ void sec_moved() {
 //     sec_callable_value()
 //     sec_value_bound()
 void main() {
-    sec_ack();
-    sec_moved();
-    sec_callable_value();
-    sec_value_bound();
+    ::tpyapp::main::sec_ack();
+    ::tpyapp::main::sec_moved();
+    ::tpyapp::main::sec_callable_value();
+    ::tpyapp::main::sec_value_bound();
 }
 
 // main()
@@ -81,7 +81,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

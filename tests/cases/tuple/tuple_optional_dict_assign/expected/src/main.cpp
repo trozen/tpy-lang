@@ -56,12 +56,12 @@ void main() {
     ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(a), &(b)}));
     ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(a), nullptr}));
     ::tpy::__setitem__(d, 2, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{nullptr, nullptr}));
-    show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 0)));
-    show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 1)));
-    show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 2)));
+    ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 0)));
+    ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 1)));
+    ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 2)));
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d2 = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
     ::tpy::__setitem__(d2, 0, ::tpy::__getitem__(d, 0));
-    show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d2, 0)));
+    ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d2, 0)));
 }
 
 // main()
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

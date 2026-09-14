@@ -27,9 +27,9 @@ void main() {
     p.y = 20;
     bool cond = true;
     if (cond) {
-        std::cout << consume(std::move(p)) << "\n";
+        std::cout << ::tpyapp::main::consume(std::move(p)) << "\n";
     } else {
-        std::cout << consume(std::move(p)) << "\n";
+        std::cout << ::tpyapp::main::consume(std::move(p)) << "\n";
     }
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

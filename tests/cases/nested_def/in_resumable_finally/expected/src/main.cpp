@@ -247,7 +247,7 @@ __coro_called_from_finally called_from_finally() {
         __sub_0.reset();
         std::cout << __await_lift_0 << "\n";
         {
-            auto __src_0 = gen_def_in_finally();
+            auto __src_0 = ::tpyapp::main::gen_def_in_finally();
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
@@ -291,7 +291,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main()));
 }
 
 } // namespace tpyapp::main

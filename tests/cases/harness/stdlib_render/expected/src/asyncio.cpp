@@ -167,7 +167,7 @@ EventLoop get_running_loop() {
 ::tpystd::tpy::Poll<std::tuple<StreamReader, StreamWriter>> __coro_open_connection::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        loop.emplace(get_running_loop());
+        loop.emplace(::tpystd::asyncio::get_running_loop());
         sock.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*sock).setblocking(false);
         __sub_0.emplace(std::move((*loop).sock_connect((*sock), std::tuple<std::string, int32_t>{std::string(host), port})));
@@ -213,7 +213,7 @@ __coro_open_connection open_connection(std::string_view host, int32_t port) {
 ::tpystd::tpy::Poll<::std::monostate> __coro__accept_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        loop.emplace(get_running_loop());
+        loop.emplace(::tpystd::asyncio::get_running_loop());
         __state = S_JOIN_0;
         continue;
     }
@@ -226,7 +226,7 @@ __coro_open_connection open_connection(std::string_view host, int32_t port) {
         conn.emplace(std::move(std::get<0>(__tup_1)));
         addr = std::get<1>(__tup_1);
         cell.emplace(Rc<::tpystd::socket::socket>::new_<::tpystd::socket::socket>(std::move((*conn))));
-        create_task<std::monostate>(cb(StreamReader((*cell).clone()), StreamWriter((*cell).clone())));
+        ::tpystd::asyncio::create_task<std::monostate>(cb(StreamReader((*cell).clone()), StreamWriter((*cell).clone())));
         __state = S_JOIN_0;
         continue;
     }
@@ -282,7 +282,7 @@ __coro__accept_loop _accept_loop(::tpystd::tplib::rc::Rc<::tpystd::socket::socke
         (*listener).listen(128);
         (*listener).setblocking(false);
         cell.emplace(Rc<::tpystd::socket::socket>::new_<::tpystd::socket::socket>(std::move((*listener))));
-        task.emplace(create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(_accept_loop((*cell).clone(), cb))));
+        task.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpystd::asyncio::_accept_loop((*cell).clone(), cb))));
         __state = S_DONE;
         Server __tpy_async_ret = Server((*cell).clone(), std::move((*task)));
         return ::tpystd::tpy::Poll<Server>::ready(std::move(__tpy_async_ret));
@@ -470,7 +470,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<int32_t> __coro_StreamReader__fill::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        loop.emplace(get_running_loop());
+        loop.emplace(::tpystd::asyncio::get_running_loop());
         __sub_0.emplace(std::move((*loop).sock_recv(__self._sock.get(), 65536)));
         __state = S_RESUME_0;
         continue;
@@ -720,7 +720,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         if ((::tpy::__len__(__self._buf) > 0)) {
-            loop.emplace(get_running_loop());
+            loop.emplace(::tpystd::asyncio::get_running_loop());
             __sub_0.emplace(std::move((*loop).sock_sendall(__self._sock.get(), __self._buf)));
             __state = S_RESUME_0;
             continue;
@@ -907,14 +907,14 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
 ::tpystd::tpy::Poll<::tpy::Bytes> _SockRecv::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        _reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
+        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
         throw ::tpy::CancelledError{};
     }
     {
         try {
             return ::tpystd::coro::poll_ready<::tpy::Bytes>(::tpy::deref_check(this->_sock).recv(this->_n));
         } catch (const ::tpy::BlockingIOError&) {
-            _reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLIN, waker);
+            ::tpystd::asyncio::_reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLIN, waker);
             return ::tpystd::coro::poll_pending<::tpy::Bytes>();
         }
     }
@@ -937,7 +937,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
 ::tpystd::tpy::Poll<std::monostate> _SockSendAll::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        _reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
+        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
         throw ::tpy::CancelledError{};
     }
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(this->_data));
@@ -947,7 +947,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
             try {
                 sent = ::tpy::deref_check(this->_sock)._send_from(this->_data, this->_sent);
             } catch (const ::tpy::BlockingIOError&) {
-                _reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLOUT, waker);
+                ::tpystd::asyncio::_reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLOUT, waker);
                 return ::tpystd::coro::poll_pending<std::monostate>();
             }
         }
@@ -970,14 +970,14 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
 ::tpystd::tpy::Poll<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>> _SockAccept::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        _reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
+        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
         throw ::tpy::CancelledError{};
     }
     {
         try {
             return ::tpystd::coro::poll_ready<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>>(::tpy::deref_check(this->_sock)._accept_nonblocking());
         } catch (const ::tpy::BlockingIOError&) {
-            _reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLIN, waker);
+            ::tpystd::asyncio::_reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLIN, waker);
             return ::tpystd::coro::poll_pending<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>>();
         }
     }
@@ -1013,7 +1013,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
 ::tpystd::tpy::Poll<std::monostate> _SockConnect::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        _reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
+        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
         throw ::tpy::CancelledError{};
     }
     if ((!(this->_started))) {
@@ -1023,7 +1023,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
                 ::tpy::deref_check(this->_sock).connect(this->_addr);
                 return ::tpystd::coro::poll_ready_none();
             } catch (const ::tpy::BlockingIOError&) {
-                _reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLOUT, waker);
+                ::tpystd::asyncio::_reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLOUT, waker);
                 return ::tpystd::coro::poll_pending<std::monostate>();
             }
         }
@@ -1064,7 +1064,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
         return ::tpystd::coro::poll_ready_none();
     }
     if ((!(this->registered))) {
-        _register_timer_at(this->deadline, waker);
+        ::tpystd::asyncio::_register_timer_at(this->deadline, waker);
         this->registered = true;
     }
     return ::tpystd::coro::poll_pending<std::monostate>();

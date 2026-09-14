@@ -67,12 +67,12 @@ std::string describe(std::optional<std::string_view> s) {
 //     print(describe("hello"))
 //     print(describe("world"))
 void main() {
-    std::cout << classify(std::nullopt) << "\n";
-    std::cout << classify(0) << "\n";
-    std::cout << classify(42) << "\n";
-    std::cout << describe(std::nullopt) << "\n";
-    std::cout << describe("hello") << "\n";
-    std::cout << describe("world") << "\n";
+    std::cout << ::tpyapp::main::classify(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::classify(0) << "\n";
+    std::cout << ::tpyapp::main::classify(42) << "\n";
+    std::cout << ::tpyapp::main::describe(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::describe("hello") << "\n";
+    std::cout << ::tpyapp::main::describe("world") << "\n";
 }
 
 // main()
@@ -81,7 +81,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

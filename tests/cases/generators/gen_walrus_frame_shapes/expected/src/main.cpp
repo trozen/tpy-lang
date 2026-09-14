@@ -128,7 +128,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_val_tuple::__next__() {
     case S_JOIN_0: {
         if ((i < 3)) {
             __state = S_RESUME_1;
-            return std::get<0>((t = make_pair(i)));
+            return std::get<0>((t = ::tpyapp::main::make_pair(i)));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -300,7 +300,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_opt_ptr::__next__() {
     case S_JOIN_0: {
         if ((i < 3)) {
             __state = S_RESUME_1;
-            return value_of((m = pick(nodes, i)));
+            return ::tpyapp::main::value_of((m = ::tpyapp::main::pick(nodes, i)));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -354,7 +354,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_tuple::__next__() {
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(nodes))) {
             __state = S_RESUME_1;
-            return std::get<0>((bt = borrow_pair(nodes[static_cast<std::size_t>(i)]), bt));
+            return std::get<0>((bt = ::tpyapp::main::borrow_pair(nodes[static_cast<std::size_t>(i)]), bt));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -407,7 +407,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_tuple::__next__() {
     case S_JOIN_0: {
         if ((i < 3)) {
             __state = S_RESUME_1;
-            return std::get<0>(ot.emplace(own_pair(i)));
+            return std::get<0>(ot.emplace(::tpyapp::main::own_pair(i)));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -494,7 +494,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding::__next__() {
     case S_JOIN_2: {
         try {
             __state = S_RESUME_1;
-            return raiser(i);
+            return ::tpyapp::main::raiser(i);
         } catch (const Boom& err) {
             std::cout << "caught" << " " << caught.emplace(err).msg << "\n";
             __state = S_RESUME_2;
@@ -550,7 +550,7 @@ __gen_exc_binding exc_binding() {
 //         print("got", m)
 void main() {
     {
-        auto __src_0 = val_scalar();
+        auto __src_0 = ::tpyapp::main::val_scalar();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -561,7 +561,7 @@ void main() {
     }
     {
         std::vector<std::string> __tmp_1 = {"alpha", "be"};
-        auto __src_2 = val_str(__tmp_1);
+        auto __src_2 = ::tpyapp::main::val_str(__tmp_1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -571,7 +571,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = val_tuple();
+        auto __src_4 = ::tpyapp::main::val_tuple();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -581,7 +581,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = owning();
+        auto __src_6 = ::tpyapp::main::owning();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -592,7 +592,7 @@ void main() {
     }
     std::vector<std::vector<int32_t>> rows = {{1, 2}, {3, 4, 5}};
     {
-        auto __src_8 = borrow_alias(rows);
+        auto __src_8 = ::tpyapp::main::borrow_alias(rows);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -604,7 +604,7 @@ void main() {
     std::cout << "rows after" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1)) << "\n";
     std::vector<Node> nodes = {Node(7), Node(8)};
     {
-        auto __src_10 = opt_ptr(nodes);
+        auto __src_10 = ::tpyapp::main::opt_ptr(nodes);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -616,7 +616,7 @@ void main() {
     std::cout << "nodes after" << " " << ::tpy::__getitem__(nodes, 0).v << " " << ::tpy::__getitem__(nodes, 1).v << "\n";
     std::vector<Node> more = {Node(1), Node(2)};
     {
-        auto __src_12 = borrow_tuple(more);
+        auto __src_12 = ::tpyapp::main::borrow_tuple(more);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -627,7 +627,7 @@ void main() {
     }
     std::cout << "more after" << " " << ::tpy::__getitem__(more, 0).v << " " << ::tpy::__getitem__(more, 1).v << "\n";
     {
-        auto __src_14 = own_tuple();
+        auto __src_14 = ::tpyapp::main::own_tuple();
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -637,7 +637,7 @@ void main() {
         }
     }
     {
-        auto __src_16 = exc_binding();
+        auto __src_16 = ::tpyapp::main::exc_binding();
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
@@ -704,7 +704,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

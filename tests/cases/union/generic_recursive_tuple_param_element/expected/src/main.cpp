@@ -24,7 +24,7 @@ int32_t count(const Tree<int32_t>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& c = *__beg_0;
-            n = ::tpy::add_check<int32_t>(n, count(c));
+            n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::count(c));
         }
         return n;
         break;
@@ -49,10 +49,10 @@ std::tuple<Tree<int32_t>&, int32_t> pair(Tree<int32_t>& t) {
 //     print(count(a) + n)
 void main() {
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}};
-    auto __tup_1 = pair(seed);
+    auto __tup_1 = ::tpyapp::main::pair(seed);
     Tree<int32_t>& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << (::tpy::add_check<int32_t>(count(a), n)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(::tpyapp::main::count(a), n)) << "\n";
 }
 
 // main()
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

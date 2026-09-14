@@ -30,13 +30,13 @@ int32_t consume(Box&& x) {
 void main() {
     Box b1 = Box();
     b1.value = 10;
-    std::cout << consume(std::move(b1)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(b1)) << "\n";
     Box b2 = Box();
     b2.value = 20;
-    wrapper<Box>(std::move(b2));
+    ::tpyapp::main::wrapper<Box>(std::move(b2));
     Box b3 = Box();
     b3.value = 30;
-    wrapper<Box>(std::move(b3));
+    ::tpyapp::main::wrapper<Box>(std::move(b3));
     std::cout << "done" << "\n";
 }
 

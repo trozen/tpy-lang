@@ -23,14 +23,14 @@ namespace tpyapp::main {
 //     print(swapped2[0].x)
 void main() {
     std::tuple<int32_t, int32_t> nums = std::tuple<int32_t, int32_t>{10, 20};
-    int32_t x = first_of_pair<int32_t>(nums);
+    int32_t x = ::tpyapp::main::first_of_pair<int32_t>(nums);
     std::cout << x << "\n";
     std::tuple<int32_t, std::string> pair = std::tuple<int32_t, std::string>{5, "five"};
-    std::tuple<std::string, int32_t> swapped = swap<int32_t, std::string>(pair);
+    std::tuple<std::string, int32_t> swapped = ::tpyapp::main::swap<int32_t, std::string>(pair);
     std::cout << ::tpy::TuplePrinter(swapped) << "\n";
     Point pt = Point(1, 2);
     auto pt_pair = std::tuple<int32_t, Point*>{42, &(pt)};
-    auto swapped2 = swap<int32_t, Point>(pt_pair);
+    auto swapped2 = ::tpyapp::main::swap<int32_t, Point>(pt_pair);
     std::cout << std::get<0>(swapped2)->x << "\n";
     std::cout << std::get<1>(swapped2) << "\n";
     pt.x = 99;
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

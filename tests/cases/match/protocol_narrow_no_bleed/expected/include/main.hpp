@@ -76,7 +76,7 @@ int32_t process(T_items& items, std::string_view tag) {
         return total;
     } else if (__match_subject_1 == "iter_path") {
         if constexpr (::tpystd::typing::Iterable<T_items, int32_t>) {
-            return iter_sum(items);
+            return ::tpyapp::main::iter_sum(items);
         }
         return -1;
     } else {

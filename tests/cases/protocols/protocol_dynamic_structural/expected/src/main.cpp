@@ -18,10 +18,10 @@ void greet(Pet& pet) {
 //     print(pet.make_noise())
 void main() {
     ::tpy::Adapter<Pet, Parrot> __tmp_1{Parrot()};
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
     Parrot p = Parrot();
     ::tpy::RefAdapter<Pet, Parrot> __tmp_2{p};
-    greet(__tmp_2);
+    ::tpyapp::main::greet(__tmp_2);
     ::tpy::Adapter<Pet, Parrot> __slot_1{Parrot()};
     Pet* pet = &__slot_1;
     std::cout << pet->make_noise() << "\n";
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

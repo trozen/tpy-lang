@@ -79,7 +79,7 @@ __gen_gen gen() {
 //     print("after")
 void main() {
     {
-        auto __src_0 = gen();
+        auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -98,7 +98,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

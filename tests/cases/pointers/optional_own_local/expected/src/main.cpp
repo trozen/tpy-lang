@@ -16,7 +16,7 @@ Box make_box(const ::tpy::BigInt& v) {
 //         t.val += 1
 //         print(t.val)
 void main() {
-    Box __slot_1 = make_box(::tpy::BigInt(5));
+    Box __slot_1 = ::tpyapp::main::make_box(::tpy::BigInt(5));
     Box* t = &__slot_1;
     if ((t != nullptr)) {
         t->val = (t->val) + (::tpy::BigInt(1));
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -130,8 +130,8 @@ std::tuple<::tpystd::ssl::SSLSocket, ::tpystd::ssl::SSLSocket> handshaken_pair()
 //     print(resp2.read().decode(), resp2.will_close)
 //     conn.close()
 void main() {
-    write_fixtures();
-    auto __tup_1 = handshaken_pair();
+    ::tpyapp::main::write_fixtures();
+    auto __tup_1 = ::tpyapp::main::handshaken_pair();
     ::tpystd::ssl::SSLSocket cli = std::move(std::get<0>(__tup_1));
     ::tpystd::ssl::SSLSocket srv = std::move(std::get<1>(__tup_1));
     ::tpystd::ssl::SSLContext __tmp_1 = ::tpystd::ssl::create_default_context();
@@ -171,7 +171,7 @@ void __tpy_init() {
     ::tpystd::ssl::__tpy_init();
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

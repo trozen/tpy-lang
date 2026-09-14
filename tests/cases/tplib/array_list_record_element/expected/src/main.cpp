@@ -52,12 +52,12 @@ void main() {
     ::tpystd::tplib::array_list::ArrayList<Point, 8> lst = ::tpystd::tplib::array_list::ArrayList<Point, 8>();
     lst.append(Point(1, 2));
     lst.append(Point(3, 4));
-    bump(lst);
-    show(lst);
-    replace_move(lst);
-    show(lst);
-    replace_rvalue(lst);
-    show(lst);
+    ::tpyapp::main::bump(lst);
+    ::tpyapp::main::show(lst);
+    ::tpyapp::main::replace_move(lst);
+    ::tpyapp::main::show(lst);
+    ::tpyapp::main::replace_rvalue(lst);
+    ::tpyapp::main::show(lst);
 }
 
 // from tplib import ArrayList
@@ -69,7 +69,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

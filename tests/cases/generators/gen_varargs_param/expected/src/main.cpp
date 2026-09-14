@@ -206,7 +206,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_forward::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;
-        return total_of(::tpy::varargs<const int32_t>(xs));
+        return ::tpyapp::main::total_of(::tpy::varargs<const int32_t>(xs));
     }
     case S_RESUME_0: {  // after: yield total_of(*xs)
         __state = S_RESUME_1;
@@ -581,7 +581,7 @@ __gen_each_pack each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) 
 void grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int32_t>>& q) {
     {
         std::array<std::vector<std::vector<int32_t>>*, 2> __tmp_2{&p, &q};
-        auto __src_0 = each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>>(__tmp_2));
+        auto __src_0 = ::tpyapp::main::each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>>(__tmp_2));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -706,7 +706,7 @@ void grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int
 void main() {
     {
         std::array<const int32_t, 3> __tmp_3{1, 2, 3};
-        auto __src_0 = scalars(::tpy::varargs<const int32_t>(__tmp_3));
+        auto __src_0 = ::tpyapp::main::scalars(::tpy::varargs<const int32_t>(__tmp_3));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -717,7 +717,7 @@ void main() {
     }
     {
         std::array<const std::string, 2> __tmp_4{"ab", "cde"};
-        auto __src_2 = strings(::tpy::varargs<const std::string>(__tmp_4));
+        auto __src_2 = ::tpyapp::main::strings(::tpy::varargs<const std::string>(__tmp_4));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -730,7 +730,7 @@ void main() {
     std::vector<int32_t> lb = {3};
     {
         std::array<const std::vector<int32_t>*, 2> __tmp_5{&la, &lb};
-        auto __src_4 = merge_shape<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_5));
+        auto __src_4 = ::tpyapp::main::merge_shape<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_5));
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -743,7 +743,7 @@ void main() {
     Point b = Point(2);
     {
         std::array<Point*, 2> __tmp_6{&a, &b};
-        auto __src_6 = bump(::tpy::varargs<Point>(__tmp_6));
+        auto __src_6 = ::tpyapp::main::bump(::tpy::varargs<Point>(__tmp_6));
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -757,7 +757,7 @@ void main() {
     Point d = Point(2);
     {
         std::array<const Point*, 2> __tmp_7{&c, &d};
-        auto __src_8 = read_pack(::tpy::varargs<const Point>(__tmp_7));
+        auto __src_8 = ::tpyapp::main::read_pack(::tpy::varargs<const Point>(__tmp_7));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -784,7 +784,7 @@ void main() {
     }
     {
         std::array<const int32_t, 2> __tmp_9{4, 6};
-        auto __src_12 = forward(::tpy::varargs<const int32_t>(__tmp_9));
+        auto __src_12 = ::tpyapp::main::forward(::tpy::varargs<const int32_t>(__tmp_9));
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -795,7 +795,7 @@ void main() {
     }
     {
         std::array<const int32_t, 2> __tmp_10{7, 8};
-        auto __src_14 = indexed(::tpy::varargs<const int32_t>(__tmp_10));
+        auto __src_14 = ::tpyapp::main::indexed(::tpy::varargs<const int32_t>(__tmp_10));
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -808,7 +808,7 @@ void main() {
     std::vector<int32_t> fb = {3};
     {
         std::array<const std::vector<int32_t>*, 2> __tmp_11{&fa, &fb};
-        auto __src_16 = in_finally(::tpy::varargs<const std::vector<int32_t>>(__tmp_11));
+        auto __src_16 = ::tpyapp::main::in_finally(::tpy::varargs<const std::vector<int32_t>>(__tmp_11));
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
@@ -822,7 +822,7 @@ void main() {
     std::vector<int32_t> wb = {3};
     {
         std::array<const std::vector<int32_t>*, 2> __tmp_12{&wa, &wb};
-        auto __src_18 = in_with(::tpy::varargs<const std::vector<int32_t>>(__tmp_12));
+        auto __src_18 = ::tpyapp::main::in_with(::tpy::varargs<const std::vector<int32_t>>(__tmp_12));
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
         for (;;) {
             auto __r_19 = __itr_18.__next__();
@@ -834,7 +834,7 @@ void main() {
     }
     std::vector<Point> pts = {Point(5), Point(6)};
     {
-        auto __src_20 = readonly_param(pts);
+        auto __src_20 = ::tpyapp::main::readonly_param(pts);
         auto&& __itr_20 = ::tpy::__iter__(__src_20);
         for (;;) {
             auto __r_21 = __itr_20.__next__();
@@ -848,7 +848,7 @@ void main() {
     Point f = Point(2);
     {
         std::array<Point*, 2> __tmp_13{&e, &f};
-        auto __src_22 = bump_generic<Point>(::tpy::varargs<Point>(__tmp_13));
+        auto __src_22 = ::tpyapp::main::bump_generic<Point>(::tpy::varargs<Point>(__tmp_13));
         auto&& __itr_22 = ::tpy::__iter__(__src_22);
         for (;;) {
             auto __r_23 = __itr_22.__next__();
@@ -873,8 +873,8 @@ void main() {
     std::vector<Point> rp = {Point(7)};
     int32_t pulls = 0;
     {
-        auto __tmp_14 = points(rp);
-        auto __src_26 = readonly_next(__tmp_14);
+        auto __tmp_14 = ::tpyapp::main::points(rp);
+        auto __src_26 = ::tpyapp::main::readonly_next(__tmp_14);
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
         for (;;) {
             auto __r_27 = __itr_26.__next__();
@@ -892,9 +892,9 @@ void main() {
     std::vector<int32_t>& ea = ::tpy::__getitem__(ga, 0);
     std::vector<int32_t>& eb = ::tpy::__getitem__(gb, 0);
     std::cout << "multi-root:" << " " << ::tpy::__len__(ea) << " " << ::tpy::__len__(eb) << "\n";
-    grow_both(ga, gb);
+    ::tpyapp::main::grow_both(ga, gb);
     std::cout << "multi-root:" << " " << ::tpy::__len__(ga) << " " << ::tpy::__len__(gb) << "\n";
-    grow_both(gb, ga);
+    ::tpyapp::main::grow_both(gb, ga);
     std::cout << "multi-root swapped:" << " " << ::tpy::__len__(ga) << " " << ::tpy::__len__(gb) << "\n";
     Grower gr = Grower(7);
     std::vector<std::vector<int32_t>> ha = {{1}};
@@ -1012,7 +1012,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

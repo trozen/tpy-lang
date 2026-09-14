@@ -33,9 +33,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << nested(true, 1, 2) << "\n";
-    std::cout << nested(true, 1, std::nullopt) << "\n";
-    std::cout << nested(true, std::nullopt, 2) << "\n";
+    std::cout << ::tpyapp::main::nested(true, 1, 2) << "\n";
+    std::cout << ::tpyapp::main::nested(true, 1, std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::nested(true, std::nullopt, 2) << "\n";
 }
 
 } // namespace tpyapp::main

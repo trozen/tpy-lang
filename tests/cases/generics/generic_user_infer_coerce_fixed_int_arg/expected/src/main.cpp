@@ -13,7 +13,7 @@ void __tpy_init() {
     initialized = true;
 
     value = 7;
-    std::cout << echo_with_delta<int32_t>(value, static_cast<int64_t>(5)) << "\n";
+    std::cout << ::tpyapp::main::echo_with_delta<int32_t>(value, static_cast<int64_t>(5)) << "\n";
 }
 
 } // namespace tpyapp::main

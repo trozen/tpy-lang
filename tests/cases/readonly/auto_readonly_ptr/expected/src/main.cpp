@@ -33,7 +33,7 @@ void main() {
     std::cout << ::tpy::deref_check(h.get_node()).value << "\n";
     Node n2 = Node(42);
     h._node = &n2;
-    read_holder(h);
+    ::tpyapp::main::read_holder(h);
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

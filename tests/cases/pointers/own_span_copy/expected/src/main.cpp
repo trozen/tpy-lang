@@ -24,7 +24,7 @@ std::span<int32_t> get_span(std::vector<int32_t>& data) {
 //     print(len(span_copy))
 void main() {
     std::vector<int32_t> nums = {1, 2, 3};
-    std::span<int32_t> span = get_span(nums);
+    std::span<int32_t> span = ::tpyapp::main::get_span(nums);
     std::span<int32_t> span_copy = std::span<int32_t>(span);
     std::cout << ::tpy::__getitem__(span, 0) << "\n";
     std::cout << ::tpy::__getitem__(span_copy, 0) << "\n";
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

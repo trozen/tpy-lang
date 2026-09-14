@@ -21,7 +21,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::a::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

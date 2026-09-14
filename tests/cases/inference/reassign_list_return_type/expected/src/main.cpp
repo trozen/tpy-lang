@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::vector<::tpy::BigInt> __global_slot_1 = get_items();
+    static std::vector<::tpy::BigInt> __global_slot_1 = ::tpyapp::main::get_items();
     items = &__global_slot_1;
     std::cout << ::tpy::__len__((*items)) << "\n";
 }

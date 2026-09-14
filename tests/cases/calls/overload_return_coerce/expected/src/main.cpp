@@ -102,14 +102,14 @@ void main() {
     A a = A(42);
     B b = B(3.14);
     C c = C(100);
-    std::cout << get_val(a) << "\n";
-    std::cout << ::tpy::print_float(get_val(b)) << "\n";
-    std::cout << get_big(c) << "\n";
-    std::cout << ::tpy::print_float(get_big(b)) << "\n";
-    std::cout << get_wide(a) << "\n";
-    std::cout << ::tpy::print_float(get_wide(b)) << "\n";
-    std::cout << ::tpy::BigInt::from_float(get_cast(a)) << "\n";
-    std::cout << get_cast(c) << "\n";
+    std::cout << ::tpyapp::main::get_val(a) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::get_val(b)) << "\n";
+    std::cout << ::tpyapp::main::get_big(c) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::get_big(b)) << "\n";
+    std::cout << ::tpyapp::main::get_wide(a) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::get_wide(b)) << "\n";
+    std::cout << ::tpy::BigInt::from_float(::tpyapp::main::get_cast(a)) << "\n";
+    std::cout << ::tpyapp::main::get_cast(c) << "\n";
 }
 
 // main()
@@ -118,7 +118,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

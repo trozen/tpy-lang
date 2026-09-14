@@ -73,7 +73,7 @@ __gen_tag tag(std::vector<int32_t>& it) {
 void main() {
     {
         auto __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
-        auto __src_0 = skip_first<int32_t>(__tmp_1);
+        auto __src_0 = ::tpyapp::main::skip_first<int32_t>(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -85,7 +85,7 @@ void main() {
     std::cout << "--" << "\n";
     std::vector<int32_t> gnums = {1, 2, 7, 3};
     {
-        auto __src_2 = gtakewhile<int32_t>(is_small, gnums);
+        auto __src_2 = ::tpyapp::main::gtakewhile<int32_t>(is_small, gnums);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -97,7 +97,7 @@ void main() {
     std::cout << "--" << "\n";
     {
         std::vector<int32_t> __tmp_2 = {4, 5};
-        auto __src_4 = tag(__tmp_2);
+        auto __src_4 = ::tpyapp::main::tag(__tmp_2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -122,7 +122,7 @@ void main() {
     std::cout << "--" << "\n";
     {
         auto __tmp_3 = std::array<int32_t, 4>{9, 8, 7, 6};
-        auto __src_8 = first_n<int32_t>(__tmp_3, 2);
+        auto __src_8 = ::tpyapp::main::first_n<int32_t>(__tmp_3, 2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -176,7 +176,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

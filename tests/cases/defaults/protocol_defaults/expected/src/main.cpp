@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     use_one_arg(impl)
 void main() {
     Impl impl = Impl(42);
-    use_callable(impl);
-    use_one_arg(impl);
+    ::tpyapp::main::use_callable(impl);
+    ::tpyapp::main::use_one_arg(impl);
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

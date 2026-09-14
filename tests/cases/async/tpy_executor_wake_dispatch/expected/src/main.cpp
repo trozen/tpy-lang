@@ -88,11 +88,11 @@ void test_timer_drives_to_completion() {
 //     print("---")
 //     test_timer_drives_to_completion()
 void main() {
-    test_external_wake();
+    ::tpyapp::main::test_external_wake();
     std::cout << "---" << "\n";
-    test_stale_generation_wake();
+    ::tpyapp::main::test_stale_generation_wake();
     std::cout << "---" << "\n";
-    test_timer_drives_to_completion();
+    ::tpyapp::main::test_timer_drives_to_completion();
 }
 
 // # Waker dispatch into the TPy Executor. Validates that an externally-
@@ -117,7 +117,7 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

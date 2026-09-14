@@ -34,7 +34,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {  // after: yield "int:" + str(a + 1)
         const auto& __a = std::get<::tpy::BigInt>(a);
-        auto __tup_1 = remake();
+        auto __tup_1 = ::tpyapp::main::remake();
         a = std::get<0>(__tup_1);
         n = std::get<1>(__tup_1);
         __state = S_RESUME_1;
@@ -86,7 +86,7 @@ __gen_gen gen(::tpy::Union<::tpy::BigInt, std::string> a) {
 void main() {
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = 5;
-        auto __src_0 = gen(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -103,7 +103,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

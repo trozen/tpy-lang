@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(get_c(r))         # C = bool
 void main() {
     Rec r = Rec(::tpy::BigInt(9), "mid", true);
-    std::cout << ((get_a<::tpy::BigInt, std::string, bool, Rec>(r)) + (::tpy::BigInt(1))) << "\n";
-    std::cout << get_b<::tpy::BigInt, std::string, bool, Rec>(r) << "\n";
-    std::cout << ::tpy::print_bool(get_c<::tpy::BigInt, std::string, bool, Rec>(r)) << "\n";
+    std::cout << ((::tpyapp::main::get_a<::tpy::BigInt, std::string, bool, Rec>(r)) + (::tpy::BigInt(1))) << "\n";
+    std::cout << ::tpyapp::main::get_b<::tpy::BigInt, std::string, bool, Rec>(r) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::get_c<::tpy::BigInt, std::string, bool, Rec>(r)) << "\n";
 }
 
 // main()
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

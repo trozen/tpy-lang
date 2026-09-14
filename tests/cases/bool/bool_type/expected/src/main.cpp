@@ -77,7 +77,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_bool();
+    ::tpyapp::main::test_bool();
 }
 
 } // namespace tpyapp::main

@@ -35,7 +35,7 @@ void main() {
     auto t = __ctx_1.__enter__();
     try {
         std::cout << std::get<0>(t) << " " << std::get<1>(t) << "\n";
-        std::cout << sum_pair(t) << "\n";
+        std::cout << ::tpyapp::main::sum_pair(t) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -50,7 +50,7 @@ void main() {
     auto b = __ctx_2.__enter__();
     try {
         std::cout << ::tpy::__len__(b) << "\n";
-        std::cout << first_byte(b) << "\n";
+        std::cout << ::tpyapp::main::first_byte(b) << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -97,7 +97,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

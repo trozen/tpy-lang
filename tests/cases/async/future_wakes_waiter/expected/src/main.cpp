@@ -43,7 +43,7 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         f.emplace(::tpystd::asyncio::Future<int32_t>());
-        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*f))));
+        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::producer((*f))));
         __sub_0 = &((*f));
         __state = S_RESUME_0;
         continue;
@@ -71,7 +71,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # A Future completed by a spawned task should wake the coroutine awaiting it.
@@ -84,7 +84,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

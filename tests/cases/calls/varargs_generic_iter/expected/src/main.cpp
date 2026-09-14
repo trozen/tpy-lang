@@ -10,11 +10,11 @@ namespace tpyapp::main {
 //     print(count_rest(1, 2, 3, 4))
 void main() {
     std::array<int32_t, 3> __tmp_1{10, 20, 30};
-    std::cout << first<int32_t>(::tpy::varargs<int32_t>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::first<int32_t>(::tpy::varargs<int32_t>(__tmp_1)) << "\n";
     std::array<std::string, 2> __tmp_2{"a", "b"};
-    std::cout << first<std::string>(::tpy::varargs<std::string>(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::first<std::string>(::tpy::varargs<std::string>(__tmp_2)) << "\n";
     std::array<const int32_t, 4> __tmp_3{1, 2, 3, 4};
-    std::cout << count_rest<int32_t>(::tpy::varargs<const int32_t>(__tmp_3)) << "\n";
+    std::cout << ::tpyapp::main::count_rest<int32_t>(::tpy::varargs<const int32_t>(__tmp_3)) << "\n";
 }
 
 // main()
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -18,11 +18,11 @@ namespace tpyapp::main {
 void main() {
     std::array<int32_t, 3> nums = {10, 20, 30};
     int32_t* np = nums.data();
-    store_at<int32_t>(np, 1, 99);
+    ::tpyapp::main::store_at<int32_t>(np, 1, 99);
     std::cout << np[1] << "\n";
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     Point* pp = pts.data();
-    store_at<Point>(pp, 0, Point(10, 20));
+    ::tpyapp::main::store_at<Point>(pp, 0, Point(10, 20));
     std::cout << pp[0].x << "\n";
     std::cout << pp[0].y << "\n";
 }
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

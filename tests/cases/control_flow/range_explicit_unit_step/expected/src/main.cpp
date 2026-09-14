@@ -35,7 +35,7 @@ int32_t down(int32_t n) {
 // def main() -> None:
 //     print(up(5), down(5))
 void main() {
-    std::cout << up(5) << " " << down(5) << "\n";
+    std::cout << ::tpyapp::main::up(5) << " " << ::tpyapp::main::down(5) << "\n";
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

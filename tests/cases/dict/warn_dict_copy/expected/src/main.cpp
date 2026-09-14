@@ -59,7 +59,7 @@ void test_no_warn_update_explicit_copy() {
 //     print(len(a))
 void test_no_warn_update_rvalue() {
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
-    ::tpy::dict_update(a, make_dict());
+    ::tpy::dict_update(a, ::tpyapp::main::make_dict());
     ::tpy::dict_update(a, ::tpy::ordered_map<std::string, Node>({{"b", Node(2)}}));
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -118,18 +118,18 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_warn_update_not_last_use();
-    test_no_warn_update_last_use();
-    test_no_warn_update_explicit_copy();
-    test_no_warn_update_rvalue();
-    test_no_warn_update_value_types();
-    test_warn_ior_not_last_use();
-    test_no_warn_ior_last_use();
+    ::tpyapp::main::test_warn_update_not_last_use();
+    ::tpyapp::main::test_no_warn_update_last_use();
+    ::tpyapp::main::test_no_warn_update_explicit_copy();
+    ::tpyapp::main::test_no_warn_update_rvalue();
+    ::tpyapp::main::test_no_warn_update_value_types();
+    ::tpyapp::main::test_warn_ior_not_last_use();
+    ::tpyapp::main::test_no_warn_ior_last_use();
     static ::tpy::ordered_map<std::string, Node> __global_slot_1 = ::tpy::ordered_map<std::string, Node>({{"x", Node(0)}});
     g_a = &__global_slot_1;
     static ::tpy::ordered_map<std::string, Node> __global_slot_2 = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     g_b = &__global_slot_2;
-    test_warn_update_generic<Node>((*g_a), (*g_b));
+    ::tpyapp::main::test_warn_update_generic<Node>((*g_a), (*g_b));
 }
 
 } // namespace tpyapp::main

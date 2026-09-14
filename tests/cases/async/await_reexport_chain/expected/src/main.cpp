@@ -48,7 +48,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::facade::__tpy_init();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 
 } // namespace tpyapp::main

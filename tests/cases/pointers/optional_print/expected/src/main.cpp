@@ -47,8 +47,8 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
     points->push_back(Point(3, 4));
-    std::cout << ::tpy::print_optional(find((*points), 3)) << "\n";
-    std::cout << ::tpy::print_optional(find((*points), 99)) << "\n";
+    std::cout << ::tpy::print_optional(::tpyapp::main::find((*points), 3)) << "\n";
+    std::cout << ::tpy::print_optional(::tpyapp::main::find((*points), 99)) << "\n";
     std::cout << "None" << "\n";
     p = nullptr;
     std::cout << ::tpy::print_optional(p) << "\n";

@@ -44,7 +44,7 @@ std::string dirname(std::string_view p) {
 // def split(p: str) -> tuple[str, str]:
 //     return (dirname(p), basename(p))
 std::tuple<std::string, std::string> split(std::string_view p) {
-    return std::tuple<std::string, std::string>{dirname(p), basename(p)};
+    return std::tuple<std::string, std::string>{::tpystd::os::path::dirname(p), ::tpystd::os::path::basename(p)};
 }
 
 // def splitext(p: str) -> tuple[str, str]:
@@ -107,7 +107,7 @@ std::string join(std::string_view a, ::tpy::varargs<const std::string> paths) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view b = *__beg_0;
-        path = _join2(path, b);
+        path = ::tpystd::os::path::_join2(path, b);
     }
     return path;
 }
@@ -340,10 +340,10 @@ bool samestat(const ::tpystd::os::_types::stat_result& s1, const ::tpystd::os::_
 //         return normpath(p)
 //     return normpath(_join2(getcwd(), p))
 std::string abspath(std::string_view p) {
-    if (isabs(p)) {
-        return normpath(p);
+    if (::tpystd::os::path::isabs(p)) {
+        return ::tpystd::os::path::normpath(p);
     }
-    return normpath(_join2(::tpy::stdlib::os::getcwd(), p));
+    return ::tpystd::os::path::normpath(::tpystd::os::path::_join2(::tpy::stdlib::os::getcwd(), p));
 }
 
 // def _split_parts(s: str) -> Own[list[str]]:
@@ -387,8 +387,8 @@ std::vector<std::string> _split_parts(std::string_view s) {
 //         return "."
 //     return "/".join(rel)
 std::string relpath(std::string_view p, std::string_view start) {
-    std::vector<std::string> start_parts = _split_parts(abspath(start));
-    std::vector<std::string> path_parts = _split_parts(abspath(p));
+    std::vector<std::string> start_parts = ::tpystd::os::path::_split_parts(::tpystd::os::path::abspath(start));
+    std::vector<std::string> path_parts = ::tpystd::os::path::_split_parts(::tpystd::os::path::abspath(p));
     int32_t i = 0;
     int32_t common = ::std::min(::tpy::__len__(start_parts), ::tpy::__len__(path_parts));
     while (((i < common) && (::tpy::__getitem__(start_parts, i) == ::tpy::__getitem__(path_parts, i)))) {
@@ -493,7 +493,7 @@ std::string expandvars(std::string_view p) {
             }
         } else {
             int32_t end = (::tpy::add_check<int32_t>(i, 1));
-            while (((end < n) && _is_var_char(::tpy::__getitem__(p, end)))) {
+            while (((end < n) && ::tpystd::os::path::_is_var_char(::tpy::__getitem__(p, end)))) {
                 end = ::tpy::add_check<int32_t>(end, 1);
             }
             if ((end == (::tpy::add_check<int32_t>(i, 1)))) {
@@ -573,7 +573,7 @@ std::string expanduser(std::string_view p) {
             return std::string(p);
         }
     }
-    ::tpy::String result = (::tpy::str_concat(_rstrip_slashes(userhome), ::tpy::str_slice(p, ::tpy::BasicSlice{i, std::nullopt})));
+    ::tpy::String result = (::tpy::str_concat(::tpystd::os::path::_rstrip_slashes(userhome), ::tpy::str_slice(p, ::tpy::BasicSlice{i, std::nullopt})));
     if ((::tpy::__len__(result) == 0)) {
         return "/";
     }

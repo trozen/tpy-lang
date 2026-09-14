@@ -90,7 +90,7 @@ int32_t sum_span(const T_c& c) {
 //     return accept_ro(c)
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t test_pass_to_ro_span(const T_c& c) {
-    return accept_ro(::tpy::as_span(c));
+    return ::tpyapp::main::accept_ro(::tpy::as_span(c));
 }
 
 void __tpy_init();

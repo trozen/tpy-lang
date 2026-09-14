@@ -24,10 +24,10 @@ std::function<int32_t(int32_t)> make_multiplier(int32_t factor) {
 //     mul3 = make_multiplier(3)
 //     print(mul3(7))   # 21
 void main() {
-    std::function<int32_t(int32_t)> add5 = make_adder(5);
+    std::function<int32_t(int32_t)> add5 = ::tpyapp::main::make_adder(5);
     std::cout << add5(10) << "\n";
     std::cout << add5(0) << "\n";
-    std::function<int32_t(int32_t)> mul3 = make_multiplier(3);
+    std::function<int32_t(int32_t)> mul3 = ::tpyapp::main::make_multiplier(3);
     std::cout << mul3(7) << "\n";
 }
 
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

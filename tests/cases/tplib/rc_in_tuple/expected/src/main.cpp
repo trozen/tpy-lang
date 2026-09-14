@@ -30,7 +30,7 @@ void main() {
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(10));
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(20));
     auto pair = std::tuple<::tpystd::tplib::rc::Rc<Node>, ::tpystd::tplib::rc::Rc<Node>>{a.clone(), b.clone()};
-    std::cout << both(::tpy::tuple_to_pointer<std::tuple<const ::tpystd::tplib::rc::Rc<Node>*, const ::tpystd::tplib::rc::Rc<Node>*>>(pair)) << "\n";
+    std::cout << ::tpyapp::main::both(::tpy::tuple_to_pointer<std::tuple<const ::tpystd::tplib::rc::Rc<Node>*, const ::tpystd::tplib::rc::Rc<Node>*>>(pair)) << "\n";
     std::get<0>(pair).get().value = 100;
     std::cout << a.get().value << "\n";
     b.get().value = 200;
@@ -46,7 +46,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

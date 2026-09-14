@@ -24,7 +24,7 @@ int32_t leaf_count(const Tree<int32_t>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, leaf_count(child));
+            total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::leaf_count(child));
         }
         return total;
         break;
@@ -49,8 +49,8 @@ void main() {
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}, 4};
     Holder h = Holder(std::move(seed));
     Tree<int32_t>& g = h.get();
-    std::cout << leaf_count(g) << "\n";
-    std::cout << leaf_count(h.get()) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(g) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(h.get()) << "\n";
     Tree<int32_t> probe = std::vector<Tree<int32_t>>{9, 9, 9, 9};
     std::cout << ::tpy::print_bool(h.matches(probe)) << "\n";
 }
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

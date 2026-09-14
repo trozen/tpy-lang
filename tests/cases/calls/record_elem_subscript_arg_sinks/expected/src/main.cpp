@@ -124,13 +124,13 @@ void main() {
     std::cout << "ctor_field_write" << " " << ::tpy::print_float(m.player.x) << " " << ::tpy::print_float(m.bumped.x) << " " << ::tpy::print_float(::tpy::__getitem__(m.things, 0).x) << "\n";
     m.reseat();
     std::cout << "method_field_write" << " " << ::tpy::print_float(m.bumped.x) << " " << ::tpy::print_float(::tpy::__getitem__(m.things, 1).x) << "\n";
-    ctor_slots();
-    method_slots();
-    stub_slots();
-    dict_elem();
+    ::tpyapp::main::ctor_slots();
+    ::tpyapp::main::method_slots();
+    ::tpyapp::main::stub_slots();
+    ::tpyapp::main::dict_elem();
     std::vector<Thing> things = {Thing(1), Thing(2)};
     {
-        auto __src_0 = gen(things);
+        auto __src_0 = ::tpyapp::main::gen(things);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -153,7 +153,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
     static std::vector<Thing> __global_slot_1 = {Thing(1)};
     top = &__global_slot_1;
     static Bump __global_slot_2 = Bump(::tpy::__getitem__((*top), 0));

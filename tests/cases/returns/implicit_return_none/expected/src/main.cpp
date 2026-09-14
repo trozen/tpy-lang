@@ -126,16 +126,16 @@ __coro_main_coro main_coro() {
 //     print(c is None)
 //     asyncio.run(main_coro())
 void main() {
-    std::cout << ::tpy::print_optional_val(find(3)) << "\n";
-    std::cout << ::tpy::print_optional_val(find(0)) << "\n";
-    std::optional<Point> __slot_1 = pick(0);
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::find(3)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::find(0)) << "\n";
+    std::optional<Point> __slot_1 = ::tpyapp::main::pick(0);
     Point* p = ::tpy::optional_to_ptr(__slot_1);
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     Point pt = Point(1);
     Tag tg = Tag(2);
-    ::tpy::Union<std::monostate, Point*, Tag*> c = choose(pt, tg, 0);
+    ::tpy::Union<std::monostate, Point*, Tag*> c = ::tpyapp::main::choose(pt, tg, 0);
     std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(c))) << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # A None-including return type falls through to Python's implicit
@@ -150,7 +150,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

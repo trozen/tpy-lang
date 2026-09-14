@@ -63,7 +63,7 @@ uint64_t take_u64(uint64_t x) {
 uint64_t literal_seed(uint64_t limit) {
     uint64_t offset = 0;
     while ((offset < limit)) {
-        offset = (::tpy::add_check<uint64_t>(take_u64(offset), 1));
+        offset = (::tpy::add_check<uint64_t>(::tpyapp::main::take_u64(offset), 1));
     }
     return offset;
 }
@@ -77,13 +77,13 @@ uint64_t literal_seed(uint64_t limit) {
 //     print(same_sign_unsigned(uint32(1), uint32(2)))
 //     print(literal_seed(uint64(3)))
 void main() {
-    std::cout << ::tpy::print_bool(same_rank(-1, 1)) << "\n";
-    std::cout << ::tpy::print_bool(diff_rank_signed_smaller(0, 1)) << "\n";
-    std::cout << ::tpy::print_bool(diff_rank_unsigned_smaller(0, 1)) << "\n";
-    std::cout << ::tpy::print_bool(equality_too(0, 0)) << "\n";
-    std::cout << ::tpy::print_bool(same_sign_signed(1, 2)) << "\n";
-    std::cout << ::tpy::print_bool(same_sign_unsigned(1, 2)) << "\n";
-    std::cout << literal_seed(3) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::same_rank(-1, 1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::diff_rank_signed_smaller(0, 1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::diff_rank_unsigned_smaller(0, 1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::equality_too(0, 0)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::same_sign_signed(1, 2)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::same_sign_unsigned(1, 2)) << "\n";
+    std::cout << ::tpyapp::main::literal_seed(3) << "\n";
 }
 
 // main()
@@ -92,7 +92,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

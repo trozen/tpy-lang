@@ -41,7 +41,7 @@ void teardown(std::string_view base) {
 //     teardown(base)
 void main() {
     std::string_view base = "tpy_os_listdir_default";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
     ::tpystd::os::mkdir(base);
     auto __obj_0 = {"a.txt", "b.txt"};
     auto __beg_0 = __obj_0.begin();
@@ -68,7 +68,7 @@ void main() {
     std::cout << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir())) << "\n";
     std::cout << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir("."))) << "\n";
     ::tpy::stdlib::os::chdir(cwd);
-    teardown(base);
+    ::tpyapp::main::teardown(base);
 }
 
 // # os.listdir() with no argument defaults to the current directory (CPython
@@ -83,7 +83,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::os::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

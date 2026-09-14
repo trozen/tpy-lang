@@ -38,9 +38,9 @@ namespace tpyapp::main {
 //     lst: list[bytes] = [b"world", b"\x00\x80\xff", b""]
 //     print(len(lst), len(lst[0]), len(lst[1]), len(lst[2]))
 void main() {
-    std::cout << take(::tpy::bytes_literal("hello", 5)) << "\n";
-    std::cout << take(::tpy::BytesView{}) << "\n";
-    ::tpy::Bytes g = make_greeting();
+    std::cout << ::tpyapp::main::take(::tpy::bytes_literal("hello", 5)) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::BytesView{}) << "\n";
+    ::tpy::Bytes g = ::tpyapp::main::make_greeting();
     std::cout << ::tpy::__len__(g) << " " << static_cast<int>(::tpy::bytes_getitem(g, 0)) << "\n";
     ::tpy::BytesView quoted = ::tpy::bytes_literal("a\"b\\c", 5);
     std::cout << ::tpy::__len__(quoted) << " " << static_cast<int>(::tpy::bytes_getitem(quoted, 1)) << "\n";
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

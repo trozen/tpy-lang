@@ -20,7 +20,7 @@ void test_if_branch() {
     std::optional<Box> __slot_1;
     Box* b = nullptr;
     if (true) {
-        b = &*(__slot_1 = make_box());
+        b = &*(__slot_1 = ::tpyapp::main::make_box());
     }
     if ((b != nullptr)) {
         std::cout << b->v << "\n";
@@ -42,7 +42,7 @@ void test_elif_branch() {
     int32_t x = 1;
     if ((x == 0)) {
     } else if ((x == 1)) {
-        b = &*(__slot_1 = make_box());
+        b = &*(__slot_1 = ::tpyapp::main::make_box());
     }
     if ((b != nullptr)) {
         std::cout << b->v << "\n";
@@ -56,8 +56,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_if_branch();
-    test_elif_branch();
+    ::tpyapp::main::test_if_branch();
+    ::tpyapp::main::test_elif_branch();
 }
 
 } // namespace tpyapp::main

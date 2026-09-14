@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return int32(0)
 int32_t main() {
     Message m = Message("Hello");
-    show(m);
+    ::tpyapp::main::show(m);
     return 0;
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::traits::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -36,8 +36,8 @@ void test_unary() {
 //     test_binary()
 //     test_unary()
 void main() {
-    test_binary();
-    test_unary();
+    ::tpyapp::main::test_binary();
+    ::tpyapp::main::test_unary();
 }
 
 // main()
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

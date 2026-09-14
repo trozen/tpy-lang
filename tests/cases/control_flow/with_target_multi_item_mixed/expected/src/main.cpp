@@ -75,7 +75,7 @@ __gen_steps steps() {
 //     print(SHARED.n)
 void main() {
     {
-        auto __src_0 = steps();
+        auto __src_0 = ::tpyapp::main::steps();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -97,7 +97,7 @@ void __tpy_init() {
 
     static Item __global_slot_1 = Item(7);
     SHARED = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

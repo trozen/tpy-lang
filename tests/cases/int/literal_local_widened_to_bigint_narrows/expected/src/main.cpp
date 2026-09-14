@@ -67,7 +67,7 @@ void subscript_positions(std::string_view data, std::vector<int32_t>& xs, ::tpy:
     ::tpy::__setitem__(xs, p.to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, p.to_fixed_check<int32_t>()), 1));
     ::tpy::__delitem__(d, p.to_fixed_check<int32_t>());
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__len__(d) << "\n";
-    p = widen();
+    p = ::tpyapp::main::widen();
     std::cout << p << "\n";
 }
 
@@ -91,7 +91,7 @@ void value_positions(std::string_view data) {
     std::cout << q << "\n";
     std::cout << std::format("{}", (p).to_string()) << "\n";
     std::cout << ::tpy::EnumUtil<Color>::from_value((p).to_fixed_check<int32_t>()) << "\n";
-    p = widen();
+    p = ::tpyapp::main::widen();
     std::cout << p << "\n";
 }
 
@@ -101,8 +101,8 @@ void value_positions(std::string_view data) {
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     ::tpy::ordered_map<int32_t, int32_t> __tmp_2 = ::tpy::ordered_map<int32_t, int32_t>({{0, 1}});
-    subscript_positions("abc", __tmp_1, __tmp_2);
-    value_positions("abcd");
+    ::tpyapp::main::subscript_positions("abc", __tmp_1, __tmp_2);
+    ::tpyapp::main::value_positions("abcd");
 }
 
 // # A literal-seeded local that a later `int`-returning assignment retro-widens to
@@ -118,7 +118,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -110,13 +110,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_assert_non_negative();
-    test_if_positive();
-    test_no_elision_unchecked();
-    test_no_elision_narrowing();
-    test_no_elision_after_reassign();
-    test_for_range_index();
-    test_int64_to_uint64();
+    ::tpyapp::main::test_assert_non_negative();
+    ::tpyapp::main::test_if_positive();
+    ::tpyapp::main::test_no_elision_unchecked();
+    ::tpyapp::main::test_no_elision_narrowing();
+    ::tpyapp::main::test_no_elision_after_reassign();
+    ::tpyapp::main::test_for_range_index();
+    ::tpyapp::main::test_int64_to_uint64();
 }
 
 } // namespace tpyapp::main

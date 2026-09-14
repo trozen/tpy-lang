@@ -66,21 +66,21 @@ std::string truthy_narrowing(std::optional<std::string_view> s) {
 //     s = None
 //     print(s if s else "empty")
 void main() {
-    std::cout << safe_len("hello") << "\n";
-    std::cout << safe_len(std::nullopt) << "\n";
-    std::optional<std::string> r1 = value_or_none(true);
+    std::cout << ::tpyapp::main::safe_len("hello") << "\n";
+    std::cout << ::tpyapp::main::safe_len(std::nullopt) << "\n";
+    std::optional<std::string> r1 = ::tpyapp::main::value_or_none(true);
     std::cout << ::tpy::print_optional_val(r1) << "\n";
-    r1 = value_or_none(false);
+    r1 = ::tpyapp::main::value_or_none(false);
     std::cout << ::tpy::print_optional_val(r1) << "\n";
-    std::optional<std::string> r2 = none_or_value(true);
+    std::optional<std::string> r2 = ::tpyapp::main::none_or_value(true);
     std::cout << ::tpy::print_optional_val(r2) << "\n";
-    r2 = none_or_value(false);
+    r2 = ::tpyapp::main::none_or_value(false);
     std::cout << ::tpy::print_optional_val(r2) << "\n";
-    std::cout << with_default("custom") << "\n";
-    std::cout << with_default(std::nullopt) << "\n";
-    std::cout << truthy_narrowing("hello") << "\n";
-    std::cout << truthy_narrowing(std::nullopt) << "\n";
-    std::cout << truthy_narrowing("") << "\n";
+    std::cout << ::tpyapp::main::with_default("custom") << "\n";
+    std::cout << ::tpyapp::main::with_default(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::truthy_narrowing("hello") << "\n";
+    std::cout << ::tpyapp::main::truthy_narrowing(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::truthy_narrowing("") << "\n";
     std::optional<std::string> s = "world";
     std::cout << ((::tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
     s = std::nullopt;
@@ -93,7 +93,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

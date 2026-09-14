@@ -117,7 +117,7 @@ __coro_driver driver() {
 // def main() -> None:
 //     asyncio.run(driver())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::driver()));
 }
 
 // # A coroutine returning an owned record from inside a `try` whose body
@@ -132,7 +132,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

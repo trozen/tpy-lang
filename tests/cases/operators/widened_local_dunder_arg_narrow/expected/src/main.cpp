@@ -18,7 +18,7 @@ namespace tpyapp::main {
 void needle(const Bag& b) {
     ::tpy::BigInt p = ::tpy::BigInt(1);
     std::cout << ::tpy::print_bool((b.__contains__((p).to_fixed_check<int32_t>()))) << "\n";
-    p = widen();
+    p = ::tpyapp::main::widen();
     std::cout << p << "\n";
 }
 
@@ -30,7 +30,7 @@ void needle(const Bag& b) {
 void forward(const Bag& b) {
     ::tpy::BigInt p = ::tpy::BigInt(1);
     std::cout << ((b) + ((p).to_fixed_check<int32_t>())) << "\n";
-    p = widen();
+    p = ::tpyapp::main::widen();
     std::cout << p << "\n";
 }
 
@@ -42,7 +42,7 @@ void forward(const Bag& b) {
 void reflected(const Bag& b) {
     ::tpy::BigInt p = ::tpy::BigInt(1);
     std::cout << (((p).to_fixed_check<int32_t>()) + (b)) << "\n";
-    p = widen();
+    p = ::tpyapp::main::widen();
     std::cout << p << "\n";
 }
 
@@ -52,11 +52,11 @@ void reflected(const Bag& b) {
 //     reflected(Bag())
 void main() {
     Bag __tmp_1 = Bag();
-    needle(__tmp_1);
+    ::tpyapp::main::needle(__tmp_1);
     Bag __tmp_2 = Bag();
-    forward(__tmp_2);
+    ::tpyapp::main::forward(__tmp_2);
     Bag __tmp_3 = Bag();
-    reflected(__tmp_3);
+    ::tpyapp::main::reflected(__tmp_3);
 }
 
 // main()
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

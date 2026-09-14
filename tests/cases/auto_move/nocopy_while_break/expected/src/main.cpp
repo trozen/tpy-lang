@@ -28,7 +28,7 @@ int32_t test() {
     int32_t i = 0;
     while ((i < 3)) {
         if ((i == 1)) {
-            result = close(std::move(h));
+            result = ::tpyapp::main::close(std::move(h));
             break;
         }
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -39,7 +39,7 @@ int32_t test() {
 // def main():
 //     print(test())
 void main() {
-    std::cout << test() << "\n";
+    std::cout << ::tpyapp::main::test() << "\n";
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << count_char("xoxox", 'x') << "\n";
+    std::cout << ::tpyapp::main::count_char("xoxox", 'x') << "\n";
     std::cout << ::tpy::__len__("hello") << "\n";
     std::cout << static_cast<char>(65) << "\n";
 }

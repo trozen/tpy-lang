@@ -27,10 +27,10 @@ int32_t _code{};
         try {
             [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = n;
             __fin_ran_1 = true;
-            throw Err(bump());
+            throw Err(::tpyapp::main::bump());
         } catch (...) {
             if (!__fin_ran_1) {
-                throw Err(bump());
+                throw Err(::tpyapp::main::bump());
             }
             throw;
         }
@@ -54,7 +54,7 @@ void brk_out() {
                 if ((i == 1)) {
                     __fin_ran_2 = true;
                     if ((i == 1)) {
-                        throw Err(bump());
+                        throw Err(::tpyapp::main::bump());
                     }
                     break;
                 }
@@ -62,13 +62,13 @@ void brk_out() {
             } catch (...) {
                 if (!__fin_ran_2) {
                     if ((i == 1)) {
-                        throw Err(bump());
+                        throw Err(::tpyapp::main::bump());
                     }
                 }
                 throw;
             }
             if ((i == 1)) {
-                throw Err(bump());
+                throw Err(::tpyapp::main::bump());
             }
         }
     }
@@ -86,14 +86,14 @@ void cont_out() {
             bool __fin_ran_3 = false;
             try {
                 __fin_ran_3 = true;
-                throw Err(bump());
+                throw Err(::tpyapp::main::bump());
             } catch (...) {
                 if (!__fin_ran_3) {
-                    throw Err(bump());
+                    throw Err(::tpyapp::main::bump());
                 }
                 throw;
             }
-            throw Err(bump());
+            throw Err(::tpyapp::main::bump());
         }
     }
 }
@@ -119,11 +119,11 @@ void cont_out() {
                     [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(3);
                     __fin_ran_5 = true;
                     std::cout << "inner fin" << "\n";
-                    throw Err(bump());
+                    throw Err(::tpyapp::main::bump());
                 } catch (...) {
                     if (!__fin_ran_5) {
                         std::cout << "inner fin" << "\n";
-                        throw Err(bump());
+                        throw Err(::tpyapp::main::bump());
                     }
                     throw;
                 }
@@ -169,7 +169,7 @@ void main() {
     std::cout << "-- ret_out --" << "\n";
     {
         try {
-            ret_out(::tpy::BigInt(5));
+            ::tpyapp::main::ret_out(::tpy::BigInt(5));
         } catch (const Err& e) {
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
@@ -178,7 +178,7 @@ void main() {
     std::cout << "-- brk_out --" << "\n";
     {
         try {
-            brk_out();
+            ::tpyapp::main::brk_out();
         } catch (const Err& e) {
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
@@ -187,7 +187,7 @@ void main() {
     std::cout << "-- cont_out --" << "\n";
     {
         try {
-            cont_out();
+            ::tpyapp::main::cont_out();
         } catch (const Err& e) {
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
@@ -196,7 +196,7 @@ void main() {
     std::cout << "-- nested_ret --" << "\n";
     {
         try {
-            nested_ret();
+            ::tpyapp::main::nested_ret();
         } catch (const Err& e) {
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
@@ -212,7 +212,7 @@ void __tpy_init() {
     initialized = true;
 
     _code = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

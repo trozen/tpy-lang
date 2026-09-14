@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(b.get().x)  # 11: mutation in process() was visible, so item was a ref not a copy
 void test() {
     ::tpystd::tplib::box::Box<Point> b = ::tpystd::tplib::box::Box<Point>(Point(::tpy::BigInt(1)));
-    process<Point>(b);
+    ::tpyapp::main::process<Point>(b);
     std::cout << b.get().x << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

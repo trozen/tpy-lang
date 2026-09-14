@@ -34,7 +34,7 @@ void poke(std::vector<::tpy::Union<Cat, Dog>>& xs) {
 //     poke([Cat(4)])
 void main() {
     std::vector<::tpy::Union<Cat, Dog>> __tmp_1 = {Cat(4)};
-    poke(__tmp_1);
+    ::tpyapp::main::poke(__tmp_1);
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

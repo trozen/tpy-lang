@@ -83,13 +83,13 @@ std::vector<T> above_first(const std::vector<T>& xs, __F0&& f) {
 //     return map_keys(pairs, lambda p: p[1])  # tpyc: ok
 template<typename T>
 std::vector<std::string> names(const std::vector<std::tuple<T, std::string>>& pairs) {
-    return map_keys<std::tuple<T, std::string>, std::string>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
+    return ::tpyapp::main::map_keys<std::tuple<T, std::string>, std::string>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
 }
 // def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
 //     return above_first(pairs, lambda p: p[1])
 template<typename T>
 std::vector<std::tuple<T, int32_t>> keep(const std::vector<std::tuple<T, int32_t>>& pairs) {
-    return above_first<std::tuple<T, int32_t>, int32_t>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
+    return ::tpyapp::main::above_first<std::tuple<T, int32_t>, int32_t>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
 }
 
 void __tpy_init();

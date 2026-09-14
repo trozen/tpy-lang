@@ -220,7 +220,7 @@ __gen_repeat_arr repeat_arr(std::array<int32_t, 2>& a, int32_t n) {
 void main() {
     std::vector<int32_t> xs = {1};
     {
-        auto __src_0 = repeat_list(xs, 2);
+        auto __src_0 = ::tpyapp::main::repeat_list(xs, 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -232,7 +232,7 @@ void main() {
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__getitem__(xs, 2) << "\n";
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     {
-        auto __src_2 = repeat_dict(d, 1);
+        auto __src_2 = ::tpyapp::main::repeat_dict(d, 1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -244,7 +244,7 @@ void main() {
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__getitem__(d, "b") << "\n";
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1});
     {
-        auto __src_4 = repeat_set(s, 1);
+        auto __src_4 = ::tpyapp::main::repeat_set(s, 1);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -256,7 +256,7 @@ void main() {
     std::cout << ::tpy::__len__(s) << "\n";
     ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     {
-        auto __src_6 = repeat_buf(b, 1);
+        auto __src_6 = ::tpyapp::main::repeat_buf(b, 1);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -268,7 +268,7 @@ void main() {
     std::cout << ::tpy::__len__(b) << " " << static_cast<int>(::tpy::bytes_getitem(b, 1)) << "\n";
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
     {
-        auto __src_8 = repeat_arr(a, 1);
+        auto __src_8 = ::tpyapp::main::repeat_arr(a, 1);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -286,7 +286,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

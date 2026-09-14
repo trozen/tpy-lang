@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(use_consume(c, int32(100)))     # 2
 void main() {
     Cell<int32_t> c = Cell<int32_t>(42);
-    std::cout << second_of<int32_t>(c) << "\n";
-    std::cout << use_consume<int32_t>(c, 100) << "\n";
+    std::cout << ::tpyapp::main::second_of<int32_t>(c) << "\n";
+    std::cout << ::tpyapp::main::use_consume<int32_t>(c, 100) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

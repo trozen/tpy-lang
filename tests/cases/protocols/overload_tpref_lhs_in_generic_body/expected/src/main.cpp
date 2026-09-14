@@ -17,9 +17,9 @@ int32_t pick(int32_t x, int32_t y) {
 //     f: float32 = use(float32(1.5), float32(2.5))
 //     print(f)
 void main() {
-    int32_t a = use<int32_t>(1, 2);
+    int32_t a = ::tpyapp::main::use<int32_t>(1, 2);
     std::cout << a << "\n";
-    float f = use<float>(1.5f, 2.5f);
+    float f = ::tpyapp::main::use<float>(1.5f, 2.5f);
     std::cout << ::tpy::print_float(static_cast<double>(f)) << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

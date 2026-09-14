@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_mixed();
+    ::tpyapp::main::test_mixed();
 }
 
 } // namespace tpyapp::main

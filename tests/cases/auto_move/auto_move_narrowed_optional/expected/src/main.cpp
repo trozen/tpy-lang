@@ -20,13 +20,13 @@ int32_t test_consume() {
     Handle* h = &__slot_1;
     h->value = 42;
     if (!((h != nullptr))) ::tpy::raise_assertion_error();
-    return consume(std::move((*h)));
+    return ::tpyapp::main::consume(std::move((*h)));
 }
 
 // def main():
 //     print(test_consume())
 void main() {
-    std::cout << test_consume() << "\n";
+    std::cout << ::tpyapp::main::test_consume() << "\n";
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -89,7 +89,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
 ::tpy::BigInt value_moves_key_field() {
     ::tpy::ordered_map<::tpy::BigInt, Widget> d = ({
         ::tpy::ordered_map<::tpy::BigInt, Widget> __result;
-        auto __obj_0 = widgets(::tpy::BigInt(3));
+        auto __obj_0 = ::tpyapp::main::widgets(::tpy::BigInt(3));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -118,7 +118,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
 ::tpy::BigInt value_only() {
     ::tpy::ordered_map<int32_t, Widget> d = ({
         ::tpy::ordered_map<int32_t, Widget> __result;
-        auto __obj_0 = widgets(::tpy::BigInt(1));
+        auto __obj_0 = ::tpyapp::main::widgets(::tpy::BigInt(1));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -142,7 +142,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
 ::tpy::BigInt key_does_not_move(const ::tpy::BigInt& src_key) {
     ::tpy::ordered_map<Node, ::tpy::BigInt> d = ({
         ::tpy::ordered_map<Node, ::tpy::BigInt> __result;
-        auto __obj_0 = nodes(::tpy::BigInt(3));
+        auto __obj_0 = ::tpyapp::main::nodes(::tpy::BigInt(3));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -173,7 +173,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
 ::tpy::BigInt filtered_value_moves() {
     ::tpy::ordered_map<::tpy::BigInt, Widget> d = ({
         ::tpy::ordered_map<::tpy::BigInt, Widget> __result;
-        auto __obj_0 = widgets(::tpy::BigInt(4));
+        auto __obj_0 = ::tpyapp::main::widgets(::tpy::BigInt(4));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -203,7 +203,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
 ::tpy::BigInt same_var_key_and_value() {
     ::tpy::ordered_map<Node, Node> d = ({
         ::tpy::ordered_map<Node, Node> __result;
-        auto __obj_0 = nodes(::tpy::BigInt(3));
+        auto __obj_0 = ::tpyapp::main::nodes(::tpy::BigInt(3));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -222,11 +222,11 @@ __gen_nodes nodes(::tpy::BigInt n) {
 //     print(filtered_value_moves())
 //     print(same_var_key_and_value())
 void main() {
-    std::cout << value_moves_key_field() << "\n";
-    std::cout << value_only() << "\n";
-    std::cout << key_does_not_move(::tpy::BigInt(0)) << "\n";
-    std::cout << filtered_value_moves() << "\n";
-    std::cout << same_var_key_and_value() << "\n";
+    std::cout << ::tpyapp::main::value_moves_key_field() << "\n";
+    std::cout << ::tpyapp::main::value_only() << "\n";
+    std::cout << ::tpyapp::main::key_does_not_move(::tpy::BigInt(0)) << "\n";
+    std::cout << ::tpyapp::main::filtered_value_moves() << "\n";
+    std::cout << ::tpyapp::main::same_var_key_and_value() << "\n";
 }
 
 // main()
@@ -235,7 +235,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -69,8 +69,8 @@ void main() {
     std::cout << ::tpy::EnumUtil<Color>::from_value(0) << "\n";
     std::cout << ::tpy::EnumUtil<Color>::from_value(1) << "\n";
     std::cout << ::tpy::EnumUtil<Color>::from_value(2) << "\n";
-    std::cout << lookup(1) << "\n";
-    std::cout << from_int(::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::lookup(1) << "\n";
+    std::cout << ::tpyapp::main::from_int(::tpy::BigInt(2)) << "\n";
 }
 
 // # Test enum construction from integer value
@@ -82,7 +82,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

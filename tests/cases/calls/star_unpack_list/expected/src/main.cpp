@@ -29,9 +29,9 @@ int32_t sum_all(::tpy::varargs<const int32_t> args) {
 //     print(sum_all(*more))
 void main() {
     std::vector<int32_t> items = {1, 2, 3};
-    std::cout << sum_all(::tpy::varargs<const int32_t>(::tpy::as_span(items))) << "\n";
+    std::cout << ::tpyapp::main::sum_all(::tpy::varargs<const int32_t>(::tpy::as_span(items))) << "\n";
     std::vector<int32_t> more = {10, 20};
-    std::cout << sum_all(::tpy::varargs<const int32_t>(::tpy::as_span(more))) << "\n";
+    std::cout << ::tpyapp::main::sum_all(::tpy::varargs<const int32_t>(::tpy::as_span(more))) << "\n";
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

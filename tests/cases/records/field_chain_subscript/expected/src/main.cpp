@@ -37,7 +37,7 @@ void main() {
     ::tpy::__setitem__(o.inner.items, 1, 42);
     std::cout << o.at(1) << "\n";
     std::vector<Outer> ns = {Outer(Inner())};
-    put(ns);
+    ::tpyapp::main::put(ns);
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(ns, 0).inner.items, 0) << "\n";
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

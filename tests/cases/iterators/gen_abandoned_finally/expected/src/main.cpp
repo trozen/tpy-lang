@@ -74,7 +74,7 @@ __gen_gen gen(std::string_view tag) {
 void temp_source() {
     {
         std::string __tmp_1 = "temp";
-        auto __src_0 = gen(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -95,7 +95,7 @@ void temp_source() {
 //     print("after named")
 void named_source() {
     std::string __tmp_2 = "named";
-    auto g = gen(__tmp_2);
+    auto g = ::tpyapp::main::gen(__tmp_2);
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -115,7 +115,7 @@ void named_source() {
 void exhausted() {
     {
         std::string __tmp_3 = "full";
-        auto __src_0 = gen(__tmp_3);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -132,9 +132,9 @@ void exhausted() {
 //     named_source()
 //     exhausted()
 void main() {
-    temp_source();
-    named_source();
-    exhausted();
+    ::tpyapp::main::temp_source();
+    ::tpyapp::main::named_source();
+    ::tpyapp::main::exhausted();
 }
 
 // main()
@@ -143,7 +143,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

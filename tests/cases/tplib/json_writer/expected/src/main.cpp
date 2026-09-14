@@ -258,16 +258,16 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
-    test_basic();
-    test_nested();
-    test_escape();
-    test_float();
-    test_empty();
-    test_pretty_basic();
-    test_pretty_nested();
-    test_pretty_empty();
-    test_pretty_4space();
-    test_pretty_array();
+    ::tpyapp::main::test_basic();
+    ::tpyapp::main::test_nested();
+    ::tpyapp::main::test_escape();
+    ::tpyapp::main::test_float();
+    ::tpyapp::main::test_empty();
+    ::tpyapp::main::test_pretty_basic();
+    ::tpyapp::main::test_pretty_nested();
+    ::tpyapp::main::test_pretty_empty();
+    ::tpyapp::main::test_pretty_4space();
+    ::tpyapp::main::test_pretty_array();
 }
 
 } // namespace tpyapp::main

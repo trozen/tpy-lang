@@ -35,7 +35,7 @@ void read_animal(const Animal* p) {
 //     read_animal(p)
 void main() {
     Dog d = Dog("Rex", "Lab");
-    read_animal(&d);
+    ::tpyapp::main::read_animal(&d);
     Dog* dp = &d;
     Animal* ap = dp;
     std::cout << ap->name << "\n";
@@ -45,7 +45,7 @@ void main() {
     const Animal* cap2 = cdp;
     std::cout << cap2->name << "\n";
     Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
-    read_animal(&p);
+    ::tpyapp::main::read_animal(&p);
 }
 
 // main()
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

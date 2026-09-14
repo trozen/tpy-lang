@@ -58,8 +58,8 @@ int32_t probe(bool flag) {
 //     print(probe(True))
 //     print(probe(False))
 void main() {
-    std::cout << probe(true) << "\n";
-    std::cout << probe(false) << "\n";
+    std::cout << ::tpyapp::main::probe(true) << "\n";
+    std::cout << ::tpyapp::main::probe(false) << "\n";
 }
 
 // main()
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

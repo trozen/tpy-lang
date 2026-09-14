@@ -15,7 +15,7 @@ void main() {
     items.push_back(Box<int32_t>(2));
     items.push_back(Box<int32_t>(3));
     items.push_back(Box<int32_t>(5));
-    std::cout << proc<int32_t>([](Box<int32_t>& b) -> int32_t { return b.val; }, ::tpy::varargs<Box<int32_t>>(::tpy::as_mut_span(items))) << "\n";
+    std::cout << ::tpyapp::main::proc<int32_t>([](Box<int32_t>& b) -> int32_t { return b.val; }, ::tpy::varargs<Box<int32_t>>(::tpy::as_mut_span(items))) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

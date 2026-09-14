@@ -26,14 +26,14 @@ void fail() {
 void main() {
     {
         try {
-            fail();
+            ::tpyapp::main::fail();
         } catch (const ::tpy::OverflowError& e) {
             std::cout << "caught OverflowError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
     {
         try {
-            fail();
+            ::tpyapp::main::fail();
         } catch (const ::tpy::ArithmeticError& e) {
             std::cout << "caught via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

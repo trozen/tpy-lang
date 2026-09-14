@@ -70,7 +70,7 @@ inline Tree<int32_t>& Holder::get() {
 // def matches(self, other: Tree[int32]) -> bool:
 //     return leaf_count(self.t) == leaf_count(other)
 inline bool Holder::matches(const Tree<int32_t>& other) const {
-    return (leaf_count(this->t) == leaf_count(other));
+    return (::tpyapp::main::leaf_count(this->t) == ::tpyapp::main::leaf_count(other));
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -105,7 +105,7 @@ void main() {
         std::cout << x << "\n";
     }
     std::vector<int32_t> e = {1, 2, 3, 4, 5};
-    ::tpy::list_set_stepped_slice(e, ::tpy::Slice{std::nullopt, std::nullopt, 2}, gen3());
+    ::tpy::list_set_stepped_slice(e, ::tpy::Slice{std::nullopt, std::nullopt, 2}, ::tpyapp::main::gen3());
     auto& __obj_4 = e;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
@@ -121,7 +121,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

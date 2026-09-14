@@ -45,7 +45,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_free_delegator::__next__() {
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        __for_src_0.emplace(local_walk());
+        __for_src_0.emplace(::tpyapp::moda::local_walk());
         __state = S_JOIN_0;
         continue;
     }

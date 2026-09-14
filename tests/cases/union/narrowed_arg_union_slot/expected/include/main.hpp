@@ -523,7 +523,7 @@ inline Sink::Sink(::tpy::Union<A*, B*> u) : k(0) {
         auto& __u = *std::get<A*>(u);
         this->k = __u.n;
     }
-    bump(u);
+    ::tpyapp::main::bump(u);
 }
 
 // def __enter__(self) -> "Guard":
@@ -545,7 +545,7 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 inline Relay::Relay(::tpy::Union<A*, B*> v) : hits(0) {
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        bump(::tpy::Union<A*, B*>{&(__v)});
+        ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(__v)});
     }
 }
 
@@ -561,7 +561,7 @@ inline int32_t Relay::go(::tpy::Union<A*, B*> v) {
     this->hits = (::tpy::add_check<int32_t>(this->hits, 1));
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        bump(::tpy::Union<A*, B*>{&(__v)});
+        ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(__v)});
         return __v.n;
     }
     auto& __v = *std::get<B*>(v);
@@ -581,7 +581,7 @@ inline Reader::Reader(int32_t base) : base(base) {}
 inline int32_t Reader::read(::tpy::Union<const A*, const B*> v) const {
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        return (::tpy::add_check<int32_t>(this->base, total(::tpy::Union<const A*, const B*>{&(__v)})));
+        return (::tpy::add_check<int32_t>(this->base, ::tpyapp::main::total(::tpy::Union<const A*, const B*>{&(__v)})));
     }
     auto& __v = *std::get<const B*>(v);
     return -1;
@@ -590,7 +590,7 @@ inline int32_t Reader::read(::tpy::Union<const A*, const B*> v) const {
 // # constructor parameter, forwarded to a second deep-const slot
 // def __init__(self, u: A | B) -> None:
 //     self.k = total(u)  # tpyc: ok
-inline Tally::Tally(::tpy::Union<const A*, const B*> u) : k(total(u)) {}
+inline Tally::Tally(::tpy::Union<const A*, const B*> u) : k(::tpyapp::main::total(u)) {}
 
 // def __init__(self, base: int32) -> None:
 //     self.base = base
@@ -611,7 +611,7 @@ inline int32_t VuBox::go(const ::tpy::Union<double, int32_t>& u) const {
 
 // def __init__(self, u: int32 | float64) -> None:
 //     self.k = vu_total(u)
-inline VuSink::VuSink(const ::tpy::Union<double, int32_t>& u) : k(vu_total(u)) {}
+inline VuSink::VuSink(const ::tpy::Union<double, int32_t>& u) : k(::tpyapp::main::vu_total(u)) {}
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x

@@ -56,9 +56,9 @@ void main() {
     T t1 = T(1);
     T t2 = T(2);
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), &(t2)}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr})};
-    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 0)));
-    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 1)));
-    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 2)));
+    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 0)));
+    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 1)));
+    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 2)));
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 0));
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
@@ -70,10 +70,10 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
+        ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
     }
     auto&& snap = ::tpy::__getitem__(items, 0);
-    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(snap));
+    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(snap));
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
@@ -94,7 +94,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

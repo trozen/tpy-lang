@@ -36,11 +36,11 @@ void main() {
     Base b = Base();
     std::span<int32_t> s = b.items();
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    read_base(b);
+    ::tpyapp::main::read_base(b);
     Child c = Child();
     std::span<int32_t> s2 = c.items();
     std::cout << ::tpy::__getitem__(s2, 0) << "\n";
-    read_child(c);
+    ::tpyapp::main::read_child(c);
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

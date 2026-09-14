@@ -28,16 +28,16 @@ void free_fn(int32_t n) {
 //         print("nested", n + k)
 //     take(nested)
 void main() {
-    take([](int32_t n) { std::cout << "lam" << " " << n << "\n"; });
+    ::tpyapp::main::take([](int32_t n) { std::cout << "lam" << " " << n << "\n"; });
     int32_t k = 10;
-    take([k](int32_t n) { std::cout << "cap" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n"; });
-    take(free_fn);
+    ::tpyapp::main::take([k](int32_t n) { std::cout << "cap" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n"; });
+    ::tpyapp::main::take(free_fn);
     std::array<int32_t, 2> xs = {1, 2};
-    take([xs](int32_t n) { std::cout << "list" << " " << (::tpy::add_check<int32_t>(n, ::tpy::__getitem__(xs, 0))) << "\n"; });
+    ::tpyapp::main::take([xs](int32_t n) { std::cout << "list" << " " << (::tpy::add_check<int32_t>(n, ::tpy::__getitem__(xs, 0))) << "\n"; });
     auto nested = [k](int32_t n) {
         std::cout << "nested" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n";
     };
-    take(nested);
+    ::tpyapp::main::take(nested);
 }
 
 // main()
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

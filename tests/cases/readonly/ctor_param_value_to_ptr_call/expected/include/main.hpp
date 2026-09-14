@@ -57,7 +57,7 @@ inline Node::Node() : x(::tpy::BigInt(0)) {}
 //     take_mut(node)
 //     self.started = True
 inline Holder::Holder(Node& node) {
-    take_mut(&node);
+    ::tpyapp::main::take_mut(&node);
     this->started = true;
 }
 void __tpy_init();

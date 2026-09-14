@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print(unwrap(StrBox("hello")))  # tpyc: ok
 void main() {
     IntBox __tmp_1 = IntBox(::tpy::BigInt(42));
-    ::tpy::BigInt n = unwrap<::tpy::BigInt, IntBox>(__tmp_1);
+    ::tpy::BigInt n = ::tpyapp::main::unwrap<::tpy::BigInt, IntBox>(__tmp_1);
     std::cout << ((n) + (::tpy::BigInt(1))) << "\n";
     StrBox __tmp_2 = StrBox("hello");
-    std::cout << unwrap<std::string, StrBox>(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::unwrap<std::string, StrBox>(__tmp_2) << "\n";
 }
 
 // main()
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

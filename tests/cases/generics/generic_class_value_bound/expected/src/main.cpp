@@ -38,7 +38,7 @@ void main() {
     std::cout << ring.get(0) << "\n";
     std::cout << ring.get(1) << "\n";
     int32_t v = 99;
-    std::cout << identity<int32_t>(v) << "\n";
+    std::cout << ::tpyapp::main::identity<int32_t>(v) << "\n";
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -18,8 +18,8 @@ void accept(const ::tpy::Union<std::monostate, int32_t, std::string>& x) {
 void test() {
     ::tpy::Union<std::monostate, int32_t, std::string> a = 42;
     ::tpy::Union<std::monostate, int32_t, std::string> b = "hello";
-    accept(a);
-    accept(b);
+    ::tpyapp::main::accept(a);
+    ::tpyapp::main::accept(b);
     std::cout << "ok" << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

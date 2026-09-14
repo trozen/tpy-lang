@@ -52,19 +52,19 @@ bool yes() {
 //         print("field operand ok")
 //     print("total:", calls)
 void main() {
-    if ((static_cast<void>(make()), true)) {
+    if ((static_cast<void>(::tpyapp::main::make()), true)) {
         std::cout << "if:" << " " << calls << "\n";
     }
-    while ((static_cast<void>(make()), true)) {
+    while ((static_cast<void>(::tpyapp::main::make()), true)) {
         break;
     }
     std::cout << "while:" << " " << calls << "\n";
-    if (!((static_cast<void>(make()), true))) ::tpy::raise_assertion_error();
+    if (!((static_cast<void>(::tpyapp::main::make()), true))) ::tpy::raise_assertion_error();
     std::cout << "assert:" << " " << calls << "\n";
-    if (((static_cast<void>(make()), true) && yes())) {
+    if (((static_cast<void>(::tpyapp::main::make()), true) && ::tpyapp::main::yes())) {
         std::cout << "and:" << " " << calls << "\n";
     }
-    if ((yes() || (static_cast<void>(make()), true))) {
+    if ((::tpyapp::main::yes() || (static_cast<void>(::tpyapp::main::make()), true))) {
         std::cout << "or short-circuits:" << " " << calls << "\n";
     }
     Holder h = Holder();
@@ -90,7 +90,7 @@ void __tpy_init() {
     initialized = true;
 
     calls = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

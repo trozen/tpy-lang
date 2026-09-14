@@ -24,7 +24,7 @@ bool isrw__lit_x__y(std::string_view m) {
 // def main() -> None:
 //     print(isrw("r"), isrw("x"))
 void main() {
-    std::cout << ::tpy::print_bool(isrw__lit_r__w("r")) << " " << ::tpy::print_bool(isrw__lit_x__y("x")) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::isrw__lit_r__w("r")) << " " << ::tpy::print_bool(::tpyapp::main::isrw__lit_x__y("x")) << "\n";
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

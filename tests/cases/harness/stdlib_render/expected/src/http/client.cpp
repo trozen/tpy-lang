@@ -79,7 +79,7 @@ int32_t _hex_val(int32_t c) {
     ::tpy::BigInt size = ::tpy::BigInt(0);
     int32_t i = 0;
     while ((i < n)) {
-        int32_t v = _hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(line, i)));
+        int32_t v = ::tpystd::http::client::_hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(line, i)));
         if ((v < 0)) {
             break;
         }
@@ -190,7 +190,7 @@ int32_t _hex_val(int32_t c) {
         lines.push_back("Accept-Encoding: identity");
     }
     if (((!(has_cl)) && (!(has_te)))) {
-        ::tpy::BigInt cl = _content_length(method, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt);
+        ::tpy::BigInt cl = ::tpystd::http::client::_content_length(method, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt);
         if ((cl >= 0)) {
             lines.push_back((::tpy::str_concat("Content-Length: ", (cl).to_string())));
         }
@@ -276,7 +276,7 @@ void HTTPResponse::_read_status() {
     if ((!(::tpy::str_startswith(ver, "HTTP/")))) {
         throw BadStatusLine(line);
     }
-    ::tpy::BigInt code = _digits_to_int(::tpy::__getitem__(parts, 1));
+    ::tpy::BigInt code = ::tpystd::http::client::_digits_to_int(::tpy::__getitem__(parts, 1));
     if (((code < 100) || (code > 999))) {
         throw BadStatusLine(line);
     }
@@ -351,7 +351,7 @@ void HTTPResponse::_init_framing() {
     }
     std::optional<std::string> cl = this->getheader("content-length");
     if ((cl.has_value())) {
-        this->_length = _digits_to_int((*cl));
+        this->_length = ::tpystd::http::client::_digits_to_int((*cl));
     }
 }
 

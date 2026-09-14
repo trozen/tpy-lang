@@ -27,7 +27,7 @@ void main() {
     std::cout << s << "\n";
     s += "x";
     std::cout << s << "\n";
-    s = make_str();
+    s = ::tpyapp::main::make_str();
     std::cout << s << "\n";
 }
 
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -60,7 +60,7 @@ void test_set_ctor_last_use_no_warn() {
 //     b = set([Node(int32(2))])  # tpyc: ok
 //     print(len(a))
 void test_set_ctor_rvalue_no_warn() {
-    ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(make_nodes());
+    ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(::tpyapp::main::make_nodes());
     ::tpy::ordered_set<Node> b = ::tpy::ordered_set<Node>({Node(2)});
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -75,11 +75,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_set_ctor_ref_type_warns();
-    test_set_ctor_value_type_no_warn();
-    test_set_ctor_copy_no_warn();
-    test_set_ctor_last_use_no_warn();
-    test_set_ctor_rvalue_no_warn();
+    ::tpyapp::main::test_set_ctor_ref_type_warns();
+    ::tpyapp::main::test_set_ctor_value_type_no_warn();
+    ::tpyapp::main::test_set_ctor_copy_no_warn();
+    ::tpyapp::main::test_set_ctor_last_use_no_warn();
+    ::tpyapp::main::test_set_ctor_rvalue_no_warn();
 }
 
 } // namespace tpyapp::main

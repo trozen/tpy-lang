@@ -35,9 +35,9 @@ std::string describe(const Tree& t) {
 void main() {
     Tree a = Leaf(::tpy::BigInt(42));
     std::vector<Tree> b = {Leaf(::tpy::BigInt(1)), Leaf(::tpy::BigInt(2))};
-    std::cout << describe(a) << "\n";
+    std::cout << ::tpyapp::main::describe(a) << "\n";
     Tree __tmp_1 = std::move(b);
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
 }
 
 // main()
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

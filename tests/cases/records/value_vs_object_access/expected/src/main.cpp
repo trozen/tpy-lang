@@ -72,8 +72,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    test_value_types();
-    test_object_types();
+    ::tpyapp::main::test_value_types();
+    ::tpyapp::main::test_object_types();
 }
 
 } // namespace tpyapp::main

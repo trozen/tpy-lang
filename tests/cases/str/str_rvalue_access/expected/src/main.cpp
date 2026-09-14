@@ -23,9 +23,9 @@ Pair get_pair() {
 //     a = get_pair().first  # tpyc: type(str)
 //     print(a)
 void main() {
-    std::string b = std::get<1>(get_tuple());
+    std::string b = std::get<1>(::tpyapp::main::get_tuple());
     std::cout << b << "\n";
-    std::string a = get_pair().first;
+    std::string a = ::tpyapp::main::get_pair().first;
     std::cout << a << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

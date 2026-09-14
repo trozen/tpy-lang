@@ -131,8 +131,8 @@ __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx) {
         auto __tup_1 = ::tpystd::tpy::channel::channel<Counter>(2);
         tx.emplace(std::move(std::get<0>(__tup_1)));
         rx.emplace(std::move(std::get<1>(__tup_1)));
-        p.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer(std::move((*tx))))));
-        c.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer(std::move((*rx))))));
+        p.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::producer(std::move((*tx))))));
+        c.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::consumer(std::move((*rx))))));
         __sub_0 = &((*p));
         __state = S_RESUME_0;
         continue;
@@ -181,7 +181,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::tpy::channel::__tpy_init();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_co()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_co()));
 }
 
 } // namespace tpyapp::main

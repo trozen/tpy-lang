@@ -56,10 +56,10 @@ int32_t scalar_shapes(Holder& h, const std::vector<int32_t>& xs, char c) {
     if (h.size()) {
         seen = ::tpy::add_check<int32_t>(seen, 16);
     }
-    if (width()) {
+    if (::tpyapp::main::width()) {
         seen = ::tpy::add_check<int32_t>(seen, 32);
     }
-    if (zero()) {
+    if (::tpyapp::main::zero()) {
         seen = ::tpy::add_check<int32_t>(seen, 64);
     }
     if ((::tpy::add_check<int32_t>(seen, 1))) {
@@ -125,7 +125,7 @@ int32_t operand_positions(const std::vector<int32_t>& xs, int32_t n) {
     if ((n && ::tpy::__getitem__(xs, 0))) {
         seen = ::tpy::add_check<int32_t>(seen, 1);
     }
-    if ((width() || ::tpy::__getitem__(xs, 1))) {
+    if ((::tpyapp::main::width() || ::tpy::__getitem__(xs, 1))) {
         seen = ::tpy::add_check<int32_t>(seen, 2);
     }
     if ((!(::tpy::__getitem__(xs, 1)))) {
@@ -248,13 +248,13 @@ void main() {
     rows.push_back({1});
     std::vector<int32_t> blank = std::vector<int32_t>{};
     rows.push_back(std::move(blank));
-    std::cout << "scalar" << " " << scalar_shapes(h, xs, ::tpy::char_from_str("x")) << "\n";
-    std::cout << "moded" << " " << moded_shapes(h, names, rows) << "\n";
-    std::cout << "operands" << " " << operand_positions(xs, 1) << "\n";
-    std::cout << "guards" << " " << guard_shapes(h, xs, names) << "\n";
+    std::cout << "scalar" << " " << ::tpyapp::main::scalar_shapes(h, xs, ::tpy::char_from_str("x")) << "\n";
+    std::cout << "moded" << " " << ::tpyapp::main::moded_shapes(h, names, rows) << "\n";
+    std::cout << "operands" << " " << ::tpyapp::main::operand_positions(xs, 1) << "\n";
+    std::cout << "guards" << " " << ::tpyapp::main::guard_shapes(h, xs, names) << "\n";
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "drained" << " " << drain(__tmp_1) << "\n";
-    mutate_through_field(h);
+    std::cout << "drained" << " " << ::tpyapp::main::drain(__tmp_1) << "\n";
+    ::tpyapp::main::mutate_through_field(h);
 }
 
 // main()
@@ -263,7 +263,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

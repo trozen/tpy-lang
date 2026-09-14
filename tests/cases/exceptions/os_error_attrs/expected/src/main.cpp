@@ -44,21 +44,21 @@ void fail(bool direct) {
 void main() {
     {
         try {
-            fail(true);
+            ::tpyapp::main::fail(true);
         } catch (const ::tpy::OSError& e) {
             std::cout << e.error_number << " " << e.strerror_text << "\n";
         }
     }
     {
         try {
-            fail(false);
+            ::tpyapp::main::fail(false);
         } catch (const DeviceError& e) {
             std::cout << e.error_number << " " << e.strerror_text << "\n";
         }
     }
     {
         try {
-            fail(false);
+            ::tpyapp::main::fail(false);
         } catch (const ::tpy::OSError& e) {
             std::cout << e.error_number << " " << e.strerror_text << "\n";
         }
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

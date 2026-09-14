@@ -63,7 +63,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    auto __tup_1 = get_pair();
+    auto __tup_1 = ::tpyapp::main::get_pair();
     a = std::get<0>(__tup_1);
     b = std::get<1>(__tup_1);
     std::cout << a << "\n";
@@ -74,7 +74,7 @@ void __tpy_init() {
     y = __unpack_0_1;
     std::cout << x << "\n";
     std::cout << y << "\n";
-    auto __tup_2 = get_triple();
+    auto __tup_2 = ::tpyapp::main::get_triple();
     first = std::get<0>(__tup_2);
     last = std::get<2>(__tup_2);
     std::cout << first << "\n";
@@ -83,7 +83,7 @@ void __tpy_init() {
     int32_t __unpack_1_1 = 99;
     lo = __unpack_1_0;
     hi = __unpack_1_1;
-    use_globals();
+    ::tpyapp::main::use_globals();
     int32_t __unpack_2_0 = 0;
     int32_t __unpack_2_1 = 99;
     LO = __unpack_2_0;

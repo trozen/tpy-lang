@@ -30,7 +30,7 @@ void main() {
     std::cout << ::tpy::print_bool(DISABLED) << "\n";
     std::cout << NAME << "\n";
     std::cout << LETTER << "\n";
-    std::cout << twice(MAX_SIZE) << "\n";
+    std::cout << ::tpyapp::main::twice(MAX_SIZE) << "\n";
     int32_t y = (::tpy::add_check<int32_t>(MAX_SIZE, NEG_VAL));
     std::cout << y << "\n";
 }
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

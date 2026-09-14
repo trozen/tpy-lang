@@ -27,7 +27,7 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
 ::tpystd::tpy::Poll<int32_t> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        h = maybe_p(items, i);
+        h = ::tpyapp::main::maybe_p(items, i);
         if (drop) {
             h = nullptr;
         }
@@ -150,7 +150,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::driver()));
 }
 
 } // namespace tpyapp::main

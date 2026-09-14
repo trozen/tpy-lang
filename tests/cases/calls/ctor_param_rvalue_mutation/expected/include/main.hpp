@@ -64,7 +64,7 @@ inline Node::Node(const ::tpy::BigInt& v) : value(v) {}
 //     take_mut(n)
 //     self.captured = n.value
 inline Sink::Sink(Node& n) {
-    take_mut(&n);
+    ::tpyapp::main::take_mut(&n);
     this->captured = n.value;
 }
 void __tpy_init();

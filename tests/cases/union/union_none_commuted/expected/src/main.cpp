@@ -49,15 +49,15 @@ std::string check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*> v
 //     print(check_not(None))
 void main() {
     int32_t __tmp_1 = 1;
-    std::cout << check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_1}) << "\n";
     Cat __tmp_2 = Cat("Whiskers");
-    std::cout << check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_2}) << "\n";
-    std::cout << check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{std::monostate{}}) << "\n";
     int32_t __tmp_3 = 2;
-    std::cout << check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_3}) << "\n";
     Cat __tmp_4 = Cat("Paws");
-    std::cout << check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_4}) << "\n";
-    std::cout << check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_4}) << "\n";
+    std::cout << ::tpyapp::main::check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*>{std::monostate{}}) << "\n";
 }
 
 // main()
@@ -66,7 +66,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

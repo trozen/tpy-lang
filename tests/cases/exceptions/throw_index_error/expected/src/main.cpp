@@ -25,11 +25,11 @@ namespace tpyapp::main {
 //         print("caught:", str(e))
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = {10, 20, 30};
-    std::cout << at(__tmp_1, ::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::at(__tmp_1, ::tpy::BigInt(1)) << "\n";
     {
         try {
             std::vector<::tpy::BigInt> __tmp_2 = {10, 20, 30};
-            std::cout << at(__tmp_2, ::tpy::BigInt(99)) << "\n";
+            std::cout << ::tpyapp::main::at(__tmp_2, ::tpy::BigInt(99)) << "\n";
         } catch (const ::tpy::IndexError& e) {
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

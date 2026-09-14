@@ -31,10 +31,10 @@ void main() {
     std::cout << ::tpy::deref_check(rp) << "\n";
     int32_t z = 99;
     auto __tmp_1 = &z;
-    std::cout << deref_protocol(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::deref_protocol(__tmp_1) << "\n";
     int32_t w = 55;
     auto __tmp_2 = &w;
-    std::cout << deref_protocol(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::deref_protocol(__tmp_2) << "\n";
     Box b = Box(33);
     std::cout << ::tpy::deref_check(b) << "\n";
 }
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

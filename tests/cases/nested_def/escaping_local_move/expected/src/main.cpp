@@ -21,7 +21,7 @@ std::function<int32_t()> make_getter() {
 //     getter = make_getter()
 //     print(getter())
 void main() {
-    std::function<int32_t()> getter = make_getter();
+    std::function<int32_t()> getter = ::tpyapp::main::make_getter();
     std::cout << getter() << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

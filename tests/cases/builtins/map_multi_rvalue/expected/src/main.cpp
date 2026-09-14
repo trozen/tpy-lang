@@ -36,12 +36,12 @@ int32_t add(int32_t a, int32_t b) {
 //     result3 = list(map(lambda a, b: a * b, make_xs(), make_ys()))
 //     print(result3)
 void main() {
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, make_xs(), make_ys()));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, ::tpyapp::main::make_xs(), ::tpyapp::main::make_ys()));
     std::cout << ::tpy::ListPrinter(result) << "\n";
     std::array<int32_t, 3> xs = {1, 2, 3};
-    std::vector<int32_t> result2 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, xs, make_ys()));
+    std::vector<int32_t> result2 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, xs, ::tpyapp::main::make_ys()));
     std::cout << ::tpy::ListPrinter(result2) << "\n";
-    std::vector<int32_t> result3 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, make_xs(), make_ys()));
+    std::vector<int32_t> result3 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, ::tpyapp::main::make_xs(), ::tpyapp::main::make_ys()));
     std::cout << ::tpy::ListPrinter(result3) << "\n";
 }
 
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

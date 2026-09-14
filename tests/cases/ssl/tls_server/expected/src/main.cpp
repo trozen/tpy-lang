@@ -119,11 +119,11 @@ void server_roundtrip() {
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    if ((!(drive(cli, srv)))) {
+    if ((!(::tpyapp::main::drive(cli, srv)))) {
         std::cout << "FAIL: handshake did not converge" << "\n";
         return;
     }
-    std::cout << "server handshake:" << " " << tls_ver(srv.version()) << "\n";
+    std::cout << "server handshake:" << " " << ::tpyapp::main::tls_ver(srv.version()) << "\n";
     cli.setblocking(true);
     srv.setblocking(true);
     cli.sendall(::tpy::bytes_literal("ping from client", 16));
@@ -238,11 +238,11 @@ void server_hostname_rejected() {
 //     malformed_cert()
 //     server_hostname_rejected()
 void main() {
-    write_fixtures();
-    server_roundtrip();
-    missing_cert_chain();
-    malformed_cert();
-    server_hostname_rejected();
+    ::tpyapp::main::write_fixtures();
+    ::tpyapp::main::server_roundtrip();
+    ::tpyapp::main::missing_cert_chain();
+    ::tpyapp::main::malformed_cert();
+    ::tpyapp::main::server_hostname_rejected();
 }
 
 // import ssl
@@ -257,7 +257,7 @@ void __tpy_init() {
 
     ::tpystd::ssl::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

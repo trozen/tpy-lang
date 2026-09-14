@@ -55,7 +55,7 @@ namespace tpyapp::main {
 //     print(Priority.HIGH < Priority.LOW)
 void main() {
     Widget w = Widget(42);
-    std::cout << use_user_comparable(w) << "\n";
+    std::cout << ::tpyapp::main::use_user_comparable(w) << "\n";
     std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::LOW) < static_cast<int32_t>(Priority::HIGH))) << "\n";
     std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::HIGH) < static_cast<int32_t>(Priority::LOW))) << "\n";
 }
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

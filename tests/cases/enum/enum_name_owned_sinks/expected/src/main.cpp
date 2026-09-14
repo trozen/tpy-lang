@@ -94,10 +94,10 @@ void owned_slot(Color c) {
 //     view_positions(Color.RED)
 //     owned_slot(Color.GREEN)
 void main() {
-    std::cout << owned_return(Color::RED) << "\n";
-    std::cout << owned_local(Color::GREEN) << "\n";
-    view_positions(Color::RED);
-    owned_slot(Color::GREEN);
+    std::cout << ::tpyapp::main::owned_return(Color::RED) << "\n";
+    std::cout << ::tpyapp::main::owned_local(Color::GREEN) << "\n";
+    ::tpyapp::main::view_positions(Color::RED);
+    ::tpyapp::main::owned_slot(Color::GREEN);
 }
 
 // # Enum .name feeding owned-str sinks: sema types .name as StrView (the value
@@ -112,7 +112,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

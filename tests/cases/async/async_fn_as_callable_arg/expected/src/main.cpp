@@ -83,7 +83,7 @@ __coro_run_twice run_twice(std::function<std::unique_ptr<::tpystd::coro::Cancell
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __sub_0.emplace([](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(double_(__a0)); }, 3, 5);
+        __sub_0.emplace([](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::double_(__a0)); }, 3, 5);
         __state = S_RESUME_0;
         continue;
     }
@@ -109,7 +109,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     print(asyncio.run(main_coro()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(main_coro())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::main_coro())) << "\n";
 }
 
 // # An `async def` passed as a value to a `Callable[[...], Own[Cancellable[T]]]`
@@ -127,7 +127,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -17,7 +17,7 @@ int32_t close(Handle&& h) {
 void main() {
     Handle h = Handle();
     h.fd = 42;
-    std::cout << close(std::move(h)) << "\n";
+    std::cout << ::tpyapp::main::close(std::move(h)) << "\n";
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

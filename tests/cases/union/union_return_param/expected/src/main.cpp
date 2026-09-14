@@ -42,12 +42,12 @@ std::string get_name(::tpy::Union<const Cat*, const Dog*> pet) {
 void main() {
     Dog d = Dog("Rex", 5);
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
-    ::tpy::Union<Cat*, Dog*> result = identity(pet);
-    std::cout << get_name(result.as_const()) << "\n";
+    ::tpy::Union<Cat*, Dog*> result = ::tpyapp::main::identity(pet);
+    std::cout << ::tpyapp::main::get_name(result.as_const()) << "\n";
     Cat c = Cat("Whiskers", 9);
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
-    ::tpy::Union<Cat*, Dog*> result2 = identity(pet2);
-    std::cout << get_name(result2.as_const()) << "\n";
+    ::tpy::Union<Cat*, Dog*> result2 = ::tpyapp::main::identity(pet2);
+    std::cout << ::tpyapp::main::get_name(result2.as_const()) << "\n";
 }
 
 // main()
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

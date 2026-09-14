@@ -33,20 +33,20 @@ void main() {
     ::tpy::Adapter<Container<int32_t>, Box> __slot_1{Box(7)};
     Container<int32_t>* c = &__slot_1;
     std::cout << c->get() << "\n";
-    bump((*c));
+    ::tpyapp::main::bump((*c));
     std::cout << c->get() << "\n";
     __slot_2.emplace(Ratio(42));
     c = &*__slot_2;
     std::cout << c->get() << "\n";
     ::tpy::Adapter<Container<int32_t>, Box> __tmp_1{Box(100)};
-    show(__tmp_1);
+    ::tpyapp::main::show(__tmp_1);
     Ratio r = Ratio(99);
     ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_2{r};
-    show(__tmp_2);
+    ::tpyapp::main::show(__tmp_2);
     ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_3{r};
-    bump(__tmp_3);
+    ::tpyapp::main::bump(__tmp_3);
     ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_4{r};
-    show(__tmp_4);
+    ::tpyapp::main::show(__tmp_4);
 }
 
 // main()
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

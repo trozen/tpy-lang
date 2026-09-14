@@ -118,7 +118,7 @@ void main() {
         std::cout << x << "\n";
     }
     std::vector<int32_t> d = {1, 2, 3, 4, 5};
-    ::tpy::list_set_slice(d, ::tpy::BasicSlice{1, 3}, gen_values());
+    ::tpy::list_set_slice(d, ::tpy::BasicSlice{1, 3}, ::tpyapp::main::gen_values());
     auto& __obj_5 = d;
     auto __beg_5 = __obj_5.begin();
     auto __end_5 = __obj_5.end();
@@ -134,7 +134,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -21,9 +21,9 @@ std::function<int32_t(int32_t)> make_adder(int32_t n) {
 //     add100 = make_adder(100)
 //     print(add100(42))
 void main() {
-    std::function<int32_t(int32_t)> add5 = make_adder(5);
+    std::function<int32_t(int32_t)> add5 = ::tpyapp::main::make_adder(5);
     std::cout << add5(10) << "\n";
-    std::function<int32_t(int32_t)> add100 = make_adder(100);
+    std::function<int32_t(int32_t)> add100 = ::tpyapp::main::make_adder(100);
     std::cout << add100(42) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

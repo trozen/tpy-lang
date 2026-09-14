@@ -36,7 +36,7 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     ::tpystd::os::path::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

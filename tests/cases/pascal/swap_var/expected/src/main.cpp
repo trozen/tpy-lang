@@ -35,7 +35,7 @@ void __tpy_init() {
 
     x = 1;
     y = 2;
-    swap(&x, &y);
+    ::tpyapp::main::swap(&x, &y);
     std::cout << x << "\n";
     std::cout << y << "\n";
 }

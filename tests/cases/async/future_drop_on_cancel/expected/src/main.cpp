@@ -46,7 +46,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         f.emplace(::tpystd::asyncio::Future<Tracked>());
-        t.emplace(::tpystd::asyncio::create_task<Tracked>(::tpy::make_adapter<::tpystd::coro::Cancellable<Tracked>>(waiter((*f)))));
+        t.emplace(::tpystd::asyncio::create_task<Tracked>(::tpy::make_adapter<::tpystd::coro::Cancellable<Tracked>>(::tpyapp::main::waiter((*f)))));
         (*f).set_result(Tracked("payload"));
         (*t).cancel();
         __state = S_JOIN_1;
@@ -98,7 +98,7 @@ __coro_main_coro main_coro() {
 //         print("dropped:", "payload")
 //     print("count:", len(dropped))
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
     if (std::ranges::contains((*dropped), "payload")) {
         std::cout << "dropped:" << " " << "payload" << "\n";
     }
@@ -129,7 +129,7 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     static std::vector<std::string> __global_slot_1 = std::vector<std::string>{};
     dropped = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

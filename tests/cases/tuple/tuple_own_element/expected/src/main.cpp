@@ -26,7 +26,7 @@ void main() {
     std::cout << std::get<0>(t) << "\n";
     std::cout << std::get<1>(t) << "\n";
     Point __tmp_1 = Point(10, 20);
-    std::tuple<int32_t, Point> t2 = make_pair(__tmp_1);
+    std::tuple<int32_t, Point> t2 = ::tpyapp::main::make_pair(__tmp_1);
     std::cout << std::get<0>(t2) << "\n";
     std::cout << std::get<1>(t2) << "\n";
 }
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

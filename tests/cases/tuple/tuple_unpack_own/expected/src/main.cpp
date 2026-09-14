@@ -16,7 +16,7 @@ std::tuple<Pair, int32_t> make() {
 //     print(p.y)
 //     print(n)
 void main() {
-    auto __tup_1 = make();
+    auto __tup_1 = ::tpyapp::main::make();
     Pair p = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     std::cout << p.x << "\n";
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

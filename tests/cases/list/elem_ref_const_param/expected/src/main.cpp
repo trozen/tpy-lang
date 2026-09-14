@@ -56,7 +56,7 @@ int32_t read_via_deep_alias(const std::vector<Point>& items) {
 //     return read_only_point(v)
 int32_t read_via_read_only_call(const std::vector<Point>& items) {
     const Point& v = ::tpy::__getitem__(items, 0);
-    return read_only_point(v);
+    return ::tpyapp::main::read_only_point(v);
 }
 
 // # --- Functions that write through element ref: T& ---
@@ -75,7 +75,7 @@ void write_elem_ref(std::vector<Point>& items, int32_t val) {
 //     mutate_point(v, val)
 void write_via_mutating_call(std::vector<Point>& items, int32_t val) {
     Point& v = ::tpy::__getitem__(items, 0);
-    mutate_point(v, val);
+    ::tpyapp::main::mutate_point(v, val);
 }
 
 // def write_via_alias(items: list[Point], val: int32) -> None:
@@ -126,19 +126,19 @@ void write_nested(std::vector<std::vector<int32_t>>& matrix, int32_t val) {
 //     print(matrix[int32(0)][int32(0)])
 void main() {
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
-    std::cout << read_elem_ref(pts) << "\n";
-    std::cout << read_via_alias(pts) << "\n";
-    std::cout << read_via_deep_alias(pts) << "\n";
-    std::cout << read_via_read_only_call(pts) << "\n";
-    write_elem_ref(pts, 99);
+    std::cout << ::tpyapp::main::read_elem_ref(pts) << "\n";
+    std::cout << ::tpyapp::main::read_via_alias(pts) << "\n";
+    std::cout << ::tpyapp::main::read_via_deep_alias(pts) << "\n";
+    std::cout << ::tpyapp::main::read_via_read_only_call(pts) << "\n";
+    ::tpyapp::main::write_elem_ref(pts, 99);
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    write_via_mutating_call(pts, 77);
+    ::tpyapp::main::write_via_mutating_call(pts, 77);
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    write_via_alias(pts, 55);
+    ::tpyapp::main::write_via_alias(pts, 55);
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     std::vector<std::vector<int32_t>> matrix = {{1, 2}, {3, 4}};
-    std::cout << read_nested(matrix) << "\n";
-    write_nested(matrix, 9);
+    std::cout << ::tpyapp::main::read_nested(matrix) << "\n";
+    ::tpyapp::main::write_nested(matrix, 9);
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(matrix, 0), 0) << "\n";
 }
 
@@ -148,7 +148,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

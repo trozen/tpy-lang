@@ -47,11 +47,11 @@ void __tpy_init() {
     initialized = true;
 
     Box __tmp_1 = Box(42);
-    observe_field(true, __tmp_1);
+    ::tpyapp::main::observe_field(true, __tmp_1);
     Box __tmp_2 = Box(0);
-    observe_field(false, __tmp_2);
+    ::tpyapp::main::observe_field(false, __tmp_2);
     Box __tmp_3 = Box(99);
-    observe_method(true, __tmp_3);
+    ::tpyapp::main::observe_method(true, __tmp_3);
 }
 
 } // namespace tpyapp::main

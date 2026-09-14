@@ -20,7 +20,7 @@ void __tpy_init() {
     initialized = true;
 
     MAX_SIZE = 100;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -107,19 +107,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
+    ::tpyapp::main::test_basic();
     std::cout << "---" << "\n";
-    test_negative();
+    ::tpyapp::main::test_negative();
     std::cout << "---" << "\n";
-    test_clamping();
+    ::tpyapp::main::test_clamping();
     std::cout << "---" << "\n";
-    test_empty();
+    ::tpyapp::main::test_empty();
     std::cout << "---" << "\n";
-    test_param("abcdef");
+    ::tpyapp::main::test_param("abcdef");
     std::cout << "---" << "\n";
-    test_local_type();
+    ::tpyapp::main::test_local_type();
     std::cout << "---" << "\n";
-    test_single_char();
+    ::tpyapp::main::test_single_char();
 }
 
 } // namespace tpyapp::main

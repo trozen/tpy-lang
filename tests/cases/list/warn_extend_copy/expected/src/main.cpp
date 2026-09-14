@@ -70,7 +70,7 @@ void test_extend_last_use_no_warn() {
 //     print(len(a))
 void test_extend_rvalue_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
-    ::tpy::list_extend(a, make_nodes());
+    ::tpy::list_extend(a, ::tpyapp::main::make_nodes());
     ::tpy::list_extend(a, std::array<Node, 1>{Node(2)});
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -85,11 +85,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_extend_ref_type_warns();
-    test_extend_value_type_no_warn();
-    test_extend_copy_no_warn();
-    test_extend_last_use_no_warn();
-    test_extend_rvalue_no_warn();
+    ::tpyapp::main::test_extend_ref_type_warns();
+    ::tpyapp::main::test_extend_value_type_no_warn();
+    ::tpyapp::main::test_extend_copy_no_warn();
+    ::tpyapp::main::test_extend_last_use_no_warn();
+    ::tpyapp::main::test_extend_rvalue_no_warn();
 }
 
 } // namespace tpyapp::main

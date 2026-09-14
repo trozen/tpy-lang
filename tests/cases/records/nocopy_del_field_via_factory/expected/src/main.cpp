@@ -18,7 +18,7 @@ void take(Holder&& h) {
 void main() {
     Holder h = Holder(1, 42);
     std::cout << "held" << " " << h._r.id << " " << "tag" << " " << h.tag << "\n";
-    take(std::move(h));
+    ::tpyapp::main::take(std::move(h));
     std::cout << "after take" << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

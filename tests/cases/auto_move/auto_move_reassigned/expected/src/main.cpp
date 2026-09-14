@@ -22,13 +22,13 @@ int32_t test() {
     p->x = 10;
     (*p) = Point();
     p->x = 20;
-    return consume(std::move((*p)));
+    return ::tpyapp::main::consume(std::move((*p)));
 }
 
 // def main():
 //     print(test())
 void main() {
-    std::cout << test() << "\n";
+    std::cout << ::tpyapp::main::test() << "\n";
 }
 
 void __tpy_init() {

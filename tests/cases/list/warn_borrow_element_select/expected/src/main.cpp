@@ -81,16 +81,16 @@ void value_elements(std::vector<int32_t>& ns, bool c) {
 //     value_elements([1, 2], True)
 void main() {
     std::vector<Rec> rs = {Rec(1), Rec(2), Rec(3)};
-    both_element_arms(rs, true);
+    ::tpyapp::main::both_element_arms(rs, true);
     std::vector<Rec> __tmp_1 = {Rec(1)};
     std::vector<Rec> __tmp_2 = {Rec(2)};
-    two_containers(__tmp_1, __tmp_2, false);
-    optional_arm(rs, true);
+    ::tpyapp::main::two_containers(__tmp_1, __tmp_2, false);
+    ::tpyapp::main::optional_arm(rs, true);
     std::vector<Rec> __tmp_3 = {Rec(1)};
     std::vector<Rec> __tmp_4 = {Rec(2)};
-    alias_arms(__tmp_3, __tmp_4, true);
+    ::tpyapp::main::alias_arms(__tmp_3, __tmp_4, true);
     std::vector<int32_t> __tmp_5 = {1, 2};
-    value_elements(__tmp_5, true);
+    ::tpyapp::main::value_elements(__tmp_5, true);
 }
 
 // main()
@@ -99,7 +99,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -23,11 +23,11 @@ void consume(Counter&& c) {
 //     consume(a)
 //     consume(b)
 void main() {
-    auto __tup_1 = make_pair();
+    auto __tup_1 = ::tpyapp::main::make_pair();
     Counter a = std::move(std::get<0>(__tup_1));
     Counter b = std::move(std::get<1>(__tup_1));
-    consume(std::move(a));
-    consume(std::move(b));
+    ::tpyapp::main::consume(std::move(a));
+    ::tpyapp::main::consume(std::move(b));
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

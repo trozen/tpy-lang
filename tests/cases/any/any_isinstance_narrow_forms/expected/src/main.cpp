@@ -55,13 +55,13 @@ bool negated(::tpy::Any v) {
 //     print(negated("s"))
 //     print(negated(1))
 void main() {
-    dispatch(::tpy::make_any(::tpy::BigInt(1)));
-    dispatch(::tpy::make_any(std::string("s")));
-    dispatch(::tpy::make_any(static_cast<double>(1.5)));
-    std::cout << ::tpy::print_bool(tuple_form(::tpy::make_any(::tpy::BigInt(1)))) << "\n";
-    std::cout << ::tpy::print_bool(tuple_form(::tpy::make_any(std::string("s")))) << "\n";
-    std::cout << ::tpy::print_bool(negated(::tpy::make_any(std::string("s")))) << "\n";
-    std::cout << ::tpy::print_bool(negated(::tpy::make_any(::tpy::BigInt(1)))) << "\n";
+    ::tpyapp::main::dispatch(::tpy::make_any(::tpy::BigInt(1)));
+    ::tpyapp::main::dispatch(::tpy::make_any(std::string("s")));
+    ::tpyapp::main::dispatch(::tpy::make_any(static_cast<double>(1.5)));
+    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_form(::tpy::make_any(::tpy::BigInt(1)))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_form(::tpy::make_any(std::string("s")))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::negated(::tpy::make_any(std::string("s")))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::negated(::tpy::make_any(::tpy::BigInt(1)))) << "\n";
 }
 
 // main()
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

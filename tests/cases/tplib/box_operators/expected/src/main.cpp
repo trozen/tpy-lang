@@ -63,9 +63,9 @@ void test_hash() {
 //     test_comparisons()
 //     test_hash()
 void main() {
-    test_eq();
-    test_comparisons();
-    test_hash();
+    ::tpyapp::main::test_eq();
+    ::tpyapp::main::test_comparisons();
+    ::tpyapp::main::test_hash();
 }
 
 // from tplib import Box
@@ -77,7 +77,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

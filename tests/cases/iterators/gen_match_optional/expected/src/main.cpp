@@ -64,7 +64,7 @@ __gen_gen gen(std::optional<::tpy::BigInt> x) {
 //         print(y)
 void main() {
     {
-        auto __src_0 = gen(std::nullopt);
+        auto __src_0 = ::tpyapp::main::gen(std::nullopt);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -75,7 +75,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        auto __src_2 = gen(4);
+        auto __src_2 = ::tpyapp::main::gen(4);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -92,7 +92,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

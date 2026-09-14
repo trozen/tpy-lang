@@ -46,8 +46,8 @@ __gen_ints ints(int32_t n) {
 //         print(t.v)
 void main() {
     {
-        auto __tmp_1 = ints(3);
-        auto __src_0 = make_toks(__tmp_1);
+        auto __tmp_1 = ::tpyapp::main::ints(3);
+        auto __src_0 = ::tpyapp::main::make_toks(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

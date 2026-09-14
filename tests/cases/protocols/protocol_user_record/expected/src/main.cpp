@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(count(c))
 void main() {
     MyContainer c = MyContainer(42);
-    std::cout << count(c) << "\n";
+    std::cout << ::tpyapp::main::count(c) << "\n";
 }
 
 // main()
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

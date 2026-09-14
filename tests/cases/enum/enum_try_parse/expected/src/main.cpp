@@ -68,11 +68,11 @@ void try_it(std::string_view name) {
 //     try_it("Purple")
 //     try_it("")
 void main() {
-    try_it("Red");
-    try_it("Green");
-    try_it("Blue");
-    try_it("Purple");
-    try_it("");
+    ::tpyapp::main::try_it("Red");
+    ::tpyapp::main::try_it("Green");
+    ::tpyapp::main::try_it("Blue");
+    ::tpyapp::main::try_it("Purple");
+    ::tpyapp::main::try_it("");
 }
 
 // # Test try_parse() free function for safe name-to-enum conversion
@@ -84,7 +84,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

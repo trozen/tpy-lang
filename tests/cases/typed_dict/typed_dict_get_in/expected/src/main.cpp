@@ -150,13 +150,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_in_total_true();
-    test_in_nullable_field();
-    test_in_total_false();
-    test_get_total_true();
-    test_get_nullable_field();
-    test_get_total_false();
-    test_get_str_param_default("param_default");
+    ::tpyapp::main::test_in_total_true();
+    ::tpyapp::main::test_in_nullable_field();
+    ::tpyapp::main::test_in_total_false();
+    ::tpyapp::main::test_get_total_true();
+    ::tpyapp::main::test_get_nullable_field();
+    ::tpyapp::main::test_get_total_false();
+    ::tpyapp::main::test_get_str_param_default("param_default");
 }
 
 } // namespace tpyapp::main

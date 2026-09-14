@@ -73,7 +73,7 @@ inline void Holder::show_all_iter() const {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
+        ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
     }
 }
 

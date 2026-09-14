@@ -24,7 +24,7 @@ std::string make_str() {
 //     print(y)
 void main() {
     std::string x;
-    x = make_str();
+    x = ::tpyapp::main::make_str();
     std::cout << x << "\n";
     std::string_view y;
     y = "hello";
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

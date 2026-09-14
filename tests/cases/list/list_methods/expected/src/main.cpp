@@ -42,7 +42,7 @@ void test_pop() {
     int32_t second_last = ::tpy::pop_back(nums);
     std::cout << second_last << "\n";
     std::cout << ::tpy::__len__(nums) << "\n";
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
 }
 
 // def test_insert() -> None:
@@ -62,11 +62,11 @@ void test_pop() {
 void test_insert() {
     std::vector<int32_t> nums = {10, 30, 40};
     ::tpy::list_insert(nums, 0, 5);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     ::tpy::list_insert(nums, 2, 20);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     ::tpy::list_insert(nums, 5, 50);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
 }
 
 // def test_remove() -> None:
@@ -86,11 +86,11 @@ void test_insert() {
 void test_remove() {
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
     ::tpy::list_remove(nums, 20);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     ::tpy::list_remove(nums, 10);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     ::tpy::list_remove(nums, 40);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
 }
 
 // def test_clear() -> None:
@@ -138,16 +138,16 @@ void test_clear() {
 void test_extend() {
     std::vector<int32_t> nums = {1, 2, 3};
     ::tpy::list_extend(nums, std::array<int32_t, 3>{4, 5, 6});
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     std::vector<int32_t> more = {7, 8};
     ::tpy::list_extend(nums, ::tpy::own_iter(std::move(more)));
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     std::array<int32_t, 2> arr = {9, 10};
     ::tpy::list_extend(nums, arr);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     std::vector<int32_t> extra = {11, 12};
     ::tpy::list_extend(nums, ::tpy::own_iter(std::move(extra)));
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
 }
 
 // def test_combined_operations() -> None:
@@ -172,12 +172,12 @@ void test_combined_operations() {
     nums.push_back(10);
     ::tpy::list_insert(nums, 0, 1);
     ::tpy::list_extend(nums, std::array<int32_t, 2>{15, 20});
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     ::tpy::list_remove(nums, 10);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     int32_t popped = ::tpy::pop_back(nums);
     std::cout << popped << "\n";
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     nums.clear();
     std::cout << ::tpy::__len__(nums) << "\n";
 }
@@ -201,17 +201,17 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "=== pop ===" << "\n";
-    test_pop();
+    ::tpyapp::main::test_pop();
     std::cout << "=== insert ===" << "\n";
-    test_insert();
+    ::tpyapp::main::test_insert();
     std::cout << "=== remove ===" << "\n";
-    test_remove();
+    ::tpyapp::main::test_remove();
     std::cout << "=== clear ===" << "\n";
-    test_clear();
+    ::tpyapp::main::test_clear();
     std::cout << "=== extend ===" << "\n";
-    test_extend();
+    ::tpyapp::main::test_extend();
     std::cout << "=== combined ===" << "\n";
-    test_combined_operations();
+    ::tpyapp::main::test_combined_operations();
 }
 
 } // namespace tpyapp::main

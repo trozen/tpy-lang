@@ -57,7 +57,7 @@ void main() {
         __after_try_2:;
     }
     {
-        std::cout << ({ auto __er_5 = propagate(h); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n";
+        std::cout << ({ auto __er_5 = ::tpyapp::main::propagate(h); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n";
         goto __after_try_4;
         // except E:
         __except_4:;
@@ -86,7 +86,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

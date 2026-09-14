@@ -162,21 +162,21 @@ void truncate_basic() {
 //     print("---")
 //     truncate_basic()
 void main() {
-    basic_write_read();
+    ::tpyapp::main::basic_write_read();
     std::cout << "---" << "\n";
-    initial_value_and_overwrite();
+    ::tpyapp::main::initial_value_and_overwrite();
     std::cout << "---" << "\n";
-    seek_then_read();
+    ::tpyapp::main::seek_then_read();
     std::cout << "---" << "\n";
-    readline_iteration();
+    ::tpyapp::main::readline_iteration();
     std::cout << "---" << "\n";
-    for_iter();
+    ::tpyapp::main::for_iter();
     std::cout << "---" << "\n";
-    context_manager();
+    ::tpyapp::main::context_manager();
     std::cout << "---" << "\n";
-    closed_raises();
+    ::tpyapp::main::closed_raises();
     std::cout << "---" << "\n";
-    truncate_basic();
+    ::tpyapp::main::truncate_basic();
 }
 
 // # io.StringIO -- write/read/seek/iter + context manager + closed errors.
@@ -189,7 +189,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::io::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

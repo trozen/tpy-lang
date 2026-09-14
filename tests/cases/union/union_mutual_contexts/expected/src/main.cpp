@@ -19,7 +19,7 @@ std::string describe_expr(const Expr& e) {
     } else {
         if (true) {
             const auto& __e = std::get<BinOp>(e.value);
-            return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", describe_expr(__e.left.get()))), "+")), describe_expr(__e.right.get()))), ")"));
+            return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpyapp::main::describe_expr(__e.left.get()))), "+")), ::tpyapp::main::describe_expr(__e.right.get()))), ")"));
         } else {
             const auto& __e = std::get<Lit>(e.value);
             return "?";
@@ -38,7 +38,7 @@ std::string describe_expr(const Expr& e) {
 std::string show_value(const Value& v) {
     if (std::holds_alternative<Neg>(v.value)) {
         const auto& __v = std::get<Neg>(v.value);
-        return (::tpy::str_concat("-", show_value(__v.inner.get())));
+        return (::tpy::str_concat("-", ::tpyapp::main::show_value(__v.inner.get())));
     } else if (std::holds_alternative<::tpy::BigInt>(v.value)) {
         const auto& __v = std::get<::tpy::BigInt>(v.value);
         return (__v).to_string();
@@ -64,17 +64,17 @@ std::string show_value(const Value& v) {
 //     print(show_value(7))
 void main() {
     Expr __tmp_1 = Lit(::tpy::BigInt(1));
-    std::cout << describe_expr(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe_expr(__tmp_1) << "\n";
     BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(2))), ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))));
     Expr __tmp_2 = std::move(e);
-    std::cout << describe_expr(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe_expr(__tmp_2) << "\n";
     Tree t = std::vector<Tree>{1, std::vector<Tree>{2, 3}};
     std::cout << ::tpy::__str__(t) << "\n";
     Neg n = Neg(::tpystd::tplib::box::Box<Value>(42));
     Value __tmp_3 = std::move(n);
-    std::cout << show_value(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::show_value(__tmp_3) << "\n";
     Value __tmp_4 = 7;
-    std::cout << show_value(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::show_value(__tmp_4) << "\n";
 }
 
 // # Mutual + self-referencing recursive unions in the same module,
@@ -88,7 +88,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

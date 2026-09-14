@@ -64,10 +64,10 @@ void test_readonly_arm() {
 //     test_else_arm_aliases_self()
 //     test_readonly_arm()
 void main() {
-    test_then_arm_aliases_self();
-    test_then_arm_aliases_other();
-    test_else_arm_aliases_self();
-    test_readonly_arm();
+    ::tpyapp::main::test_then_arm_aliases_self();
+    ::tpyapp::main::test_then_arm_aliases_other();
+    ::tpyapp::main::test_else_arm_aliases_self();
+    ::tpyapp::main::test_readonly_arm();
 }
 
 // main()
@@ -76,7 +76,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

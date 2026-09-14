@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print(extract(a))
 void main() {
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(99));
-    std::cout << extract(a) << "\n";
+    std::cout << ::tpyapp::main::extract(a) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

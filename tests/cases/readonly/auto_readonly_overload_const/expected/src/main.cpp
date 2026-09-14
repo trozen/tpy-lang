@@ -39,7 +39,7 @@ void main() {
     std::span<int32_t> s = c.__getitem__(::tpy::BasicSlice{0, 2});
     std::cout << x << "\n";
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    read_container(c);
+    ::tpyapp::main::read_container(c);
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

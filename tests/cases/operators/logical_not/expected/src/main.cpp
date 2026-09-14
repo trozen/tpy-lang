@@ -147,10 +147,10 @@ bool is_valid(int32_t x) {
 //     else:
 //         print("not is_valid(5): no")
 void test_not_with_function_call() {
-    if ((!(is_valid(-5)))) {
+    if ((!(::tpyapp::main::is_valid(-5)))) {
         std::cout << "not is_valid(-5): yes" << "\n";
     }
-    if ((!(is_valid(5)))) {
+    if ((!(::tpyapp::main::is_valid(5)))) {
         std::cout << "not is_valid(5): yes" << "\n";
     } else {
         std::cout << "not is_valid(5): no" << "\n";
@@ -192,12 +192,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_not_with_bool_literals();
-    test_not_with_comparisons();
-    test_not_in_conditions();
-    test_double_negation();
-    test_not_with_function_call();
-    test_not_in_while();
+    ::tpyapp::main::test_not_with_bool_literals();
+    ::tpyapp::main::test_not_with_comparisons();
+    ::tpyapp::main::test_not_in_conditions();
+    ::tpyapp::main::test_double_negation();
+    ::tpyapp::main::test_not_with_function_call();
+    ::tpyapp::main::test_not_in_while();
 }
 
 } // namespace tpyapp::main

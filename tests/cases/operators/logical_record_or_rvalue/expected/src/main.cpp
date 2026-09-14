@@ -36,10 +36,10 @@ void main() {
     std::vector<::tpy::BigInt> seed = std::vector<::tpy::BigInt>{};
     std::vector<::tpy::BigInt> log1 = std::vector<::tpy::BigInt>{};
     Box __tmp_3 = Box(::tpy::BigInt(3), seed);
-    or_truthy_skips_ctor(__tmp_3, log1);
+    ::tpyapp::main::or_truthy_skips_ctor(__tmp_3, log1);
     std::vector<::tpy::BigInt> log2 = std::vector<::tpy::BigInt>{};
     Box __tmp_4 = Box(::tpy::BigInt(3), seed);
-    std::cout << and_truthy_returns_ctor(__tmp_4, log2) << " " << ::tpy::__len__(log2) << "\n";
+    std::cout << ::tpyapp::main::and_truthy_returns_ctor(__tmp_4, log2) << " " << ::tpy::__len__(log2) << "\n";
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

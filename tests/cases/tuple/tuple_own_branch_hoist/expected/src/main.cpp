@@ -20,9 +20,9 @@ int32_t use(bool c) {
     std::optional<std::tuple<int32_t, Box>> __slot_1;
     std::tuple<int32_t, Box*> t;
     if (c) {
-        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(9)));
+        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(9)));
     } else {
-        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(5)));
+        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(5)));
     }
     return std::get<1>(t)->val;
 }
@@ -31,8 +31,8 @@ int32_t use(bool c) {
 //     print(use(True))
 //     print(use(False))
 void main() {
-    std::cout << use(true) << "\n";
-    std::cout << use(false) << "\n";
+    std::cout << ::tpyapp::main::use(true) << "\n";
+    std::cout << ::tpyapp::main::use(false) << "\n";
 }
 
 // main()
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

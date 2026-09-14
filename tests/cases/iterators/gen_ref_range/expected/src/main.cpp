@@ -48,7 +48,7 @@ __gen_my_enumerate my_enumerate(std::vector<Point>& items) {
 void main() {
     std::vector<Point> points = {Point(1, 2), Point(3, 4)};
     {
-        auto __src_0 = my_enumerate(points);
+        auto __src_0 = ::tpyapp::main::my_enumerate(points);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

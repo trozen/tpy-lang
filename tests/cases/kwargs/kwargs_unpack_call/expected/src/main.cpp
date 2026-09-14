@@ -17,7 +17,7 @@ void connect(const Options& kwargs) {
 //     connect(**opts)
 void main() {
     Options opts = Options("example.com", 443);
-    connect(opts);
+    ::tpyapp::main::connect(opts);
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

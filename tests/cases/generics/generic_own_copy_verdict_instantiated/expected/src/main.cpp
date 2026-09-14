@@ -113,8 +113,8 @@ int32_t subscript_slot_twin(std::vector<Cell>& xs, const Cell& v) {
 //     print("ret_own", ret_own(c).n, ret_own_twin(c).n, ret_own(7))
 void free_positions() {
     Cell c = Cell(1);
-    std::cout << "free_slot" << " " << free_slot<Cell>(c) << " " << free_slot_twin(c) << " " << free_slot<int32_t>(7) << "\n";
-    std::cout << "ret_own" << " " << ret_own<Cell>(c).n << " " << ret_own_twin(c).n << " " << ret_own<int32_t>(7) << "\n";
+    std::cout << "free_slot" << " " << ::tpyapp::main::free_slot<Cell>(c) << " " << ::tpyapp::main::free_slot_twin(c) << " " << ::tpyapp::main::free_slot<int32_t>(7) << "\n";
+    std::cout << "ret_own" << " " << ::tpyapp::main::ret_own<Cell>(c).n << " " << ::tpyapp::main::ret_own_twin(c).n << " " << ::tpyapp::main::ret_own<int32_t>(7) << "\n";
 }
 
 // def record_positions() -> None:
@@ -167,7 +167,7 @@ void body_positions() {
     Cell c = Cell(3);
     int32_t total = 0;
     {
-        auto __src_0 = gen_slot<Cell>(c);
+        auto __src_0 = ::tpyapp::main::gen_slot<Cell>(c);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -177,7 +177,7 @@ void body_positions() {
         }
     }
     {
-        auto __src_2 = gen_slot<int32_t>(4);
+        auto __src_2 = ::tpyapp::main::gen_slot<int32_t>(4);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -187,15 +187,15 @@ void body_positions() {
         }
     }
     std::cout << "gen" << " " << total << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_driver(c))) << "\n";
-    std::cout << "closure" << " " << closure_slot<Cell>(c) << " " << closure_slot<int32_t>(4) << "\n";
-    std::cout << "with" << " " << with_slot<Cell>(c) << " " << with_slot<int32_t>(4) << "\n";
-    std::cout << "try" << " " << try_slot<Cell>(c) << " " << try_slot<int32_t>(4) << "\n";
-    std::cout << "match" << " " << match_slot<Cell>(c, 1) << " " << match_slot<int32_t>(4, 1) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_driver(c))) << "\n";
+    std::cout << "closure" << " " << ::tpyapp::main::closure_slot<Cell>(c) << " " << ::tpyapp::main::closure_slot<int32_t>(4) << "\n";
+    std::cout << "with" << " " << ::tpyapp::main::with_slot<Cell>(c) << " " << ::tpyapp::main::with_slot<int32_t>(4) << "\n";
+    std::cout << "try" << " " << ::tpyapp::main::try_slot<Cell>(c) << " " << ::tpyapp::main::try_slot<int32_t>(4) << "\n";
+    std::cout << "match" << " " << ::tpyapp::main::match_slot<Cell>(c, 1) << " " << ::tpyapp::main::match_slot<int32_t>(4, 1) << "\n";
     int32_t got;
     {
         {
-            auto __try_tmp_2 = er_slot<Cell>(c);
+            auto __try_tmp_2 = ::tpyapp::main::er_slot<Cell>(c);
             if (!__try_tmp_2.has_value()) goto __except_1;
             got = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -208,7 +208,7 @@ void body_positions() {
     int32_t got_i;
     {
         {
-            auto __try_tmp_4 = er_slot<int32_t>(4);
+            auto __try_tmp_4 = ::tpyapp::main::er_slot<int32_t>(4);
             if (!__try_tmp_4.has_value()) goto __except_3;
             got_i = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -237,17 +237,17 @@ void body_positions() {
 //           hatched(2))
 void other_positions() {
     Cell c = Cell(5);
-    std::cout << "forward" << " " << outer_fwd<Cell>(c) << " " << outer_fwd<int32_t>(6) << "\n";
+    std::cout << "forward" << " " << ::tpyapp::main::outer_fwd<Cell>(c) << " " << ::tpyapp::main::outer_fwd<int32_t>(6) << "\n";
     Tag __tmp_1 = Tag(1);
-    std::cout << "two_instantiations" << " " << two_instantiations<Cell>(c) << " " << two_instantiations<Tag>(__tmp_1) << " " << two_instantiations<int32_t>(7) << "\n";
+    std::cout << "two_instantiations" << " " << ::tpyapp::main::two_instantiations<Cell>(c) << " " << ::tpyapp::main::two_instantiations<Tag>(__tmp_1) << " " << ::tpyapp::main::two_instantiations<int32_t>(7) << "\n";
     std::cout << "cross_module" << " " << ::tpyapp::gencontainer::cross_slot<Cell>(c) << " " << ::tpyapp::gencontainer::cross_slot<int32_t>(8) << "\n";
     OptHolder<Cell> oh = OptHolder<Cell>();
     oh.store(&(c));
-    std::cout << "optional" << " " << (((oh.item.has_value())) ? ((*oh.item).n) : (0)) << " " << value_bound<int32_t>(9) << " " << value_bound_readonly<int32_t>(8) << "\n";
+    std::cout << "optional" << " " << (((oh.item.has_value())) ? ((*oh.item).n) : (0)) << " " << ::tpyapp::main::value_bound<int32_t>(9) << " " << ::tpyapp::main::value_bound_readonly<int32_t>(8) << "\n";
     GBox<int32_t> gb = GBox<int32_t>(1);
     Shadowed<int32_t> sh = Shadowed<int32_t>(7);
-    std::cout << "bound" << " " << boxed_bound<int32_t>(gb) << " " << boxed_bound_twin(gb) << " " << sh.keep(5) << "\n";
-    std::cout << "inverse" << " " << value_only<int32_t>(1) << " " << bounded_copyable<Cell>(c) << " " << hatched<Cell>(c) << " " << hatched<int32_t>(2) << "\n";
+    std::cout << "bound" << " " << ::tpyapp::main::boxed_bound<int32_t>(gb) << " " << ::tpyapp::main::boxed_bound_twin(gb) << " " << sh.keep(5) << "\n";
+    std::cout << "inverse" << " " << ::tpyapp::main::value_only<int32_t>(1) << " " << ::tpyapp::main::bounded_copyable<Cell>(c) << " " << ::tpyapp::main::hatched<Cell>(c) << " " << ::tpyapp::main::hatched<int32_t>(2) << "\n";
 }
 
 // def element_positions() -> None:
@@ -275,18 +275,18 @@ void element_positions() {
     Cell c = Cell(6);
     std::vector<std::tuple<std::string, Cell>> pairs = {::tpy::tuple_to_storage<std::tuple<std::string, Cell>>(std::tuple<std::string, Cell>{"a", Cell(1)})};
     std::vector<std::tuple<std::string, int32_t>> vpairs = {std::tuple<std::string, int32_t>{"a", 1}};
-    std::cout << "elems_ctor" << " " << elems_ctor<Cell>(pairs) << " " << elems_ctor_twin(pairs) << " " << elems_ctor<int32_t>(vpairs) << "\n";
+    std::cout << "elems_ctor" << " " << ::tpyapp::main::elems_ctor<Cell>(pairs) << " " << ::tpyapp::main::elems_ctor_twin(pairs) << " " << ::tpyapp::main::elems_ctor<int32_t>(vpairs) << "\n";
     std::vector<Cell> cells = {Cell(2)};
     std::vector<int32_t> ints = {1};
-    std::cout << "elems_list" << " " << elems_list<Cell>(cells) << " " << elems_list<int32_t>(ints) << "\n";
+    std::cout << "elems_list" << " " << ::tpyapp::main::elems_list<Cell>(cells) << " " << ::tpyapp::main::elems_list<int32_t>(ints) << "\n";
     std::vector<Cell> more = {Cell(3)};
     std::vector<int32_t> vmore = {1};
-    std::cout << "elems_iadd" << " " << elems_iadd<Cell>(cells, more) << " " << elems_iadd<int32_t>(ints, vmore) << "\n";
+    std::cout << "elems_iadd" << " " << ::tpyapp::main::elems_iadd<Cell>(cells, more) << " " << ::tpyapp::main::elems_iadd<int32_t>(ints, vmore) << "\n";
     ::tpy::ordered_map<std::string, Cell> cmap = ::tpy::ordered_map<std::string, Cell>({{"k", Cell(4)}});
     ::tpy::ordered_map<std::string, int32_t> vmap = ::tpy::ordered_map<std::string, int32_t>({{"k", 1}});
-    std::cout << "elems_update" << " " << elems_update<Cell>(cmap, cmap) << " " << elems_update<int32_t>(vmap, vmap) << "\n";
-    std::cout << "comp" << " " << comp_slot_twin(c) << "\n";
-    std::cout << "subscript" << " " << subscript_slot<Cell>(cells, c) << " " << subscript_slot_twin(cells, c) << " " << subscript_slot<int32_t>(ints, 7) << "\n";
+    std::cout << "elems_update" << " " << ::tpyapp::main::elems_update<Cell>(cmap, cmap) << " " << ::tpyapp::main::elems_update<int32_t>(vmap, vmap) << "\n";
+    std::cout << "comp" << " " << ::tpyapp::main::comp_slot_twin(c) << "\n";
+    std::cout << "subscript" << " " << ::tpyapp::main::subscript_slot<Cell>(cells, c) << " " << ::tpyapp::main::subscript_slot_twin(cells, c) << " " << ::tpyapp::main::subscript_slot<int32_t>(ints, 7) << "\n";
 }
 
 // def main() -> None:
@@ -296,11 +296,11 @@ void element_positions() {
 //     other_positions()
 //     element_positions()
 void main() {
-    free_positions();
-    record_positions();
-    body_positions();
-    other_positions();
-    element_positions();
+    ::tpyapp::main::free_positions();
+    ::tpyapp::main::record_positions();
+    ::tpyapp::main::body_positions();
+    ::tpyapp::main::other_positions();
+    ::tpyapp::main::element_positions();
 }
 
 // # A generic body that stores an open `T` into an owning slot warns at its own
@@ -321,7 +321,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::gencontainer::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

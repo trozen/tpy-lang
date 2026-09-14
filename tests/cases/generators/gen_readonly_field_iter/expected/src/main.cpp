@@ -58,7 +58,7 @@ void main() {
     Holder h2 = Holder();
     std::cout << "live" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(h2.live_alias())) << "\n";
     Holder h3 = Holder();
-    std::cout << "param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(alias_param(h3))) << "\n";
+    std::cout << "param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::alias_param(h3))) << "\n";
     Bumper b = Bumper();
     std::cout << ::tpy::builtin_sum<int32_t>(b.bump()) << "\n";
     std::cout << ::tpy::__getitem__(b.cells, 0).v << " " << ::tpy::__getitem__(b.cells, 1).v << "\n";
@@ -247,7 +247,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

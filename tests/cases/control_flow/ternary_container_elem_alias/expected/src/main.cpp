@@ -34,9 +34,9 @@ void main() {
     ::tpy::ordered_map<std::string, ::tpy::ByteArray> d = ::tpy::ordered_map<std::string, ::tpy::ByteArray>();
     ::tpy::__setitem__(d, "a", ::tpy::ByteArray(::tpy::bytes_literal("ab", 2)));
     ::tpy::__setitem__(d, "b", ::tpy::ByteArray(::tpy::bytes_literal("cde", 3)));
-    pick(d, true);
-    pick(d, false);
-    pick(d, true);
+    ::tpyapp::main::pick(d, true);
+    ::tpyapp::main::pick(d, false);
+    ::tpyapp::main::pick(d, true);
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

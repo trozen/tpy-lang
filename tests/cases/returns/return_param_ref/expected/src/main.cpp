@@ -96,15 +96,15 @@ void main() {
     ::tpy::__getitem__(pts, 0).x = 10;
     ::tpy::__getitem__(pts, 1).x = 30;
     ::tpy::__getitem__(pts, 2).x = 20;
-    Point& best = find_max(pts);
+    Point& best = ::tpyapp::main::find_max(pts);
     std::cout << best.x << "\n";
     best.x = 99;
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
-    Point& first = get_first(pts);
+    Point& first = ::tpyapp::main::get_first(pts);
     std::cout << first.x << "\n";
-    Point& c = chained(pts);
+    Point& c = ::tpyapp::main::chained(pts);
     std::cout << c.x << "\n";
-    Point& b = both_branches(pts, true);
+    Point& b = ::tpyapp::main::both_branches(pts, true);
     std::cout << b.x << "\n";
 }
 
@@ -114,7 +114,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

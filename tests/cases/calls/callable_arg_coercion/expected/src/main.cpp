@@ -40,10 +40,10 @@ void use_local() {
 //     use_list_fn(take_list)
 //     use_local()
 void main() {
-    use_fn(cb);
-    use_callable(cb);
-    use_list_fn(take_list);
-    use_local();
+    ::tpyapp::main::use_fn(cb);
+    ::tpyapp::main::use_callable(cb);
+    ::tpyapp::main::use_list_fn(take_list);
+    ::tpyapp::main::use_local();
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

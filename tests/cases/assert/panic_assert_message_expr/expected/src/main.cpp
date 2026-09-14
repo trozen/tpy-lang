@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    fail("dynamic message");
+    ::tpyapp::main::fail("dynamic message");
 }
 
 } // namespace tpyapp::main

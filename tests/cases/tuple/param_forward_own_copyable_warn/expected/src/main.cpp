@@ -20,7 +20,7 @@ std::tuple<A, A> make() {
 //     got = sink(p)  # tpyc: warning(/copies tuple\[Own\[A\], Own\[A\]\] into owned storage/)
 //     return got + p[0].n
 int32_t fwd(std::tuple<A, A>&& p) {
-    int32_t got = sink(auto(p));
+    int32_t got = ::tpyapp::main::sink(auto(p));
     return (::tpy::add_check<int32_t>(got, std::get<0>(p).n));
 }
 
@@ -29,8 +29,8 @@ int32_t fwd(std::tuple<A, A>&& p) {
 //     got = sink(t)  # tpyc: warning(/copies tuple\[Own\[A\], Own\[A\]\] into owned storage/)
 //     return got + t[0].n
 int32_t fwd_local() {
-    std::tuple<A, A> t = make();
-    int32_t got = sink(auto(t));
+    std::tuple<A, A> t = ::tpyapp::main::make();
+    int32_t got = ::tpyapp::main::sink(auto(t));
     return (::tpy::add_check<int32_t>(got, std::get<0>(t).n));
 }
 
@@ -38,8 +38,8 @@ int32_t fwd_local() {
 //     print(fwd((A(1), A(2))))
 //     print(fwd_local())
 void main() {
-    std::cout << fwd(std::tuple<A, A>{A(1), A(2)}) << "\n";
-    std::cout << fwd_local() << "\n";
+    std::cout << ::tpyapp::main::fwd(std::tuple<A, A>{A(1), A(2)}) << "\n";
+    std::cout << ::tpyapp::main::fwd_local() << "\n";
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

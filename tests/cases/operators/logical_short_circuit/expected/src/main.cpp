@@ -35,7 +35,7 @@ namespace tpyapp::main {
 //     return z
 ::tpy::BigInt or_skips_side_effect(std::vector<::tpy::BigInt>& log) {
     auto&& __tmp_3 = 7;
-    ::tpy::BigInt z = (__tmp_3 ? ::tpy::BigInt(__tmp_3) : logged(log, ::tpy::BigInt(1)));
+    ::tpy::BigInt z = (__tmp_3 ? ::tpy::BigInt(__tmp_3) : ::tpyapp::main::logged(log, ::tpy::BigInt(1)));
     return z;
 }
 
@@ -44,7 +44,7 @@ namespace tpyapp::main {
 //     return z
 ::tpy::BigInt and_skips_side_effect(std::vector<::tpy::BigInt>& log) {
     auto&& __tmp_4 = 0;
-    ::tpy::BigInt z = (__tmp_4 ? logged(log, ::tpy::BigInt(1)) : ::tpy::BigInt(__tmp_4));
+    ::tpy::BigInt z = (__tmp_4 ? ::tpyapp::main::logged(log, ::tpy::BigInt(1)) : ::tpy::BigInt(__tmp_4));
     return z;
 }
 
@@ -53,7 +53,7 @@ namespace tpyapp::main {
 //     return z
 ::tpy::BigInt and_runs_rhs_when_truthy(std::vector<::tpy::BigInt>& log) {
     auto&& __tmp_5 = 7;
-    ::tpy::BigInt z = (__tmp_5 ? logged(log, ::tpy::BigInt(9)) : ::tpy::BigInt(__tmp_5));
+    ::tpy::BigInt z = (__tmp_5 ? ::tpyapp::main::logged(log, ::tpy::BigInt(9)) : ::tpy::BigInt(__tmp_5));
     return z;
 }
 
@@ -91,20 +91,20 @@ namespace tpyapp::main {
 void main() {
     std::vector<::tpy::BigInt> __tmp_10 = {5};
     std::vector<::tpy::BigInt> __tmp_11 = std::vector<::tpy::BigInt>{};
-    std::cout << or_skips_fallible(__tmp_10, __tmp_11) << "\n";
+    std::cout << ::tpyapp::main::or_skips_fallible(__tmp_10, __tmp_11) << "\n";
     std::vector<::tpy::BigInt> __tmp_12 = {0};
     std::vector<::tpy::BigInt> __tmp_13 = std::vector<::tpy::BigInt>{};
-    std::cout << and_skips_fallible(__tmp_12, __tmp_13) << "\n";
+    std::cout << ::tpyapp::main::and_skips_fallible(__tmp_12, __tmp_13) << "\n";
     std::vector<::tpy::BigInt> log1 = std::vector<::tpy::BigInt>{};
-    std::cout << or_skips_side_effect(log1) << " " << ::tpy::__len__(log1) << "\n";
+    std::cout << ::tpyapp::main::or_skips_side_effect(log1) << " " << ::tpy::__len__(log1) << "\n";
     std::vector<::tpy::BigInt> log2 = std::vector<::tpy::BigInt>{};
-    std::cout << and_skips_side_effect(log2) << " " << ::tpy::__len__(log2) << "\n";
+    std::cout << ::tpyapp::main::and_skips_side_effect(log2) << " " << ::tpy::__len__(log2) << "\n";
     std::vector<::tpy::BigInt> log3 = std::vector<::tpy::BigInt>{};
-    std::cout << and_runs_rhs_when_truthy(log3) << " " << ::tpy::__len__(log3) << "\n";
+    std::cout << ::tpyapp::main::and_runs_rhs_when_truthy(log3) << " " << ::tpy::__len__(log3) << "\n";
     std::vector<::tpy::BigInt> __tmp_14 = {3};
-    std::cout << chained_or_skips_tail(__tmp_14) << "\n";
+    std::cout << ::tpyapp::main::chained_or_skips_tail(__tmp_14) << "\n";
     std::vector<::tpy::BigInt> __tmp_15 = {0};
-    std::cout << chained_and_skips_tail(__tmp_15) << "\n";
+    std::cout << ::tpyapp::main::chained_and_skips_tail(__tmp_15) << "\n";
 }
 
 // main()
@@ -113,7 +113,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

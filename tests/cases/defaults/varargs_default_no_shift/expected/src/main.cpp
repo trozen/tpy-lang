@@ -28,10 +28,10 @@ int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t
 //     print(spread(1, tag=99))  # kwarg present takes the other resolver branch
 //     print(spread(1, 2, 3, 4, tag=8))  # pack non-empty: no slot to fill
 void main() {
-    std::cout << spread(1, 4, ::tpy::varargs<const int64_t>(), 9) << "\n";
-    std::cout << spread(1, 4, ::tpy::varargs<const int64_t>(), 99) << "\n";
+    std::cout << ::tpyapp::main::spread(1, 4, ::tpy::varargs<const int64_t>(), 9) << "\n";
+    std::cout << ::tpyapp::main::spread(1, 4, ::tpy::varargs<const int64_t>(), 99) << "\n";
     std::array<const int64_t, 2> __tmp_1{3, 4};
-    std::cout << spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_1), 8) << "\n";
+    std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_1), 8) << "\n";
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

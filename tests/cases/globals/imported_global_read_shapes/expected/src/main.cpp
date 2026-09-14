@@ -42,8 +42,8 @@ int32_t shadow() {
 //     print(read_items(), shadow(), c.m())
 void main() {
     C c = C();
-    std::cout << read_g() << " " << read_final() << " " << label_owned() << "\n";
-    std::cout << read_items() << " " << shadow() << " " << c.m() << "\n";
+    std::cout << ::tpyapp::main::read_g() << " " << ::tpyapp::main::read_final() << " " << ::tpyapp::main::label_owned() << "\n";
+    std::cout << ::tpyapp::main::read_items() << " " << ::tpyapp::main::shadow() << " " << c.m() << "\n";
 }
 
 // from helper import G, label, BIG, items
@@ -55,7 +55,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::helper::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

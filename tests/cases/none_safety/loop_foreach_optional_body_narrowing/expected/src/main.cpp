@@ -40,7 +40,7 @@ void __tpy_init() {
     vals = &__global_slot_1;
     vals->push_back(3);
     vals->push_back(4);
-    std::cout << sum_non_none((*vals)) << "\n";
+    std::cout << ::tpyapp::main::sum_non_none((*vals)) << "\n";
 }
 
 } // namespace tpyapp::main

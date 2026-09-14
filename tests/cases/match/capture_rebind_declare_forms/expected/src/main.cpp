@@ -73,11 +73,11 @@ namespace tpyapp::main {
 //     print(walrus(Cat(4)))                              # 6
 void main() {
     Cat c = Cat(::tpy::BigInt(9));
-    std::cout << nested(c, true) << " " << nested(c, false) << " " << c.lives << "\n";
+    std::cout << ::tpyapp::main::nested(c, true) << " " << ::tpyapp::main::nested(c, false) << " " << c.lives << "\n";
     Cat __tmp_1 = Cat(::tpy::BigInt(9));
-    std::cout << top_level(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::top_level(__tmp_1) << "\n";
     Cat __tmp_2 = Cat(::tpy::BigInt(4));
-    std::cout << walrus(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::walrus(__tmp_2) << "\n";
 }
 
 // main()
@@ -86,7 +86,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

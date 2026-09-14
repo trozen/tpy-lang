@@ -48,10 +48,10 @@ void use_cat_result(const ::tpy::BigInt& lives) {
 void main() {
     Dog d = Dog("Rex");
     Cat c = Cat(::tpy::BigInt(9));
-    std::string dog_val = get_value(d);
-    ::tpy::BigInt cat_val = get_value(c);
-    use_dog_result(dog_val);
-    use_cat_result(cat_val);
+    std::string dog_val = ::tpyapp::main::get_value(d);
+    ::tpy::BigInt cat_val = ::tpyapp::main::get_value(c);
+    ::tpyapp::main::use_dog_result(dog_val);
+    ::tpyapp::main::use_cat_result(cat_val);
 }
 
 // main()
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

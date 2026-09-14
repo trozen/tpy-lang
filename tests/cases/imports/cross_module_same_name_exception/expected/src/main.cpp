@@ -40,7 +40,7 @@ void __tpy_init() {
 
     ::tpyapp::ea::__tpy_init();
     ::tpyapp::eb::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

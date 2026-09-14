@@ -39,10 +39,10 @@ void f(const Point* p) {
 //     f(None)
 void main() {
     Point __tmp_1 = Point(50);
-    f(&(__tmp_1));
+    ::tpyapp::main::f(&(__tmp_1));
     Point __tmp_2 = Point(2);
-    f(&(__tmp_2));
-    f(nullptr);
+    ::tpyapp::main::f(&(__tmp_2));
+    ::tpyapp::main::f(nullptr);
 }
 
 // main()
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

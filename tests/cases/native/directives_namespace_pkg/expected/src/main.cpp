@@ -20,7 +20,7 @@ void __tpy_init() {
 
     ::mypkg::__tpy_init();
     ::mypkg::utils::__tpy_init();
-    main();
+    ::myapp::main();
 }
 
 } // namespace myapp

@@ -29,10 +29,10 @@ void describe(const Canvas& c) {
 void main() {
     Circle __tmp_1 = Circle(5);
     Canvas __tmp_2 = Canvas(::tpy::Union<const Circle*, const Square*>{&__tmp_1});
-    describe(__tmp_2);
+    ::tpyapp::main::describe(__tmp_2);
     Square __tmp_3 = Square(10);
     Canvas __tmp_4 = Canvas(::tpy::Union<const Circle*, const Square*>{&__tmp_3});
-    describe(__tmp_4);
+    ::tpyapp::main::describe(__tmp_4);
 }
 
 // main()
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

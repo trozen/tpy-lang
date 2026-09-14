@@ -24,7 +24,7 @@ int32_t read_then_shadow() {
 // def main() -> None:
 //     print(read(), read_then_shadow())
 void main() {
-    std::cout << read() << " " << read_then_shadow() << "\n";
+    std::cout << ::tpyapp::main::read() << " " << ::tpyapp::main::read_then_shadow() << "\n";
 }
 
 // gate: Gate = Gate(7)
@@ -37,7 +37,7 @@ void __tpy_init() {
 
     static Gate __global_slot_1 = Gate(7);
     gate = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

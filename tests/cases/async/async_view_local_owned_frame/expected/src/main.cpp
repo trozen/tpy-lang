@@ -18,7 +18,7 @@ std::tuple<std::string, std::string> pair(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_read_addr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __tup_1 = pair(9);
+        auto __tup_1 = ::tpyapp::main::pair(9);
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -48,7 +48,7 @@ __coro_read_addr read_addr() {
 // def main() -> None:
 //     asyncio.run(read_addr())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(read_addr()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::read_addr()));
 }
 
 // # A deduced str view local in an async coro frame is promoted to owned
@@ -64,7 +64,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

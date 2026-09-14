@@ -27,9 +27,9 @@ void main() {
     Box __tmp_1 = Box(::tpy::BigInt(7));
     Holder h = Holder(&(__tmp_1));
     Box param = Box(::tpy::BigInt(3));
-    bump(&(param), h, true);
+    ::tpyapp::main::bump(&(param), h, true);
     std::cout << param.val << "\n";
-    bump(&(param), h, false);
+    ::tpyapp::main::bump(&(param), h, false);
     if ((h.opt.has_value())) {
         std::cout << (*h.opt).val << "\n";
     }
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

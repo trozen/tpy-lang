@@ -27,8 +27,8 @@ void process(::tpy::Union<const A*, const B*> v) {
 void main() {
     A a = A(::tpy::BigInt(42));
     B b = B("hello");
-    process(::tpy::Union<const A*, const B*>{&(a)});
-    process(::tpy::Union<const A*, const B*>{&(b)});
+    ::tpyapp::main::process(::tpy::Union<const A*, const B*>{&(a)});
+    ::tpyapp::main::process(::tpy::Union<const A*, const B*>{&(b)});
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

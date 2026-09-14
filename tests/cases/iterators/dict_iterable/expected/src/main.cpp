@@ -25,16 +25,16 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     std::cout << "keys via dict:" << "\n";
-    collect_items(d);
+    ::tpyapp::main::collect_items(d);
     std::cout << "keys via keys():" << "\n";
     auto __tmp_1 = ::tpy::dict_keys(d);
-    collect_items(__tmp_1);
+    ::tpyapp::main::collect_items(__tmp_1);
     std::cout << "values via values():" << "\n";
     auto __tmp_2 = ::tpy::dict_values(d);
-    collect_ints(__tmp_2);
+    ::tpyapp::main::collect_ints(__tmp_2);
     std::cout << "items via items():" << "\n";
     auto __tmp_3 = ::tpy::dict_items(d);
-    collect_pairs(__tmp_3);
+    ::tpyapp::main::collect_pairs(__tmp_3);
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

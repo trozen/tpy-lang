@@ -73,7 +73,7 @@ template<Counted T>
 template<Counted T>
 ::tpy::own_return_t<T> dispatch(::tpy::own_param_t<T> item) {
     std::cout << "dispatching:" << " " << item.value() << "\n";
-    return read_and_keep<T>(std::move(item));
+    return ::tpyapp::main::read_and_keep<T>(std::move(item));
 }
 
 void __tpy_init();

@@ -26,7 +26,7 @@ void main() {
     Resource a = Resource(1);
     Resource b = Resource(2);
     std::array<const Resource*, 2> __tmp_1{&a, &b};
-    use_all(::tpy::varargs<const Resource>(__tmp_1));
+    ::tpyapp::main::use_all(::tpy::varargs<const Resource>(__tmp_1));
     std::cout << "after use_all" << "\n";
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -43,11 +43,11 @@ std::string process__lit_rb(std::string_view mode) {
 void dispatch(std::string_view mode) {
     auto& __match_subject_1 = mode;
     if (__match_subject_1 == "r") {
-        std::cout << process__lit_r(mode) << "\n";
+        std::cout << ::tpyapp::main::process__lit_r(mode) << "\n";
     } else if (__match_subject_1 == "w") {
-        std::cout << process__lit_w(mode) << "\n";
+        std::cout << ::tpyapp::main::process__lit_w(mode) << "\n";
     } else if (__match_subject_1 == "rb") {
-        std::cout << process__lit_rb(mode) << "\n";
+        std::cout << ::tpyapp::main::process__lit_rb(mode) << "\n";
     }
 }
 
@@ -56,9 +56,9 @@ void dispatch(std::string_view mode) {
 //     dispatch("w")
 //     dispatch("rb")
 void main() {
-    dispatch("r");
-    dispatch("w");
-    dispatch("rb");
+    ::tpyapp::main::dispatch("r");
+    ::tpyapp::main::dispatch("w");
+    ::tpyapp::main::dispatch("rb");
 }
 
 // main()
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Child c = Child();
     std::cout << c.__call__(5) << "\n";
-    std::cout << apply(c, 10) << "\n";
+    std::cout << ::tpyapp::main::apply(c, 10) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

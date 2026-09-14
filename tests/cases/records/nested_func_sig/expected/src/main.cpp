@@ -65,9 +65,9 @@ Container::Kind get_kind() {
 //     print(take_inner(i))
 //     print(get_kind())
 void main() {
-    Container::Inner i = make_inner(42);
-    std::cout << take_inner(i) << "\n";
-    std::cout << get_kind() << "\n";
+    Container::Inner i = ::tpyapp::main::make_inner(42);
+    std::cout << ::tpyapp::main::take_inner(i) << "\n";
+    std::cout << ::tpyapp::main::get_kind() << "\n";
 }
 
 // from enum import Enum, auto
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

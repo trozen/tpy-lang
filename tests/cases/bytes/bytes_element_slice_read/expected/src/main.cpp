@@ -17,7 +17,7 @@ void peek(const std::vector<::tpy::Bytes>& app) {
 //     peek(xs)
 void main() {
     std::vector<::tpy::Bytes> xs = {::tpy::bytes_literal_owned("hi", 2)};
-    peek(xs);
+    ::tpyapp::main::peek(xs);
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

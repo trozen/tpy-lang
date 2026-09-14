@@ -54,7 +54,7 @@ std::vector<int32_t> make_batch(int32_t n) {
 //         print(e)
 void main() {
     std::cout << "--- list ---" << "\n";
-    auto __obj_0 = make_batch(3);
+    auto __obj_0 = ::tpyapp::main::make_batch(3);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -72,7 +72,7 @@ void main() {
     }
     std::cout << "--- dict ---" << "\n";
     int32_t klen = 0;
-    auto __obj_2 = make_pairs();
+    auto __obj_2 = ::tpyapp::main::make_pairs();
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
@@ -82,7 +82,7 @@ void main() {
     std::cout << klen << "\n";
     std::cout << "--- set ---" << "\n";
     int32_t ssum = 0;
-    auto __obj_3 = make_uniques();
+    auto __obj_3 = ::tpyapp::main::make_uniques();
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
@@ -111,9 +111,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
     std::cout << "--- top-level ---" << "\n";
-    auto __obj_0 = make_batch(2);
+    auto __obj_0 = ::tpyapp::main::make_batch(2);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

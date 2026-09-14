@@ -796,9 +796,9 @@ int32_t parameter_target(int32_t target) {
 void bound_order(const ::tpy::BigInt& step) {
     std::vector<::tpy::BigInt> events = std::vector<::tpy::BigInt>{};
     int32_t count = 0;
-    ::tpy::BigInt __start_0 = bound(events, ::tpy::BigInt(1), ::tpy::BigInt(0));
-    ::tpy::BigInt __stop_0 = bound(events, ::tpy::BigInt(2), ::tpy::BigInt(5));
-    ::tpy::BigInt __step_0 = bound(events, ::tpy::BigInt(3), step);
+    ::tpy::BigInt __start_0 = ::tpyapp::main::bound(events, ::tpy::BigInt(1), ::tpy::BigInt(0));
+    ::tpy::BigInt __stop_0 = ::tpyapp::main::bound(events, ::tpy::BigInt(2), ::tpy::BigInt(5));
+    ::tpy::BigInt __step_0 = ::tpyapp::main::bound(events, ::tpy::BigInt(3), step);
     ::tpy::range_check_step_nonzero(__step_0);
     for (::tpy::BigInt __range_0 = __start_0; __step_0 > 0 ? __range_0 < __stop_0 : __range_0 > __stop_0; __range_0 += __step_0) {
         ::tpy::BigInt i = __range_0;
@@ -1097,31 +1097,31 @@ void container_inverse() {
 //     print("readonly heap", readonly_big(heap, heap + 5))
 //     container_inverse()
 void main() {
-    original();
-    steps32(0, 2);
-    steps32(0, -2);
-    steps64(0, 2);
-    steps64(0, -2);
-    steps_big(::tpy::BigInt(0), ::tpy::BigInt(2));
-    steps_big(::tpy::BigInt(0), ::tpy::BigInt(-2));
+    ::tpyapp::main::original();
+    ::tpyapp::main::steps32(0, 2);
+    ::tpyapp::main::steps32(0, -2);
+    ::tpyapp::main::steps64(0, 2);
+    ::tpyapp::main::steps64(0, -2);
+    ::tpyapp::main::steps_big(::tpy::BigInt(0), ::tpy::BigInt(2));
+    ::tpyapp::main::steps_big(::tpy::BigInt(0), ::tpy::BigInt(-2));
     ::tpy::BigInt heap = ((::tpy::BigInt(1)) << (::tpy::BigInt(100)));
-    steps_big(heap, ::tpy::BigInt(2));
-    steps_big(-(heap), ::tpy::BigInt(-2));
-    binding_forms(10);
-    comprehension_forms();
+    ::tpyapp::main::steps_big(heap, ::tpy::BigInt(2));
+    ::tpyapp::main::steps_big(-(heap), ::tpy::BigInt(-2));
+    ::tpyapp::main::binding_forms(10);
+    ::tpyapp::main::comprehension_forms();
     Worker worker = Worker();
     std::cout << "constructor" << " " << worker.count << "\n";
     std::cout << "method" << " " << worker.method() << "\n";
     std::cout << "staticmethod" << " " << Worker::static_() << "\n";
-    closure_forms();
-    context_forms();
-    control_edges();
-    std::cout << "parameter target" << " " << parameter_target(7) << "\n";
-    bound_order(::tpy::BigInt(1));
+    ::tpyapp::main::closure_forms();
+    ::tpyapp::main::context_forms();
+    ::tpyapp::main::control_edges();
+    std::cout << "parameter target" << " " << ::tpyapp::main::parameter_target(7) << "\n";
+    ::tpyapp::main::bound_order(::tpy::BigInt(1));
     int32_t count = 0;
     int32_t total = 0;
     {
-        auto __src_0 = generator();
+        auto __src_0 = ::tpyapp::main::generator();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -1132,23 +1132,23 @@ void main() {
         }
     }
     std::cout << "generator" << " " << count << " " << total << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_body()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_body()));
     {
-        std::cout << "error_return" << " " << ({ auto __er_2 = error_body(); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::error_body(); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except MarkerError:
         __except_1:;
         std::cout << "error_return unexpected error" << "\n";
         __after_try_1:;
     }
-    match_body(::tpy::BigInt(1));
+    ::tpyapp::main::match_body(::tpy::BigInt(1));
     std::vector<int32_t> generic_values = {0, 1, 2};
     std::vector<int32_t> concrete_values = {0, 1, 2};
-    std::cout << "generic twin" << " " << generic_count<int32_t>(generic_values) << " " << concrete_count(concrete_values) << "\n";
+    std::cout << "generic twin" << " " << ::tpyapp::main::generic_count<int32_t>(generic_values) << " " << ::tpyapp::main::concrete_count(concrete_values) << "\n";
     std::cout << "generic twin aliases" << " " << ::tpy::__len__(generic_values) << " " << ::tpy::__len__(concrete_values) << "\n";
-    std::cout << "readonly noalloc" << " " << readonly32(5) << "\n";
-    std::cout << "readonly heap" << " " << readonly_big(heap, ((heap) + (::tpy::BigInt(5)))) << "\n";
-    container_inverse();
+    std::cout << "readonly noalloc" << " " << ::tpyapp::main::readonly32(5) << "\n";
+    std::cout << "readonly heap" << " " << ::tpyapp::main::readonly_big(heap, ((heap) + (::tpy::BigInt(5)))) << "\n";
+    ::tpyapp::main::container_inverse();
 }
 
 // # Range advancement must ignore writes to the Python target binding.
@@ -1176,7 +1176,7 @@ void __tpy_init() {
         module_count = ::tpy::add_check<int32_t>(module_count, 1);
     }
     std::cout << "module" << " " << module_count << "\n";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

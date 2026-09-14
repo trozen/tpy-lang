@@ -65,8 +65,8 @@ void print_all(T_items& items) {
 //     return sum_iter(items)
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t process_and_sum(T_items& items) {
-    print_all(items);
-    return sum_iter(items);
+    ::tpyapp::main::print_all(items);
+    return ::tpyapp::main::sum_iter(items);
 }
 // def nested_iteration(outer: Iterable[int32], inner: Iterable[int32]) -> int32:
 //     # Nested for loops over two different protocol-typed params

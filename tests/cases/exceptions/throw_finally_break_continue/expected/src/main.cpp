@@ -112,11 +112,11 @@ void test_break_for_else() {
 //     print("---")
 //     test_break_for_else()
 void main() {
-    test_break();
+    ::tpyapp::main::test_break();
     std::cout << "---" << "\n";
-    test_continue();
+    ::tpyapp::main::test_continue();
     std::cout << "---" << "\n";
-    test_break_for_else();
+    ::tpyapp::main::test_break_for_else();
 }
 
 // main()
@@ -125,7 +125,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

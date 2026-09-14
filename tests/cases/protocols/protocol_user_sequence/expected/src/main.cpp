@@ -24,10 +24,10 @@ void main() {
     IntWrapper wrapper = IntWrapper(nums);
     std::cout << wrapper[0] << "\n";
     std::cout << wrapper[-1] << "\n";
-    std::cout << sum_seq(wrapper) << "\n";
-    std::cout << first(wrapper) << "\n";
-    std::cout << sum_seq(nums) << "\n";
-    std::cout << first(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_seq(wrapper) << "\n";
+    std::cout << ::tpyapp::main::first(wrapper) << "\n";
+    std::cout << ::tpyapp::main::sum_seq(nums) << "\n";
+    std::cout << ::tpyapp::main::first(nums) << "\n";
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

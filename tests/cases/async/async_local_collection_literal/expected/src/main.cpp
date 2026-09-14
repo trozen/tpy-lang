@@ -58,7 +58,7 @@ __coro_w w() {
 // def main() -> None:
 //     asyncio.run(w())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(w()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::w()));
 }
 
 // # Collection literals assigned to locals inside a coroutine body are hoisted
@@ -74,7 +74,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

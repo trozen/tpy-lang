@@ -39,7 +39,7 @@ std::tuple<::tpy::BigInt, Box> make_pair(const ::tpy::BigInt& v) {
 //         t[1].val = 77
 void alias_after_owning_call(Holder& h) {
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
-    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(::tpy::BigInt(9))))};
+    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(::tpy::BigInt(9))))};
     t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
     if ((t.has_value())) {
         std::get<1>((*t))->val = ::tpy::BigInt(77);
@@ -101,8 +101,8 @@ void alias_after_owning_call(Holder& h) {
 //     return -1
 ::tpy::BigInt reowned(const ::tpy::BigInt& v) {
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
-    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(::tpy::BigInt(9))))};
-    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(v)))};
+    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(::tpy::BigInt(9))))};
+    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(v)))};
     if ((t.has_value())) {
         std::get<1>((*t))->val = ::tpy::BigInt(50);
         return ((std::get<0>((*t))) + (std::get<1>((*t))->val));
@@ -128,18 +128,18 @@ void alias_after_owning_call(Holder& h) {
 //
 //     print(reowned(5))  # 5 + 50 = 55 -- re-owned, no spurious copy warning
 void main() {
-    std::cout << alias_storage() << "\n";
+    std::cout << ::tpyapp::main::alias_storage() << "\n";
     Holder h3 = Holder(Box(::tpy::BigInt(3)));
-    alias_after_owning_call(h3);
+    ::tpyapp::main::alias_after_owning_call(h3);
     std::cout << std::get<1>(h3.pair).val << "\n";
     Holder h4 = Holder(Box(::tpy::BigInt(1)));
-    std::cout << conditional(h4, true) << "\n";
+    std::cout << ::tpyapp::main::conditional(h4, true) << "\n";
     std::cout << std::get<1>(h4.pair).val << "\n";
-    std::cout << conditional(h4, false) << "\n";
+    std::cout << ::tpyapp::main::conditional(h4, false) << "\n";
     Holder h5 = Holder(Box(::tpy::BigInt(2)));
-    std::cout << branch_declared(h5, true) << "\n";
-    std::cout << branch_declared(h5, false) << "\n";
-    std::cout << reowned(::tpy::BigInt(5)) << "\n";
+    std::cout << ::tpyapp::main::branch_declared(h5, true) << "\n";
+    std::cout << ::tpyapp::main::branch_declared(h5, false) << "\n";
+    std::cout << ::tpyapp::main::reowned(::tpy::BigInt(5)) << "\n";
 }
 
 // main()
@@ -148,7 +148,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -94,13 +94,13 @@ void show(const std::tuple<const P*, const P*>& pair) {
 void main() {
     std::vector<P> items = {P(1), P(2), P(3)};
     {
-        auto __src_0 = pairs(items);
+        auto __src_0 = ::tpyapp::main::pairs(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-        show(pair);
+        ::tpyapp::main::show(pair);
         }
     }
 }
@@ -111,7 +111,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

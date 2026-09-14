@@ -4578,7 +4578,7 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         # rvalue the materializing slot -- all separate renders. A slot this
         # global already allocated is irrelevant to the pass-through: the
         # bare assign does not touch it, and emit keeps the plain THIRAssign
-        # off the `&*(__slot_N = ...)` reseat arm via `global_slot_locals`.
+        # off the `&*(__slot_N = ...)` reseat arm by its null `rebind_storage`.
         if (init_bare.uses_pointer_repr()
                 and isinstance(stmt.init, (TpyCall, TpyMethodCall))
                 and not _own_declared_call_ret(stmt.init)):

@@ -51,7 +51,7 @@ int32_t read_after_early_return(const Container& c) {
 //     return int32(-1)
 int32_t read_after_field_pass(const Container& c) {
     if ((c.node != nullptr)) {
-        get_ptr(c.node);
+        ::tpyapp::main::get_ptr(c.node);
         return c.node->value;
     }
     return -1;
@@ -70,7 +70,7 @@ void mutate_container(const Container& c) {
 //     return int32(-1)
 int32_t read_after_container_pass(const Container& c) {
     if ((c.node != nullptr)) {
-        mutate_container(c);
+        ::tpyapp::main::mutate_container(c);
         return ::tpy::deref_check(c.node).value;
     }
     return -1;
@@ -103,11 +103,11 @@ void main() {
     std::cout << c.read_after_merge() << "\n";
     std::cout << c.read_after_method_call() << "\n";
     std::cout << c.read_after_reassign(p) << "\n";
-    std::cout << read_field(c) << "\n";
-    std::cout << read_after_assert(c) << "\n";
-    std::cout << read_after_early_return(c) << "\n";
-    std::cout << read_after_field_pass(c) << "\n";
-    std::cout << read_after_container_pass(c) << "\n";
+    std::cout << ::tpyapp::main::read_field(c) << "\n";
+    std::cout << ::tpyapp::main::read_after_assert(c) << "\n";
+    std::cout << ::tpyapp::main::read_after_early_return(c) << "\n";
+    std::cout << ::tpyapp::main::read_after_field_pass(c) << "\n";
+    std::cout << ::tpyapp::main::read_after_container_pass(c) << "\n";
     Wrapper w = Wrapper(c);
     std::cout << w.read_after_inner_mutate() << "\n";
 }
@@ -118,7 +118,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

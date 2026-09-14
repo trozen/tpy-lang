@@ -16,7 +16,7 @@ void takes_string(const ::tpy::String& s) {
 //     print(s)
 void test_string_param() {
     std::string s = "hello";
-    takes_string(s);
+    ::tpyapp::main::takes_string(s);
     std::cout << s << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_string_param();
+    ::tpyapp::main::test_string_param();
 }
 
 } // namespace tpyapp::main

@@ -15,7 +15,7 @@ int32_t add_values(int32_t a, int32_t b) {
 // def compute(p: Point) -> int32:
 //     return p.magnitude_sq() + add_values(p.x, p.y)
 int32_t compute(const Point& p) {
-    return (::tpy::add_check<int32_t>(p.magnitude_sq(), add_values(p.x, p.y)));
+    return (::tpy::add_check<int32_t>(p.magnitude_sq(), ::tpyapp::main::add_values(p.x, p.y)));
 }
 
 // def use_readonly(p: readonly[Point]) -> None:
@@ -38,9 +38,9 @@ void main() {
     Point p = Point(3, 4);
     std::cout << p.magnitude_sq() << "\n";
     std::cout << p.distance_sq(Point(1, 1)) << "\n";
-    std::cout << add_values(10, 20) << "\n";
-    std::cout << compute(p) << "\n";
-    use_readonly(p);
+    std::cout << ::tpyapp::main::add_values(10, 20) << "\n";
+    std::cout << ::tpyapp::main::compute(p) << "\n";
+    ::tpyapp::main::use_readonly(p);
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

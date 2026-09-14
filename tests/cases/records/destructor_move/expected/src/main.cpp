@@ -20,10 +20,10 @@ void consume(Tracker&& t) {
 //     consume(t)
 //     print("---")
 void main() {
-    consume(Tracker("a"));
+    ::tpyapp::main::consume(Tracker("a"));
     std::cout << "---" << "\n";
     Tracker t = Tracker("b");
-    consume(std::move(t));
+    ::tpyapp::main::consume(std::move(t));
     std::cout << "---" << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

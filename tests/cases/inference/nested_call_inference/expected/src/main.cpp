@@ -25,10 +25,10 @@ void take_two(Box<int32_t>&& a, Box<int32_t>&& b) {
 //     take_two(wrap(5), wrap(9))
 //     print("done")
 void main() {
-    sink(wrap<int32_t>(10));
-    take_two(wrap<int32_t>(3), wrap<int32_t>(7));
-    sink(wrap<int32_t>(20));
-    take_two(wrap<int32_t>(5), wrap<int32_t>(9));
+    ::tpyapp::main::sink(::tpyapp::main::wrap<int32_t>(10));
+    ::tpyapp::main::take_two(::tpyapp::main::wrap<int32_t>(3), ::tpyapp::main::wrap<int32_t>(7));
+    ::tpyapp::main::sink(::tpyapp::main::wrap<int32_t>(20));
+    ::tpyapp::main::take_two(::tpyapp::main::wrap<int32_t>(5), ::tpyapp::main::wrap<int32_t>(9));
     std::cout << "done" << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

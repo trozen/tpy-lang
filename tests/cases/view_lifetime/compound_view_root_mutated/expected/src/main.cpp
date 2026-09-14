@@ -81,23 +81,23 @@ std::string field_arm(Rec& r, const Rec& t, bool cond) {
 void main() {
     std::vector<std::string> __tmp_4 = {"alpha"};
     std::vector<std::string> __tmp_5 = {"beta"};
-    std::cout << ternary(__tmp_4, __tmp_5, true) << "\n";
+    std::cout << ::tpyapp::main::ternary(__tmp_4, __tmp_5, true) << "\n";
     std::vector<std::string> __tmp_6 = {"gamma"};
     std::vector<std::string> __tmp_7 = {"delta"};
-    std::cout << or_chain(__tmp_6, __tmp_7) << "\n";
+    std::cout << ::tpyapp::main::or_chain(__tmp_6, __tmp_7) << "\n";
     std::vector<std::string> __tmp_8 = {"epsilon"};
     std::vector<std::string> __tmp_9 = {"zeta"};
-    std::cout << and_chain(__tmp_8, __tmp_9) << "\n";
+    std::cout << ::tpyapp::main::and_chain(__tmp_8, __tmp_9) << "\n";
     std::vector<std::string> __tmp_10 = {"one"};
     std::vector<std::string> __tmp_11 = {"two"};
     std::vector<std::string> __tmp_12 = {"three"};
-    std::cout << nested(__tmp_10, __tmp_11, __tmp_12, false) << "\n";
+    std::cout << ::tpyapp::main::nested(__tmp_10, __tmp_11, __tmp_12, false) << "\n";
     Rec __tmp_13 = Rec("eta");
     Rec __tmp_14 = Rec("theta");
-    std::cout << field_arm(__tmp_13, __tmp_14, true) << "\n";
+    std::cout << ::tpyapp::main::field_arm(__tmp_13, __tmp_14, true) << "\n";
     std::vector<::tpy::Bytes> __tmp_15 = {::tpy::bytes_literal_owned("abcd", 4)};
     std::vector<::tpy::Bytes> __tmp_16 = {::tpy::bytes_literal_owned("ef", 2)};
-    std::cout << bytes_ternary(__tmp_15, __tmp_16, true) << "\n";
+    std::cout << ::tpyapp::main::bytes_ternary(__tmp_15, __tmp_16, true) << "\n";
 }
 
 // main()
@@ -106,7 +106,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

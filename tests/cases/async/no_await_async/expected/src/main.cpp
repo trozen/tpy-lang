@@ -28,7 +28,7 @@ __coro_f f() {
 // def main() -> None:
 //     print(poll_once(f()).value())
 void main() {
-    auto __tmp_1 = f();
+    auto __tmp_1 = ::tpyapp::main::f();
     std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n";
 }
 
@@ -41,7 +41,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

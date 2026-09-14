@@ -56,7 +56,7 @@ __coro_caller caller() {
 // def main() -> None:
 //     print(poll_once(caller()).value())
 void main() {
-    auto __tmp_1 = caller();
+    auto __tmp_1 = ::tpyapp::main::caller();
     std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n";
 }
 
@@ -69,7 +69,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

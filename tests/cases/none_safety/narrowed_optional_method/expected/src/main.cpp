@@ -24,8 +24,8 @@ void greet(std::optional<std::string_view> name) {
 //     greet("alice")
 //     greet(None)
 void main() {
-    greet("alice");
-    greet(std::nullopt);
+    ::tpyapp::main::greet("alice");
+    ::tpyapp::main::greet(std::nullopt);
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

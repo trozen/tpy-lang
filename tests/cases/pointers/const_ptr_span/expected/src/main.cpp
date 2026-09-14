@@ -22,7 +22,7 @@ void read_span(std::span<const int32_t> s) {
 //     read_span(s)
 void from_readonly_ptr(const int32_t* p, int32_t n) {
     std::span<const int32_t> s = std::span(p, static_cast<size_t>(n));
-    read_span(s);
+    ::tpyapp::main::read_span(s);
 }
 
 // def from_mutable_ptr(p: Ptr[int32], n: int32) -> None:
@@ -30,7 +30,7 @@ void from_readonly_ptr(const int32_t* p, int32_t n) {
 //     read_span(s)
 void from_mutable_ptr(int32_t* p, int32_t n) {
     std::span<int32_t> s = std::span(p, static_cast<size_t>(n));
-    read_span(s);
+    ::tpyapp::main::read_span(s);
 }
 
 // def main() -> None:
@@ -51,9 +51,9 @@ void main() {
     int32_t* mp = &a;
     const int32_t* cp = &b;
     std::cout << "mutable ptr span:" << "\n";
-    from_mutable_ptr(mp, 1);
+    ::tpyapp::main::from_mutable_ptr(mp, 1);
     std::cout << "const ptr span:" << "\n";
-    from_readonly_ptr(cp, 1);
+    ::tpyapp::main::from_readonly_ptr(cp, 1);
 }
 
 // main()
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

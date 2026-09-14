@@ -91,7 +91,7 @@ __coro_echo_client echo_client(int32_t port) {
         auto __tup_1 = (*listener).getsockname();
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
-        client.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(echo_client(port))));
+        client.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::echo_client(port))));
         __sub_0.emplace(std::move((*loop).sock_accept((*listener))));
         __state = S_RESUME_0;
         continue;
@@ -151,7 +151,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio reactor: concurrent sock_accept + sock_connect echo round-trip on
@@ -169,7 +169,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

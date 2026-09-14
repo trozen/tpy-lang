@@ -28,10 +28,10 @@ void __tpy_init() {
 
     Box __tmp_1 = Box(2);
     Box __tmp_2 = Box(10);
-    std::cout << use_after_rebind(__tmp_1, __tmp_2) << "\n";
+    std::cout << ::tpyapp::main::use_after_rebind(__tmp_1, __tmp_2) << "\n";
     Box __tmp_3 = Box(2);
     Box __tmp_4 = Box(11);
-    std::cout << use_after_rebind(__tmp_3, __tmp_4) << "\n";
+    std::cout << ::tpyapp::main::use_after_rebind(__tmp_3, __tmp_4) << "\n";
 }
 
 } // namespace tpyapp::main

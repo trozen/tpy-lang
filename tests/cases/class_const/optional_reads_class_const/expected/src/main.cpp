@@ -28,7 +28,7 @@ void main() {
     C* c = &__slot_1;
     std::cout << C::LIMIT << "\n";
     C __tmp_1 = C();
-    use(&(__tmp_1));
+    ::tpyapp::main::use(&(__tmp_1));
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

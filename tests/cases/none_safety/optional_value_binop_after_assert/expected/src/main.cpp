@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << add_one(41) << "\n";
+    std::cout << ::tpyapp::main::add_one(41) << "\n";
 }
 
 } // namespace tpyapp::main

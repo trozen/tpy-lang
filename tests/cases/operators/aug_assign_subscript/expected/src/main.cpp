@@ -80,10 +80,10 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    test_list_aug_assign();
-    test_arraylist_aug_assign();
-    test_negative_index_aug_assign();
-    test_array_aug_assign();
+    ::tpyapp::main::test_list_aug_assign();
+    ::tpyapp::main::test_arraylist_aug_assign();
+    ::tpyapp::main::test_negative_index_aug_assign();
+    ::tpyapp::main::test_array_aug_assign();
 }
 
 } // namespace tpyapp::main

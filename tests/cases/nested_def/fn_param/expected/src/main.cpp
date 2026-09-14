@@ -14,7 +14,7 @@ void main() {
     auto add_y = [&y](int32_t x) -> int32_t {
         return (::tpy::add_check<int32_t>(x, y));
     };
-    std::cout << apply(add_y, 42) << "\n";
+    std::cout << ::tpyapp::main::apply(add_y, 42) << "\n";
 }
 
 // main()
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

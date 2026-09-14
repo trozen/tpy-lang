@@ -66,8 +66,8 @@ void main() {
     std::vector<int32_t> r0 = {1};
     std::vector<int32_t> r1 = {2, 3};
     std::vector<std::vector<int32_t>> m = ::tpy::make_vector<std::vector<int32_t>>(std::move(r0), std::move(r1));
-    std::cout << read_elements(g, m) << "\n";
-    push(::tpy::__getitem__(g, "b"), 7);
+    std::cout << ::tpyapp::main::read_elements(g, m) << "\n";
+    ::tpyapp::main::push(::tpy::__getitem__(g, "b"), 7);
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(g, "b")) << "\n";
     int32_t total = 0;
     auto& __obj_0 = ::tpy::__getitem__(g, "a");
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

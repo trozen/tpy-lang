@@ -58,7 +58,7 @@ __gen_g_items g_items(::tpy::ordered_map<std::string, std::optional<int32_t>>& d
 //     print(sum(g_items({"a": 1, "b": None, "c": 2})))
 void main() {
     ::tpy::ordered_map<std::string, std::optional<int32_t>> __tmp_1 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"a", 1}, {"b", std::nullopt}, {"c", 2}});
-    std::cout << ::tpy::builtin_sum<int32_t>(g_items(__tmp_1)) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::g_items(__tmp_1)) << "\n";
 }
 
 // main()
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

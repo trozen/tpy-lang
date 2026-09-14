@@ -22,7 +22,7 @@ void bump(std::vector<std::string>& ys, ::tpy::ordered_map<std::string, std::str
 void main() {
     std::vector<std::string> ys = {"q"};
     ::tpy::ordered_map<std::string, std::string> t = ::tpy::ordered_map<std::string, std::string>({{"x", "y"}});
-    bump(ys, t, "z");
+    ::tpyapp::main::bump(ys, t, "z");
     std::cout << ::tpy::__getitem__(ys, 0) << " " << ::tpy::__getitem__(t, "x") << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

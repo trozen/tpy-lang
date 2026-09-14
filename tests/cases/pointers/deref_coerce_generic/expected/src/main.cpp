@@ -22,7 +22,7 @@ void test() {
     std::cout << b.__deref__().x << "\n";
     std::cout << b.__deref__().y << "\n";
     Point __tmp_1 = b.__deref__();
-    print_point(__tmp_1);
+    ::tpyapp::main::print_point(__tmp_1);
 }
 
 // test()
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

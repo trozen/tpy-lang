@@ -24,18 +24,18 @@ std::string pick(std::string_view text, ::tpy::Slice st) {
 //     d = pick(text, slice(None, None, -1))
 //     print(c, d)
 void run(std::string_view text) {
-    std::string a = cut(text, ::tpy::BasicSlice{1, 3});
-    std::string b = cut(text, ::tpy::BasicSlice{2, std::nullopt});
+    std::string a = ::tpyapp::main::cut(text, ::tpy::BasicSlice{1, 3});
+    std::string b = ::tpyapp::main::cut(text, ::tpy::BasicSlice{2, std::nullopt});
     std::cout << a << " " << b << "\n";
-    std::string c = pick(text, ::tpy::Slice{0, 7, 2});
-    std::string d = pick(text, ::tpy::Slice{std::nullopt, std::nullopt, -1});
+    std::string c = ::tpyapp::main::pick(text, ::tpy::Slice{0, 7, 2});
+    std::string d = ::tpyapp::main::pick(text, ::tpy::Slice{std::nullopt, std::nullopt, -1});
     std::cout << c << " " << d << "\n";
 }
 
 // def main() -> None:
 //     run("greetings")
 void main() {
-    run("greetings");
+    ::tpyapp::main::run("greetings");
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

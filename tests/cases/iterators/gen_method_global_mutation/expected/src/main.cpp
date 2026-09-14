@@ -67,7 +67,7 @@ void __tpy_init() {
     initialized = true;
 
     emitted = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

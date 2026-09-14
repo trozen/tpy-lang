@@ -16,7 +16,7 @@ std::tuple<Box, Box> make() {
 //     print(a.val + b.val)
 //     print(t[0].val + t[1].val)
 void main() {
-    std::tuple<Box, Box> t = make();
+    std::tuple<Box, Box> t = ::tpyapp::main::make();
     auto __tup_1 = t;
     Box a = std::move(std::get<0>(__tup_1));
     Box b = std::move(std::get<1>(__tup_1));
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

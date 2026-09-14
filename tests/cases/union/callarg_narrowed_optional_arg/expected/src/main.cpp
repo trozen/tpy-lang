@@ -31,7 +31,7 @@ void bump_opt(A* o) {
 int32_t read_narrowed(::tpy::Union<A*, B*> u) {
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
-        return take_opt(&(__u));
+        return ::tpyapp::main::take_opt(&(__u));
     }
     auto& __u = *std::get<B*>(u);
     return -1;
@@ -45,7 +45,7 @@ int32_t read_narrowed(::tpy::Union<A*, B*> u) {
 int32_t mutate_narrowed(::tpy::Union<A*, B*> u) {
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
-        bump_opt(&(__u));
+        ::tpyapp::main::bump_opt(&(__u));
         return __u.x;
     }
     auto& __u = *std::get<B*>(u);
@@ -57,7 +57,7 @@ int32_t mutate_narrowed(::tpy::Union<A*, B*> u) {
 //         return 1
 //     return 0
 int32_t inline_narrowed(::tpy::Union<A*, B*> u) {
-    if ((std::holds_alternative<A*>(u) && (take_opt(&((*std::get<A*>(u)))) > 2))) {
+    if ((std::holds_alternative<A*>(u) && (::tpyapp::main::take_opt(&((*std::get<A*>(u)))) > 2))) {
         auto& __u = *std::get<A*>(u);
         return 1;
     }
@@ -74,15 +74,15 @@ int32_t inline_narrowed(::tpy::Union<A*, B*> u) {
 //     print(inline_narrowed(A(1)))
 void main() {
     A a = A(3);
-    std::cout << read_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n";
-    std::cout << mutate_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n";
+    std::cout << ::tpyapp::main::read_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n";
+    std::cout << ::tpyapp::main::mutate_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n";
     std::cout << a.x << "\n";
     B __tmp_1 = B(9);
-    std::cout << read_narrowed(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::read_narrowed(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
     A __tmp_2 = A(5);
-    std::cout << inline_narrowed(::tpy::Union<A*, B*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::inline_narrowed(::tpy::Union<A*, B*>{&__tmp_2}) << "\n";
     A __tmp_3 = A(1);
-    std::cout << inline_narrowed(::tpy::Union<A*, B*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::inline_narrowed(::tpy::Union<A*, B*>{&__tmp_3}) << "\n";
 }
 
 // main()
@@ -91,7 +91,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

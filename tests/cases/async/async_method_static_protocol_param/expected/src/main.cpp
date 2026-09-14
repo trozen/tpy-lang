@@ -42,7 +42,7 @@ __coro_inner inner() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         r.emplace(Runner());
-        __sub_0.emplace((*r), ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(inner()), 5.0);
+        __sub_0.emplace((*r), ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::inner()), 5.0);
         __state = S_RESUME_0;
         continue;
     }
@@ -69,7 +69,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Regression: async method on a non-generic class taking an
@@ -95,7 +95,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

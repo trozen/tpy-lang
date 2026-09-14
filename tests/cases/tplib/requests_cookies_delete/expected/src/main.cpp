@@ -62,10 +62,10 @@ void _hop(::tpystd::tplib::requests::Session& s, ::tpy::BytesView response) {
 void main() {
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});
-    _hop(s, ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=abc\r\nSet-Cookie: keep=1; Max-Age=3600\r\nContent-Length: 0\r\n\r\n", 93));
+    ::tpyapp::main::_hop(s, ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=abc\r\nSet-Cookie: keep=1; Max-Age=3600\r\nContent-Length: 0\r\n\r\n", 93));
     std::cout << ::tpy::print_bool((s.cookies.__contains__("sid"))) << "\n";
     std::cout << ::tpy::print_bool((s.cookies.__contains__("keep"))) << "\n";
-    _hop(s, ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=x; Max-Age=0\r\nContent-Length: 0\r\n\r\n", 68));
+    ::tpyapp::main::_hop(s, ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=x; Max-Age=0\r\nContent-Length: 0\r\n\r\n", 68));
     std::cout << ::tpy::print_bool((s.cookies.__contains__("sid"))) << "\n";
     std::cout << ::tpy::print_bool((s.cookies.__contains__("keep"))) << "\n";
     std::cout << ::tpy::__len__(s.cookies) << "\n";
@@ -115,7 +115,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

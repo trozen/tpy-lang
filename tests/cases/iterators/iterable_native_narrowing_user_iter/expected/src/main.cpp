@@ -15,9 +15,9 @@ namespace tpyapp::main {
 //     print(sum_fast(nums))
 void main() {
     Counter c = Counter(10, 14);
-    std::cout << sum_fast(c) << "\n";
+    std::cout << ::tpyapp::main::sum_fast(c) << "\n";
     std::vector<int32_t> nums = {1, 2};
-    std::cout << sum_fast(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_fast(nums) << "\n";
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -41,9 +41,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_str_constructor();
-    test_augassign();
-    test_reassign_from_owned();
+    ::tpyapp::main::test_str_constructor();
+    ::tpyapp::main::test_augassign();
+    ::tpyapp::main::test_reassign_from_owned();
 }
 
 } // namespace tpyapp::main

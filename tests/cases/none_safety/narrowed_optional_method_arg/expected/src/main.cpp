@@ -39,11 +39,11 @@ void test_self_call(Printer& p) {
 //     test_self_call(p)
 void main() {
     Printer p = Printer();
-    test_method_arg("hello", p);
-    test_method_arg(std::nullopt, p);
-    test_method_arg_int(42, p);
-    test_method_arg_int(std::nullopt, p);
-    test_self_call(p);
+    ::tpyapp::main::test_method_arg("hello", p);
+    ::tpyapp::main::test_method_arg(std::nullopt, p);
+    ::tpyapp::main::test_method_arg_int(42, p);
+    ::tpyapp::main::test_method_arg_int(std::nullopt, p);
+    ::tpyapp::main::test_self_call(p);
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

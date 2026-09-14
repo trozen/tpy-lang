@@ -22,7 +22,7 @@ void mutate_rec(A& r) {
 //     return take_rec(A(7))
 int32_t use_ret() {
     A __tmp_1 = A(7);
-    return take_rec(__tmp_1);
+    return ::tpyapp::main::take_rec(__tmp_1);
 }
 
 // def use_decl() -> int32:
@@ -30,7 +30,7 @@ int32_t use_ret() {
 //     return r
 int32_t use_decl() {
     A __tmp_2 = A(8);
-    int32_t r = take_rec(__tmp_2);
+    int32_t r = ::tpyapp::main::take_rec(__tmp_2);
     return r;
 }
 
@@ -38,7 +38,7 @@ int32_t use_decl() {
 //     mutate_rec(A(9))
 void use_stmt() {
     A __tmp_3 = A(9);
-    mutate_rec(__tmp_3);
+    ::tpyapp::main::mutate_rec(__tmp_3);
 }
 
 // def main() -> None:
@@ -46,9 +46,9 @@ void use_stmt() {
 //     print(use_decl())
 //     use_stmt()
 void main() {
-    std::cout << use_ret() << "\n";
-    std::cout << use_decl() << "\n";
-    use_stmt();
+    std::cout << ::tpyapp::main::use_ret() << "\n";
+    std::cout << ::tpyapp::main::use_decl() << "\n";
+    ::tpyapp::main::use_stmt();
 }
 
 // main()
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

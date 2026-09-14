@@ -45,17 +45,17 @@ void __tpy_init() {
     initialized = true;
 
     std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{};
-    takes_list(__tmp_1);
+    ::tpyapp::main::takes_list(__tmp_1);
     std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    takes_list_int32(__tmp_2);
+    ::tpyapp::main::takes_list_int32(__tmp_2);
     std::vector<::tpy::BigInt> __tmp_3 = std::vector<::tpy::BigInt>();
-    takes_list(__tmp_3);
+    ::tpyapp::main::takes_list(__tmp_3);
     std::vector<int32_t> __tmp_4 = std::vector<int32_t>();
-    takes_list_int32(__tmp_4);
+    ::tpyapp::main::takes_list_int32(__tmp_4);
     std::vector<::tpy::BigInt> __tmp_5 = {1, 2, 3};
-    takes_list(__tmp_5);
+    ::tpyapp::main::takes_list(__tmp_5);
     std::array<int32_t, 3> __tmp_6 = {10, 20, 30};
-    takes_array(__tmp_6);
+    ::tpyapp::main::takes_array(__tmp_6);
 }
 
 } // namespace tpyapp::main

@@ -42,7 +42,7 @@ int32_t sum_native(T_xs& xs) {
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t maybe_sum(T_xs& xs) {
     if constexpr (::tpy::NativeIterable<T_xs, int32_t>) {
-        return sum_native(xs);
+        return ::tpyapp::main::sum_native(xs);
     }
     return -1;
 }

@@ -37,9 +37,9 @@ void classify(std::optional<int32_t> v) {
 //     classify(None)
 //     classify(1)
 void main() {
-    classify(7);
-    classify(std::nullopt);
-    classify(1);
+    ::tpyapp::main::classify(7);
+    ::tpyapp::main::classify(std::nullopt);
+    ::tpyapp::main::classify(1);
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -37,10 +37,10 @@ void main() {
     std::cout << ((b) ? (1) : (0)) << "\n";
     int32_t n = 100;
     std::cout << (::tpy::add_check<int32_t>(n, 1)) << "\n";
-    std::cout << takes_bool(true) << "\n";
+    std::cout << ::tpyapp::main::takes_bool(true) << "\n";
     std::string s = "hello";
     std::cout << s << "\n";
-    std::cout << ((returns_bool()) ? (1) : (0)) << "\n";
+    std::cout << ((::tpyapp::main::returns_bool()) ? (1) : (0)) << "\n";
     std::optional<int32_t> opt = 8;
     std::cout << (::tpy::add_check<int32_t>((((opt.has_value())) ? ((*opt)) : (0)), 1)) << "\n";
 }
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

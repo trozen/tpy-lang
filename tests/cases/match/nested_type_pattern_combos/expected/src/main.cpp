@@ -157,8 +157,8 @@ void main() {
     ::tpy::Union<Box<Box<int32_t>>*, Box<Box<std::string>>*> a1 = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::Union<Box<Box<int32_t>>, Box<Box<std::string>>> __slot_2 = Box<Box<int32_t>>(Box<int32_t>(42));
     ::tpy::Union<Box<Box<int32_t>>*, Box<Box<std::string>>*> a2 = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << nested_param(a1.as_const()) << "\n";
-    std::cout << nested_param(a2.as_const()) << "\n";
+    std::cout << ::tpyapp::main::nested_param(a1.as_const()) << "\n";
+    std::cout << ::tpyapp::main::nested_param(a2.as_const()) << "\n";
     ::tpy::Union<int32_t, std::string> __tmp_1 = "world";
     ::tpy::Union<Container, int32_t> __slot_3 = Container(__tmp_1);
     ::tpy::Union<Container*, int32_t*> b1 = ::tpy::to_ptr_variant(__slot_3);
@@ -167,20 +167,20 @@ void main() {
     ::tpy::Union<Container*, int32_t*> b2 = ::tpy::to_ptr_variant(__slot_4);
     ::tpy::Union<Container, int32_t> __slot_5 = 99;
     ::tpy::Union<Container*, int32_t*> b3 = ::tpy::to_ptr_variant(__slot_5);
-    std::cout << union_subj_union_field(b1.as_const()) << "\n";
-    std::cout << union_subj_union_field(b2.as_const()) << "\n";
-    std::cout << union_subj_union_field(b3.as_const()) << "\n";
+    std::cout << ::tpyapp::main::union_subj_union_field(b1.as_const()) << "\n";
+    std::cout << ::tpyapp::main::union_subj_union_field(b2.as_const()) << "\n";
+    std::cout << ::tpyapp::main::union_subj_union_field(b3.as_const()) << "\n";
     Box<std::string> __tmp_3 = Box<std::string>("abc");
     Outer c1 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&__tmp_3});
     Box<int32_t> __tmp_4 = Box<int32_t>(10);
     Outer c2 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&__tmp_4});
-    std::cout << union_field_param(c1) << "\n";
-    std::cout << union_field_param(c2) << "\n";
+    std::cout << ::tpyapp::main::union_field_param(c1) << "\n";
+    std::cout << ::tpyapp::main::union_field_param(c2) << "\n";
     ::tpy::Union<int32_t, std::string> __tmp_5 = "hi";
     ::tpy::Union<int32_t, std::string> __tmp_6 = 5;
     ::tpy::Union<int32_t, std::string> __tmp_7 = "x";
     std::vector<Tagged> items = {Tagged("s", __tmp_5), Tagged("n", __tmp_6), Tagged("?", __tmp_7)};
-    double_union(items);
+    ::tpyapp::main::double_union(items);
 }
 
 // main()
@@ -189,7 +189,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

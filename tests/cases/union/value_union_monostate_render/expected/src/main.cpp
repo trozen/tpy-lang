@@ -20,7 +20,7 @@ bool widened() {
     x = 2.5;
     ::tpy::Union<double, int32_t> y = x;
     ::tpy::Union<double, int32_t> __tmp_1 = 2.5;
-    return same(y, __tmp_1);
+    return ::tpyapp::main::same(y, __tmp_1);
 }
 
 // def started_none() -> bool:
@@ -40,9 +40,9 @@ bool started_none() {
 //     print(widened())
 //     print(started_none())
 void main() {
-    std::cout << ::tpy::print_bool(same(1, 1)) << " " << ::tpy::print_bool(same(1, 2)) << "\n";
-    std::cout << ::tpy::print_bool(widened()) << "\n";
-    std::cout << ::tpy::print_bool(started_none()) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::same(1, 1)) << " " << ::tpy::print_bool(::tpyapp::main::same(1, 2)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::widened()) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::started_none()) << "\n";
 }
 
 // main()
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

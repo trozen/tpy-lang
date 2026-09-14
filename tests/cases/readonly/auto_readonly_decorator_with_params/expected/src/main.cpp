@@ -25,7 +25,7 @@ void main() {
     std::vector<int32_t> items = {99};
     std::span<int32_t> s = b.merge_span(items);
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    read_buf(b);
+    ::tpyapp::main::read_buf(b);
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

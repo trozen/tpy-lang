@@ -107,14 +107,14 @@ std::string check_color(std::optional<Color> c) {
 //     print(check_color(Color.Red))
 //     print(check_color(Color.Green))
 void main() {
-    std::cout << check_point(nullptr) << "\n";
+    std::cout << ::tpyapp::main::check_point(nullptr) << "\n";
     Point __tmp_1 = Point(0, 0);
-    std::cout << check_point(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::check_point(&(__tmp_1)) << "\n";
     Point __tmp_2 = Point(3, 4);
-    std::cout << check_point(&(__tmp_2)) << "\n";
-    std::cout << check_color(std::nullopt) << "\n";
-    std::cout << check_color(Color::Red) << "\n";
-    std::cout << check_color(Color::Green) << "\n";
+    std::cout << ::tpyapp::main::check_point(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::check_color(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::check_color(Color::Red) << "\n";
+    std::cout << ::tpyapp::main::check_color(Color::Green) << "\n";
 }
 
 // from dataclasses import dataclass
@@ -127,7 +127,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

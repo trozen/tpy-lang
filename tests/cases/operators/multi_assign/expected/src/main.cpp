@@ -96,7 +96,7 @@ void main() {
     Obj& o2 = o1;
     o1.val = ::tpy::BigInt(10);
     std::cout << o1.val << " " << o2.val << "\n";
-    Obj o3 = make_obj(::tpy::BigInt(42));
+    Obj o3 = ::tpyapp::main::make_obj(::tpy::BigInt(42));
     Obj& o4 = o3;
     o3.val = ::tpy::BigInt(0);
     std::cout << o3.val << " " << o4.val << "\n";
@@ -141,7 +141,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

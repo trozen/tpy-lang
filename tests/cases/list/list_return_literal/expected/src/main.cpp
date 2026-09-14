@@ -29,11 +29,11 @@ std::vector<int32_t> make_list(int32_t x) {
 //     for x in c:
 //         print(x)
 void main() {
-    std::vector<int32_t> a = make_empty<int32_t>();
+    std::vector<int32_t> a = ::tpyapp::main::make_empty<int32_t>();
     a.push_back(99);
     std::cout << ::tpy::__len__(a) << "\n";
     std::cout << ::tpy::__getitem__(a, 0) << "\n";
-    std::vector<int32_t> b = make_single<int32_t>(42);
+    std::vector<int32_t> b = ::tpyapp::main::make_single<int32_t>(42);
     b.push_back(100);
     auto& __obj_0 = b;
     auto __beg_0 = __obj_0.begin();
@@ -42,7 +42,7 @@ void main() {
         int32_t x = *__beg_0;
         std::cout << x << "\n";
     }
-    std::vector<int32_t> c = make_list(10);
+    std::vector<int32_t> c = ::tpyapp::main::make_list(10);
     c.push_back(100);
     auto& __obj_1 = c;
     auto __beg_1 = __obj_1.begin();
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

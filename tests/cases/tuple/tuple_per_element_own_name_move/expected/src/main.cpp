@@ -15,7 +15,7 @@ int32_t sink(std::tuple<Box, int32_t>&& p) {
 //     return sink(pair)
 int32_t pass_by_name(Box&& ob) {
     auto pair = std::tuple<Box, int32_t>{std::move(ob), 0};
-    return sink(std::move(pair));
+    return ::tpyapp::main::sink(std::move(pair));
 }
 
 // def return_by_name(ob: Own[Box]) -> tuple[Own[Box], int32]:
@@ -31,8 +31,8 @@ std::tuple<Box, int32_t> return_by_name(Box&& ob) {
 //     got, n = return_by_name(Box(7))
 //     print(got.val + n)
 void main() {
-    std::cout << pass_by_name(Box(5)) << "\n";
-    auto __tup_1 = return_by_name(Box(7));
+    std::cout << ::tpyapp::main::pass_by_name(Box(5)) << "\n";
+    auto __tup_1 = ::tpyapp::main::return_by_name(Box(7));
     Box got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     std::cout << (::tpy::add_check<int32_t>(got.val, n)) << "\n";
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

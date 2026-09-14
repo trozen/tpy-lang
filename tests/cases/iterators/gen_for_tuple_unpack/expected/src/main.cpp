@@ -154,7 +154,7 @@ __gen_multi multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std
 void main() {
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}, std::tuple<int32_t, int32_t>{5, 6}};
-        auto __src_0 = sums(__tmp_1);
+        auto __src_0 = ::tpyapp::main::sums(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -166,7 +166,7 @@ void main() {
     std::cout << "---" << "\n";
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_2 = {std::tuple<int32_t, int32_t>{10, 20}, std::tuple<int32_t, int32_t>{30, 40}};
-        auto __src_2 = firsts(__tmp_2);
+        auto __src_2 = ::tpyapp::main::firsts(__tmp_2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -179,7 +179,7 @@ void main() {
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_3 = {std::tuple<int32_t, int32_t>{1, 2}};
         std::vector<std::tuple<int32_t, int32_t>> __tmp_4 = {std::tuple<int32_t, int32_t>{3, 4}, std::tuple<int32_t, int32_t>{5, 6}};
-        auto __src_4 = multi(__tmp_3, __tmp_4);
+        auto __src_4 = ::tpyapp::main::multi(__tmp_3, __tmp_4);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -196,7 +196,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -21,7 +21,7 @@ namespace tpyapp::main {
 void test_augassign() {
     ::tpy::BigInt x = ::tpy::BigInt(0);
     if (true) {
-        x = get_big();
+        x = ::tpyapp::main::get_big();
     }
     x = (x) + (::tpy::BigInt(1));
     std::cout << x << "\n";
@@ -36,7 +36,7 @@ void test_augassign() {
 void test_binop() {
     ::tpy::BigInt x = ::tpy::BigInt(0);
     if (true) {
-        x = get_big();
+        x = ::tpyapp::main::get_big();
     }
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(10)));
     std::cout << y << "\n";
@@ -61,11 +61,11 @@ void test_elif_chain() {
     if ((c == ">")) {
     } else if ((c == "[")) {
         if (true) {
-            x = get_big();
+            x = ::tpyapp::main::get_big();
         }
     } else if ((c == "]")) {
         if (true) {
-            x = get_big();
+            x = ::tpyapp::main::get_big();
         }
     }
     x = (x) + (::tpy::BigInt(1));
@@ -80,9 +80,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_augassign();
-    test_binop();
-    test_elif_chain();
+    ::tpyapp::main::test_augassign();
+    ::tpyapp::main::test_binop();
+    ::tpyapp::main::test_elif_chain();
 }
 
 } // namespace tpyapp::main

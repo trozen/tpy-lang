@@ -74,7 +74,7 @@ int32_t depth(const Tree& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            int32_t d = depth(child);
+            int32_t d = ::tpyapp::main::depth(child);
             if ((d > m)) {
                 m = d;
             }
@@ -141,22 +141,22 @@ void main() {
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_3);
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_4 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> d = ::tpy::to_ptr_variant(__slot_4);
-    std::cout << describe(a.as_const()) << "\n";
-    std::cout << describe(b.as_const()) << "\n";
-    std::cout << describe(c.as_const()) << "\n";
-    std::cout << describe(d.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(a.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(b.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(d.as_const()) << "\n";
     Tree leaf = 5;
     Tree branch = std::vector<Tree>{1, 2, 3};
     Tree nested = std::vector<Tree>{1, std::vector<Tree>{2, std::vector<Tree>{3, 4}}};
-    std::cout << depth(leaf) << "\n";
-    std::cout << depth(branch) << "\n";
-    std::cout << depth(nested) << "\n";
+    std::cout << ::tpyapp::main::depth(leaf) << "\n";
+    std::cout << ::tpyapp::main::depth(branch) << "\n";
+    std::cout << ::tpyapp::main::depth(nested) << "\n";
     ::tpy::Union<Box<std::string>, int32_t> __slot_5 = 99;
     ::tpy::Union<Box<std::string>*, int32_t*> e = ::tpy::to_ptr_variant(__slot_5);
     ::tpy::Union<Box<std::string>, int32_t> __slot_6 = Box<std::string>("hello");
     ::tpy::Union<Box<std::string>*, int32_t*> f = ::tpy::to_ptr_variant(__slot_6);
-    std::cout << unbox(e.as_const()) << "\n";
-    std::cout << unbox(f.as_const()) << "\n";
+    std::cout << ::tpyapp::main::unbox(e.as_const()) << "\n";
+    std::cout << ::tpyapp::main::unbox(f.as_const()) << "\n";
 }
 
 // main()
@@ -165,7 +165,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

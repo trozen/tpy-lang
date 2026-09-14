@@ -51,9 +51,9 @@ void in_loop() {
 //     print("---")
 //     print("done")
 void main() {
-    in_if(true);
+    ::tpyapp::main::in_if(true);
     std::cout << "---" << "\n";
-    in_loop();
+    ::tpyapp::main::in_loop();
     std::cout << "---" << "\n";
     std::cout << "done" << "\n";
 }
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

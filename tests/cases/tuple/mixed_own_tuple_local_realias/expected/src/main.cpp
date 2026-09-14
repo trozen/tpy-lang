@@ -16,7 +16,7 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 //     p[0].val = 55
 //     p[1].val = 66
 void realias(Holder& h, Box& b) {
-    std::tuple<Box, Box*> p = make_mixed(b);
+    std::tuple<Box, Box*> p = ::tpyapp::main::make_mixed(b);
     p = ::tpy::tuple_to_pointer<std::tuple<Box, Box*>>(h.pair);
     std::get<0>(p).val = 55;
     std::get<1>(p)->val = 66;
@@ -32,7 +32,7 @@ void realias(Holder& h, Box& b) {
 void main() {
     Box b = Box(7);
     Holder h = Holder(b);
-    realias(h, b);
+    ::tpyapp::main::realias(h, b);
     std::cout << "elem0:" << " " << std::get<0>(h.pair).val << "\n";
     std::cout << "elem1:" << " " << std::get<1>(h.pair).val << "\n";
 }
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

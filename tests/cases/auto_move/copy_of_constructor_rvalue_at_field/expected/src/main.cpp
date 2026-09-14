@@ -22,7 +22,7 @@ void main() {
     Holder h = Holder(src);
     src.x = 99;
     std::cout << h.p.x << "\n";
-    use(h);
+    ::tpyapp::main::use(h);
     std::cout << h.p.x << " " << h.p.y << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -51,8 +51,8 @@ namespace tpyapp::main {
 void free_function() {
     std::vector<float> fs = {0.5, 1.5};
     float k = 1.5f;
-    std::cout << "free_function:" << " " << ::tpy::print_bool(has_item<float>(fs, k)) << " " << ::tpy::print_bool(has_item<float>(fs, 2.25f)) << "\n";
-    std::cout << "free_function:" << " " << ::tpy::print_float(static_cast<double>(echo<float>(k))) << "\n";
+    std::cout << "free_function:" << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, 2.25f)) << "\n";
+    std::cout << "free_function:" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::echo<float>(k))) << "\n";
 }
 
 // def method() -> None:
@@ -94,7 +94,7 @@ void enum_instantiation() {
 //         print("generator_frame: stop")
 void generator_frame() {
     float v = 1.5f;
-    auto it = hold<float>(v);
+    auto it = ::tpyapp::main::hold<float>(v);
     float first;
     float second;
     {
@@ -128,7 +128,7 @@ void generator_frame() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         v = 1.5;
-        c.emplace(held<float>(v));
+        c.emplace(::tpyapp::main::held<float>(v));
         v = 2.5;
         __state = S_RESUME_0;
         continue;
@@ -160,11 +160,11 @@ __coro_async_frame async_frame() {
 //     generator_frame()
 //     asyncio.run(async_frame())
 void main() {
-    free_function();
-    method();
-    enum_instantiation();
-    generator_frame();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_frame()));
+    ::tpyapp::main::free_function();
+    ::tpyapp::main::method();
+    ::tpyapp::main::enum_instantiation();
+    ::tpyapp::main::generator_frame();
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_frame()));
 }
 
 // # Pins the value form of a generic instantiation at float32 and at an enum: a T
@@ -181,7 +181,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

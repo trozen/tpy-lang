@@ -118,8 +118,8 @@ void count_members() {
 //     print_colors()
 //     count_members()
 void main() {
-    print_colors();
-    count_members();
+    ::tpyapp::main::print_colors();
+    ::tpyapp::main::count_members();
 }
 
 // # Test enum iteration with for-each loop
@@ -131,7 +131,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

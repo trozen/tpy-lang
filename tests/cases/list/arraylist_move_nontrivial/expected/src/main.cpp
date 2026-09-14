@@ -78,7 +78,7 @@ namespace tpyapp::main {
 //     acc = make_full()           # reassign -> drop old, relocate [a, b, c, d]
 //     print(len(acc), acc[0].name, acc[3].name)  # 4 a d
 void main() {
-    ::tpystd::tplib::array_list::ArrayList<Item, 4> xs = make();
+    ::tpystd::tplib::array_list::ArrayList<Item, 4> xs = ::tpyapp::main::make();
     std::cout << ::tpy::__len__(xs) << "\n";
     std::cout << xs[0].name << " " << xs[1].name << "\n";
     xs[0].n = ::tpy::BigInt(99);
@@ -90,21 +90,21 @@ void main() {
     std::cout << xs[0].name << " " << ::tpy::__len__(xs) << "\n";
     xs.reverse();
     std::cout << xs[0].name << "\n";
-    ::tpystd::tplib::array_list::ArrayList<Item, 4> ys = make_full();
+    ::tpystd::tplib::array_list::ArrayList<Item, 4> ys = ::tpyapp::main::make_full();
     std::cout << ::tpy::__len__(ys) << "\n";
     std::cout << ys[3].name << "\n";
-    ::tpystd::tplib::array_list::ArrayList<Item, 4> zs = make_empty();
+    ::tpystd::tplib::array_list::ArrayList<Item, 4> zs = ::tpyapp::main::make_empty();
     std::cout << ::tpy::__len__(zs) << "\n";
     zs.append(Item("late", ::tpy::BigInt(7)));
     std::cout << zs[0].name << "\n";
-    ::tpystd::tplib::array_list::ArrayList<Item, 4> ws = make();
+    ::tpystd::tplib::array_list::ArrayList<Item, 4> ws = ::tpyapp::main::make();
     ::tpystd::tplib::array_list::ArrayList<Item, 4> moved = std::move(ws);
     std::cout << ::tpy::__len__(moved) << " " << moved[0].name << " " << moved[1].name << "\n";
     moved[0].name = "shifted";
     std::cout << moved[0].name << "\n";
-    ::tpystd::tplib::array_list::ArrayList<Item, 4> __slot_1 = make();
+    ::tpystd::tplib::array_list::ArrayList<Item, 4> __slot_1 = ::tpyapp::main::make();
     ::tpystd::tplib::array_list::ArrayList<Item, 4>* acc = &__slot_1;
-    (*acc) = make_full();
+    (*acc) = ::tpyapp::main::make_full();
     std::cout << ::tpy::__len__((*acc)) << " " << (*acc)[0].name << " " << (*acc)[3].name << "\n";
 }
 
@@ -125,7 +125,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

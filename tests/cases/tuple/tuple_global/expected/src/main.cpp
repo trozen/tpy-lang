@@ -29,7 +29,7 @@ void __tpy_init() {
 
     t1 = std::tuple<int32_t, std::string>{1, "hello"};
     t2 = std::tuple<int32_t, bool>{42, true};
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

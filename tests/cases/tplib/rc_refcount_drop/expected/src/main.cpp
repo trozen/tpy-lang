@@ -15,7 +15,7 @@ void use(const ::tpystd::tplib::rc::Rc<State>& r) {
 //     use(r)
 void single_owner() {
     ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_<State>(State("solo"));
-    use(r);
+    ::tpyapp::main::use(r);
 }
 
 // def shared_via_clone() -> None:
@@ -26,8 +26,8 @@ void single_owner() {
 void shared_via_clone() {
     ::tpystd::tplib::rc::Rc<State> r1 = Rc<State>::new_<State>(State("shared"));
     ::tpystd::tplib::rc::Rc<State> r2 = r1.clone();
-    use(r1);
-    use(r2);
+    ::tpyapp::main::use(r1);
+    ::tpyapp::main::use(r2);
 }
 
 // def main() -> None:
@@ -38,9 +38,9 @@ void shared_via_clone() {
 //     print("--- done ---")
 void main() {
     std::cout << "--- single owner ---" << "\n";
-    single_owner();
+    ::tpyapp::main::single_owner();
     std::cout << "--- shared via clone ---" << "\n";
-    shared_via_clone();
+    ::tpyapp::main::shared_via_clone();
     std::cout << "--- done ---" << "\n";
 }
 
@@ -53,7 +53,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

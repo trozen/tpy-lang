@@ -233,7 +233,7 @@ __gen_bounded bounded(int32_t limit) {
 //         print("shapes-v", v)
 void main() {
     {
-        auto __src_0 = upto();
+        auto __src_0 = ::tpyapp::main::upto();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -244,7 +244,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        auto __src_2 = upto(5);
+        auto __src_2 = ::tpyapp::main::upto(5);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -255,7 +255,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        auto __src_4 = upto(6, 2);
+        auto __src_4 = ::tpyapp::main::upto(6, 2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -266,7 +266,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        auto __src_6 = upto_final();
+        auto __src_6 = ::tpyapp::main::upto_final();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -277,7 +277,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        auto __src_8 = bounded();
+        auto __src_8 = ::tpyapp::main::bounded();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -288,7 +288,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        auto __src_10 = bounded(1);
+        auto __src_10 = ::tpyapp::main::bounded(1);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -300,7 +300,7 @@ void main() {
     std::cout << "--" << "\n";
     std::vector<int32_t> nums = {10, 20, 30, 40};
     {
-        auto __src_12 = head<int32_t>(nums);
+        auto __src_12 = ::tpyapp::main::head<int32_t>(nums);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -311,7 +311,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        auto __src_14 = head<int32_t>(nums, 3);
+        auto __src_14 = ::tpyapp::main::head<int32_t>(nums, 3);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -594,7 +594,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

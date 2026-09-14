@@ -16,7 +16,7 @@ std::tuple<int32_t, Box> make_pair(int32_t v) {
 //     return t
 std::tuple<int32_t, Box*> pick(Holder& h) {
     std::optional<std::tuple<int32_t, Box>> __slot_1;
-    std::tuple<int32_t, Box*> t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(9)));
+    std::tuple<int32_t, Box*> t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(9)));
     t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
     return t;
 }
@@ -26,7 +26,7 @@ std::tuple<int32_t, Box*> pick(Holder& h) {
 //     pr[1].val = 55      # mutate the returned alias -- visible on h.pair
 //     return pr[0]
 int32_t use(Holder& h) {
-    auto pr = pick(h);
+    auto pr = ::tpyapp::main::pick(h);
     std::get<1>(pr)->val = 55;
     return std::get<0>(pr);
 }
@@ -37,7 +37,7 @@ int32_t use(Holder& h) {
 //     print(h.pair[1].val)  # 55 (returned tuple aliased h.pair, not a copy)
 void main() {
     Holder h = Holder(Box(5));
-    std::cout << use(h) << "\n";
+    std::cout << ::tpyapp::main::use(h) << "\n";
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

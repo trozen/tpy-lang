@@ -41,11 +41,11 @@ void sec_own_param() {
 //     print("return-twin:", t.borrow().n, dt.n)
 void sec_return() {
     GHolder<Cell> g = GHolder<Cell>(Cell(1));
-    Cell d = dup_return<Cell>(g);
+    Cell d = ::tpyapp::main::dup_return<Cell>(g);
     g.borrow().n = 99;
     std::cout << "return:" << " " << g.borrow().n << " " << d.n << "\n";
     Twin t = Twin(Cell(1));
-    Cell dt = dup_return_twin(t);
+    Cell dt = ::tpyapp::main::dup_return_twin(t);
     t.borrow().n = 99;
     std::cout << "return-twin:" << " " << t.borrow().n << " " << dt.n << "\n";
 }
@@ -59,7 +59,7 @@ void sec_return() {
 void sec_generic() {
     GHolder<Cell> g = GHolder<Cell>(Cell(1));
     std::vector<Cell> xs = std::vector<Cell>{};
-    collect_generic<Cell>(g, xs);
+    ::tpyapp::main::collect_generic<Cell>(g, xs);
     g.borrow().n = 99;
     std::cout << "generic:" << " " << g.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n";
 }
@@ -73,7 +73,7 @@ void sec_generic() {
 void sec_twin() {
     Twin t = Twin(Cell(1));
     std::vector<Cell> xs = std::vector<Cell>{};
-    collect_twin(t, xs);
+    ::tpyapp::main::collect_twin(t, xs);
     t.borrow().n = 99;
     std::cout << "twin:" << " " << t.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n";
 }
@@ -99,11 +99,11 @@ void sec_method() {
 //     sec_return()
 //     sec_own_param()
 void main() {
-    sec_generic();
-    sec_twin();
-    sec_method();
-    sec_return();
-    sec_own_param();
+    ::tpyapp::main::sec_generic();
+    ::tpyapp::main::sec_twin();
+    ::tpyapp::main::sec_method();
+    ::tpyapp::main::sec_return();
+    ::tpyapp::main::sec_own_param();
 }
 
 // main()
@@ -112,7 +112,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

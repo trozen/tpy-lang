@@ -55,21 +55,21 @@ void setup_pair(Pair<int32_t, int64_t>& p) {
 //     consume(Container())
 void main() {
     Container<int32_t> c = Container<int32_t>();
-    consume(c);
+    ::tpyapp::main::consume(c);
     std::cout << c.get() << "\n";
-    Container<int64_t> c2 = make_container();
+    Container<int64_t> c2 = ::tpyapp::main::make_container();
     c2.set(42);
     std::cout << c2.get() << "\n";
     Pair<int32_t, int64_t> p = Pair<int32_t, int64_t>();
-    setup_pair(p);
+    ::tpyapp::main::setup_pair(p);
     std::cout << p.get_a() << "\n";
     std::cout << p.get_b() << "\n";
     Container<int32_t> c3 = Container<int32_t>();
     c3.set(7);
-    consume(c3);
+    ::tpyapp::main::consume(c3);
     std::cout << c3.get() << "\n";
     Container<int32_t> __tmp_1 = Container<int32_t>();
-    consume(__tmp_1);
+    ::tpyapp::main::consume(__tmp_1);
 }
 
 // main()
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

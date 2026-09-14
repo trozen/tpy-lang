@@ -31,8 +31,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_strview_basic();
-    test_strview_getitem();
+    ::tpyapp::main::test_strview_basic();
+    ::tpyapp::main::test_strview_getitem();
 }
 
 } // namespace tpyapp::main

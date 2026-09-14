@@ -51,15 +51,15 @@ std::vector<int32_t> cat(const std::vector<int32_t>& a, const std::vector<int32_
 void main() {
     std::vector<int32_t> xs = {1, 2};
     std::vector<int32_t> ys = {3};
-    std::vector<int32_t> got = cat(xs, ys);
+    std::vector<int32_t> got = ::tpyapp::main::cat(xs, ys);
     got.push_back(9);
     std::cout << ::tpy::__len__(got) << " " << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
     ::tpy::ordered_set<int32_t> s1 = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::ordered_set<int32_t> s2 = ::tpy::ordered_set<int32_t>({2, 3});
-    ::tpy::ordered_set<int32_t> u = uni(s1, s2);
+    ::tpy::ordered_set<int32_t> u = ::tpyapp::main::uni(s1, s2);
     u.insert(9);
     std::cout << ::tpy::__len__(u) << " " << ::tpy::__len__(s1) << " " << ::tpy::__len__(s2) << "\n";
-    std::cout << ::tpy::__len__(inter(s1, s2)) << " " << ::tpy::__len__(diff(s1, s2)) << " " << ::tpy::__len__(sym(s1, s2)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::inter(s1, s2)) << " " << ::tpy::__len__(::tpyapp::main::diff(s1, s2)) << " " << ::tpy::__len__(::tpyapp::main::sym(s1, s2)) << "\n";
 }
 
 // main()
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

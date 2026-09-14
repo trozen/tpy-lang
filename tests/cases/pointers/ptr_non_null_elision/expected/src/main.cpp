@@ -59,14 +59,14 @@ void main() {
     std::cout << cp2->y << "\n";
     Point* q = p;
     std::cout << q->y << "\n";
-    Point* r = get_ptr(p);
+    Point* r = ::tpyapp::main::get_ptr(p);
     std::cout << ::tpy::deref_check(r).x << "\n";
-    p = get_ptr(q);
+    p = ::tpyapp::main::get_ptr(q);
     std::cout << ::tpy::deref_check(p).x << "\n";
     Point pt2 = Point(30, 40);
     p = &pt2;
     std::cout << p->x << "\n";
-    read_via_param(p);
+    ::tpyapp::main::read_via_param(p);
 }
 
 // main()
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

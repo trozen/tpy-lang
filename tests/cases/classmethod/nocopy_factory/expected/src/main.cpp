@@ -17,7 +17,7 @@ int32_t consume(Handle&& h) {
 void main() {
     Handle h = Handle::opened(7);
     std::cout << h.fd << "\n";
-    std::cout << consume(std::move(h)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(h)) << "\n";
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

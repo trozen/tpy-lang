@@ -21,7 +21,7 @@ int32_t copied_val(const A& a) {
 void main() {
     A a = A(1);
     a.bs.push_back(B(2));
-    int32_t c = copied_val(a);
+    int32_t c = ::tpyapp::main::copied_val(a);
     ::tpy::__getitem__(a.bs, 0).val = 20;
     std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << c << " " << ::tpy::__len__(a.bs) << "\n";
 }
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

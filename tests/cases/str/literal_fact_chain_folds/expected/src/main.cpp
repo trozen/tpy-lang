@@ -19,7 +19,7 @@ void f(std::string_view mode) {
 // def main() -> None:
 //     f("rb")
 void main() {
-    f("rb");
+    ::tpyapp::main::f("rb");
 }
 
 // main()
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

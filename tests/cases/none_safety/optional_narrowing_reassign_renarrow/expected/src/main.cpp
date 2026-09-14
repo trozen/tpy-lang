@@ -47,11 +47,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << test_reassign_renarrows(std::nullopt) << "\n";
-    std::cout << test_truthiness_short_circuit(3, 4) << "\n";
-    std::cout << test_truthiness_short_circuit(std::nullopt, 4) << "\n";
-    std::cout << test_is_not_none_short_circuit(3, 4) << "\n";
-    std::cout << test_is_not_none_short_circuit(std::nullopt, 4) << "\n";
+    std::cout << ::tpyapp::main::test_reassign_renarrows(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::test_truthiness_short_circuit(3, 4) << "\n";
+    std::cout << ::tpyapp::main::test_truthiness_short_circuit(std::nullopt, 4) << "\n";
+    std::cout << ::tpyapp::main::test_is_not_none_short_circuit(3, 4) << "\n";
+    std::cout << ::tpyapp::main::test_is_not_none_short_circuit(std::nullopt, 4) << "\n";
 }
 
 } // namespace tpyapp::main

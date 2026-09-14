@@ -213,22 +213,22 @@ std::string multi_guard(Color c, bool x, bool y) {
 //     print(multi_guard(Color.Green, False, False))
 //     print(multi_guard(Color.Red, True, True))
 void main() {
-    std::cout << classify(Color::Red) << "\n";
-    std::cout << classify(Color::Blue) << "\n";
-    std::cout << classify(Color::Green) << "\n";
-    std::cout << check(Color::Red, true) << "\n";
-    std::cout << check(Color::Red, false) << "\n";
-    std::cout << check(Color::Green, true) << "\n";
-    std::cout << mixed(Color::Red, true) << "\n";
-    std::cout << mixed(Color::Green, true) << "\n";
-    std::cout << mixed(Color::Green, false) << "\n";
-    std::cout << or_guard(Color::Red, true) << "\n";
-    std::cout << or_guard(Color::Red, false) << "\n";
-    std::cout << or_guard(Color::Green, true) << "\n";
-    std::cout << multi_guard(Color::Green, true, true) << "\n";
-    std::cout << multi_guard(Color::Green, false, true) << "\n";
-    std::cout << multi_guard(Color::Green, false, false) << "\n";
-    std::cout << multi_guard(Color::Red, true, true) << "\n";
+    std::cout << ::tpyapp::main::classify(Color::Red) << "\n";
+    std::cout << ::tpyapp::main::classify(Color::Blue) << "\n";
+    std::cout << ::tpyapp::main::classify(Color::Green) << "\n";
+    std::cout << ::tpyapp::main::check(Color::Red, true) << "\n";
+    std::cout << ::tpyapp::main::check(Color::Red, false) << "\n";
+    std::cout << ::tpyapp::main::check(Color::Green, true) << "\n";
+    std::cout << ::tpyapp::main::mixed(Color::Red, true) << "\n";
+    std::cout << ::tpyapp::main::mixed(Color::Green, true) << "\n";
+    std::cout << ::tpyapp::main::mixed(Color::Green, false) << "\n";
+    std::cout << ::tpyapp::main::or_guard(Color::Red, true) << "\n";
+    std::cout << ::tpyapp::main::or_guard(Color::Red, false) << "\n";
+    std::cout << ::tpyapp::main::or_guard(Color::Green, true) << "\n";
+    std::cout << ::tpyapp::main::multi_guard(Color::Green, true, true) << "\n";
+    std::cout << ::tpyapp::main::multi_guard(Color::Green, false, true) << "\n";
+    std::cout << ::tpyapp::main::multi_guard(Color::Green, false, false) << "\n";
+    std::cout << ::tpyapp::main::multi_guard(Color::Red, true, true) << "\n";
 }
 
 // # match/case or-patterns and guards on enum subjects
@@ -240,7 +240,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

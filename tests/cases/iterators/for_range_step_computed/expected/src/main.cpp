@@ -42,7 +42,7 @@ int32_t fixed_steps(int32_t end) {
         total = ::tpy::add_check<int32_t>(total, k);
     }
     int32_t __stop_1 = end;
-    int32_t __step_1 = stride(3);
+    int32_t __step_1 = ::tpyapp::main::stride(3);
     ::tpy::range_check_step_nonzero(__step_1);
     ::tpy::range_check_overflow<int32_t>(0, __stop_1, __step_1);
     for (int32_t k = 0; __step_1 > 0 ? k < __stop_1 : k > __stop_1; k += __step_1) {
@@ -98,8 +98,8 @@ int32_t fixed_steps(int32_t end) {
 //     print(fixed_steps(60))
 //     print(bigint_step(60))
 void main() {
-    std::cout << fixed_steps(60) << "\n";
-    std::cout << bigint_step(::tpy::BigInt(60)) << "\n";
+    std::cout << ::tpyapp::main::fixed_steps(60) << "\n";
+    std::cout << ::tpyapp::main::bigint_step(::tpy::BigInt(60)) << "\n";
 }
 
 // main()
@@ -108,7 +108,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

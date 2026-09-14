@@ -28,11 +28,11 @@ namespace tpyapp::main {
 //     print(pick(C(3)))
 void main() {
     A __tmp_1 = A(::tpy::BigInt(1));
-    std::cout << pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
     B __tmp_2 = B(::tpy::BigInt(2));
-    std::cout << pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
     C __tmp_3 = C(::tpy::BigInt(3));
-    std::cout << pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
 }
 
 // main()
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -45,7 +45,7 @@ void main() {
     if ((std::tuple<int32_t, int32_t>{1, 0} < std::tuple<int32_t, int32_t>{1, 1})) {
         std::cout << "less" << "\n";
     }
-    test_nocopy_ordering();
+    ::tpyapp::main::test_nocopy_ordering();
 }
 
 // def test_nocopy_ordering() -> None:
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

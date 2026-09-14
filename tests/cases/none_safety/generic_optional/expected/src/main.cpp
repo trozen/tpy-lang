@@ -72,11 +72,11 @@ void main() {
     if ((v4 == nullptr)) {
         std::cout << "none init: ok" << "\n";
     }
-    std::optional<int32_t> r = maybe_val(7);
+    std::optional<int32_t> r = ::tpyapp::main::maybe_val(7);
     if ((r.has_value())) {
         std::cout << "maybe:" << " " << ::tpy::print_optional_val(r) << "\n";
     }
-    std::optional<int32_t> r2 = maybe_val(std::nullopt);
+    std::optional<int32_t> r2 = ::tpyapp::main::maybe_val(std::nullopt);
     if ((!r2.has_value())) {
         std::cout << "maybe None: ok" << "\n";
     }
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

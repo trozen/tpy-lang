@@ -107,7 +107,7 @@ std::vector<int32_t> make() {
 //     print(fresh)
 void owned_walrus() {
     std::optional<std::vector<int32_t>> fresh;
-    if ((::tpy::__len__((fresh = make(), *fresh)) > 0)) {
+    if ((::tpy::__len__((fresh = ::tpyapp::main::make(), *fresh)) > 0)) {
         (*fresh).push_back(30);
     }
     std::cout << ::tpy::ListPrinter((*fresh)) << "\n";
@@ -123,12 +123,12 @@ void owned_walrus() {
 //     owned_walrus()
 void main() {
     H h = H();
-    in_try(h);
-    er_value(h);
-    in_while(h);
-    in_if(h);
-    readonly_walrus(h);
-    owned_walrus();
+    ::tpyapp::main::in_try(h);
+    ::tpyapp::main::er_value(h);
+    ::tpyapp::main::in_while(h);
+    ::tpyapp::main::in_if(h);
+    ::tpyapp::main::readonly_walrus(h);
+    ::tpyapp::main::owned_walrus();
 }
 
 // main()
@@ -137,7 +137,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

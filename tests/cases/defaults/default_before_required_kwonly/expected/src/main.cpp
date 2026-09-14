@@ -24,11 +24,11 @@ int64_t g(int64_t a, int64_t b, int64_t c, int64_t d, int64_t e) {
 //     print(g(1, 7, d=4))
 //     print(g(1, 7, 8, d=4, e=9))
 void main() {
-    std::cout << f(1, 10, 3) << "\n";
-    std::cout << f(1, 2, 3) << "\n";
-    std::cout << g(1, 1, 2, 4) << "\n";
-    std::cout << g(1, 7, 2, 4) << "\n";
-    std::cout << g(1, 7, 8, 4, 9) << "\n";
+    std::cout << ::tpyapp::main::f(1, 10, 3) << "\n";
+    std::cout << ::tpyapp::main::f(1, 2, 3) << "\n";
+    std::cout << ::tpyapp::main::g(1, 1, 2, 4) << "\n";
+    std::cout << ::tpyapp::main::g(1, 7, 2, 4) << "\n";
+    std::cout << ::tpyapp::main::g(1, 7, 8, 4, 9) << "\n";
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

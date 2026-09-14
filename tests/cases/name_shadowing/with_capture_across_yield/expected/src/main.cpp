@@ -89,7 +89,7 @@ __gen_steps steps(int32_t limit) {
 void main() {
     int32_t total = 0;
     {
-        auto __src_0 = steps(5);
+        auto __src_0 = ::tpyapp::main::steps(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -107,7 +107,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print("func_ref", apply_str(identity, "hello"))  # tpyc: ok
 //     print("func_ref", apply_bytes(identity, b"ab"))  # tpyc: ok
 void main() {
-    std::cout << "func_ref" << " " << apply_str(identity<std::string>, "hello") << "\n";
-    std::cout << "func_ref" << " " << apply_bytes(identity<::tpy::Bytes>, ::tpy::bytes_literal("ab", 2)) << "\n";
+    std::cout << "func_ref" << " " << ::tpyapp::main::apply_str(identity<std::string>, "hello") << "\n";
+    std::cout << "func_ref" << " " << ::tpyapp::main::apply_bytes(identity<::tpy::Bytes>, ::tpy::bytes_literal("ab", 2)) << "\n";
 }
 
 // main()
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

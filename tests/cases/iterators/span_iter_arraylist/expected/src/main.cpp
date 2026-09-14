@@ -19,7 +19,7 @@ void main() {
     a.append(2);
     a.append(3);
     ::tpy::SpanIter<int32_t> it = a.__iter__();
-    consume(it);
+    ::tpyapp::main::consume(it);
 }
 
 // from tplib.array_list import ArrayList
@@ -32,7 +32,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::array_list::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

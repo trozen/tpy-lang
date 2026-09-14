@@ -14,8 +14,8 @@ int32_t use(uint32_t flags) {
 //     print(use())
 //     print(use(NOFLAG))
 void main() {
-    std::cout << use() << "\n";
-    std::cout << use(::tpyapp::consts::NOFLAG) << "\n";
+    std::cout << ::tpyapp::main::use() << "\n";
+    std::cout << ::tpyapp::main::use(::tpyapp::consts::NOFLAG) << "\n";
 }
 
 // from consts import NOFLAG, CASELESS
@@ -27,7 +27,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::consts::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

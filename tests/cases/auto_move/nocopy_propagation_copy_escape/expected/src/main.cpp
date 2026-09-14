@@ -18,8 +18,8 @@ int32_t consume(Container&& c) {
 void main() {
     Container c = Container(Handle(42));
     Container c2 = Container(c);
-    std::cout << consume(std::move(c)) << "\n";
-    std::cout << consume(std::move(c2)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(c)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(c2)) << "\n";
 }
 
 // main()
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -21,7 +21,7 @@ void takes_none(std::monostate x) {
 void main() {
     Field f = Field();
     f.take(std::monostate{});
-    takes_none(std::monostate{});
+    ::tpyapp::main::takes_none(std::monostate{});
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

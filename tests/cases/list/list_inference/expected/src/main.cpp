@@ -38,7 +38,7 @@ void takes_list(std::vector<int32_t>& x) {
 //     takes_list(data)
 void test_list_param() {
     std::vector<int32_t> data = {1, 2, 3};
-    takes_list(data);
+    ::tpyapp::main::takes_list(data);
 }
 
 // # Passed to Span param -> array (ArrayType)
@@ -53,7 +53,7 @@ int32_t takes_span(std::span<int32_t> x) {
 //     return takes_span(data)
 int32_t test_span_param() {
     std::array<int32_t, 3> data = {10, 20, 30};
-    return takes_span(::tpy::as_mut_span(data));
+    return ::tpyapp::main::takes_span(::tpy::as_mut_span(data));
 }
 
 // # Global with annotation -> vector (ListType)
@@ -90,10 +90,10 @@ void __tpy_init() {
     global_inferred = &__global_slot_2;
     std::cout << ::tpy::__getitem__((*global_list), 0) << "\n";
     std::cout << ::tpy::__getitem__((*global_inferred), 1) << "\n";
-    std::cout << test_no_mutation() << "\n";
-    std::cout << test_mutation() << "\n";
-    test_list_param();
-    std::cout << test_span_param() << "\n";
+    std::cout << ::tpyapp::main::test_no_mutation() << "\n";
+    std::cout << ::tpyapp::main::test_mutation() << "\n";
+    ::tpyapp::main::test_list_param();
+    std::cout << ::tpyapp::main::test_span_param() << "\n";
 }
 
 } // namespace tpyapp::main

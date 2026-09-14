@@ -32,7 +32,7 @@ void compound_of_unmutated_elems(const std::vector<std::string>& c, const std::v
 //     x = a if cond else mk()  # tpyc: type(str)
 //     print(x)
 void owning_rvalue_arm(std::string_view a, bool cond) {
-    std::string x = ((cond) ? (std::string(a)) : (mk()));
+    std::string x = ((cond) ? (std::string(a)) : (::tpyapp::main::mk()));
     std::cout << x << "\n";
 }
 
@@ -47,11 +47,11 @@ std::string mk() {
 //     compound_of_unmutated_elems(["aa"], ["bb"], False)
 //     owning_rvalue_arm("kept", True)
 void main() {
-    compound_of_params("hi", "yo", true);
+    ::tpyapp::main::compound_of_params("hi", "yo", true);
     std::vector<std::string> __tmp_1 = {"aa"};
     std::vector<std::string> __tmp_2 = {"bb"};
-    compound_of_unmutated_elems(__tmp_1, __tmp_2, false);
-    owning_rvalue_arm("kept", true);
+    ::tpyapp::main::compound_of_unmutated_elems(__tmp_1, __tmp_2, false);
+    ::tpyapp::main::owning_rvalue_arm("kept", true);
 }
 
 // main()
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

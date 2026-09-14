@@ -57,10 +57,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_non_last_use();
-    test_last_use();
-    test_container_non_last_use();
-    test_container_last_use();
+    ::tpyapp::main::test_non_last_use();
+    ::tpyapp::main::test_last_use();
+    ::tpyapp::main::test_container_non_last_use();
+    ::tpyapp::main::test_container_last_use();
 }
 
 } // namespace tpyapp::main

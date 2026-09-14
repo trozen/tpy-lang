@@ -22,7 +22,7 @@ void main() {
     c.n = Counter::seed();
     std::cout << c.bump() << "\n";
     std::cout << c.n << "\n";
-    std::cout << free(10) << "\n";
+    std::cout << ::tpyapp::main::free(10) << "\n";
 }
 
 // # A @function_macro on record methods: pass 5.5 runs it before the method
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

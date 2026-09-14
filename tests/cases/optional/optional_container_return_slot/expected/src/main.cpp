@@ -47,7 +47,7 @@ std::vector<::tpystd::tplib::box::Box<int32_t>> mk_boxes() {
 //     return None
 std::optional<std::vector<int32_t>> opt_list(bool flag) {
     if (flag) {
-        return mk_list();
+        return ::tpyapp::main::mk_list();
     }
     return std::nullopt;
 }
@@ -58,7 +58,7 @@ std::optional<std::vector<int32_t>> opt_list(bool flag) {
 //     return None
 std::optional<::tpy::ordered_map<std::string, int32_t>> opt_dict(bool flag) {
     if (flag) {
-        return mk_dict();
+        return ::tpyapp::main::mk_dict();
     }
     return std::nullopt;
 }
@@ -69,7 +69,7 @@ std::optional<::tpy::ordered_map<std::string, int32_t>> opt_dict(bool flag) {
 //     return None
 std::optional<::tpy::ordered_set<int32_t>> opt_set(bool flag) {
     if (flag) {
-        return mk_set();
+        return ::tpyapp::main::mk_set();
     }
     return std::nullopt;
 }
@@ -80,7 +80,7 @@ std::optional<::tpy::ordered_set<int32_t>> opt_set(bool flag) {
 //     return None
 std::optional<::tpy::ByteArray> opt_bytes(bool flag) {
     if (flag) {
-        return mk_bytes();
+        return ::tpyapp::main::mk_bytes();
     }
     return std::nullopt;
 }
@@ -91,7 +91,7 @@ std::optional<::tpy::ByteArray> opt_bytes(bool flag) {
 //     return None
 std::optional<std::array<int32_t, 6>> opt_array(bool flag) {
     if (flag) {
-        return mk_array();
+        return ::tpyapp::main::mk_array();
     }
     return std::nullopt;
 }
@@ -102,7 +102,7 @@ std::optional<std::array<int32_t, 6>> opt_array(bool flag) {
 //     return None
 std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> opt_boxes(bool flag) {
     if (flag) {
-        return mk_boxes();
+        return ::tpyapp::main::mk_boxes();
     }
     return std::nullopt;
 }
@@ -133,27 +133,27 @@ std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> opt_boxes(bool fl
 //     return total
 int32_t size(bool flag) {
     int32_t total = 0;
-    std::optional<std::vector<int32_t>> a = opt_list(flag);
+    std::optional<std::vector<int32_t>> a = ::tpyapp::main::opt_list(flag);
     if ((a.has_value())) {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*a)));
     }
-    std::optional<::tpy::ordered_map<std::string, int32_t>> b = opt_dict(flag);
+    std::optional<::tpy::ordered_map<std::string, int32_t>> b = ::tpyapp::main::opt_dict(flag);
     if ((b.has_value())) {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*b)));
     }
-    std::optional<::tpy::ordered_set<int32_t>> c = opt_set(flag);
+    std::optional<::tpy::ordered_set<int32_t>> c = ::tpyapp::main::opt_set(flag);
     if ((c.has_value())) {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*c)));
     }
-    std::optional<::tpy::ByteArray> d = opt_bytes(flag);
+    std::optional<::tpy::ByteArray> d = ::tpyapp::main::opt_bytes(flag);
     if ((d.has_value())) {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*d)));
     }
-    std::optional<std::array<int32_t, 6>> e = opt_array(flag);
+    std::optional<std::array<int32_t, 6>> e = ::tpyapp::main::opt_array(flag);
     if ((e.has_value())) {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*e)));
     }
-    std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> f = opt_boxes(flag);
+    std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> f = ::tpyapp::main::opt_boxes(flag);
     if ((f.has_value())) {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*f)));
     }
@@ -163,7 +163,7 @@ int32_t size(bool flag) {
 // def main() -> None:
 //     print(size(True), size(False))
 void main() {
-    std::cout << size(true) << " " << size(false) << "\n";
+    std::cout << ::tpyapp::main::size(true) << " " << ::tpyapp::main::size(false) << "\n";
 }
 
 // from tplib.box import Box
@@ -176,7 +176,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

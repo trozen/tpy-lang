@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    terminated_branch();
+    ::tpyapp::main::terminated_branch();
 }
 
 } // namespace tpyapp::main

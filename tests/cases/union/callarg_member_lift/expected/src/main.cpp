@@ -51,7 +51,7 @@ int32_t describe(::tpy::Union<std::monostate, const A*, const B*> u) {
 //     bump(a)
 //     return a.x
 int32_t via_param(A& a) {
-    bump(::tpy::Union<A*, B*>{&(a)});
+    ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(a)});
     return a.x;
 }
 
@@ -77,10 +77,10 @@ int32_t via_param(A& a) {
 //     print(xs[0].x, xs[1].x)  # loop-var lifts alias the list elements
 void main() {
     A a = A(5);
-    std::cout << via_param(a) << "\n";
+    std::cout << ::tpyapp::main::via_param(a) << "\n";
     std::cout << a.x << "\n";
-    std::cout << describe(::tpy::Union<std::monostate, const A*, const B*>{&(a)}) << "\n";
-    std::cout << describe(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<std::monostate, const A*, const B*>{&(a)}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n";
     Counter c = Counter(1);
     c.bump_via_union();
     std::cout << c.n << "\n";
@@ -94,7 +94,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& elem = *__beg_0;
-        bump(::tpy::Union<A*, B*>{&(elem)});
+        ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(elem)});
     }
     std::cout << ::tpy::__getitem__(xs, 0).x << " " << ::tpy::__getitem__(xs, 1).x << "\n";
 }
@@ -105,7 +105,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

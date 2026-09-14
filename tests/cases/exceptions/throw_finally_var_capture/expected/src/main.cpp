@@ -44,7 +44,7 @@ void main() {
     int32_t x;
     {
         try {
-            x = get_int();
+            x = ::tpyapp::main::get_int();
         } catch (...) {
             std::cout << x << "\n";
             throw;
@@ -54,7 +54,7 @@ void main() {
     std::string s;
     {
         try {
-            s = get_str();
+            s = ::tpyapp::main::get_str();
         } catch (...) {
             std::cout << s << "\n";
             throw;
@@ -64,7 +64,7 @@ void main() {
     std::optional<std::vector<int32_t>> items;
     {
         try {
-            items = get_list();
+            items = ::tpyapp::main::get_list();
         } catch (...) {
             std::cout << ::tpy::__len__((*items)) << "\n";
             throw;
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

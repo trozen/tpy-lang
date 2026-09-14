@@ -70,7 +70,7 @@ inline void Sink::push(std::string_view s) {
 // def via_call(self, out: Sink) -> None:
 //     do_mutate(out, "call;")
 inline void Renderer::via_call(Sink& out) const {
-    do_mutate(out, "call;");
+    ::tpyapp::main::do_mutate(out, "call;");
 }
 
 // # param mutated via a direct method call: `out` is `Sink&`

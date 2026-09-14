@@ -77,7 +77,7 @@ void for_own_call(bool flag) {
     for (int32_t i = 0; i < 2; ++i) {
         std::vector<int32_t>* items;
         if (flag) {
-            items = &*(__slot_1 = make_list());
+            items = &*(__slot_1 = ::tpyapp::main::make_list());
         } else {
             items = &*(__slot_2 = {i});
         }
@@ -555,32 +555,32 @@ std::expected<int32_t, MyErr> error_return_body(int32_t i) {
 //     except MyErr:
 //         print("error_return_body err")
 void main() {
-    for_record();
-    for_list();
-    for_own_call(true);
-    for_own_call(false);
-    while_one_arm();
-    nested_if(true, false);
-    nested_if(false, false);
-    sibling_decl(true);
-    sibling_decl(false);
-    post_loop_redecl();
-    dyn_protocol();
-    optional_both_arms();
-    optional_slot_loop();
-    optional_rvalue_init();
-    optional_list_init();
-    optional_redecl_post_loop();
+    ::tpyapp::main::for_record();
+    ::tpyapp::main::for_list();
+    ::tpyapp::main::for_own_call(true);
+    ::tpyapp::main::for_own_call(false);
+    ::tpyapp::main::while_one_arm();
+    ::tpyapp::main::nested_if(true, false);
+    ::tpyapp::main::nested_if(false, false);
+    ::tpyapp::main::sibling_decl(true);
+    ::tpyapp::main::sibling_decl(false);
+    ::tpyapp::main::post_loop_redecl();
+    ::tpyapp::main::dyn_protocol();
+    ::tpyapp::main::optional_both_arms();
+    ::tpyapp::main::optional_slot_loop();
+    ::tpyapp::main::optional_rvalue_init();
+    ::tpyapp::main::optional_list_init();
+    ::tpyapp::main::optional_redecl_post_loop();
     Builder b = Builder(3);
     b.add(4);
     std::cout << "ctor_method" << " " << b.total << "\n";
-    with_body();
-    try_body();
-    match_arm(0);
-    match_arm(1);
-    closure();
+    ::tpyapp::main::with_body();
+    ::tpyapp::main::try_body();
+    ::tpyapp::main::match_arm(0);
+    ::tpyapp::main::match_arm(1);
+    ::tpyapp::main::closure();
     {
-        std::cout << "error_return_body" << " " << ({ auto __er_2 = error_return_body(1); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return_body" << " " << ({ auto __er_2 = ::tpyapp::main::error_return_body(1); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except MyErr:
         __except_1:;
@@ -595,7 +595,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

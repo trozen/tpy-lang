@@ -145,7 +145,7 @@ void test_pass_to_mutating_func() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        mutate_point(p);
+        ::tpyapp::main::mutate_point(p);
     }
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
@@ -165,7 +165,7 @@ void test_pass_to_readonly_func() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        total = (::tpy::add_check<int32_t>(total, read_point(p)));
+        total = (::tpy::add_check<int32_t>(total, ::tpyapp::main::read_point(p)));
     }
     std::cout << total << "\n";
 }
@@ -302,24 +302,24 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_bigint_const_ref();
-    test_bigint_mutated();
-    test_read_only_loop();
-    test_non_readonly_method_loop();
-    test_field_mutate_loop();
-    test_nested_field_mutate_loop();
-    test_assign_to_local_loop();
+    ::tpyapp::main::test_bigint_const_ref();
+    ::tpyapp::main::test_bigint_mutated();
+    ::tpyapp::main::test_read_only_loop();
+    ::tpyapp::main::test_non_readonly_method_loop();
+    ::tpyapp::main::test_field_mutate_loop();
+    ::tpyapp::main::test_nested_field_mutate_loop();
+    ::tpyapp::main::test_assign_to_local_loop();
     static std::vector<Point> __global_slot_1 = {Point(5, 6)};
     items_for_find = &__global_slot_1;
-    result = find_point((*items_for_find), 5);
+    result = ::tpyapp::main::find_point((*items_for_find), 5);
     if ((result != nullptr)) {
         std::cout << result->x << "\n";
     }
-    test_pass_to_mutating_func();
-    test_pass_to_readonly_func();
-    test_ptr_from_loop_var();
-    test_value_type_loop();
-    test_sequential_loops_same_var();
+    ::tpyapp::main::test_pass_to_mutating_func();
+    ::tpyapp::main::test_pass_to_readonly_func();
+    ::tpyapp::main::test_ptr_from_loop_var();
+    ::tpyapp::main::test_value_type_loop();
+    ::tpyapp::main::test_sequential_loops_same_var();
 }
 
 } // namespace tpyapp::main

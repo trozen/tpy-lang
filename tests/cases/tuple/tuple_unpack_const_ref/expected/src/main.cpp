@@ -22,7 +22,7 @@ std::tuple<::tpy::String, ::tpy::String> get_string_pair() {
 //     print(a)
 //     print(b)
 void test_rvalue_const_ref() {
-    auto __tup_1 = get_pair();
+    auto __tup_1 = ::tpyapp::main::get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
     std::cout << a << "\n";
@@ -36,7 +36,7 @@ void test_rvalue_const_ref() {
 //     print(a)
 //     print(b)
 void test_augassign_no_const_ref() {
-    auto __tup_1 = get_pair();
+    auto __tup_1 = ::tpyapp::main::get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     b = (b) + (::tpy::BigInt(1));
@@ -51,7 +51,7 @@ void test_augassign_no_const_ref() {
 //     print(a)
 //     print(b)
 void test_reassign_no_const_ref() {
-    auto __tup_1 = get_pair();
+    auto __tup_1 = ::tpyapp::main::get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     b = ::tpy::BigInt(200);
@@ -97,7 +97,7 @@ void test_lvalue_reassigned_source() {
 //     print(a)
 //     print(b)
 void test_string_const_ref() {
-    auto __tup_1 = get_string_pair();
+    auto __tup_1 = ::tpyapp::main::get_string_pair();
     const ::tpy::String& a = std::get<0>(__tup_1);
     const ::tpy::String& b = std::get<1>(__tup_1);
     std::cout << a << "\n";
@@ -112,7 +112,7 @@ void test_string_const_ref() {
 //     print(a)
 //     print(b)
 void test_augassign_in_branch() {
-    auto __tup_1 = get_pair();
+    auto __tup_1 = ::tpyapp::main::get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     if ((a > 0)) {
@@ -134,13 +134,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_rvalue_const_ref();
-    test_augassign_no_const_ref();
-    test_reassign_no_const_ref();
-    test_lvalue_const_ref();
-    test_lvalue_reassigned_source();
-    test_string_const_ref();
-    test_augassign_in_branch();
+    ::tpyapp::main::test_rvalue_const_ref();
+    ::tpyapp::main::test_augassign_no_const_ref();
+    ::tpyapp::main::test_reassign_no_const_ref();
+    ::tpyapp::main::test_lvalue_const_ref();
+    ::tpyapp::main::test_lvalue_reassigned_source();
+    ::tpyapp::main::test_string_const_ref();
+    ::tpyapp::main::test_augassign_in_branch();
 }
 
 } // namespace tpyapp::main

@@ -56,13 +56,13 @@ template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 //     return drive_implicit(t)
 template<typename T>
 ::tpystd::tpy::Poll<T> use_shadowed(MyTask<T>& t) {
-    return drive_implicit<T>(t);
+    return ::tpyapp::main::drive_implicit<T>(t);
 }
 // def use_renamed[U](t: MyTask[U]) -> Own[Poll[U]]:
 //     return drive_implicit(t)
 template<typename U>
 ::tpystd::tpy::Poll<U> use_renamed(MyTask<U>& t) {
-    return drive_implicit<U>(t);
+    return ::tpyapp::main::drive_implicit<U>(t);
 }
 
 void __tpy_init();

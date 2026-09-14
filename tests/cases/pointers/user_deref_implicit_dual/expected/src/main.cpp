@@ -36,7 +36,7 @@ void main() {
     r.__deref__().y = 88;
     std::cout << r.__deref__().x << "\n";
     std::cout << r.__deref__().y << "\n";
-    std::cout << read_only(r) << "\n";
+    std::cout << ::tpyapp::main::read_only(r) << "\n";
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

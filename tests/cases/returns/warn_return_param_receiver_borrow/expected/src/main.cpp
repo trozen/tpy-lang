@@ -22,8 +22,8 @@ Point bump_copy(Point& p) {
 //     print(bump_copy(p).x, p.x)
 void main() {
     Point p = Point(1);
-    std::cout << bump(p).x << " " << p.x << "\n";
-    std::cout << bump_copy(p).x << " " << p.x << "\n";
+    std::cout << ::tpyapp::main::bump(p).x << " " << p.x << "\n";
+    std::cout << ::tpyapp::main::bump_copy(p).x << " " << p.x << "\n";
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

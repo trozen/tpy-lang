@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     # Pass Span to Sequence-accepting function
 //     return sum_all(s)
 int32_t use_span(std::span<int32_t> s) {
-    return sum_all(s);
+    return ::tpyapp::main::sum_all(s);
 }
 
 // def main() -> None:
@@ -35,19 +35,19 @@ int32_t use_span(std::span<int32_t> s) {
 //     print(sum_all(al))     # 600
 void main() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    std::cout << first(nums) << "\n";
-    std::cout << sum_all(nums) << "\n";
+    std::cout << ::tpyapp::main::first(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_all(nums) << "\n";
     std::array<int32_t, 3> arr = {10, 20, 30};
-    std::cout << first(arr) << "\n";
-    std::cout << sum_all(arr) << "\n";
-    std::cout << use_span(::tpy::as_mut_span(arr)) << "\n";
-    std::cout << use_span(::tpy::as_mut_span(nums)) << "\n";
+    std::cout << ::tpyapp::main::first(arr) << "\n";
+    std::cout << ::tpyapp::main::sum_all(arr) << "\n";
+    std::cout << ::tpyapp::main::use_span(::tpy::as_mut_span(arr)) << "\n";
+    std::cout << ::tpyapp::main::use_span(::tpy::as_mut_span(nums)) << "\n";
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     al.append(100);
     al.append(200);
     al.append(300);
-    std::cout << first(al) << "\n";
-    std::cout << sum_all(al) << "\n";
+    std::cout << ::tpyapp::main::first(al) << "\n";
+    std::cout << ::tpyapp::main::sum_all(al) << "\n";
 }
 
 // from tplib import ArrayList
@@ -59,7 +59,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

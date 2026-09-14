@@ -90,17 +90,17 @@ void main() {
     Dog d = Dog("rex");
     Cat c = Cat("whiskers");
     Bird b = Bird("tweety");
-    std::cout << speak(d) << "\n";
-    std::cout << speak(c) << "\n";
-    std::cout << kind(d) << "\n";
-    std::cout << kind(c) << "\n";
-    std::cout << kind(b) << "\n";
-    std::cout << classify_const(d) << "\n";
-    std::cout << classify_const(c) << "\n";
-    std::cout << assert_dog(d) << "\n";
-    std::cout << ::tpy::print_bool(short_circuit(d, 3)) << "\n";
-    std::cout << ::tpy::print_bool(short_circuit(d, 100)) << "\n";
-    std::cout << ::tpy::print_bool(short_circuit(c, 3)) << "\n";
+    std::cout << ::tpyapp::main::speak(d) << "\n";
+    std::cout << ::tpyapp::main::speak(c) << "\n";
+    std::cout << ::tpyapp::main::kind(d) << "\n";
+    std::cout << ::tpyapp::main::kind(c) << "\n";
+    std::cout << ::tpyapp::main::kind(b) << "\n";
+    std::cout << ::tpyapp::main::classify_const(d) << "\n";
+    std::cout << ::tpyapp::main::classify_const(c) << "\n";
+    std::cout << ::tpyapp::main::assert_dog(d) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::short_circuit(d, 3)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::short_circuit(d, 100)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::short_circuit(c, 3)) << "\n";
 }
 
 // main()
@@ -109,7 +109,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

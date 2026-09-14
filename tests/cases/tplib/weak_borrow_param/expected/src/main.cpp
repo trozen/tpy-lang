@@ -27,9 +27,9 @@ int32_t read_via_weak(const ::tpystd::tplib::rc::Weak<Cell>& w) {
 void main() {
     ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(7));
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
-    std::cout << read_via_weak(w) << "\n";
+    std::cout << ::tpyapp::main::read_via_weak(w) << "\n";
     ::tpystd::tplib::rc::Weak<Cell> w2 = w.clone();
-    std::cout << read_via_weak(w2) << "\n";
+    std::cout << ::tpyapp::main::read_via_weak(w2) << "\n";
 }
 
 // from tplib.rc import Rc, Weak
@@ -42,7 +42,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

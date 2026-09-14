@@ -48,12 +48,12 @@ Point make_point(int32_t x) {
 //     print(first.x)
 void main() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    Point& f = get_first(pts);
+    Point& f = ::tpyapp::main::get_first(pts);
     std::cout << f.x << "\n";
     Point p = Point(10, 20);
-    Point& q = identity(p);
+    Point& q = ::tpyapp::main::identity(p);
     std::cout << q.x << "\n";
-    Point r = make_point(5);
+    Point r = ::tpyapp::main::make_point(5);
     std::cout << r.x << "\n";
     Container c = Container();
     c.add(Point(7, 8));
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

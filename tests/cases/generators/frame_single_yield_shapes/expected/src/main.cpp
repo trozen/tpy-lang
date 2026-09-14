@@ -107,7 +107,7 @@ int32_t value_instantiation_in_head() {
 //     print("value_instantiation", value_instantiation_in_head())
 void main() {
     {
-        auto __src_0 = drain({1, 2, 3});
+        auto __src_0 = ::tpyapp::main::drain({1, 2, 3});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -118,7 +118,7 @@ void main() {
     }
     int32_t total = 0;
     {
-        auto __src_2 = over_global();
+        auto __src_2 = ::tpyapp::main::over_global();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -131,7 +131,7 @@ void main() {
         }
     }
     std::cout << "over_global" << " " << total << " " << ::tpy::__getitem__((*xs), 2) << "\n";
-    std::cout << "value_instantiation" << " " << value_instantiation_in_head() << "\n";
+    std::cout << "value_instantiation" << " " << ::tpyapp::main::value_instantiation_in_head() << "\n";
 }
 
 // xs = [1, 2, 3]
@@ -144,7 +144,7 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     xs = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

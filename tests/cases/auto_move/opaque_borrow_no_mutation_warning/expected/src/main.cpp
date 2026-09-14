@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     print(len(xs))
 void main() {
     std::vector<P> xs = {P()};
-    P& n = pick(xs);
+    P& n = ::tpyapp::main::pick(xs);
     std::cout << ::tpy::__len__(n.vals) << "\n";
     xs.push_back(P());
     std::cout << ::tpy::__len__(xs) << "\n";
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

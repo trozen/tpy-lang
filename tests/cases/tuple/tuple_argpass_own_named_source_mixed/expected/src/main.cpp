@@ -20,8 +20,8 @@ int32_t consume(std::tuple<A, int32_t>&& p) {
 //     t = make()
 //     print(consume(t))
 void main() {
-    std::tuple<A, int32_t> t = make();
-    std::cout << consume(std::move(t)) << "\n";
+    std::tuple<A, int32_t> t = ::tpyapp::main::make();
+    std::cout << ::tpyapp::main::consume(std::move(t)) << "\n";
 }
 
 // main()
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

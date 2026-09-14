@@ -33,7 +33,7 @@ void __tpy_init() {
 
     ::tpyapp::treea::__tpy_init();
     ::tpyapp::treeb::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

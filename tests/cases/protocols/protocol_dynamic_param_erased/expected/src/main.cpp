@@ -16,7 +16,7 @@ void greet(Pet& pet) {
 void main() {
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    greet((*pet));
+    ::tpyapp::main::greet((*pet));
 }
 
 // main()
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

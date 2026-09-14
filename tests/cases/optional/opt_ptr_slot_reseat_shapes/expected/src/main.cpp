@@ -41,7 +41,7 @@ int32_t lvalue_reseat(Box& b) {
 //     print(double_rvalue_reseat(), lvalue_reseat(Box(Inner(3))))
 void main() {
     Box __tmp_1 = Box(Inner(3));
-    std::cout << double_rvalue_reseat() << " " << lvalue_reseat(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::double_rvalue_reseat() << " " << ::tpyapp::main::lvalue_reseat(__tmp_1) << "\n";
 }
 
 // main()
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

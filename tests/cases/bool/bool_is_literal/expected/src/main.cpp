@@ -50,11 +50,11 @@ void check_reversed(bool x) {
 //     print("---")
 //     check_reversed(True)
 void main() {
-    check_is(true);
+    ::tpyapp::main::check_is(true);
     std::cout << "---" << "\n";
-    check_is(false);
+    ::tpyapp::main::check_is(false);
     std::cout << "---" << "\n";
-    check_reversed(true);
+    ::tpyapp::main::check_reversed(true);
 }
 
 // main()
@@ -63,7 +63,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

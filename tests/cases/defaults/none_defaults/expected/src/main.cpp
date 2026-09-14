@@ -38,15 +38,15 @@ std::optional<int32_t> find(const std::vector<int32_t>& items, int32_t target, s
 //         print(r3)
 void main() {
     std::vector<int32_t> items = {10, 20, 30};
-    std::optional<int32_t> r1 = find(items, 20);
+    std::optional<int32_t> r1 = ::tpyapp::main::find(items, 20);
     if ((r1.has_value())) {
         std::cout << ::tpy::print_optional_val(r1) << "\n";
     }
-    std::optional<int32_t> r2 = find(items, 99);
+    std::optional<int32_t> r2 = ::tpyapp::main::find(items, 99);
     if ((!r2.has_value())) {
         std::cout << "not found" << "\n";
     }
-    std::optional<int32_t> r3 = find(items, 99, -1);
+    std::optional<int32_t> r3 = ::tpyapp::main::find(items, 99, -1);
     if ((r3.has_value())) {
         std::cout << ::tpy::print_optional_val(r3) << "\n";
     }
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

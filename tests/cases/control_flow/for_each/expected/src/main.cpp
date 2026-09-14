@@ -118,8 +118,8 @@ void __tpy_init() {
         int32_t val = *__beg_1;
         std::cout << val << "\n";
     }
-    std::cout << sum_array() << "\n";
-    print_span(::tpy::as_mut_span(std::array<int32_t, 3>{7, 8, 9}));
+    std::cout << ::tpyapp::main::sum_array() << "\n";
+    ::tpyapp::main::print_span(::tpy::as_mut_span(std::array<int32_t, 3>{7, 8, 9}));
     text = "AB";
     auto& __obj_2 = text;
     auto __beg_2 = __obj_2.begin();
@@ -128,7 +128,7 @@ void __tpy_init() {
         char c = *__beg_2;
         std::cout << c << "\n";
     }
-    std::cout << nested_sum() << "\n";
+    std::cout << ::tpyapp::main::nested_sum() << "\n";
 }
 
 } // namespace tpyapp::main

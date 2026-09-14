@@ -123,15 +123,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_alias_augassign();
-    test_alias_stays_view();
-    test_chain_alias_promote();
-    test_reassign_from_owned_pending(true);
-    test_reassign_from_owned_pending(false);
-    std::cout << test_reassign_from_owned_pending_return(true) << "\n";
-    std::cout << test_reassign_from_owned_pending_return(false) << "\n";
-    test_source_promotes_alias();
-    test_owned_reassign_no_backprop();
+    ::tpyapp::main::test_alias_augassign();
+    ::tpyapp::main::test_alias_stays_view();
+    ::tpyapp::main::test_chain_alias_promote();
+    ::tpyapp::main::test_reassign_from_owned_pending(true);
+    ::tpyapp::main::test_reassign_from_owned_pending(false);
+    std::cout << ::tpyapp::main::test_reassign_from_owned_pending_return(true) << "\n";
+    std::cout << ::tpyapp::main::test_reassign_from_owned_pending_return(false) << "\n";
+    ::tpyapp::main::test_source_promotes_alias();
+    ::tpyapp::main::test_owned_reassign_no_backprop();
 }
 
 } // namespace tpyapp::main

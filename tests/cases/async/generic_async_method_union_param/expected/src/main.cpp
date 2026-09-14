@@ -39,7 +39,7 @@ __coro_bump bump(A& a) {
     case S_INITIAL: {  // entry
         h.emplace(Holder<int32_t>(5));
         a.emplace(A());
-        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(bump((*a)))));
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::bump((*a)))));
         __sub_0.emplace((*h), ::tpy::Union<const A*, const B*>{&((*a))});
         __state = S_RESUME_0;
         continue;
@@ -88,7 +88,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // async def show(self, u: A | B) -> int32:
@@ -138,7 +138,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -20,11 +20,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_bool(eq_both(5, 5)) << "\n";
-    std::cout << ::tpy::print_bool(eq_both(5, 3)) << "\n";
-    std::cout << ::tpy::print_bool(eq_both(std::nullopt, 5)) << "\n";
-    std::cout << ::tpy::print_bool(eq_both(5, std::nullopt)) << "\n";
-    std::cout << ::tpy::print_bool(eq_both(std::nullopt, std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(5, 5)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(5, 3)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(std::nullopt, 5)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(5, std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(std::nullopt, std::nullopt)) << "\n";
 }
 
 } // namespace tpyapp::main

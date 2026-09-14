@@ -102,7 +102,7 @@ int32_t key() {
 //     print(rows)
 void test_sort_receiver_evaluated_once() {
     std::vector<std::vector<int32_t>> rows = {{3, 1, 2}};
-    ::tpy::sort_in_place(::tpy::__getitem__(rows, key()));
+    ::tpy::sort_in_place(::tpy::__getitem__(rows, ::tpyapp::main::key()));
     std::cout << ::tpy::ListPrinter(rows) << "\n";
 }
 
@@ -114,12 +114,12 @@ void test_sort_receiver_evaluated_once() {
 //     test_span_sort()
 //     test_sort_receiver_evaluated_once()
 void main() {
-    test_list_sort();
-    test_arraylist_sort();
-    test_user_type_sort();
-    test_stable_sort();
-    test_span_sort();
-    test_sort_receiver_evaluated_once();
+    ::tpyapp::main::test_list_sort();
+    ::tpyapp::main::test_arraylist_sort();
+    ::tpyapp::main::test_user_type_sort();
+    ::tpyapp::main::test_stable_sort();
+    ::tpyapp::main::test_span_sort();
+    ::tpyapp::main::test_sort_receiver_evaluated_once();
 }
 
 // from tplib import ArrayList
@@ -131,7 +131,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -44,7 +44,7 @@ void printer(int32_t x) {
 //     g: Callable[[str], str] = greet
 //     print(g("World"))  # Hello, World
 void main() {
-    std::cout << apply(double_, 21) << "\n";
+    std::cout << ::tpyapp::main::apply(double_, 21) << "\n";
     std::function<int32_t(int32_t)> f = double_;
     std::cout << f(10) << "\n";
     Handler h = Handler(printer);
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

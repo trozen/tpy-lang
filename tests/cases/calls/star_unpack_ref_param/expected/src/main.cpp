@@ -41,13 +41,13 @@ int32_t take_ro(::tpy::varargs<const Box> items) {
 // def via_mut(xs: list[Box]) -> int32:
 //     return take_mut(*xs)
 int32_t via_mut(const std::vector<Box>& xs) {
-    return take_mut(::tpy::varargs<const Box>(::tpy::as_span(xs)));
+    return ::tpyapp::main::take_mut(::tpy::varargs<const Box>(::tpy::as_span(xs)));
 }
 
 // def via_ro(xs: list[Box]) -> int32:
 //     return take_ro(*xs)
 int32_t via_ro(const std::vector<Box>& xs) {
-    return take_ro(::tpy::varargs<const Box>(::tpy::as_span(xs)));
+    return ::tpyapp::main::take_ro(::tpy::varargs<const Box>(::tpy::as_span(xs)));
 }
 
 // def main() -> None:
@@ -60,8 +60,8 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(10));
     items.push_back(Box(20));
-    std::cout << via_mut(items) << "\n";
-    std::cout << via_ro(items) << "\n";
+    std::cout << ::tpyapp::main::via_mut(items) << "\n";
+    std::cout << ::tpyapp::main::via_ro(items) << "\n";
 }
 
 // main()
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

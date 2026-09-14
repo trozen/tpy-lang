@@ -28,7 +28,7 @@ void enable() {
 int32_t local_bind() {
     std::optional<int32_t> v = GO;
     if ((v.has_value())) {
-        clear();
+        ::tpyapp::main::clear();
         return (*v);
     }
     return -1;
@@ -43,7 +43,7 @@ int32_t local_bind() {
 int32_t shadowed() {
     std::optional<int32_t> GO = 9;
     if ((GO.has_value())) {
-        clear();
+        ::tpyapp::main::clear();
         return (*GO);
     }
     return -1;
@@ -54,9 +54,9 @@ int32_t shadowed() {
 //     print(local_bind())
 //     print(shadowed())
 void main() {
-    enable();
-    std::cout << local_bind() << "\n";
-    std::cout << shadowed() << "\n";
+    ::tpyapp::main::enable();
+    std::cout << ::tpyapp::main::local_bind() << "\n";
+    std::cout << ::tpyapp::main::shadowed() << "\n";
 }
 
 // GO: int32 | None = None
@@ -68,7 +68,7 @@ void __tpy_init() {
     initialized = true;
 
     GO = std::nullopt;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

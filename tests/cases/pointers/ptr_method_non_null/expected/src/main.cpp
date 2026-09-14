@@ -19,7 +19,7 @@ int32_t read_twice(Cell* p) {
 //     print(read_twice(take_ptr(c)))
 void main() {
     Cell c = Cell();
-    std::cout << read_twice(&c) << "\n";
+    std::cout << ::tpyapp::main::read_twice(&c) << "\n";
 }
 
 // main()
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

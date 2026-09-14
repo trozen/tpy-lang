@@ -17,7 +17,7 @@ int32_t add(int32_t a, int32_t b) {
 void main() {
     int32_t x = 5;
     int32_t y = 7;
-    std::cout << add(x, y) << "\n";
+    std::cout << ::tpyapp::main::add(x, y) << "\n";
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -18,7 +18,7 @@ int32_t alias_param(const Box& b) {
 //     print(alias_param(b))
 void main() {
     Box b = Box(42);
-    std::cout << alias_param(b) << "\n";
+    std::cout << ::tpyapp::main::alias_param(b) << "\n";
 }
 
 // main()
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

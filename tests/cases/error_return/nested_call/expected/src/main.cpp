@@ -38,13 +38,13 @@ void main() {
     {
         if ((::tpy::__len__(items) > 0)) {
             {
-                auto __try_tmp_2 = find(items, 20);
+                auto __try_tmp_2 = ::tpyapp::main::find(items, 20);
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
         } else {
             {
-                auto __try_tmp_3 = find(items, 10);
+                auto __try_tmp_3 = ::tpyapp::main::find(items, 10);
                 if (!__try_tmp_3.has_value()) goto __except_1;
                 idx = ::tpy::unwrap_ref_move(*__try_tmp_3);
             }
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

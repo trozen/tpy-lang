@@ -60,7 +60,7 @@ __coro_void_coro void_coro() {
 //     print("has_live skip=ff:", e.has_live_tasks(-1))
 void test_spawn_and_run() {
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::_make_any_task_for_test<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(returns_value(::tpy::BigInt(7))));
+    ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::_make_any_task_for_test<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::returns_value(::tpy::BigInt(7))));
     int32_t sid = e.spawn(std::move(box));
     std::cout << "spawn id:" << " " << sid << "\n";
     std::cout << "len slots:" << " " << ::tpy::__len__(e.slots) << "\n";
@@ -84,8 +84,8 @@ void test_spawn_and_run() {
 //     print("has_live skip a:", e.has_live_tasks(a))
 void test_multiple_spawns() {
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    int32_t a = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(void_coro())));
-    int32_t b = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(returns_value(::tpy::BigInt(42)))));
+    int32_t a = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::void_coro())));
+    int32_t b = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::returns_value(::tpy::BigInt(42)))));
     std::cout << "two slots:" << " " << ::tpy::__len__(e.slots) << "\n";
     std::cout << "two runnable:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
     bool polled = e.drain_runnable();
@@ -163,15 +163,15 @@ void test_drain_cancels_live_task() {
 //     print("---")
 //     test_drain_cancels_live_task()
 void main() {
-    test_spawn_and_run();
+    ::tpyapp::main::test_spawn_and_run();
     std::cout << "---" << "\n";
-    test_multiple_spawns();
+    ::tpyapp::main::test_multiple_spawns();
     std::cout << "---" << "\n";
-    test_timer_fires_immediately();
+    ::tpyapp::main::test_timer_fires_immediately();
     std::cout << "---" << "\n";
-    test_drain_with_no_tasks();
+    ::tpyapp::main::test_drain_with_no_tasks();
     std::cout << "---" << "\n";
-    test_drain_cancels_live_task();
+    ::tpyapp::main::test_drain_cancels_live_task();
 }
 
 // # TPy-side Executor class driven directly (no asyncio.run, no C++
@@ -199,7 +199,7 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

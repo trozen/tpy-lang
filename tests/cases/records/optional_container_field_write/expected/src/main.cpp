@@ -58,7 +58,7 @@ void local_source(Slot& s) {
 void main() {
     Slot s = Slot();
     std::cout << s.size() << "\n";
-    local_source(s);
+    ::tpyapp::main::local_source(s);
     std::cout << s.size() << "\n";
     s.grow();
     std::cout << s.size() << "\n";
@@ -70,7 +70,7 @@ void main() {
     ::tpy::ByteArray borrowed = ::tpy::ByteArray(::tpy::bytes_literal("q", 1));
     s.copy_in(borrowed);
     std::cout << s.size() << "\n";
-    std::cout << read_bound(s) << "\n";
+    std::cout << ::tpyapp::main::read_bound(s) << "\n";
     std::vector<int32_t> nums = {1, 2, 3};
     s.take_list(std::move(nums));
     if ((s.xs.has_value())) {
@@ -93,7 +93,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

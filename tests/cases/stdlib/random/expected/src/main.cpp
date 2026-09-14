@@ -283,67 +283,67 @@ void main() {
     ::tpystd::random::seed(42);
     std::cout << "uniform:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::uniform(1.0, 10.0));
+        ::tpyapp::main::_p(::tpystd::random::uniform(1.0, 10.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "triangular_default:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::triangular());
+        ::tpyapp::main::_p(::tpystd::random::triangular());
     }
     ::tpystd::random::seed(42);
     std::cout << "triangular_args:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::triangular(0.0, 10.0, 3.0));
+        ::tpyapp::main::_p(::tpystd::random::triangular(0.0, 10.0, 3.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "gauss:" << "\n";
     for (int32_t _ = 0; _ < 4; ++_) {
-        _p(::tpystd::random::gauss(0.0, 1.0));
+        ::tpyapp::main::_p(::tpystd::random::gauss(0.0, 1.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "normalvariate:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::normalvariate(0.0, 1.0));
+        ::tpyapp::main::_p(::tpystd::random::normalvariate(0.0, 1.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "lognormvariate:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::lognormvariate(0.0, 1.0));
+        ::tpyapp::main::_p(::tpystd::random::lognormvariate(0.0, 1.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "expovariate:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::expovariate(1.0));
+        ::tpyapp::main::_p(::tpystd::random::expovariate(1.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "paretovariate:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::paretovariate(2.0));
+        ::tpyapp::main::_p(::tpystd::random::paretovariate(2.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "weibullvariate:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::weibullvariate(1.0, 1.5));
+        ::tpyapp::main::_p(::tpystd::random::weibullvariate(1.0, 1.5));
     }
     ::tpystd::random::seed(42);
     std::cout << "gammavariate_big:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::gammavariate(2.0, 1.0));
+        ::tpyapp::main::_p(::tpystd::random::gammavariate(2.0, 1.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "gammavariate_small:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::gammavariate(0.5, 1.0));
+        ::tpyapp::main::_p(::tpystd::random::gammavariate(0.5, 1.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "betavariate:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::betavariate(2.0, 5.0));
+        ::tpyapp::main::_p(::tpystd::random::betavariate(2.0, 5.0));
     }
     ::tpystd::random::seed(42);
     std::cout << "vonmisesvariate:" << "\n";
     for (int32_t _ = 0; _ < 3; ++_) {
-        _p(::tpystd::random::vonmisesvariate(0.0, 1.0));
+        ::tpyapp::main::_p(::tpystd::random::vonmisesvariate(0.0, 1.0));
     }
     ::tpystd::random::seed(42);
     double g1 = ::tpystd::random::gauss(0.0, 1.0);
@@ -366,7 +366,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::random::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

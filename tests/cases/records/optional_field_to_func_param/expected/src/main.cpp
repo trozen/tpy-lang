@@ -32,9 +32,9 @@ void __tpy_init() {
 
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    describe(::tpy::optional_to_ptr(h->value));
+    ::tpyapp::main::describe(::tpy::optional_to_ptr(h->value));
     h->value = Point(5, 6);
-    describe(::tpy::optional_to_ptr(h->value));
+    ::tpyapp::main::describe(::tpy::optional_to_ptr(h->value));
 }
 
 } // namespace tpyapp::main

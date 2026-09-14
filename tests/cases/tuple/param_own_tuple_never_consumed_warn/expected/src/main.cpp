@@ -29,11 +29,11 @@ int32_t read_nocopy(std::tuple<B, B>&& p) {
 //     print(read_borrow((a, b)))
 //     print(read_nocopy((B(5), B(6))))
 void main() {
-    std::cout << read_owned(std::tuple<A, A>{A(1), A(2)}) << "\n";
+    std::cout << ::tpyapp::main::read_owned(std::tuple<A, A>{A(1), A(2)}) << "\n";
     A a = A(3);
     A b = A(4);
-    std::cout << read_borrow(std::tuple<A*, A*>{&(a), &(b)}) << "\n";
-    std::cout << read_nocopy(std::tuple<B, B>{B(5), B(6)}) << "\n";
+    std::cout << ::tpyapp::main::read_borrow(std::tuple<A*, A*>{&(a), &(b)}) << "\n";
+    std::cout << ::tpyapp::main::read_nocopy(std::tuple<B, B>{B(5), B(6)}) << "\n";
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -26,7 +26,7 @@ namespace tpyapp::main {
 //     moved[1].n = 99
 //     print(moved[0].n, moved[1].n)   # 1 99
 void main() {
-    ::tpystd::tplib::array_list::ArrayList<Handle, 4> xs = make();
+    ::tpystd::tplib::array_list::ArrayList<Handle, 4> xs = ::tpyapp::main::make();
     std::cout << ::tpy::__len__(xs) << "\n";
     std::cout << xs[0].n << " " << xs[1].n << "\n";
     ::tpystd::tplib::array_list::ArrayList<Handle, 4> moved = std::move(xs);
@@ -51,7 +51,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -69,7 +69,7 @@ int32_t span_or_bytesview(const ::tpy::Union<::tpy::BytesView, std::span<const u
 void main() {
     std::vector<uint8_t> xs = {1, 2};
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("ijk", 3);
-    std::cout << "union" << " " << list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*>{&(xs)}) << " " << list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*>{&__tmp_1}) << "\n";
+    std::cout << "union" << " " << ::tpyapp::main::list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*>{&(xs)}) << " " << ::tpyapp::main::list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*>{&__tmp_1}) << "\n";
 }
 
 // main()
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

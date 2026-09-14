@@ -21,7 +21,7 @@ void main() {
     {
         std::optional<MyError> __err_opt_1;
         {
-            auto __try_tmp_2 = fail();
+            auto __try_tmp_2 = ::tpyapp::main::fail();
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -28,7 +28,7 @@ void main() {
     Container c = Container();
     c.items = {Point()};
     ::tpy::__getitem__(c.items, 0).x = 10;
-    std::vector<Point> taken = take_items(c);
+    std::vector<Point> taken = ::tpyapp::main::take_items(c);
     ::tpy::__getitem__(taken, 0).x = 99;
     std::cout << ::tpy::__getitem__(c.items, 0).x << "\n";
     std::cout << ::tpy::__getitem__(taken, 0).x << "\n";
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

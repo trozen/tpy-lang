@@ -37,9 +37,9 @@ int32_t pairs(std::optional<std::tuple<int32_t, int32_t>> tp) {
 void main() {
     std::vector<int32_t> data = {1, 2, 3};
     std::span<int32_t> sp = ::tpy::as_mut_span(data);
-    std::cout << scalars(7) << " " << scalars(std::nullopt) << "\n";
-    std::cout << spans(sp) << " " << spans(std::nullopt) << "\n";
-    std::cout << pairs(std::tuple<int32_t, int32_t>{1, 2}) << " " << pairs(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::scalars(7) << " " << ::tpyapp::main::scalars(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::spans(sp) << " " << ::tpyapp::main::spans(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::pairs(std::tuple<int32_t, int32_t>{1, 2}) << " " << ::tpyapp::main::pairs(std::nullopt) << "\n";
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

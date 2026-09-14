@@ -38,9 +38,9 @@ void update_renamed(int32_t a, int32_t b) {
 //     update_renamed(int32(30), int32(40))
 //     print(counter)
 void main() {
-    update_same_name(10, 20);
+    ::tpyapp::main::update_same_name(10, 20);
     std::cout << ::opentop << "\n";
-    update_renamed(30, 40);
+    ::tpyapp::main::update_renamed(30, 40);
     std::cout << ::g_counter << "\n";
 }
 
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

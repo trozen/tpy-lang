@@ -21,7 +21,7 @@ Point& get_origin() {
 void main() {
     ORIGIN->x = 100;
     ORIGIN->y = 200;
-    Point& ref = get_origin();
+    Point& ref = ::tpyapp::main::get_origin();
     std::cout << ref.x << "\n";
     std::cout << ref.y << "\n";
 }
@@ -37,7 +37,7 @@ void __tpy_init() {
 
     static Point __global_slot_1 = Point();
     ORIGIN = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

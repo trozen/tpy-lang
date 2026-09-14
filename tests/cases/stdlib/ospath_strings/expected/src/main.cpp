@@ -58,7 +58,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
-        show2(::tpystd::os::path::split(p));
+        ::tpyapp::main::show2(::tpystd::os::path::split(p));
         std::cout << (::tpy::str_concat((::tpy::str_concat(::tpystd::os::path::dirname(p), " <> ")), ::tpystd::os::path::basename(p))) << "\n";
     }
     auto __obj_1 = {"foo.txt", "foo.tar.gz", ".bashrc", "/a/.bashrc", "foo", "a.", "/a/b", "..ext", "/d.ir/file"};
@@ -66,12 +66,12 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view q = *__beg_1;
-        show2(::tpystd::os::path::splitext(q));
+        ::tpyapp::main::show2(::tpystd::os::path::splitext(q));
     }
     std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("/x")) << "\n";
     std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("x")) << "\n";
     std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("")) << "\n";
-    show2(::tpystd::os::path::splitdrive("/a/b"));
+    ::tpyapp::main::show2(::tpystd::os::path::splitdrive("/a/b"));
     std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(::tpystd::os::path::sep, ::tpystd::os::path::extsep)), ::tpystd::os::path::pardir)), ::tpystd::os::path::curdir)), ::tpystd::os::path::pathsep)) << "\n";
     std::cout << ::tpystd::os::path::defpath << "\n";
     std::cout << ::tpystd::os::path::devnull << "\n";
@@ -92,7 +92,7 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     ::tpystd::os::path::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

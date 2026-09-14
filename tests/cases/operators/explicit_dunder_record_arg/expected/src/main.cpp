@@ -24,9 +24,9 @@ bool same(const Acc& a, const Acc& b) {
 void main() {
     Acc x = Acc(1);
     Acc y = Acc(2);
-    std::cout << total(x, y) << "\n";
+    std::cout << ::tpyapp::main::total(x, y) << "\n";
     Acc __tmp_1 = Acc(1);
-    std::cout << ::tpy::print_bool(same(x, y)) << " " << ::tpy::print_bool(same(x, __tmp_1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::same(x, y)) << " " << ::tpy::print_bool(::tpyapp::main::same(x, __tmp_1)) << "\n";
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

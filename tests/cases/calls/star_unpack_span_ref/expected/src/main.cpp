@@ -24,7 +24,7 @@ int32_t take_all(::tpy::varargs<const Box> items) {
 // def use(xs: Span[Box]) -> int32:
 //     return take_all(*xs)
 int32_t use(std::span<Box> xs) {
-    return take_all(::tpy::varargs<const Box>(xs));
+    return ::tpyapp::main::take_all(::tpy::varargs<const Box>(xs));
 }
 
 // def main() -> None:
@@ -36,7 +36,7 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(1));
     items.push_back(Box(2));
-    std::cout << use(::tpy::as_mut_span(items)) << "\n";
+    std::cout << ::tpyapp::main::use(::tpy::as_mut_span(items)) << "\n";
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

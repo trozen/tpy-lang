@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << make() << "\n";
+    std::cout << ::tpyapp::main::make() << "\n";
 }
 
 } // namespace tpyapp::main

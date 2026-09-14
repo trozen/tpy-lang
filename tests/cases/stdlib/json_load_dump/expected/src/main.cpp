@@ -107,13 +107,13 @@ void load_malformed() {
 //     print("---")
 //     load_malformed()
 void main() {
-    load_from_stringio();
+    ::tpyapp::main::load_from_stringio();
     std::cout << "---" << "\n";
-    dump_to_stringio();
+    ::tpyapp::main::dump_to_stringio();
     std::cout << "---" << "\n";
-    file_roundtrip();
+    ::tpyapp::main::file_roundtrip();
     std::cout << "---" << "\n";
-    load_malformed();
+    ::tpyapp::main::load_malformed();
 }
 
 // # json.load / json.dump over io text file objects (StringIO and open()'s
@@ -129,7 +129,7 @@ void __tpy_init() {
 
     ::tpystd::io::__tpy_init();
     ::tpystd::json::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

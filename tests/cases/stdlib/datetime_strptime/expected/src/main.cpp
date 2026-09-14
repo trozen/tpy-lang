@@ -70,55 +70,55 @@ void show(std::string_view s, std::string_view f) {
 //     show("2020 366", "%Y %j")
 //     show("2021 060 5", "%Y %j %w")
 void main() {
-    show("05/03/21 14:30", "%d/%m/%y %H:%M");
-    show("2021-03-05T14:30:15.5", "%Y-%m-%dT%H:%M:%S.%f");
-    show("2021-03-05 14:30:15.1234567", "%Y-%m-%d %H:%M:%S.%f");
-    show("Fri Mar  5 14:30:15 2021", "%c");
-    show("fri MAR  5 14:30:15 2021", "%c");
-    show("03/05/21", "%x");
-    show("14:30:15", "%X");
-    show("5 March 2021", "%d %B %Y");
-    show("March 5", "%B %d");
-    show("Wednesday, July 14, 2021", "%A, %B %d, %Y");
-    show("00", "%y");
-    show("68", "%y");
-    show("69", "%y");
-    show("99", "%y");
-    show("12 AM", "%I %p");
-    show("12 PM", "%I %p");
-    show("01 pm", "%I %p");
-    show("7 am", "%I %p");
-    show("2021 065", "%Y %j");
-    show("2021 09 3", "%Y %U %w");
-    show("2021 09 3", "%Y %W %w");
-    show("2021 09", "%Y %U");
-    show("2019 01 1", "%G %V %u");
-    show("2020 53 4", "%G %V %u");
-    show("2021 53 1", "%G %V %u");
-    show("2021+0530", "%Y%z");
-    show("2021+05:30", "%Y%z");
-    show("2021+05:30:15", "%Y%z");
-    show("2021+053015", "%Y%z");
-    show("2021+05:30:15.250000", "%Y%z");
-    show("2021Z", "%Y%z");
-    show("2021z", "%Y%z");
-    show("2021-0430", "%Y%z");
-    show("2021+05:3015", "%Y%z");
-    show("2021 UTC", "%Y %Z");
-    show("2021 gmt", "%Y %Z");
-    show("2021 +0000 UTC", "%Y %z %Z");
-    show("2021 EST", "%Y %Z");
-    show("29 February", "%d %B");
-    show("28 February", "%d %B");
-    show("2021-03-05 extra", "%Y-%m-%d");
-    show("2021-03-05", "%Y-%m-%Q");
-    show("2021-03-05", "%Y-%m-%d%");
-    show("  2021", " %Y");
-    show(" 5", "%d");
-    show("36 7", "%j %w");
-    show("2021 366", "%Y %j");
-    show("2020 366", "%Y %j");
-    show("2021 060 5", "%Y %j %w");
+    ::tpyapp::main::show("05/03/21 14:30", "%d/%m/%y %H:%M");
+    ::tpyapp::main::show("2021-03-05T14:30:15.5", "%Y-%m-%dT%H:%M:%S.%f");
+    ::tpyapp::main::show("2021-03-05 14:30:15.1234567", "%Y-%m-%d %H:%M:%S.%f");
+    ::tpyapp::main::show("Fri Mar  5 14:30:15 2021", "%c");
+    ::tpyapp::main::show("fri MAR  5 14:30:15 2021", "%c");
+    ::tpyapp::main::show("03/05/21", "%x");
+    ::tpyapp::main::show("14:30:15", "%X");
+    ::tpyapp::main::show("5 March 2021", "%d %B %Y");
+    ::tpyapp::main::show("March 5", "%B %d");
+    ::tpyapp::main::show("Wednesday, July 14, 2021", "%A, %B %d, %Y");
+    ::tpyapp::main::show("00", "%y");
+    ::tpyapp::main::show("68", "%y");
+    ::tpyapp::main::show("69", "%y");
+    ::tpyapp::main::show("99", "%y");
+    ::tpyapp::main::show("12 AM", "%I %p");
+    ::tpyapp::main::show("12 PM", "%I %p");
+    ::tpyapp::main::show("01 pm", "%I %p");
+    ::tpyapp::main::show("7 am", "%I %p");
+    ::tpyapp::main::show("2021 065", "%Y %j");
+    ::tpyapp::main::show("2021 09 3", "%Y %U %w");
+    ::tpyapp::main::show("2021 09 3", "%Y %W %w");
+    ::tpyapp::main::show("2021 09", "%Y %U");
+    ::tpyapp::main::show("2019 01 1", "%G %V %u");
+    ::tpyapp::main::show("2020 53 4", "%G %V %u");
+    ::tpyapp::main::show("2021 53 1", "%G %V %u");
+    ::tpyapp::main::show("2021+0530", "%Y%z");
+    ::tpyapp::main::show("2021+05:30", "%Y%z");
+    ::tpyapp::main::show("2021+05:30:15", "%Y%z");
+    ::tpyapp::main::show("2021+053015", "%Y%z");
+    ::tpyapp::main::show("2021+05:30:15.250000", "%Y%z");
+    ::tpyapp::main::show("2021Z", "%Y%z");
+    ::tpyapp::main::show("2021z", "%Y%z");
+    ::tpyapp::main::show("2021-0430", "%Y%z");
+    ::tpyapp::main::show("2021+05:3015", "%Y%z");
+    ::tpyapp::main::show("2021 UTC", "%Y %Z");
+    ::tpyapp::main::show("2021 gmt", "%Y %Z");
+    ::tpyapp::main::show("2021 +0000 UTC", "%Y %z %Z");
+    ::tpyapp::main::show("2021 EST", "%Y %Z");
+    ::tpyapp::main::show("29 February", "%d %B");
+    ::tpyapp::main::show("28 February", "%d %B");
+    ::tpyapp::main::show("2021-03-05 extra", "%Y-%m-%d");
+    ::tpyapp::main::show("2021-03-05", "%Y-%m-%Q");
+    ::tpyapp::main::show("2021-03-05", "%Y-%m-%d%");
+    ::tpyapp::main::show("  2021", " %Y");
+    ::tpyapp::main::show(" 5", "%d");
+    ::tpyapp::main::show("36 7", "%j %w");
+    ::tpyapp::main::show("2021 366", "%Y %j");
+    ::tpyapp::main::show("2020 366", "%Y %j");
+    ::tpyapp::main::show("2021 060 5", "%Y %j %w");
 }
 
 // # datetime v3 strptime: directive acceptance rules ported from CPython's
@@ -137,7 +137,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::datetime::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

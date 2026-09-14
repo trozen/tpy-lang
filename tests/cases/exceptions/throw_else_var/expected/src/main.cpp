@@ -26,7 +26,7 @@ void main() {
     int32_t result;
     {
         try {
-            result = risky(5);
+            result = ::tpyapp::main::risky(5);
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught" << "\n";
             goto __after_else_1;
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -82,8 +82,8 @@ void main() {
     SharedTable s = SharedTable();
     std::cout << t.qty << " " << ::tpy::__len__(a.data) << " " << ::tpy::__len__(s.data) << "\n";
     std::vector<int32_t> xs = {1, 2, 3};
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(forced(xs))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_forced(3))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::forced(xs))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_forced(3))) << "\n";
 }
 
 // # Send/Sync opt-in / opt-out kit: class Foo(Send) verified opt-in,
@@ -100,7 +100,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

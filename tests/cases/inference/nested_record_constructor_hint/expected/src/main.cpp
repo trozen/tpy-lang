@@ -26,15 +26,15 @@ namespace tpyapp::main {
 //     print(outer3.val.val)
 //     print("done")
 void main() {
-    Holder h = Holder(wrap<int32_t>(42));
+    Holder h = Holder(::tpyapp::main::wrap<int32_t>(42));
     std::cout << h.box.val << "\n";
-    Holder h2 = Holder(wrap<int32_t>(99));
+    Holder h2 = Holder(::tpyapp::main::wrap<int32_t>(99));
     std::cout << h2.box.val << "\n";
-    Box<Box<int32_t>> outer = Box<Box<int32_t>>(wrap<int32_t>(10));
+    Box<Box<int32_t>> outer = Box<Box<int32_t>>(::tpyapp::main::wrap<int32_t>(10));
     std::cout << outer.val.val << "\n";
-    Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(wrap<int32_t>(20));
+    Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(::tpyapp::main::wrap<int32_t>(20));
     std::cout << outer2.val.val << "\n";
-    Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(wrap<int32_t>(30));
+    Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(::tpyapp::main::wrap<int32_t>(30));
     std::cout << outer3.val.val << "\n";
     std::cout << "done" << "\n";
 }
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

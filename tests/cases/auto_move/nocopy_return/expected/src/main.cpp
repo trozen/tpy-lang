@@ -18,7 +18,7 @@ Handle make(int32_t val) {
 //     h = make(99)
 //     print(h.fd)
 void main() {
-    Handle h = make(99);
+    Handle h = ::tpyapp::main::make(99);
     std::cout << h.fd << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

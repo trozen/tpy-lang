@@ -14,7 +14,7 @@ void __tpy_init() {
 
     static GoodReader __global_slot_1 = GoodReader(42);
     g = &__global_slot_1;
-    std::cout << use_readable((*g)) << "\n";
+    std::cout << ::tpyapp::main::use_readable((*g)) << "\n";
 }
 
 } // namespace tpyapp::main

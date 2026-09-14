@@ -22,10 +22,10 @@ int32_t cap(int32_t n) {
 //     print(cap())
 //     print(cap(int32(3)))
 void main() {
-    std::cout << banner() << "\n";
-    std::cout << banner("custom") << "\n";
-    std::cout << cap() << "\n";
-    std::cout << cap(3) << "\n";
+    std::cout << ::tpyapp::main::banner() << "\n";
+    std::cout << ::tpyapp::main::banner("custom") << "\n";
+    std::cout << ::tpyapp::main::cap() << "\n";
+    std::cout << ::tpyapp::main::cap(3) << "\n";
 }
 
 // from pkg import VERSION, LIMIT
@@ -37,7 +37,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::pkg::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

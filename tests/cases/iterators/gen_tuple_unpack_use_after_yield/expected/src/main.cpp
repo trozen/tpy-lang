@@ -59,7 +59,7 @@ __gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 void main() {
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-        auto __src_0 = gen(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -76,7 +76,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

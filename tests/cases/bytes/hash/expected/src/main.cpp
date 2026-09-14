@@ -61,10 +61,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_hash_basic();
-    test_dict_key();
-    test_set_element();
-    test_bytes_view_hash();
+    ::tpyapp::main::test_hash_basic();
+    ::tpyapp::main::test_dict_key();
+    ::tpyapp::main::test_set_element();
+    ::tpyapp::main::test_bytes_view_hash();
 }
 
 } // namespace tpyapp::main

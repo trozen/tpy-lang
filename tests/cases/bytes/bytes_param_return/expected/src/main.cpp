@@ -33,10 +33,10 @@ namespace tpyapp::main {
 //     print(len(first_or_empty(b"")))
 //     print(opt_or_default(b"xy") == b"xy", opt_or_default(None) == b"none")
 void main() {
-    ::tpy::Bytes r = echo(::tpy::bytes_literal("hello", 5));
+    ::tpy::Bytes r = ::tpyapp::main::echo(::tpy::bytes_literal("hello", 5));
     std::cout << ::tpy::__len__(r) << " " << ::tpy::print_bool((r == ::tpy::bytes_literal("hello", 5))) << "\n";
-    std::cout << ::tpy::__len__(first_or_empty(::tpy::BytesView{})) << "\n";
-    std::cout << ::tpy::print_bool((opt_or_default(::tpy::bytes_literal_owned("xy", 2)) == ::tpy::bytes_literal("xy", 2))) << " " << ::tpy::print_bool((opt_or_default(std::nullopt) == ::tpy::bytes_literal("none", 4))) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::first_or_empty(::tpy::BytesView{})) << "\n";
+    std::cout << ::tpy::print_bool((::tpyapp::main::opt_or_default(::tpy::bytes_literal_owned("xy", 2)) == ::tpy::bytes_literal("xy", 2))) << " " << ::tpy::print_bool((::tpyapp::main::opt_or_default(std::nullopt) == ::tpy::bytes_literal("none", 4))) << "\n";
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

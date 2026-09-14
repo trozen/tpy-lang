@@ -28,8 +28,8 @@ void main() {
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("y");
     ::tpy::Union<Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_2);
     std::vector<::tpy::Union<Cat, Dog>> items = {::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(a), ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(b)};
-    show(a.as_const());
-    show(b.as_const());
+    ::tpyapp::main::show(a.as_const());
+    ::tpyapp::main::show(b.as_const());
     std::cout << ::tpy::__len__(items) << "\n";
     if (true) {
         auto& __a = *std::get<Cat*>(a);
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -44,7 +44,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::bisect::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

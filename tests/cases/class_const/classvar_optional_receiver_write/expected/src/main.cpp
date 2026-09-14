@@ -18,7 +18,7 @@ void store(Counter* c, int32_t v) {
 void main() {
     Counter::n = 0;
     Counter __tmp_1 = Counter();
-    store(&(__tmp_1), 7);
+    ::tpyapp::main::store(&(__tmp_1), 7);
     std::cout << Counter::n << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -15,7 +15,7 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 //     xs[0][1].val = 21
 //     return b.val
 int32_t via_list_literal(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 21;
     return b.val;
 }
@@ -27,7 +27,7 @@ int32_t via_list_literal(Box& b) {
 //     return b.val
 int32_t via_append(Box& b) {
     std::vector<std::tuple<Box, Box>> xs = std::vector<std::tuple<Box, Box>>{};
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)));
+    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 22;
     return b.val;
 }
@@ -37,7 +37,7 @@ int32_t via_append(Box& b) {
 //     d[1][1].val = 23
 //     return b.val
 int32_t via_dict_literal(Box& b) {
-    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))}});
+    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))}});
     std::get<1>(::tpy::__getitem__(d, 1)).val = 23;
     return b.val;
 }
@@ -49,7 +49,7 @@ int32_t via_dict_literal(Box& b) {
 //     return b.val
 int32_t via_setitem(Box& b) {
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>();
-    ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)));
+    ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
     std::get<1>(::tpy::__getitem__(d, 1)).val = 24;
     return b.val;
 }
@@ -62,7 +62,7 @@ int32_t via_setitem(Box& b) {
 //     q[0][1].val = 25
 //     return b.val
 int32_t via_nested_tuple(Box& b) {
-    std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)), 1};
+    std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)), 1};
     std::get<1>(std::get<0>(q)).val = 25;
     return b.val;
 }
@@ -76,7 +76,7 @@ int32_t via_dict_comprehension(Box& b) {
         ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> __result;
         const int32_t __stop_0 = 1;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            __result.insert_or_assign(i, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)));
+            __result.insert_or_assign(i, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
         }
         std::move(__result);
     });
@@ -92,7 +92,7 @@ int32_t via_dict_comprehension(Box& b) {
 //     xs[0][1].val = 30
 //     return b.val
 int32_t via_ternary_source(Box& b, Box& c, bool flag) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(((flag) ? (make_mixed(b)) : (make_mixed(c))))};
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(((flag) ? (::tpyapp::main::make_mixed(b)) : (::tpyapp::main::make_mixed(c))))};
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 30;
     return b.val;
 }
@@ -104,7 +104,7 @@ int32_t via_ternary_source(Box& b, Box& c, bool flag) {
 int32_t via_comprehension(Box& b) {
     std::array<std::tuple<Box, Box>, 1> xs = ::tpy::array_from_index<std::tuple<Box, Box>, 1>([&](std::size_t __i_0) -> std::tuple<Box, Box> {
         int32_t _ = int32_t(__i_0);
-        return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b));
+        return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b));
     });
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 26;
     return b.val;
@@ -116,7 +116,7 @@ int32_t via_comprehension(Box& b) {
 //         t[1].val = 27
 //     return b.val
 int32_t via_loop_var(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -147,20 +147,20 @@ int32_t via_field(Box& b) {
 void main() {
     Box __tmp_1 = Box(2);
     Box __tmp_2 = Box(2);
-    std::cout << via_list_literal(__tmp_1) << " " << via_append(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::via_list_literal(__tmp_1) << " " << ::tpyapp::main::via_append(__tmp_2) << "\n";
     Box __tmp_3 = Box(2);
     Box __tmp_4 = Box(2);
-    std::cout << via_dict_literal(__tmp_3) << " " << via_setitem(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::via_dict_literal(__tmp_3) << " " << ::tpyapp::main::via_setitem(__tmp_4) << "\n";
     Box __tmp_5 = Box(2);
     Box __tmp_6 = Box(2);
-    std::cout << via_nested_tuple(__tmp_5) << " " << via_comprehension(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::via_nested_tuple(__tmp_5) << " " << ::tpyapp::main::via_comprehension(__tmp_6) << "\n";
     Box __tmp_7 = Box(2);
     Box __tmp_8 = Box(2);
-    std::cout << via_loop_var(__tmp_7) << " " << via_field(__tmp_8) << "\n";
+    std::cout << ::tpyapp::main::via_loop_var(__tmp_7) << " " << ::tpyapp::main::via_field(__tmp_8) << "\n";
     Box __tmp_9 = Box(2);
     Box __tmp_10 = Box(2);
     Box __tmp_11 = Box(3);
-    std::cout << via_dict_comprehension(__tmp_9) << " " << via_ternary_source(__tmp_10, __tmp_11, true) << "\n";
+    std::cout << ::tpyapp::main::via_dict_comprehension(__tmp_9) << " " << ::tpyapp::main::via_ternary_source(__tmp_10, __tmp_11, true) << "\n";
 }
 
 // main()
@@ -169,7 +169,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

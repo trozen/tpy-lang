@@ -27,7 +27,7 @@ Point& mixed_record(Point& seed, bool flag) {
     if (flag) {
         result = &(seed);
     } else {
-        result = &(trusted(seed));
+        result = &(::tpyapp::main::trusted(seed));
     }
     return (*result);
 }
@@ -41,7 +41,7 @@ Point& mixed_record(Point& seed, bool flag) {
 Point& mixed_record_swapped(Point& seed, bool flag) {
     Point* result;
     if (flag) {
-        result = &(trusted(seed));
+        result = &(::tpyapp::main::trusted(seed));
     } else {
         result = &(seed);
     }
@@ -59,7 +59,7 @@ std::string_view mixed_strview(std::string_view p, bool flag) {
     if (flag) {
         sv = p;
     } else {
-        sv = pick_view("x");
+        sv = ::tpyapp::main::pick_view("x");
     }
     return sv;
 }
@@ -74,12 +74,12 @@ std::string_view mixed_strview(std::string_view p, bool flag) {
 //     print(mixed_strview("hello", False))
 void main() {
     Point seed = Point(7);
-    std::cout << mixed_record(seed, true).x << "\n";
-    std::cout << mixed_record(seed, false).x << "\n";
-    std::cout << mixed_record_swapped(seed, true).x << "\n";
-    std::cout << mixed_record_swapped(seed, false).x << "\n";
-    std::cout << mixed_strview("hello", true) << "\n";
-    std::cout << mixed_strview("hello", false) << "\n";
+    std::cout << ::tpyapp::main::mixed_record(seed, true).x << "\n";
+    std::cout << ::tpyapp::main::mixed_record(seed, false).x << "\n";
+    std::cout << ::tpyapp::main::mixed_record_swapped(seed, true).x << "\n";
+    std::cout << ::tpyapp::main::mixed_record_swapped(seed, false).x << "\n";
+    std::cout << ::tpyapp::main::mixed_strview("hello", true) << "\n";
+    std::cout << ::tpyapp::main::mixed_strview("hello", false) << "\n";
 }
 
 // main()
@@ -88,7 +88,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

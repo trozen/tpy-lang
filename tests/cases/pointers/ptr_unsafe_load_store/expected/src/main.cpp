@@ -41,8 +41,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_store_and_load();
-    test_constptr_load();
+    ::tpyapp::main::test_store_and_load();
+    ::tpyapp::main::test_constptr_load();
 }
 
 } // namespace tpyapp::main

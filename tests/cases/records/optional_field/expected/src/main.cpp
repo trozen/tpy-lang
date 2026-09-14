@@ -85,12 +85,12 @@ void __tpy_init() {
     pts->push_back(Point(7, 70));
     static Line __global_slot_4 = Line(Point(0, 0));
     line2 = &__global_slot_4;
-    line2->end = ::tpy::ptr_to_optional(find_point((*pts), 5));
+    line2->end = ::tpy::ptr_to_optional(::tpyapp::main::find_point((*pts), 5));
     std::cout << ::tpy::print_bool((!line2->end.has_value())) << "\n";
     std::cout << ::tpy::deref_optional_check(line2->end).x << "\n";
-    line2->end = ::tpy::ptr_to_optional(find_point((*pts), 7));
+    line2->end = ::tpy::ptr_to_optional(::tpyapp::main::find_point((*pts), 7));
     std::cout << ::tpy::deref_optional_check(line2->end).y << "\n";
-    line2->end = ::tpy::ptr_to_optional(find_point((*pts), 99));
+    line2->end = ::tpy::ptr_to_optional(::tpyapp::main::find_point((*pts), 99));
     std::cout << ::tpy::print_bool((!line2->end.has_value())) << "\n";
     static Line __global_slot_5 = Line(Point(10, 20));
     line3 = &__global_slot_5;

@@ -18,9 +18,9 @@ void greet(std::string_view name, std::string_view greeting, std::string_view pu
 //     greet("Bob", greeting="Hi")
 //     greet("Charlie", greeting="Hey", punctuation=".")
 void main() {
-    greet("Alice", "Hello", "!");
-    greet("Bob", "Hi");
-    greet("Charlie", "Hey", ".");
+    ::tpyapp::main::greet("Alice", "Hello", "!");
+    ::tpyapp::main::greet("Bob", "Hi");
+    ::tpyapp::main::greet("Charlie", "Hey", ".");
 }
 
 // main()
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

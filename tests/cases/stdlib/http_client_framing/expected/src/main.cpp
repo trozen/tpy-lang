@@ -72,16 +72,16 @@ void run(std::string_view method, ::tpy::BytesView response) {
 //     print(resp.read())      # b'rld'
 //     conn.close()
 void main() {
-    run("GET", ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n7;ext=1\r\n, world\r\n0\r\nX-Trailer: v\r\n\r\n", 94));
-    run("GET", ::tpy::bytes_literal("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\nnope", 56));
-    run("HEAD", ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 999\r\n\r\n", 40));
-    run("GET", ::tpy::bytes_literal("HTTP/1.1 204 No Content\r\n\r\n", 27));
-    run("GET", ::tpy::bytes_literal("HTTP/1.1 304 Not Modified\r\nContent-Length: 5\r\n\r\n", 48));
-    run("GET", ::tpy::bytes_literal("HTTP/1.0 200 OK\r\nContent-Length: 2\r\n\r\nhi", 40));
-    run("GET", ::tpy::bytes_literal("HTTP/1.5 200 OK\r\nContent-Length: 2\r\n\r\nhi", 40));
-    run("GET", ::tpy::bytes_literal("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi", 65));
-    run("GET", ::tpy::bytes_literal("HTTP/1.1 101 Switching Protocols\r\n\r\n", 36));
-    run("GET", ::tpy::bytes_literal("HTTP/1.1 103 Early Hints\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi", 68));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n7;ext=1\r\n, world\r\n0\r\nX-Trailer: v\r\n\r\n", 94));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\nnope", 56));
+    ::tpyapp::main::run("HEAD", ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 999\r\n\r\n", 40));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 204 No Content\r\n\r\n", 27));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 304 Not Modified\r\nContent-Length: 5\r\n\r\n", 48));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.0 200 OK\r\nContent-Length: 2\r\n\r\nhi", 40));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.5 200 OK\r\nContent-Length: 2\r\n\r\nhi", 40));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi", 65));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 101 Switching Protocols\r\n\r\n", 36));
+    ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 103 Early Hints\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi", 68));
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
@@ -116,7 +116,7 @@ void __tpy_init() {
     ::tpystd::socket::__tpy_init();
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

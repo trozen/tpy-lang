@@ -26,7 +26,7 @@ int32_t take(const std::tuple<const Box*, const Box*>& t) {
 //     p = make_mixed(b)
 //     return p[1].val
 int32_t read_borrow_elem(Box& b) {
-    auto p = make_mixed(b);
+    auto p = ::tpyapp::main::make_mixed(b);
     return std::get<1>(p)->val;
 }
 
@@ -34,7 +34,7 @@ int32_t read_borrow_elem(Box& b) {
 //     p = make_mixed(b)
 //     return p[0].val
 int32_t read_own_elem(Box& b) {
-    auto p = make_mixed(b);
+    auto p = ::tpyapp::main::make_mixed(b);
     return std::get<0>(p).val;
 }
 
@@ -44,7 +44,7 @@ int32_t read_own_elem(Box& b) {
 //     # Observed on the ORIGINAL: element 1 aliases `b`, it is not a copy.
 //     return b.val
 int32_t write_borrow_elem(Box& b) {
-    auto p = make_mixed(b);
+    auto p = ::tpyapp::main::make_mixed(b);
     std::get<1>(p)->val = 99;
     return b.val;
 }
@@ -54,7 +54,7 @@ int32_t write_borrow_elem(Box& b) {
 //     # whole-tuple storage verdict used to veto the per-element answer.
 //     return make_mixed(b)[1].val
 int32_t read_direct(Box& b) {
-    return std::get<1>(make_mixed(b))->val;
+    return std::get<1>(::tpyapp::main::make_mixed(b))->val;
 }
 
 // def read_param(p: tuple[Own[Box], Box]) -> int32:
@@ -69,7 +69,7 @@ int32_t read_param(const std::tuple<Box, const Box*>& p) {
 //     owned, borrowed = make_mixed(b)
 //     return owned.val + borrowed.val
 int32_t unpack_mixed(Box& b) {
-    auto __tup_1 = make_mixed(b);
+    auto __tup_1 = ::tpyapp::main::make_mixed(b);
     Box owned = std::move(std::get<0>(__tup_1));
     auto&& borrowed = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return (::tpy::add_check<int32_t>(owned.val, borrowed.val));
@@ -82,7 +82,7 @@ int32_t unpack_mixed(Box& b) {
 //     p[1].bump()
 //     return b.val
 int32_t method_on_borrow_elem(Box& b) {
-    auto p = make_mixed(b);
+    auto p = ::tpyapp::main::make_mixed(b);
     std::get<1>(p)->bump();
     return b.val;
 }
@@ -95,8 +95,8 @@ int32_t method_on_borrow_elem(Box& b) {
 //     p[1].val = 50
 //     return n + b.val
 int32_t pass_whole(Box& b) {
-    auto p = make_mixed(b);
-    int32_t n = take(::tpy::tuple_to_pointer<std::tuple<const Box*, const Box*>>(p));
+    auto p = ::tpyapp::main::make_mixed(b);
+    int32_t n = ::tpyapp::main::take(::tpy::tuple_to_pointer<std::tuple<const Box*, const Box*>>(p));
     std::get<1>(p)->val = 50;
     return (::tpy::add_check<int32_t>(n, b.val));
 }
@@ -105,7 +105,7 @@ int32_t pass_whole(Box& b) {
 //     p = make_owned()
 //     return p[1].val
 int32_t wholly_owned_still_dots() {
-    auto p = make_owned();
+    auto p = ::tpyapp::main::make_owned();
     return std::get<1>(p).val;
 }
 
@@ -129,7 +129,7 @@ int32_t wholly_owned_still_dots() {
 //     xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
 //     return xs[0][1].val
 int32_t in_list(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
     return std::get<1>(::tpy::__getitem__(xs, 0)).val;
 }
 
@@ -137,7 +137,7 @@ int32_t in_list(Box& b) {
 //     d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
 //     return d[1][1].val
 int32_t in_dict(Box& b) {
-    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))}});
+    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))}});
     return std::get<1>(::tpy::__getitem__(d, 1)).val;
 }
 
@@ -148,7 +148,7 @@ int32_t in_dict(Box& b) {
 //     q = (make_mixed(b), 1)  # tpyc: warning(/copies Box into owned storage \(tuple element 0.1\)/)
 //     return q[0][1].val
 int32_t in_nested_tuple(Box& b) {
-    std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)), 1};
+    std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)), 1};
     return std::get<1>(std::get<0>(q)).val;
 }
 
@@ -159,7 +159,7 @@ int32_t in_nested_tuple(Box& b) {
 //         n = n + t[1].val
 //     return n
 int32_t as_loop_var(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
     int32_t n = 0;
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
@@ -179,7 +179,7 @@ int32_t as_loop_var(Box& b) {
 //     xs[0][1].val = 41
 //     return b.val
 int32_t in_list_copy_ack(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 41;
     return b.val;
 }
@@ -190,7 +190,7 @@ int32_t in_list_copy_ack(Box& b) {
 //     p = make_mixed(b) if flag else make_mixed(c)
 //     return p[1].val
 int32_t via_ternary(Box& b, Box& c, bool flag) {
-    auto p = ((flag) ? (make_mixed(b)) : (make_mixed(c)));
+    auto p = ((flag) ? (::tpyapp::main::make_mixed(b)) : (::tpyapp::main::make_mixed(c)));
     return std::get<1>(p)->val;
 }
 
@@ -204,12 +204,12 @@ int32_t via_ternary(Box& b, Box& c, bool flag) {
 //         n = p[1].val + make_mixed(c)[1].val
 //     return n
 int32_t rebound_in_branch(Box& b, Box& c, bool flag) {
-    auto p = make_mixed(b);
+    auto p = ::tpyapp::main::make_mixed(b);
     int32_t n;
     if (flag) {
         n = std::get<1>(p)->val;
     } else {
-        n = (::tpy::add_check<int32_t>(std::get<1>(p)->val, std::get<1>(make_mixed(c))->val));
+        n = (::tpy::add_check<int32_t>(std::get<1>(p)->val, std::get<1>(::tpyapp::main::make_mixed(c))->val));
     }
     return n;
 }
@@ -231,35 +231,35 @@ int32_t rebound_in_branch(Box& b, Box& c, bool flag) {
 //     print(rebound_in_branch(Box(2), Box(3), False))
 void main() {
     Box __tmp_1 = Box(7);
-    std::cout << read_borrow_elem(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::read_borrow_elem(__tmp_1) << "\n";
     Box __tmp_2 = Box(7);
-    std::cout << read_own_elem(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::read_own_elem(__tmp_2) << "\n";
     Box __tmp_3 = Box(7);
-    std::cout << write_borrow_elem(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::write_borrow_elem(__tmp_3) << "\n";
     Box __tmp_4 = Box(7);
-    std::cout << read_direct(__tmp_4) << "\n";
-    std::cout << read_param(::tpy::tuple_value_to_borrow<std::tuple<Box, Box*>>(std::tuple<Box, Box>{Box(5), Box(6)})) << "\n";
+    std::cout << ::tpyapp::main::read_direct(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::read_param(::tpy::tuple_value_to_borrow<std::tuple<Box, Box*>>(std::tuple<Box, Box>{Box(5), Box(6)})) << "\n";
     Box __tmp_5 = Box(7);
-    std::cout << unpack_mixed(__tmp_5) << "\n";
+    std::cout << ::tpyapp::main::unpack_mixed(__tmp_5) << "\n";
     Box __tmp_6 = Box(7);
-    std::cout << method_on_borrow_elem(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::method_on_borrow_elem(__tmp_6) << "\n";
     Box __tmp_7 = Box(7);
-    std::cout << pass_whole(__tmp_7) << "\n";
-    std::cout << wholly_owned_still_dots() << "\n";
+    std::cout << ::tpyapp::main::pass_whole(__tmp_7) << "\n";
+    std::cout << ::tpyapp::main::wholly_owned_still_dots() << "\n";
     Box __tmp_8 = Box(2);
     Box __tmp_9 = Box(2);
-    std::cout << in_list(__tmp_8) << " " << in_dict(__tmp_9) << "\n";
+    std::cout << ::tpyapp::main::in_list(__tmp_8) << " " << ::tpyapp::main::in_dict(__tmp_9) << "\n";
     Box __tmp_10 = Box(2);
     Box __tmp_11 = Box(2);
-    std::cout << in_nested_tuple(__tmp_10) << " " << as_loop_var(__tmp_11) << "\n";
+    std::cout << ::tpyapp::main::in_nested_tuple(__tmp_10) << " " << ::tpyapp::main::as_loop_var(__tmp_11) << "\n";
     Box __tmp_12 = Box(2);
-    std::cout << in_list_copy_ack(__tmp_12) << "\n";
+    std::cout << ::tpyapp::main::in_list_copy_ack(__tmp_12) << "\n";
     Box __tmp_13 = Box(2);
     Box __tmp_14 = Box(3);
-    std::cout << via_ternary(__tmp_13, __tmp_14, true) << "\n";
+    std::cout << ::tpyapp::main::via_ternary(__tmp_13, __tmp_14, true) << "\n";
     Box __tmp_15 = Box(2);
     Box __tmp_16 = Box(3);
-    std::cout << rebound_in_branch(__tmp_15, __tmp_16, false) << "\n";
+    std::cout << ::tpyapp::main::rebound_in_branch(__tmp_15, __tmp_16, false) << "\n";
 }
 
 // main()
@@ -268,7 +268,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

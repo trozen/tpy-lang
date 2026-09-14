@@ -68,8 +68,8 @@ void main() {
     Sector s = Sector(64);
     Sector* p = &s;
     Seg g = Seg(&s);
-    std::cout << read_elem(p, 1) << " " << read_cond(p, 0) << " " << grow(p) << " " << count_readonly(p) << "\n";
-    std::cout << ::tpy::__len__(s.flags) << " " << pic_width(g) << " " << ::tpy::print_bool(has_pic(g)) << "\n";
+    std::cout << ::tpyapp::main::read_elem(p, 1) << " " << ::tpyapp::main::read_cond(p, 0) << " " << ::tpyapp::main::grow(p) << " " << ::tpyapp::main::count_readonly(p) << "\n";
+    std::cout << ::tpy::__len__(s.flags) << " " << ::tpyapp::main::pic_width(g) << " " << ::tpy::print_bool(::tpyapp::main::has_pic(g)) << "\n";
 }
 
 // main()
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -108,7 +108,7 @@ void main() {
         std::move(__result);
     });
     std::cout << ::tpy::ListPrinter(upper) << "\n";
-    std::cout << ::tpy::ListPrinter(make_list(4)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::make_list(4)) << "\n";
     int32_t step = 3;
     std::vector<int32_t> stepped = ({
         std::vector<int32_t> __result;
@@ -144,7 +144,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

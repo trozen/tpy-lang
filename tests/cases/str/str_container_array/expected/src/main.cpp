@@ -26,7 +26,7 @@ void main() {
     std::cout << ::tpy::list_to_str(a) << "\n";
     std::cout << std::format("{}", ::tpy::list_to_str(a)) << "\n";
     std::cout << std::format("array={}", ::tpy::list_to_str(a)) << "\n";
-    show_span(::tpy::as_mut_span(a));
+    ::tpyapp::main::show_span(::tpy::as_mut_span(a));
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

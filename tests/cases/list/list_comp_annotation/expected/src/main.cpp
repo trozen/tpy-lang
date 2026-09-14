@@ -85,7 +85,7 @@ void main() {
         std::move(__result);
     });
     std::cout << ::tpy::ListPrinter(wide) << "\n";
-    std::vector<::tpy::BigInt> result = make_bigints();
+    std::vector<::tpy::BigInt> result = ::tpyapp::main::make_bigints();
     std::cout << ::tpy::ListPrinter(result) << "\n";
     std::vector<::tpy::BigInt> doubled = ({
         std::vector<::tpy::BigInt> __result;
@@ -127,7 +127,7 @@ void main() {
         }
         std::move(__result);
     });
-    accept_wide(__tmp_1);
+    ::tpyapp::main::accept_wide(__tmp_1);
     std::vector<int32_t> same = ({
         std::vector<int32_t> __result;
         auto& __obj_5 = items;
@@ -149,7 +149,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

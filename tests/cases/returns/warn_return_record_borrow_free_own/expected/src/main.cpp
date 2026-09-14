@@ -15,13 +15,13 @@ Payload& first(std::vector<Payload>& rows) {
 //     # the copy the warning declares.
 //     return first(rows)  # tpyc: warning(/copies Payload into owned storage/)
 Payload take(std::vector<Payload>& rows) {
-    return first(rows);
+    return ::tpyapp::main::first(rows);
 }
 
 // def take_copy(rows: list[Payload]) -> Own[Payload]:
 //     return copy(first(rows))  # tpyc: ok
 Payload take_copy(std::vector<Payload>& rows) {
-    return Payload(first(rows));
+    return Payload(::tpyapp::main::first(rows));
 }
 
 // def main() -> None:
@@ -29,7 +29,7 @@ Payload take_copy(std::vector<Payload>& rows) {
 //     print(take(rows).n, take_copy(rows).n, rows[0].n)
 void main() {
     std::vector<Payload> rows = {Payload(1)};
-    std::cout << take(rows).n << " " << take_copy(rows).n << " " << ::tpy::__getitem__(rows, 0).n << "\n";
+    std::cout << ::tpyapp::main::take(rows).n << " " << ::tpyapp::main::take_copy(rows).n << " " << ::tpy::__getitem__(rows, 0).n << "\n";
 }
 
 // main()
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

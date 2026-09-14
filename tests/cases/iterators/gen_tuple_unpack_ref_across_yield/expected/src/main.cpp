@@ -19,7 +19,7 @@ std::tuple<Box*, Box*> first_two(std::vector<Box>& items) {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __tup_1 = first_two(items);
+        auto __tup_1 = ::tpyapp::main::first_two(items);
         a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __state = S_RESUME_0;
@@ -54,7 +54,7 @@ __gen_g g(std::vector<Box>& items) {
 void main() {
     std::vector<Box> items = {Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2))};
     {
-        auto __src_0 = g(items);
+        auto __src_0 = ::tpyapp::main::g(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

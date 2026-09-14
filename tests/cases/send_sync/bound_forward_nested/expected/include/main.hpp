@@ -69,7 +69,7 @@ void sink(::tpy::own_param_t<T> x) {
 //     sink(x)
 template<typename T>
 void forward(::tpy::own_param_t<T> x) {
-    sink<T>(std::move(x));
+    ::tpyapp::main::sink<T>(std::move(x));
 }
 
 void __tpy_init();

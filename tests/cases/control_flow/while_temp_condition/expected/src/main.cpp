@@ -51,7 +51,7 @@ int32_t countdown(int32_t total) {
     int32_t it = 0;
     while (true) {
         ::tpy::Union<double, int32_t> __tmp_1 = total;
-        if (!((take_vu(__tmp_1) > 0))) break;
+        if (!((::tpyapp::main::take_vu(__tmp_1) > 0))) break;
         total = ::tpy::sub_check<int32_t>(total, 1);
         it = ::tpy::add_check<int32_t>(it, 1);
         if ((it > 50)) {
@@ -74,7 +74,7 @@ int32_t countdown(int32_t total) {
     int32_t it = 0;
     while (true) {
         std::vector<::tpy::BigInt> __tmp_2 = {1, 2, 3};
-        if (!((eat(__tmp_2) > 1))) break;
+        if (!((::tpyapp::main::eat(__tmp_2) > 1))) break;
         it = ::tpy::add_check<int32_t>(it, 1);
         if ((it > 20)) {
             return ::tpy::BigInt(it);
@@ -99,7 +99,7 @@ int32_t countdown(int32_t total) {
     int32_t it = 0;
     while (true) {
         std::vector<::tpy::BigInt> __tmp_3 = {n};
-        if (!((head(__tmp_3) > 0))) break;
+        if (!((::tpyapp::main::head(__tmp_3) > 0))) break;
         n = (n) - (::tpy::BigInt(1));
         it = ::tpy::add_check<int32_t>(it, 1);
         if ((it > 50)) {
@@ -130,7 +130,7 @@ int32_t countdown(int32_t total) {
     int32_t steps = 0;
     while (true) {
         std::vector<::tpy::BigInt> __tmp_4 = {n};
-        if (!((head(__tmp_4) > 0))) break;
+        if (!((::tpyapp::main::head(__tmp_4) > 0))) break;
         n = (n) - (::tpy::BigInt(1));
         if ((n == stop_at)) {
             goto __after_else_0;
@@ -168,7 +168,7 @@ int32_t ctor_rvalue_cond(int32_t start) {
     int32_t it = 0;
     while (true) {
         Pack __tmp_5 = Pack(n);
-        if (!((weigh(__tmp_5) > 0))) break;
+        if (!((::tpyapp::main::weigh(__tmp_5) > 0))) break;
         n = ::tpy::sub_check<int32_t>(n, 1);
         it = ::tpy::add_check<int32_t>(it, 1);
         if ((it > 50)) {
@@ -193,7 +193,7 @@ int32_t ctor_rvalue_cond(int32_t start) {
         int32_t n = 2;
         while (true) {
             std::vector<::tpy::BigInt> __tmp_6 = {n};
-            if (!((head(__tmp_6) > 0))) break;
+            if (!((::tpyapp::main::head(__tmp_6) > 0))) break;
             n = ::tpy::sub_check<int32_t>(n, 1);
             hits = ::tpy::add_check<int32_t>(hits, 1);
         }
@@ -233,14 +233,14 @@ int32_t walrus_cond(int32_t stop) {
 //     print(nested_loops())
 //     print(walrus_cond(0))
 void main() {
-    std::cout << countdown(5) << "\n";
-    std::cout << fresh_literal() << "\n";
-    std::cout << literal_reads_loop_var(::tpy::BigInt(4)) << "\n";
-    std::cout << else_break_continue(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n";
-    std::cout << else_break_continue(::tpy::BigInt(5), ::tpy::BigInt(-1)) << "\n";
-    std::cout << ctor_rvalue_cond(3) << "\n";
-    std::cout << nested_loops() << "\n";
-    std::cout << walrus_cond(0) << "\n";
+    std::cout << ::tpyapp::main::countdown(5) << "\n";
+    std::cout << ::tpyapp::main::fresh_literal() << "\n";
+    std::cout << ::tpyapp::main::literal_reads_loop_var(::tpy::BigInt(4)) << "\n";
+    std::cout << ::tpyapp::main::else_break_continue(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n";
+    std::cout << ::tpyapp::main::else_break_continue(::tpy::BigInt(5), ::tpy::BigInt(-1)) << "\n";
+    std::cout << ::tpyapp::main::ctor_rvalue_cond(3) << "\n";
+    std::cout << ::tpyapp::main::nested_loops() << "\n";
+    std::cout << ::tpyapp::main::walrus_cond(0) << "\n";
 }
 
 // main()
@@ -249,7 +249,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

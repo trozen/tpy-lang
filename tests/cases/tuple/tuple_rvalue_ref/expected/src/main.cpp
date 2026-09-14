@@ -24,10 +24,10 @@ void show(const std::tuple<const T*, const T*>& p) {
 //     show((a, T(20)))
 //     show((T(30), a))
 void main() {
-    show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(1), T(2)}));
+    ::tpyapp::main::show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(1), T(2)}));
     T a = T(10);
-    show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T*, T>{&(a), T(20)}));
-    show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T*>{T(30), &(a)}));
+    ::tpyapp::main::show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T*, T>{&(a), T(20)}));
+    ::tpyapp::main::show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T*>{T(30), &(a)}));
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

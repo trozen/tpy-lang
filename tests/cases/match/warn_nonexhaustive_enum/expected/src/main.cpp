@@ -73,8 +73,8 @@ std::string describe(Color c) {
 //     print(describe(Color.Red))
 //     print(describe(Color.Green))
 void main() {
-    std::cout << describe(Color::Red) << "\n";
-    std::cout << describe(Color::Green) << "\n";
+    std::cout << ::tpyapp::main::describe(Color::Red) << "\n";
+    std::cout << ::tpyapp::main::describe(Color::Green) << "\n";
 }
 
 // # warning: non-exhaustive match on enum (missing member)
@@ -86,7 +86,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

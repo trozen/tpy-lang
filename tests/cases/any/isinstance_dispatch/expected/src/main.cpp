@@ -34,10 +34,10 @@ void show(::tpy::Any v) {
 //     show(2.5)
 //     show(None)
 void main() {
-    show(::tpy::make_any(::tpy::BigInt(1)));
-    show(::tpy::make_any(std::string("hi")));
-    show(::tpy::make_any(static_cast<double>(2.5)));
-    show(::tpy::make_any(std::monostate{}));
+    ::tpyapp::main::show(::tpy::make_any(::tpy::BigInt(1)));
+    ::tpyapp::main::show(::tpy::make_any(std::string("hi")));
+    ::tpyapp::main::show(::tpy::make_any(static_cast<double>(2.5)));
+    ::tpyapp::main::show(::tpy::make_any(std::monostate{}));
 }
 
 // main()
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

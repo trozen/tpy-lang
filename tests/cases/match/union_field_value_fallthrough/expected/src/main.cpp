@@ -102,21 +102,21 @@ __match_end_2:;
 //     print(either(Cat("x")))
 void main() {
     Dog __tmp_1 = Dog(::tpy::BigInt(4));
-    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
     Dog __tmp_2 = Dog(::tpy::BigInt(3));
-    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
     Dog __tmp_3 = Dog(::tpy::BigInt(2));
-    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n";
     Cat __tmp_4 = Cat("rex");
-    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}) << "\n";
     Cat __tmp_5 = Cat("x");
-    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_5}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_5}) << "\n";
     Dog __tmp_6 = Dog(::tpy::BigInt(4));
-    std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_6}) << "\n";
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_6}) << "\n";
     Dog __tmp_7 = Dog(::tpy::BigInt(2));
-    std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_7}) << "\n";
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_7}) << "\n";
     Cat __tmp_8 = Cat("x");
-    std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_8}) << "\n";
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_8}) << "\n";
 }
 
 // main()
@@ -125,7 +125,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

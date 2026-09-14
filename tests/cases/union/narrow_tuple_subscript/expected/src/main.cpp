@@ -22,7 +22,7 @@ namespace tpyapp::main {
 //     else:
 //         print(v[0], v[1])  # std::get<0>, std::get<1>
 void main() {
-    ::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> __slot_1 = pick(true);
+    ::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> __slot_1 = ::tpyapp::main::pick(true);
     ::tpy::Union<Rec*, std::tuple<std::string, ::tpy::BigInt>*> v = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<Rec*>(v)) {
         auto& __v = *std::get<Rec*>(v);
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

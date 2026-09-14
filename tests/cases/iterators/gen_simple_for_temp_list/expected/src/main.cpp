@@ -18,7 +18,7 @@ std::vector<int32_t> make() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_src_0.emplace(make());
+        __for_src_0.emplace(::tpyapp::main::make());
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
@@ -54,7 +54,7 @@ __gen_g g() {
 //     for v in it:
 //         print(v)
 void main() {
-    auto it = g();
+    auto it = ::tpyapp::main::g();
     std::cout << "created" << "\n";
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -498,7 +498,7 @@ __coro_async_position async_position() {
 //     print("async:", asyncio.run(async_position()))
 void main() {
     {
-        auto __src_0 = free_import();
+        auto __src_0 = ::tpyapp::main::free_import();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -508,7 +508,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = single_yield_import();
+        auto __src_2 = ::tpyapp::main::single_yield_import();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -518,7 +518,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = module_call();
+        auto __src_4 = ::tpyapp::main::module_call();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -529,7 +529,7 @@ void main() {
     }
     {
         ::tpyapp::gensrc::Src __tmp_1 = ::tpyapp::gensrc::Src(7);
-        auto __src_6 = imported_method(__tmp_1);
+        auto __src_6 = ::tpyapp::main::imported_method(__tmp_1);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -539,7 +539,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = generic_callee();
+        auto __src_8 = ::tpyapp::main::generic_callee();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -550,7 +550,7 @@ void main() {
     }
     {
         ::tpyapp::gensrc::Box<int32_t> __tmp_2 = ::tpyapp::gensrc::Box<int32_t>({5, 6});
-        auto __src_10 = generic_owner_imported(__tmp_2);
+        auto __src_10 = ::tpyapp::main::generic_owner_imported(__tmp_2);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -561,7 +561,7 @@ void main() {
     }
     {
         LocalBox<int32_t> __tmp_3 = LocalBox<int32_t>({8, 9});
-        auto __src_12 = generic_owner_local(__tmp_3);
+        auto __src_12 = ::tpyapp::main::generic_owner_local(__tmp_3);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -572,7 +572,7 @@ void main() {
     }
     ::tpyapp::gensrc::Bag bag = ::tpyapp::gensrc::Bag();
     {
-        auto __src_14 = mutate_receiver(bag);
+        auto __src_14 = ::tpyapp::main::mutate_receiver(bag);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -583,7 +583,7 @@ void main() {
     }
     std::cout << "mutate: after" << " " << bag.n << "\n";
     {
-        auto __src_16 = lazy_interleave();
+        auto __src_16 = ::tpyapp::main::lazy_interleave();
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
@@ -594,7 +594,7 @@ void main() {
         }
     }
     {
-        auto __src_18 = abandoned();
+        auto __src_18 = ::tpyapp::main::abandoned();
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
         for (;;) {
             auto __r_19 = __itr_18.__next__();
@@ -607,7 +607,7 @@ void main() {
         }
     }
     std::cout << "abandon: after break" << "\n";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_position())) << "\n";
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_position())) << "\n";
 }
 
 // # A resumable frame delegating to a generator defined in ANOTHER module: the
@@ -624,7 +624,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::gensrc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

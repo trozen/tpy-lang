@@ -29,8 +29,8 @@ int32_t maybe_read(const Box& b, bool flag) {
 //     print(maybe_read(b, False))
 void main() {
     Box b = Box(42);
-    std::cout << maybe_read(b, true) << "\n";
-    std::cout << maybe_read(b, false) << "\n";
+    std::cout << ::tpyapp::main::maybe_read(b, true) << "\n";
+    std::cout << ::tpyapp::main::maybe_read(b, false) << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -46,9 +46,9 @@ void fresh_stays_scoped() {
 //     param_rebind(50)
 //     fresh_stays_scoped()
 void main() {
-    scalar();
-    param_rebind(50);
-    fresh_stays_scoped();
+    ::tpyapp::main::scalar();
+    ::tpyapp::main::param_rebind(50);
+    ::tpyapp::main::fresh_stays_scoped();
 }
 
 // main()
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

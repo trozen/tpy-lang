@@ -44,9 +44,9 @@ std::string classify(int32_t x) {
 //     print(classify(int32(2)))
 //     print(classify(int32(3)))
 void main() {
-    std::cout << classify(1) << "\n";
-    std::cout << classify(2) << "\n";
-    std::cout << classify(3) << "\n";
+    std::cout << ::tpyapp::main::classify(1) << "\n";
+    std::cout << ::tpyapp::main::classify(2) << "\n";
+    std::cout << ::tpyapp::main::classify(3) << "\n";
 }
 
 // main()
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

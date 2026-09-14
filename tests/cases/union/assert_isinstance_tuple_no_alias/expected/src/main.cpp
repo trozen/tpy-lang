@@ -18,7 +18,7 @@ int32_t probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*> v) {
 //     print(probe(Alpha(1)))
 void main() {
     Alpha __tmp_1 = Alpha(1);
-    std::cout << probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*>{&__tmp_1}) << "\n";
 }
 
 // main()
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -32,13 +32,13 @@ int32_t report(int32_t a, int32_t b, int32_t count) {
 //     n2: int32 = report(int32(2), int32(5), count=int32(3))  # 21
 //     print(n2)
 void main() {
-    std::string s = report(3, 0, std::string_view("tag"));
+    std::string s = ::tpyapp::main::report(3, 0, std::string_view("tag"));
     std::cout << s << "\n";
-    int32_t n = report(3, 0, 4);
+    int32_t n = ::tpyapp::main::report(3, 0, 4);
     std::cout << n << "\n";
-    std::string s2 = report(2, 5, std::string_view("sum"));
+    std::string s2 = ::tpyapp::main::report(2, 5, std::string_view("sum"));
     std::cout << s2 << "\n";
-    int32_t n2 = report(2, 5, 3);
+    int32_t n2 = ::tpyapp::main::report(2, 5, 3);
     std::cout << n2 << "\n";
 }
 
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

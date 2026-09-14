@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def get_box() -> Own[Container[int32]]:
 //     return make_box()  # tpyc: ok
 Container<int32_t> get_box() {
-    return make_box<int32_t>();
+    return ::tpyapp::main::make_box<int32_t>();
 }
 
 // def main():
@@ -37,12 +37,12 @@ Container<int32_t> get_box() {
 //
 //     print("done")
 void main() {
-    Container<int32_t> b = make_box<int32_t>();
+    Container<int32_t> b = ::tpyapp::main::make_box<int32_t>();
     std::cout << b << "\n";
     Container<int32_t> c = Container<int32_t>();
     std::cout << c << "\n";
-    std::cout << get_box() << "\n";
-    int32_t y = identity<int32_t>(5);
+    std::cout << ::tpyapp::main::get_box() << "\n";
+    int32_t y = ::tpyapp::main::identity<int32_t>(5);
     std::cout << y << "\n";
     Container<int32_t> __slot_1 = Container<int32_t>();
     Container<int32_t>* r = &__slot_1;
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

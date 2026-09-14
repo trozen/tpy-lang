@@ -36,12 +36,12 @@ int32_t f(Point& p, bool ok) {
 //     print(f(Point(2, 2), True))
 void main() {
     Point pt = Point(1, 1);
-    std::cout << f(pt, true) << "\n";
+    std::cout << ::tpyapp::main::f(pt, true) << "\n";
     std::cout << pt.x << "\n";
     Point __tmp_1 = Point(1, 1);
-    std::cout << f(__tmp_1, false) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1, false) << "\n";
     Point __tmp_2 = Point(2, 2);
-    std::cout << f(__tmp_2, true) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_2, true) << "\n";
 }
 
 // # A record arm whose or-alternatives carry a GUARD: the guard composes into
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

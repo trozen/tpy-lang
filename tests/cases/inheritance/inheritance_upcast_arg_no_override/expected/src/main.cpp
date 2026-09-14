@@ -16,7 +16,7 @@ std::string name_of(Animal& a) {
 //     print(d.bark())
 void main() {
     Dog d = Dog("Rex", "Lab");
-    std::cout << name_of(d) << "\n";
+    std::cout << ::tpyapp::main::name_of(d) << "\n";
     std::cout << d.bark() << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

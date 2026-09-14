@@ -43,11 +43,11 @@ void __tpy_init() {
     points->push_back(Point(1, 10));
     points->push_back(Point(2, 20));
     points->push_back(Point(3, 30));
-    result = find((*points), 2);
+    result = ::tpyapp::main::find((*points), 2);
     if ((result != nullptr)) {
         std::cout << result->y << "\n";
     }
-    result = find((*points), 99);
+    result = ::tpyapp::main::find((*points), 99);
     std::cout << ::tpy::print_bool((result == nullptr)) << "\n";
 }
 

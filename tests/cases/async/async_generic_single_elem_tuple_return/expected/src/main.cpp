@@ -37,7 +37,7 @@ __coro_go go() {
 // def main() -> None:
 //     asyncio.run(go())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(go()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::go()));
 }
 
 // # A coroutine returning a single-element `tuple[T]`: the one-slot tuple is
@@ -51,7 +51,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

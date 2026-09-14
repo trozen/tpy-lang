@@ -20,9 +20,9 @@ void feed(Sink& s, bool flag, char a, char b) {
 //     print(s.n, s.last)
 void main() {
     Sink s = Sink();
-    feed(s, true, ::tpy::char_from_str("a"), ::tpy::char_from_str("b"));
+    ::tpyapp::main::feed(s, true, ::tpy::char_from_str("a"), ::tpy::char_from_str("b"));
     std::cout << s.n << " " << s.last << "\n";
-    feed(s, false, ::tpy::char_from_str("a"), ::tpy::char_from_str("b"));
+    ::tpyapp::main::feed(s, false, ::tpy::char_from_str("a"), ::tpy::char_from_str("b"));
     std::cout << s.n << " " << s.last << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     return count(b, c)  # tpyc: ok
 int32_t via_param(const Box& b, const Box& c) {
     std::array<const Box*, 2> __tmp_1{&b, &c};
-    return count<Box>(::tpy::varargs<const Box>(__tmp_1));
+    return ::tpyapp::main::count<Box>(::tpy::varargs<const Box>(__tmp_1));
 }
 
 // def main() -> None:
@@ -18,7 +18,7 @@ int32_t via_param(const Box& b, const Box& c) {
 void main() {
     Box x = Box(3);
     Box y = Box(4);
-    std::cout << via_param(x, y) << "\n";
+    std::cout << ::tpyapp::main::via_param(x, y) << "\n";
 }
 
 // main()
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -92,7 +92,7 @@ void __tpy_init() {
     static T __global_slot_1 = T(99);
     g_anchor = &__global_slot_1;
     g_pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{g_anchor, nullptr});
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

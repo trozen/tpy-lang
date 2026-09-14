@@ -25,14 +25,14 @@ int32_t sum_all(::tpy::varargs<const Box> items) {
 //     return sum_all(p.a, p.b)  # tpyc: ok
 int32_t via_field(const Pair& p) {
     std::array<const Box*, 2> __tmp_1{&p.a, &p.b};
-    return sum_all(::tpy::varargs<const Box>(__tmp_1));
+    return ::tpyapp::main::sum_all(::tpy::varargs<const Box>(__tmp_1));
 }
 
 // def via_subscript(items: list[Box]) -> int32:
 //     return sum_all(items[0], items[1])  # tpyc: ok
 int32_t via_subscript(const std::vector<Box>& items) {
     std::array<const Box*, 2> __tmp_2{&::tpy::__getitem__(items, 0), &::tpy::__getitem__(items, 1)};
-    return sum_all(::tpy::varargs<const Box>(__tmp_2));
+    return ::tpyapp::main::sum_all(::tpy::varargs<const Box>(__tmp_2));
 }
 
 // def main() -> None:
@@ -44,11 +44,11 @@ int32_t via_subscript(const std::vector<Box>& items) {
 //     print(via_subscript(lst))
 void main() {
     Pair p = Pair(3, 4);
-    std::cout << via_field(p) << "\n";
+    std::cout << ::tpyapp::main::via_field(p) << "\n";
     std::vector<Box> lst = std::vector<Box>{};
     lst.push_back(Box(5));
     lst.push_back(Box(6));
-    std::cout << via_subscript(lst) << "\n";
+    std::cout << ::tpyapp::main::via_subscript(lst) << "\n";
 }
 
 // main()
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

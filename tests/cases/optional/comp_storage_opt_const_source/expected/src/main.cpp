@@ -36,7 +36,7 @@ void from_readonly(const std::vector<std::optional<P>>& items) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& v = *__beg_1;
-            __result.push_back(peek(::tpy::optional_to_ptr(v)));
+            __result.push_back(::tpyapp::main::peek(::tpy::optional_to_ptr(v)));
         }
         std::move(__result);
     })) << "\n";
@@ -85,7 +85,7 @@ void from_local() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& v = *__beg_1;
-            __result.insert(peek(::tpy::optional_to_ptr(v)));
+            __result.insert(::tpyapp::main::peek(::tpy::optional_to_ptr(v)));
         }
         std::move(__result);
     }))) << "\n";
@@ -98,9 +98,9 @@ void from_local() {
 //     from_local()
 void main() {
     std::vector<std::optional<P>> xs = ::tpy::make_vector<std::optional<P>>(P(4), std::nullopt, P(6));
-    from_readonly(xs);
-    from_inferred(xs);
-    from_local();
+    ::tpyapp::main::from_readonly(xs);
+    ::tpyapp::main::from_inferred(xs);
+    ::tpyapp::main::from_local();
 }
 
 // main()
@@ -109,7 +109,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

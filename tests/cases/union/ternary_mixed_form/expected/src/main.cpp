@@ -36,9 +36,9 @@ void main() {
     B __tmp_1 = B(::tpy::BigInt(7));
     Holder h = Holder(::tpy::Union<const A*, const B*>{&__tmp_1});
     A param = A(::tpy::BigInt(3));
-    bump(::tpy::Union<A*, B*>{&(param)}, h, true);
+    ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(param)}, h, true);
     std::cout << param.x << "\n";
-    bump(::tpy::Union<A*, B*>{&(param)}, h, false);
+    ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(param)}, h, false);
     ::tpy::Union<A*, B*> pet = ::tpy::to_ptr_variant(h.pet);
     if (std::holds_alternative<B*>(pet)) {
         auto& __pet = *std::get<B*>(pet);
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

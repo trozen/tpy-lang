@@ -143,7 +143,7 @@ void check_unary(std::string_view name, double x, std::string_view expected) {
     std::string actual = "missing";
     {
         try {
-            actual = category(unary(name, x));
+            actual = ::tpyapp::main::category(::tpyapp::main::unary(name, x));
         } catch (const ::tpy::ValueError&) {
             actual = "domain";
         } catch (const ::tpy::OverflowError&) {
@@ -252,7 +252,7 @@ void unary_policy() {
         std::string_view name = std::get<0>(__tup_1);
         double x = std::get<1>(__tup_1);
         std::string_view expected = std::get<2>(__tup_1);
-        check_unary(name, x, expected);
+        ::tpyapp::main::check_unary(name, x, expected);
     }
     std::cout << "free function: unary domains, overflow, infinities, signed zero" << "\n";
     auto __obj_1 = {"sqrt", "log", "log10", "log2", "log1p", "asin", "acos", "acosh", "atanh", "sin", "cos", "tan", "exp", "exp2", "expm1", "sinh", "cosh", "gamma", "lgamma"};
@@ -260,7 +260,7 @@ void unary_policy() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view name = *__beg_1;
-        check_unary(name, ::tpystd::math::nan, "nan");
+        ::tpyapp::main::check_unary(name, ::tpystd::math::nan, "nan");
     }
     std::cout << "free function: every unary NaN propagates" << "\n";
     if (!((::tpy::stdlib::math::checked_sqrt(static_cast<double>(9)) == 3.0))) ::tpy::raise_assertion_error();
@@ -391,7 +391,7 @@ void binary_policy() {
         std::string actual = "missing";
         {
             try {
-                actual = category(binary(name, x, y));
+                actual = ::tpyapp::main::category(::tpyapp::main::binary(name, x, y));
             } catch (const ::tpy::ValueError&) {
                 actual = "domain";
             } catch (const ::tpy::OverflowError&) {
@@ -426,7 +426,7 @@ void binary_policy() {
         std::string actual = "missing";
         {
             try {
-                actual = category(::tpy::stdlib::math::checked_ldexp(x, exponent));
+                actual = ::tpyapp::main::category(::tpy::stdlib::math::checked_ldexp(x, exponent));
             } catch (const ::tpy::OverflowError&) {
                 actual = "overflow";
             }
@@ -703,10 +703,10 @@ void match_position(const ::tpy::BigInt& selector) {
             if (__match_subject_1 == 0) {
                 std::cout << "match arm: skipped" << "\n";
             } else if (__match_subject_1 == 1) {
-                if (!((::tpy::stdlib::math::checked_sqrt(left(4.0)) == 2.0))) ::tpy::raise_assertion_error();
+                if (!((::tpy::stdlib::math::checked_sqrt(::tpyapp::main::left(4.0)) == 2.0))) ::tpy::raise_assertion_error();
                 std::cout << "match arm: value" << "\n";
             } else {
-                ::tpy::stdlib::math::checked_sqrt(left(-(1.0)));
+                ::tpy::stdlib::math::checked_sqrt(::tpyapp::main::left(-(1.0)));
                 std::cout << "match arm: unreachable" << "\n";
             }
         } catch (const ::tpy::ValueError&) {
@@ -753,21 +753,21 @@ void match_position(const ::tpy::BigInt& selector) {
 void evaluation() {
     left_count = 0;
     right_count = 0;
-    if (!((::tpy::stdlib::math::checked_pow(left(2.0), right(3.0)) == 8.0))) ::tpy::raise_assertion_error();
+    if (!((::tpy::stdlib::math::checked_pow(::tpyapp::main::left(2.0), ::tpyapp::main::right(3.0)) == 8.0))) ::tpy::raise_assertion_error();
     if (!(((left_count == 1) && (right_count == 1)))) ::tpy::raise_assertion_error();
     {
         try {
-            ::tpy::stdlib::math::checked_pow(left(-(2.0)), right(0.5));
+            ::tpy::stdlib::math::checked_pow(::tpyapp::main::left(-(2.0)), ::tpyapp::main::right(0.5));
             std::cout << "evaluation: unreachable" << "\n";
         } catch (const ::tpy::ValueError&) {
             if (!(((left_count == 2) && (right_count == 2)))) ::tpy::raise_assertion_error();
         }
     }
-    if (!((::tpy::stdlib::math::checked_sqrt(left(4.0)) == 2.0))) ::tpy::raise_assertion_error();
+    if (!((::tpy::stdlib::math::checked_sqrt(::tpyapp::main::left(4.0)) == 2.0))) ::tpy::raise_assertion_error();
     if (!((left_count == 3))) ::tpy::raise_assertion_error();
     {
         try {
-            ::tpy::stdlib::math::checked_sqrt(left(-(1.0)));
+            ::tpy::stdlib::math::checked_sqrt(::tpyapp::main::left(-(1.0)));
             std::cout << "evaluation: unreachable unary" << "\n";
         } catch (const ::tpy::ValueError&) {
             if (!((left_count == 4))) ::tpy::raise_assertion_error();
@@ -780,10 +780,10 @@ void evaluation() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         bool choose = *__beg_0;
-        double result = ((choose) ? (::tpy::stdlib::math::checked_sqrt(left(4.0))) : (0.0));
+        double result = ((choose) ? (::tpy::stdlib::math::checked_sqrt(::tpyapp::main::left(4.0))) : (0.0));
         if (!((result == ((choose) ? (2.0) : (0.0))))) ::tpy::raise_assertion_error();
-        if (!((choose || (::tpy::stdlib::math::checked_sqrt(left(9.0)) == 3.0)))) ::tpy::raise_assertion_error();
-        if (!((!((choose && (::tpy::stdlib::math::checked_sqrt(left(0.0)) != 0.0)))))) ::tpy::raise_assertion_error();
+        if (!((choose || (::tpy::stdlib::math::checked_sqrt(::tpyapp::main::left(9.0)) == 3.0)))) ::tpy::raise_assertion_error();
+        if (!((!((choose && (::tpy::stdlib::math::checked_sqrt(::tpyapp::main::left(0.0)) != 0.0)))))) ::tpy::raise_assertion_error();
     }
     if (!((left_count == 3))) ::tpy::raise_assertion_error();
     std::cout << "evaluation: ternary and short-circuit placement" << "\n";
@@ -793,7 +793,7 @@ void evaluation() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t selector = *__beg_1;
-        match_position(selector);
+        ::tpyapp::main::match_position(selector);
     }
     if (!((left_count == 2))) ::tpy::raise_assertion_error();
 }
@@ -925,7 +925,7 @@ void positions() {
     {
         try {
             {
-                auto __src_0 = values();
+                auto __src_0 = ::tpyapp::main::values();
                 auto&& __itr_0 = ::tpy::__iter__(__src_0);
                 for (;;) {
                     auto __r_1 = __itr_0.__next__();
@@ -941,7 +941,7 @@ void positions() {
             std::cout << "generator: caught after first yield" << "\n";
         }
     }
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_position()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_position()));
     std::vector<double> roots = ({
         std::vector<double> __result;
         auto __obj_2 = {-(1.0), 4.0, 9.0};
@@ -977,8 +977,8 @@ void positions() {
             std::cout << "comprehension: caught included domain" << "\n";
         }
     }
-    closure_position(16.0);
-    closure_position(-(1.0));
+    ::tpyapp::main::closure_position(16.0);
+    ::tpyapp::main::closure_position(-(1.0));
     int32_t finalized = 0;
     {
         try {
@@ -1014,7 +1014,7 @@ void positions() {
         }
     }
     {
-        if (!((({ auto __er_2 = error_return_root(25.0); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) == 5.0))) ::tpy::raise_assertion_error();
+        if (!((({ auto __er_2 = ::tpyapp::main::error_return_root(25.0); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) == 5.0))) ::tpy::raise_assertion_error();
         std::cout << "@error_return: value" << "\n";
         goto __after_try_1;
         // except MarkerError:
@@ -1026,7 +1026,7 @@ void positions() {
         try {
             {
                 {
-                    auto __try_tmp_4 = error_return_root(-(1.0));
+                    auto __try_tmp_4 = ::tpyapp::main::error_return_root(-(1.0));
                     if (!__try_tmp_4.has_value()) goto __except_3;
                 }
                 std::cout << "@error_return: unreachable" << "\n";
@@ -1044,11 +1044,11 @@ void positions() {
     std::tuple<double, int32_t> two = std::tuple<double, int32_t>{::tpy::stdlib::math::checked_sqrt(9.0), 1};
     if (!((::tpy::stdlib::math::checked_sqrt(((std::get<0>(one)) * (2.0))) == 2.0))) ::tpy::raise_assertion_error();
     if (!((((std::get<0>(one) == 2.0) && (std::get<0>(two) == 3.0)) && (std::get<1>(two) == 1)))) ::tpy::raise_assertion_error();
-    if (!(((optional_root(4.0) == 2.0) && (optional_root(std::nullopt) == 0.0)))) ::tpy::raise_assertion_error();
+    if (!(((::tpyapp::main::optional_root(4.0) == 2.0) && (::tpyapp::main::optional_root(std::nullopt) == 0.0)))) ::tpy::raise_assertion_error();
     ::tpy::Union<double, std::string> positive_union = 9.0;
     ::tpy::Union<double, std::string> skipped_union = "skip";
-    if (!((union_root(positive_union) == 3.0))) ::tpy::raise_assertion_error();
-    if (!((union_root(skipped_union) == 0.0))) ::tpy::raise_assertion_error();
+    if (!((::tpyapp::main::union_root(positive_union) == 3.0))) ::tpy::raise_assertion_error();
+    if (!((::tpyapp::main::union_root(skipped_union) == 0.0))) ::tpy::raise_assertion_error();
     auto __obj_4 = {4.0, -(1.0)};
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
@@ -1056,7 +1056,7 @@ void positions() {
         double x = *__beg_4;
         {
             try {
-                if (!((optional_root(x) == 2.0))) ::tpy::raise_assertion_error();
+                if (!((::tpyapp::main::optional_root(x) == 2.0))) ::tpy::raise_assertion_error();
             } catch (const ::tpy::ValueError&) {
                 std::cout << "shapes: optional caught domain" << "\n";
             }
@@ -1064,21 +1064,21 @@ void positions() {
         ::tpy::Union<double, std::string> scalar_union = x;
         {
             try {
-                if (!((union_root(scalar_union) == 2.0))) ::tpy::raise_assertion_error();
+                if (!((::tpyapp::main::union_root(scalar_union) == 2.0))) ::tpy::raise_assertion_error();
             } catch (const ::tpy::ValueError&) {
                 std::cout << "shapes: union caught domain" << "\n";
             }
         }
         {
             try {
-                if (!((generic_root<int32_t>(0, x) == 2.0))) ::tpy::raise_assertion_error();
+                if (!((::tpyapp::main::generic_root<int32_t>(0, x) == 2.0))) ::tpy::raise_assertion_error();
             } catch (const ::tpy::ValueError&) {
                 std::cout << "shapes: generic caught domain" << "\n";
             }
         }
         {
             try {
-                if (!((mono_root(::tpy::BigInt(0), x) == 2.0))) ::tpy::raise_assertion_error();
+                if (!((::tpyapp::main::mono_root(::tpy::BigInt(0), x) == 2.0))) ::tpy::raise_assertion_error();
             } catch (const ::tpy::ValueError&) {
                 std::cout << "shapes: monomorphic caught domain" << "\n";
             }
@@ -1094,11 +1094,11 @@ void positions() {
 //     positions()
 //     evaluation()
 void main() {
-    unary_policy();
-    binary_policy();
-    ulp_policy();
-    positions();
-    evaluation();
+    ::tpyapp::main::unary_policy();
+    ::tpyapp::main::binary_policy();
+    ::tpyapp::main::ulp_policy();
+    ::tpyapp::main::positions();
+    ::tpyapp::main::evaluation();
 }
 
 // # Checked math calls preserve Python exceptions and IEEE results in every body.
@@ -1138,7 +1138,7 @@ void __tpy_init() {
             std::cout << "module level: value then caught domain" << "\n";
         }
     }
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

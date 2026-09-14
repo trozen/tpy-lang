@@ -110,7 +110,7 @@ bool prios(Prio p, int32_t n) {
 //     return r
 Color flip(Holder& h) {
     h.c = Color::GREEN;
-    Color r = pick(h.c);
+    Color r = ::tpyapp::main::pick(h.c);
     return r;
 }
 
@@ -120,7 +120,7 @@ Color flip(Holder& h) {
 //     print(f"p={Prio.HIGH}")
 void main() {
     Holder h = Holder();
-    std::cout << flip(h) << " " << ::tpy::print_bool(prios(Prio::LOW, 5)) << "\n";
+    std::cout << ::tpyapp::main::flip(h) << " " << ::tpy::print_bool(::tpyapp::main::prios(Prio::LOW, 5)) << "\n";
     std::cout << std::format("p={}", static_cast<int>(Prio::HIGH)) << "\n";
 }
 
@@ -134,7 +134,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

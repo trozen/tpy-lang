@@ -18,7 +18,7 @@ Holder<Handle> transfer() {
 //     r = transfer()
 //     print(r.item.fd)
 void main() {
-    Holder<Handle> r = transfer();
+    Holder<Handle> r = ::tpyapp::main::transfer();
     std::cout << r.item.fd << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

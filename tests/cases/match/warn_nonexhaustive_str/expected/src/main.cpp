@@ -28,9 +28,9 @@ std::string f(std::string_view s) {
 //     print(f("b"))
 //     print(f("z"))
 void main() {
-    std::cout << f("a") << "\n";
-    std::cout << f("b") << "\n";
-    std::cout << f("z") << "\n";
+    std::cout << ::tpyapp::main::f("a") << "\n";
+    std::cout << ::tpyapp::main::f("b") << "\n";
+    std::cout << ::tpyapp::main::f("z") << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

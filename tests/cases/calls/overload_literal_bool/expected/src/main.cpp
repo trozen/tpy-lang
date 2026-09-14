@@ -41,10 +41,10 @@ std::string describe(bool x) {
 //     val = True
 //     print(describe(val))
 void main() {
-    std::cout << describe__lit_True(true) << "\n";
-    std::cout << describe__lit_False(false) << "\n";
+    std::cout << ::tpyapp::main::describe__lit_True(true) << "\n";
+    std::cout << ::tpyapp::main::describe__lit_False(false) << "\n";
     bool val = true;
-    std::cout << describe(val) << "\n";
+    std::cout << ::tpyapp::main::describe(val) << "\n";
 }
 
 // main()
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

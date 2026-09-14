@@ -24,7 +24,7 @@ namespace tpyapp::main {
 //     for v in d:
 //         print(v)
 void main() {
-    ::tpy::ByteArray b = make(4);
+    ::tpy::ByteArray b = ::tpyapp::main::make(4);
     ::tpy::bytearray_setitem(b, 1, 9);
     auto& __obj_0 = b;
     auto __beg_0 = __obj_0.begin();
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

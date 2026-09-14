@@ -522,13 +522,13 @@ std::expected<int32_t, Fail> error_return_body() {
     std::optional<Point> __slot_2;
     Point* p;
     {
-        auto __try_tmp_1 = make_point(15);
+        auto __try_tmp_1 = ::tpyapp::main::make_point(15);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         p = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_1));
     }
     Point& alias = (*p);
     {
-        auto __try_tmp_2 = make_point(50);
+        auto __try_tmp_2 = ::tpyapp::main::make_point(50);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
         p = &*(__slot_2 = ::tpy::unwrap_ref_move(*__try_tmp_2));
     }
@@ -569,25 +569,25 @@ std::expected<int32_t, Fail> error_return_body() {
 //     except Fail:
 //         print("error_return: failed")
 void main() {
-    free_alias();
-    free_drop();
-    second_rebind();
-    field_chain();
-    element_loan();
-    ptr_copy();
-    dead_alias();
-    after_branch(true);
-    after_branch(false);
-    after_loop();
-    loan_before_loop();
-    borrow_call();
-    ptr_escapes_into_record();
-    generator_holds_receiver();
+    ::tpyapp::main::free_alias();
+    ::tpyapp::main::free_drop();
+    ::tpyapp::main::second_rebind();
+    ::tpyapp::main::field_chain();
+    ::tpyapp::main::element_loan();
+    ::tpyapp::main::ptr_copy();
+    ::tpyapp::main::dead_alias();
+    ::tpyapp::main::after_branch(true);
+    ::tpyapp::main::after_branch(false);
+    ::tpyapp::main::after_loop();
+    ::tpyapp::main::loan_before_loop();
+    ::tpyapp::main::borrow_call();
+    ::tpyapp::main::ptr_escapes_into_record();
+    ::tpyapp::main::generator_holds_receiver();
     Built b = Built();
     std::cout << "constructor:" << " " << b.a << " " << b.b << "\n";
     Runner().run();
     {
-        auto __src_0 = gen_section();
+        auto __src_0 = ::tpyapp::main::gen_section();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -597,7 +597,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = gen_drop();
+        auto __src_2 = ::tpyapp::main::gen_drop();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -606,14 +606,14 @@ void main() {
         std::cout << "gen_drop:" << " " << got << "\n";
         }
     }
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_section())) << "\n";
-    nested_def_section();
-    with_body();
-    try_finally();
-    match_arm(0);
-    match_arm(1);
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_section())) << "\n";
+    ::tpyapp::main::nested_def_section();
+    ::tpyapp::main::with_body();
+    ::tpyapp::main::try_finally();
+    ::tpyapp::main::match_arm(0);
+    ::tpyapp::main::match_arm(1);
     {
-        std::cout << "error_return:" << " " << ({ auto __er_4 = error_return_body(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << "error_return:" << " " << ({ auto __er_4 = ::tpyapp::main::error_return_body(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
         goto __after_try_3;
         // except Fail:
         __except_3:;
@@ -673,7 +673,7 @@ void __tpy_init() {
 
     static std::optional<Point> __global_slot_2;
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
     static Point __global_slot_1 = Point(12);
     g = &__global_slot_1;
     galias = g;

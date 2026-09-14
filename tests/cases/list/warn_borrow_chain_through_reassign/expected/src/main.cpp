@@ -79,9 +79,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    chain_alias_then_reassign();
-    reassigned_element_borrower_warns();
-    chain_promotes_alias_to_element();
+    ::tpyapp::main::chain_alias_then_reassign();
+    ::tpyapp::main::reassigned_element_borrower_warns();
+    ::tpyapp::main::chain_promotes_alias_to_element();
 }
 
 } // namespace tpyapp::main

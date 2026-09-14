@@ -40,7 +40,7 @@ void main() {
             auto& __tup_1 = *__beg_0;
             auto& p = std::get<0>(__tup_1);
             int32_t n = std::get<1>(__tup_1);
-            __result.push_back(borrow(::tpy::optional_to_ptr(p)));
+            __result.push_back(::tpyapp::main::borrow(::tpy::optional_to_ptr(p)));
         }
         std::move(__result);
     });
@@ -74,7 +74,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -39,7 +39,7 @@ void main() {
     int32_t v;
     {
         {
-            auto __try_tmp_2 = parse_digit("1");
+            auto __try_tmp_2 = ::tpyapp::main::parse_digit("1");
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -54,7 +54,7 @@ void main() {
     int32_t v2;
     {
         {
-            auto __try_tmp_4 = parse_digit("x");
+            auto __try_tmp_4 = ::tpyapp::main::parse_digit("x");
             if (!__try_tmp_4.has_value()) goto __except_3;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -74,7 +74,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

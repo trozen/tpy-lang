@@ -26,7 +26,7 @@ void __tpy_init() {
     initialized = true;
 
     ::dotted_init::pkg::inner::leaf::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

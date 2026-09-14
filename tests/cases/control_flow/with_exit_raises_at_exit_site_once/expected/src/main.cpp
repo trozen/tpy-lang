@@ -146,7 +146,7 @@ void main() {
     std::cout << "-- ret_out --" << "\n";
     {
         try {
-            ret_out();
+            ::tpyapp::main::ret_out();
         } catch (const ::tpy::RuntimeError& e) {
             std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
@@ -154,7 +154,7 @@ void main() {
     std::cout << "-- brk_out --" << "\n";
     {
         try {
-            brk_out();
+            ::tpyapp::main::brk_out();
         } catch (const ::tpy::RuntimeError& e) {
             std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
@@ -162,13 +162,13 @@ void main() {
     std::cout << "-- cont_out --" << "\n";
     {
         try {
-            cont_out();
+            ::tpyapp::main::cont_out();
         } catch (const ::tpy::RuntimeError& e) {
             std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
     std::cout << "-- ret_out_suppressing --" << "\n";
-    std::cout << ret_out_suppressing() << "\n";
+    std::cout << ::tpyapp::main::ret_out_suppressing() << "\n";
 }
 
 // main()
@@ -177,7 +177,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -35,12 +35,12 @@ void consume(std::unique_ptr<Pet> p) {
 void main() {
     Dog d = Dog(3);
     ::tpy::RefAdapter<Pet, Dog> __tmp_1{d};
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
     ::tpy::Adapter<Pet, Dog> __tmp_2{Dog(7)};
-    greet(__tmp_2);
+    ::tpyapp::main::greet(__tmp_2);
     ::tpy::RefAdapter<Pet, Dog> __tmp_3{d};
-    greet_bare(__tmp_3);
-    consume(::tpy::make_adapter<Pet>(Dog(5)));
+    ::tpyapp::main::greet_bare(__tmp_3);
+    ::tpyapp::main::consume(::tpy::make_adapter<Pet>(Dog(5)));
     ::tpy::Adapter<Pet, Dog> __slot_1{d};
     Pet* q = &__slot_1;
     std::cout << "local:" << " " << q->speak() << "\n";
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -24,8 +24,8 @@ void bump(const Counter& c) {
 void main() {
     Counter::instances = 0;
     Counter a = Counter();
-    bump(a);
-    bump(a);
+    ::tpyapp::main::bump(a);
+    ::tpyapp::main::bump(a);
     std::cout << Counter::instances << "\n";
     FrozenCounter::instances = 0;
     FrozenCounter f = FrozenCounter("widget");
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -110,7 +110,7 @@ __coro_count_chars count_chars(std::optional<std::string_view> s) {
         total = 0;
         __coro_arg_0 = (::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)));
         {
-            auto __src_0 = each_byte(__coro_arg_0);
+            auto __src_0 = ::tpyapp::main::each_byte(__coro_arg_0);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
@@ -148,7 +148,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # A resumable frame (generator/async) iterating a narrowed `bytes | None` /
@@ -162,7 +162,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

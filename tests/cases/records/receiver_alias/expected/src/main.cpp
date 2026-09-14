@@ -66,7 +66,7 @@ void main() {
     std::cout << "generic" << " " << cell.generic<int32_t>(7) << " " << cell.concrete(7) << " " << cell.n << "\n";
     Cell other = Cell(20);
     cell.reassign(other);
-    ordinary_aliases(cell, other);
+    ::tpyapp::main::ordinary_aliases(cell, other);
     {
         auto __src_0 = cell.steps();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -240,7 +240,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

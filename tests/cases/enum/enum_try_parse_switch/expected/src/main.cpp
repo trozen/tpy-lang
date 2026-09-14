@@ -105,14 +105,14 @@ void try_it(std::string_view name) {
 //     try_it("Left")
 //     try_it("")
 void main() {
-    try_it("North");
-    try_it("South");
-    try_it("East");
-    try_it("West");
-    try_it("Up");
-    try_it("Down");
-    try_it("Left");
-    try_it("");
+    ::tpyapp::main::try_it("North");
+    ::tpyapp::main::try_it("South");
+    ::tpyapp::main::try_it("East");
+    ::tpyapp::main::try_it("West");
+    ::tpyapp::main::try_it("Up");
+    ::tpyapp::main::try_it("Down");
+    ::tpyapp::main::try_it("Left");
+    ::tpyapp::main::try_it("");
 }
 
 // # try_parse with 5+ members triggers switch-based dispatch
@@ -124,7 +124,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

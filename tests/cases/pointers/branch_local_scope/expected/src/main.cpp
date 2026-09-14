@@ -95,13 +95,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    branch_rvalue_independent(true);
-    branch_rvalue_independent(false);
-    branch_rvalue_three_way(0);
-    branch_rvalue_three_way(1);
-    branch_rvalue_three_way(2);
-    branch_mixed_scope(true);
-    branch_mixed_scope(false);
+    ::tpyapp::main::branch_rvalue_independent(true);
+    ::tpyapp::main::branch_rvalue_independent(false);
+    ::tpyapp::main::branch_rvalue_three_way(0);
+    ::tpyapp::main::branch_rvalue_three_way(1);
+    ::tpyapp::main::branch_rvalue_three_way(2);
+    ::tpyapp::main::branch_mixed_scope(true);
+    ::tpyapp::main::branch_mixed_scope(false);
 }
 
 } // namespace tpyapp::main

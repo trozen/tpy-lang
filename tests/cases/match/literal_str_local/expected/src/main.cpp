@@ -107,9 +107,9 @@ void classify_many(const std::vector<std::string>& items) {
 //     classify_many(["red", "cat", "dog", "xyz"])
 void main() {
     std::vector<std::string> __tmp_1 = {"apple", "carrot", "banana"};
-    classify_items(__tmp_1);
+    ::tpyapp::main::classify_items(__tmp_1);
     std::vector<std::string> __tmp_2 = {"red", "cat", "dog", "xyz"};
-    classify_many(__tmp_2);
+    ::tpyapp::main::classify_many(__tmp_2);
 }
 
 // main()
@@ -118,7 +118,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -31,10 +31,10 @@ int32_t drop_list(std::vector<::tpy::ordered_map<std::string, int32_t>>& rows) {
 //     print(len(rows[0]), rows[0]["y"])
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> outer = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"a", ::tpy::ordered_map<std::string, int32_t>({{"b", 1}, {"c", 2}})}});
-    std::cout << drop(outer) << "\n";
+    std::cout << ::tpyapp::main::drop(outer) << "\n";
     std::cout << ::tpy::__len__(::tpy::__getitem__(outer, "a")) << " " << ::tpy::__getitem__(::tpy::__getitem__(outer, "a"), "c") << "\n";
     std::vector<::tpy::ordered_map<std::string, int32_t>> rows = {::tpy::ordered_map<std::string, int32_t>({{"x", 7}, {"y", 8}})};
-    std::cout << drop_list(rows) << "\n";
+    std::cout << ::tpyapp::main::drop_list(rows) << "\n";
     std::cout << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), "y") << "\n";
 }
 
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

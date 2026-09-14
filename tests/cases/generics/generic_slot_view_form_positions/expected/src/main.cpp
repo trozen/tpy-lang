@@ -67,7 +67,7 @@ bool peek_bytes(const std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v) {
 //     # free function: a `str` PARAM is a view
 //     print("free_function", has_item(NAMES, k), has_item_str(NAMES, k))  # tpyc: ok
 void free_function(std::string_view k) {
-    std::cout << "free_function" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+    std::cout << "free_function" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str((*NAMES), k)) << "\n";
 }
 
 // def ctor_arg(k: str) -> None:
@@ -93,7 +93,7 @@ void comprehension(const std::vector<std::string>& ks) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const std::string& k = *__beg_0;
-            __result.push_back(has_item<std::string>((*NAMES), k));
+            __result.push_back(::tpyapp::main::has_item<std::string>((*NAMES), k));
         }
         std::move(__result);
     });
@@ -105,7 +105,7 @@ void comprehension(const std::vector<std::string>& ks) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const std::string& k = *__beg_1;
-            __result.push_back(has_item_str((*NAMES), k));
+            __result.push_back(::tpyapp::main::has_item_str((*NAMES), k));
         }
         std::move(__result);
     });
@@ -120,11 +120,11 @@ std::expected<bool, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;
-        return has_item<std::string>((*NAMES), k);
+        return ::tpyapp::main::has_item<std::string>((*NAMES), k);
     }
     case S_RESUME_0: {  // after: yield has_item(NAMES, k)  # tpyc: ok -- direct, no two-step needed
         __state = S_RESUME_1;
-        return has_item_str((*NAMES), k);
+        return ::tpyapp::main::has_item_str((*NAMES), k);
     }
     case S_RESUME_1: {  // after: yield has_item_str(NAMES, k)
         __state = S_DONE;
@@ -160,7 +160,7 @@ __gen_gen_body gen_body(std::string_view k) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        bool __tpy_async_ret = (has_item<std::string>((*NAMES), k) && has_item_str((*NAMES), k));
+        bool __tpy_async_ret = (::tpyapp::main::has_item<std::string>((*NAMES), k) && ::tpyapp::main::has_item_str((*NAMES), k));
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -182,9 +182,9 @@ __coro_async_body async_body(std::string_view k) {
 //     print("closure", inner(), has_item_str(NAMES, k))
 void closure(std::string_view k) {
     auto inner = [&k]() -> bool {
-        return has_item<std::string>((*NAMES), k);
+        return ::tpyapp::main::has_item<std::string>((*NAMES), k);
     };
-    std::cout << "closure" << " " << ::tpy::print_bool(inner()) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+    std::cout << "closure" << " " << ::tpy::print_bool(inner()) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str((*NAMES), k)) << "\n";
 }
 
 // def match_arm(k: str) -> None:
@@ -200,7 +200,7 @@ void match_arm(std::string_view k) {
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 1: {
-        std::cout << "match_arm" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+        std::cout << "match_arm" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str((*NAMES), k)) << "\n";
         break;
     }
     default: {
@@ -215,7 +215,7 @@ void match_arm(std::string_view k) {
 //     print("cond_operand", flag or has_item(NAMES, k),  # tpyc: ok
 //           flag or has_item_str(NAMES, k))
 void cond_operand(std::string_view k, bool flag) {
-    std::cout << "cond_operand" << " " << ::tpy::print_bool((flag || has_item<std::string>((*NAMES), k))) << " " << ::tpy::print_bool((flag || has_item_str((*NAMES), k))) << "\n";
+    std::cout << "cond_operand" << " " << ::tpy::print_bool((flag || ::tpyapp::main::has_item<std::string>((*NAMES), k))) << " " << ::tpy::print_bool((flag || ::tpyapp::main::has_item_str((*NAMES), k))) << "\n";
 }
 
 // def with_body(k: str) -> None:
@@ -226,7 +226,7 @@ void with_body(std::string_view k) {
     auto __ctx_1 = Ctx();
     __ctx_1.__enter__();
     try {
-        std::cout << "with_body" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+        std::cout << "with_body" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str((*NAMES), k)) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -248,7 +248,7 @@ void with_body(std::string_view k) {
 void try_finally(std::string_view k) {
     {
         try {
-            std::cout << "try_finally" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+            std::cout << "try_finally" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str((*NAMES), k)) << "\n";
         } catch (...) {
             std::cout << "try_finally" << " " << "done" << "\n";
             throw;
@@ -262,7 +262,7 @@ void try_finally(std::string_view k) {
 //     # @error_return body
 //     return has_item(NAMES, k)  # tpyc: ok
 std::expected<bool, MyErr> er_body(std::string_view k) {
-    return has_item<std::string>((*NAMES), k);
+    return ::tpyapp::main::has_item<std::string>((*NAMES), k);
 }
 
 // @error_return(MyErr)
@@ -270,7 +270,7 @@ std::expected<bool, MyErr> er_body(std::string_view k) {
 //     # ... and its monomorphic twin, in the same body shape.
 //     return has_item_str(NAMES, k)
 std::expected<bool, MyErr> er_body_str(std::string_view k) {
-    return has_item_str((*NAMES), k);
+    return ::tpyapp::main::has_item_str((*NAMES), k);
 }
 
 // def bytes_positions(k: bytes) -> None:
@@ -279,7 +279,7 @@ std::expected<bool, MyErr> er_body_str(std::string_view k) {
 //     print("bytes_value", has_item(keys, k))  # tpyc: ok
 void bytes_positions(::tpy::BytesView k) {
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
-    std::cout << "bytes_value" << " " << ::tpy::print_bool(has_item<::tpy::Bytes>(keys, k)) << "\n";
+    std::cout << "bytes_value" << " " << ::tpy::print_bool(::tpyapp::main::has_item<::tpy::Bytes>(keys, k)) << "\n";
 }
 
 // def readonly_slot(k: str, b: bytes) -> None:
@@ -290,8 +290,8 @@ void bytes_positions(::tpy::BytesView k) {
 //     print("readonly_slot", peek(keys, b), peek_bytes(keys, b))  # tpyc: ok
 void readonly_slot(std::string_view k, ::tpy::BytesView b) {
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
-    std::cout << "readonly_slot" << " " << ::tpy::print_bool(peek<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(peek_str((*NAMES), k)) << "\n";
-    std::cout << "readonly_slot" << " " << ::tpy::print_bool(peek<::tpy::Bytes>(keys, b)) << " " << ::tpy::print_bool(peek_bytes(keys, b)) << "\n";
+    std::cout << "readonly_slot" << " " << ::tpy::print_bool(::tpyapp::main::peek<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(::tpyapp::main::peek_str((*NAMES), k)) << "\n";
+    std::cout << "readonly_slot" << " " << ::tpy::print_bool(::tpyapp::main::peek<::tpy::Bytes>(keys, b)) << " " << ::tpy::print_bool(::tpyapp::main::peek_bytes(keys, b)) << "\n";
 }
 
 // def while_cond(k: str) -> None:
@@ -310,7 +310,7 @@ void readonly_slot(std::string_view k, ::tpy::BytesView b) {
 //     print("while_cond", n, has_item_str(NAMES, k))
 void while_cond(std::string_view k) {
     int32_t n = 0;
-    while ((has_item<std::string>((*NAMES), k) && (n < 1))) {
+    while ((::tpyapp::main::has_item<std::string>((*NAMES), k) && (n < 1))) {
         n = ::tpy::add_check<int32_t>(n, 1);
     }
     Labels<std::string> box = Labels<std::string>("a");
@@ -320,7 +320,7 @@ void while_cond(std::string_view k) {
     while ((Labels<std::string>(k).has("a") && (n < 3))) {
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    std::cout << "while_cond" << " " << n << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+    std::cout << "while_cond" << " " << n << " " << ::tpy::print_bool(::tpyapp::main::has_item_str((*NAMES), k)) << "\n";
 }
 
 // def inverse(k: str, n: int) -> None:
@@ -336,7 +336,7 @@ void while_cond(std::string_view k) {
 //     print("inverse", lit.v, own.v)
 void inverse(std::string_view k, const ::tpy::BigInt& n) {
     std::vector<::tpy::BigInt> nums = {1, 2};
-    std::cout << "inverse" << " " << ::tpy::print_bool(has_item<::tpy::BigInt>(nums, n)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+    std::cout << "inverse" << " " << ::tpy::print_bool(::tpyapp::main::has_item<::tpy::BigInt>(nums, n)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str((*NAMES), k)) << "\n";
     Boxed<std::string> lit = Boxed<std::string>("hi");
     OwnBoxed<std::string> own = OwnBoxed<std::string>("seed");
     own.put(std::string(k));
@@ -365,15 +365,15 @@ void inverse(std::string_view k, const ::tpy::BigInt& n) {
 //     readonly_slot("a", b"a")
 //     inverse("a", 1)
 void main() {
-    free_function("a");
-    while_cond("a");
+    ::tpyapp::main::free_function("a");
+    ::tpyapp::main::while_cond("a");
     Holder().method("a");
-    ctor_arg("a");
+    ::tpyapp::main::ctor_arg("a");
     std::vector<std::string> __tmp_1 = {"a", "z"};
-    comprehension(__tmp_1);
+    ::tpyapp::main::comprehension(__tmp_1);
     {
         std::string __tmp_2 = "a";
-        auto __src_0 = gen_body(__tmp_2);
+        auto __src_0 = ::tpyapp::main::gen_body(__tmp_2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -383,23 +383,23 @@ void main() {
         }
     }
     std::string __tmp_3 = "a";
-    std::cout << "async_body" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(async_body(__tmp_3)))) << "\n";
-    closure("a");
-    match_arm("a");
-    cond_operand("a", false);
-    with_body("a");
-    try_finally("a");
+    std::cout << "async_body" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(::tpyapp::main::async_body(__tmp_3)))) << "\n";
+    ::tpyapp::main::closure("a");
+    ::tpyapp::main::match_arm("a");
+    ::tpyapp::main::cond_operand("a", false);
+    ::tpyapp::main::with_body("a");
+    ::tpyapp::main::try_finally("a");
     {
-        std::cout << "er_body" << " " << ::tpy::print_bool(({ auto __er_2 = er_body("a"); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << " " << ::tpy::print_bool(({ auto __er_3 = er_body_str("a"); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); })) << "\n";
+        std::cout << "er_body" << " " << ::tpy::print_bool(({ auto __er_2 = ::tpyapp::main::er_body("a"); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << " " << ::tpy::print_bool(({ auto __er_3 = ::tpyapp::main::er_body_str("a"); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); })) << "\n";
         goto __after_try_1;
         // except MyErr:
         __except_1:;
         std::cout << "er_body" << " " << "raised" << "\n";
         __after_try_1:;
     }
-    bytes_positions(::tpy::bytes_literal("a", 1));
-    readonly_slot("a", ::tpy::bytes_literal("a", 1));
-    inverse("a", ::tpy::BigInt(1));
+    ::tpyapp::main::bytes_positions(::tpy::bytes_literal("a", 1));
+    ::tpyapp::main::readonly_slot("a", ::tpy::bytes_literal("a", 1));
+    ::tpyapp::main::inverse("a", ::tpy::BigInt(1));
 }
 
 // import asyncio
@@ -419,8 +419,8 @@ void __tpy_init() {
     static std::vector<std::string> __global_slot_1 = {"a", "b"};
     NAMES = &__global_slot_1;
     KEY = "a";
-    std::cout << "module_level" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), KEY)) << " " << ::tpy::print_bool(has_item_str((*NAMES), KEY)) << "\n";
-    main();
+    std::cout << "module_level" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>((*NAMES), KEY)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str((*NAMES), KEY)) << "\n";
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

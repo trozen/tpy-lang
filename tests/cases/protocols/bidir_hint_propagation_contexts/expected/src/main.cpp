@@ -44,12 +44,12 @@ std::vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>> collect() {
 //     for x in xs:
 //         print(x.get().get().name())
 void main() {
-    std::cout << take(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Arg")))))) << "\n";
-    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>> r2 = make();
+    std::cout << ::tpyapp::main::take(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Arg")))))) << "\n";
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>> r2 = ::tpyapp::main::make();
     std::cout << r2.get().get().get().name() << "\n";
     Holder h = Holder(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Field"))))));
     std::cout << h.r.get().get().get().name() << "\n";
-    std::vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>> xs = collect();
+    std::vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>> xs = ::tpyapp::main::collect();
     auto __obj_0 = ::tpy::own_iter(std::move(xs));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -68,7 +68,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

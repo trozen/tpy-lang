@@ -144,17 +144,17 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "=== list ===" << "\n";
-    test_list_negative_indexing();
+    ::tpyapp::main::test_list_negative_indexing();
     std::cout << "=== array ===" << "\n";
-    test_array_negative_indexing();
+    ::tpyapp::main::test_array_negative_indexing();
     std::cout << "=== string ===" << "\n";
-    test_string_negative_indexing();
+    ::tpyapp::main::test_string_negative_indexing();
     std::cout << "=== assignment ===" << "\n";
-    test_negative_index_assignment();
+    ::tpyapp::main::test_negative_index_assignment();
     std::cout << "=== expression ===" << "\n";
-    test_negative_index_in_expression();
+    ::tpyapp::main::test_negative_index_in_expression();
     std::cout << "=== array assignment ===" << "\n";
-    test_array_negative_assignment();
+    ::tpyapp::main::test_array_negative_assignment();
 }
 
 } // namespace tpyapp::main

@@ -38,11 +38,11 @@ void main() {
     char z = 'z';
     char x = 'x';
     P p = P(x);
-    show(p);
-    std::cout << swap(p, z) << "\n";
+    ::tpyapp::main::show(p);
+    std::cout << ::tpyapp::main::swap(p, z) << "\n";
     std::cout << p.get() << "\n";
     p.put(x);
-    show(p);
+    ::tpyapp::main::show(p);
 }
 
 // main()
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

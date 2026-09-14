@@ -50,7 +50,7 @@ void use_direct() {
     std::vector<P> xs = {P(1), P(2)};
     P& p = ::tpy::__getitem__(xs, 0);
     std::cout << p.v << "\n";
-    mutate(xs);
+    ::tpyapp::main::mutate(xs);
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
@@ -60,10 +60,10 @@ void use_direct() {
 //     use_local()
 //     use_direct()
 void main() {
-    use_fn(mutate);
-    use_callable(mutate);
-    use_local();
-    use_direct();
+    ::tpyapp::main::use_fn(mutate);
+    ::tpyapp::main::use_callable(mutate);
+    ::tpyapp::main::use_local();
+    ::tpyapp::main::use_direct();
 }
 
 // main()
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

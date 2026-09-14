@@ -22,7 +22,7 @@ void drain(Sink& s, const Row& r) {
 void main() {
     Sink s = Sink();
     Row __tmp_3 = Row("a");
-    drain(s, __tmp_3);
+    ::tpyapp::main::drain(s, __tmp_3);
     std::cout << ::tpy::__len__(s.kept) << " " << ::tpy::__getitem__(s.kept, 0) << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

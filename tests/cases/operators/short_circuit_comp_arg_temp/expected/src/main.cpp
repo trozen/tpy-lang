@@ -26,7 +26,7 @@ int32_t comp_in_ternary(Counter& c, bool cond, const std::vector<int32_t>& xs) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             std::optional<Probe> __tmp_1 = Probe(c, i);
-            __result.push_back(take(&((*__tmp_1))));
+            __result.push_back(::tpyapp::main::take(&((*__tmp_1))));
         }
         std::move(__result);
     })) : (std::vector<int32_t>{0}));
@@ -46,7 +46,7 @@ bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             std::optional<Probe> __tmp_2 = Probe(c, i);
-            __result.push_back(take(&((*__tmp_2))));
+            __result.push_back(::tpyapp::main::take(&((*__tmp_2))));
         }
         std::move(__result);
     })) > 0));
@@ -66,16 +66,16 @@ void main() {
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
     std::vector<int32_t> __tmp_3 = {1, 2};
-    std::cout << "ternary_skipped" << " " << comp_in_ternary((*c), false, __tmp_3) << " " << c->n << "\n";
+    std::cout << "ternary_skipped" << " " << ::tpyapp::main::comp_in_ternary((*c), false, __tmp_3) << " " << c->n << "\n";
     (*c) = Counter();
     std::vector<int32_t> __tmp_4 = {1, 2};
-    std::cout << "ternary_taken" << " " << comp_in_ternary((*c), true, __tmp_4) << " " << c->n << "\n";
+    std::cout << "ternary_taken" << " " << ::tpyapp::main::comp_in_ternary((*c), true, __tmp_4) << " " << c->n << "\n";
     (*c) = Counter();
     std::vector<int32_t> __tmp_5 = {1, 2};
-    std::cout << "and_skipped" << " " << ::tpy::print_bool(comp_in_and((*c), false, __tmp_5)) << " " << c->n << "\n";
+    std::cout << "and_skipped" << " " << ::tpy::print_bool(::tpyapp::main::comp_in_and((*c), false, __tmp_5)) << " " << c->n << "\n";
     (*c) = Counter();
     std::vector<int32_t> __tmp_6 = {1, 2};
-    std::cout << "and_taken" << " " << ::tpy::print_bool(comp_in_and((*c), true, __tmp_6)) << " " << c->n << "\n";
+    std::cout << "and_taken" << " " << ::tpy::print_bool(::tpyapp::main::comp_in_and((*c), true, __tmp_6)) << " " << c->n << "\n";
 }
 
 // main()
@@ -84,7 +84,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

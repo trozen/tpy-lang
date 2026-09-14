@@ -28,13 +28,13 @@ namespace tpyapp::main {
 //         print(result2.name, result2.lives)
 void main() {
     Dog d = Dog("Rex", 5);
-    ::tpy::Union<Cat*, Dog*> result = wrap_dog(d);
+    ::tpy::Union<Cat*, Dog*> result = ::tpyapp::main::wrap_dog(d);
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
         std::cout << __result.name << " " << __result.age << "\n";
     }
     Cat c = Cat("Whiskers", 9);
-    ::tpy::Union<Cat*, Dog*> result2 = wrap_cat(c);
+    ::tpy::Union<Cat*, Dog*> result2 = ::tpyapp::main::wrap_cat(c);
     if (std::holds_alternative<Cat*>(result2)) {
         auto& __result2 = *std::get<Cat*>(result2);
         std::cout << __result2.name << " " << __result2.lives << "\n";
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -30,14 +30,14 @@ void fail() {
 void main() {
     {
         try {
-            fail();
+            ::tpyapp::main::fail();
         } catch (const MyError&) {
             std::cout << "caught MyError" << "\n";
         }
     }
     {
         try {
-            fail();
+            ::tpyapp::main::fail();
         } catch (const MyError& e) {
             std::cout << e.code << "\n";
         }
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

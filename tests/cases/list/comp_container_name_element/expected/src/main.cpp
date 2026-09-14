@@ -24,7 +24,7 @@ std::vector<int32_t> mk() {
 //     # Reading xs here is what keeps the three reads above off their last use.
 //     print(len(xs))
 void main() {
-    std::vector<int32_t> xs = mk();
+    std::vector<int32_t> xs = ::tpyapp::main::mk();
     xs.push_back(3);
     std::vector<std::vector<int32_t>> ls = ({
         std::vector<std::vector<int32_t>> __result;
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

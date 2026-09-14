@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(combine(lambda x, y: x * y, 3, 4))
 //     print(combine(lambda x, y: x - y, 10, 3))
 void main() {
-    std::cout << combine([](int32_t x, int32_t y) -> int32_t { return (::tpy::add_check<int32_t>(x, y)); }, 3, 4) << "\n";
-    std::cout << combine([](int32_t x, int32_t y) -> int32_t { return (::tpy::mul_check<int32_t>(x, y)); }, 3, 4) << "\n";
-    std::cout << combine([](int32_t x, int32_t y) -> int32_t { return (::tpy::sub_check<int32_t>(x, y)); }, 10, 3) << "\n";
+    std::cout << ::tpyapp::main::combine([](int32_t x, int32_t y) -> int32_t { return (::tpy::add_check<int32_t>(x, y)); }, 3, 4) << "\n";
+    std::cout << ::tpyapp::main::combine([](int32_t x, int32_t y) -> int32_t { return (::tpy::mul_check<int32_t>(x, y)); }, 3, 4) << "\n";
+    std::cout << ::tpyapp::main::combine([](int32_t x, int32_t y) -> int32_t { return (::tpy::sub_check<int32_t>(x, y)); }, 10, 3) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

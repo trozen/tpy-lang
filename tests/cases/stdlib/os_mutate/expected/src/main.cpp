@@ -73,7 +73,7 @@ void teardown(std::string_view base) {
 //     print("torn down:", exists(base))
 void main() {
     std::string_view base = "tpy_os_mutate";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
     ::tpystd::os::mkdir(base);
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/a/b")));
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/a/b")), 511, true);
@@ -127,7 +127,7 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     ::tpystd::os::path::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

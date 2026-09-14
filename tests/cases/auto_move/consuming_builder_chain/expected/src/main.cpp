@@ -13,7 +13,7 @@ Point make(int32_t n) {
 // def owned(n: int32) -> Own[Point]:
 //     return make(n).updated()  # tpyc: ok
 Point owned(int32_t n) {
-    return make(n).updated();
+    return ::tpyapp::main::make(n).updated();
 }
 
 // def owned_method(f: Factory) -> Own[Point]:
@@ -40,12 +40,12 @@ Ticket issue(int32_t n) {
 //     t.id += 1
 //     print(t.id)
 void main() {
-    Point p = make(1);
+    Point p = ::tpyapp::main::make(1);
     p.x = 10;
     Factory __tmp_1 = Factory(5);
-    std::cout << p.x << " " << owned(1).x << " " << owned_method(__tmp_1).x << "\n";
+    std::cout << p.x << " " << ::tpyapp::main::owned(1).x << " " << ::tpyapp::main::owned_method(__tmp_1).x << "\n";
     std::cout << Point(1).updated().updated().x << "\n";
-    Ticket t = issue(7);
+    Ticket t = ::tpyapp::main::issue(7);
     t.id = ::tpy::add_check<int32_t>(t.id, 1);
     std::cout << t.id << "\n";
 }
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

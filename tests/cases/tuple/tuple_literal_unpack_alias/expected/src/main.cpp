@@ -57,7 +57,7 @@ void main() {
     c.n = ::tpy::add_check<int32_t>(c.n, 5);
     std::cout << ::tpy::__getitem__(items, 2).n << "\n";
     Counter& __unpack_2_0 = ::tpy::__getitem__(items, 1);
-    Counter __unpack_2_1 = fresh();
+    Counter __unpack_2_1 = ::tpyapp::main::fresh();
     Counter& d = __unpack_2_0;
     Counter e = std::move(__unpack_2_1);
     d.n = ::tpy::add_check<int32_t>(d.n, 1);
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

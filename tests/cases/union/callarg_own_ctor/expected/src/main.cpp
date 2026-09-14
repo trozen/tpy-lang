@@ -46,11 +46,11 @@ int32_t pick(const ::tpy::Union<double, int32_t>& v) {
 //         t = t + 1
 //     print(t)
 void main() {
-    std::cout << consume(A(7)) << "\n";
-    std::cout << consume(B(20)) << "\n";
-    std::cout << pick(3) << "\n";
+    std::cout << ::tpyapp::main::consume(A(7)) << "\n";
+    std::cout << ::tpyapp::main::consume(B(20)) << "\n";
+    std::cout << ::tpyapp::main::pick(3) << "\n";
     int32_t t = 0;
-    while ((consume(A(2)) > t)) {
+    while ((::tpyapp::main::consume(A(2)) > t)) {
         t = (::tpy::add_check<int32_t>(t, 1));
     }
     std::cout << t << "\n";
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

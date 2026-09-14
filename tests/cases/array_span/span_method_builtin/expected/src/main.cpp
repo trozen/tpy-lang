@@ -75,11 +75,11 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    from_list();
-    from_array();
-    from_span();
-    from_readonly_span();
-    from_arraylist();
+    ::tpyapp::main::from_list();
+    ::tpyapp::main::from_array();
+    ::tpyapp::main::from_span();
+    ::tpyapp::main::from_readonly_span();
+    ::tpyapp::main::from_arraylist();
 }
 
 } // namespace tpyapp::main

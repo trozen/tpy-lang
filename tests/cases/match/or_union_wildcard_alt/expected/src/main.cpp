@@ -67,13 +67,13 @@ void main() {
     ::tpy::Union<std::monostate, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(7));
     ::tpy::Union<std::monostate, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << feed(d) << "\n";
-    std::cout << feed(c) << "\n";
-    std::cout << feed(::tpy::Union<std::monostate, Cat*, Dog*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::feed(d) << "\n";
+    std::cout << ::tpyapp::main::feed(c) << "\n";
+    std::cout << ::tpyapp::main::feed(::tpy::Union<std::monostate, Cat*, Dog*>{std::monostate{}}) << "\n";
     std::cout << (*std::get<Cat*>(c)).hunger << "\n";
     Fox __tmp_1 = Fox(::tpy::BigInt(3));
-    std::cout << only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{&__tmp_1}) << "\n";
-    std::cout << only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{std::monostate{}}) << "\n";
 }
 
 // main()
@@ -82,7 +82,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

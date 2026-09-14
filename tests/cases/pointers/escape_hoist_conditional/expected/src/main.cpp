@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    conditional_hoist();
+    ::tpyapp::main::conditional_hoist();
 }
 
 } // namespace tpyapp::main

@@ -39,8 +39,8 @@ void show(const std::tuple<const T*, int32_t, const T*>& p) {
 void main() {
     T t1 = T(1);
     T t2 = T(2);
-    show(f(t1, t2));
-    show(std::tuple<T*, int32_t, T*>{&(t1), 99, nullptr});
+    ::tpyapp::main::show(::tpyapp::main::f(t1, t2));
+    ::tpyapp::main::show(std::tuple<T*, int32_t, T*>{&(t1), 99, nullptr});
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -34,8 +34,8 @@ void pick(bool flag) {
 //     pick(True)
 //     pick(False)
 void main() {
-    pick(true);
-    pick(false);
+    ::tpyapp::main::pick(true);
+    ::tpyapp::main::pick(false);
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

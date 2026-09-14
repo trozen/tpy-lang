@@ -18,7 +18,7 @@ std::tuple<int32_t, Box> make_pair(int32_t v) {
 int32_t use(Holder& h) {
     std::tuple<int32_t, Box*> t;
     std::optional<std::tuple<int32_t, Box>> __slot_1;
-    int32_t first = std::get<1>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(9))), t))->val;
+    int32_t first = std::get<1>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(9))), t))->val;
     t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
     std::get<1>(t)->val = 99;
     return first;
@@ -30,7 +30,7 @@ int32_t use(Holder& h) {
 //     print(h.pair[1].val)  # 99 (alias mutation observed -- not a copy)
 void main() {
     Holder h = Holder(Box(5));
-    std::cout << use(h) << "\n";
+    std::cout << ::tpyapp::main::use(h) << "\n";
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -48,7 +48,7 @@ void __tpy_init() {
     mem = &__global_slot_1;
     ::tpy::__setitem__((*mem), 0, 42);
     ::tpy::__setitem__((*mem), 1, 8);
-    std::cout << sum_list((*mem)) << "\n";
+    std::cout << ::tpyapp::main::sum_list((*mem)) << "\n";
     std::cout << ::tpy::__len__((*mem)) << "\n";
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(5, {0}));
     data = &__global_slot_2;

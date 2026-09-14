@@ -70,7 +70,7 @@ __gen_lists lists() {
 //         print(d["k"])
 void read_dicts() {
     {
-        auto __src_0 = dicts();
+        auto __src_0 = ::tpyapp::main::dicts();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -87,7 +87,7 @@ void read_dicts() {
 //         print(xs[0])     # 10
 void read_list_normalized() {
     {
-        auto __src_0 = lists();
+        auto __src_0 = ::tpyapp::main::lists();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -116,7 +116,7 @@ std::string read_ro_dict(const ::tpy::ordered_map<std::string, std::string>& d) 
 //             print("got IndexError")
 void list_oob_raises() {
     {
-        auto __src_0 = lists();
+        auto __src_0 = ::tpyapp::main::lists();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -145,7 +145,7 @@ void list_oob_raises() {
 //         break
 void dict_missing_raises() {
     {
-        auto __src_0 = dicts();
+        auto __src_0 = ::tpyapp::main::dicts();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -177,17 +177,17 @@ void dict_missing_raises() {
 //     print("---")
 //     dict_missing_raises()
 void main() {
-    read_dicts();
+    ::tpyapp::main::read_dicts();
     std::cout << "---" << "\n";
-    read_list_normalized();
+    ::tpyapp::main::read_list_normalized();
     std::cout << "---" << "\n";
     ::tpy::ordered_map<std::string, std::string> m = ::tpy::ordered_map<std::string, std::string>();
     ::tpy::__setitem__(m, "k", "ro");
-    std::cout << read_ro_dict(m) << "\n";
+    std::cout << ::tpyapp::main::read_ro_dict(m) << "\n";
     std::cout << "---" << "\n";
-    list_oob_raises();
+    ::tpyapp::main::list_oob_raises();
     std::cout << "---" << "\n";
-    dict_missing_raises();
+    ::tpyapp::main::dict_missing_raises();
 }
 
 // main()
@@ -196,7 +196,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -81,16 +81,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    from_param("hello");
-    std::cout << from_param_return("hi") << "\n";
-    from_or_params("", "world");
-    from_or_params("hello", "world");
-    from_ternary_params("hello", "world", true);
-    from_ternary_params("hello", "world", false);
-    std::cout << return_or_params("", "fallback") << "\n";
-    std::cout << return_or_params("first", "second") << "\n";
-    std::cout << return_ternary_params("yes", "no", true) << "\n";
-    std::cout << return_ternary_params("yes", "no", false) << "\n";
+    ::tpyapp::main::from_param("hello");
+    std::cout << ::tpyapp::main::from_param_return("hi") << "\n";
+    ::tpyapp::main::from_or_params("", "world");
+    ::tpyapp::main::from_or_params("hello", "world");
+    ::tpyapp::main::from_ternary_params("hello", "world", true);
+    ::tpyapp::main::from_ternary_params("hello", "world", false);
+    std::cout << ::tpyapp::main::return_or_params("", "fallback") << "\n";
+    std::cout << ::tpyapp::main::return_or_params("first", "second") << "\n";
+    std::cout << ::tpyapp::main::return_ternary_params("yes", "no", true) << "\n";
+    std::cout << ::tpyapp::main::return_ternary_params("yes", "no", false) << "\n";
 }
 
 } // namespace tpyapp::main

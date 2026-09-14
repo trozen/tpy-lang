@@ -190,21 +190,21 @@ bool try_verify(std::string_view cafile) {
 //     print("garbage env skipped:", try_verify(CERT_PATH))
 //     del os.environ["SSL_CERT_FILE"]
 void main() {
-    write_fixtures();
+    ::tpyapp::main::write_fixtures();
     if (((*::tpystd::os::_environ::environ).__contains__("SSL_CERT_FILE"))) {
         ::tpy::__delitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE");
     }
     ::tpy::list_insert((*::tpystd::ssl::_ca_probe_paths), 0, std::string(CERT_PATH));
-    std::cout << "system-trusted:" << " " << ::tpy::print_bool(try_verify()) << "\n";
+    std::cout << "system-trusted:" << " " << ::tpy::print_bool(::tpyapp::main::try_verify()) << "\n";
     ::tpy::list_pop_at((*::tpystd::ssl::_ca_probe_paths), 0);
-    std::cout << "untrusted rejected:" << " " << ::tpy::print_bool((!(try_verify()))) << "\n";
+    std::cout << "untrusted rejected:" << " " << ::tpy::print_bool((!(::tpyapp::main::try_verify()))) << "\n";
     ::tpy::list_insert((*::tpystd::ssl::_ca_probe_paths), 0, std::string(GARBAGE_PATH));
-    std::cout << "garbage probe skipped:" << " " << ::tpy::print_bool(try_verify(CERT_PATH)) << "\n";
+    std::cout << "garbage probe skipped:" << " " << ::tpy::print_bool(::tpyapp::main::try_verify(CERT_PATH)) << "\n";
     ::tpy::list_pop_at((*::tpystd::ssl::_ca_probe_paths), 0);
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE", std::string(CERT_PATH));
-    std::cout << "env wins:" << " " << ::tpy::print_bool(try_verify()) << "\n";
+    std::cout << "env wins:" << " " << ::tpy::print_bool(::tpyapp::main::try_verify()) << "\n";
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE", std::string(GARBAGE_PATH));
-    std::cout << "garbage env skipped:" << " " << ::tpy::print_bool(try_verify(CERT_PATH)) << "\n";
+    std::cout << "garbage env skipped:" << " " << ::tpy::print_bool(::tpyapp::main::try_verify(CERT_PATH)) << "\n";
     ::tpy::__delitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE");
 }
 
@@ -222,7 +222,7 @@ void __tpy_init() {
     ::tpystd::os::__tpy_init();
     ::tpystd::ssl::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

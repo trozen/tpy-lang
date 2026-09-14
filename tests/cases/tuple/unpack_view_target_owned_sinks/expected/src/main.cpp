@@ -47,7 +47,7 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
     ::tpy::BytesView y = std::get<1>(__tup_1);
     std::vector<::tpy::Bytes> xs = {::tpy::Bytes(x), ::tpy::Bytes(y)};
     xs.push_back(::tpy::Bytes(x));
-    return ((::tpy::BigInt(::tpy::__len__(xs))) + (take_bytes(::tpy::Bytes(y))));
+    return ((::tpy::BigInt(::tpy::__len__(xs))) + (::tpyapp::main::take_bytes(::tpy::Bytes(y))));
 }
 
 // def bytes_accumulate(t: tuple[bytes, bytes]) -> bytes:
@@ -87,7 +87,7 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
     const auto& __tup_1 = src;
     std::string_view x = std::get<0>(__tup_1);
     std::string_view y = std::get<1>(__tup_1);
-    return take(std::string(x));
+    return ::tpyapp::main::take(std::string(x));
 }
 
 // def accumulate(t: tuple[str, str]) -> str:
@@ -140,15 +140,15 @@ std::string accumulate(const std::tuple<std::string, std::string>& t) {
 void main() {
     std::tuple<std::string, std::string> src = std::tuple<std::string, std::string>{"ab", "c"};
     std::tuple<::tpy::Bytes, ::tpy::Bytes> bsrc = std::tuple<::tpy::Bytes, ::tpy::Bytes>{::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)};
-    std::cout << first_of(src) << "\n";
-    std::cout << ::tpy::BytesPrinter(first_bytes(bsrc)) << "\n";
-    std::cout << bytes_elements(bsrc) << "\n";
-    std::cout << ::tpy::BytesPrinter(bytes_accumulate(bsrc)) << "\n";
-    std::cout << elements(src) << "\n";
-    std::cout << own_arg(src) << "\n";
-    std::cout << accumulate(src) << "\n";
+    std::cout << ::tpyapp::main::first_of(src) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpyapp::main::first_bytes(bsrc)) << "\n";
+    std::cout << ::tpyapp::main::bytes_elements(bsrc) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpyapp::main::bytes_accumulate(bsrc)) << "\n";
+    std::cout << ::tpyapp::main::elements(src) << "\n";
+    std::cout << ::tpyapp::main::own_arg(src) << "\n";
+    std::cout << ::tpyapp::main::accumulate(src) << "\n";
     std::vector<std::tuple<std::string, ::tpy::BigInt>> __tmp_1 = {std::tuple<std::string, ::tpy::BigInt>{"a", ::tpy::BigInt(1)}, std::tuple<std::string, ::tpy::BigInt>{"b", ::tpy::BigInt(2)}};
-    std::cout << collect(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::collect(__tmp_1) << "\n";
 }
 
 // main()
@@ -157,7 +157,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

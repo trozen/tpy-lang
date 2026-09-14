@@ -47,7 +47,7 @@ void main() {
     Obj a = Obj(::tpy::BigInt(5));
     Obj b = std::move(a);
     std::cout << b.val << "\n";
-    Obj c = make();
+    Obj c = ::tpyapp::main::make();
     Obj d = std::move(c);
     std::cout << d.val << "\n";
     Obj __slot_1 = Obj(::tpy::BigInt(99));
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

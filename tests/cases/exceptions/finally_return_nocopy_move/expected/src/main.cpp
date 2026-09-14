@@ -60,8 +60,8 @@ Handle f_alias() {
 //     print(f().n)
 //     print(f_alias().n)
 void main() {
-    std::cout << f().n << "\n";
-    std::cout << f_alias().n << "\n";
+    std::cout << ::tpyapp::main::f().n << "\n";
+    std::cout << ::tpyapp::main::f_alias().n << "\n";
 }
 
 // main()
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

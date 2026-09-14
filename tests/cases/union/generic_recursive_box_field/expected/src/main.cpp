@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void main() {
     Tree<::tpy::BigInt> tree = std::vector<Tree<::tpy::BigInt>>{1, std::vector<Tree<::tpy::BigInt>>{2, 3}, 4};
     Holder<::tpy::BigInt> h = Holder<::tpy::BigInt>(::tpystd::tplib::box::Box<Tree<::tpy::BigInt>>(std::move(tree)));
-    std::cout << leaf_count<::tpy::BigInt>(h.data.get()) << "\n";
+    std::cout << ::tpyapp::main::leaf_count<::tpy::BigInt>(h.data.get()) << "\n";
 }
 
 // from tplib.box import Box
@@ -26,7 +26,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

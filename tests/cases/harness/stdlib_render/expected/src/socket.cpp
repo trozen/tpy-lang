@@ -52,11 +52,11 @@ void _maybe_raise_connection_error(int32_t err, std::string_view strerr) {
 //     raise SocketError(err, msg)
 void _raise_errno() {
     int32_t err = ::tpy_errno();
-    std::string msg = _strerror(err);
+    std::string msg = ::tpystd::socket::_strerror(err);
     if (((err == ::tpy_const_eagain) || (err == ::tpy_const_einprogress))) {
         throw ::tpy::BlockingIOError(err, msg);
     }
-    _maybe_raise_connection_error(err, msg);
+    ::tpystd::socket::_maybe_raise_connection_error(err, msg);
     throw SocketError(err, msg);
 }
 
@@ -86,9 +86,9 @@ std::string gethostbyname(std::string_view hostname) {
     ::tpy::UninitArrayStorage<uint8_t, 4> out = ::tpy::UninitArrayStorage<uint8_t, 4>();
     int32_t rc = ::tpy_resolve_ipv4(host_ptr, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(hostname)), out.ptr());
     if ((rc != 0)) {
-        _raise_resolve_error();
+        ::tpystd::socket::_raise_resolve_error();
     }
-    return _ipv4_to_str(out.ptr());
+    return ::tpystd::socket::_ipv4_to_str(out.ptr());
 }
 
 // def _ipv4_to_str(addr_bytes: Ptr[uint8]) -> str:
@@ -100,7 +100,7 @@ std::string gethostbyname(std::string_view hostname) {
 std::string _ipv4_to_str(uint8_t* addr_bytes) {
     ::tpy::UninitArrayStorage<uint8_t, 16> buf = ::tpy::UninitArrayStorage<uint8_t, 16>();
     if ((::inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) == nullptr)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(buf.ptr())));
 }
@@ -145,7 +145,7 @@ std::string _ipv4_to_str(uint8_t* addr_bytes) {
     if ((rc != 1)) {
         int32_t rc2 = ::tpy_resolve_ipv4(host_ptr, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(hostname)), addr_bytes.ptr());
         if ((rc2 != 0)) {
-            _raise_resolve_error();
+            ::tpystd::socket::_raise_resolve_error();
         }
     }
     uint32_t* addr_u32_ptr = reinterpret_cast<uint32_t*>(addr_bytes.ptr());
@@ -168,7 +168,7 @@ std::string _ipv4_to_str(uint8_t* addr_bytes) {
 std::tuple<socket, socket> socketpair(int32_t family, int32_t type_, int32_t proto) {
     ::tpy::UninitArrayStorage<int32_t, 2> sv = ::tpy::UninitArrayStorage<int32_t, 2>();
     if ((::socketpair(family, type_, proto, sv.ptr()) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
     socket a = socket(0, 0, 0, sv.ptr()[0]);
     socket b = socket(0, 0, 0, sv.ptr()[1]);
@@ -235,14 +235,14 @@ socket create_server(const std::tuple<std::string, int32_t>& address, int32_t ba
 //     raise SocketError(err, msg)
 void socket::_raise_io() const {
     int32_t err = ::tpy_errno();
-    std::string msg = _strerror(err);
+    std::string msg = ::tpystd::socket::_strerror(err);
     if (((err == ::tpy_const_eagain) || (err == ::tpy_const_einprogress))) {
         if ((this->_timeout > 0.0)) {
             throw ::tpy::TimeoutError("timed out");
         }
         throw ::tpy::BlockingIOError(err, msg);
     }
-    _maybe_raise_connection_error(err, msg);
+    ::tpystd::socket::_maybe_raise_connection_error(err, msg);
     throw SocketError(err, msg);
 }
 
@@ -287,10 +287,10 @@ void socket::settimeout(std::optional<double> value) {
     if ((!value.has_value())) {
         this->_timeout = -(1.0);
         if ((::tpy_set_nonblocking(this->fd, 0) < 0)) {
-            _raise_errno();
+            ::tpystd::socket::_raise_errno();
         }
         if ((::tpy_set_timeout(this->fd, 0.0) < 0)) {
-            _raise_errno();
+            ::tpystd::socket::_raise_errno();
         }
         return;
     }
@@ -306,19 +306,19 @@ void socket::settimeout(std::optional<double> value) {
     if (((*value) == 0.0)) {
         this->_timeout = 0.0;
         if ((::tpy_set_nonblocking(this->fd, 1) < 0)) {
-            _raise_errno();
+            ::tpystd::socket::_raise_errno();
         }
         if ((::tpy_set_timeout(this->fd, 0.0) < 0)) {
-            _raise_errno();
+            ::tpystd::socket::_raise_errno();
         }
         return;
     }
     this->_timeout = (*value);
     if ((::tpy_set_nonblocking(this->fd, 0) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
     if ((::tpy_set_timeout(this->fd, (*value)) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
 }
 
@@ -341,7 +341,7 @@ void socket::connect(const std::tuple<std::string, int32_t>& address) const {
     const auto& __tup_1 = address;
     std::string_view host = std::get<0>(__tup_1);
     int32_t port = std::get<1>(__tup_1);
-    ::sockaddr_in addr = _build_sockaddr_in(host, port);
+    ::sockaddr_in addr = ::tpystd::socket::_build_sockaddr_in(host, port);
     if ((this->_timeout > 0.0)) {
         int32_t rc = ::tpy_connect_timeout(this->fd, &addr, _SOCKADDR_IN_LEN, this->_timeout);
         if ((rc == -2)) {
@@ -380,12 +380,12 @@ std::tuple<int32_t, std::tuple<std::string, int32_t>> socket::_accept_fd() const
     uint32_t addrlen = _SOCKADDR_IN_LEN;
     int32_t new_fd = ::accept(this->fd, &addr, &addrlen);
     if ((new_fd < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
     std::tuple<std::string, int32_t> peer;
     {
         try {
-            peer = std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
+            peer = std::tuple<std::string, int32_t>{::tpystd::socket::_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
         } catch (const ::tpy::OSError&) {
             ::close(new_fd);
             throw;
@@ -420,7 +420,7 @@ void socket::sendall(::tpy::BytesView data) const {
             this->_raise_io();
         }
         if ((chunk == 0)) {
-            throw ::tpy::BrokenPipeError(::tpy_const_epipe, _strerror(::tpy_const_epipe));
+            throw ::tpy::BrokenPipeError(::tpy_const_epipe, ::tpystd::socket::_strerror(::tpy_const_epipe));
         }
         sent = (::tpy::add_check<uint64_t>(sent, ::tpy::int_cast_check<uint64_t>(chunk)));
     }

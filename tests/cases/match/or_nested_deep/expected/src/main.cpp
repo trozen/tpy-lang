@@ -81,10 +81,10 @@ void main() {
     ::tpy::Union<A*, B*, C*, D*> c = ::tpy::to_ptr_variant(__slot_3);
     ::tpy::Union<A, B, C, D> __slot_4 = D(::tpy::BigInt(4));
     ::tpy::Union<A*, B*, C*, D*> d = ::tpy::to_ptr_variant(__slot_4);
-    std::cout << pick(a.as_const()) << " " << value(a.as_const()) << "\n";
-    std::cout << pick(b.as_const()) << " " << value(b.as_const()) << "\n";
-    std::cout << pick(c.as_const()) << " " << value(c.as_const()) << "\n";
-    std::cout << pick(d.as_const()) << " " << value(d.as_const()) << "\n";
+    std::cout << ::tpyapp::main::pick(a.as_const()) << " " << ::tpyapp::main::value(a.as_const()) << "\n";
+    std::cout << ::tpyapp::main::pick(b.as_const()) << " " << ::tpyapp::main::value(b.as_const()) << "\n";
+    std::cout << ::tpyapp::main::pick(c.as_const()) << " " << ::tpyapp::main::value(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::pick(d.as_const()) << " " << ::tpyapp::main::value(d.as_const()) << "\n";
 }
 
 // # Three levels of parenthesized or-pattern groups: flattening is bottom-up,
@@ -97,7 +97,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

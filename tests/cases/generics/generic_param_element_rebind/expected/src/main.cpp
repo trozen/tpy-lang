@@ -20,11 +20,11 @@ namespace tpyapp::main {
 //     print(ps[2].x)
 void main() {
     std::vector<int32_t> nums = {10, 20, 30, 40};
-    std::cout << last<int32_t>(nums) << "\n";
+    std::cout << ::tpyapp::main::last<int32_t>(nums) << "\n";
     std::vector<std::string> strs = {"a", "b", "c"};
-    std::cout << last<std::string>(strs) << "\n";
+    std::cout << ::tpyapp::main::last<std::string>(strs) << "\n";
     std::vector<Point> ps = {Point(10), Point(20), Point(30)};
-    Point& r = last<Point>(ps);
+    Point& r = ::tpyapp::main::last<Point>(ps);
     r.x = 99;
     std::cout << ::tpy::__getitem__(ps, 2).x << "\n";
 }
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

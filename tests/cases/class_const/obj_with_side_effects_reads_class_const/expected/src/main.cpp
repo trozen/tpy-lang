@@ -18,7 +18,7 @@ C make_c() {
 //     # Subscript also has side effects (range check), so it must be evaluated.
 //     print(cs[0].LIMIT)
 void main() {
-    std::cout << ({ static_cast<void>(make_c()); C::LIMIT; }) << "\n";
+    std::cout << ({ static_cast<void>(::tpyapp::main::make_c()); C::LIMIT; }) << "\n";
     std::vector<C> cs = {C(), C()};
     std::cout << ({ static_cast<void>(::tpy::__getitem__(cs, 0)); C::LIMIT; }) << "\n";
 }
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -61,7 +61,7 @@ void cookies_arg_not_persisted() {
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"tok", "1"}});
     s.get("http://api.test/one", nullptr, nullptr, std::nullopt, true, __tmp_1, &(__tmp_2));
-    _cookie_line(b1.recv(65536));
+    ::tpyapp::main::_cookie_line(b1.recv(65536));
     b1.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
@@ -71,7 +71,7 @@ void cookies_arg_not_persisted() {
     c2.sock = std::move(a2);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c2));
     s.get("http://api.test/two");
-    _cookie_line(b2.recv(65536));
+    ::tpyapp::main::_cookie_line(b2.recv(65536));
     b2.close();
     std::cout << ::tpy::print_bool((s.cookies.__contains__("tok"))) << "\n";
 }
@@ -116,7 +116,7 @@ void main() {
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c1));
     ::tpystd::tplib::requests::Response r1 = s.get("http://api.test/login");
     std::cout << r1.status_code << "\n";
-    _cookie_line(b1.recv(65536));
+    ::tpyapp::main::_cookie_line(b1.recv(65536));
     b1.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
@@ -127,9 +127,9 @@ void main() {
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c2));
     ::tpystd::tplib::requests::Response r2 = s.get("http://api.test/profile");
     std::cout << r2.status_code << "\n";
-    _cookie_line(b2.recv(65536));
+    ::tpyapp::main::_cookie_line(b2.recv(65536));
     b2.close();
-    cookies_arg_not_persisted();
+    ::tpyapp::main::cookies_arg_not_persisted();
 }
 
 // # A Session persists Set-Cookie across requests: the first response sets a
@@ -152,7 +152,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

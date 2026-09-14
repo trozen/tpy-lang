@@ -50,13 +50,13 @@ void main() {
     std::cout << ::tpy::__str__(b) << "\n";
     std::cout << ::tpyapp::pkg_v::kind(a) << "\n";
     std::cout << ::tpyapp::pkg_v::kind(b) << "\n";
-    std::cout << ::tpy::print_bool(is_null(a)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(a)) << "\n";
     ::tpyapp::pkg_v::V nl = std::monostate{};
-    std::cout << ::tpy::print_bool(is_null(nl)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(nl)) << "\n";
     Holder h = Holder(7);
     std::cout << ::tpyapp::pkg_v::kind(h.value) << "\n";
     ::tpyapp::pkg_v::V tmp = ::tpyapp::pkg_v::make_int();
-    ::tpyapp::pkg_v::V w = wrap(tmp);
+    ::tpyapp::pkg_v::V w = ::tpyapp::main::wrap(tmp);
     std::cout << ::tpyapp::pkg_v::kind(w) << "\n";
 }
 
@@ -75,7 +75,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::pkg_v::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

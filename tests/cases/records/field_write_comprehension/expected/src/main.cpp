@@ -234,7 +234,7 @@ void main() {
     Grid g = Grid({3, 2});
     ::tpy::__getitem__(g.data, 2).push_back(8);
     std::cout << "ctor_body" << " " << ::tpy::ListPrinter(g.data) << "\n";
-    fill_free(p, 3);
+    ::tpyapp::main::fill_free(p, 3);
     ::tpy::__setitem__(p.d, "z", 9);
     p.s.insert(9);
     std::cout << "free_dict" << " " << ::tpy::__len__(p.d) << " " << "free_set" << " " << ::tpy::__len__(p.s) << "\n";
@@ -242,10 +242,10 @@ void main() {
         (*p.opt).push_back(5);
         std::cout << "optional_field" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(p.opt) << "\n";
     }
-    reseat_opt(p);
-    setitems(p, 3);
+    ::tpyapp::main::reseat_opt(p);
+    ::tpyapp::main::setitems(p, 3);
     {
-        auto __src_0 = gen(p, 2);
+        auto __src_0 = ::tpyapp::main::gen(p, 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -255,7 +255,7 @@ void main() {
         }
     }
     std::cout << "generator" << " " << ::tpy::ListPrinter(p.flat) << "\n";
-    closure(p);
+    ::tpyapp::main::closure(p);
 }
 
 // main()
@@ -270,7 +270,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
     static Pic __global_slot_1 = Pic();
     top = &__global_slot_1;
     top->flat = ({

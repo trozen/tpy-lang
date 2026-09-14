@@ -16,7 +16,7 @@ std::string make() {
 //     print(v)
 //     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
 void inferred_view() {
-    std::string a = make();
+    std::string a = ::tpyapp::main::make();
     std::string_view v = ::tpy::str_strip(a);
     std::cout << v << "\n";
     a += " appended text that forces the std::string buffer to reallocate";
@@ -28,7 +28,7 @@ void inferred_view() {
 //     print(c)
 //     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
 void pinned_view() {
-    std::string a = make();
+    std::string a = ::tpyapp::main::make();
     std::string_view c = a;
     std::cout << c << "\n";
     a += " appended text that forces the std::string buffer to reallocate";
@@ -40,7 +40,7 @@ void pinned_view() {
 //     print(v)
 //     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
 void slice_view() {
-    std::string a = make();
+    std::string a = ::tpyapp::main::make();
     std::string_view v = ::tpy::str_slice(a, ::tpy::BasicSlice{3, 9});
     std::cout << v << "\n";
     a += " appended text that forces the std::string buffer to reallocate";
@@ -64,10 +64,10 @@ void bytearray_slice_view() {
 //     slice_view()
 //     bytearray_slice_view()
 void main() {
-    inferred_view();
-    pinned_view();
-    slice_view();
-    bytearray_slice_view();
+    ::tpyapp::main::inferred_view();
+    ::tpyapp::main::pinned_view();
+    ::tpyapp::main::slice_view();
+    ::tpyapp::main::bytearray_slice_view();
 }
 
 // main()
@@ -76,7 +76,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

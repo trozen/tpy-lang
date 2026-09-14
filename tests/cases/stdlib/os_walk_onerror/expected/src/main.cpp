@@ -162,30 +162,30 @@ void main() {
     std::string tmp = ::tpy::stdlib::os::getcwd();
     ::tpy::String root = (::tpy::str_concat(tmp, "/tpy_oswalk_onerror_tree"));
     if (::tpy::stdlib::os::path_exists(root)) {
-        teardown(root);
+        ::tpyapp::main::teardown(root);
     }
-    build(root);
-    auto __obj_0 = walk_rows(root, report);
+    ::tpyapp::main::build(root);
+    auto __obj_0 = ::tpyapp::main::walk_rows(root, report);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view r = *__beg_0;
         std::cout << "named:" << " " << r << "\n";
     }
-    auto __obj_1 = walk_rows(root, [](const ::tpy::OSError& e) { std::cout << "never" << "\n"; });
+    auto __obj_1 = ::tpyapp::main::walk_rows(root, [](const ::tpy::OSError& e) { std::cout << "never" << "\n"; });
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view r = *__beg_1;
         std::cout << "lambda:" << " " << r << "\n";
     }
-    teardown(root);
+    ::tpyapp::main::teardown(root);
     std::string_view missing = "tpy_oswalk_onerror_missing";
-    int32_t n1 = yields(missing, report);
+    int32_t n1 = ::tpyapp::main::yields(missing, report);
     std::cout << "named yields:" << " " << n1 << "\n";
-    int32_t n2 = yields(missing, [](const ::tpy::OSError& e) { std::cout << "lam fired" << "\n"; });
+    int32_t n2 = ::tpyapp::main::yields(missing, [](const ::tpy::OSError& e) { std::cout << "lam fired" << "\n"; });
     std::cout << "lambda yields:" << " " << n2 << "\n";
-    int32_t n3 = yields(missing, std::nullopt);
+    int32_t n3 = ::tpyapp::main::yields(missing, std::nullopt);
     std::cout << "default yields:" << " " << n3 << "\n";
     {
         try {
@@ -221,7 +221,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::os::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

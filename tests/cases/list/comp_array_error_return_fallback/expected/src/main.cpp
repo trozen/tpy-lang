@@ -28,7 +28,7 @@ std::expected<int32_t, MyErr> halves() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
-            __result.push_back(({ auto __er_1 = half(i); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); }));
+            __result.push_back(({ auto __er_1 = ::tpyapp::main::half(i); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); }));
         }
         std::move(__result);
     });
@@ -45,7 +45,7 @@ std::expected<int32_t, MyErr> bad() {
         const int32_t __stop_0 = 3;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
-            __result.push_back(({ auto __er_2 = half(i); if (!__er_2.has_value()) return ::tpy::make_unexpected(__er_2.error()); ::tpy::unwrap_ref_move(*__er_2); }));
+            __result.push_back(({ auto __er_2 = ::tpyapp::main::half(i); if (!__er_2.has_value()) return ::tpy::make_unexpected(__er_2.error()); ::tpy::unwrap_ref_move(*__er_2); }));
         }
         std::move(__result);
     });
@@ -76,7 +76,7 @@ std::expected<int32_t, MyErr> bad() {
 //         print("caught")
 void main() {
     {
-        std::cout << ({ auto __er_4 = halves(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << ({ auto __er_4 = ::tpyapp::main::halves(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
         goto __after_try_3;
         // except MyErr:
         __except_3:;
@@ -84,7 +84,7 @@ void main() {
         __after_try_3:;
     }
     {
-        std::cout << ({ auto __er_6 = bad(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n";
+        std::cout << ({ auto __er_6 = ::tpyapp::main::bad(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n";
         goto __after_try_5;
         // except MyErr:
         __except_5:;
@@ -147,7 +147,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

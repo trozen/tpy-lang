@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     show(42)
 //     show("hello")
 void main() {
-    show<bool>(true);
-    show<bool>(false);
-    show<int32_t>(42);
-    show<std::string>("hello");
+    ::tpyapp::main::show<bool>(true);
+    ::tpyapp::main::show<bool>(false);
+    ::tpyapp::main::show<int32_t>(42);
+    ::tpyapp::main::show<std::string>("hello");
 }
 
 // main()
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

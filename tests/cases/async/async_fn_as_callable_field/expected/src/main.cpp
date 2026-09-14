@@ -40,7 +40,7 @@ __coro_handle handle(Conn c) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        d.emplace(Dispatcher([](Conn&& __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(handle(std::move(__a0))); }));
+        d.emplace(Dispatcher([](Conn&& __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::handle(std::move(__a0))); }));
         __sub_0.emplace((*d), 3);
         __state = S_RESUME_0;
         continue;
@@ -67,7 +67,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // async def run(self, count: int32) -> None:
@@ -132,7 +132,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

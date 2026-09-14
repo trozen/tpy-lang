@@ -125,7 +125,7 @@ __coro_client client(::tpystd::socket::socket& sock) {
         b.emplace(std::move(std::get<1>(__tup_1)));
         (*a).setblocking(false);
         (*b).setblocking(false);
-        srv.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(server((*a)))));
+        srv.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::server((*a)))));
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
@@ -162,7 +162,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio epoll reactor (v2): two concurrent coroutines on one executor
@@ -180,7 +180,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

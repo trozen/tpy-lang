@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     return sum_iterable(it)
 int32_t sum_readonly(std::span<const int32_t> rs) {
     ::tpy::SpanIter<const int32_t> it = ::tpy::SpanIter<const int32_t>(rs);
-    return sum_iterable(it);
+    return ::tpyapp::main::sum_iterable(it);
 }
 
 // def main() -> None:
@@ -38,9 +38,9 @@ void main() {
         int32_t x = *__beg_0;
         std::cout << x << "\n";
     }
-    std::cout << sum_readonly(s) << "\n";
+    std::cout << ::tpyapp::main::sum_readonly(s) << "\n";
     ::tpy::SpanIter<int32_t> it2 = ::tpy::SpanIter<int32_t>(s);
-    std::cout << sum_iterable(it2) << "\n";
+    std::cout << ::tpyapp::main::sum_iterable(it2) << "\n";
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

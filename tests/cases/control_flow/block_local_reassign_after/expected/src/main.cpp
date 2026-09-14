@@ -243,21 +243,21 @@ std::string str_local() {
 //     print(nested_blocks(True))
 //     print(nested_blocks(False))
 void main() {
-    std::cout << in_for() << "\n";
-    std::cout << in_while() << "\n";
-    std::cout << in_match(::tpy::BigInt(1)) << "\n";
-    std::cout << in_match(::tpy::BigInt(2)) << "\n";
-    std::cout << in_try(::tpy::BigInt(5)) << "\n";
-    std::cout << in_try(::tpy::BigInt(0)) << "\n";
-    std::cout << in_except(::tpy::BigInt(0)) << "\n";
-    std::cout << in_for_else() << "\n";
-    std::cout << in_while_else(::tpy::BigInt(2)) << "\n";
-    std::cout << optional_local(true) << "\n";
-    std::cout << optional_local(false) << "\n";
-    std::cout << str_local() << "\n";
-    std::cout << list_local() << "\n";
-    std::cout << nested_blocks(true) << "\n";
-    std::cout << nested_blocks(false) << "\n";
+    std::cout << ::tpyapp::main::in_for() << "\n";
+    std::cout << ::tpyapp::main::in_while() << "\n";
+    std::cout << ::tpyapp::main::in_match(::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::in_match(::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::in_try(::tpy::BigInt(5)) << "\n";
+    std::cout << ::tpyapp::main::in_try(::tpy::BigInt(0)) << "\n";
+    std::cout << ::tpyapp::main::in_except(::tpy::BigInt(0)) << "\n";
+    std::cout << ::tpyapp::main::in_for_else() << "\n";
+    std::cout << ::tpyapp::main::in_while_else(::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::optional_local(true) << "\n";
+    std::cout << ::tpyapp::main::optional_local(false) << "\n";
+    std::cout << ::tpyapp::main::str_local() << "\n";
+    std::cout << ::tpyapp::main::list_local() << "\n";
+    std::cout << ::tpyapp::main::nested_blocks(true) << "\n";
+    std::cout << ::tpyapp::main::nested_blocks(false) << "\n";
 }
 
 // main()
@@ -266,7 +266,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

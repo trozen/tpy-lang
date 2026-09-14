@@ -244,8 +244,8 @@ __coro_go go(bool should_fail) {
 //     print(asyncio.run(go(False)))
 //     print(asyncio.run(go(True)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(go(false))) << "\n";
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(go(true))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go(false))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go(true))) << "\n";
 }
 
 // # try/except/finally with awaits in both try and except bodies.
@@ -259,7 +259,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

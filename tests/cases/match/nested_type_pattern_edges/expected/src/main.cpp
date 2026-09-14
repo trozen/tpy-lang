@@ -295,9 +295,9 @@ void main() {
     Wrapper __slot_2 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
     Wrapper* b = &__slot_2;
     Wrapper* c = nullptr;
-    std::cout << opt_wrapper(a) << "\n";
-    std::cout << opt_wrapper(b) << "\n";
-    std::cout << opt_wrapper(c) << "\n";
+    std::cout << ::tpyapp::main::opt_wrapper(a) << "\n";
+    std::cout << ::tpyapp::main::opt_wrapper(b) << "\n";
+    std::cout << ::tpyapp::main::opt_wrapper(c) << "\n";
     Cat __tmp_3 = Cat("Luna");
     ::tpy::Union<Tag, Wrapper> __slot_3 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
     ::tpy::Union<Tag*, Wrapper*> d = ::tpy::to_ptr_variant(__slot_3);
@@ -306,51 +306,51 @@ void main() {
     ::tpy::Union<Tag*, Wrapper*> e = ::tpy::to_ptr_variant(__slot_4);
     ::tpy::Union<Tag, Wrapper> __slot_5 = Tag("hello");
     ::tpy::Union<Tag*, Wrapper*> f = ::tpy::to_ptr_variant(__slot_5);
-    std::cout << or_nested(d.as_const()) << "\n";
-    std::cout << or_nested(e.as_const()) << "\n";
-    std::cout << or_nested(f.as_const()) << "\n";
+    std::cout << ::tpyapp::main::or_nested(d.as_const()) << "\n";
+    std::cout << ::tpyapp::main::or_nested(e.as_const()) << "\n";
+    std::cout << ::tpyapp::main::or_nested(f.as_const()) << "\n";
     ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_6 = Box<Box<Box<std::string>>>(Box<Box<std::string>>(Box<std::string>("abc")));
     ::tpy::Union<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> g = ::tpy::to_ptr_variant(__slot_6);
     ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_7 = Box<Box<Box<int32_t>>>(Box<Box<int32_t>>(Box<int32_t>(99)));
     ::tpy::Union<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> h = ::tpy::to_ptr_variant(__slot_7);
-    std::cout << deep3(g.as_const()) << "\n";
-    std::cout << deep3(h.as_const()) << "\n";
+    std::cout << ::tpyapp::main::deep3(g.as_const()) << "\n";
+    std::cout << ::tpyapp::main::deep3(h.as_const()) << "\n";
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_8 = Box<std::string>("pos");
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> i = ::tpy::to_ptr_variant(__slot_8);
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_9 = Box<int32_t>(7);
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> j = ::tpy::to_ptr_variant(__slot_9);
-    std::cout << positional_nested(i.as_const()) << "\n";
-    std::cout << positional_nested(j.as_const()) << "\n";
+    std::cout << ::tpyapp::main::positional_nested(i.as_const()) << "\n";
+    std::cout << ::tpyapp::main::positional_nested(j.as_const()) << "\n";
     Cat __tmp_5 = Cat("Nala");
     Wrapper __tmp_6 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_5});
-    std::cout << nested_pos_extract(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::nested_pos_extract(__tmp_6) << "\n";
     Dog __tmp_7 = Dog("Buddy");
     Wrapper __tmp_8 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_7});
-    std::cout << nested_pos_extract(__tmp_8) << "\n";
+    std::cout << ::tpyapp::main::nested_pos_extract(__tmp_8) << "\n";
     Cat __tmp_9 = Cat("Luna");
     Wrapper __tmp_10 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_9});
-    std::cout << guard_combo(__tmp_10) << "\n";
+    std::cout << ::tpyapp::main::guard_combo(__tmp_10) << "\n";
     Cat __tmp_11 = Cat("Nala");
     Wrapper __tmp_12 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_11});
-    std::cout << guard_combo(__tmp_12) << "\n";
+    std::cout << ::tpyapp::main::guard_combo(__tmp_12) << "\n";
     Dog __tmp_13 = Dog("Rex");
     Wrapper __tmp_14 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_13});
-    std::cout << guard_combo(__tmp_14) << "\n";
+    std::cout << ::tpyapp::main::guard_combo(__tmp_14) << "\n";
     ::tpy::Union<double, std::string> __tmp_15 = 3.14;
     FloatHolder __tmp_16 = FloatHolder(__tmp_15);
-    std::cout << check_float(__tmp_16) << "\n";
+    std::cout << ::tpyapp::main::check_float(__tmp_16) << "\n";
     ::tpy::Union<double, std::string> __tmp_17 = "pi";
     FloatHolder __tmp_18 = FloatHolder(__tmp_17);
-    std::cout << check_float(__tmp_18) << "\n";
+    std::cout << ::tpyapp::main::check_float(__tmp_18) << "\n";
     ::tpy::Union<bool, std::string> __tmp_19 = true;
     BoolHolder __tmp_20 = BoolHolder(__tmp_19);
-    std::cout << check_bool(__tmp_20) << "\n";
+    std::cout << ::tpyapp::main::check_bool(__tmp_20) << "\n";
     ::tpy::Union<bool, std::string> __tmp_21 = false;
     BoolHolder __tmp_22 = BoolHolder(__tmp_21);
-    std::cout << check_bool(__tmp_22) << "\n";
+    std::cout << ::tpyapp::main::check_bool(__tmp_22) << "\n";
     ::tpy::Union<bool, std::string> __tmp_23 = "yes";
     BoolHolder __tmp_24 = BoolHolder(__tmp_23);
-    std::cout << check_bool(__tmp_24) << "\n";
+    std::cout << ::tpyapp::main::check_bool(__tmp_24) << "\n";
 }
 
 // from dataclasses import dataclass
@@ -361,7 +361,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

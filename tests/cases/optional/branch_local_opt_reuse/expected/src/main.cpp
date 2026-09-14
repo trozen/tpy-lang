@@ -55,23 +55,23 @@ std::optional<std::string> maybe_s(const ::tpy::BigInt& n) {
 //         print(s)
 void main() {
     int32_t n = 3;
-    if (cond(::tpy::BigInt(n))) {
-        std::optional<::tpy::BigInt> x = maybe(::tpy::BigInt(n));
+    if (::tpyapp::main::cond(::tpy::BigInt(n))) {
+        std::optional<::tpy::BigInt> x = ::tpyapp::main::maybe(::tpy::BigInt(n));
         if ((x.has_value())) {
             std::cout << ::tpy::print_optional_val(x) << "\n";
         }
     }
-    if (cond(::tpy::BigInt(n))) {
+    if (::tpyapp::main::cond(::tpy::BigInt(n))) {
         int32_t x = 5;
         std::cout << x << "\n";
     }
-    if (cond(::tpy::BigInt(n))) {
-        std::optional<std::string> s = maybe_s(::tpy::BigInt(n));
+    if (::tpyapp::main::cond(::tpy::BigInt(n))) {
+        std::optional<std::string> s = ::tpyapp::main::maybe_s(::tpy::BigInt(n));
         if ((s.has_value())) {
             std::cout << ::tpy::print_optional_val(s) << "\n";
         }
     }
-    if (cond(::tpy::BigInt(n))) {
+    if (::tpyapp::main::cond(::tpy::BigInt(n))) {
         std::string s = "plain";
         std::cout << s << "\n";
     }
@@ -83,7 +83,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

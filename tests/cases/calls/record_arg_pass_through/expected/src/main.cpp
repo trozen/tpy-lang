@@ -20,8 +20,8 @@ void mutate_rec(A& a) {
 //     mutate_rec(b)
 //     return read_rec(a) + read_rec(b)
 int32_t pass_both(const A& a, A& b) {
-    mutate_rec(b);
-    return (::tpy::add_check<int32_t>(read_rec(a), read_rec(b)));
+    ::tpyapp::main::mutate_rec(b);
+    return (::tpy::add_check<int32_t>(::tpyapp::main::read_rec(a), ::tpyapp::main::read_rec(b)));
 }
 
 // def through_pointer(h: Holder, flag: bool) -> int32:
@@ -35,8 +35,8 @@ int32_t through_pointer(Holder& h, bool flag) {
     if (flag) {
         p = &(h.b);
     }
-    mutate_rec((*p));
-    return read_rec((*p));
+    ::tpyapp::main::mutate_rec((*p));
+    return ::tpyapp::main::read_rec((*p));
 }
 
 // def through_narrowing(v: A | B) -> int32:
@@ -47,8 +47,8 @@ int32_t through_pointer(Holder& h, bool flag) {
 int32_t through_narrowing(::tpy::Union<A*, B*> v) {
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        mutate_rec(__v);
-        return read_rec(__v);
+        ::tpyapp::main::mutate_rec(__v);
+        return ::tpyapp::main::read_rec(__v);
     }
     auto& __v = *std::get<B*>(v);
     return __v.y;
@@ -68,17 +68,17 @@ int32_t through_narrowing(::tpy::Union<A*, B*> v) {
 //     print(through_narrowing(B(7)))
 void main() {
     Holder h = Holder();
-    std::cout << pass_both(h.a, h.b) << "\n";
+    std::cout << ::tpyapp::main::pass_both(h.a, h.b) << "\n";
     std::cout << h.b.x << "\n";
-    std::cout << through_pointer(h, true) << "\n";
+    std::cout << ::tpyapp::main::through_pointer(h, true) << "\n";
     std::cout << h.b.x << "\n";
-    std::cout << through_pointer(h, false) << "\n";
+    std::cout << ::tpyapp::main::through_pointer(h, false) << "\n";
     std::cout << h.a.x << "\n";
     A a = A(5);
-    std::cout << through_narrowing(::tpy::Union<A*, B*>{&(a)}) << "\n";
+    std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&(a)}) << "\n";
     std::cout << a.x << "\n";
     B __tmp_1 = B(7);
-    std::cout << through_narrowing(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
 }
 
 // main()
@@ -87,7 +87,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

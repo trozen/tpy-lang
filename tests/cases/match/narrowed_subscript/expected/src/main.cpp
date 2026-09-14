@@ -210,7 +210,7 @@ __match_end_2:;
 //         case _:
 //             pass
 void monomorphic_read(int32_t marker) {
-    ::tpy::Union<int32_t, std::string> x = union_text(true);
+    ::tpy::Union<int32_t, std::string> x = ::tpyapp::main::union_text(true);
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     case 1: {
@@ -409,7 +409,7 @@ void comprehension(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
 //     read()
 void closure(bool choose_text) {
     auto read = [&choose_text]() {
-        ::tpy::Union<int32_t, std::string> y = union_text(choose_text);
+        ::tpy::Union<int32_t, std::string> y = ::tpyapp::main::union_text(choose_text);
         auto& __match_subject_1 = y;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -658,24 +658,24 @@ void record_read(::tpy::Union<const Indexed*, const int32_t*> x) {
 //     record_read(indexed)
 void main() {
     ::tpy::Union<int32_t, std::string> text = "abc";
-    ::tpy::Union<::tpy::ByteArray, int32_t> __slot_1 = make_buffer();
+    ::tpy::Union<::tpy::ByteArray, int32_t> __slot_1 = ::tpyapp::main::make_buffer();
     ::tpy::Union<::tpy::ByteArray*, int32_t*> buffer = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::BigInt index = ::tpy::BigInt::from_str("1");
-    string_reads(text, index);
+    ::tpyapp::main::string_reads(text, index);
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("abc", 3);
-    bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*>{&__tmp_1}, index);
-    bytearray_reads(buffer.as_const(), index);
-    capture_reads(text, true);
-    capture_reads(text, false);
+    ::tpyapp::main::bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*>{&__tmp_1}, index);
+    ::tpyapp::main::bytearray_reads(buffer.as_const(), index);
+    ::tpyapp::main::capture_reads(text, true);
+    ::tpyapp::main::capture_reads(text, false);
     int32_t marker = 7;
-    generic_read<int32_t>(marker);
-    monomorphic_read(marker);
-    tuple_reads(buffer.as_const());
+    ::tpyapp::main::generic_read<int32_t>(marker);
+    ::tpyapp::main::monomorphic_read(marker);
+    ::tpyapp::main::tuple_reads(buffer.as_const());
     Reader reader = Reader(text);
     std::cout << "constructor" << " " << reader.value << "\n";
     std::cout << "method" << " " << reader.read(text) << "\n";
     {
-        auto __src_0 = generate(buffer.as_const());
+        auto __src_0 = ::tpyapp::main::generate(buffer.as_const());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -684,12 +684,12 @@ void main() {
         std::cout << "generator" << " " << value << "\n";
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_read(buffer.as_const()))) << "\n";
-    comprehension(buffer.as_const());
-    closure(true);
-    cleanup_reads(text);
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(buffer.as_const()))) << "\n";
+    ::tpyapp::main::comprehension(buffer.as_const());
+    ::tpyapp::main::closure(true);
+    ::tpyapp::main::cleanup_reads(text);
     {
-        std::cout << "error-return" << " " << ({ auto __er_2 = error_read(buffer.as_const()); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error-return" << " " << ({ auto __er_2 = ::tpyapp::main::error_read(buffer.as_const()); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except Err:
         __except_1:;
@@ -697,14 +697,14 @@ void main() {
         __after_try_1:;
     }
     Counter counter = Counter();
-    conditional_reads(text, counter);
-    ::tpy::Union<int32_t, std::vector<int32_t>> __slot_2 = make_list();
+    ::tpyapp::main::conditional_reads(text, counter);
+    ::tpy::Union<int32_t, std::vector<int32_t>> __slot_2 = ::tpyapp::main::make_list();
     ::tpy::Union<int32_t*, std::vector<int32_t>*> items = ::tpy::to_ptr_variant(__slot_2);
     Indexed indexed = Indexed();
-    list_read(items.as_const());
+    ::tpyapp::main::list_read(items.as_const());
     ::tpy::ordered_map<int32_t, int32_t> __tmp_2 = ::tpy::ordered_map<int32_t, int32_t>({{0, 30}});
-    dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*>{&__tmp_2});
-    record_read(::tpy::Union<const Indexed*, const int32_t*>{&(indexed)});
+    ::tpyapp::main::dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*>{&__tmp_2});
+    ::tpyapp::main::record_read(::tpy::Union<const Indexed*, const int32_t*>{&(indexed)});
 }
 
 // # Narrowed union provenance must preserve member-specific checked indexing.
@@ -726,8 +726,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
-    global_text = union_text(true);
+    ::tpyapp::main::main();
+    global_text = ::tpyapp::main::union_text(true);
     auto& __match_subject_1 = global_text;
     switch (__match_subject_1.index()) {
     case 1: {

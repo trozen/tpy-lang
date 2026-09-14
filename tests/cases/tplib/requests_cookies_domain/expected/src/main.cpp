@@ -62,7 +62,7 @@ void redirect_cookie(::tpy::BytesView set_cookies, ::tpy::BytesView location) {
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
     s.get("http://api.test/start");
     b.recv(65536);
-    _cookie_line(d.recv(65536));
+    ::tpyapp::main::_cookie_line(d.recv(65536));
     b.close();
     d.close();
 }
@@ -110,7 +110,7 @@ void cookies_arg_crosses_host() {
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"tok", "1"}});
     s.get("http://api.test/start", nullptr, nullptr, std::nullopt, true, __tmp_1, &(__tmp_2));
     b.recv(65536);
-    _cookie_line(d.recv(65536));
+    ::tpyapp::main::_cookie_line(d.recv(65536));
     b.close();
     d.close();
 }
@@ -161,12 +161,12 @@ void path_scoping() {
 //     cookies_arg_crosses_host()
 //     path_scoping()
 void main() {
-    redirect_cookie(::tpy::bytes_literal("Set-Cookie: sid=abc\r\n", 21), ::tpy::bytes_literal("http://other.test/next", 22));
-    redirect_cookie(::tpy::bytes_literal("Set-Cookie: sid=abc\r\n", 21), ::tpy::bytes_literal("http://api.test/next", 20));
-    redirect_cookie(::tpy::bytes_literal("Set-Cookie: sid=abc\r\nSet-Cookie: pref=x; Domain=api.test\r\n", 58), ::tpy::bytes_literal("http://sub.api.test/next", 24));
-    redirect_cookie(::tpy::bytes_literal("Set-Cookie: tok=1; Secure\r\n", 27), ::tpy::bytes_literal("http://api.test/next", 20));
-    cookies_arg_crosses_host();
-    path_scoping();
+    ::tpyapp::main::redirect_cookie(::tpy::bytes_literal("Set-Cookie: sid=abc\r\n", 21), ::tpy::bytes_literal("http://other.test/next", 22));
+    ::tpyapp::main::redirect_cookie(::tpy::bytes_literal("Set-Cookie: sid=abc\r\n", 21), ::tpy::bytes_literal("http://api.test/next", 20));
+    ::tpyapp::main::redirect_cookie(::tpy::bytes_literal("Set-Cookie: sid=abc\r\nSet-Cookie: pref=x; Domain=api.test\r\n", 58), ::tpy::bytes_literal("http://sub.api.test/next", 24));
+    ::tpyapp::main::redirect_cookie(::tpy::bytes_literal("Set-Cookie: tok=1; Secure\r\n", 27), ::tpy::bytes_literal("http://api.test/next", 20));
+    ::tpyapp::main::cookies_arg_crosses_host();
+    ::tpyapp::main::path_scoping();
 }
 
 // # Persisted cookies are domain/path/secure-scoped, so a Set-Cookie from one host
@@ -190,7 +190,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

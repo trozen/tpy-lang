@@ -120,7 +120,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio epoll reactor (v2): cancelling a parked fd awaitable. wait_for's
@@ -144,7 +144,7 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
     _BIG = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), ::tpy::mul_check<int32_t>(::tpy::mul_check<int32_t>(4, 1024), 1024)));
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

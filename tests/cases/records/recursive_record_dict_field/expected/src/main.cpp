@@ -21,7 +21,7 @@ void put(Node& parent, std::string_view key, const Node& child) {
 void main() {
     Node root = Node(1);
     Node leaf = Node(2);
-    put(root, "a", leaf);
+    ::tpyapp::main::put(root, "a", leaf);
     ::tpy::__getitem__(root.kids, "a").val = 20;
     ::tpy::__setitem__(::tpy::__getitem__(root.kids, "a").kids, "b", Node(99));
     std::cout << root.val << " " << ::tpy::__getitem__(root.kids, "a").val << " " << ::tpy::__len__(root.kids) << " " << ::tpy::__len__(::tpy::__getitem__(root.kids, "a").kids) << "\n";
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

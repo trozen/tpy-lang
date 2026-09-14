@@ -21,7 +21,7 @@ void main() {
     Container c = Container();
     c.ptr = &d;
     std::cout << c.read_value() << "\n";
-    std::cout << read_through(c) << "\n";
+    std::cout << ::tpyapp::main::read_through(c) << "\n";
 }
 
 // main()
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

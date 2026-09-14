@@ -104,14 +104,14 @@ std::string classify(std::string_view s) {
 //     print(classify("two"))
 //     print(classify("zzz"))
 void main() {
-    std::cout << classify("red") << "\n";
-    std::cout << classify("green") << "\n";
-    std::cout << classify("blue") << "\n";
-    std::cout << classify("cat") << "\n";
-    std::cout << classify("dog") << "\n";
-    std::cout << classify("bird") << "\n";
-    std::cout << classify("two") << "\n";
-    std::cout << classify("zzz") << "\n";
+    std::cout << ::tpyapp::main::classify("red") << "\n";
+    std::cout << ::tpyapp::main::classify("green") << "\n";
+    std::cout << ::tpyapp::main::classify("blue") << "\n";
+    std::cout << ::tpyapp::main::classify("cat") << "\n";
+    std::cout << ::tpyapp::main::classify("dog") << "\n";
+    std::cout << ::tpyapp::main::classify("bird") << "\n";
+    std::cout << ::tpyapp::main::classify("two") << "\n";
+    std::cout << ::tpyapp::main::classify("zzz") << "\n";
 }
 
 // main()
@@ -120,7 +120,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

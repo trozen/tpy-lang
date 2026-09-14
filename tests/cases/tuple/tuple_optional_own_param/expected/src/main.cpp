@@ -45,7 +45,7 @@ int32_t take_subscript(std::tuple<std::optional<P>, std::optional<P>> t) {
 void test_all_last_use() {
     P a = P(1);
     P b = P(2);
-    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(a)), std::move(&(b))})) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(a)), std::move(&(b))})) << "\n";
 }
 
 // def test_mixed_last_use_and_explicit_copy() -> None:
@@ -58,21 +58,21 @@ void test_all_last_use() {
 void test_mixed_last_use_and_explicit_copy() {
     P c = P(3);
     P d = P(4);
-    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P*, P>{std::move(&(c)), P(d)}))) << "\n";
-    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(d)), nullptr})) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P*, P>{std::move(&(c)), P(d)}))) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(d)), nullptr})) << "\n";
 }
 
 // def test_fresh_constructor_literals() -> None:
 //     # Rvalue elements, naturally movable.
 //     print(take((P(5), P(6))))
 void test_fresh_constructor_literals() {
-    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(5), P(6)}))) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(5), P(6)}))) << "\n";
 }
 
 // def test_none_only() -> None:
 //     print(take((None, None)))
 void test_none_only() {
-    std::cout << take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{nullptr, nullptr})) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{nullptr, nullptr})) << "\n";
 }
 
 // def test_storage_form_source() -> None:
@@ -86,7 +86,7 @@ void test_storage_form_source() {
     P p1 = P(7);
     P p2 = P(8);
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(p1), &(p2)})};
-    std::cout << take(::tpy::__getitem__(pairs, 0)) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::__getitem__(pairs, 0)) << "\n";
 }
 
 // def test_subscript_access_in_body() -> None:
@@ -98,7 +98,7 @@ void test_storage_form_source() {
 void test_subscript_access_in_body() {
     P e = P(9);
     P f = P(10);
-    std::cout << take_subscript(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(e)), std::move(&(f))})) << "\n";
+    std::cout << ::tpyapp::main::take_subscript(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(e)), std::move(&(f))})) << "\n";
 }
 
 // def main() -> None:
@@ -109,12 +109,12 @@ void test_subscript_access_in_body() {
 //     test_storage_form_source()
 //     test_subscript_access_in_body()
 void main() {
-    test_all_last_use();
-    test_mixed_last_use_and_explicit_copy();
-    test_fresh_constructor_literals();
-    test_none_only();
-    test_storage_form_source();
-    test_subscript_access_in_body();
+    ::tpyapp::main::test_all_last_use();
+    ::tpyapp::main::test_mixed_last_use_and_explicit_copy();
+    ::tpyapp::main::test_fresh_constructor_literals();
+    ::tpyapp::main::test_none_only();
+    ::tpyapp::main::test_storage_form_source();
+    ::tpyapp::main::test_subscript_access_in_body();
 }
 
 // main()
@@ -123,7 +123,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -49,7 +49,7 @@ inline Sink::Sink() : chunks(std::vector<::tpy::Bytes>{}), owned(std::vector<::t
 //     # The call's result is a BytesView: materialized into the element.
 //     self.chunks.append(view_of(b))
 inline void Sink::add_view(::tpy::BytesView b) {
-    this->chunks.push_back(::tpy::Bytes(view_of(b)));
+    this->chunks.push_back(::tpy::Bytes(::tpyapp::main::view_of(b)));
 }
 
 // def add_owned(self, b: bytes) -> None:

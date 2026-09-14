@@ -47,13 +47,13 @@ std::string classify(int32_t n) {
 //     print(classify(6))
 //     print(classify(7))
 void main() {
-    std::cout << classify(1) << "\n";
-    std::cout << classify(2) << "\n";
-    std::cout << classify(3) << "\n";
-    std::cout << classify(4) << "\n";
-    std::cout << classify(5) << "\n";
-    std::cout << classify(6) << "\n";
-    std::cout << classify(7) << "\n";
+    std::cout << ::tpyapp::main::classify(1) << "\n";
+    std::cout << ::tpyapp::main::classify(2) << "\n";
+    std::cout << ::tpyapp::main::classify(3) << "\n";
+    std::cout << ::tpyapp::main::classify(4) << "\n";
+    std::cout << ::tpyapp::main::classify(5) << "\n";
+    std::cout << ::tpyapp::main::classify(6) << "\n";
+    std::cout << ::tpyapp::main::classify(7) << "\n";
 }
 
 // main()
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

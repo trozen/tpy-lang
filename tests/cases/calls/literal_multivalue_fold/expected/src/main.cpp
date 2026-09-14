@@ -163,20 +163,20 @@ std::string handle_not__lit_rb__wb(std::string_view mode) {
 //     print(handle_not_in_disjoint("r"))
 //     print(handle_not_in_disjoint("rb"))
 void main() {
-    std::cout << handle__lit_r__w("r") << "\n";
-    std::cout << handle__lit_rb__wb("rb") << "\n";
-    std::cout << handle_in__lit_r__w("w") << "\n";
-    std::cout << handle_in__lit_rb__wb("wb") << "\n";
-    std::cout << handle_not_in__lit_r__w("r") << "\n";
-    std::cout << handle_not_in__lit_rb__wb("rb") << "\n";
-    std::cout << handle_and__lit_r("r") << "\n";
-    std::cout << handle_and__lit_w("w") << "\n";
-    std::cout << handle_not__lit_r__w("w") << "\n";
-    std::cout << handle_not__lit_rb__wb("rb") << "\n";
-    std::cout << handle_and_multi__lit_r__w("r") << "\n";
-    std::cout << handle_and_multi__lit_rb__wb("rb") << "\n";
-    std::cout << handle_not_in_disjoint__lit_r__w("r") << "\n";
-    std::cout << handle_not_in_disjoint__lit_rb__wb("rb") << "\n";
+    std::cout << ::tpyapp::main::handle__lit_r__w("r") << "\n";
+    std::cout << ::tpyapp::main::handle__lit_rb__wb("rb") << "\n";
+    std::cout << ::tpyapp::main::handle_in__lit_r__w("w") << "\n";
+    std::cout << ::tpyapp::main::handle_in__lit_rb__wb("wb") << "\n";
+    std::cout << ::tpyapp::main::handle_not_in__lit_r__w("r") << "\n";
+    std::cout << ::tpyapp::main::handle_not_in__lit_rb__wb("rb") << "\n";
+    std::cout << ::tpyapp::main::handle_and__lit_r("r") << "\n";
+    std::cout << ::tpyapp::main::handle_and__lit_w("w") << "\n";
+    std::cout << ::tpyapp::main::handle_not__lit_r__w("w") << "\n";
+    std::cout << ::tpyapp::main::handle_not__lit_rb__wb("rb") << "\n";
+    std::cout << ::tpyapp::main::handle_and_multi__lit_r__w("r") << "\n";
+    std::cout << ::tpyapp::main::handle_and_multi__lit_rb__wb("rb") << "\n";
+    std::cout << ::tpyapp::main::handle_not_in_disjoint__lit_r__w("r") << "\n";
+    std::cout << ::tpyapp::main::handle_not_in_disjoint__lit_rb__wb("rb") << "\n";
 }
 
 // main()
@@ -185,7 +185,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

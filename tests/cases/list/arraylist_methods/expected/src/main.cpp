@@ -239,16 +239,16 @@ void test_sort() {
 //     test_reverse()
 //     test_sort()
 void main() {
-    test_contains();
-    test_eq();
-    test_repr();
-    test_swap();
-    test_truncate();
-    test_index();
-    test_count();
-    test_remove();
-    test_reverse();
-    test_sort();
+    ::tpyapp::main::test_contains();
+    ::tpyapp::main::test_eq();
+    ::tpyapp::main::test_repr();
+    ::tpyapp::main::test_swap();
+    ::tpyapp::main::test_truncate();
+    ::tpyapp::main::test_index();
+    ::tpyapp::main::test_count();
+    ::tpyapp::main::test_remove();
+    ::tpyapp::main::test_reverse();
+    ::tpyapp::main::test_sort();
 }
 
 // from tplib import ArrayList
@@ -260,7 +260,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

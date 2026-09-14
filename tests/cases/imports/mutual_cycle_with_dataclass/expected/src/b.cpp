@@ -20,7 +20,7 @@ int32_t sum_pair(const ::tpyapp::a::Pair& p) {
 //     return sum_pair(p)
 int32_t make_pair_sum(int32_t x, int32_t y) {
     ::tpyapp::a::Pair p = ::tpyapp::a::Pair(x, y);
-    return sum_pair(p);
+    return ::tpyapp::b::sum_pair(p);
 }
 
 // from a import Pair

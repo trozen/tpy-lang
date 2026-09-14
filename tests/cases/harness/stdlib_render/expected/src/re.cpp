@@ -193,7 +193,7 @@ std::expected<Match, ::tpy::StopIteration> __gen_Pattern_finditer::__next__() {
     }
     case S_RESUME_0: {  // after: yield Match(md, subject, rc)
         if ((mend == mstart)) {
-            offset = _utf8_advance(s_data, mend, sub_len);
+            offset = ::tpystd::re::_utf8_advance(s_data, mend, sub_len);
         } else {
             offset = mend;
         }
@@ -213,7 +213,7 @@ std::expected<Match, ::tpy::StopIteration> __gen_Pattern_finditer::__next__() {
                     __state = S_JOIN_1;
                     continue;
                 } else {
-                    throw error(_pcre2_error_msg(rc));
+                    throw error(::tpystd::re::_pcre2_error_msg(rc));
                 }
             } else {
                 ovec = ::pcre2_get_ovector_pointer_8((*md).get());
@@ -254,11 +254,11 @@ std::expected<Match, ::tpy::StopIteration> __gen_Pattern_finditer::__next__() {
 ::pcre2_code_8* _OwnedCode::_compile(std::string_view pattern, int32_t flags) {
     int32_t errcode = 0;
     uint64_t erroff = 0;
-    uint32_t opts = _to_pcre2_opts(flags);
+    uint32_t opts = ::tpystd::re::_to_pcre2_opts(flags);
     const uint8_t* p_data = reinterpret_cast<const uint8_t*>(pattern.data());
     ::pcre2_code_8* code = ::pcre2_compile_8(p_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(pattern)), opts, &errcode, &erroff, nullptr);
     if ((code == nullptr)) {
-        std::string msg = _pcre2_error_msg(errcode);
+        std::string msg = ::tpystd::re::_pcre2_error_msg(errcode);
         throw error(std::format("compile error at offset {}: {}", erroff, msg));
     }
     return code;
@@ -290,7 +290,7 @@ std::optional<Match> Pattern::_do_match(std::string_view subject, uint64_t start
         if ((rc == ::tpystd::_bindings::pcre2::PCRE2_ERROR_NOMATCH)) {
             return std::nullopt;
         }
-        throw error(_pcre2_error_msg(rc));
+        throw error(::tpystd::re::_pcre2_error_msg(rc));
     }
     return Match(std::move(md), subject, rc);
 }
@@ -349,7 +349,7 @@ std::string Pattern::_substitute(std::string_view repl, std::string_view subject
         rc = ::pcre2_substitute_8(this->_code.get(), sub_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject)), 0, opts, md, this->_mctx.get(), repl_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(repl)), outbuf->ptr(), &outlen);
     }
     if ((rc < 0)) {
-        throw error(_pcre2_error_msg(rc));
+        throw error(::tpystd::re::_pcre2_error_msg(rc));
     }
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(outbuf->ptr())), static_cast<size_t>(outlen));
 }
@@ -443,13 +443,13 @@ std::string Pattern::sub(std::string_view repl, std::string_view subject, int32_
         if ((rc < 0)) {
             if ((rc == ::tpystd::_bindings::pcre2::PCRE2_ERROR_NOMATCH)) {
                 if (prev_empty) {
-                    offset = _utf8_advance(s_data, offset, s_len);
+                    offset = ::tpystd::re::_utf8_advance(s_data, offset, s_len);
                     prev_empty = false;
                     continue;
                 }
                 break;
             }
-            throw error(_pcre2_error_msg(rc));
+            throw error(::tpystd::re::_pcre2_error_msg(rc));
         }
         const uint64_t* ovec = ::pcre2_get_ovector_pointer_8(md.get());
         uint64_t mstart = ovec[0];

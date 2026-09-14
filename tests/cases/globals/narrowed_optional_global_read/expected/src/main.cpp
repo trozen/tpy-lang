@@ -79,14 +79,14 @@ void write_plain(std::optional<int32_t> p) {
 //     write_plain(11)
 //     print(GP)
 void main() {
-    std::cout << read_ret() << "\n";
-    enable();
-    std::cout << read_ret() << "\n";
-    std::cout << read_sink() << "\n";
-    std::cout << read_aug() << "\n";
-    write_from(3);
-    std::cout << read_ret() << "\n";
-    write_plain(11);
+    std::cout << ::tpyapp::main::read_ret() << "\n";
+    ::tpyapp::main::enable();
+    std::cout << ::tpyapp::main::read_ret() << "\n";
+    std::cout << ::tpyapp::main::read_sink() << "\n";
+    std::cout << ::tpyapp::main::read_aug() << "\n";
+    ::tpyapp::main::write_from(3);
+    std::cout << ::tpyapp::main::read_ret() << "\n";
+    ::tpyapp::main::write_plain(11);
     std::cout << GP << "\n";
 }
 
@@ -101,7 +101,7 @@ void __tpy_init() {
 
     GO = std::nullopt;
     GP = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

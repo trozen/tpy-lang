@@ -37,11 +37,11 @@ void check_none(std::optional<std::string_view> s) {
 //     check_none("world")
 //     check_none(None)
 void main() {
-    check_truthy("hello");
-    check_truthy("");
-    check_truthy(std::nullopt);
-    check_none("world");
-    check_none(std::nullopt);
+    ::tpyapp::main::check_truthy("hello");
+    ::tpyapp::main::check_truthy("");
+    ::tpyapp::main::check_truthy(std::nullopt);
+    ::tpyapp::main::check_none("world");
+    ::tpyapp::main::check_none(std::nullopt);
 }
 
 // main()
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

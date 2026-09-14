@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     print(items[0].n)
 void main() {
     std::vector<R> items = {R(::tpy::BigInt(1))};
-    Owned<R> held = grab<R>(items);
+    Owned<R> held = ::tpyapp::main::grab<R>(items);
     ::tpy::__getitem__(items, 0).n = ::tpy::BigInt(99);
     std::cout << held.v.n << "\n";
     std::cout << ::tpy::__getitem__(items, 0).n << "\n";
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -12,7 +12,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         xs.emplace(std::array<int32_t, 3>{1, 2, 3});
-        c = ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(total((*xs)));
+        c = ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::total((*xs)));
         __sub_0 = c.get();
         __state = S_RESUME_0;
         continue;
@@ -40,7 +40,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Binding an async def with a static-protocol param: its frame is a
@@ -56,7 +56,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

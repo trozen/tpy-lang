@@ -49,10 +49,10 @@ void attempt(::tpy::BytesView response) {
 //     attempt(b"")                              # peer closed, nothing sent
 //     attempt(b"HTTP/2.0 200 OK\r\n\r\n")       # unsupported protocol version
 void main() {
-    attempt(::tpy::bytes_literal("GARBAGE LINE HERE\r\n\r\n", 21));
-    attempt(::tpy::bytes_literal("HTTP/1.1 spam OK\r\n\r\n", 20));
-    attempt(::tpy::BytesView{});
-    attempt(::tpy::bytes_literal("HTTP/2.0 200 OK\r\n\r\n", 19));
+    ::tpyapp::main::attempt(::tpy::bytes_literal("GARBAGE LINE HERE\r\n\r\n", 21));
+    ::tpyapp::main::attempt(::tpy::bytes_literal("HTTP/1.1 spam OK\r\n\r\n", 20));
+    ::tpyapp::main::attempt(::tpy::BytesView{});
+    ::tpyapp::main::attempt(::tpy::bytes_literal("HTTP/2.0 200 OK\r\n\r\n", 19));
 }
 
 // # A malformed status line, a non-numeric status code, and an empty response
@@ -72,7 +72,7 @@ void __tpy_init() {
     ::tpystd::socket::__tpy_init();
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

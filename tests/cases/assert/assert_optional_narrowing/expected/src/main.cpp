@@ -31,8 +31,8 @@ void __tpy_init() {
 
     static Point __global_slot_1 = Point(7);
     q = &__global_slot_1;
-    std::cout << get_x(q) << "\n";
-    std::cout << get_mag(q) << "\n";
+    std::cout << ::tpyapp::main::get_x(q) << "\n";
+    std::cout << ::tpyapp::main::get_mag(q) << "\n";
 }
 
 } // namespace tpyapp::main

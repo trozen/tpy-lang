@@ -143,7 +143,7 @@ int32_t get_top() {
 //     print(call_count)
 void test_single_eval() {
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < 10); })) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < 10); })) << "\n";
     std::cout << call_count << "\n";
 }
 
@@ -162,10 +162,10 @@ void test_single_eval() {
 //     print(call_count)
 void test_short_circuit_operands() {
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < get_high()); })) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < ::tpyapp::main::get_high()); })) << "\n";
     std::cout << call_count << "\n";
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < get_high()); })) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < ::tpyapp::main::get_high()); })) << "\n";
     std::cout << call_count << "\n";
 }
 
@@ -187,13 +187,13 @@ void test_short_circuit_operands() {
 //     print(call_count)
 void test_triple_short_circuit() {
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < get_top()); }); })) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < ::tpyapp::main::get_top()); }); })) << "\n";
     std::cout << call_count << "\n";
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < 3); }); })) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < 3); }); })) << "\n";
     std::cout << call_count << "\n";
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < get_top()); }); })) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < ::tpyapp::main::get_top()); }); })) << "\n";
     std::cout << call_count << "\n";
 }
 
@@ -218,19 +218,19 @@ void __tpy_init() {
     initialized = true;
 
     call_count = 0;
-    test_basic();
-    test_variables();
-    test_mixed_ops();
-    test_equality();
-    test_triple();
-    test_descending();
-    test_short_circuit();
-    test_float();
-    test_in_condition();
-    test_as_expression();
-    test_single_eval();
-    test_short_circuit_operands();
-    test_triple_short_circuit();
+    ::tpyapp::main::test_basic();
+    ::tpyapp::main::test_variables();
+    ::tpyapp::main::test_mixed_ops();
+    ::tpyapp::main::test_equality();
+    ::tpyapp::main::test_triple();
+    ::tpyapp::main::test_descending();
+    ::tpyapp::main::test_short_circuit();
+    ::tpyapp::main::test_float();
+    ::tpyapp::main::test_in_condition();
+    ::tpyapp::main::test_as_expression();
+    ::tpyapp::main::test_single_eval();
+    ::tpyapp::main::test_short_circuit_operands();
+    ::tpyapp::main::test_triple_short_circuit();
 }
 
 } // namespace tpyapp::main

@@ -20,7 +20,7 @@ Handle with_reads() {
 //     r = with_reads()
 //     print(r.fd)
 void main() {
-    Handle r = with_reads();
+    Handle r = ::tpyapp::main::with_reads();
     std::cout << r.fd << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

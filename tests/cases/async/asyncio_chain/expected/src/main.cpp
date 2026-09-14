@@ -98,7 +98,7 @@ __coro_main main() {
 // def entry() -> None:
 //     asyncio.run(main())
 void entry() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main()));
 }
 
 // import asyncio
@@ -110,7 +110,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    entry();
+    ::tpyapp::main::entry();
 }
 
 } // namespace tpyapp::main

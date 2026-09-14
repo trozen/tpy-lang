@@ -22,10 +22,10 @@ Counter make_one() {
 //     print(a.n)
 //     print(b.n)
 void main() {
-    auto __tup_1 = make_pair();
+    auto __tup_1 = ::tpyapp::main::make_pair();
     Counter a = std::move(std::get<0>(__tup_1));
     Counter b = std::move(std::get<1>(__tup_1));
-    a = make_one();
+    a = ::tpyapp::main::make_one();
     std::cout << a.n << "\n";
     std::cout << b.n << "\n";
 }
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

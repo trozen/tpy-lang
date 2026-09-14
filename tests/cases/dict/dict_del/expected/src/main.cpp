@@ -51,9 +51,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
-    test_multi_target();
-    test_del_then_insert();
+    ::tpyapp::main::test_basic();
+    ::tpyapp::main::test_multi_target();
+    ::tpyapp::main::test_del_then_insert();
 }
 
 } // namespace tpyapp::main

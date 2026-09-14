@@ -23,7 +23,7 @@ void main() {
     Outer o = Outer();
     Inner& a = ::tpy::__getitem__(o.items, 0);
     Outer __tmp_1 = o;
-    std::cout << take(std::move(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::take(std::move(__tmp_1)) << "\n";
     std::cout << ::tpy::__len__(a.vals) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

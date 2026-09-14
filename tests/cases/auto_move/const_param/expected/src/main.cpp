@@ -70,7 +70,7 @@ void append_item(std::vector<int32_t>& items, int32_t v) {
 // def append_wrapper(items: list[int32], v: int32) -> None:
 //     append_item(items, v)
 void append_wrapper(std::vector<int32_t>& items, int32_t v) {
-    append_item(items, v);
+    ::tpyapp::main::append_item(items, v);
 }
 
 // def main() -> None:
@@ -91,18 +91,18 @@ void append_wrapper(std::vector<int32_t>& items, int32_t v) {
 //     print(sum_list(nums))
 void main() {
     Point p = Point(1, 2);
-    std::cout << read_point(p) << "\n";
-    mutate_point(p);
+    std::cout << ::tpyapp::main::read_point(p) << "\n";
+    ::tpyapp::main::mutate_point(p);
     std::cout << p.x << "\n";
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
-    Point* ptr = get_elem_ptr(pts, 0);
+    Point* ptr = ::tpyapp::main::get_elem_ptr(pts, 0);
     std::cout << ::tpy::deref_check(ptr).x << "\n";
     std::vector<int32_t> nums = {10, 20};
-    std::cout << sum_list(nums) << "\n";
-    append_item(nums, 30);
-    std::cout << sum_list(nums) << "\n";
-    append_wrapper(nums, 40);
-    std::cout << sum_list(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_list(nums) << "\n";
+    ::tpyapp::main::append_item(nums, 30);
+    std::cout << ::tpyapp::main::sum_list(nums) << "\n";
+    ::tpyapp::main::append_wrapper(nums, 40);
+    std::cout << ::tpyapp::main::sum_list(nums) << "\n";
 }
 
 // main()
@@ -111,7 +111,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

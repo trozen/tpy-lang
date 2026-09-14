@@ -42,13 +42,13 @@ void test_pop_at_index() {
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     int32_t val = ::tpy::list_pop_at(nums, 2);
     std::cout << val << "\n";
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     val = ::tpy::list_pop_at(nums, 0);
     std::cout << val << "\n";
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     val = ::tpy::list_pop_at(nums, -1);
     std::cout << val << "\n";
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
 }
 
 // def test_index() -> None:
@@ -92,9 +92,9 @@ void test_count() {
 void test_reverse() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     ::tpy::list_reverse(nums);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     ::tpy::list_reverse(nums);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
 }
 
 // def test_copy() -> None:
@@ -114,7 +114,7 @@ void test_copy() {
     nums.push_back(4);
     std::cout << ::tpy::__len__(nums) << "\n";
     std::cout << ::tpy::__len__(copy) << "\n";
-    print_list(copy);
+    ::tpyapp::main::print_list(copy);
 }
 
 // def test_setitem() -> None:
@@ -131,9 +131,9 @@ void test_setitem() {
     std::vector<int32_t> nums = {10, 20, 30};
     ::tpy::__setitem__(nums, 0, 100);
     ::tpy::__setitem__(nums, 2, 300);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
     ::tpy::__setitem__(nums, -1, 999);
-    print_list(nums);
+    ::tpyapp::main::print_list(nums);
 }
 
 // # Run all tests
@@ -155,17 +155,17 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "=== list pop(index) ===" << "\n";
-    test_pop_at_index();
+    ::tpyapp::main::test_pop_at_index();
     std::cout << "=== list index ===" << "\n";
-    test_index();
+    ::tpyapp::main::test_index();
     std::cout << "=== list count ===" << "\n";
-    test_count();
+    ::tpyapp::main::test_count();
     std::cout << "=== list reverse ===" << "\n";
-    test_reverse();
+    ::tpyapp::main::test_reverse();
     std::cout << "=== list copy ===" << "\n";
-    test_copy();
+    ::tpyapp::main::test_copy();
     std::cout << "=== list setitem ===" << "\n";
-    test_setitem();
+    ::tpyapp::main::test_setitem();
 }
 
 } // namespace tpyapp::main

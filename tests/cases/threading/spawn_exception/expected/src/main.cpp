@@ -34,7 +34,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tpy::thread::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

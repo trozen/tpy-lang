@@ -62,7 +62,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tpy::version::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

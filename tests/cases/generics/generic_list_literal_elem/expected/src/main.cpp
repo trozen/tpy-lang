@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print(cells[0].n, len(cells))
 //     print(len(twice(3)))
 void main() {
-    std::vector<Cell> cells = wrap<Cell>(Cell(::tpy::BigInt(1)));
+    std::vector<Cell> cells = ::tpyapp::main::wrap<Cell>(Cell(::tpy::BigInt(1)));
     ::tpy::__getitem__(cells, 0).n = (::tpy::__getitem__(cells, 0).n) + (::tpy::BigInt(10));
     std::cout << ::tpy::__getitem__(cells, 0).n << " " << ::tpy::__len__(cells) << "\n";
-    std::cout << ::tpy::__len__(twice<int32_t>(3)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::twice<int32_t>(3)) << "\n";
 }
 
 // main()
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

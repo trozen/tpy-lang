@@ -26,8 +26,8 @@ void check(std::optional<std::string_view> s) {
 //     check(None)
 //     Wrapper("world").first_char()
 void main() {
-    check("hello");
-    check(std::nullopt);
+    ::tpyapp::main::check("hello");
+    ::tpyapp::main::check(std::nullopt);
     Wrapper("world").first_char();
 }
 
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

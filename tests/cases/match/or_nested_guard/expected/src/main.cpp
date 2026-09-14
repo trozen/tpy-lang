@@ -107,16 +107,16 @@ void main() {
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird(::tpy::BigInt(3));
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    std::cout << classify(d.as_const(), true) << "\n";
-    std::cout << classify(d.as_const(), false) << "\n";
-    std::cout << classify(c.as_const(), true) << "\n";
-    std::cout << classify(c.as_const(), false) << "\n";
-    std::cout << classify(b.as_const(), true) << "\n";
-    std::cout << classify(b.as_const(), false) << "\n";
-    std::cout << small(::tpy::BigInt(1), true) << "\n";
-    std::cout << small(::tpy::BigInt(2), false) << "\n";
-    std::cout << small(::tpy::BigInt(3), true) << "\n";
-    std::cout << small(::tpy::BigInt(9), true) << "\n";
+    std::cout << ::tpyapp::main::classify(d.as_const(), true) << "\n";
+    std::cout << ::tpyapp::main::classify(d.as_const(), false) << "\n";
+    std::cout << ::tpyapp::main::classify(c.as_const(), true) << "\n";
+    std::cout << ::tpyapp::main::classify(c.as_const(), false) << "\n";
+    std::cout << ::tpyapp::main::classify(b.as_const(), true) << "\n";
+    std::cout << ::tpyapp::main::classify(b.as_const(), false) << "\n";
+    std::cout << ::tpyapp::main::small(::tpy::BigInt(1), true) << "\n";
+    std::cout << ::tpyapp::main::small(::tpy::BigInt(2), false) << "\n";
+    std::cout << ::tpyapp::main::small(::tpy::BigInt(3), true) << "\n";
+    std::cout << ::tpyapp::main::small(::tpy::BigInt(9), true) << "\n";
 }
 
 // # A guard on an arm whose pattern is a parenthesized or-pattern group: the
@@ -130,7 +130,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

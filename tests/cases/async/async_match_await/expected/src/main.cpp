@@ -78,8 +78,8 @@ __coro_caller caller(::tpy::BigInt tag) {
 //     print(asyncio.run(caller(0)))
 //     print(asyncio.run(caller(7)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(0)))) << "\n";
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(7)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(0)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(7)))) << "\n";
 }
 
 // # H1: an `await` inside a `match` lowers on the resumable frame -- the same
@@ -94,7 +94,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

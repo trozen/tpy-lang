@@ -14,8 +14,8 @@ void f(const std::vector<int32_t>& l) {
 //     f(list())
 //     f([])
 void main() {
-    f(std::vector<int32_t>());
-    f(std::vector<int32_t>{});
+    ::tpyapp::main::f(std::vector<int32_t>());
+    ::tpyapp::main::f(std::vector<int32_t>{});
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

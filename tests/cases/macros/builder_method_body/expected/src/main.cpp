@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     print(res.total())
 //     return 0
 int32_t main() {
-    __tpy_builder_counter_1 res = __tpy_builder_build_counter_1();
+    __tpy_builder_counter_1 res = ::tpyapp::main::__tpy_builder_build_counter_1();
     std::cout << res.total() << "\n";
     return 0;
 }
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

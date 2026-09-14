@@ -50,11 +50,11 @@ std::string describe(const Owner& o) {
 //     print(describe(Owner(Box(Dog(3)))))
 void main() {
     Owner __tmp_1 = Owner(::tpystd::tplib::box::Box<Snake>(Snake()));
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
     Owner __tmp_2 = Owner(::tpystd::tplib::box::Box<Dog>(Dog(::tpy::BigInt(4))));
-    std::cout << describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
     Owner __tmp_3 = Owner(::tpystd::tplib::box::Box<Dog>(Dog(::tpy::BigInt(3))));
-    std::cout << describe(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n";
 }
 
 // from tplib import Box
@@ -66,7 +66,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

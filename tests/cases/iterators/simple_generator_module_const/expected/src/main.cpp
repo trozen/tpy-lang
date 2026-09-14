@@ -106,7 +106,7 @@ __gen_upto_for upto_for(int32_t n) {
 //         print(x)
 void main() {
     {
-        auto __src_0 = upto_while(10);
+        auto __src_0 = ::tpyapp::main::upto_while(10);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -117,7 +117,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        auto __src_2 = upto_for(10);
+        auto __src_2 = ::tpyapp::main::upto_for(10);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -137,7 +137,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::caps::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

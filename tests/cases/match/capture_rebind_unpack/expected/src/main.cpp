@@ -31,7 +31,7 @@ namespace tpyapp::main {
 //     print(unpack_rebind(c), c.lives)   # 11 9 -- field untouched by the rebind
 void main() {
     Cat c = Cat(::tpy::BigInt(9));
-    std::cout << unpack_rebind(c) << " " << c.lives << "\n";
+    std::cout << ::tpyapp::main::unpack_rebind(c) << " " << c.lives << "\n";
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

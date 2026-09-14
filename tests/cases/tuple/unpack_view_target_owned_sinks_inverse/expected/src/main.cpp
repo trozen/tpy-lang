@@ -48,9 +48,9 @@ namespace tpyapp::main {
 //     print(owned_source(String("kept")))
 //     print(view_reads(("ab", "c")))
 void main() {
-    std::cout << literals() << "\n";
-    std::cout << owned_source(::tpy::String("kept")) << "\n";
-    std::cout << view_reads(std::tuple<std::string, std::string>{"ab", "c"}) << "\n";
+    std::cout << ::tpyapp::main::literals() << "\n";
+    std::cout << ::tpyapp::main::owned_source(::tpy::String("kept")) << "\n";
+    std::cout << ::tpyapp::main::view_reads(std::tuple<std::string, std::string>{"ab", "c"}) << "\n";
 }
 
 // main()
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

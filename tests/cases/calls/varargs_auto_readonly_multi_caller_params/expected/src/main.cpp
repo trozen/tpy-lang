@@ -21,7 +21,7 @@ void bump_all(::tpy::varargs<Box> items) {
 //     bump_all(a, b, c)
 void via_three(Box& a, Box& b, Box& c) {
     std::array<Box*, 3> __tmp_1{&a, &b, &c};
-    bump_all(::tpy::varargs<Box>(__tmp_1));
+    ::tpyapp::main::bump_all(::tpy::varargs<Box>(__tmp_1));
 }
 
 // def main() -> None:
@@ -36,7 +36,7 @@ void main() {
     Box x = Box(1);
     Box y = Box(2);
     Box z = Box(3);
-    via_three(x, y, z);
+    ::tpyapp::main::via_three(x, y, z);
     std::cout << x.val << "\n";
     std::cout << y.val << "\n";
     std::cout << z.val << "\n";
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

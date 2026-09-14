@@ -102,10 +102,10 @@ void test_bytearray_fresh() {
 //     test_bytes_concat_fresh()
 //     test_bytearray_fresh()
 void main() {
-    test_own_dunder_fresh();
-    test_list_concat_fresh();
-    test_bytes_concat_fresh();
-    test_bytearray_fresh();
+    ::tpyapp::main::test_own_dunder_fresh();
+    ::tpyapp::main::test_list_concat_fresh();
+    ::tpyapp::main::test_bytes_concat_fresh();
+    ::tpyapp::main::test_bytearray_fresh();
 }
 
 // main()
@@ -114,7 +114,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

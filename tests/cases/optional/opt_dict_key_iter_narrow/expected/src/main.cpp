@@ -41,8 +41,8 @@ namespace tpyapp::main {
 //     print(headers["seen-by-the-key-iteration-scan"])
 void main() {
     ::tpy::ordered_map<std::string, std::string> headers = ::tpy::ordered_map<std::string, std::string>({{"Transfer-Encoding-Extension", "chunked"}, {"X-Short", "1"}});
-    std::cout << scan(&(headers)) << "\n";
-    std::cout << scan(nullptr) << "\n";
+    std::cout << ::tpyapp::main::scan(&(headers)) << "\n";
+    std::cout << ::tpyapp::main::scan(nullptr) << "\n";
     std::cout << ::tpy::__getitem__(headers, "seen-by-the-key-iteration-scan") << "\n";
 }
 
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

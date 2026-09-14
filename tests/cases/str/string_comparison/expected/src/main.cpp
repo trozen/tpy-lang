@@ -160,10 +160,10 @@ bool strings_equal(std::string_view s1, std::string_view s2) {
 //     else:
 //         print("foo == bar: no")
 void test_comparison_in_function() {
-    if (strings_equal("test", "test")) {
+    if (::tpyapp::main::strings_equal("test", "test")) {
         std::cout << "test == test: yes" << "\n";
     }
-    if (strings_equal("foo", "bar")) {
+    if (::tpyapp::main::strings_equal("foo", "bar")) {
         std::cout << "foo == bar: yes" << "\n";
     } else {
         std::cout << "foo == bar: no" << "\n";
@@ -225,9 +225,9 @@ int32_t find_string(const std::vector<std::string>& items, std::string_view targ
 //     print(idx)
 void test_comparison_in_loop() {
     std::vector<std::string> names = {"Alice", "Bob", "Charlie"};
-    int32_t idx = find_string(names, "Bob");
+    int32_t idx = ::tpyapp::main::find_string(names, "Bob");
     std::cout << idx << "\n";
-    idx = find_string(names, "Dave");
+    idx = ::tpyapp::main::find_string(names, "Dave");
     std::cout << idx << "\n";
 }
 
@@ -250,17 +250,17 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "=== equality ===" << "\n";
-    test_equality();
+    ::tpyapp::main::test_equality();
     std::cout << "=== ordering ===" << "\n";
-    test_ordering();
+    ::tpyapp::main::test_ordering();
     std::cout << "=== empty ===" << "\n";
-    test_empty_strings();
+    ::tpyapp::main::test_empty_strings();
     std::cout << "=== function ===" << "\n";
-    test_comparison_in_function();
+    ::tpyapp::main::test_comparison_in_function();
     std::cout << "=== literals ===" << "\n";
-    test_comparison_with_literals();
+    ::tpyapp::main::test_comparison_with_literals();
     std::cout << "=== loop ===" << "\n";
-    test_comparison_in_loop();
+    ::tpyapp::main::test_comparison_in_loop();
 }
 
 } // namespace tpyapp::main

@@ -55,6 +55,6 @@ inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self) -> None:
 //     self.t = make_pair(5)  # tpyc: ok
-inline H::H() : t(make_pair(5)) {}
+inline H::H() : t(::tpyapp::main::make_pair(5)) {}
 void __tpy_init();
 } // namespace tpyapp::main

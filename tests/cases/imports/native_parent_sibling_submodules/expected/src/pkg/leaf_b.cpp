@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    VAL_B = _seed_b();
+    VAL_B = ::sibling_submod::pkg::leaf_b::_seed_b();
 }
 
 } // namespace sibling_submod::pkg::leaf_b

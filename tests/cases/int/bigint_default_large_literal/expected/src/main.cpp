@@ -28,9 +28,9 @@ namespace tpyapp::main {
 //     r = R()
 //     print(r.big, r.neg, r.small, r.wide, r.wrapped)
 void main() {
-    std::cout << g() << "\n";
-    std::cout << g(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
-    std::cout << w() << "\n";
+    std::cout << ::tpyapp::main::g() << "\n";
+    std::cout << ::tpyapp::main::g(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
+    std::cout << ::tpyapp::main::w() << "\n";
     R r = R();
     std::cout << r.big << " " << r.neg << " " << r.small << " " << r.wide << " " << r.wrapped << "\n";
 }
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

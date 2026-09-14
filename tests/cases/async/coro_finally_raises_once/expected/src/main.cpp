@@ -71,7 +71,7 @@ int32_t _code{};
 }
 
 void __coro_normal_exit::__finally_0() {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // async def normal_exit() -> None:
@@ -131,7 +131,7 @@ __coro_normal_exit normal_exit() {
 }
 
 void __coro_return_exit::__finally_0() {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // async def return_exit() -> None:
@@ -286,7 +286,7 @@ __coro_with_exit with_exit() {
 }
 
 void __coro_handler_exit::__finally_0() {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // async def handler_exit() -> None:
@@ -384,7 +384,7 @@ void __coro_nested_exit::__finally_0() {
 }
 void __coro_nested_exit::__finally_1() {
     std::cout << "inner fin" << "\n";
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 
 // async def nested_exit() -> None:
@@ -606,7 +606,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     _code = 0;
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main()));
 }
 
 } // namespace tpyapp::main

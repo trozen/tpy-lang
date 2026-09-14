@@ -22,13 +22,13 @@ Point make_copy(int32_t n) {
 //     # still hands back a borrow of it.
 //     return make(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 Point owned(int32_t n) {
-    return make(n).updated();
+    return ::tpyapp::main::make(n).updated();
 }
 
 // def owned_copy(n: int32) -> Own[Point]:
 //     return copy(make(n).updated())  # tpyc: ok
 Point owned_copy(int32_t n) {
-    return Point(make(n).updated());
+    return Point(::tpyapp::main::make(n).updated());
 }
 
 // def owned_method(f: Factory) -> Own[Point]:
@@ -53,14 +53,14 @@ Point owned_method_copy(Factory& f) {
 //     print(p.x, q.x, r.x)
 //     print(make_copy(1).x, owned_copy(1).x, owned_method_copy(Factory(5)).x)
 void main() {
-    Point p = make(1);
-    Point q = owned(1);
+    Point p = ::tpyapp::main::make(1);
+    Point q = ::tpyapp::main::owned(1);
     Factory __tmp_1 = Factory(5);
-    Point r = owned_method(__tmp_1);
+    Point r = ::tpyapp::main::owned_method(__tmp_1);
     p.x = 10;
     std::cout << p.x << " " << q.x << " " << r.x << "\n";
     Factory __tmp_2 = Factory(5);
-    std::cout << make_copy(1).x << " " << owned_copy(1).x << " " << owned_method_copy(__tmp_2).x << "\n";
+    std::cout << ::tpyapp::main::make_copy(1).x << " " << ::tpyapp::main::owned_copy(1).x << " " << ::tpyapp::main::owned_method_copy(__tmp_2).x << "\n";
 }
 
 // main()
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

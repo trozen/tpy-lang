@@ -26,9 +26,9 @@ void main() {
     pet = &*__slot_2;
     std::cout << pet->name() << "\n";
     Dog __tmp_1{Dog()};
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
     ::tpy::Adapter<Pet, Cat> __tmp_2{Cat()};
-    greet(__tmp_2);
+    ::tpyapp::main::greet(__tmp_2);
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

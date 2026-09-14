@@ -45,7 +45,7 @@ __gen_squares squares(int32_t n) {
 //     result = list(squares(5))
 //     print(result)
 void main() {
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(squares(5));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::squares(5));
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }
 
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

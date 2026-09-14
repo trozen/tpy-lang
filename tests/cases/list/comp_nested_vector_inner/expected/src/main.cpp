@@ -58,8 +58,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    jagged();
-    annotated_growable();
+    ::tpyapp::main::jagged();
+    ::tpyapp::main::annotated_growable();
 }
 
 } // namespace tpyapp::main

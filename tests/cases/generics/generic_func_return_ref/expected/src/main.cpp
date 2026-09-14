@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(pts[0].x)  # 11: mutation was visible, so item was a ref not a copy
 void test() {
     std::vector<Point> pts = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
-    process<Point>(pts);
+    ::tpyapp::main::process<Point>(pts);
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

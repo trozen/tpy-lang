@@ -21,7 +21,7 @@ std::vector<int32_t> get_scores() {
 //         print(name, score)
 void main() {
     {
-        auto __src_0 = ::tpy::builtin_zip<std::string, int32_t>(get_names(), get_scores());
+        auto __src_0 = ::tpy::builtin_zip<std::string, int32_t>(::tpyapp::main::get_names(), ::tpyapp::main::get_scores());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -19,11 +19,11 @@ namespace tpyapp::main {
 void main() {
     Box b = Box();
     b.value = 42;
-    wrapper<Box>(std::move(b));
+    ::tpyapp::main::wrapper<Box>(std::move(b));
     std::vector<int32_t> nums = {1, 2, 3};
-    std::vector<int32_t>& result = wrap_list<int32_t>(nums);
+    std::vector<int32_t>& result = ::tpyapp::main::wrap_list<int32_t>(nums);
     std::cout << ::tpy::ListPrinter(result) << "\n";
-    std::cout << multi<int32_t, int32_t>(10, 20) << "\n";
+    std::cout << ::tpyapp::main::multi<int32_t, int32_t>(10, 20) << "\n";
     std::cout << "done" << "\n";
 }
 

@@ -18,7 +18,7 @@ namespace tpyapp::main {
 void main() {
     ::thing_t thing = ::thing_t{42};
     ::sector_t sec = ::sector_t{100, reinterpret_cast<void*>(&thing)};
-    ::thing_t* p = get_thing(&sec);
+    ::thing_t* p = ::tpyapp::main::get_thing(&sec);
     std::cout << ::tpy::deref_check(p).id << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::ntypes::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

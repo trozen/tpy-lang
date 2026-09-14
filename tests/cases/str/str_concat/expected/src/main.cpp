@@ -115,13 +115,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_str_concat();
-    test_str_plus_eq();
-    test_str_multiconcat();
-    test_literal_concat();
-    test_cross_type_concat();
-    test_reassign_concat();
-    test_loop_concat();
+    ::tpyapp::main::test_str_concat();
+    ::tpyapp::main::test_str_plus_eq();
+    ::tpyapp::main::test_str_multiconcat();
+    ::tpyapp::main::test_literal_concat();
+    ::tpyapp::main::test_cross_type_concat();
+    ::tpyapp::main::test_reassign_concat();
+    ::tpyapp::main::test_loop_concat();
 }
 
 } // namespace tpyapp::main

@@ -30,7 +30,7 @@ int32_t count(const Expr& e) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& sub = ::tpy::unwrap_ref(*__r_1);
-        n = ::tpy::add_check<int32_t>(n, count(sub));
+        n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::count(sub));
     }
     return n;
 }
@@ -41,8 +41,8 @@ int32_t count(const Expr& e) {
 //     print(count(passthru(tree)))
 void main() {
     Expr tree = std::vector<Expr>{1, std::vector<Expr>{2, 3}, 4};
-    std::cout << count(tree) << "\n";
-    std::cout << count(passthru(tree)) << "\n";
+    std::cout << ::tpyapp::main::count(tree) << "\n";
+    std::cout << ::tpyapp::main::count(::tpyapp::main::passthru(tree)) << "\n";
 }
 
 // main()
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

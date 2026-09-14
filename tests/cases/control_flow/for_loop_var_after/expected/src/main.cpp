@@ -216,17 +216,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_range_var();
-    test_body_var();
-    test_list_iteration();
-    test_break();
-    test_nested();
-    test_record_in_body();
-    test_sequential_same_var();
-    test_str_loop_var();
-    test_tuple_unpack();
-    test_tuple_unpack_partial();
-    test_tuple_unpack_second_func();
+    ::tpyapp::main::test_range_var();
+    ::tpyapp::main::test_body_var();
+    ::tpyapp::main::test_list_iteration();
+    ::tpyapp::main::test_break();
+    ::tpyapp::main::test_nested();
+    ::tpyapp::main::test_record_in_body();
+    ::tpyapp::main::test_sequential_same_var();
+    ::tpyapp::main::test_str_loop_var();
+    ::tpyapp::main::test_tuple_unpack();
+    ::tpyapp::main::test_tuple_unpack_partial();
+    ::tpyapp::main::test_tuple_unpack_second_func();
 }
 
 } // namespace tpyapp::main

@@ -27,10 +27,10 @@ Cell mk_cell() {
 //     d = anyslot("free", None)  # tpyc: ok
 //     print("free", a, b, c, d)
 void free_positions() {
-    bool a = anyslot<int32_t>("free", 42);
-    bool b = anyslot<float>("free", 2.25f);
-    bool c = anyslot<std::string>("free", "lit");
-    bool d = anyslot<std::monostate>("free", std::monostate{});
+    bool a = ::tpyapp::main::anyslot<int32_t>("free", 42);
+    bool b = ::tpyapp::main::anyslot<float>("free", 2.25f);
+    bool c = ::tpyapp::main::anyslot<std::string>("free", "lit");
+    bool d = ::tpyapp::main::anyslot<std::monostate>("free", std::monostate{});
     std::cout << "free" << " " << ::tpy::print_bool(a) << " " << ::tpy::print_bool(b) << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << "\n";
 }
 
@@ -40,7 +40,7 @@ void free_positions() {
 //     # exactly as the monomorphic twin's slot does.
 //     print("view", anyslot("view", k))  # tpyc: ok
 void view_source(std::string_view k) {
-    std::cout << "view" << " " << ::tpy::print_bool(anyslot<std::string>("view", k)) << "\n";
+    std::cout << "view" << " " << ::tpy::print_bool(::tpyapp::main::anyslot<std::string>("view", k)) << "\n";
 }
 
 // def ref_rvalue() -> None:
@@ -52,8 +52,8 @@ void view_source(std::string_view k) {
 //     # `ref_lvalue`, whose source is a name).
 //     print("ref_rvalue", anyslot("ref", mk_cell()))  # tpyc: ok
 void ref_rvalue() {
-    Cell __tmp_1 = mk_cell();
-    std::cout << "ref_rvalue" << " " << ::tpy::print_bool(anyslot<Cell>("ref", __tmp_1)) << "\n";
+    Cell __tmp_1 = ::tpyapp::main::mk_cell();
+    std::cout << "ref_rvalue" << " " << ::tpy::print_bool(::tpyapp::main::anyslot<Cell>("ref", __tmp_1)) << "\n";
 }
 
 // def ref_lvalue() -> None:
@@ -66,7 +66,7 @@ void ref_rvalue() {
 //     print("ref_lvalue", c.n, seen.n)
 void ref_lvalue() {
     Cell c = Cell(1);
-    Cell& seen = pass_through<Cell>(c);
+    Cell& seen = ::tpyapp::main::pass_through<Cell>(c);
     seen.n = ::tpy::add_check<int32_t>(seen.n, 1);
     std::cout << "ref_lvalue" << " " << c.n << " " << seen.n << "\n";
 }
@@ -89,7 +89,7 @@ void comprehension() {
         const int32_t __stop_0 = 3;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
-            if (anyslot<int32_t>("comp", i)) {
+            if (::tpyapp::main::anyslot<int32_t>("comp", i)) {
                 __result.push_back(i);
             }
         }
@@ -104,7 +104,7 @@ void comprehension() {
 //     print("closure", inner())
 void closure() {
     auto inner = []() -> bool {
-        return anyslot<int32_t>("closure", 11);
+        return ::tpyapp::main::anyslot<int32_t>("closure", 11);
     };
     std::cout << "closure" << " " << ::tpy::print_bool(inner()) << "\n";
 }
@@ -114,7 +114,7 @@ void closure() {
 //     # and no deferred emplace either.
 //     return flag or anyslot("cond", 42)  # tpyc: ok
 bool cond_operand(bool flag) {
-    return (flag || anyslot<int32_t>("cond", 42));
+    return (flag || ::tpyapp::main::anyslot<int32_t>("cond", 42));
 }
 
 // def while_condition() -> int32:
@@ -126,7 +126,7 @@ bool cond_operand(bool flag) {
 //     return n
 int32_t while_condition() {
     int32_t n = 0;
-    while ((anyslot<int32_t>("while", n) && (n < 3))) {
+    while ((::tpyapp::main::anyslot<int32_t>("while", n) && (n < 3))) {
         n = ::tpy::add_check<int32_t>(n, 1);
     }
     return n;
@@ -142,7 +142,7 @@ bool match_arm(int32_t tag) {
     auto& __match_subject_1 = tag;
     switch (__match_subject_1) {
     case 1: {
-        return anyslot<int32_t>("match", 1);
+        return ::tpyapp::main::anyslot<int32_t>("match", 1);
         break;
     }
     default: {
@@ -163,7 +163,7 @@ void try_finally() {
     bool seen = false;
     {
         try {
-            seen = anyslot<int32_t>("try", 8);
+            seen = ::tpyapp::main::anyslot<int32_t>("try", 8);
         } catch (...) {
             std::cout << "try_finally" << " " << ::tpy::print_bool(seen) << "\n";
             throw;
@@ -179,7 +179,7 @@ void with_body() {
     auto __ctx_1 = Guard("g");
     auto label = __ctx_1.__enter__();
     try {
-        std::cout << "with_body" << " " << label << " " << ::tpy::print_bool(anyslot<int32_t>("with", 9)) << "\n";
+        std::cout << "with_body" << " " << label << " " << ::tpy::print_bool(::tpyapp::main::anyslot<int32_t>("with", 9)) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -212,7 +212,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     }
     case S_JOIN_0: {
         if ((n < 2)) {
-            if ((anyslot<int32_t>("genbody", n) && anyslot_i32("genbody", n))) {
+            if ((::tpyapp::main::anyslot<int32_t>("genbody", n) && ::tpyapp::main::anyslot_i32("genbody", n))) {
                 __state = S_RESUME_0;
                 return n;
             } else {
@@ -247,7 +247,7 @@ __gen_gen_body gen_body() {
 //         raise Missing
 //     return n + 1
 std::expected<int32_t, Missing> er_body(int32_t n) {
-    if ((!((anyslot<int32_t>("erbody", n) && anyslot_i32("erbody", n))))) {
+    if ((!((::tpyapp::main::anyslot<int32_t>("erbody", n) && ::tpyapp::main::anyslot_i32("erbody", n))))) {
         return ::tpy::make_unexpected(Missing{});
     }
     return (::tpy::add_check<int32_t>(n, 1));
@@ -264,7 +264,7 @@ void error_return_body() {
     int32_t got;
     {
         {
-            auto __try_tmp_2 = er_body(6);
+            auto __try_tmp_2 = ::tpyapp::main::er_body(6);
             if (!__try_tmp_2.has_value()) goto __except_1;
             got = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -286,7 +286,7 @@ void error_return_body() {
 void generator_body() {
     int32_t out = 0;
     {
-        auto __src_0 = gen_body();
+        auto __src_0 = ::tpyapp::main::gen_body();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -308,7 +308,7 @@ void generator_body() {
 void generator_factory() {
     int32_t out = 0;
     {
-        auto __src_0 = repeat<int32_t>(42, 2);
+        auto __src_0 = ::tpyapp::main::repeat<int32_t>(42, 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -369,22 +369,22 @@ __coro_async_main async_main() {
 //     print("async", asyncio.run(async_main()))
 void main() {
     std::cout << "module" << " " << ::tpy::print_bool(top_flag) << "\n";
-    free_positions();
-    view_source("k");
-    ref_rvalue();
-    ref_lvalue();
-    method_and_ctor();
-    comprehension();
-    closure();
-    std::cout << "cond_operand" << " " << ::tpy::print_bool(cond_operand(false)) << "\n";
-    std::cout << "while_condition" << " " << while_condition() << "\n";
-    std::cout << "match_arm" << " " << ::tpy::print_bool(match_arm(1)) << "\n";
-    try_finally();
-    with_body();
-    generator_body();
-    error_return_body();
-    generator_factory();
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_main())) << "\n";
+    ::tpyapp::main::free_positions();
+    ::tpyapp::main::view_source("k");
+    ::tpyapp::main::ref_rvalue();
+    ::tpyapp::main::ref_lvalue();
+    ::tpyapp::main::method_and_ctor();
+    ::tpyapp::main::comprehension();
+    ::tpyapp::main::closure();
+    std::cout << "cond_operand" << " " << ::tpy::print_bool(::tpyapp::main::cond_operand(false)) << "\n";
+    std::cout << "while_condition" << " " << ::tpyapp::main::while_condition() << "\n";
+    std::cout << "match_arm" << " " << ::tpy::print_bool(::tpyapp::main::match_arm(1)) << "\n";
+    ::tpyapp::main::try_finally();
+    ::tpyapp::main::with_body();
+    ::tpyapp::main::generator_body();
+    ::tpyapp::main::error_return_body();
+    ::tpyapp::main::generator_factory();
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_main())) << "\n";
 }
 
 // # An rvalue at a generic `T` parameter hoists the `__tmp_N` temp only where the
@@ -401,8 +401,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    top_flag = anyslot<int32_t>("module", 5);
-    main();
+    top_flag = ::tpyapp::main::anyslot<int32_t>("module", 5);
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -99,18 +99,18 @@ std::string show(std::string_view x) {
 //     print("reference:", xs)
 //     print("overload:", show(7), show("q"))
 void main() {
-    std::cout << "free_arity:" << " " << area(3) << " " << area(2, 5) << "\n";
-    std::cout << "free_type:" << " " << tag(1) << " " << tag(std::string_view("abc")) << "\n";
-    std::cout << "free_order:" << " " << kind(3) << " " << kind(std::string_view("s")) << "\n";
+    std::cout << "free_arity:" << " " << ::tpyapp::main::area(3) << " " << ::tpyapp::main::area(2, 5) << "\n";
+    std::cout << "free_type:" << " " << ::tpyapp::main::tag(1) << " " << ::tpyapp::main::tag(std::string_view("abc")) << "\n";
+    std::cout << "free_order:" << " " << ::tpyapp::main::kind(3) << " " << ::tpyapp::main::kind(std::string_view("s")) << "\n";
     Acc a = Acc();
     a.add(2);
     a.add(std::string_view("xyz"));
     std::cout << "method:" << " " << a.total << "\n";
     std::vector<int32_t> xs = std::vector<int32_t>{};
-    push(xs);
-    push(xs, 7);
+    ::tpyapp::main::push(xs);
+    ::tpyapp::main::push(xs, 7);
     std::cout << "reference:" << " " << ::tpy::ListPrinter(xs) << "\n";
-    std::cout << "overload:" << " " << show(::tpy::BigInt(7)) << " " << show(std::string_view("q")) << "\n";
+    std::cout << "overload:" << " " << ::tpyapp::main::show(::tpy::BigInt(7)) << " " << ::tpyapp::main::show(std::string_view("q")) << "\n";
 }
 
 // main()
@@ -119,7 +119,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

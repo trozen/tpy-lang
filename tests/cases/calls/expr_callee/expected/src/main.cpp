@@ -44,13 +44,13 @@ std::function<int32_t(int32_t)> make_negator() {
 //     Handlers: list[Callable[[int32], int32]] = [make_adder(100)]
 //     print(Handlers[0](5))
 void main() {
-    int32_t result = (make_adder(10))(5);
+    int32_t result = (::tpyapp::main::make_adder(10))(5);
     std::cout << result << "\n";
-    std::vector<std::function<int32_t(int32_t)>> fns = {make_adder(1), make_adder(2), make_negator()};
+    std::vector<std::function<int32_t(int32_t)>> fns = {::tpyapp::main::make_adder(1), ::tpyapp::main::make_adder(2), ::tpyapp::main::make_negator()};
     std::cout << (::tpy::__getitem__(fns, 0))(100) << "\n";
     std::cout << (::tpy::__getitem__(fns, 1))(100) << "\n";
     std::cout << (::tpy::__getitem__(fns, 2))(100) << "\n";
-    std::vector<std::function<int32_t(int32_t)>> Handlers = {make_adder(100)};
+    std::vector<std::function<int32_t(int32_t)>> Handlers = {::tpyapp::main::make_adder(100)};
     std::cout << (::tpy::__getitem__(Handlers, 0))(5) << "\n";
 }
 
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

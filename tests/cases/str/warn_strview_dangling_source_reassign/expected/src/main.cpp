@@ -81,10 +81,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    strview_pinned_alias_warns();
-    bytesview_pinned_alias_warns();
-    view_rebind_clears_pinned_alias();
-    multiple_pinned_views_per_source();
+    ::tpyapp::main::strview_pinned_alias_warns();
+    ::tpyapp::main::bytesview_pinned_alias_warns();
+    ::tpyapp::main::view_rebind_clears_pinned_alias();
+    ::tpyapp::main::multiple_pinned_views_per_source();
 }
 
 } // namespace tpyapp::main

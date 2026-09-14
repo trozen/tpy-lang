@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print("ok")
 void main() {
     Doubler d = Doubler();
-    apply_and_discard(d, 5);
+    ::tpyapp::main::apply_and_discard(d, 5);
     std::cout << "ok" << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

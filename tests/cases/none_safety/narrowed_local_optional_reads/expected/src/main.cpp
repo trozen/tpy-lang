@@ -63,8 +63,8 @@ void local_path() {
 //     local_path()
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{0, 0, 0};
-    step(7, 8, &(__tmp_1));
-    local_path();
+    ::tpyapp::main::step(7, 8, &(__tmp_1));
+    ::tpyapp::main::local_path();
 }
 
 // main()
@@ -73,7 +73,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

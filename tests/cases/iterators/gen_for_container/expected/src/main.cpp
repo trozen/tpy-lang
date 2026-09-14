@@ -45,7 +45,7 @@ __gen_doubled doubled(std::vector<int32_t>& items) {
 void main() {
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3, 4, 5};
-        auto __src_0 = doubled(__tmp_1);
+        auto __src_0 = ::tpyapp::main::doubled(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

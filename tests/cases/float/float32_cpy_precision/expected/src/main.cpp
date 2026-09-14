@@ -161,16 +161,16 @@ void union_param(const ::tpy::Union<double, float>& u) {
 //     union_value(float32(1.5))
 //     union_param(float32(2.5))
 void main() {
-    ops();
-    reflected();
-    unary();
-    accumulate();
-    method();
-    comprehension();
-    union_literal();
-    union_value(1.5f);
+    ::tpyapp::main::ops();
+    ::tpyapp::main::reflected();
+    ::tpyapp::main::unary();
+    ::tpyapp::main::accumulate();
+    ::tpyapp::main::method();
+    ::tpyapp::main::comprehension();
+    ::tpyapp::main::union_literal();
+    ::tpyapp::main::union_value(1.5f);
     ::tpy::Union<double, float> __tmp_1 = 2.5f;
-    union_param(__tmp_1);
+    ::tpyapp::main::union_param(__tmp_1);
 }
 
 // main()
@@ -179,7 +179,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -980,7 +980,7 @@ inline timedelta timedelta::__mul__(double other) const {
     auto __tup_1 = ::tpy::float_as_integer_ratio(other);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), _divide_and_round(((this->_to_microseconds()) * (a)), b));
+    return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::_divide_and_round(((this->_to_microseconds()) * (a)), b));
 }
 
 // @dispatch
@@ -999,7 +999,7 @@ inline timedelta timedelta::__rmul__(double other) const {
     auto __tup_1 = ::tpy::float_as_integer_ratio(other);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), _divide_and_round(((this->_to_microseconds()) * (a)), b));
+    return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::_divide_and_round(((this->_to_microseconds()) * (a)), b));
 }
 
 // @dispatch
@@ -1027,7 +1027,7 @@ inline double timedelta::__truediv__(timedelta other) const {
 // def __truediv__(self, other: int) -> timedelta:
 //     return timedelta(microseconds=_divide_and_round(self._to_microseconds(), other))
 inline timedelta timedelta::__truediv__(const ::tpy::BigInt& other) const {
-    return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), _divide_and_round(this->_to_microseconds(), other));
+    return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::_divide_and_round(this->_to_microseconds(), other));
 }
 
 // @dispatch
@@ -1038,7 +1038,7 @@ inline timedelta timedelta::__truediv__(double other) const {
     auto __tup_1 = ::tpy::float_as_integer_ratio(other);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), _divide_and_round(((b) * (this->_to_microseconds())), a));
+    return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpystd::datetime::_divide_and_round(((b) * (this->_to_microseconds())), a));
 }
 
 // def __mod__(self, other: timedelta) -> timedelta:
@@ -1205,7 +1205,7 @@ inline std::string timezone::__str__() const {
 //         raise ZoneInfoNotFoundError("No time zone found with key " + key)
 //     self._zid = zid
 inline ZoneInfo::ZoneInfo(std::string_view key) {
-    _check_zone_key(key);
+    ::tpystd::datetime::_check_zone_key(key);
     ::tpy::BigInt zid = ::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::zone_lookup(key)));
     if ((zid == 0)) {
         throw ZoneInfoNotFoundError((::tpy::str_concat("No time zone found with key ", key)));
@@ -1307,7 +1307,7 @@ inline std::string ZoneInfo::__str__() const {
 //     self._mo = month
 //     self._d = day
 inline date::date(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day) {
-    _check_date_fields(year, month, day);
+    ::tpystd::datetime::_check_date_fields(year, month, day);
     this->_y = (year).to_fixed_check<int16_t>();
     this->_mo = (month).to_fixed_check<int8_t>();
     this->_d = (day).to_fixed_check<int8_t>();
@@ -1535,7 +1535,7 @@ inline bool date::__ge__(date other) const {
 //     self._ss = second
 //     self._us = microsecond
 inline time::time(const ::tpy::BigInt& hour, const ::tpy::BigInt& minute, const ::tpy::BigInt& second, const ::tpy::BigInt& microsecond) {
-    _check_time_fields(hour, minute, second, microsecond);
+    ::tpystd::datetime::_check_time_fields(hour, minute, second, microsecond);
     this->_hh = (hour).to_fixed_check<int8_t>();
     this->_mm = (minute).to_fixed_check<int8_t>();
     this->_ss = (second).to_fixed_check<int8_t>();
@@ -1840,7 +1840,7 @@ inline std::optional<::tpystd::datetime::timedelta> datetime::dst() const {
 // def _mktime_s(self, fold: int) -> int:
 //     return _local_mktime_s(self._epoch_us() // 1000000, fold)
 inline ::tpy::BigInt datetime::_mktime_s(const ::tpy::BigInt& fold) const {
-    return _local_mktime_s(((this->_epoch_us()) / (::tpy::BigInt(1000000))), fold);
+    return ::tpystd::datetime::_local_mktime_s(((this->_epoch_us()) / (::tpy::BigInt(1000000))), fold);
 }
 
 // def timestamp(self) -> float:
@@ -1870,14 +1870,14 @@ inline ::tpystd::datetime::datetime datetime::combine(::tpystd::datetime::date d
 //                   tz: timezone | ZoneInfo | None = None) -> "datetime":
 //     return datetime._from_epoch_us(_timestamp_to_us(t), tz is None, tz)
 inline ::tpystd::datetime::datetime datetime::fromtimestamp(double t, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
-    return datetime::_from_epoch_us(_timestamp_to_us(t), (std::holds_alternative<std::monostate>(tz)), tz);
+    return datetime::_from_epoch_us(::tpystd::datetime::_timestamp_to_us(t), (std::holds_alternative<std::monostate>(tz)), tz);
 }
 
 // @staticmethod
 // def utcfromtimestamp(t: float) -> "datetime":
 //     return datetime._from_epoch_us(_timestamp_to_us(t), False)
 inline ::tpystd::datetime::datetime datetime::utcfromtimestamp(double t) {
-    return datetime::_from_epoch_us(_timestamp_to_us(t), false);
+    return datetime::_from_epoch_us(::tpystd::datetime::_timestamp_to_us(t), false);
 }
 
 // @staticmethod

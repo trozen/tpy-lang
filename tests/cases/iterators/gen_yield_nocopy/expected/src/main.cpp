@@ -48,7 +48,7 @@ __gen_handles handles(std::vector<Handle>& items) {
 void main() {
     std::vector<Handle> data = ::tpy::make_vector<Handle>(Handle(1), Handle(2));
     {
-        auto __src_0 = handles(data);
+        auto __src_0 = ::tpyapp::main::handles(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

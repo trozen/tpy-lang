@@ -22,9 +22,9 @@ namespace tpyapp::main {
 void main() {
     B present = B(C(::tpy::BigInt(1)));
     A __tmp_1 = A(&(present));
-    std::cout << "present:" << " " << probe(__tmp_1) << "\n";
+    std::cout << "present:" << " " << ::tpyapp::main::probe(__tmp_1) << "\n";
     A __tmp_2 = A(nullptr);
-    std::cout << "none:" << " " << probe(__tmp_2) << "\n";
+    std::cout << "none:" << " " << ::tpyapp::main::probe(__tmp_2) << "\n";
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

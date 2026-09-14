@@ -56,10 +56,10 @@ void genexpr(int32_t n) {
                 int32_t i = __i++;
                 int32_t __tmp_3 = i;
                 ::tpystd::tplib::box::Box<int32_t> __tmp_4 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_3));
-                if (is_small(__tmp_4)) {
+                if (::tpyapp::main::is_small(__tmp_4)) {
                     int32_t __tmp_5 = i;
                     ::tpystd::tplib::box::Box<int32_t> __tmp_6 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_5));
-                    return std::optional<int32_t>(score(__tmp_6));
+                    return std::optional<int32_t>(::tpyapp::main::score(__tmp_6));
                 }
             }
             return std::nullopt;
@@ -79,7 +79,7 @@ void filtered(int32_t n) {
         for (int32_t i = 0; i < __stop_0; ++i) {
             int32_t __tmp_7 = i;
             ::tpystd::tplib::box::Box<int32_t> __tmp_8 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_7));
-            if (is_small(__tmp_8)) {
+            if (::tpyapp::main::is_small(__tmp_8)) {
                 __result.push_back(i);
             }
         }
@@ -103,7 +103,7 @@ void walrus_owned(int32_t n) {
         for (int32_t x = 0; x < __stop_0; ++x) {
             int32_t __tmp_9 = x;
             ::tpystd::tplib::box::Box<int32_t> __tmp_10 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_9));
-            if (((y = score(__tmp_10)) > 0)) {
+            if (((y = ::tpyapp::main::score(__tmp_10)) > 0)) {
                 __result.push_back(x);
             }
         }
@@ -119,11 +119,11 @@ void walrus_owned(int32_t n) {
 //     filtered(6)
 //     walrus_owned(6)
 void main() {
-    array_comp();
-    list_comp(3);
-    genexpr(6);
-    filtered(6);
-    walrus_owned(6);
+    ::tpyapp::main::array_comp();
+    ::tpyapp::main::list_comp(3);
+    ::tpyapp::main::genexpr(6);
+    ::tpyapp::main::filtered(6);
+    ::tpyapp::main::walrus_owned(6);
 }
 
 // from tplib.box import Box
@@ -136,7 +136,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

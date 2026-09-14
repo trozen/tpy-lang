@@ -35,8 +35,8 @@ double area(const Square& shape) {
 void main() {
     Circle c = Circle(5.0);
     Square s = Square(3.0);
-    std::cout << ::tpy::print_float(area(c)) << "\n";
-    std::cout << ::tpy::print_float(area(s)) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::area(c)) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::area(s)) << "\n";
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

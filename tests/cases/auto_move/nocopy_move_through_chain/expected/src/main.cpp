@@ -20,7 +20,7 @@ Handle chain() {
 //     r = chain()
 //     print(r.fd)
 void main() {
-    Handle r = chain();
+    Handle r = ::tpyapp::main::chain();
     std::cout << r.fd << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

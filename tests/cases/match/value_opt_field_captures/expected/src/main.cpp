@@ -48,11 +48,11 @@ void show(::tpy::Union<const Other*, const WithScalar*, const WithStr*> u) {
 //     show(Other(9))
 void main() {
     WithScalar __tmp_1 = WithScalar(4);
-    show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_1});
+    ::tpyapp::main::show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_1});
     WithStr __tmp_2 = WithStr("hi");
-    show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_2});
+    ::tpyapp::main::show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_2});
     Other __tmp_3 = Other(9);
-    show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_3});
+    ::tpyapp::main::show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_3});
 }
 
 // main()
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

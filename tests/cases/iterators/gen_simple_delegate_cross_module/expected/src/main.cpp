@@ -44,7 +44,7 @@ __gen_g g() {
 //         print(v)
 void main() {
     {
-        auto __src_0 = g();
+        auto __src_0 = ::tpyapp::main::g();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -64,7 +64,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::itersrc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

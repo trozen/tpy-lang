@@ -99,7 +99,7 @@ void ctor_nested_call() {
         std::move(__result);
     });
     Flat __tmp_8 = Flat(__tmp_7);
-    std::cout << "ctor_nested_call" << " " << use_flat(__tmp_8) << "\n";
+    std::cout << "ctor_nested_call" << " " << ::tpyapp::main::use_flat(__tmp_8) << "\n";
 }
 
 // # ... as a return value.
@@ -183,7 +183,7 @@ void own_slots() {
     }));
     k.data.push_back(::tpy::bytes_literal_owned("q", 1));
     std::cout << "own_method" << " " << ::tpy::__len__(k.data) << "\n";
-    std::cout << "own_free" << " " << ::tpy::__len__(take_own(({
+    std::cout << "own_free" << " " << ::tpy::__len__(::tpyapp::main::take_own(({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_2 = 2;
         if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
@@ -468,9 +468,9 @@ std::string label(int32_t k) {
 //     print("str_append_temp", s)
 void str_append_temp(int32_t k) {
     std::string s = "start";
-    auto&& __tmp_19 = label(k);
+    auto&& __tmp_19 = ::tpyapp::main::label(k);
     s += ((!__tmp_19.empty()) ? __tmp_19 : std::string(std::string_view("none")));
-    auto&& __tmp_20 = label(0);
+    auto&& __tmp_20 = ::tpyapp::main::label(0);
     s += ((!__tmp_20.empty()) ? __tmp_20 : std::string(std::string_view("none")));
     std::cout << "str_append_temp" << " " << s << "\n";
 }
@@ -518,25 +518,25 @@ std::expected<int32_t, MyErr> error_return_body(int32_t k) {
 //         print("error_return_body err")
 void main() {
     ::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes> __tmp_22 = ::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes>({{::tpy::bytes_literal_owned("A", 1), ::tpy::bytes_literal_owned("x", 1)}, {::tpy::bytes_literal_owned("B", 1), ::tpy::bytes_literal_owned("y", 1)}});
-    ctor_borrow(__tmp_22);
-    ctor_mutated_slot();
-    ctor_set_dict();
-    ctor_nested_call();
-    std::cout << "ctor_return" << " " << make(4).n << "\n";
-    ctor_element_and_condition();
-    own_slots();
-    own_stub_elem();
-    own_marker_and_pending();
-    rebind_slot_reseat(3);
-    str_append_temp(2);
+    ::tpyapp::main::ctor_borrow(__tmp_22);
+    ::tpyapp::main::ctor_mutated_slot();
+    ::tpyapp::main::ctor_set_dict();
+    ::tpyapp::main::ctor_nested_call();
+    std::cout << "ctor_return" << " " << ::tpyapp::main::make(4).n << "\n";
+    ::tpyapp::main::ctor_element_and_condition();
+    ::tpyapp::main::own_slots();
+    ::tpyapp::main::own_stub_elem();
+    ::tpyapp::main::own_marker_and_pending();
+    ::tpyapp::main::rebind_slot_reseat(3);
+    ::tpyapp::main::str_append_temp(2);
     Site s = Site(2);
     s.bump(3);
     std::cout << "ctor_method_body" << " " << s.n << "\n";
-    closure();
-    blocks(3);
-    hoisted_reseat(3);
+    ::tpyapp::main::closure();
+    ::tpyapp::main::blocks(3);
+    ::tpyapp::main::hoisted_reseat(3);
     {
-        std::cout << "error_return_body" << " " << ({ auto __er_2 = error_return_body(2); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return_body" << " " << ({ auto __er_2 = ::tpyapp::main::error_return_body(2); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except MyErr:
         __except_1:;
@@ -558,7 +558,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
     std::vector<::tpy::Bytes> __tmp_23 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = 3;

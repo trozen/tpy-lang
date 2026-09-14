@@ -23,7 +23,7 @@ void main() {
     Box other = Box(::tpy::BigInt(20));
     bool flag = true;
     Box __tmp_1 = ((flag) ? (a) : (other));
-    Box r = take(std::move(__tmp_1));
+    Box r = ::tpyapp::main::take(std::move(__tmp_1));
     std::cout << r.val << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

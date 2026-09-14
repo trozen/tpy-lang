@@ -207,7 +207,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::random::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

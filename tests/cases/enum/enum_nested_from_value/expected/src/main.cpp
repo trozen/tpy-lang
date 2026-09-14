@@ -60,7 +60,7 @@ void main() {
     Message::Kind k = ::tpy::EnumUtil<Message::Kind>::from_value(1);
     std::cout << k << "\n";
     std::cout << ::tpy::EnumUtil<Message::Kind>::name(k) << "\n";
-    Message::Kind m = lookup(2);
+    Message::Kind m = ::tpyapp::main::lookup(2);
     std::cout << ::tpy::print_bool((m == Message::Kind::IMAGE)) << "\n";
 }
 
@@ -73,7 +73,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

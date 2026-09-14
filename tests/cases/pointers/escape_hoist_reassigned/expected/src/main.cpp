@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    hoist_and_reassign();
+    ::tpyapp::main::hoist_and_reassign();
 }
 
 } // namespace tpyapp::main

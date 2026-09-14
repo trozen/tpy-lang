@@ -179,9 +179,9 @@ void __tpy_init() {
         }
     }
     d = day::wed;
-    classify(d);
+    ::tpyapp::main::classify(d);
     d = day::sat;
-    classify(d);
+    ::tpyapp::main::classify(d);
 }
 
 } // namespace tpyapp::main

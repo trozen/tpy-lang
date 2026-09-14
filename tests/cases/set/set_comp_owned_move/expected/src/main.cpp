@@ -20,7 +20,7 @@ void main(int32_t n) {
         for (int32_t i = 0; i < __stop_0; ++i) {
             int32_t __tmp_1 = i;
             ::tpystd::tplib::box::Box<int32_t> __tmp_2 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
-            if (is_small(__tmp_2)) {
+            if (::tpyapp::main::is_small(__tmp_2)) {
                 __result.insert(i);
             }
         }
@@ -39,7 +39,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main(6);
+    ::tpyapp::main::main(6);
 }
 
 } // namespace tpyapp::main

@@ -21,8 +21,8 @@ void main() {
     xs.add(10);
     xs.add(20);
     xs.add(30);
-    std::cout << length_of(xs) << "\n";
-    std::cout << total(xs) << "\n";
+    std::cout << ::tpyapp::main::length_of(xs) << "\n";
+    std::cout << ::tpyapp::main::total(xs) << "\n";
     int32_t s = 0;
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

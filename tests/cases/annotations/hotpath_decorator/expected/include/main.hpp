@@ -45,7 +45,7 @@ inline Counter::Counter() : count(::tpy::BigInt(0)) {}
 // def bump(self, n: int) -> None:  # tpyc: ok
 //     self.count += scale(n)
 inline void Counter::bump(const ::tpy::BigInt& n) {
-    this->count = (this->count) + (scale(n));
+    this->count = (this->count) + (::tpyapp::main::scale(n));
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print_item(p)
 void main() {
     Point p = Point(10, 20);
-    print_item<Point>(p);
+    ::tpyapp::main::print_item<Point>(p);
 }
 
 // main()
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

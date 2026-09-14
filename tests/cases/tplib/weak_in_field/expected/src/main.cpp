@@ -32,7 +32,7 @@ void main() {
     std::cout << obs.read() << "\n";
     c.get().value = 42;
     std::cout << obs.read() << "\n";
-    Observer dead_obs = make_observer_with_dead_target();
+    Observer dead_obs = ::tpyapp::main::make_observer_with_dead_target();
     std::cout << dead_obs.read() << "\n";
 }
 
@@ -46,7 +46,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

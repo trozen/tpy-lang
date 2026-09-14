@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(ch.item)
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << use<int32_t>(42) << " " << use<std::vector<int32_t>>(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use<int32_t>(42) << " " << ::tpyapp::main::use<std::vector<int32_t>>(__tmp_1) << "\n";
     Channel<int32_t> ch = Channel<int32_t>(7);
     std::cout << ch.item << "\n";
 }
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

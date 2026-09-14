@@ -22,7 +22,7 @@ int32_t take_owned_int32(int32_t x) {
 // def global_source() -> int32:
 //     return take_owned_int32(g)  # tpyc: ok -- a bare module-global read at the Own slot
 int32_t global_source() {
-    return take_owned_int32((g).to_fixed_check<int32_t>());
+    return ::tpyapp::main::take_owned_int32((g).to_fixed_check<int32_t>());
 }
 
 // def main() -> None:
@@ -37,12 +37,12 @@ int32_t global_source() {
 //
 //     print(global_source())  # 55
 void main() {
-    int32_t result1 = return_owned_int32();
+    int32_t result1 = ::tpyapp::main::return_owned_int32();
     std::cout << result1 << "\n";
     ::tpy::BigInt big = ::tpy::BigInt(100);
-    int32_t result2 = take_owned_int32((big).to_fixed_check<int32_t>());
+    int32_t result2 = ::tpyapp::main::take_owned_int32((big).to_fixed_check<int32_t>());
     std::cout << result2 << "\n";
-    std::cout << global_source() << "\n";
+    std::cout << ::tpyapp::main::global_source() << "\n";
 }
 
 // """Tests that coercions work correctly through Own[T] wrapper.
@@ -59,7 +59,7 @@ void __tpy_init() {
     initialized = true;
 
     g = ::tpy::BigInt(55);
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

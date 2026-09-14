@@ -27,7 +27,7 @@ namespace tpyapp::main {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            ::tpy::BigInt d = depth(child);
+            ::tpy::BigInt d = ::tpyapp::main::depth(child);
             if ((d > result)) {
                 result = d;
             }
@@ -44,7 +44,7 @@ namespace tpyapp::main {
     if ((t == nullptr)) {
         return ::tpy::BigInt(-1);
     }
-    return depth((*t));
+    return ::tpyapp::main::depth((*t));
 }
 
 // def show(t: Tree | None) -> None:
@@ -54,7 +54,7 @@ namespace tpyapp::main {
 //         print("none")
 void show(const Tree* t) {
     if ((t != nullptr)) {
-        std::cout << depth((*t)) << "\n";
+        std::cout << ::tpyapp::main::depth((*t)) << "\n";
     } else {
         std::cout << "none" << "\n";
     }
@@ -80,7 +80,7 @@ Tree* first_or_none(std::vector<Tree>& items) {
     if ((t == nullptr)) {
         return default_;
     }
-    ::tpy::BigInt result = depth((*t));
+    ::tpy::BigInt result = ::tpyapp::main::depth((*t));
     return result;
 }
 
@@ -125,21 +125,21 @@ std::string describe(const Tree* t) {
 void main() {
     Tree leaf = 42;
     Tree branch = std::vector<Tree>{1, std::vector<Tree>{2, 3}};
-    std::cout << maybe_depth(&(leaf)) << "\n";
-    std::cout << maybe_depth(&(branch)) << "\n";
-    std::cout << maybe_depth(nullptr) << "\n";
-    show(&(leaf));
-    show(nullptr);
-    std::cout << get_depth_or_default(&(branch), ::tpy::BigInt(99)) << "\n";
-    std::cout << get_depth_or_default(nullptr, ::tpy::BigInt(99)) << "\n";
-    std::cout << describe(&(leaf)) << "\n";
-    std::cout << describe(&(branch)) << "\n";
-    std::cout << describe(nullptr) << "\n";
+    std::cout << ::tpyapp::main::maybe_depth(&(leaf)) << "\n";
+    std::cout << ::tpyapp::main::maybe_depth(&(branch)) << "\n";
+    std::cout << ::tpyapp::main::maybe_depth(nullptr) << "\n";
+    ::tpyapp::main::show(&(leaf));
+    ::tpyapp::main::show(nullptr);
+    std::cout << ::tpyapp::main::get_depth_or_default(&(branch), ::tpy::BigInt(99)) << "\n";
+    std::cout << ::tpyapp::main::get_depth_or_default(nullptr, ::tpy::BigInt(99)) << "\n";
+    std::cout << ::tpyapp::main::describe(&(leaf)) << "\n";
+    std::cout << ::tpyapp::main::describe(&(branch)) << "\n";
+    std::cout << ::tpyapp::main::describe(nullptr) << "\n";
     std::vector<Tree> items = ::tpy::make_vector<Tree>(std::move(branch), std::move(leaf));
-    Tree* r = first_or_none(items);
-    std::cout << maybe_depth(r) << "\n";
+    Tree* r = ::tpyapp::main::first_or_none(items);
+    std::cout << ::tpyapp::main::maybe_depth(r) << "\n";
     std::vector<Tree> __tmp_1 = std::vector<Tree>{};
-    std::cout << maybe_depth(first_or_none(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::maybe_depth(::tpyapp::main::first_or_none(__tmp_1)) << "\n";
 }
 
 // main()
@@ -148,7 +148,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

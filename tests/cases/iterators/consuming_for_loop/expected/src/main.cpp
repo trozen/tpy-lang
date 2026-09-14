@@ -93,10 +93,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_own_iter_explicit();
-    test_own_iter_value_type();
-    test_borrowing_default();
-    test_value_type_borrowing();
+    ::tpyapp::main::test_own_iter_explicit();
+    ::tpyapp::main::test_own_iter_value_type();
+    ::tpyapp::main::test_borrowing_default();
+    ::tpyapp::main::test_value_type_borrowing();
 }
 
 } // namespace tpyapp::main

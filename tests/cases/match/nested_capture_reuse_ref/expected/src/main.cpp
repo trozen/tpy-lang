@@ -115,16 +115,16 @@ namespace tpyapp::main {
 void main() {
     Holder __tmp_1 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_2 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << reseats(__tmp_1, __tmp_2) << "\n";
+    std::cout << ::tpyapp::main::reseats(__tmp_1, __tmp_2) << "\n";
     Holder __tmp_3 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_4 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << outer_untouched(__tmp_3, __tmp_4) << "\n";
+    std::cout << ::tpyapp::main::outer_untouched(__tmp_3, __tmp_4) << "\n";
     Holder __tmp_5 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_6 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << mixed_const(__tmp_5, __tmp_6) << "\n";
+    std::cout << ::tpyapp::main::mixed_const(__tmp_5, __tmp_6) << "\n";
     Holder __tmp_7 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_8 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << as_pattern(__tmp_7, __tmp_8) << "\n";
+    std::cout << ::tpyapp::main::as_pattern(__tmp_7, __tmp_8) << "\n";
 }
 
 // main()
@@ -133,7 +133,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

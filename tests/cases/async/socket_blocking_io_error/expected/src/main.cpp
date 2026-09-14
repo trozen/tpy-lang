@@ -33,7 +33,7 @@ void trigger() {
 void main() {
     {
         try {
-            trigger();
+            ::tpyapp::main::trigger();
             std::cout << "no error" << "\n";
         } catch (const ::tpy::OSError&) {
             std::cout << "caught as OSError" << "\n";
@@ -43,7 +43,7 @@ void main() {
         try {
             {
                 try {
-                    trigger();
+                    ::tpyapp::main::trigger();
                 } catch (const ::tpy::ValueError&) {
                     std::cout << "WRONG: caught as ValueError" << "\n";
                 }
@@ -67,7 +67,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

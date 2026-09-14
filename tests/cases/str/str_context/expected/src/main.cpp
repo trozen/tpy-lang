@@ -33,9 +33,9 @@ std::string get_name() {
 //     names: list[str] = ["hello", "world"]
 //     print(names[0])  # hello
 void main() {
-    std::string msg = greet("world");
+    std::string msg = ::tpyapp::main::greet("world");
     std::cout << msg << "\n";
-    std::string n = get_name();
+    std::string n = ::tpyapp::main::get_name();
     std::cout << n << "\n";
     Person p = Person("Alice");
     std::cout << p.name << "\n";
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

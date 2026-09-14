@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //     print("done")
 void main() {
     auto __tmp_1 = Int32One();
-    std::cout << drain<int32_t>(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::drain<int32_t>(__tmp_1) << "\n";
     auto __tmp_2 = Nothing();
-    drain<std::monostate>(__tmp_2);
+    ::tpyapp::main::drain<std::monostate>(__tmp_2);
     std::cout << "done" << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -17,7 +17,7 @@ int32_t factorial(int32_t n) {
     if ((n <= 1)) {
         __pascal_result = 1;
     } else {
-        __pascal_result = (::tpy::mul_check<int32_t>(n, factorial((::tpy::sub_check<int32_t>(n, 1)))));
+        __pascal_result = (::tpy::mul_check<int32_t>(n, ::tpyapp::main::factorial((::tpy::sub_check<int32_t>(n, 1)))));
     }
     return __pascal_result;
 }
@@ -33,7 +33,7 @@ void __tpy_init() {
 
     int32_t __stop_0 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        std::cout << factorial(i) << "\n";
+        std::cout << ::tpyapp::main::factorial(i) << "\n";
     }
 }
 

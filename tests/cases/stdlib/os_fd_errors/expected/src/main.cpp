@@ -89,7 +89,7 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     _MISSING = "tpy_nope_missing_xyz";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -51,13 +51,13 @@ void show_config(const Config& kwargs) {
 //     show_config()
 void main() {
     Config __tmp_1 = Config("example.com", 8080, true);
-    connect(__tmp_1);
+    ::tpyapp::main::connect(__tmp_1);
     Config __tmp_2 = Config(std::nullopt, std::nullopt, std::nullopt);
-    connect(__tmp_2);
+    ::tpyapp::main::connect(__tmp_2);
     Config __tmp_3 = Config("myhost", std::nullopt, std::nullopt);
-    show_config(__tmp_3);
+    ::tpyapp::main::show_config(__tmp_3);
     Config __tmp_4 = Config(std::nullopt, std::nullopt, std::nullopt);
-    show_config(__tmp_4);
+    ::tpyapp::main::show_config(__tmp_4);
 }
 
 // main()
@@ -66,7 +66,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

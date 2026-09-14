@@ -41,8 +41,8 @@ void iter_slice(std::string_view s) {
 //     iter_slice(s)
 void main() {
     std::string_view s = "hello";
-    std::cout << cut_join(s) << " " << fmt_slice(s) << "\n";
-    iter_slice(s);
+    std::cout << ::tpyapp::main::cut_join(s) << " " << ::tpyapp::main::fmt_slice(s) << "\n";
+    ::tpyapp::main::iter_slice(s);
 }
 
 // main()
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

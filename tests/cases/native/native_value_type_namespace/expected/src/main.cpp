@@ -13,7 +13,7 @@ namespace tpyapp::myns {
 void main() {
     ::MyHandle h = ::MyHandle(42);
     std::cout << h.val << "\n";
-    ::MyHandle copied = identity<::MyHandle>(h);
+    ::MyHandle copied = ::tpyapp::myns::identity<::MyHandle>(h);
     std::cout << copied.val << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::myns::main();
 }
 
 } // namespace tpyapp::myns

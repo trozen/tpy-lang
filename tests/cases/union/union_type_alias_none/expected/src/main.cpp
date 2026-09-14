@@ -34,8 +34,8 @@ void main() {
     MaybeShape __slot_1 = Circle(1);
     ::tpy::Union<std::monostate, Circle*, Rect*> a = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::Union<std::monostate, Circle*, Rect*> b = std::monostate{};
-    std::cout << describe(a.as_const()) << "\n";
-    std::cout << describe(b.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(a.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(b.as_const()) << "\n";
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

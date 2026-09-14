@@ -68,10 +68,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_borrow_via_property();
-    test_iter_via_property();
-    test_setter_invalidates_borrow();
-    test_value_type_no_warn();
+    ::tpyapp::main::test_borrow_via_property();
+    ::tpyapp::main::test_iter_via_property();
+    ::tpyapp::main::test_setter_invalidates_borrow();
+    ::tpyapp::main::test_value_type_no_warn();
 }
 
 } // namespace tpyapp::main

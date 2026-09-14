@@ -473,8 +473,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.self_method",             # `self.helper()` -> `this->helper()`
     "call.imported",                # cross-module callee -> pre-rendered
                                     # `::tpyapp::mod::f` (callee_cpp)
-    "call.literal_mangled",         # local literal-specialized callee -> the
-                                    # bare mangled spelling (`f__lit_r__w`)
+    "call.same_module",             # same-module free callee -> the absolute
+                                    # `::tpyapp::mod::f` spelling (ADL-safe)
+    "call.literal_mangled",         # same-module literal-specialized callee ->
+                                    # the mangling inside that spelling
+                                    # (`::tpyapp::mod::f__lit_r__w`)
     "fold.overload_live_chain",     # partially-folded per-stub if-chain ->
                                     # trimmed live `if / else if` render
     "method.literal_mangled",       # literal-overloaded member call -> the

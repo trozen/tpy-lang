@@ -35,7 +35,7 @@ __gen_gen gen(std::tuple<int32_t, Box*> p) {
 void main() {
     Holder h = Holder(Box(5));
     {
-        auto __src_0 = gen(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
+        auto __src_0 = ::tpyapp::main::gen(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

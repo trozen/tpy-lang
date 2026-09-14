@@ -20,7 +20,7 @@ void stub() {
 void main() {
     {
         try {
-            stub();
+            ::tpyapp::main::stub();
         } catch (const ::tpy::NotImplementedError& e) {
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

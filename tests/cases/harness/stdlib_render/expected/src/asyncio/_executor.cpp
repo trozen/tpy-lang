@@ -126,7 +126,7 @@ bool Executor::poll_slot(int32_t slot_id) {
     }
     ::tpy::__getitem__(this->slots, slot_id).runnable = false;
     int32_t gen = ::tpy::__getitem__(this->slots, slot_id).generation;
-    ::tpystd::coro::Waker waker = _make_waker((*this), slot_id, gen);
+    ::tpystd::coro::Waker waker = ::tpystd::asyncio::_executor::_make_waker((*this), slot_id, gen);
     ::tpystd::tplib::box::Box<AnyTask>* box = ::tpy::optional_to_ptr(::tpy::__getitem__(this->slots, slot_id).box);
     if ((box == nullptr)) {
         return false;

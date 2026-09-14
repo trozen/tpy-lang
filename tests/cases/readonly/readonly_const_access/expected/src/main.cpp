@@ -20,7 +20,7 @@ void read_items(const Container& c) {
 //     print(c.count())
 void main() {
     Container c = Container();
-    read_items(c);
+    ::tpyapp::main::read_items(c);
     std::cout << c.count() << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -33,7 +33,7 @@ bool f(Lock& lk) {
 //     print(lk.held)
 void main() {
     Lock lk = Lock();
-    std::cout << ::tpy::print_bool(f(lk)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::f(lk)) << "\n";
     std::cout << ::tpy::print_bool(lk.held) << "\n";
 }
 
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -28,9 +28,9 @@ std::tuple<int32_t, std::tuple<int32_t, int32_t>> make() {
 //     print(d[4][0], d[4][1][0], d[4][1][1])
 void main() {
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>>();
-    ::tpy::__setitem__(d, 1, make());
+    ::tpy::__setitem__(d, 1, ::tpyapp::main::make());
     ::tpy::__setitem__(d, 2, Src(10).pair());
-    std::tuple<int32_t, std::tuple<int32_t, int32_t>> t = make();
+    std::tuple<int32_t, std::tuple<int32_t, int32_t>> t = ::tpyapp::main::make();
     ::tpy::__setitem__(d, 3, t);
     ::tpy::__setitem__(d, 4, std::tuple<int32_t, std::tuple<int32_t, int32_t>>{7, std::tuple<int32_t, int32_t>{8, 9}});
     std::cout << ::tpy::__len__(d) << "\n";
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

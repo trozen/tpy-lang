@@ -37,12 +37,12 @@ void test_if_condition() {
 //         print("none")
 void test_optional_narrowing() {
     std::optional<int32_t> val;
-    if (((val = get_opt(3)).has_value())) {
+    if (((val = ::tpyapp::main::get_opt(3)).has_value())) {
         int32_t result = (::tpy::add_check<int32_t>((*val), 5));
         std::cout << result << "\n";
     }
     std::optional<int32_t> val2;
-    if (((val2 = get_opt(-1)).has_value())) {
+    if (((val2 = ::tpyapp::main::get_opt(-1)).has_value())) {
         std::cout << "unreachable" << "\n";
     } else {
         std::cout << "none" << "\n";
@@ -105,10 +105,10 @@ void test_multiple_walrus() {
 //         print(val)
 void test_reuse_walrus_target() {
     std::optional<int32_t> val;
-    if (((val = get_opt(3)).has_value())) {
+    if (((val = ::tpyapp::main::get_opt(3)).has_value())) {
         std::cout << ::tpy::print_optional_val(val) << "\n";
     }
-    if (((val = get_opt(5)).has_value())) {
+    if (((val = ::tpyapp::main::get_opt(5)).has_value())) {
         std::cout << ::tpy::print_optional_val(val) << "\n";
     }
 }
@@ -149,7 +149,7 @@ void test_walrus_elif() {
         std::cout << "big" << "\n";
     } else {
         std::optional<int32_t> v;
-        if (((v = get_opt(x)).has_value())) {
+        if (((v = ::tpyapp::main::get_opt(x)).has_value())) {
             std::cout << ::tpy::print_optional_val(v) << "\n";
         } else {
             std::cout << "none" << "\n";
@@ -174,7 +174,7 @@ void test_comprehension_walrus() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            if (((y = double_(x)) > 5)) {
+            if (((y = ::tpyapp::main::double_(x)) > 5)) {
                 __result.push_back(y);
             }
         }
@@ -196,16 +196,16 @@ void test_comprehension_walrus() {
 //     test_walrus_elif()
 //     test_comprehension_walrus()
 void main() {
-    test_if_condition();
-    test_optional_narrowing();
-    test_and_chain();
-    test_while_loop();
-    test_expression_position();
-    test_multiple_walrus();
-    test_reuse_walrus_target();
-    test_walrus_in_branch();
-    test_walrus_elif();
-    test_comprehension_walrus();
+    ::tpyapp::main::test_if_condition();
+    ::tpyapp::main::test_optional_narrowing();
+    ::tpyapp::main::test_and_chain();
+    ::tpyapp::main::test_while_loop();
+    ::tpyapp::main::test_expression_position();
+    ::tpyapp::main::test_multiple_walrus();
+    ::tpyapp::main::test_reuse_walrus_target();
+    ::tpyapp::main::test_walrus_in_branch();
+    ::tpyapp::main::test_walrus_elif();
+    ::tpyapp::main::test_comprehension_walrus();
 }
 
 // main()
@@ -214,7 +214,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

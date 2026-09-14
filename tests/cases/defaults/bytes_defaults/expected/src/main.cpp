@@ -36,12 +36,12 @@ namespace tpyapp::main {
 //     print(with_view_empty())
 //     print(with_view_default())
 void main() {
-    std::cout << with_bytes() << "\n";
-    std::cout << with_bytes(::tpy::bytes_literal("abc", 3)) << "\n";
-    std::cout << with_bytes_default() << "\n";
-    std::cout << with_bytes_default(::tpy::bytes_literal("abcdef", 6)) << "\n";
-    std::cout << with_view_empty() << "\n";
-    std::cout << with_view_default() << "\n";
+    std::cout << ::tpyapp::main::with_bytes() << "\n";
+    std::cout << ::tpyapp::main::with_bytes(::tpy::bytes_literal("abc", 3)) << "\n";
+    std::cout << ::tpyapp::main::with_bytes_default() << "\n";
+    std::cout << ::tpyapp::main::with_bytes_default(::tpy::bytes_literal("abcdef", 6)) << "\n";
+    std::cout << ::tpyapp::main::with_view_empty() << "\n";
+    std::cout << ::tpyapp::main::with_view_default() << "\n";
 }
 
 // main()
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -21,7 +21,7 @@ Handle extract() {
 //     result = extract()
 //     print(result.value)
 void main() {
-    Handle result = extract();
+    Handle result = ::tpyapp::main::extract();
     std::cout << result.value << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

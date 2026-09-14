@@ -155,12 +155,12 @@ void var_decl_in_else() {
 //     false_condition()
 //     var_decl_in_else()
 void main() {
-    no_break();
-    with_break();
-    nested_inner_else();
-    nested_outer_else();
-    false_condition();
-    var_decl_in_else();
+    ::tpyapp::main::no_break();
+    ::tpyapp::main::with_break();
+    ::tpyapp::main::nested_inner_else();
+    ::tpyapp::main::nested_outer_else();
+    ::tpyapp::main::false_condition();
+    ::tpyapp::main::var_decl_in_else();
 }
 
 // main()
@@ -169,7 +169,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

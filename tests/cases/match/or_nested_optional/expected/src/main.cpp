@@ -32,11 +32,11 @@ std::string classify(std::optional<int32_t> v) {
 //     print(classify(4))
 //     print(classify(9))
 void main() {
-    std::cout << classify(std::nullopt) << "\n";
-    std::cout << classify(1) << "\n";
-    std::cout << classify(2) << "\n";
-    std::cout << classify(4) << "\n";
-    std::cout << classify(9) << "\n";
+    std::cout << ::tpyapp::main::classify(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::classify(1) << "\n";
+    std::cout << ::tpyapp::main::classify(2) << "\n";
+    std::cout << ::tpyapp::main::classify(4) << "\n";
+    std::cout << ::tpyapp::main::classify(9) << "\n";
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

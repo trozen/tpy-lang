@@ -32,7 +32,7 @@ std::expected<int32_t, E> falls_through() {
     {
         try {
             {
-                auto __try_tmp_2 = may_fail(5);
+                auto __try_tmp_2 = ::tpyapp::main::may_fail(5);
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 v = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
@@ -72,7 +72,7 @@ std::expected<int32_t, E> returns_from_finally() {
     {
         try {
             {
-                auto __try_tmp_4 = may_fail(5);
+                auto __try_tmp_4 = ::tpyapp::main::may_fail(5);
                 if (!__try_tmp_4.has_value()) goto __except_3;
                 v = ::tpy::unwrap_ref_move(*__try_tmp_4);
             }
@@ -104,7 +104,7 @@ std::expected<int32_t, E> returns_from_finally() {
 //         print("caught E")
 void call_it() {
     {
-        std::cout << ({ auto __er_6 = returns_from_finally(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n";
+        std::cout << ({ auto __er_6 = ::tpyapp::main::returns_from_finally(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n";
         goto __after_try_5;
         // except E:
         __except_5:;
@@ -112,7 +112,7 @@ void call_it() {
         __after_try_5:;
     }
     {
-        std::cout << ({ auto __er_8 = falls_through(); if (!__er_8.has_value()) goto __except_7; ::tpy::unwrap_ref_move(*__er_8); }) << "\n";
+        std::cout << ({ auto __er_8 = ::tpyapp::main::falls_through(); if (!__er_8.has_value()) goto __except_7; ::tpy::unwrap_ref_move(*__er_8); }) << "\n";
         goto __after_try_7;
         // except E:
         __except_7:;
@@ -129,7 +129,7 @@ void call_it() {
 void main() {
     {
         try {
-            call_it();
+            ::tpyapp::main::call_it();
         } catch (const ::tpy::RuntimeError&) {
             std::cout << "caught from finally" << "\n";
         }
@@ -142,7 +142,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -47,8 +47,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_copy_mutable();
-    test_copy_from_constptr();
+    ::tpyapp::main::test_copy_mutable();
+    ::tpyapp::main::test_copy_from_constptr();
 }
 
 } // namespace tpyapp::main

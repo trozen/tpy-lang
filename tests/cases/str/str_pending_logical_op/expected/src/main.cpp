@@ -119,15 +119,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_or("hello", "world");
-    test_and("hello", "world");
-    test_ternary("hello", "world", true);
-    test_literal_or();
-    test_or_right_promotes();
-    test_ternary_right_promotes();
-    test_or_chain("hello", "world", "!");
-    test_literal_or_chain();
-    test_or_chain_third_promotes();
+    ::tpyapp::main::test_or("hello", "world");
+    ::tpyapp::main::test_and("hello", "world");
+    ::tpyapp::main::test_ternary("hello", "world", true);
+    ::tpyapp::main::test_literal_or();
+    ::tpyapp::main::test_or_right_promotes();
+    ::tpyapp::main::test_ternary_right_promotes();
+    ::tpyapp::main::test_or_chain("hello", "world", "!");
+    ::tpyapp::main::test_literal_or_chain();
+    ::tpyapp::main::test_or_chain_third_promotes();
 }
 
 } // namespace tpyapp::main

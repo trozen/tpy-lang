@@ -33,7 +33,7 @@ std::string describe(::tpy::Union<const BinOp*, const Lit*> e) {
 void main() {
     Expr __slot_1 = Lit(::tpy::BigInt(7));
     ::tpy::Union<BinOp*, Lit*> a = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << describe(a.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(a.as_const()) << "\n";
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

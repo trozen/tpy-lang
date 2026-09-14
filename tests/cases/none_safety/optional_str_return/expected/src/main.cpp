@@ -29,10 +29,10 @@ std::optional<std::string> forward(std::optional<std::string_view> s) {
 //     print(forward("hi"))
 //     print(forward(None) is None)
 void main() {
-    std::cout << ::tpy::print_optional_val(pick(true)) << "\n";
-    std::cout << ::tpy::print_bool((!pick(false).has_value())) << "\n";
-    std::cout << ::tpy::print_optional_val(forward("hi")) << "\n";
-    std::cout << ::tpy::print_bool((!forward(std::nullopt).has_value())) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pick(true)) << "\n";
+    std::cout << ::tpy::print_bool((!::tpyapp::main::pick(false).has_value())) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::forward("hi")) << "\n";
+    std::cout << ::tpy::print_bool((!::tpyapp::main::forward(std::nullopt).has_value())) << "\n";
 }
 
 // main()
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -138,13 +138,13 @@ namespace tpyapp::main {
 //     print(read_after_while())
 //     print(sibling_loops_reuse_name())
 void main() {
-    std::cout << read_after() << "\n";
-    std::cout << read_then_assign() << "\n";
-    std::cout << augmented_after() << "\n";
-    std::cout << declared_before() << "\n";
-    std::cout << read_in_later_block() << "\n";
-    std::cout << read_after_while() << "\n";
-    std::cout << sibling_loops_reuse_name() << "\n";
+    std::cout << ::tpyapp::main::read_after() << "\n";
+    std::cout << ::tpyapp::main::read_then_assign() << "\n";
+    std::cout << ::tpyapp::main::augmented_after() << "\n";
+    std::cout << ::tpyapp::main::declared_before() << "\n";
+    std::cout << ::tpyapp::main::read_in_later_block() << "\n";
+    std::cout << ::tpyapp::main::read_after_while() << "\n";
+    std::cout << ::tpyapp::main::sibling_loops_reuse_name() << "\n";
 }
 
 // main()
@@ -153,7 +153,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    COUNTER = _seed();
+    COUNTER = ::repro_init::pkg::state::_seed();
 }
 
 } // namespace repro_init::pkg::state

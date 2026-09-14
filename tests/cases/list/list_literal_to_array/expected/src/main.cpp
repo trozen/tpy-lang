@@ -35,14 +35,14 @@ int32_t sum_array(const std::array<int32_t, 3>& arr) {
 //     print(count)  # 1
 void main() {
     std::array<int32_t, 3> arr1 = {1, 2, 3};
-    std::cout << sum_array(arr1) << "\n";
+    std::cout << ::tpyapp::main::sum_array(arr1) << "\n";
     std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
-    std::cout << sum_array(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_array(__tmp_1) << "\n";
     std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
-    int32_t result = sum_array(__tmp_2);
+    int32_t result = ::tpyapp::main::sum_array(__tmp_2);
     std::cout << result << "\n";
     std::array<int32_t, 3> __tmp_3 = {1, 1, 1};
-    if ((sum_array(__tmp_3) > 0)) {
+    if ((::tpyapp::main::sum_array(__tmp_3) > 0)) {
         std::cout << 1 << "\n";
     } else {
         std::cout << 0 << "\n";
@@ -50,7 +50,7 @@ void main() {
     int32_t count = 0;
     while (true) {
         std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
-        if (!((sum_array(__tmp_4) > count))) break;
+        if (!((::tpyapp::main::sum_array(__tmp_4) > count))) break;
         count = (::tpy::add_check<int32_t>(count, 1));
     }
     std::cout << count << "\n";
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

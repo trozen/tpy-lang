@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(get_value(nums))
 void main() {
     std::vector<::tpy::BigInt> nums = {10, 20, 30};
-    describe(nums);
-    std::cout << get_value(nums) << "\n";
+    ::tpyapp::main::describe(nums);
+    std::cout << ::tpyapp::main::get_value(nums) << "\n";
 }
 
 // main()
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

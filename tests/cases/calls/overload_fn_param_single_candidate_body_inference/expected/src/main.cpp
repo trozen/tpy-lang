@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     print(apply(lambda x: x + int32(1), xs))   # 0 (overload returns 0)
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
-    std::cout << apply<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, xs) << "\n";
+    std::cout << ::tpyapp::main::apply<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, xs) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

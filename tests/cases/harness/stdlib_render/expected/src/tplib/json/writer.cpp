@@ -134,7 +134,7 @@ void JsonWriter::_write_escaped(std::string_view s) {
             } else if ((c == static_cast<char>(12))) {
                 esc = "\\f";
             } else {
-                esc = (::tpy::str_concat("\\u00", _hex_byte(static_cast<int32_t>(static_cast<unsigned char>(c)))));
+                esc = (::tpy::str_concat("\\u00", ::tpystd::tplib::json::writer::_hex_byte(static_cast<int32_t>(static_cast<unsigned char>(c)))));
             }
         }
         if ((::tpy::__len__(esc) > 0)) {

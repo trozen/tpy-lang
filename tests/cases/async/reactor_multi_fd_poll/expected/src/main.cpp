@@ -59,8 +59,8 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         b2.emplace(std::move(std::get<1>(__tup_2)));
         (*b1).setblocking(false);
         (*b2).setblocking(false);
-        t1.emplace(::tpystd::asyncio::create_task<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(reader((*b1)))));
-        t2.emplace(::tpystd::asyncio::create_task<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(reader((*b2)))));
+        t1.emplace(::tpystd::asyncio::create_task<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(::tpyapp::main::reader((*b1)))));
+        t2.emplace(::tpystd::asyncio::create_task<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(::tpyapp::main::reader((*b2)))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
         __state = S_RESUME_0;
         continue;
@@ -109,7 +109,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio epoll reactor (v2): two coroutines park on two different fds, then
@@ -128,7 +128,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

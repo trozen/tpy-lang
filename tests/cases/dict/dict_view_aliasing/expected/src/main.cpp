@@ -66,14 +66,14 @@ int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
 //     print(total(lists))
 void main() {
     ::tpy::ordered_map<std::string, Point> pts = ::tpy::ordered_map<std::string, Point>({{"a", Point(1)}, {"b", Point(2)}});
-    bump_items(pts);
+    ::tpyapp::main::bump_items(pts);
     std::cout << ::tpy::__getitem__(pts, "a").x << " " << ::tpy::__getitem__(pts, "b").x << "\n";
     ::tpy::ordered_map<std::string, std::vector<int32_t>> lists = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     ::tpy::__setitem__(lists, "a", std::vector<int32_t>{1});
     ::tpy::__setitem__(lists, "b", std::vector<int32_t>{2, 3});
-    bump_values(lists);
+    ::tpyapp::main::bump_values(lists);
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(lists, "a")) << " " << ::tpy::ListPrinter(::tpy::__getitem__(lists, "b")) << "\n";
-    std::cout << total(lists) << "\n";
+    std::cout << ::tpyapp::main::total(lists) << "\n";
 }
 
 // main()
@@ -82,7 +82,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

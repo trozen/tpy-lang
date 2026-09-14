@@ -37,7 +37,7 @@ void test_own_list_both_branches(bool flag) {
     std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* items;
     if (flag) {
-        items = &*(__slot_1 = make_list());
+        items = &*(__slot_1 = ::tpyapp::main::make_list());
     } else {
         items = &*(__slot_2 = {4, 5, 6});
     }
@@ -130,15 +130,15 @@ void test_optional_record_one_branch(bool flag) {
 //     test_record_both_branches(False)
 //     test_optional_record_one_branch(True)
 void main() {
-    test_list_one_branch(true);
-    test_own_list_both_branches(true);
-    test_own_list_both_branches(false);
-    test_list_reassigned_mixed(true);
-    test_list_reassigned_mixed(false);
-    test_record_one_branch(true);
-    test_record_both_branches(true);
-    test_record_both_branches(false);
-    test_optional_record_one_branch(true);
+    ::tpyapp::main::test_list_one_branch(true);
+    ::tpyapp::main::test_own_list_both_branches(true);
+    ::tpyapp::main::test_own_list_both_branches(false);
+    ::tpyapp::main::test_list_reassigned_mixed(true);
+    ::tpyapp::main::test_list_reassigned_mixed(false);
+    ::tpyapp::main::test_record_one_branch(true);
+    ::tpyapp::main::test_record_both_branches(true);
+    ::tpyapp::main::test_record_both_branches(false);
+    ::tpyapp::main::test_optional_record_one_branch(true);
 }
 
 // main()
@@ -147,7 +147,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

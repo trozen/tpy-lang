@@ -120,9 +120,9 @@ int32_t wrapped(int32_t n) {
 //     b = Box()
 //     print(b.n, b.label, b.scale(), b.stepped())
 void main() {
-    std::cout << widen() << " " << ::tpy::print_float(as_float()) << " " << static_cast<int>(negative()) << " " << bracket() << "\n";
-    std::cout << raw() << " " << view() << " " << ::tpy::print_bool(flagged()) << " " << optional() << "\n";
-    std::cout << from_final() << " " << shade() << " " << wrapped() << "\n";
+    std::cout << ::tpyapp::main::widen() << " " << ::tpy::print_float(::tpyapp::main::as_float()) << " " << static_cast<int>(::tpyapp::main::negative()) << " " << ::tpyapp::main::bracket() << "\n";
+    std::cout << ::tpyapp::main::raw() << " " << ::tpyapp::main::view() << " " << ::tpy::print_bool(::tpyapp::main::flagged()) << " " << ::tpyapp::main::optional() << "\n";
+    std::cout << ::tpyapp::main::from_final() << " " << ::tpyapp::main::shade() << " " << ::tpyapp::main::wrapped() << "\n";
     Box b = Box();
     std::cout << b.n << " " << b.label << " " << b.scale() << " " << b.stepped() << "\n";
 }
@@ -135,7 +135,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -26,7 +26,7 @@ int32_t depth(const Tree& t) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
-        int32_t d = depth(child);
+        int32_t d = ::tpyapp::main::depth(child);
         if ((d > m)) {
             m = d;
         }
@@ -54,7 +54,7 @@ int32_t count(const Tree& t) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
-        total = (::tpy::add_check<int32_t>(total, count(child)));
+        total = (::tpy::add_check<int32_t>(total, ::tpyapp::main::count(child)));
     }
     return total;
 }
@@ -79,7 +79,7 @@ int32_t leaf_sum(const Tree& t) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
-        s = (::tpy::add_check<int32_t>(s, leaf_sum(child)));
+        s = (::tpy::add_check<int32_t>(s, ::tpyapp::main::leaf_sum(child)));
     }
     return s;
 }
@@ -126,7 +126,7 @@ int32_t depth_nested(const Tree& t, int32_t offset) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            int32_t d = depth_nested(child, offset);
+            int32_t d = ::tpyapp::main::depth_nested(child, offset);
             if ((d > m)) {
                 m = d;
             }
@@ -160,7 +160,7 @@ std::string eval_expr(const Expr& e) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
-        parts.push_back(eval_expr(child));
+        parts.push_back(::tpyapp::main::eval_expr(child));
     }
     return ::tpy::str_join(", ", parts);
 }
@@ -194,22 +194,22 @@ void main() {
     Tree leaf = 5;
     Tree branch = std::vector<Tree>{1, 2, 3};
     Tree nested = std::vector<Tree>{1, std::vector<Tree>{2, std::vector<Tree>{3, 4}}};
-    std::cout << depth(leaf) << "\n";
-    std::cout << depth(branch) << "\n";
-    std::cout << depth(nested) << "\n";
-    std::cout << count(leaf) << "\n";
-    std::cout << count(branch) << "\n";
-    std::cout << count(nested) << "\n";
-    std::cout << leaf_sum(leaf) << "\n";
-    std::cout << leaf_sum(branch) << "\n";
-    std::cout << leaf_sum(nested) << "\n";
-    std::cout << child_count(leaf) << "\n";
-    std::cout << child_count(branch) << "\n";
-    std::cout << depth_nested(branch, 1) << "\n";
-    std::cout << depth_nested(leaf, 1) << "\n";
-    std::cout << eval_expr(42) << "\n";
+    std::cout << ::tpyapp::main::depth(leaf) << "\n";
+    std::cout << ::tpyapp::main::depth(branch) << "\n";
+    std::cout << ::tpyapp::main::depth(nested) << "\n";
+    std::cout << ::tpyapp::main::count(leaf) << "\n";
+    std::cout << ::tpyapp::main::count(branch) << "\n";
+    std::cout << ::tpyapp::main::count(nested) << "\n";
+    std::cout << ::tpyapp::main::leaf_sum(leaf) << "\n";
+    std::cout << ::tpyapp::main::leaf_sum(branch) << "\n";
+    std::cout << ::tpyapp::main::leaf_sum(nested) << "\n";
+    std::cout << ::tpyapp::main::child_count(leaf) << "\n";
+    std::cout << ::tpyapp::main::child_count(branch) << "\n";
+    std::cout << ::tpyapp::main::depth_nested(branch, 1) << "\n";
+    std::cout << ::tpyapp::main::depth_nested(leaf, 1) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(42) << "\n";
     Expr __tmp_1 = std::vector<Expr>{1, "two", std::vector<Expr>{3}};
-    std::cout << eval_expr(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n";
 }
 
 // main()
@@ -218,7 +218,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -30,11 +30,11 @@ void h(int32_t a, int32_t b) {
 //     g("hello", z="world")
 //     h(int32(5), b=int32(9))
 void main() {
-    f(::tpy::BigInt(1), ::tpy::BigInt(10), ::tpy::BigInt(3));
-    f(::tpy::BigInt(1));
-    f(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3));
-    g("hello", "default_y", "world");
-    h(5, 9);
+    ::tpyapp::main::f(::tpy::BigInt(1), ::tpy::BigInt(10), ::tpy::BigInt(3));
+    ::tpyapp::main::f(::tpy::BigInt(1));
+    ::tpyapp::main::f(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3));
+    ::tpyapp::main::g("hello", "default_y", "world");
+    ::tpyapp::main::h(5, 9);
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

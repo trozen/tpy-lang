@@ -24,8 +24,8 @@ Point pick_copy(Point& a, Point& b, bool c) {
 void main() {
     Point a = Point(1);
     Point b = Point(2);
-    std::cout << pick(a, b, true).x << " " << a.x << "\n";
-    std::cout << pick_copy(a, b, false).x << " " << b.x << "\n";
+    std::cout << ::tpyapp::main::pick(a, b, true).x << " " << a.x << "\n";
+    std::cout << ::tpyapp::main::pick_copy(a, b, false).x << " " << b.x << "\n";
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -26,7 +26,7 @@ void __tpy_init() {
     initialized = true;
 
     ::repro_init::pkg::state::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

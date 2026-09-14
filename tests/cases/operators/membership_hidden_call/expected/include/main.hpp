@@ -45,7 +45,7 @@ inline P::P() : plain(::tpy::BigInt(7)) {}
 // def probe(self) -> int:
 //     return bump()
 inline ::tpy::BigInt P::probe() const {
-    return bump();
+    return ::tpyapp::main::bump();
 }
 void __tpy_init();
 } // namespace tpyapp::main

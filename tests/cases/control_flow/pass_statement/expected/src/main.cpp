@@ -106,15 +106,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    empty_function();
+    ::tpyapp::main::empty_function();
     std::cout << "empty_function called" << "\n";
-    std::cout << function_with_pass_branch(5) << "\n";
-    std::cout << function_with_pass_branch(-3) << "\n";
-    std::cout << pass_in_loop() << "\n";
-    std::cout << pass_in_elif(-1) << "\n";
-    std::cout << pass_in_elif(0) << "\n";
-    std::cout << pass_in_elif(1) << "\n";
-    test_class_with_pass();
+    std::cout << ::tpyapp::main::function_with_pass_branch(5) << "\n";
+    std::cout << ::tpyapp::main::function_with_pass_branch(-3) << "\n";
+    std::cout << ::tpyapp::main::pass_in_loop() << "\n";
+    std::cout << ::tpyapp::main::pass_in_elif(-1) << "\n";
+    std::cout << ::tpyapp::main::pass_in_elif(0) << "\n";
+    std::cout << ::tpyapp::main::pass_in_elif(1) << "\n";
+    ::tpyapp::main::test_class_with_pass();
 }
 
 } // namespace tpyapp::main

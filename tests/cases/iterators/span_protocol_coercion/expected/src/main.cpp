@@ -28,9 +28,9 @@ int32_t sum_ro(std::span<const int32_t> items) {
 //     print(sum_ro(mut))
 void main() {
     ROBuffer ro = ROBuffer();
-    std::cout << sum_ro(ro.__span__()) << "\n";
+    std::cout << ::tpyapp::main::sum_ro(ro.__span__()) << "\n";
     MutBuffer mut = MutBuffer();
-    std::cout << sum_ro(mut.__span__()) << "\n";
+    std::cout << ::tpyapp::main::sum_ro(mut.__span__()) << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

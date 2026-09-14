@@ -19,10 +19,10 @@ void show(::tpy::varargs<const ::tpy::BigInt> xs) {
 //     show()
 void main() {
     std::array<const ::tpy::BigInt, 3> __tmp_1{1, 2, 3};
-    show(::tpy::varargs<const ::tpy::BigInt>(__tmp_1));
+    ::tpyapp::main::show(::tpy::varargs<const ::tpy::BigInt>(__tmp_1));
     std::array<const ::tpy::BigInt, 1> __tmp_2{7};
-    show(::tpy::varargs<const ::tpy::BigInt>(__tmp_2));
-    show(::tpy::varargs<const ::tpy::BigInt>());
+    ::tpyapp::main::show(::tpy::varargs<const ::tpy::BigInt>(__tmp_2));
+    ::tpyapp::main::show(::tpy::varargs<const ::tpy::BigInt>());
 }
 
 // main()
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

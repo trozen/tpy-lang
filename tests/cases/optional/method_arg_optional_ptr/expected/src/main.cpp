@@ -24,7 +24,7 @@ void main() {
     Node a = Node(5);
     g.link(&(a));
     g.link(nullptr);
-    relay(g, &(a));
+    ::tpyapp::main::relay(g, &(a));
     g.stash(Node(9));
     g.link(::tpy::optional_to_ptr(g.slot));
     std::cout << g.total << "\n";
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

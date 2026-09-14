@@ -31,7 +31,7 @@ std::vector<::tpystd::tplib::rc::Rc<Node>> build_clones() {
 //     for c in out:
 //         print(c.get().value)
 void main() {
-    std::vector<::tpystd::tplib::rc::Rc<Node>> out = build_clones();
+    std::vector<::tpystd::tplib::rc::Rc<Node>> out = ::tpyapp::main::build_clones();
     auto& __obj_0 = out;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -50,7 +50,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

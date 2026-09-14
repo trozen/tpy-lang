@@ -88,9 +88,9 @@ int32_t rebound_needs_no_hoist() {
 //     print(probe(False))
 //     print(rebound_needs_no_hoist())
 void main() {
-    std::cout << probe(true) << "\n";
-    std::cout << probe(false) << "\n";
-    std::cout << rebound_needs_no_hoist() << "\n";
+    std::cout << ::tpyapp::main::probe(true) << "\n";
+    std::cout << ::tpyapp::main::probe(false) << "\n";
+    std::cout << ::tpyapp::main::rebound_needs_no_hoist() << "\n";
 }
 
 // main()
@@ -99,7 +99,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

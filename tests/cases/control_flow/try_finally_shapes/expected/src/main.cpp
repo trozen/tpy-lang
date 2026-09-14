@@ -274,18 +274,18 @@ void nested() {
 //     print(mixed(1))
 //     print(term_body())
 void main() {
-    hoisted();
-    std::cout << ret_through(::tpy::BigInt(5)) << "\n";
-    std::cout << ret_through(::tpy::BigInt(1)) << "\n";
-    bare_ret(::tpy::BigInt(1));
-    bare_ret(::tpy::BigInt(-1));
-    std::cout << override(::tpy::BigInt(2)) << "\n";
-    std::cout << override(::tpy::BigInt(-2)) << "\n";
-    std::cout << loop_exits(::tpy::BigInt(6)) << "\n";
-    nested();
-    std::cout << mixed(::tpy::BigInt(5)) << "\n";
-    std::cout << mixed(::tpy::BigInt(1)) << "\n";
-    std::cout << term_body() << "\n";
+    ::tpyapp::main::hoisted();
+    std::cout << ::tpyapp::main::ret_through(::tpy::BigInt(5)) << "\n";
+    std::cout << ::tpyapp::main::ret_through(::tpy::BigInt(1)) << "\n";
+    ::tpyapp::main::bare_ret(::tpy::BigInt(1));
+    ::tpyapp::main::bare_ret(::tpy::BigInt(-1));
+    std::cout << ::tpyapp::main::override(::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::override(::tpy::BigInt(-2)) << "\n";
+    std::cout << ::tpyapp::main::loop_exits(::tpy::BigInt(6)) << "\n";
+    ::tpyapp::main::nested();
+    std::cout << ::tpyapp::main::mixed(::tpy::BigInt(5)) << "\n";
+    std::cout << ::tpyapp::main::mixed(::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::term_body() << "\n";
 }
 
 // main()
@@ -294,7 +294,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

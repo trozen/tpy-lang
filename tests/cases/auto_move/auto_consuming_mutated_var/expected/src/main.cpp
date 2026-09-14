@@ -42,8 +42,8 @@ void test_mutated() {
 //     test_readonly()
 //     test_mutated()
 void main() {
-    test_readonly();
-    test_mutated();
+    ::tpyapp::main::test_readonly();
+    ::tpyapp::main::test_mutated();
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

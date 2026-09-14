@@ -70,7 +70,7 @@ void main() {
     std::vector<::tpy::Bytes> seen = std::vector<::tpy::Bytes>{};
     seen.push_back(::tpy::Bytes(ba));
     ::tpy::Bytes local = ::tpy::Bytes(ba);
-    ::tpy::Bytes ret = own_return(ba);
+    ::tpy::Bytes ret = ::tpyapp::main::own_return(ba);
     Holder held = Holder();
     held.keep(ba);
     std::vector<::tpy::Bytes> lit = {::tpy::Bytes(ba)};
@@ -86,7 +86,7 @@ void main() {
     });
     std::optional<::tpy::Bytes> opt = ::tpy::Bytes(ba);
     ::tpy::ordered_map<std::string, std::optional<::tpy::Bytes>> dopt = ::tpy::ordered_map<std::string, std::optional<::tpy::Bytes>>({{"k", ::tpy::Bytes(ba)}});
-    ::tpy::BigInt tup = tuple_arg(std::tuple<::tpy::Bytes, ::tpy::BigInt>{::tpy::Bytes(ba), ::tpy::BigInt(1)});
+    ::tpy::BigInt tup = ::tpyapp::main::tuple_arg(std::tuple<::tpy::Bytes, ::tpy::BigInt>{::tpy::Bytes(ba), ::tpy::BigInt(1)});
     ba.push_back(99);
     ::tpy::bytearray_setitem(ba, 0, 122);
     std::cout << "source" << " " << ::tpy::__len__(ba) << " " << static_cast<int>(::tpy::bytes_getitem(ba, 0)) << "\n";
@@ -108,7 +108,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

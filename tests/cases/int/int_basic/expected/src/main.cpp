@@ -13,7 +13,7 @@ int32_t neg{};
     if ((n <= 1)) {
         return ::tpy::BigInt(1);
     }
-    return ((n) * (factorial(((n) - (::tpy::BigInt(1))))));
+    return ((n) * (::tpyapp::main::factorial(((n) - (::tpy::BigInt(1))))));
 }
 
 // def test_arithmetic():
@@ -89,10 +89,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << factorial(::tpy::BigInt(10)) << "\n";
-    std::cout << factorial(::tpy::BigInt(20)) << "\n";
-    test_arithmetic();
-    test_comparison();
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(10)) << "\n";
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(20)) << "\n";
+    ::tpyapp::main::test_arithmetic();
+    ::tpyapp::main::test_comparison();
     neg = -42;
     std::cout << neg << "\n";
 }

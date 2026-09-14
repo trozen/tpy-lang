@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(pick("hello"))  # tpyc: ok  -- non-generic overload
 void main() {
     std::vector<int32_t> nums = {3, 1, 2};
-    std::cout << pick<int32_t>(nums) << "\n";
-    std::cout << pick(std::string_view("hello")) << "\n";
+    std::cout << ::tpyapp::main::pick<int32_t>(nums) << "\n";
+    std::cout << ::tpyapp::main::pick(std::string_view("hello")) << "\n";
 }
 
 // main()
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -14,7 +14,7 @@ std::string_view get_r() {
 //     m: Literal["r", "w", "rb", "wb"] = get_r()
 //     print(m)
 void main() {
-    std::string_view m = get_r();
+    std::string_view m = ::tpyapp::main::get_r();
     std::cout << m << "\n";
 }
 
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

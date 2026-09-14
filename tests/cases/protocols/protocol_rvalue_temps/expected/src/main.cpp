@@ -26,16 +26,16 @@ namespace tpyapp::main {
 //     show(container[2])
 void main() {
     auto __tmp_1 = IntBox(42);
-    show(__tmp_1);
+    ::tpyapp::main::show(__tmp_1);
     BoxContainer container = BoxContainer();
     auto __tmp_2 = container[1];
-    show(__tmp_2);
+    ::tpyapp::main::show(__tmp_2);
     auto __tmp_3 = IntBox(100);
-    show(__tmp_3);
+    ::tpyapp::main::show(__tmp_3);
     auto __tmp_4 = container[0];
-    show(__tmp_4);
+    ::tpyapp::main::show(__tmp_4);
     auto __tmp_5 = container[2];
-    show(__tmp_5);
+    ::tpyapp::main::show(__tmp_5);
 }
 
 // """Test rvalue expressions passed to protocol-typed parameters.
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

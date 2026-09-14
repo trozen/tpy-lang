@@ -316,12 +316,12 @@ void main() {
     std::string tmp = ::tpy::stdlib::os::getcwd();
     ::tpy::String root = (::tpy::str_concat(tmp, "/tpy_oswalk_case"));
     if (::tpy::stdlib::os::path_exists(root)) {
-        teardown(root);
+        ::tpyapp::main::teardown(root);
     }
-    build(root);
-    walk_sorted(root);
-    std::cout << "nofollow dirs:" << " " << count_dirs(root, false) << "\n";
-    std::cout << "follow dirs:" << " " << count_dirs(root, true) << "\n";
+    ::tpyapp::main::build(root);
+    ::tpyapp::main::walk_sorted(root);
+    std::cout << "nofollow dirs:" << " " << ::tpyapp::main::count_dirs(root, false) << "\n";
+    std::cout << "follow dirs:" << " " << ::tpyapp::main::count_dirs(root, true) << "\n";
     int32_t n = 0;
     {
         auto __src_0 = ::tpystd::os::walk((::tpy::str_concat(tmp, "/tpy_oswalk_missing")));
@@ -338,7 +338,7 @@ void main() {
         }
     }
     std::cout << "missing yields:" << " " << n << "\n";
-    std::cout << "prune-all yields:" << " " << prune_all(root) << "\n";
+    std::cout << "prune-all yields:" << " " << ::tpyapp::main::prune_all(root) << "\n";
     int32_t nf = 0;
     {
         auto __src_2 = ::tpystd::os::walk((::tpy::str_concat(root, "/top.txt")));
@@ -355,8 +355,8 @@ void main() {
         }
     }
     std::cout << "file-as-top yields:" << " " << nf << "\n";
-    std::cout << "order ok:" << " " << ::tpy::print_bool(order_ok(root)) << "\n";
-    teardown(root);
+    std::cout << "order ok:" << " " << ::tpy::print_bool(::tpyapp::main::order_ok(root)) << "\n";
+    ::tpyapp::main::teardown(root);
 }
 
 // import os
@@ -368,7 +368,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::os::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

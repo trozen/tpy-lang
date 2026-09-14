@@ -371,7 +371,7 @@ inline ::tpy::BigInt Thrower::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     raise Err(bump())
 inline void Thrower::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 // def run(tag: str, g: Iterator[int]) -> None:
 //     global _code

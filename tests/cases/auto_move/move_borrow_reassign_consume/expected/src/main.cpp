@@ -24,7 +24,7 @@ void call_source() {
     Bag* b = &__slot_1;
     b = &(g.itself());
     Bag __tmp_1 = (*b);
-    take(std::move(__tmp_1));
+    ::tpyapp::main::take(std::move(__tmp_1));
     std::cout << ::tpy::__len__(g.xs) << "\n";
     g.xs.push_back(9);
     std::cout << ::tpy::__len__(g.xs) << "\n";
@@ -50,7 +50,7 @@ void ternary_source(bool flag) {
     Bag* b = &__slot_1;
     b = &(((flag) ? (g.itself()) : (h.itself())));
     Bag __tmp_2 = (*b);
-    take(std::move(__tmp_2));
+    ::tpyapp::main::take(std::move(__tmp_2));
     if (flag) {
         g.xs.push_back(9);
         std::cout << ::tpy::__len__(g.xs) << "\n";
@@ -74,7 +74,7 @@ Token sink(Token&& t) {
 //     print(out.n)
 void owned_still_moves() {
     Token t = Token(::tpy::BigInt(7));
-    Token out = sink(std::move(t));
+    Token out = ::tpyapp::main::sink(std::move(t));
     std::cout << out.n << "\n";
 }
 
@@ -87,10 +87,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    call_source();
-    ternary_source(true);
-    ternary_source(false);
-    owned_still_moves();
+    ::tpyapp::main::call_source();
+    ::tpyapp::main::ternary_source(true);
+    ::tpyapp::main::ternary_source(false);
+    ::tpyapp::main::owned_still_moves();
 }
 
 } // namespace tpyapp::main

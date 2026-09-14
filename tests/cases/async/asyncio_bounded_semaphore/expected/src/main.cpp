@@ -168,7 +168,7 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>{});
         i = 0;
         while ((i < 5)) {
-            (*tasks).push_back(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(worker((*fresh), (*c)))));
+            (*tasks).push_back(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::worker((*fresh), (*c)))));
             i = ::tpy::add_check<int32_t>(i, 1);
         }
         __sub_2.emplace(std::move(::tpystd::asyncio::gather<std::monostate>(::tpy::varargs<::tpystd::asyncio::_executor::Task<std::monostate>>(::tpy::as_mut_span((*tasks))))));
@@ -215,7 +215,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio.BoundedSemaphore: a Semaphore subclass whose release() rejects an
@@ -229,7 +229,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

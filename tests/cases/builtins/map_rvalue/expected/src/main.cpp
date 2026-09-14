@@ -26,7 +26,7 @@ int32_t double_(int32_t x) {
 //     print(result)
 void main() {
     {
-        auto __src_0 = ::tpy::builtin_map<int32_t, int32_t>(double_, make_nums());
+        auto __src_0 = ::tpy::builtin_map<int32_t, int32_t>(double_, ::tpyapp::main::make_nums());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -35,7 +35,7 @@ void main() {
         std::cout << x << "\n";
         }
     }
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, make_nums()));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, ::tpyapp::main::make_nums()));
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

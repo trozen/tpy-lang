@@ -33,14 +33,14 @@ void add_point(std::vector<Point>& items, const Point& p) {
 //     """Transitively mutates via add_point -- mutated_params = {0}."""
 //     add_point(items, p)
 void add_point_wrapper(std::vector<Point>& items, const Point& p) {
-    add_point(items, p);
+    ::tpyapp::helpers::add_point(items, p);
 }
 
 // def read_wrapper(items: list[Point]) -> int32:
 //     """Transitively reads via sum_points -- mutated_params = {}."""
 //     return sum_points(items)
 int32_t read_wrapper(const std::vector<Point>& items) {
-    return sum_points(items);
+    return ::tpyapp::helpers::sum_points(items);
 }
 
 void __tpy_init() {

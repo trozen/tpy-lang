@@ -29,7 +29,7 @@ int32_t maybe_sum(int32_t k, bool c) {
 //         return y
 //     return -1
 int32_t maybe_call(int32_t k, bool c) {
-    std::optional<int32_t> y = ((c) ? (std::optional<int32_t>(double_(k))) : (std::optional<int32_t>(std::nullopt)));
+    std::optional<int32_t> y = ((c) ? (std::optional<int32_t>(::tpyapp::main::double_(k))) : (std::optional<int32_t>(std::nullopt)));
     if ((y.has_value())) {
         return (*y);
     }
@@ -47,11 +47,11 @@ std::string tag(::tpy::Union<const A*, const B*> u) {
 //     print(maybe_call(3, True), maybe_call(3, False))
 //     print(tag(A(1)), tag(B(2)))
 void main() {
-    std::cout << maybe_sum(1, true) << " " << maybe_sum(1, false) << "\n";
-    std::cout << maybe_call(3, true) << " " << maybe_call(3, false) << "\n";
+    std::cout << ::tpyapp::main::maybe_sum(1, true) << " " << ::tpyapp::main::maybe_sum(1, false) << "\n";
+    std::cout << ::tpyapp::main::maybe_call(3, true) << " " << ::tpyapp::main::maybe_call(3, false) << "\n";
     A __tmp_1 = A(1);
     B __tmp_2 = B(2);
-    std::cout << tag(::tpy::Union<const A*, const B*>{&__tmp_1}) << " " << tag(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::tag(::tpy::Union<const A*, const B*>{&__tmp_1}) << " " << ::tpyapp::main::tag(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
 }
 
 // main()
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

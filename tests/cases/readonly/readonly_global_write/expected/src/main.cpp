@@ -24,7 +24,7 @@ void __tpy_init() {
     initialized = true;
 
     x = 0;
-    std::cout << ok() << "\n";
+    std::cout << ::tpyapp::main::ok() << "\n";
 }
 
 } // namespace tpyapp::main

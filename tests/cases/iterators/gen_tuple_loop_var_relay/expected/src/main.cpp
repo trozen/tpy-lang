@@ -47,7 +47,7 @@ __gen_gen gen() {
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_src_0.emplace(gen());
+        __for_src_0.emplace(::tpyapp::main::gen());
         __state = S_JOIN_0;
         continue;
     }
@@ -85,7 +85,7 @@ __gen_relay relay() {
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_src_0.emplace(gen());
+        __for_src_0.emplace(::tpyapp::main::gen());
         __state = S_JOIN_0;
         continue;
     }
@@ -149,7 +149,7 @@ __gen_relay_twice relay_twice() {
 void main() {
     bool first = true;
     {
-        auto __src_0 = relay();
+        auto __src_0 = ::tpyapp::main::relay();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -166,7 +166,7 @@ void main() {
     std::vector<int32_t> seen = std::vector<int32_t>{};
     int32_t n = 0;
     {
-        auto __src_2 = relay_twice();
+        auto __src_2 = ::tpyapp::main::relay_twice();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -208,7 +208,7 @@ void main() {
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_Hub_relay::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_src_0.emplace(gen());
+        __for_src_0.emplace(::tpyapp::main::gen());
         __state = S_JOIN_0;
         continue;
     }
@@ -242,7 +242,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

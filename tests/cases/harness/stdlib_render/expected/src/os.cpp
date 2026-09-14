@@ -16,13 +16,13 @@ namespace tpystd::os {
 // def stat(path: str) -> Own[stat_result]:
 //     return _wrap_stat(_stat_raw(path))
 ::tpystd::os::_types::stat_result stat(std::string_view path) {
-    return _wrap_stat(::tpy::stdlib::os::stat_raw(path));
+    return ::tpystd::os::_wrap_stat(::tpy::stdlib::os::stat_raw(path));
 }
 
 // def lstat(path: str) -> Own[stat_result]:
 //     return _wrap_stat(_lstat_raw(path))
 ::tpystd::os::_types::stat_result lstat(std::string_view path) {
-    return _wrap_stat(::tpy::stdlib::os::lstat_raw(path));
+    return ::tpystd::os::_wrap_stat(::tpy::stdlib::os::lstat_raw(path));
 }
 
 // def scandir(path: str = ".") -> Own[list[DirEntry]]:
@@ -246,7 +246,7 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
     }
     case S_JOIN_3: {
         try {
-            bentries.emplace(scandir(bcur));
+            bentries.emplace(::tpystd::os::scandir(bcur));
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::OSError& berr) {
@@ -286,7 +286,7 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
     }
     case S_JOIN_5: {
         try {
-            entries.emplace(scandir(cur));
+            entries.emplace(::tpystd::os::scandir(cur));
             __state = S_JOIN_4;
             continue;
         } catch (const ::tpy::OSError& err) {
@@ -380,12 +380,12 @@ void replace(std::string_view src, std::string_view dst) {
 void makedirs(std::string_view name, int64_t mode, bool exist_ok) {
     std::string head = ::tpystd::os::path::dirname(name);
     if (((::tpy::__len__(head) > 0) && (!(::tpy::stdlib::os::path_exists(head))))) {
-        makedirs(head, mode, exist_ok);
+        ::tpystd::os::makedirs(head, mode, exist_ok);
     }
     if ((exist_ok && ::tpy::stdlib::os::path_isdir(name))) {
         return;
     }
-    mkdir(name, mode);
+    ::tpystd::os::mkdir(name, mode);
 }
 
 // # Remove `name`, then rmdir empty parents working upward, stopping at the
@@ -466,7 +466,7 @@ int64_t dup2(int64_t fd, int64_t fd2) {
 // def fstat(fd: int64) -> Own[stat_result]:
 //     return _wrap_stat(_fstat_fd(fd))
 ::tpystd::os::_types::stat_result fstat(int64_t fd) {
-    return _wrap_stat(::tpy::stdlib::os::fstat_fd(fd));
+    return ::tpystd::os::_wrap_stat(::tpy::stdlib::os::fstat_fd(fd));
 }
 
 // def chmod(path: str, mode: int64) -> None:

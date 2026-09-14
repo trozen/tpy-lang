@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print("constructed, is_ready:", p.is_ready())
 //     print("dropping ready poll without consume")
 void drop_path() {
-    ::tpystd::tpy::Poll<Probe> p = make_ready(::tpy::BigInt(1));
+    ::tpystd::tpy::Poll<Probe> p = ::tpyapp::main::make_ready(::tpy::BigInt(1));
     std::cout << "constructed, is_ready:" << " " << ::tpy::print_bool(p.is_ready()) << "\n";
     std::cout << "dropping ready poll without consume" << "\n";
 }
@@ -27,7 +27,7 @@ void drop_path() {
 //     v = q.value()
 //     print("consumed value tag:", v.tag)
 void consume_path() {
-    ::tpystd::tpy::Poll<Probe> q = make_ready(::tpy::BigInt(2));
+    ::tpystd::tpy::Poll<Probe> q = ::tpyapp::main::make_ready(::tpy::BigInt(2));
     Probe v = std::move(q).value();
     std::cout << "consumed value tag:" << " " << v.tag << "\n";
 }
@@ -37,9 +37,9 @@ void consume_path() {
 //     print("---")
 //     consume_path()
 void main() {
-    drop_path();
+    ::tpyapp::main::drop_path();
     std::cout << "---" << "\n";
-    consume_path();
+    ::tpyapp::main::consume_path();
 }
 
 // from tpy.coro import Poll
@@ -51,7 +51,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

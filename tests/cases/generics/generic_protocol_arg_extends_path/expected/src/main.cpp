@@ -15,7 +15,7 @@ void main() {
     xs.add(3);
     xs.add(4);
     xs.add(5);
-    std::cout << total_of<int32_t>(xs) << "\n";
+    std::cout << ::tpyapp::main::total_of<int32_t>(xs) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

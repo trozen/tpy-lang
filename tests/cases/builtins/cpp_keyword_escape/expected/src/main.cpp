@@ -59,11 +59,11 @@ int32_t delete_(int32_t x) {
 //     test_for_loop_keyword()
 //     print(delete(7))
 void main() {
-    std::cout << get_or_default(5, 42) << "\n";
-    std::cout << get_or_default(-1, 42) << "\n";
-    test_local_keywords();
-    test_for_loop_keyword();
-    std::cout << delete_(7) << "\n";
+    std::cout << ::tpyapp::main::get_or_default(5, 42) << "\n";
+    std::cout << ::tpyapp::main::get_or_default(-1, 42) << "\n";
+    ::tpyapp::main::test_local_keywords();
+    ::tpyapp::main::test_for_loop_keyword();
+    std::cout << ::tpyapp::main::delete_(7) << "\n";
 }
 
 // main()
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

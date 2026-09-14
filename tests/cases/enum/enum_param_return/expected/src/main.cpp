@@ -77,11 +77,11 @@ void print_color(Color c) {
 //     print_color(c)
 void main() {
     Color c = Color::Red;
-    print_color(c);
-    c = next_color(c);
-    print_color(c);
-    c = next_color(c);
-    print_color(c);
+    ::tpyapp::main::print_color(c);
+    c = ::tpyapp::main::next_color(c);
+    ::tpyapp::main::print_color(c);
+    c = ::tpyapp::main::next_color(c);
+    ::tpyapp::main::print_color(c);
 }
 
 // # Enum as function parameter and return type
@@ -93,7 +93,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -75,7 +75,7 @@ int32_t get_val() {
 //     print(call_count)
 void test_call_lhs() {
     call_count = 0;
-    if (({ auto&& __in_lhs = get_val(); (__in_lhs == 1) || (__in_lhs == 17) || (__in_lhs == 42); })) {
+    if (({ auto&& __in_lhs = ::tpyapp::main::get_val(); (__in_lhs == 1) || (__in_lhs == 17) || (__in_lhs == 42); })) {
         std::cout << "call found" << "\n";
     }
     std::cout << call_count << "\n";
@@ -87,10 +87,10 @@ void test_call_lhs() {
 //     test_single_element()
 //     test_call_lhs()
 void main() {
-    test_int_membership();
-    test_str_membership();
-    test_single_element();
-    test_call_lhs();
+    ::tpyapp::main::test_int_membership();
+    ::tpyapp::main::test_str_membership();
+    ::tpyapp::main::test_single_element();
+    ::tpyapp::main::test_call_lhs();
 }
 
 // call_count: int32 = 0
@@ -102,7 +102,7 @@ void __tpy_init() {
     initialized = true;
 
     call_count = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

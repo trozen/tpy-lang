@@ -29,7 +29,7 @@ int32_t singleton_append(const Box& b) {
 //     return b.n
 int32_t tuple_append(Box& b) {
     std::vector<std::tuple<Box, Box>> xs = std::vector<std::tuple<Box, Box>>{};
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_borrow(b)));
+    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_borrow(b)));
     std::get<0>(::tpy::__getitem__(xs, 0)).n = 22;
     return b.n;
 }
@@ -53,7 +53,7 @@ int32_t singleton_dict(const Box& b) {
 //     return b.n
 int32_t tuple_dict(Box& b) {
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>();
-    ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_borrow(b)));
+    ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_borrow(b)));
     std::get<0>(::tpy::__getitem__(d, 1)).n = 24;
     return b.n;
 }
@@ -65,10 +65,10 @@ int32_t tuple_dict(Box& b) {
 void main() {
     Box __tmp_1 = Box(2);
     Box __tmp_2 = Box(2);
-    std::cout << singleton_append(__tmp_1) << " " << tuple_append(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::singleton_append(__tmp_1) << " " << ::tpyapp::main::tuple_append(__tmp_2) << "\n";
     Box __tmp_3 = Box(2);
     Box __tmp_4 = Box(2);
-    std::cout << singleton_dict(__tmp_3) << " " << tuple_dict(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::singleton_dict(__tmp_3) << " " << ::tpyapp::main::tuple_dict(__tmp_4) << "\n";
 }
 
 // main()
@@ -77,7 +77,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

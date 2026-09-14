@@ -40,9 +40,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_literal();
-    test_param("from param");
-    test_strview_source();
+    ::tpyapp::main::test_literal();
+    ::tpyapp::main::test_param("from param");
+    ::tpyapp::main::test_strview_source();
 }
 
 } // namespace tpyapp::main

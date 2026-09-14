@@ -20,7 +20,7 @@ std::expected<::tpy::val_or_ref<Point>, E> positive(Point& p) {
 // def modify(p: Point) -> Point:
 //     return positive(p).updated()
 std::expected<::tpy::val_or_ref<Point>, E> modify(Point& p) {
-    return (*({ auto __er_1 = positive(p); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); &::tpy::unwrap_ref(*__er_1); })).updated();
+    return (*({ auto __er_1 = ::tpyapp::main::positive(p); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); &::tpy::unwrap_ref(*__er_1); })).updated();
 }
 
 // def main() -> None:
@@ -49,7 +49,7 @@ void main() {
     Point* result;
     {
         {
-            auto __try_tmp_3 = modify(p);
+            auto __try_tmp_3 = ::tpyapp::main::modify(p);
             if (!__try_tmp_3.has_value()) goto __except_2;
             result = &(::tpy::unwrap_ref(*__try_tmp_3));
         }
@@ -67,7 +67,7 @@ void main() {
     Point p2 = Point(-1, 2);
     {
         {
-            auto __try_tmp_5 = modify(p2);
+            auto __try_tmp_5 = ::tpyapp::main::modify(p2);
             if (!__try_tmp_5.has_value()) goto __except_4;
         }
         goto __after_try_4;
@@ -86,7 +86,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

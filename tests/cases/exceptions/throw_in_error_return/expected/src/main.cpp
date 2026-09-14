@@ -51,7 +51,7 @@ void main() {
     int32_t v;
     {
         {
-            auto __try_tmp_2 = lookup("x");
+            auto __try_tmp_2 = ::tpyapp::main::lookup("x");
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -66,7 +66,7 @@ void main() {
     int32_t v2;
     {
         {
-            auto __try_tmp_4 = lookup("y");
+            auto __try_tmp_4 = ::tpyapp::main::lookup("y");
             if (!__try_tmp_4.has_value()) goto __except_3;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -83,7 +83,7 @@ void main() {
             int32_t v3;
             {
                 {
-                    auto __try_tmp_6 = lookup("");
+                    auto __try_tmp_6 = ::tpyapp::main::lookup("");
                     if (!__try_tmp_6.has_value()) goto __except_5;
                     v3 = ::tpy::unwrap_ref_move(*__try_tmp_6);
                 }
@@ -105,7 +105,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -37,12 +37,12 @@ std::string describe(const R& r) {
 void main() {
     R a = R();
     a.inner = "hi";
-    std::cout << describe(a) << "\n";
+    std::cout << ::tpyapp::main::describe(a) << "\n";
     R b = R();
     b.inner = "bye";
-    std::cout << describe(b) << "\n";
+    std::cout << ::tpyapp::main::describe(b) << "\n";
     R __tmp_1 = R();
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
 }
 
 // main()
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

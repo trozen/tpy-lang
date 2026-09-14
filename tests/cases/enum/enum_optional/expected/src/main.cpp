@@ -65,11 +65,11 @@ std::optional<Color> maybe_color(bool flag) {
 //     if c is None:
 //         print("no color")
 void main() {
-    std::optional<Color> c = maybe_color(true);
+    std::optional<Color> c = ::tpyapp::main::maybe_color(true);
     if ((c.has_value())) {
         std::cout << ::tpy::print_optional_val(c) << "\n";
     }
-    c = maybe_color(false);
+    c = ::tpyapp::main::maybe_color(false);
     if ((!c.has_value())) {
         std::cout << "no color" << "\n";
     }
@@ -84,7 +84,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

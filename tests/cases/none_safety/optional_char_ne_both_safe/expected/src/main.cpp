@@ -36,11 +36,11 @@ void __tpy_init() {
     sx = x;
     sy = y;
     n = std::nullopt;
-    std::cout << ::tpy::print_bool(ne_both(sx, sx)) << "\n";
-    std::cout << ::tpy::print_bool(ne_both(sx, sy)) << "\n";
-    std::cout << ::tpy::print_bool(ne_both(n, sx)) << "\n";
-    std::cout << ::tpy::print_bool(ne_both(sx, n)) << "\n";
-    std::cout << ::tpy::print_bool(ne_both(n, n)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_both(sx, sx)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_both(sx, sy)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_both(n, sx)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_both(sx, n)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_both(n, n)) << "\n";
 }
 
 } // namespace tpyapp::main

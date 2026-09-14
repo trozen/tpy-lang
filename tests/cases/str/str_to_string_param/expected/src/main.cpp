@@ -15,14 +15,14 @@ namespace tpyapp::main {
 //     # (C++: const std::string&). Requires materialization.
 //     return take_string(s)
 ::tpy::String forward(std::string_view s) {
-    return take_string(::tpy::String(s));
+    return ::tpyapp::main::take_string(::tpy::String(s));
 }
 
 // def main() -> None:
 //     out = forward("hello from str")
 //     print(out)
 void main() {
-    ::tpy::String out = forward("hello from str");
+    ::tpy::String out = ::tpyapp::main::forward("hello from str");
     std::cout << out << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

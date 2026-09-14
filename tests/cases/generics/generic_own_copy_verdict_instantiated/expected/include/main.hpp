@@ -678,7 +678,7 @@ int32_t inner_fwd(::tpy::param_val_or_ref_t<T> v) {
 //     return inner_fwd(v)  # tpyc: ok
 template<typename U>
 int32_t outer_fwd(::tpy::param_val_or_ref_t<U> v) {
-    return inner_fwd<U>(v);
+    return ::tpyapp::main::inner_fwd<U>(v);
 }
 // # SILENCER 1: `T: ValueType` -- a reference-type copy cannot happen there, so
 // # there is nothing to declare. (A `T | None` field under the same bound would

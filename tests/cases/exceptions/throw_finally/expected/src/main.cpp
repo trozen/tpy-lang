@@ -39,7 +39,7 @@ void main() {
     {
         try {
             try {
-                fail(false);
+                ::tpyapp::main::fail(false);
             } catch (const ::tpy::ValueError&) {
                 std::cout << "caught" << "\n";
             }
@@ -52,7 +52,7 @@ void main() {
     {
         try {
             try {
-                fail(true);
+                ::tpyapp::main::fail(true);
             } catch (const ::tpy::ValueError&) {
                 std::cout << "caught" << "\n";
             }
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

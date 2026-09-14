@@ -51,9 +51,9 @@ void bytesio_read_size() {
 //     print("proto-bytes:", via_binary_protocol(io.BytesIO(b"xyz")))  # b'xy'
 void protocol_params() {
     auto __tmp_1 = ::tpystd::io::StringIO("abcdefgh");
-    std::cout << "proto-text:" << " " << via_protocol(__tmp_1) << "\n";
+    std::cout << "proto-text:" << " " << ::tpyapp::main::via_protocol(__tmp_1) << "\n";
     auto __tmp_2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz", 3));
-    std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(via_binary_protocol(__tmp_2)) << "\n";
+    std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::via_binary_protocol(__tmp_2)) << "\n";
 }
 
 // def file_read_size() -> None:
@@ -150,13 +150,13 @@ void file_read_size() {
 //     print("---")
 //     file_read_size()
 void main() {
-    stringio_read_size();
+    ::tpyapp::main::stringio_read_size();
     std::cout << "---" << "\n";
-    bytesio_read_size();
+    ::tpyapp::main::bytesio_read_size();
     std::cout << "---" << "\n";
-    protocol_params();
+    ::tpyapp::main::protocol_params();
     std::cout << "---" << "\n";
-    file_read_size();
+    ::tpyapp::main::file_read_size();
 }
 
 // # io read(size): StringIO/BytesIO bounded reads + Readable/BinaryReadable
@@ -170,7 +170,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::io::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

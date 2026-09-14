@@ -29,7 +29,7 @@ namespace tpyapp::main {
 //     moved.append(c)              # mutate the relocated handle
 //     print(len(moved), moved[2])  # 3 c
 void main() {
-    ::tpystd::tplib::fix_str::FixStr<16> src = make();
+    ::tpystd::tplib::fix_str::FixStr<16> src = ::tpyapp::main::make();
     ::tpystd::tplib::fix_str::FixStr<16> moved = std::move(src);
     std::cout << ::tpy::__len__(moved) << "\n";
     std::cout << moved[0] << " " << moved[1] << "\n";
@@ -47,7 +47,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -18,8 +18,8 @@ namespace tpyapp::main {
 //   print_pair(start + 1, helper(start + 1));
 // end;
 void outer(int32_t start) {
-    outer__print_pair(start, outer__helper(start));
-    outer__print_pair((::tpy::add_check<int32_t>(start, 1)), outer__helper((::tpy::add_check<int32_t>(start, 1))));
+    ::tpyapp::main::outer__print_pair(start, ::tpyapp::main::outer__helper(start));
+    ::tpyapp::main::outer__print_pair((::tpy::add_check<int32_t>(start, 1)), ::tpyapp::main::outer__helper((::tpy::add_check<int32_t>(start, 1))));
 }
 
 // function helper(n: integer): integer;
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    outer(5);
+    ::tpyapp::main::outer(5);
 }
 
 } // namespace tpyapp::main

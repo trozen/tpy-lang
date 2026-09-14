@@ -13,7 +13,7 @@ int32_t takes_pet_ptr(Pet* p) {
 // def forward(np: NamedPet) -> int32:
 //     return takes_pet_ptr(np)
 int32_t forward(NamedPet& np) {
-    return takes_pet_ptr(&np);
+    return ::tpyapp::main::takes_pet_ptr(&np);
 }
 
 // def main() -> None:
@@ -21,7 +21,7 @@ int32_t forward(NamedPet& np) {
 //     print(forward(c))
 void main() {
     Cat c = Cat(7);
-    std::cout << forward(c) << "\n";
+    std::cout << ::tpyapp::main::forward(c) << "\n";
 }
 
 // main()
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

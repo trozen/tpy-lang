@@ -94,14 +94,14 @@ std::optional<Box> move_owned_optional_out_return(bool c) {
 //     print(move_owned_optional_into_ctor_arg())
 //     print(alias_then_rebind())
 void main() {
-    std::cout << move_owned_optional_into_field() << "\n";
-    std::optional<Box> r = move_owned_optional_out_return(true);
+    std::cout << ::tpyapp::main::move_owned_optional_into_field() << "\n";
+    std::optional<Box> r = ::tpyapp::main::move_owned_optional_out_return(true);
     if ((r.has_value())) {
         std::cout << (*r).v << "\n";
     }
-    std::cout << ::tpy::print_bool((!move_owned_optional_out_return(false).has_value())) << "\n";
-    std::cout << move_owned_optional_into_ctor_arg() << "\n";
-    std::cout << alias_then_rebind() << "\n";
+    std::cout << ::tpy::print_bool((!::tpyapp::main::move_owned_optional_out_return(false).has_value())) << "\n";
+    std::cout << ::tpyapp::main::move_owned_optional_into_ctor_arg() << "\n";
+    std::cout << ::tpyapp::main::alias_then_rebind() << "\n";
 }
 
 // main()
@@ -110,7 +110,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

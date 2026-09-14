@@ -73,7 +73,7 @@ __coro_coro coro() {
 //     if task_poll_cancelled(t):
 //         print("got-cancelled")
 void main() {
-    ::tpystd::asyncio::_executor::Task<int32_t> t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(coro()));
+    ::tpystd::asyncio::_executor::Task<int32_t> t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro()));
     if (::tpystd::coro::poll_once<int32_t>(t).is_pending()) {
         std::cout << "first-poll-pending" << "\n";
     }
@@ -95,7 +95,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

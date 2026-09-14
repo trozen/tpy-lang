@@ -31,9 +31,9 @@ std::string handle(std::string_view cmd) {
 //     print(handle("help"))
 //     print(handle("foo"))
 void main() {
-    std::cout << handle("quit") << "\n";
-    std::cout << handle("help") << "\n";
-    std::cout << handle("foo") << "\n";
+    std::cout << ::tpyapp::main::handle("quit") << "\n";
+    std::cout << ::tpyapp::main::handle("help") << "\n";
+    std::cout << ::tpyapp::main::handle("foo") << "\n";
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

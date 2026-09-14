@@ -87,21 +87,21 @@ void __tpy_init() {
     s1 = &__global_slot_1;
     static ::tpy::ordered_set<int32_t> __global_slot_2 = ::tpy::ordered_set<int32_t>({3, 4});
     s2 = &__global_slot_2;
-    test_or((*s1), (*s2));
-    test_and((*s1), (*s2));
-    test_ternary((*s1), (*s2), true);
-    test_literal_or();
-    test_literal_ternary(true);
+    ::tpyapp::main::test_or((*s1), (*s2));
+    ::tpyapp::main::test_and((*s1), (*s2));
+    ::tpyapp::main::test_ternary((*s1), (*s2), true);
+    ::tpyapp::main::test_literal_or();
+    ::tpyapp::main::test_literal_ternary(true);
     static ::tpy::ordered_set<int32_t> __global_slot_3 = ::tpy::ordered_set<int32_t>({1, 2});
     sa1 = &__global_slot_3;
     static ::tpy::ordered_set<int32_t> __global_slot_4 = ::tpy::ordered_set<int32_t>({3, 4});
     sb1 = &__global_slot_4;
-    test_ternary_alias((*sa1), (*sb1), true);
+    ::tpyapp::main::test_ternary_alias((*sa1), (*sb1), true);
     static ::tpy::ordered_set<int32_t> __global_slot_5 = ::tpy::ordered_set<int32_t>({1, 2});
     sa2 = &__global_slot_5;
     static ::tpy::ordered_set<int32_t> __global_slot_6 = ::tpy::ordered_set<int32_t>({3, 4});
     sb2 = &__global_slot_6;
-    test_ternary_alias((*sa2), (*sb2), false);
+    ::tpyapp::main::test_ternary_alias((*sa2), (*sb2), false);
 }
 
 } // namespace tpyapp::main

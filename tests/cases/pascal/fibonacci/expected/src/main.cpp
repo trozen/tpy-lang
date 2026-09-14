@@ -17,7 +17,7 @@ int32_t fib(int32_t n) {
     if ((n < 2)) {
         __pascal_result = n;
     } else {
-        __pascal_result = (::tpy::add_check<int32_t>(fib((::tpy::sub_check<int32_t>(n, 1))), fib((::tpy::sub_check<int32_t>(n, 2)))));
+        __pascal_result = (::tpy::add_check<int32_t>(::tpyapp::main::fib((::tpy::sub_check<int32_t>(n, 1))), ::tpyapp::main::fib((::tpy::sub_check<int32_t>(n, 2)))));
     }
     return __pascal_result;
 }
@@ -33,7 +33,7 @@ void __tpy_init() {
 
     int32_t __stop_0 = ::tpy::add_check<int32_t>(10, 1);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::cout << fib(i) << "\n";
+        std::cout << ::tpyapp::main::fib(i) << "\n";
     }
 }
 

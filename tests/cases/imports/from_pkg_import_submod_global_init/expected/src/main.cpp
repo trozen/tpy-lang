@@ -27,7 +27,7 @@ void __tpy_init() {
     ::tpyapp::geo::__tpy_init();
     ::tpyapp::geo::hexcodec::__tpy_init();
     ::tpyapp::geo::units::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

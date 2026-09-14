@@ -18,7 +18,7 @@ void make_rc() {
 //     print("after make_rc")
 void main() {
     std::cout << "before make_rc" << "\n";
-    make_rc();
+    ::tpyapp::main::make_rc();
     std::cout << "after make_rc" << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

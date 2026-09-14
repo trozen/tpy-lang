@@ -14,13 +14,13 @@ namespace tpyapp::main {
 //     # The container rvalue is the argument, with no local in between.
 //     print(len(empty_set()))
 void f() {
-    std::cout << ::tpy::__len__(empty_set()) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::empty_set()) << "\n";
 }
 
 // def main() -> None:
 //     f()
 void main() {
-    f();
+    ::tpyapp::main::f();
 }
 
 // main()
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -35,13 +35,13 @@ int32_t excluded(::tpy::Union<const A*, const B*, const C*> v) {
 //     print(excluded(A(1)))
 void main() {
     A __tmp_1 = A(1);
-    std::cout << classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
     C __tmp_2 = C(3);
-    std::cout << classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
     C __tmp_3 = C(9);
-    std::cout << excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
     A __tmp_4 = A(1);
-    std::cout << excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n";
+    std::cout << ::tpyapp::main::excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n";
 }
 
 // main()
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

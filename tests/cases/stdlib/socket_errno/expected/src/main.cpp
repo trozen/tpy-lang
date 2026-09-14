@@ -65,9 +65,9 @@ void unset_defaults() {
 //     resolve_failure()
 //     unset_defaults()
 void main() {
-    refused();
-    resolve_failure();
-    unset_defaults();
+    ::tpyapp::main::refused();
+    ::tpyapp::main::resolve_failure();
+    ::tpyapp::main::unset_defaults();
 }
 
 // # Structured OSError attributes (CPython parity): a refused connect carries
@@ -86,7 +86,7 @@ void __tpy_init() {
 
     ::tpystd::errno_mod::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

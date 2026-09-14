@@ -57,9 +57,9 @@ void test_uint32_cmp() {
 //     test_int64_cmp()
 //     test_uint32_cmp()
 void main() {
-    test_int32_cmp();
-    test_int64_cmp();
-    test_uint32_cmp();
+    ::tpyapp::main::test_int32_cmp();
+    ::tpyapp::main::test_int64_cmp();
+    ::tpyapp::main::test_uint32_cmp();
 }
 
 // main()
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

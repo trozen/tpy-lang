@@ -47,9 +47,9 @@ void nested_array() {
 //     annotated_array()
 //     nested_array()
 void main() {
-    literal_array();
-    annotated_array();
-    nested_array();
+    ::tpyapp::main::literal_array();
+    ::tpyapp::main::annotated_array();
+    ::tpyapp::main::nested_array();
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

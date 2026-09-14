@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << use(41) << "\n";
+    std::cout << ::tpyapp::main::use(41) << "\n";
 }
 
 } // namespace tpyapp::main

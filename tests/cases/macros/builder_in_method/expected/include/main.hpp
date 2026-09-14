@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1&
 //     res = c.build()
 //     return res.total()
 inline int32_t Holder::make() const {
-    __tpy_builder_counter_1 res = __tpy_builder_build_counter_1();
+    __tpy_builder_counter_1 res = ::tpyapp::main::__tpy_builder_build_counter_1();
     return res.total();
 }
 

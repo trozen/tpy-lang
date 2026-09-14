@@ -25,7 +25,7 @@ void __tpy_init() {
     ::tpyapp::config::__tpy_init();
     std::cout << ::tpyapp::config::lo << "\n";
     std::cout << ::tpyapp::config::hi << "\n";
-    show();
+    ::tpyapp::main::show();
 }
 
 } // namespace tpyapp::main

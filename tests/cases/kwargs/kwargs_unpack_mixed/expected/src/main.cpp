@@ -21,9 +21,9 @@ void connect(std::string_view host, const Options& kwargs) {
 //     connect(host="example.com", port=int32(443), debug=True)
 void main() {
     Options __tmp_1 = Options(9090, false);
-    connect("localhost", __tmp_1);
+    ::tpyapp::main::connect("localhost", __tmp_1);
     Options __tmp_2 = Options(443, true);
-    connect("example.com", __tmp_2);
+    ::tpyapp::main::connect("example.com", __tmp_2);
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -148,14 +148,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_for_range_len_array();
-    test_for_range_len_list();
-    test_no_elision_unknown_index();
-    test_no_elision_different_container();
-    test_assert_non_negative_only();
-    test_for_range_literal();
-    test_write_subscript_elision();
-    test_no_elision_after_method_call();
+    ::tpyapp::main::test_for_range_len_array();
+    ::tpyapp::main::test_for_range_len_list();
+    ::tpyapp::main::test_no_elision_unknown_index();
+    ::tpyapp::main::test_no_elision_different_container();
+    ::tpyapp::main::test_assert_non_negative_only();
+    ::tpyapp::main::test_for_range_literal();
+    ::tpyapp::main::test_write_subscript_elision();
+    ::tpyapp::main::test_no_elision_after_method_call();
 }
 
 } // namespace tpyapp::main

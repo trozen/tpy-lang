@@ -17,7 +17,7 @@ int32_t consume(Point&& p) {
 int32_t test() {
     Point& q = (*g);
     Point __tmp_1 = q;
-    return consume(std::move(__tmp_1));
+    return ::tpyapp::main::consume(std::move(__tmp_1));
 }
 
 // g = Point()

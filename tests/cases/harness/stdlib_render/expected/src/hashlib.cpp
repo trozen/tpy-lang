@@ -133,7 +133,7 @@ void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
     std::vector<uint32_t> w = std::vector<uint32_t>{};
     int32_t i = 0;
     while ((i < 16)) {
-        w.push_back(_load_be32(data, (::tpy::add_check<int32_t>(off, (::tpy::mul_check<int32_t>(4, i))))));
+        w.push_back(::tpystd::hashlib::_load_be32(data, (::tpy::add_check<int32_t>(off, (::tpy::mul_check<int32_t>(4, i))))));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     while ((i < 64)) {
@@ -219,7 +219,7 @@ void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
     ::tpy::ByteArray out = ::tpy::ByteArray();
     i = 0;
     while ((i < 8)) {
-        _pack_be32(out, ::tpy::__getitem__(clone.h, i));
+        ::tpystd::hashlib::_pack_be32(out, ::tpy::__getitem__(clone.h, i));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     return ::tpy::Bytes(out);

@@ -36,17 +36,17 @@ bool approx(double x, double target) {
 //     else:
 //         print("log(e) error")
 void main() {
-    if (approx(::tpystd::math::log(8.0, 2.0), 3.0)) {
+    if (::tpyapp::main::approx(::tpystd::math::log(8.0, 2.0), 3.0)) {
         std::cout << "log(8, 2) ok" << "\n";
     } else {
         std::cout << "log(8, 2) error" << "\n";
     }
-    if (approx(::tpystd::math::log(100.0, 10.0), 2.0)) {
+    if (::tpyapp::main::approx(::tpystd::math::log(100.0, 10.0), 2.0)) {
         std::cout << "log(100, 10) ok" << "\n";
     } else {
         std::cout << "log(100, 10) error" << "\n";
     }
-    if (approx(::tpy::stdlib::math::checked_log(2.718281828), 1.0)) {
+    if (::tpyapp::main::approx(::tpy::stdlib::math::checked_log(2.718281828), 1.0)) {
         std::cout << "log(e) ok" << "\n";
     } else {
         std::cout << "log(e) error" << "\n";
@@ -63,7 +63,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::math::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

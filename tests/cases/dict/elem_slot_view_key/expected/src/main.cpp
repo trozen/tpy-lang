@@ -106,21 +106,21 @@ void main() {
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1});
     ::tpy::__setitem__(d, "b", std::vector<int32_t>{2});
     ::tpy::__setitem__(d, "c", std::vector<int32_t>{3});
-    std::cout << read_param(d, "a") << " " << ::tpy::print_bool(get_param(d, "zz")) << " " << ::tpy::print_bool(has_param(d, "c")) << "\n";
-    push_literal(d);
+    std::cout << ::tpyapp::main::read_param(d, "a") << " " << ::tpy::print_bool(::tpyapp::main::get_param(d, "zz")) << " " << ::tpy::print_bool(::tpyapp::main::has_param(d, "c")) << "\n";
+    ::tpyapp::main::push_literal(d);
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "a")) << "\n";
-    drop_param(d, "c");
-    std::cout << pop_literal(d) << " " << ::tpy::__len__(d) << " " << ::tpy::DictPrinter(d) << "\n";
+    ::tpyapp::main::drop_param(d, "c");
+    std::cout << ::tpyapp::main::pop_literal(d) << " " << ::tpy::__len__(d) << " " << ::tpy::DictPrinter(d) << "\n";
     ::tpy::ordered_map<std::string, int32_t> e = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::__setitem__(e, "", 1);
     ::tpy::__setitem__(e, "a", 2);
-    std::cout << empty_key(e, "") << " " << empty_key(e, "zz") << "\n";
+    std::cout << ::tpyapp::main::empty_key(e, "") << " " << ::tpyapp::main::empty_key(e, "zz") << "\n";
     ::tpy::ordered_map<::tpy::Bytes, int32_t> b = ::tpy::ordered_map<::tpy::Bytes, int32_t>();
     ::tpy::__setitem__(b, ::tpy::bytes_literal_owned("aa", 2), 1);
     ::tpy::__setitem__(b, ::tpy::bytes_literal_owned("bb", 2), 2);
-    std::cout << read_bytes_param(b, ::tpy::bytes_literal("aa", 2)) << " " << ::tpy::print_bool(get_bytes_param(b, ::tpy::bytes_literal("zz", 2))) << "\n";
-    drop_bytes_param(b, ::tpy::bytes_literal("aa", 2));
-    std::cout << pop_bytes_param(b, ::tpy::bytes_literal("bb", 2)) << " " << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpyapp::main::read_bytes_param(b, ::tpy::bytes_literal("aa", 2)) << " " << ::tpy::print_bool(::tpyapp::main::get_bytes_param(b, ::tpy::bytes_literal("zz", 2))) << "\n";
+    ::tpyapp::main::drop_bytes_param(b, ::tpy::bytes_literal("aa", 2));
+    std::cout << ::tpyapp::main::pop_bytes_param(b, ::tpy::bytes_literal("bb", 2)) << " " << ::tpy::__len__(b) << "\n";
 }
 
 // main()
@@ -129,7 +129,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

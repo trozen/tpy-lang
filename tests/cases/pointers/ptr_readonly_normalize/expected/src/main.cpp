@@ -17,7 +17,7 @@ int32_t read_via_ptr(const Data* p) {
 void main() {
     Data d = Data(42);
     const Data* p = &d;
-    std::cout << read_via_ptr(p) << "\n";
+    std::cout << ::tpyapp::main::read_via_ptr(p) << "\n";
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

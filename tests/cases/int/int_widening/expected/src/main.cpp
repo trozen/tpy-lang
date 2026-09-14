@@ -77,28 +77,28 @@ void print_u64(uint64_t x) {
 //     print_i64(f)   # uint32(3000000000) -> int64
 void main() {
     int8_t a = 42;
-    print_i16(static_cast<int16_t>(a));
-    print_i32(static_cast<int32_t>(a));
-    print_i64(static_cast<int64_t>(a));
+    ::tpyapp::main::print_i16(static_cast<int16_t>(a));
+    ::tpyapp::main::print_i32(static_cast<int32_t>(a));
+    ::tpyapp::main::print_i64(static_cast<int64_t>(a));
     int16_t b = 1000;
-    print_i32(static_cast<int32_t>(b));
-    print_i64(static_cast<int64_t>(b));
+    ::tpyapp::main::print_i32(static_cast<int32_t>(b));
+    ::tpyapp::main::print_i64(static_cast<int64_t>(b));
     int32_t c = 100000;
-    print_i64(static_cast<int64_t>(c));
+    ::tpyapp::main::print_i64(static_cast<int64_t>(c));
     uint8_t d = 200;
-    print_u16(static_cast<uint16_t>(d));
-    print_u32(static_cast<uint32_t>(d));
-    print_u64(static_cast<uint64_t>(d));
+    ::tpyapp::main::print_u16(static_cast<uint16_t>(d));
+    ::tpyapp::main::print_u32(static_cast<uint32_t>(d));
+    ::tpyapp::main::print_u64(static_cast<uint64_t>(d));
     uint16_t e = 50000;
-    print_u32(static_cast<uint32_t>(e));
-    print_u64(static_cast<uint64_t>(e));
+    ::tpyapp::main::print_u32(static_cast<uint32_t>(e));
+    ::tpyapp::main::print_u64(static_cast<uint64_t>(e));
     uint32_t f = static_cast<uint32_t>(3000000000);
-    print_u64(static_cast<uint64_t>(f));
-    print_i16(static_cast<int16_t>(d));
-    print_i32(static_cast<int32_t>(d));
+    ::tpyapp::main::print_u64(static_cast<uint64_t>(f));
+    ::tpyapp::main::print_i16(static_cast<int16_t>(d));
+    ::tpyapp::main::print_i32(static_cast<int32_t>(d));
     uint16_t g = 60000;
-    print_i32(static_cast<int32_t>(g));
-    print_i64(static_cast<int64_t>(f));
+    ::tpyapp::main::print_i32(static_cast<int32_t>(g));
+    ::tpyapp::main::print_i64(static_cast<int64_t>(f));
 }
 
 // main()
@@ -107,7 +107,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

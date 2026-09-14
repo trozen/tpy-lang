@@ -162,15 +162,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_if_not_zero_floordiv();
-    test_if_not_zero_mod();
-    test_no_elision_unchecked();
-    test_assert_not_zero();
-    test_assert_positive();
-    test_no_elision_after_reassign();
-    test_else_of_eq_zero();
-    test_literal_divisor();
-    test_literal_named_divisor();
+    ::tpyapp::main::test_if_not_zero_floordiv();
+    ::tpyapp::main::test_if_not_zero_mod();
+    ::tpyapp::main::test_no_elision_unchecked();
+    ::tpyapp::main::test_assert_not_zero();
+    ::tpyapp::main::test_assert_positive();
+    ::tpyapp::main::test_no_elision_after_reassign();
+    ::tpyapp::main::test_else_of_eq_zero();
+    ::tpyapp::main::test_literal_divisor();
+    ::tpyapp::main::test_literal_named_divisor();
 }
 
 } // namespace tpyapp::main

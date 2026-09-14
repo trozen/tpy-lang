@@ -147,13 +147,13 @@ namespace tpyapp::main {
 //     data: list[int] = [10, 20, 30]
 //     print(sum_list(data), sum_list(None))
 void main() {
-    std::cout << sum_bytes((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << sum_bytes(std::nullopt) << "\n";
-    std::cout << sum_chars("hello") << " " << sum_chars(std::nullopt) << "\n";
-    std::cout << comp_bytes((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << comp_bytes(std::nullopt) << "\n";
-    std::cout << distinct_chars("hello") << " " << distinct_chars(std::nullopt) << "\n";
-    std::cout << byte_map((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << byte_map(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::sum_bytes((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << ::tpyapp::main::sum_bytes(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::sum_chars("hello") << " " << ::tpyapp::main::sum_chars(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::comp_bytes((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << ::tpyapp::main::comp_bytes(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::distinct_chars("hello") << " " << ::tpyapp::main::distinct_chars(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::byte_map((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << ::tpyapp::main::byte_map(std::nullopt) << "\n";
     std::vector<::tpy::BigInt> data = {10, 20, 30};
-    std::cout << sum_list(&(data)) << " " << sum_list(nullptr) << "\n";
+    std::cout << ::tpyapp::main::sum_list(&(data)) << " " << ::tpyapp::main::sum_list(nullptr) << "\n";
 }
 
 // main()
@@ -162,7 +162,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

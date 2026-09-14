@@ -67,7 +67,7 @@ std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
     }
     case S_RESUME_0: {  // after: yield copy(p)  # tpyc: ok
         __state = S_RESUME_1;
-        return mk((((p->val) * (::tpy::BigInt(10)))).to_fixed_check<int32_t>());
+        return ::tpyapp::main::mk((((p->val) * (::tpy::BigInt(10)))).to_fixed_check<int32_t>());
     }
     case S_RESUME_1: {  // after: yield mk(p.val * 10)  # tpyc: ok
         __state = S_JOIN_0;
@@ -109,7 +109,7 @@ std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__ne
     }
     case S_RESUME_0: {  // after: yield copy(r)  # tpyc: ok
         __state = S_RESUME_1;
-        return mk_row(::tpy::__len__((*r)));
+        return ::tpyapp::main::mk_row(::tpy::__len__((*r)));
     }
     case S_RESUME_1: {  // after: yield mk_row(len(r))  # tpyc: ok
         __state = S_JOIN_0;
@@ -166,7 +166,7 @@ __gen_fresh_rows fresh_rows(std::vector<std::vector<int32_t>>& src) {
 void main() {
     ::tpy::BigInt total = ::tpy::BigInt(0);
     {
-        auto __src_0 = boxes(::tpy::BigInt(4));
+        auto __src_0 = ::tpyapp::main::boxes(::tpy::BigInt(4));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -179,7 +179,7 @@ void main() {
     std::vector<Node> src = {Node(::tpy::BigInt(3))};
     std::vector<::tpy::BigInt> kept = std::vector<::tpy::BigInt>{};
     {
-        auto __src_2 = fresh_records(src);
+        auto __src_2 = ::tpyapp::main::fresh_records(src);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -193,7 +193,7 @@ void main() {
     std::vector<std::vector<int32_t>> rows = {{1, 2}};
     std::vector<int32_t> kept_rows = std::vector<int32_t>{};
     {
-        auto __src_4 = fresh_rows(rows);
+        auto __src_4 = ::tpyapp::main::fresh_rows(rows);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -235,7 +235,7 @@ std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
     }
     case S_RESUME_0: {  // after: yield copy(p)  # tpyc: ok
         __state = S_RESUME_1;
-        return mk((((p->val) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>());
+        return ::tpyapp::main::mk((((p->val) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>());
     }
     case S_RESUME_1: {  // after: yield mk(p.val + 1)  # tpyc: ok
         __state = S_JOIN_0;
@@ -262,7 +262,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -12,7 +12,7 @@ int64_t _check(int64_t n) {
 }
 
 int64_t run(int64_t n) {
-    return _check(n);
+    return ::tpyapp::excinherit::_check(n);
 }
 
 void __tpy_init() {

@@ -21,7 +21,7 @@ std::tuple<Box, int32_t> f(const Box& b) {
 //     print(n)              # 0
 void main() {
     Box b = Box(5);
-    auto __tup_1 = f(b);
+    auto __tup_1 = ::tpyapp::main::f(b);
     Box got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     got.val = 99;
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

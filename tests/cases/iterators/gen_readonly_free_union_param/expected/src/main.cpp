@@ -62,7 +62,7 @@ void main() {
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     {
-        auto __src_0 = codes(pet.as_const());
+        auto __src_0 = ::tpyapp::main::codes(pet.as_const());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

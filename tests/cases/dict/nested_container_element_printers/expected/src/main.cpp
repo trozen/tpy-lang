@@ -17,7 +17,7 @@ void show(const ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>& a,
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>({{"s", ::tpy::ordered_set<int32_t>({1})}});
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __tmp_2 = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"d", ::tpy::ordered_map<std::string, int32_t>({{"k", 2}})}});
-    show(__tmp_1, __tmp_2);
+    ::tpyapp::main::show(__tmp_1, __tmp_2);
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

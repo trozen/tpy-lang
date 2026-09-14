@@ -18,7 +18,7 @@ void bump(const std::tuple<int32_t, Leaf*>& t) {
 //     print(leaf.n)
 void main() {
     Leaf leaf = Leaf(1);
-    bump(std::tuple<int32_t, Leaf*>{10, &(leaf)});
+    ::tpyapp::main::bump(std::tuple<int32_t, Leaf*>{10, &(leaf)});
     std::cout << leaf.n << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

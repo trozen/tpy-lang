@@ -15,7 +15,7 @@ Config build(std::string_view label, const std::vector<int32_t>& values) {
 //     return build("cfg", xs)
 Config make() {
     std::vector<int32_t> xs = {10, 20, 30};
-    return build("cfg", xs);
+    return ::tpyapp::main::build("cfg", xs);
 }
 
 // def sized() -> int32:
@@ -24,7 +24,7 @@ Config make() {
 //     return c.size
 int32_t sized() {
     std::vector<int32_t> ys = {1, 2};
-    Config c = build("dec", ys);
+    Config c = ::tpyapp::main::build("dec", ys);
     return c.size;
 }
 
@@ -34,10 +34,10 @@ int32_t sized() {
 //     print(c.size)
 //     print(sized())
 void main() {
-    Config c = make();
+    Config c = ::tpyapp::main::make();
     std::cout << c.label << "\n";
     std::cout << c.size << "\n";
-    std::cout << sized() << "\n";
+    std::cout << ::tpyapp::main::sized() << "\n";
 }
 
 // main()
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

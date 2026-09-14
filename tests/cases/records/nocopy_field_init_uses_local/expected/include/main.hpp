@@ -69,7 +69,7 @@ inline Wrap::Wrap(int32_t v) : v(v) {}
 //     tmp = pick(seed)
 //     self._x = Wrap(tmp)
 inline Foo::Foo(int32_t seed) {
-    int32_t tmp = pick(seed);
+    int32_t tmp = ::tpyapp::main::pick(seed);
     this->_x = Wrap(tmp);
 }
 void __tpy_init();

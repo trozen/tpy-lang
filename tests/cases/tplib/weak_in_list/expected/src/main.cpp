@@ -51,7 +51,7 @@ void main() {
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(20));
     ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_<Node>(Node(30));
     std::vector<::tpystd::tplib::rc::Weak<Node>> observers = ::tpy::make_vector<::tpystd::tplib::rc::Weak<Node>>(a.downgrade(), b.downgrade(), c.downgrade());
-    auto __obj_0 = observed_values(observers);
+    auto __obj_0 = ::tpyapp::main::observed_values(observers);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -74,7 +74,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

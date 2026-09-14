@@ -15,13 +15,13 @@ namespace tpyapp::main {
 //     print(use_dict(table, "a").v)
 void main() {
     std::vector<::tpy::BigInt> nums = {7, 8};
-    std::cout << use_bare<::tpy::BigInt>(nums).x << "\n";
-    std::cout << use_owned<::tpy::BigInt>(nums).v << "\n";
+    std::cout << ::tpyapp::main::use_bare<::tpy::BigInt>(nums).x << "\n";
+    std::cout << ::tpyapp::main::use_owned<::tpy::BigInt>(nums).v << "\n";
     std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>> rows = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}};
-    Pair<::tpy::BigInt, ::tpy::BigInt> pair = use_pair<::tpy::BigInt>(rows);
+    Pair<::tpy::BigInt, ::tpy::BigInt> pair = ::tpyapp::main::use_pair<::tpy::BigInt>(rows);
     std::cout << std::get<0>(pair.p) << " " << std::get<1>(pair.p) << "\n";
     ::tpy::ordered_map<std::string, ::tpy::BigInt> table = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(9)}});
-    std::cout << use_dict<std::string, ::tpy::BigInt>(table, "a").v << "\n";
+    std::cout << ::tpyapp::main::use_dict<std::string, ::tpy::BigInt>(table, "a").v << "\n";
 }
 
 // main()
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

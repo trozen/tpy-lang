@@ -14,7 +14,7 @@ std::string_view pick(std::string_view s) {
 //     sv: StrView = pick(text)
 //     return sv
 std::string_view indirect_annot(std::string_view text) {
-    std::string_view sv = pick(text);
+    std::string_view sv = ::tpyapp::main::pick(text);
     return sv;
 }
 
@@ -22,7 +22,7 @@ std::string_view indirect_annot(std::string_view text) {
 //     sv = pick(text)
 //     return sv
 std::string_view indirect_inferred(std::string_view text) {
-    std::string_view sv = pick(text);
+    std::string_view sv = ::tpyapp::main::pick(text);
     return sv;
 }
 
@@ -31,8 +31,8 @@ std::string_view indirect_inferred(std::string_view text) {
 //     sv = pick(b)
 //     return sv
 std::string_view reassigned(std::string_view a, std::string_view b) {
-    std::string_view sv = pick(a);
-    sv = pick(b);
+    std::string_view sv = ::tpyapp::main::pick(a);
+    sv = ::tpyapp::main::pick(b);
     return sv;
 }
 
@@ -50,9 +50,9 @@ std::string_view from_ctor(std::string_view s) {
 //         sv = pick(b)
 //     return sv
 std::string_view conditional_rebind(std::string_view a, std::string_view b, bool flag) {
-    std::string_view sv = pick(a);
+    std::string_view sv = ::tpyapp::main::pick(a);
     if (flag) {
-        sv = pick(b);
+        sv = ::tpyapp::main::pick(b);
     }
     return sv;
 }
@@ -93,17 +93,17 @@ std::string_view loop_iter(const std::vector<std::string>& items, std::string_vi
 //     print(loop_iter(["a", "b", "c"], "d"))
 //     print(loop_iter([], "empty"))
 void main() {
-    std::cout << indirect_annot("hello") << "\n";
-    std::cout << indirect_inferred("world") << "\n";
-    std::cout << reassigned("foo", "bar") << "\n";
-    std::cout << from_ctor("baz") << "\n";
-    std::cout << conditional_rebind("aa", "bb", true) << "\n";
-    std::cout << conditional_rebind("cc", "dd", false) << "\n";
-    std::cout << ternary_params("yes", "no", true) << "\n";
+    std::cout << ::tpyapp::main::indirect_annot("hello") << "\n";
+    std::cout << ::tpyapp::main::indirect_inferred("world") << "\n";
+    std::cout << ::tpyapp::main::reassigned("foo", "bar") << "\n";
+    std::cout << ::tpyapp::main::from_ctor("baz") << "\n";
+    std::cout << ::tpyapp::main::conditional_rebind("aa", "bb", true) << "\n";
+    std::cout << ::tpyapp::main::conditional_rebind("cc", "dd", false) << "\n";
+    std::cout << ::tpyapp::main::ternary_params("yes", "no", true) << "\n";
     std::vector<std::string> __tmp_1 = {"a", "b", "c"};
-    std::cout << loop_iter(__tmp_1, "d") << "\n";
+    std::cout << ::tpyapp::main::loop_iter(__tmp_1, "d") << "\n";
     std::vector<std::string> __tmp_2 = std::vector<std::string>{};
-    std::cout << loop_iter(__tmp_2, "empty") << "\n";
+    std::cout << ::tpyapp::main::loop_iter(__tmp_2, "empty") << "\n";
 }
 
 // main()
@@ -112,7 +112,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

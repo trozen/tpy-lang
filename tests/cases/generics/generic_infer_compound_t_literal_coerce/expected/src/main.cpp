@@ -49,25 +49,25 @@ void main() {
     std::vector<std::tuple<int32_t, std::string>> pq = std::vector<std::tuple<int32_t, std::string>>{};
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{3, "third"});
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{1, "first"});
-    push_t<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{2, "second"});
+    ::tpyapp::main::push_t<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{2, "second"});
     std::cout << ::tpy::__len__(pq) << "\n";
     std::vector<std::tuple<double, std::string>> weighted = std::vector<std::tuple<double, std::string>>{};
-    push_t<std::tuple<double, std::string>>(weighted, std::tuple<double, std::string>{1.5, "a"});
-    push_t<std::tuple<double, std::string>>(weighted, std::tuple<double, std::string>{2.5, "b"});
+    ::tpyapp::main::push_t<std::tuple<double, std::string>>(weighted, std::tuple<double, std::string>{1.5, "a"});
+    ::tpyapp::main::push_t<std::tuple<double, std::string>>(weighted, std::tuple<double, std::string>{2.5, "b"});
     std::cout << ::tpy::__len__(weighted) << "\n";
     std::vector<std::tuple<std::tuple<int32_t, int32_t>, std::string>> nested = std::vector<std::tuple<std::tuple<int32_t, int32_t>, std::string>>{};
-    push_t<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(nested, std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 2}, "x"});
+    ::tpyapp::main::push_t<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(nested, std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 2}, "x"});
     std::cout << ::tpy::__len__(nested) << "\n";
     ::tpy::ordered_map<int32_t, int32_t> counts = ::tpy::ordered_map<int32_t, int32_t>();
-    put_dict<int32_t, int32_t>(counts, 7, 42);
+    ::tpyapp::main::put_dict<int32_t, int32_t>(counts, 7, 42);
     std::cout << ::tpy::__getitem__(counts, 7) << "\n";
     ::tpy::ordered_set<int32_t> seen = ::tpy::ordered_set<int32_t>();
-    add_to_set<int32_t>(seen, 11);
-    add_to_set<int32_t>(seen, 22);
+    ::tpyapp::main::add_to_set<int32_t>(seen, 11);
+    ::tpyapp::main::add_to_set<int32_t>(seen, 22);
     std::cout << ::tpy::__len__(seen) << "\n";
     std::vector<std::tuple<int32_t, std::string>> __tmp_1 = {std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}};
-    take_any<std::vector<std::tuple<int32_t, std::string>>>(__tmp_1);
-    pair_any<std::tuple<int32_t, std::string>>(std::tuple<int32_t, std::string>{3, "x"}, std::tuple<int32_t, std::string>{4, "y"});
+    ::tpyapp::main::take_any<std::vector<std::tuple<int32_t, std::string>>>(__tmp_1);
+    ::tpyapp::main::pair_any<std::tuple<int32_t, std::string>>(std::tuple<int32_t, std::string>{3, "x"}, std::tuple<int32_t, std::string>{4, "y"});
 }
 
 // """
@@ -86,7 +86,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::heapq::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

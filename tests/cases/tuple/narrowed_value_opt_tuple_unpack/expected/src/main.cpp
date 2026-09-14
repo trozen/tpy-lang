@@ -296,7 +296,7 @@ void use_error_return(std::optional<std::tuple<double, int32_t>> r) {
     double a;
     {
         {
-            auto __try_tmp_2 = first_of(r);
+            auto __try_tmp_2 = ::tpyapp::main::first_of(r);
             if (!__try_tmp_2.has_value()) goto __except_1;
             a = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -347,46 +347,46 @@ void use_error_return(std::optional<std::tuple<double, int32_t>> r) {
 //     use_error_return((1.5, 3))
 //     use_error_return(None)
 void main() {
-    use(std::tuple<double, int32_t>{1.5, 3});
-    use(std::nullopt);
-    std::optional<std::tuple<double, int32_t>> r = find(3);
+    ::tpyapp::main::use(std::tuple<double, int32_t>{1.5, 3});
+    ::tpyapp::main::use(std::nullopt);
+    std::optional<std::tuple<double, int32_t>> r = ::tpyapp::main::find(3);
     K(std::nullopt).use(r);
     K(std::tuple<double, int32_t>{1.5, 3}).show();
     K(std::nullopt).show();
-    use_finally(std::tuple<double, int32_t>{1.5, 3});
-    use_finally(std::nullopt);
-    use_and(std::tuple<double, int32_t>{1.5, 3});
-    use_and(std::tuple<double, int32_t>{1.5, -3});
-    use_discard(std::tuple<double, int32_t>{1.5, 3});
-    use_reused(std::tuple<double, int32_t>{1.5, 3}, std::tuple<double, int32_t>{2.5, 4});
-    use_str(std::tuple<std::string, int32_t>{"x", 3});
-    std::optional<std::tuple<std::string, int32_t>> rs = find_str(3);
-    use_str(rs);
-    whole(r);
-    whole(std::nullopt);
-    std::cout << "return" << " " << ::tpy::print_bool((!find(0).has_value())) << "\n";
-    std::optional<std::tuple<double, int32_t>> r1 = find_name(5);
+    ::tpyapp::main::use_finally(std::tuple<double, int32_t>{1.5, 3});
+    ::tpyapp::main::use_finally(std::nullopt);
+    ::tpyapp::main::use_and(std::tuple<double, int32_t>{1.5, 3});
+    ::tpyapp::main::use_and(std::tuple<double, int32_t>{1.5, -3});
+    ::tpyapp::main::use_discard(std::tuple<double, int32_t>{1.5, 3});
+    ::tpyapp::main::use_reused(std::tuple<double, int32_t>{1.5, 3}, std::tuple<double, int32_t>{2.5, 4});
+    ::tpyapp::main::use_str(std::tuple<std::string, int32_t>{"x", 3});
+    std::optional<std::tuple<std::string, int32_t>> rs = ::tpyapp::main::find_str(3);
+    ::tpyapp::main::use_str(rs);
+    ::tpyapp::main::whole(r);
+    ::tpyapp::main::whole(std::nullopt);
+    std::cout << "return" << " " << ::tpy::print_bool((!::tpyapp::main::find(0).has_value())) << "\n";
+    std::optional<std::tuple<double, int32_t>> r1 = ::tpyapp::main::find_name(5);
     if ((r1.has_value())) {
         const auto& __tup_1 = (*r1);
         double a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
         std::cout << "return" << " " << ::tpy::print_float(a) << " " << b << "\n";
     }
-    std::optional<std::tuple<std::string, int32_t>> r2 = find_str_name(6);
+    std::optional<std::tuple<std::string, int32_t>> r2 = ::tpyapp::main::find_str_name(6);
     if ((r2.has_value())) {
         const auto& __tup_2 = (*r2);
         std::string_view a2 = std::get<0>(__tup_2);
         int32_t b2 = std::get<1>(__tup_2);
         std::cout << "return" << " " << a2 << " " << b2 << "\n";
     }
-    use_early(std::tuple<double, int32_t>{1.5, 3});
-    use_early(std::nullopt);
-    use_closure(std::tuple<double, int32_t>{1.5, 3});
-    use_with(std::tuple<double, int32_t>{1.5, 3});
-    use_match(std::tuple<double, int32_t>{1.5, 3}, 1);
-    use_match(std::tuple<double, int32_t>{1.5, 3}, 2);
-    use_error_return(std::tuple<double, int32_t>{1.5, 3});
-    use_error_return(std::nullopt);
+    ::tpyapp::main::use_early(std::tuple<double, int32_t>{1.5, 3});
+    ::tpyapp::main::use_early(std::nullopt);
+    ::tpyapp::main::use_closure(std::tuple<double, int32_t>{1.5, 3});
+    ::tpyapp::main::use_with(std::tuple<double, int32_t>{1.5, 3});
+    ::tpyapp::main::use_match(std::tuple<double, int32_t>{1.5, 3}, 1);
+    ::tpyapp::main::use_match(std::tuple<double, int32_t>{1.5, 3}, 2);
+    ::tpyapp::main::use_error_return(std::tuple<double, int32_t>{1.5, 3});
+    ::tpyapp::main::use_error_return(std::nullopt);
 }
 
 // main()
@@ -395,7 +395,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

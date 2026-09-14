@@ -34,20 +34,20 @@ void main() {
     std::optional<Dog> __slot_4;
     Dog __slot_1{Dog()};
     Describable* d = &__slot_1;
-    show_desc((*d));
+    ::tpyapp::main::show_desc((*d));
     __slot_2.emplace(Cat());
     d = &*__slot_2;
-    show_desc((*d));
+    ::tpyapp::main::show_desc((*d));
     Cat __slot_3{Cat()};
     Noise* n = &__slot_3;
-    show_noise((*n));
+    ::tpyapp::main::show_noise((*n));
     __slot_4.emplace(Dog());
     n = &*__slot_4;
-    show_noise((*n));
+    ::tpyapp::main::show_noise((*n));
     Dog __tmp_1{Dog()};
-    show_desc(__tmp_1);
+    ::tpyapp::main::show_desc(__tmp_1);
     Cat __tmp_2{Cat()};
-    show_noise(__tmp_2);
+    ::tpyapp::main::show_noise(__tmp_2);
 }
 
 // main()
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

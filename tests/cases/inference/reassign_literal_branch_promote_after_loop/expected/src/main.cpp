@@ -24,7 +24,7 @@ void test_after_while() {
     ::tpy::BigInt x = ::tpy::BigInt(0);
     while ((x < 1)) {
         if (true) {
-            x = get_big();
+            x = ::tpyapp::main::get_big();
         }
         x = (x) + (::tpy::BigInt(1));
     }
@@ -43,7 +43,7 @@ void test_after_for() {
     ::tpy::BigInt x = ::tpy::BigInt(0);
     for (int32_t i = 0; i < 3; ++i) {
         if (true) {
-            x = get_big();
+            x = ::tpyapp::main::get_big();
         }
     }
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
@@ -57,8 +57,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_after_while();
-    test_after_for();
+    ::tpyapp::main::test_after_while();
+    ::tpyapp::main::test_after_for();
 }
 
 } // namespace tpyapp::main

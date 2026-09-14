@@ -37,9 +37,9 @@ void cyclic() {
 //     print("--- done ---")
 void main() {
     std::cout << "--- acyclic ---" << "\n";
-    acyclic();
+    ::tpyapp::main::acyclic();
     std::cout << "--- cyclic (will leak) ---" << "\n";
-    cyclic();
+    ::tpyapp::main::cyclic();
     std::cout << "--- done ---" << "\n";
 }
 
@@ -52,7 +52,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

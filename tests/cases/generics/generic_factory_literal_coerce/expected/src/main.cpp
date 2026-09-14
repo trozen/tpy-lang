@@ -28,8 +28,8 @@ namespace tpyapp::main {
 //     print(c.identity(42))
 //     print(c.identity(2.5))
 void main() {
-    pair<double>(1.5, 2.5);
-    pair<double>(3.5, 4.5);
+    ::tpyapp::main::pair<double>(1.5, 2.5);
+    ::tpyapp::main::pair<double>(3.5, 4.5);
     ::tpystd::tplib::box::Box<int32_t> bi = ::tpystd::tplib::box::Box<int32_t>(42);
     ::tpystd::tplib::box::Box<double> bf = ::tpystd::tplib::box::Box<double>(2.71);
     std::cout << bi.get() << "\n";
@@ -62,7 +62,7 @@ void __tpy_init() {
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

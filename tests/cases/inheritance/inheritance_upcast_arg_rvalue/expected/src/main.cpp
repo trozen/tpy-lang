@@ -15,7 +15,7 @@ void greet(const Animal& a) {
 //     greet(Dog("Max", "Beagle"))
 void main() {
     Dog __tmp_1 = Dog("Max", "Beagle");
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

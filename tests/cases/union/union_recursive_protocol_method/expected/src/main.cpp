@@ -27,7 +27,7 @@ int32_t depth(const Expr& e) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& c = *__beg_0;
-            int32_t d = depth(c);
+            int32_t d = ::tpyapp::main::depth(c);
             if ((d > best)) {
                 best = d;
             }
@@ -49,7 +49,7 @@ int32_t depth(const Expr& e) {
 void main() {
     Expr e = std::vector<Expr>{1, std::vector<Expr>{2, 3}};
     auto __tmp_1 = Counter();
-    std::cout << run(__tmp_1, e) << "\n";
+    std::cout << ::tpyapp::main::run(__tmp_1, e) << "\n";
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -72,9 +72,9 @@ int32_t classify(std::string_view s) {
 //     print(classify("\u00e9"))
 //     print(classify("zz"))
 void main() {
-    std::cout << classify("aa") << "\n";
-    std::cout << classify("\xc3\xa9") << "\n";
-    std::cout << classify("zz") << "\n";
+    std::cout << ::tpyapp::main::classify("aa") << "\n";
+    std::cout << ::tpyapp::main::classify("\xc3\xa9") << "\n";
+    std::cout << ::tpyapp::main::classify("zz") << "\n";
 }
 
 // main()
@@ -83,7 +83,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

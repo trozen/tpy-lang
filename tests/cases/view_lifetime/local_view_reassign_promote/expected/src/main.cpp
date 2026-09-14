@@ -26,8 +26,8 @@ std::string make() {
 //     v = b
 //     print(len(v))
 void main() {
-    std::string a = make();
-    std::string b = make();
+    std::string a = ::tpyapp::main::make();
+    std::string b = ::tpyapp::main::make();
     std::string v = a;
     a += " appended text that forces a's buffer to reallocate somewhere new";
     std::cout << ::tpy::__len__(v) << "\n";
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

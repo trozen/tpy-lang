@@ -17,7 +17,7 @@ int32_t consume(Box&& b) {
 void main() {
     Box b = Box();
     b.value = 42;
-    std::cout << consume(Box(b)) << "\n";
+    std::cout << ::tpyapp::main::consume(Box(b)) << "\n";
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

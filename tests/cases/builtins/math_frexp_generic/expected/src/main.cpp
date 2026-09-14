@@ -48,7 +48,7 @@ void main() {
     std::cout << ::tpy::print_float(m3) << " " << e3 << "\n";
     std::tuple<double, ::tpy::BigInt> result = ::tpy::stdlib::math::frexp<::tpy::BigInt>(1.5);
     std::cout << ::tpy::print_float(std::get<0>(result)) << " " << std::get<1>(result) << "\n";
-    auto __tup_4 = wrap_bigint();
+    auto __tup_4 = ::tpyapp::main::wrap_bigint();
     double a = std::get<0>(__tup_4);
     const ::tpy::BigInt& b = std::get<1>(__tup_4);
     std::cout << ::tpy::print_float(a) << " " << b << "\n";
@@ -73,7 +73,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::math::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

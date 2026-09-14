@@ -76,7 +76,7 @@ void test_raise_different_types() {
 void test_raise_function_result() {
     {
         try {
-            make_error(7).__raise__();
+            ::tpyapp::main::make_error(7).__raise__();
         } catch (const AppError& caught) {
             std::cout << caught.code << "\n";
         }
@@ -89,10 +89,10 @@ void test_raise_function_result() {
 //     test_raise_different_types()
 //     test_raise_function_result()
 void main() {
-    test_raise_variable();
-    test_raise_reassigned();
-    test_raise_different_types();
-    test_raise_function_result();
+    ::tpyapp::main::test_raise_variable();
+    ::tpyapp::main::test_raise_reassigned();
+    ::tpyapp::main::test_raise_different_types();
+    ::tpyapp::main::test_raise_function_result();
 }
 
 // main()
@@ -101,7 +101,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

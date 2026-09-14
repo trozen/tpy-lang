@@ -50,9 +50,9 @@ void test_bigint_expr_to_int32() {
     std::cout << "BigInt expressions -> int32:" << "\n";
     ::tpy::BigInt a = ::tpy::BigInt(10);
     ::tpy::BigInt b = ::tpy::BigInt(20);
-    int32_t result = return_expr_as_int32(a, b);
+    int32_t result = ::tpyapp::main::return_expr_as_int32(a, b);
     std::cout << result << "\n";
-    std::cout << take_int32((((a) + (b))).to_fixed_check<int32_t>()) << "\n";
+    std::cout << ::tpyapp::main::take_int32((((a) + (b))).to_fixed_check<int32_t>()) << "\n";
     int32_t sum_val = (((((a) + (b))) + (::tpy::BigInt(5)))).to_fixed_check<int32_t>();
     std::cout << sum_val << "\n";
     sum_val = (((a) * (b))).to_fixed_check<int32_t>();
@@ -91,9 +91,9 @@ int32_t read_via_const_ptr(const Point* p) {
 void test_field_access_to_ptr() {
     std::cout << "Field access -> Ptr:" << "\n";
     Container cont = Container(5, 10);
-    modify_via_ptr(&cont.pt);
+    ::tpyapp::main::modify_via_ptr(&cont.pt);
     std::cout << cont.pt.x << "\n";
-    std::cout << read_via_const_ptr(&cont.pt) << "\n";
+    std::cout << ::tpyapp::main::read_via_const_ptr(&cont.pt) << "\n";
 }
 
 // def test_nested_field_to_ptr() -> None:
@@ -110,9 +110,9 @@ void test_field_access_to_ptr() {
 void test_nested_field_to_ptr() {
     std::cout << "Nested field -> Ptr:" << "\n";
     Outer outer = Outer(7, 8);
-    modify_via_ptr(&outer.inner.pt);
+    ::tpyapp::main::modify_via_ptr(&outer.inner.pt);
     std::cout << outer.inner.pt.x << "\n";
-    std::cout << read_via_const_ptr(&outer.inner.pt) << "\n";
+    std::cout << ::tpyapp::main::read_via_const_ptr(&outer.inner.pt) << "\n";
 }
 
 // def test_literal_expr_to_int32() -> None:
@@ -159,10 +159,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_bigint_expr_to_int32();
-    test_field_access_to_ptr();
-    test_nested_field_to_ptr();
-    test_literal_expr_to_int32();
+    ::tpyapp::main::test_bigint_expr_to_int32();
+    ::tpyapp::main::test_field_access_to_ptr();
+    ::tpyapp::main::test_nested_field_to_ptr();
+    ::tpyapp::main::test_literal_expr_to_int32();
 }
 
 } // namespace tpyapp::main

@@ -33,14 +33,14 @@ std::string make() {
 //     b2 = make_bytes().strip()   # tpyc: type(bytes)
 //     print(len(b2))
 void main() {
-    std::string s = std::string(::tpy::str_strip(make()));
+    std::string s = std::string(::tpy::str_strip(::tpyapp::main::make()));
     std::cout << s << "\n";
     std::cout << ::tpy::__len__(s) << "\n";
-    std::string s2 = std::string(::tpy::str_slice(make(), ::tpy::BasicSlice{3, 9}));
+    std::string s2 = std::string(::tpy::str_slice(::tpyapp::main::make(), ::tpy::BasicSlice{3, 9}));
     std::cout << s2 << "\n";
-    ::tpy::Bytes b = ::tpy::Bytes(::tpy::bytes_slice(make_bytes(), ::tpy::BasicSlice{3, 9}));
+    ::tpy::Bytes b = ::tpy::Bytes(::tpy::bytes_slice(::tpyapp::main::make_bytes(), ::tpy::BasicSlice{3, 9}));
     std::cout << ::tpy::__len__(b) << "\n";
-    ::tpy::Bytes b2 = ::tpy::Bytes(::tpy::bytes_strip_view(make_bytes()));
+    ::tpy::Bytes b2 = ::tpy::Bytes(::tpy::bytes_strip_view(::tpyapp::main::make_bytes()));
     std::cout << ::tpy::__len__(b2) << "\n";
 }
 
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

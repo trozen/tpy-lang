@@ -40,7 +40,7 @@ void __tpy_init() {
     carg_ptr = reinterpret_cast<void*>((*carg).data());
     parg_list->push_back(carg_ptr);
     parg_list->push_back(reinterpret_cast<void*>((*carg).data()));
-    std::cout << take_ptr(reinterpret_cast<void*>((*carg).data())) << "\n";
+    std::cout << ::tpyapp::main::take_ptr(reinterpret_cast<void*>((*carg).data())) << "\n";
     static Sink __global_slot_3 = Sink();
     sink = &__global_slot_3;
     std::cout << sink->put(reinterpret_cast<void*>((*carg).data())) << "\n";

@@ -33,11 +33,11 @@ void test_augassign_in_while() {
         if ((c == ">")) {
         } else if ((c == "[")) {
             if (true) {
-                ip = get_big();
+                ip = ::tpyapp::main::get_big();
             }
         } else if ((c == "]")) {
             if (true) {
-                ip = get_big();
+                ip = ::tpyapp::main::get_big();
             }
         }
         ip = (ip) + (::tpy::BigInt(1));
@@ -57,7 +57,7 @@ void test_binop_in_while() {
     ::tpy::BigInt x = ::tpy::BigInt(0);
     while ((x < 5)) {
         if (true) {
-            x = get_big();
+            x = ::tpyapp::main::get_big();
         }
         ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
         x = y;
@@ -72,8 +72,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_augassign_in_while();
-    test_binop_in_while();
+    ::tpyapp::main::test_augassign_in_while();
+    ::tpyapp::main::test_binop_in_while();
 }
 
 } // namespace tpyapp::main

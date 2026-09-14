@@ -292,7 +292,7 @@ void test_else_clause_ok() {
 // def main() -> None:
 //     test_else_clause_ok()
 void main() {
-    test_else_clause_ok();
+    ::tpyapp::main::test_else_clause_ok();
 }
 
 // main()
@@ -301,7 +301,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

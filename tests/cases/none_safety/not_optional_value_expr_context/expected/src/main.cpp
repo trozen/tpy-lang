@@ -20,9 +20,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_bool(invert(2)) << "\n";
-    std::cout << ::tpy::print_bool(invert(0)) << "\n";
-    std::cout << ::tpy::print_bool(invert(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::invert(2)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::invert(0)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::invert(std::nullopt)) << "\n";
 }
 
 } // namespace tpyapp::main

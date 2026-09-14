@@ -22,7 +22,7 @@ int32_t test() {
     p->x = 10;
     p = g;
     Point __tmp_1 = (*p);
-    return consume(std::move(__tmp_1));
+    return ::tpyapp::main::consume(std::move(__tmp_1));
 }
 
 // g = Point()

@@ -149,33 +149,33 @@ void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std
 //     print(key_len("abcd"))
 void main() {
     std::vector<std::string> xs = {"a", "b", "c", "b"};
-    remove_literal(xs);
+    ::tpyapp::main::remove_literal(xs);
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    remove_param(xs, "c");
+    ::tpyapp::main::remove_param(xs, "c");
     std::cout << ::tpy::ListPrinter(xs) << "\n";
     std::vector<std::string> ys = {"a", "b", "c"};
-    remove_view_local(ys, "?b");
+    ::tpyapp::main::remove_view_local(ys, "?b");
     std::cout << ::tpy::ListPrinter(ys) << "\n";
-    remove_slice(ys, "?c");
+    ::tpyapp::main::remove_slice(ys, "?c");
     std::cout << ::tpy::ListPrinter(ys) << "\n";
-    remove_stripped(ys, " a ");
+    ::tpyapp::main::remove_stripped(ys, " a ");
     std::cout << ::tpy::ListPrinter(ys) << "\n";
     std::vector<std::string> zs = {"ab", "c"};
-    remove_owned_local(zs);
+    ::tpyapp::main::remove_owned_local(zs);
     std::cout << ::tpy::ListPrinter(zs) << "\n";
-    remove_element_read(zs);
+    ::tpyapp::main::remove_element_read(zs);
     std::cout << ::tpy::ListPrinter(zs) << "\n";
     std::vector<std::string> ws = {"a", "b", "a"};
-    std::cout << find(ws, "b") << " " << tally(ws, "a") << "\n";
+    std::cout << ::tpyapp::main::find(ws, "b") << " " << ::tpyapp::main::tally(ws, "a") << "\n";
     std::vector<::tpy::Bytes> bs = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
-    drop_bytes_literal(bs);
+    ::tpyapp::main::drop_bytes_literal(bs);
     std::cout << ::tpy::__len__(bs) << "\n";
-    drop_bytes_param(bs, ::tpy::bytes_literal("a", 1));
+    ::tpyapp::main::drop_bytes_param(bs, ::tpy::bytes_literal("a", 1));
     std::cout << ::tpy::__len__(bs) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(bs, 0)) << "\n";
     std::vector<std::string> __tmp_1 = {"", "a"};
     std::vector<::tpy::Bytes> __tmp_2 = {::tpy::Bytes{}, ::tpy::bytes_literal_owned("a", 1)};
-    empty_keys(__tmp_1, __tmp_2, "", ::tpy::BytesView{});
-    std::cout << key_len("abcd") << "\n";
+    ::tpyapp::main::empty_keys(__tmp_1, __tmp_2, "", ::tpy::BytesView{});
+    std::cout << ::tpyapp::main::key_len("abcd") << "\n";
 }
 
 // main()
@@ -184,7 +184,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

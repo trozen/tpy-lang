@@ -25,7 +25,7 @@ void add_name(std::vector<std::string>& xs, std::string_view v) {
 void main() {
     std::cout << ::tpy::__getitem__((*::tpyapp::tables::NAMES), 0) << " " << ::tpy::__getitem__((*::tpyapp::tables::NAMES), 1) << "\n";
     std::cout << ::tpy::ListPrinter((*::tpyapp::tables::NAMES)) << "\n";
-    add_name((*::tpyapp::tables::NAMES), "gamma");
+    ::tpyapp::main::add_name((*::tpyapp::tables::NAMES), "gamma");
     std::cout << ::tpy::ListPrinter((*::tpyapp::tables::NAMES)) << "\n";
     std::cout << ::tpy::print_bool((::tpy::__len__((*::tpystd::sys::argv)) >= 1)) << " " << ::tpy::print_bool((::tpy::__len__(::tpy::__getitem__((*::tpystd::sys::argv), 0)) > 0)) << "\n";
 }
@@ -45,7 +45,7 @@ void __tpy_init() {
 
     ::tpystd::sys::__tpy_init();
     ::tpyapp::tables::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

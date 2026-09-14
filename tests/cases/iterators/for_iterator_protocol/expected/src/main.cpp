@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(sum_iter(Counter(0)))
 void main() {
     auto __tmp_1 = Counter(5);
-    std::cout << sum_iter(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_iter(__tmp_1) << "\n";
     auto __tmp_2 = Counter(0);
-    std::cout << sum_iter(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::sum_iter(__tmp_2) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

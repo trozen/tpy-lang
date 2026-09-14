@@ -75,15 +75,15 @@ void local_init() {
 //         print(bag.items[0], bag.by_key["x"])
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{1, 2, 3};
-    take_list(&(__tmp_1));
+    ::tpyapp::main::take_list(&(__tmp_1));
     ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ::tpy::ordered_map<std::string, int32_t>({{"a", 42}});
-    take_dict(&(__tmp_2));
+    ::tpyapp::main::take_dict(&(__tmp_2));
     ::tpy::ordered_set<int32_t> __tmp_3 = ::tpy::ordered_set<int32_t>({1});
-    take_set(&(__tmp_3));
-    take_list(nullptr);
-    take_dict(nullptr);
-    take_set(nullptr);
-    local_init();
+    ::tpyapp::main::take_set(&(__tmp_3));
+    ::tpyapp::main::take_list(nullptr);
+    ::tpyapp::main::take_dict(nullptr);
+    ::tpyapp::main::take_set(nullptr);
+    ::tpyapp::main::local_init();
     Bag bag = Bag();
     bag.fill();
     if (((bag.items.has_value()) && (bag.by_key.has_value()))) {
@@ -97,7 +97,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

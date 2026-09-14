@@ -104,14 +104,14 @@ void main() {
     e.set_handler([](std::string_view s) { std::cout << "got:" << " " << s << "\n"; });
     e.emit("hello");
     e.emit("world");
-    run(1, [](int32_t c) { std::cout << "lambda:" << " " << c << "\n"; });
-    run(2, report);
-    run(3);
-    std::cout << "apply-lambda:" << " " << apply(5, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 100)); }) << "\n";
-    std::cout << "apply-name:" << " " << apply(5, triple) << "\n";
-    std::cout << "apply-none:" << " " << apply(5) << "\n";
+    ::tpyapp::main::run(1, [](int32_t c) { std::cout << "lambda:" << " " << c << "\n"; });
+    ::tpyapp::main::run(2, report);
+    ::tpyapp::main::run(3);
+    std::cout << "apply-lambda:" << " " << ::tpyapp::main::apply(5, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 100)); }) << "\n";
+    std::cout << "apply-name:" << " " << ::tpyapp::main::apply(5, triple) << "\n";
+    std::cout << "apply-none:" << " " << ::tpyapp::main::apply(5) << "\n";
     {
-        auto __src_0 = scan(3, report);
+        auto __src_0 = ::tpyapp::main::scan(3, report);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -121,7 +121,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = scan(2);
+        auto __src_2 = ::tpyapp::main::scan(2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -138,7 +138,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

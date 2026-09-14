@@ -32,8 +32,8 @@ std::string describe(const Cat& animal) {
 void main() {
     Dog d = Dog("Rex");
     Cat c = Cat(::tpy::BigInt(9));
-    std::cout << describe(d) << "\n";
-    std::cout << describe(c) << "\n";
+    std::cout << ::tpyapp::main::describe(d) << "\n";
+    std::cout << ::tpyapp::main::describe(c) << "\n";
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

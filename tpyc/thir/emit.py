@@ -613,9 +613,15 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
     targs = (f"<{', '.join(e.template_args_cpp)}>"
              if e.template_args_cpp else "")
     if e.callee_cpp is not None:
-        # A cross-module callee: the pre-rendered absolute spelling
-        # (from `imported_free_callee_cpp`).
+        # The pre-rendered absolute spelling of a namespace-scope callee,
+        # same-module or cross-module alike (`free_callee_cpp`), plus the raw
+        # symbol of a C-linkage callee. Every call to a module-level function
+        # carries one: a qualified-id disables ADL, which would otherwise let
+        # a same-named `std::`/`::tpy::` template win the overload set.
         return f"{e.callee_cpp}{targs}({args})"
+    # The bare tail, reachable only for the `"local"` callee kind -- a C++
+    # LOCAL no namespace can name (a nested def's lambda, a `Callable`/`Fn`
+    # value). No arm routes a runtime symbol through `callee`.
     return f"{escape_cpp_name(e.callee)}{targs}({args})"
 
 

@@ -27,11 +27,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_two_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;
-        return apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
+        return ::tpyapp::main::apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
     }
     case S_RESUME_0: {  // after: yield apply(lambda x: x + n, 1)  # tpyc: ok
         __state = S_RESUME_1;
-        return apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 2);
+        return ::tpyapp::main::apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 2);
     }
     case S_RESUME_1: {  // after: yield apply(lambda x: x + n, 2)  # tpyc: ok
         __state = S_DONE;
@@ -97,7 +97,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
         step = 1;
         f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
         __state = S_RESUME_0;
-        return apply(f, 1);
+        return ::tpyapp::main::apply(f, 1);
     }
     case S_RESUME_0: {  // after: yield apply(f, 1)
         step = 100;
@@ -131,11 +131,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_ref_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;
-        return apply_fn([&xs = xs](int32_t v) -> int32_t { return push(xs, v); }, 9);
+        return ::tpyapp::main::apply_fn([&xs = xs](int32_t v) -> int32_t { return ::tpyapp::main::push(xs, v); }, 9);
     }
     case S_RESUME_0: {  // after: yield apply_fn(lambda v: push(xs, v), 9)  # tpyc: ok
         __state = S_RESUME_1;
-        return apply_fn([&xs = xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); }, 2);
+        return ::tpyapp::main::apply_fn([&xs = xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); }, 2);
     }
     case S_RESUME_1: {  // after: yield apply_fn(lambda i: xs[i], 2)  # tpyc: ok
         __state = S_DONE;
@@ -163,11 +163,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;
-        return apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);
+        return ::tpyapp::main::apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);
     }
     case S_RESUME_0: {  // after: yield apply(lambda i: i + p.x, 1)  # tpyc: ok
         __state = S_RESUME_1;
-        return apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 2);
+        return ::tpyapp::main::apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 2);
     }
     case S_RESUME_1: {  // after: yield apply(lambda i: i + p.x, 2)  # tpyc: ok
         __state = S_DONE;
@@ -234,7 +234,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = two_yield(10);
+        auto __src_4 = ::tpyapp::main::two_yield(10);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -245,7 +245,7 @@ void main() {
     }
     Registry r = Registry();
     {
-        auto __src_6 = store(10, r);
+        auto __src_6 = ::tpyapp::main::store(10, r);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -256,7 +256,7 @@ void main() {
     }
     std::cout << "store cb" << " " << r.cb(1) << "\n";
     {
-        auto __src_8 = cell();
+        auto __src_8 = ::tpyapp::main::cell();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -267,7 +267,7 @@ void main() {
     }
     std::vector<int32_t> src = {1, 2};
     {
-        auto __src_10 = ref_capture(src);
+        auto __src_10 = ::tpyapp::main::ref_capture(src);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -278,7 +278,7 @@ void main() {
     }
     std::cout << "ref after" << " " << ::tpy::ListPrinter(src) << "\n";
     {
-        auto __src_12 = own_capture(Pt(5));
+        auto __src_12 = ::tpyapp::main::own_capture(Pt(5));
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -313,7 +313,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_C_emit::__next__() {
         }
         i = ((*__for_i_0))++;
         __state = S_RESUME_0;
-        return apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, i);
+        return ::tpyapp::main::apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, i);
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -333,12 +333,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_D_emit::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;
-        return apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 1);
+        return ::tpyapp::main::apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 1);
     }
     case S_RESUME_0: {  // after: yield apply(lambda x: x + self.n, 1)  # tpyc: ok
         __self.n = 100;
         __state = S_RESUME_1;
-        return apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 2);
+        return ::tpyapp::main::apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 2);
     }
     case S_RESUME_1: {  // after: yield apply(lambda x: x + self.n, 2)  # tpyc: ok
         __state = S_DONE;
@@ -356,7 +356,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

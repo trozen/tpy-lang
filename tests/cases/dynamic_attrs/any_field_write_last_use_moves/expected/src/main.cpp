@@ -18,7 +18,7 @@ void store(Holder& h) {
 //     print("stored")
 void main() {
     Holder h = Holder();
-    store(h);
+    ::tpyapp::main::store(h);
     std::cout << "stored" << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

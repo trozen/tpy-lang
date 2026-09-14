@@ -13,7 +13,7 @@ Tree<int32_t> build() {
 // def make_some() -> Own[Optional[Tree[int32]]]:
 //     return build()
 std::optional<Tree<int32_t>> make_some() {
-    return build();
+    return ::tpyapp::main::build();
 }
 
 // def make_none() -> Own[Optional[Tree[int32]]]:
@@ -28,9 +28,9 @@ std::optional<Tree<int32_t>> make_none() {
 //     print(s is not None)
 //     print(n is None)
 void main() {
-    std::optional<Tree<int32_t>> __slot_1 = make_some();
+    std::optional<Tree<int32_t>> __slot_1 = ::tpyapp::main::make_some();
     Tree<int32_t>* s = ::tpy::optional_to_ptr(__slot_1);
-    std::optional<Tree<int32_t>> __slot_2 = make_none();
+    std::optional<Tree<int32_t>> __slot_2 = ::tpyapp::main::make_none();
     Tree<int32_t>* n = ::tpy::optional_to_ptr(__slot_2);
     std::cout << ::tpy::print_bool((s != nullptr)) << "\n";
     std::cout << ::tpy::print_bool((n == nullptr)) << "\n";
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

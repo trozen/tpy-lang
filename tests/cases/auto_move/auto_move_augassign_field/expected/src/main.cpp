@@ -17,7 +17,7 @@ void take(Counter&& c) {
 void main() {
     Counter c = Counter(10);
     c.value = ::tpy::add_check<int32_t>(c.value, 5);
-    take(std::move(c));
+    ::tpyapp::main::take(std::move(c));
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -29,7 +29,7 @@ std::expected<int32_t, NotFound> outer(std::string_view key) {
     {
         std::optional<NotFound> __err_opt_1;
         {
-            auto __try_tmp_2 = inner(key);
+            auto __try_tmp_2 = ::tpyapp::main::inner(key);
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -67,7 +67,7 @@ void main() {
     {
         std::optional<NotFound> __err_opt_3;
         {
-            auto __try_tmp_4 = outer("x");
+            auto __try_tmp_4 = ::tpyapp::main::outer("x");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             v = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -86,7 +86,7 @@ void main() {
     {
         std::optional<NotFound> __err_opt_5;
         {
-            auto __try_tmp_6 = outer("y");
+            auto __try_tmp_6 = ::tpyapp::main::outer("y");
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
@@ -109,7 +109,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

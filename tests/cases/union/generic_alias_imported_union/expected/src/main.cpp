@@ -22,9 +22,9 @@ std::string describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::
 //     print(describe(B(int32(2))))
 void main() {
     ::tpyapp::lib::A __tmp_1 = ::tpyapp::lib::A(1);
-    std::cout << describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*>{&__tmp_1}) << "\n";
     ::tpyapp::lib::B __tmp_2 = ::tpyapp::lib::B(2);
-    std::cout << describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*>{&__tmp_2}) << "\n";
 }
 
 // from lib import Either, A, B
@@ -36,7 +36,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::lib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

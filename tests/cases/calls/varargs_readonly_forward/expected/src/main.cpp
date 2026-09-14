@@ -24,13 +24,13 @@ int32_t take_ro(::tpy::varargs<const Box> items) {
 // def forward_mutable(*xs: Box) -> int32:
 //     return take_ro(*xs)
 int32_t forward_mutable(::tpy::varargs<const Box> xs) {
-    return take_ro(::tpy::varargs<const Box>(xs));
+    return ::tpyapp::main::take_ro(::tpy::varargs<const Box>(xs));
 }
 
 // def forward_readonly(*xs: readonly[Box]) -> int32:
 //     return take_ro(*xs)
 int32_t forward_readonly(::tpy::varargs<const Box> xs) {
-    return take_ro(::tpy::varargs<const Box>(xs));
+    return ::tpyapp::main::take_ro(::tpy::varargs<const Box>(xs));
 }
 
 // def main() -> None:
@@ -42,9 +42,9 @@ void main() {
     Box a = Box(5);
     Box b = Box(6);
     std::array<const Box*, 2> __tmp_1{&a, &b};
-    std::cout << forward_mutable(::tpy::varargs<const Box>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::forward_mutable(::tpy::varargs<const Box>(__tmp_1)) << "\n";
     std::array<const Box*, 2> __tmp_2{&a, &b};
-    std::cout << forward_readonly(::tpy::varargs<const Box>(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::forward_readonly(::tpy::varargs<const Box>(__tmp_2)) << "\n";
 }
 
 // main()
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

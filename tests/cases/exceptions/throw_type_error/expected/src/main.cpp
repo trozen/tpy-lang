@@ -20,7 +20,7 @@ void fail(const ::tpy::BigInt& x) {
 void main() {
     {
         try {
-            fail(::tpy::BigInt(42));
+            ::tpyapp::main::fail(::tpy::BigInt(42));
         } catch (const ::tpy::TypeError& e) {
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

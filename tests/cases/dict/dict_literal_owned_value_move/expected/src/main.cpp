@@ -33,8 +33,8 @@ void not_last_use() {
 //     value_move()
 //     not_last_use()
 void main() {
-    value_move();
-    not_last_use();
+    ::tpyapp::main::value_move();
+    ::tpyapp::main::not_last_use();
 }
 
 // from tplib.box import Box
@@ -47,7 +47,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

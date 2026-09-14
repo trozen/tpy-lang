@@ -573,15 +573,20 @@ class THIRCall(THIRExpr):
     parenthesized ahead of the arg list (`(make_adder(10))(5)`). `callee`
     is empty there.
 
-    Otherwise `callee` is the source name; the
-    emitter renders `escape_cpp_name(callee)(args)` for the same-module
-    case. Eligibility guarantees no generic/overload name mangling.
+    Otherwise `callee` is the source name, and the emitter renders
+    `escape_cpp_name(callee)(args)` ONLY for the `"local"` callee kind -- a
+    C++ local no namespace can name (a nested def's frame lambda, a
+    `Callable`/`Fn` value).
 
-    `callee_cpp` (when set) is a cross-module callee's PRE-RENDERED
-    absolute spelling (`::tpyapp::mod::f` -- `imported_free_callee_cpp`):
-    the emitter renders it verbatim over the args. Mutually exclusive with
-    `native_name`/`cpp_template`; `callee` stays the source name for the
-    dump.
+    `callee_cpp` (when set) is the callee's PRE-RENDERED absolute spelling
+    (`::tpyapp::mod::f` -- `free_callee_cpp`): the emitter renders it
+    verbatim over the args. EVERY call to a module-level function carries
+    one, same-module and cross-module alike, because a qualified-id is what
+    keeps ADL from pulling a same-named `std::`/`::tpy::` template into the
+    overload set. (A C-linkage callee also rides this slot, carrying its RAW
+    unqualified symbol: its `extern "C"` re-declaration is namespace-scoped,
+    so a `::` would miss it.) Mutually exclusive with
+    `native_name`/`cpp_template`; `callee` stays the source name for the dump.
 
     `native_name` (when set) is a runtime-helper C++ symbol -- an fi-resolved
     `@native` free-function builtin (e.g. `tpy::__len__` for `len(c)`) or a

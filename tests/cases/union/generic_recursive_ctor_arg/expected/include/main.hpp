@@ -54,6 +54,6 @@ inline std::ostream& operator<<(std::ostream& os, const Summary& obj) {
 
 // def __init__(self, t: Tree[int32]) -> None:
 //     self.n = count_leaves(t)
-inline Summary::Summary(const Tree<int32_t>& t) : n(count_leaves(t)) {}
+inline Summary::Summary(const Tree<int32_t>& t) : n(::tpyapp::main::count_leaves(t)) {}
 void __tpy_init();
 } // namespace tpyapp::main

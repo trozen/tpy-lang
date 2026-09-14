@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(pa.base_code())
 void main() {
     Dog d = Dog(11);
-    Animal* pa = as_animal<Dog>(&d);
+    Animal* pa = ::tpyapp::main::as_animal<Dog>(&d);
     std::cout << ::tpy::deref_check(pa).base_code() << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

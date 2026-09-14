@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     print(len(pts))           # 3
 void test_borrow_warn() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    Point& p = first<Point>(pts);
+    Point& p = ::tpyapp::main::first<Point>(pts);
     pts.push_back(Point(5, 6));
     std::cout << ::tpy::__len__(pts) << "\n";
 }
@@ -22,7 +22,7 @@ void test_borrow_warn() {
 //     p = first(items)
 //     return p  # tpyc: ok
 Point& get_first_concrete(std::vector<Point>& items) {
-    Point& p = first<Point>(items);
+    Point& p = ::tpyapp::main::first<Point>(items);
     return p;
 }
 
@@ -34,8 +34,8 @@ Point& get_first_concrete(std::vector<Point>& items) {
 //     print(b.x)   # 1
 void test_return_through_local() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    Point& a = get_first_concrete(pts);
-    Point& b = get_first_generic<Point>(pts);
+    Point& a = ::tpyapp::main::get_first_concrete(pts);
+    Point& b = ::tpyapp::main::get_first_generic<Point>(pts);
     std::cout << a.x << "\n";
     std::cout << b.x << "\n";
 }
@@ -63,7 +63,7 @@ void test_method_ref_semantics() {
 void test_method_return_through_local() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
     Box<Point> box = Box<Point>(pts);
-    Point& result = get_first_from_box<Point>(box);
+    Point& result = ::tpyapp::main::get_first_from_box<Point>(box);
     std::cout << result.x << "\n";
 }
 
@@ -73,10 +73,10 @@ void test_method_return_through_local() {
 //     test_method_ref_semantics()
 //     test_method_return_through_local()
 void main() {
-    test_borrow_warn();
-    test_return_through_local();
-    test_method_ref_semantics();
-    test_method_return_through_local();
+    ::tpyapp::main::test_borrow_warn();
+    ::tpyapp::main::test_return_through_local();
+    ::tpyapp::main::test_method_ref_semantics();
+    ::tpyapp::main::test_method_return_through_local();
 }
 
 // main()
@@ -85,7 +85,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

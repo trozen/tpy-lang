@@ -34,10 +34,10 @@ void update(Holder* h, const ::tpy::BigInt& v, bool attach) {
 //     print(_opt_int_g is None)
 void main() {
     Holder h = Holder(::tpy::BigInt(7));
-    update(&h, ::tpy::BigInt(42), true);
+    ::tpyapp::main::update(&h, ::tpy::BigInt(42), true);
     std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n";
     std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n";
-    update(&h, ::tpy::BigInt(0), false);
+    ::tpyapp::main::update(&h, ::tpy::BigInt(0), false);
     std::cout << ::tpy::print_bool((_ptr_g == nullptr)) << "\n";
     std::cout << ::tpy::print_bool((!_opt_int_g.has_value())) << "\n";
 }
@@ -53,7 +53,7 @@ void __tpy_init() {
 
     _ptr_g = nullptr;
     _opt_int_g = std::nullopt;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

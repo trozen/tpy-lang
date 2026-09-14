@@ -23,7 +23,7 @@ void main() {
     Outer o = Outer();
     Inner& a = o.inner;
     std::cout << ::tpy::__len__(a.vals) << "\n";
-    std::cout << take(std::move(o)) << "\n";
+    std::cout << ::tpyapp::main::take(std::move(o)) << "\n";
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

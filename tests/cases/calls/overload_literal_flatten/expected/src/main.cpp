@@ -47,8 +47,8 @@ std::string get_field__lit_name(std::string_view name) {
 //     print(a + 1)
 //     print(n + "!")
 void main() {
-    int32_t age = get_field__lit_age("age");
-    std::string name = get_field__lit_name("name");
+    int32_t age = ::tpyapp::main::get_field__lit_age("age");
+    std::string name = ::tpyapp::main::get_field__lit_name("name");
     std::cout << (::tpy::add_check<int32_t>(age, 1)) << "\n";
     std::cout << (::tpy::str_concat(name, "!")) << "\n";
     Record r = Record(25, "Alice");
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

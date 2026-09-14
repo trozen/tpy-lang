@@ -41,7 +41,7 @@ std::array<int32_t, 2> mk_array() {
 //     xs = other
 //     xs.append(9)
 void rebound_list(std::vector<int32_t>& other) {
-    std::vector<int32_t> __slot_1 = mk_list();
+    std::vector<int32_t> __slot_1 = ::tpyapp::main::mk_list();
     std::vector<int32_t>* xs = &__slot_1;
     xs = &(other);
     xs->push_back(9);
@@ -52,7 +52,7 @@ void rebound_list(std::vector<int32_t>& other) {
 //     d = other
 //     d["z"] = 9
 void rebound_dict(::tpy::ordered_map<std::string, int32_t>& other) {
-    ::tpy::ordered_map<std::string, int32_t> __slot_1 = mk_dict();
+    ::tpy::ordered_map<std::string, int32_t> __slot_1 = ::tpyapp::main::mk_dict();
     ::tpy::ordered_map<std::string, int32_t>* d = &__slot_1;
     d = &(other);
     ::tpy::__setitem__((*d), "z", 9);
@@ -63,7 +63,7 @@ void rebound_dict(::tpy::ordered_map<std::string, int32_t>& other) {
 //     s = other
 //     s.add(9)
 void rebound_set(::tpy::ordered_set<int32_t>& other) {
-    ::tpy::ordered_set<int32_t> __slot_1 = mk_set();
+    ::tpy::ordered_set<int32_t> __slot_1 = ::tpyapp::main::mk_set();
     ::tpy::ordered_set<int32_t>* s = &__slot_1;
     s = &(other);
     s->insert(9);
@@ -74,7 +74,7 @@ void rebound_set(::tpy::ordered_set<int32_t>& other) {
 //     b = other
 //     b.append(9)
 void rebound_bytes(::tpy::ByteArray& other) {
-    ::tpy::ByteArray __slot_1 = mk_bytes();
+    ::tpy::ByteArray __slot_1 = ::tpyapp::main::mk_bytes();
     ::tpy::ByteArray* b = &__slot_1;
     b = &(other);
     b->push_back(9);
@@ -85,7 +85,7 @@ void rebound_bytes(::tpy::ByteArray& other) {
 //     a = other
 //     a[0] = 9
 void rebound_array(std::array<int32_t, 2>& other) {
-    std::array<int32_t, 2> __slot_1 = mk_array();
+    std::array<int32_t, 2> __slot_1 = ::tpyapp::main::mk_array();
     std::array<int32_t, 2>* a = &__slot_1;
     a = &(other);
     ::tpy::__setitem__((*a), 0, 9);
@@ -115,7 +115,7 @@ int32_t hoisted() {
         std::vector<int32_t>* items;
         {
             try {
-                items = &*(__slot_1 = mk_list());
+                items = &*(__slot_1 = ::tpyapp::main::mk_list());
             } catch (const ::tpy::Exception&) {
                 break;
             }
@@ -123,7 +123,7 @@ int32_t hoisted() {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*items)));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::vector<int32_t>* items = &*(__slot_2 = mk_list());
+    std::vector<int32_t>* items = &*(__slot_2 = ::tpyapp::main::mk_list());
     items->push_back(5);
     return (::tpy::add_check<int32_t>(total, ::tpy::__len__((*items))));
 }
@@ -143,17 +143,17 @@ int32_t hoisted() {
 //     print(hoisted())
 void main() {
     std::vector<int32_t> xs = {1, 2};
-    rebound_list(xs);
+    ::tpyapp::main::rebound_list(xs);
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    rebound_dict(d);
+    ::tpyapp::main::rebound_dict(d);
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1});
-    rebound_set(s);
+    ::tpyapp::main::rebound_set(s);
     ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    rebound_bytes(b);
+    ::tpyapp::main::rebound_bytes(b);
     std::array<int32_t, 2> a = {1, 2};
-    rebound_array(a);
+    ::tpyapp::main::rebound_array(a);
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(d) << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(b) << " " << ::tpy::__getitem__(a, 0) << "\n";
-    std::cout << hoisted() << "\n";
+    std::cout << ::tpyapp::main::hoisted() << "\n";
 }
 
 // main()
@@ -162,7 +162,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

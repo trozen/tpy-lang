@@ -16,7 +16,7 @@ std::string use(DynBase& x) {
 void main() {
     Impl obj = Impl();
     ::tpy::RefAdapter<DynBase, Impl> __tmp_1{obj};
-    std::cout << use(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use(__tmp_1) << "\n";
 }
 
 // main()
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

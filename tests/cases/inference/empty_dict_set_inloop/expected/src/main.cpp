@@ -43,9 +43,9 @@ namespace tpyapp::main {
 //     print(len(build_set([1, 1, 2])))
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpy::__len__(build_dict(__tmp_1)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::build_dict(__tmp_1)) << "\n";
     std::vector<int32_t> __tmp_2 = {1, 1, 2};
-    std::cout << ::tpy::__len__(build_set(__tmp_2)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::build_set(__tmp_2)) << "\n";
 }
 
 // main()
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

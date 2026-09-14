@@ -197,35 +197,35 @@ inline SplitResult::SplitResult(std::string_view scheme, std::string_view netloc
 // def hostname(self) -> str | None:
 //     return _netloc_hostname(self.netloc)
 inline std::optional<std::string> SplitResult::hostname() const {
-    return _netloc_hostname(this->netloc);
+    return ::tpystd::urllib::parse::_netloc_hostname(this->netloc);
 }
 
 // @property
 // def port(self) -> int | None:
 //     return _netloc_port(self.netloc)
 inline std::optional<::tpy::BigInt> SplitResult::port() const {
-    return _netloc_port(this->netloc);
+    return ::tpystd::urllib::parse::_netloc_port(this->netloc);
 }
 
 // @property
 // def username(self) -> str | None:
 //     return _netloc_username(self.netloc)
 inline std::optional<std::string> SplitResult::username() const {
-    return _netloc_username(this->netloc);
+    return ::tpystd::urllib::parse::_netloc_username(this->netloc);
 }
 
 // @property
 // def password(self) -> str | None:
 //     return _netloc_password(self.netloc)
 inline std::optional<std::string> SplitResult::password() const {
-    return _netloc_password(this->netloc);
+    return ::tpystd::urllib::parse::_netloc_password(this->netloc);
 }
 
 // def geturl(self) -> str:
 //     return urlunsplit((self.scheme, self.netloc, self.path, self.query,
 //                        self.fragment))
 inline std::string SplitResult::geturl() const {
-    return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{this->scheme, this->netloc, this->path, this->query, this->fragment});
+    return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{this->scheme, this->netloc, this->path, this->query, this->fragment});
 }
 
 // def __init__(self, scheme: str, netloc: str, path: str, params: str,
@@ -242,35 +242,35 @@ inline ParseResult::ParseResult(std::string_view scheme, std::string_view netloc
 // def hostname(self) -> str | None:
 //     return _netloc_hostname(self.netloc)
 inline std::optional<std::string> ParseResult::hostname() const {
-    return _netloc_hostname(this->netloc);
+    return ::tpystd::urllib::parse::_netloc_hostname(this->netloc);
 }
 
 // @property
 // def port(self) -> int | None:
 //     return _netloc_port(self.netloc)
 inline std::optional<::tpy::BigInt> ParseResult::port() const {
-    return _netloc_port(this->netloc);
+    return ::tpystd::urllib::parse::_netloc_port(this->netloc);
 }
 
 // @property
 // def username(self) -> str | None:
 //     return _netloc_username(self.netloc)
 inline std::optional<std::string> ParseResult::username() const {
-    return _netloc_username(this->netloc);
+    return ::tpystd::urllib::parse::_netloc_username(this->netloc);
 }
 
 // @property
 // def password(self) -> str | None:
 //     return _netloc_password(self.netloc)
 inline std::optional<std::string> ParseResult::password() const {
-    return _netloc_password(this->netloc);
+    return ::tpystd::urllib::parse::_netloc_password(this->netloc);
 }
 
 // def geturl(self) -> str:
 //     return urlunparse((self.scheme, self.netloc, self.path, self.params,
 //                        self.query, self.fragment))
 inline std::string ParseResult::geturl() const {
-    return urlunparse(std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>{this->scheme, this->netloc, this->path, this->params, this->query, this->fragment});
+    return ::tpystd::urllib::parse::urlunparse(std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>{this->scheme, this->netloc, this->path, this->params, this->query, this->fragment});
 }
 void __tpy_init();
 } // namespace tpystd::urllib::parse

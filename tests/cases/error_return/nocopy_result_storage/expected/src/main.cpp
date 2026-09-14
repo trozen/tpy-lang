@@ -23,7 +23,7 @@ std::expected<Payload, E> make(int32_t n) {
 std::expected<Payload, E> chain(int32_t n) {
     Payload p;
     {
-        auto __try_tmp_3 = make(n);
+        auto __try_tmp_3 = ::tpyapp::main::make(n);
         if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
         p = ::tpy::unwrap_ref_move(*__try_tmp_3);
     }
@@ -59,7 +59,7 @@ void main() {
     std::optional<Payload> a;
     {
         {
-            auto __try_tmp_5 = make(5);
+            auto __try_tmp_5 = ::tpyapp::main::make(5);
             if (!__try_tmp_5.has_value()) goto __except_4;
             a = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
@@ -74,7 +74,7 @@ void main() {
     std::optional<Payload> b;
     {
         {
-            auto __try_tmp_7 = chain(6);
+            auto __try_tmp_7 = ::tpyapp::main::chain(6);
             if (!__try_tmp_7.has_value()) goto __except_6;
             b = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
@@ -94,7 +94,7 @@ void main() {
     std::optional<Payload> c;
     {
         {
-            auto __try_tmp_9 = make(-1);
+            auto __try_tmp_9 = ::tpyapp::main::make(-1);
             if (!__try_tmp_9.has_value()) goto __except_8;
             c = ::tpy::unwrap_ref_move(*__try_tmp_9);
         }
@@ -112,7 +112,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

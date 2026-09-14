@@ -30,12 +30,12 @@ void main() {
     ::tpy::Bytes a;
     ::tpy::Bytes b;
     if (flag) {
-        std::tuple<::tpy::Bytes, ::tpy::Bytes> t1 = make(::tpy::bytes_literal("X", 1));
+        std::tuple<::tpy::Bytes, ::tpy::Bytes> t1 = ::tpyapp::main::make(::tpy::bytes_literal("X", 1));
         const auto& __tup_1 = t1;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
     } else {
-        std::tuple<::tpy::Bytes, ::tpy::Bytes> t2 = make(::tpy::bytes_literal("Y", 1));
+        std::tuple<::tpy::Bytes, ::tpy::Bytes> t2 = ::tpyapp::main::make(::tpy::bytes_literal("Y", 1));
         const auto& __tup_2 = t2;
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

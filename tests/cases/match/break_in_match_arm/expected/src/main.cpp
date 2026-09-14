@@ -247,11 +247,11 @@ void break_in_str_switch() {
 //     break_in_while()
 //     break_in_str_switch()
 void main() {
-    break_plain();
-    break_with_else();
-    continue_in_arm();
-    break_in_while();
-    break_in_str_switch();
+    ::tpyapp::main::break_plain();
+    ::tpyapp::main::break_with_else();
+    ::tpyapp::main::continue_in_arm();
+    ::tpyapp::main::break_in_while();
+    ::tpyapp::main::break_in_str_switch();
 }
 
 // # break/continue inside switch-lowered match arms must target the enclosing
@@ -265,7 +265,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

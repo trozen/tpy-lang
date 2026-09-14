@@ -72,23 +72,23 @@ std::string negated_or(::tpy::Union<const A*, const B*> v) {
 //     print(negated_or(A(1)))
 void main() {
     A __tmp_1 = A(::tpy::BigInt(1));
-    std::cout << two_member(::tpy::Union<const A*, const B*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::two_member(::tpy::Union<const A*, const B*>{&__tmp_1}) << "\n";
     B __tmp_2 = B(::tpy::BigInt(2));
-    std::cout << two_member(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::two_member(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
     A __tmp_3 = A(::tpy::BigInt(1));
-    std::cout << three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
     B __tmp_4 = B(::tpy::BigInt(2));
-    std::cout << three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n";
+    std::cout << ::tpyapp::main::three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n";
     C __tmp_5 = C(::tpy::BigInt(3));
-    std::cout << three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_5}) << "\n";
+    std::cout << ::tpyapp::main::three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_5}) << "\n";
     A __tmp_6 = A(::tpy::BigInt(1));
-    std::cout << and_chain(::tpy::Union<const A*, const B*>{&__tmp_6}, true) << "\n";
+    std::cout << ::tpyapp::main::and_chain(::tpy::Union<const A*, const B*>{&__tmp_6}, true) << "\n";
     B __tmp_7 = B(::tpy::BigInt(2));
-    std::cout << and_chain(::tpy::Union<const A*, const B*>{&__tmp_7}, true) << "\n";
+    std::cout << ::tpyapp::main::and_chain(::tpy::Union<const A*, const B*>{&__tmp_7}, true) << "\n";
     A __tmp_8 = A(::tpy::BigInt(1));
-    std::cout << and_chain(::tpy::Union<const A*, const B*>{&__tmp_8}, false) << "\n";
+    std::cout << ::tpyapp::main::and_chain(::tpy::Union<const A*, const B*>{&__tmp_8}, false) << "\n";
     A __tmp_9 = A(::tpy::BigInt(1));
-    std::cout << negated_or(::tpy::Union<const A*, const B*>{&__tmp_9}) << "\n";
+    std::cout << ::tpyapp::main::negated_or(::tpy::Union<const A*, const B*>{&__tmp_9}) << "\n";
 }
 
 // main()
@@ -97,7 +97,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

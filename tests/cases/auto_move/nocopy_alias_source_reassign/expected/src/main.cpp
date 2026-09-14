@@ -28,7 +28,7 @@ void main() {
     std::cout << alias.fd << "\n";
     h = &*(__slot_2 = Handle());
     h->fd = 99;
-    std::cout << close(std::move((*h))) << "\n";
+    std::cout << ::tpyapp::main::close(std::move((*h))) << "\n";
     std::cout << alias.fd << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

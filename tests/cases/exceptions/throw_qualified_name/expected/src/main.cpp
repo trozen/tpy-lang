@@ -34,14 +34,14 @@ void trigger_re() {
 void main() {
     {
         try {
-            trigger_re();
+            ::tpyapp::main::trigger_re();
         } catch (const ::tpystd::re::error&) {
             std::cout << "re.error caught" << "\n";
         }
     }
     {
         try {
-            trigger_re();
+            ::tpyapp::main::trigger_re();
         } catch (const ::tpystd::re::error& e) {
             std::cout << "bound" << "\n";
         }
@@ -71,7 +71,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::re::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -36,7 +36,7 @@ __coro_inner inner() {
     case S_INITIAL: {  // entry
         {
             try {
-                ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(inner()));
+                ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::inner()));
             } catch (const ::tpy::RuntimeError& e) {
                 std::cout << "caught:" << " " << e << "\n";
             }
@@ -58,7 +58,7 @@ __coro_outer outer() {
 // def main() -> None:
 //     asyncio.run(outer())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(outer()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::outer()));
 }
 
 // # Nested asyncio.run raises a catchable RuntimeError.
@@ -71,7 +71,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

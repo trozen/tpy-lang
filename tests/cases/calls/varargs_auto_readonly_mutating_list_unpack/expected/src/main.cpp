@@ -20,7 +20,7 @@ void bump_all(::tpy::varargs<Box> items) {
 // def via_unpack(xs: list[Box]) -> None:  # tpyc: ok
 //     bump_all(*xs)
 void via_unpack(std::vector<Box>& xs) {
-    bump_all(::tpy::varargs<Box>(::tpy::as_mut_span(xs)));
+    ::tpyapp::main::bump_all(::tpy::varargs<Box>(::tpy::as_mut_span(xs)));
 }
 
 // def main() -> None:
@@ -34,7 +34,7 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(5));
     items.push_back(Box(6));
-    via_unpack(items);
+    ::tpyapp::main::via_unpack(items);
     std::cout << ::tpy::__getitem__(items, 0).val << "\n";
     std::cout << ::tpy::__getitem__(items, 1).val << "\n";
 }
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

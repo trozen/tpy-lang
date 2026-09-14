@@ -23,7 +23,7 @@ Rec make() {
 std::string classify(const ::tpy::BigInt& x) {
     auto& __match_subject_1 = x;
     if (__match_subject_1 == 1) {
-        if ((static_cast<void>(make()), true)) {
+        if ((static_cast<void>(::tpyapp::main::make()), true)) {
             return "one";
             goto __match_end_2;
         }
@@ -40,8 +40,8 @@ std::string classify(const ::tpy::BigInt& x) {
 //     print(classify(1), calls)
 //     print(classify(2), calls)
 void main() {
-    std::cout << classify(::tpy::BigInt(1)) << " " << calls << "\n";
-    std::cout << classify(::tpy::BigInt(2)) << " " << calls << "\n";
+    std::cout << ::tpyapp::main::classify(::tpy::BigInt(1)) << " " << calls << "\n";
+    std::cout << ::tpyapp::main::classify(::tpy::BigInt(2)) << " " << calls << "\n";
 }
 
 // calls = 0
@@ -53,7 +53,7 @@ void __tpy_init() {
     initialized = true;
 
     calls = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

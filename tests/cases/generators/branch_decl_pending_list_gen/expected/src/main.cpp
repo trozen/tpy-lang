@@ -48,7 +48,7 @@ __gen_gen gen(bool c) {
 //         print(v)
 void main() {
     {
-        auto __src_0 = gen(true);
+        auto __src_0 = ::tpyapp::main::gen(true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -58,7 +58,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = gen(false);
+        auto __src_2 = ::tpyapp::main::gen(false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

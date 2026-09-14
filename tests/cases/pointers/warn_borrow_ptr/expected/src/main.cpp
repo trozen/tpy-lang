@@ -69,10 +69,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_ptr_borrow_field_write();
-    test_ptr_borrow_append();
-    test_ptr_borrow_subscript_assign();
-    test_ptr_reassign_clears();
+    ::tpyapp::main::test_ptr_borrow_field_write();
+    ::tpyapp::main::test_ptr_borrow_append();
+    ::tpyapp::main::test_ptr_borrow_subscript_assign();
+    ::tpyapp::main::test_ptr_reassign_clears();
 }
 
 } // namespace tpyapp::main

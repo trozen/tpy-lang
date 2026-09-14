@@ -216,7 +216,7 @@ void widen_param(const ::tpy::Union<::tpy::BigInt, int64_t>& u) {
 //         case int():
 //             print("exact-return int")
 void check_return() {
-    ::tpy::Union<::tpy::BigInt, int32_t> r = exact_return(8);
+    ::tpy::Union<::tpy::BigInt, int32_t> r = ::tpyapp::main::exact_return(8);
     auto& __match_subject_1 = r;
     switch (__match_subject_1.index()) {
     case 1: {
@@ -267,18 +267,18 @@ void field_slot() {
 //     check_return()
 //     field_slot()
 void main() {
-    fits();
-    overflows();
-    narrow_fits();
-    narrow_signed();
-    wide_unsigned();
-    wide_fits();
+    ::tpyapp::main::fits();
+    ::tpyapp::main::overflows();
+    ::tpyapp::main::narrow_fits();
+    ::tpyapp::main::narrow_signed();
+    ::tpyapp::main::wide_unsigned();
+    ::tpyapp::main::wide_fits();
     int32_t x = 7;
     ::tpy::Union<::tpy::BigInt, int32_t> __tmp_1 = x;
-    exact_param(__tmp_1);
-    widen_param(static_cast<::tpy::Union<::tpy::BigInt, int64_t>>(x));
-    check_return();
-    field_slot();
+    ::tpyapp::main::exact_param(__tmp_1);
+    ::tpyapp::main::widen_param(static_cast<::tpy::Union<::tpy::BigInt, int64_t>>(x));
+    ::tpyapp::main::check_return();
+    ::tpyapp::main::field_slot();
 }
 
 // main()
@@ -287,7 +287,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

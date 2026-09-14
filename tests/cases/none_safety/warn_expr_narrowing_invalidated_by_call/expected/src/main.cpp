@@ -17,7 +17,7 @@ void opaque(const Box& b) {
 //     return 0
 int32_t use_after_call(const Box& b) {
     if ((b.value.has_value())) {
-        opaque(b);
+        ::tpyapp::main::opaque(b);
         return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(b.value), 1));
     }
     return 0;
@@ -30,7 +30,7 @@ void __tpy_init() {
     initialized = true;
 
     Box __tmp_1 = Box(4);
-    std::cout << use_after_call(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use_after_call(__tmp_1) << "\n";
 }
 
 } // namespace tpyapp::main

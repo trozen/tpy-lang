@@ -99,9 +99,9 @@ int32_t lvalue_manager(bool flag) {
 //     print(rvalue_manager(False))
 //     print(lvalue_manager(True))
 void main() {
-    std::cout << rvalue_manager(true) << "\n";
-    std::cout << rvalue_manager(false) << "\n";
-    std::cout << lvalue_manager(true) << "\n";
+    std::cout << ::tpyapp::main::rvalue_manager(true) << "\n";
+    std::cout << ::tpyapp::main::rvalue_manager(false) << "\n";
+    std::cout << ::tpyapp::main::lvalue_manager(true) << "\n";
 }
 
 // main()
@@ -110,7 +110,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

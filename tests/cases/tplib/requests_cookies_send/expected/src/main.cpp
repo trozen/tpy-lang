@@ -64,11 +64,11 @@ void _cookie_line(::tpy::BytesView sent) {
 //     _cookie_line(_send({"Cookie": "manual=1"}, {"sid": "abc"}))
 void main() {
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}, {"k", "v"}});
-    _cookie_line(_send(nullptr, &(__tmp_2)));
-    _cookie_line(_send(nullptr, nullptr));
+    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(nullptr, &(__tmp_2)));
+    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(nullptr, nullptr));
     ::tpy::ordered_map<std::string, std::string> __tmp_3 = ::tpy::ordered_map<std::string, std::string>({{"Cookie", "manual=1"}});
     ::tpy::ordered_map<std::string, std::string> __tmp_4 = ::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}});
-    _cookie_line(_send(&(__tmp_3), &(__tmp_4)));
+    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(&(__tmp_3), &(__tmp_4)));
 }
 
 // # A `cookies=` dict is serialized into a Cookie: request header (name=value
@@ -90,7 +90,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

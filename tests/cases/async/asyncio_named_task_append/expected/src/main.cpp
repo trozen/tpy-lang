@@ -47,9 +47,9 @@ __coro_fetch fetch(int32_t n) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        a.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(1))));
+        a.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(1))));
         (*tasks).push_back(std::move((*a)));
-        b.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(2))));
+        b.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(2))));
         (*tasks).push_back(std::move((*b)));
         __sub_0.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(::tpy::as_mut_span((*tasks))))));
         __state = S_RESUME_0;
@@ -84,7 +84,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # A named Task local appended to a list inside an async body is moved out of
@@ -98,7 +98,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

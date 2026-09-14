@@ -25,9 +25,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << use_else(2) << "\n";
-    std::cout << use_else(0) << "\n";
-    std::cout << use_else(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::use_else(2) << "\n";
+    std::cout << ::tpyapp::main::use_else(0) << "\n";
+    std::cout << ::tpyapp::main::use_else(std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

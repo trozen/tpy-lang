@@ -33,11 +33,11 @@ void bump(Counter& c) {
 //     print(c2.value())      # 1
 void main() {
     MyCounter mc = MyCounter();
-    bump(mc);
+    ::tpyapp::main::bump(mc);
     std::cout << mc.value() << "\n";
     Tally t = Tally();
     ::tpy::RefAdapter<Counter, Tally> __tmp_1{t};
-    bump(__tmp_1);
+    ::tpyapp::main::bump(__tmp_1);
     std::cout << t.value() << "\n";
     MyCounter __slot_1{MyCounter()};
     Counter* c = &__slot_1;
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

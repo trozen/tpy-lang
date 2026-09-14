@@ -21,7 +21,7 @@ void read_oob(const std::vector<int32_t>* lst) {
 //     read_oob([1, 2, 3])
 void main() {
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2, 3};
-    read_oob(&(__tmp_1));
+    ::tpyapp::main::read_oob(&(__tmp_1));
 }
 
 // main()
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

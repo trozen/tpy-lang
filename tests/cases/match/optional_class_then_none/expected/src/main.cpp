@@ -29,9 +29,9 @@ int32_t describe(Point* p) {
 //     print(describe(None))
 void main() {
     Point p = Point(3);
-    std::cout << describe(&(p)) << "\n";
+    std::cout << ::tpyapp::main::describe(&(p)) << "\n";
     std::cout << p.x << "\n";
-    std::cout << describe(nullptr) << "\n";
+    std::cout << ::tpyapp::main::describe(nullptr) << "\n";
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

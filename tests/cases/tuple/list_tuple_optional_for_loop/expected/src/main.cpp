@@ -33,7 +33,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        std::cout << f(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it)) << "\n";
+        std::cout << ::tpyapp::main::f(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it)) << "\n";
     }
 }
 
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

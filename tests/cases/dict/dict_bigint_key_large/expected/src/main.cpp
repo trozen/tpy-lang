@@ -40,7 +40,7 @@ void main() {
     std::cout << ::tpy::__getitem__(d, static_cast<int64_t>(1125899906842624)) << "\n";
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> counts = ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>();
     ::tpy::__setitem__(counts, k, ::tpy::BigInt(1));
-    bump(counts, k);
+    ::tpyapp::main::bump(counts, k);
     std::cout << ::tpy::__getitem__(counts, k) << "\n";
     std::cout << ::tpy::dict_pop(counts, k) << "\n";
 }
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

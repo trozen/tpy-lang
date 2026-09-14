@@ -28,7 +28,7 @@ void run(Guard& g) {
 //     run(g)
 void main() {
     Guard g = Guard();
-    run(g);
+    ::tpyapp::main::run(g);
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

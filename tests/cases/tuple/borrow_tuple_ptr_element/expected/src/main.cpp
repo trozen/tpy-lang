@@ -16,20 +16,20 @@ void bump(const std::tuple<Node*, int32_t>& t) {
 //     return items[0].x
 int32_t via_local(std::vector<Node>& items) {
     Node* p = &::tpy::__getitem__(items, 0);
-    bump(std::tuple<Node*, int32_t>{p, 10});
+    ::tpyapp::main::bump(std::tuple<Node*, int32_t>{p, 10});
     return ::tpy::__getitem__(items, 0).x;
 }
 
 // def via_param(p: Ptr[Node]) -> None:
 //     bump((p, 100))
 void via_param(Node* p) {
-    bump(std::tuple<Node*, int32_t>{p, 100});
+    ::tpyapp::main::bump(std::tuple<Node*, int32_t>{p, 100});
 }
 
 // def via_subscript(ps: list[Ptr[Node]]) -> None:
 //     bump((ps[0], 1000))
 void via_subscript(const std::vector<Node*>& ps) {
-    bump(std::tuple<Node*, int32_t>{::tpy::__getitem__(ps, 0), 1000});
+    ::tpyapp::main::bump(std::tuple<Node*, int32_t>{::tpy::__getitem__(ps, 0), 1000});
 }
 
 // def via_plain() -> int32:
@@ -38,7 +38,7 @@ void via_subscript(const std::vector<Node*>& ps) {
 //     return n.x
 int32_t via_plain() {
     Node n = Node(5);
-    bump(std::tuple<Node*, int32_t>{&(n), 10000});
+    ::tpyapp::main::bump(std::tuple<Node*, int32_t>{&(n), 10000});
     return n.x;
 }
 
@@ -54,14 +54,14 @@ int32_t via_plain() {
 //     print(via_plain())
 void main() {
     std::vector<Node> items = {Node(1), Node(2)};
-    std::cout << via_local(items) << "\n";
-    via_param(&::tpy::__getitem__(items, 0));
+    std::cout << ::tpyapp::main::via_local(items) << "\n";
+    ::tpyapp::main::via_param(&::tpy::__getitem__(items, 0));
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
     std::vector<Node*> ps = std::vector<Node*>{};
     ps.push_back(&::tpy::__getitem__(items, 0));
-    via_subscript(ps);
+    ::tpyapp::main::via_subscript(ps);
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
-    std::cout << via_plain() << "\n";
+    std::cout << ::tpyapp::main::via_plain() << "\n";
 }
 
 // main()
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

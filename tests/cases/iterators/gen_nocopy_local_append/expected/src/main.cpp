@@ -43,7 +43,7 @@ __gen_collect collect() {
 //         print(v)
 void main() {
     {
-        auto __src_0 = collect();
+        auto __src_0 = ::tpyapp::main::collect();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -66,7 +66,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

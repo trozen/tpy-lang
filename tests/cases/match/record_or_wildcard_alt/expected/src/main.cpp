@@ -31,9 +31,9 @@ int32_t f(Point& p) {
 //     print(pt.y)
 void main() {
     Point __tmp_1 = Point(1, 0);
-    std::cout << f(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1) << "\n";
     Point pt = Point(2, 3);
-    std::cout << f(pt) << "\n";
+    std::cout << ::tpyapp::main::f(pt) << "\n";
     std::cout << pt.y << "\n";
 }
 
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

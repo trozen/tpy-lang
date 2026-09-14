@@ -68,12 +68,12 @@ void show(std::string_view u) {
 //     # Leading whitespace lstripped, interior tab removed, trailing kept.
 //     print("[" + urlsplit("  http://h/a\tb/p  ").path + "]")
 void main() {
-    show("http://10.72.70.1:8002/das/tables?fmt=json#sec");
-    show("https://user:pw@example.com/a/b");
-    show("/relative/only?x=1");
-    show("//netloc-only/p");
-    show("HTTPS://CAPS.Example.COM/Path");
-    show("");
+    ::tpyapp::main::show("http://10.72.70.1:8002/das/tables?fmt=json#sec");
+    ::tpyapp::main::show("https://user:pw@example.com/a/b");
+    ::tpyapp::main::show("/relative/only?x=1");
+    ::tpyapp::main::show("//netloc-only/p");
+    ::tpyapp::main::show("HTTPS://CAPS.Example.COM/Path");
+    ::tpyapp::main::show("");
     ::tpystd::urllib::parse::SplitResult full = ::tpystd::urllib::parse::urlsplit("http://user:secret@Host.Example:8002/p?q=1#f");
     std::optional<std::string> host = full.hostname();
     std::cout << (::tpy::str_concat("hostname=", (((host.has_value())) ? ((*host)) : ("None")))) << "\n";
@@ -130,7 +130,7 @@ void __tpy_init() {
 
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

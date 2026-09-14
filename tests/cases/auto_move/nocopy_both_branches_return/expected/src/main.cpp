@@ -29,9 +29,9 @@ Handle test(bool cond) {
 //     h2 = test(False)
 //     print(h2.fd)
 void main() {
-    Handle h1 = test(true);
+    Handle h1 = ::tpyapp::main::test(true);
     std::cout << h1.fd << "\n";
-    Handle h2 = test(false);
+    Handle h2 = ::tpyapp::main::test(false);
     std::cout << h2.fd << "\n";
 }
 
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

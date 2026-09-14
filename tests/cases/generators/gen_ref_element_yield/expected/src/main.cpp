@@ -544,7 +544,7 @@ __gen_boxes boxes(std::vector<Box>& xs) {
 void sec_freelist() {
     std::vector<std::vector<int32_t>> a = {{1}, {2}};
     {
-        auto __src_0 = each_list(a);
+        auto __src_0 = ::tpyapp::main::each_list(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -564,7 +564,7 @@ void sec_freelist() {
 void sec_freerec() {
     std::vector<Box> a = {Box(1), Box(2)};
     {
-        auto __src_0 = each_rec(a);
+        auto __src_0 = ::tpyapp::main::each_rec(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -608,7 +608,7 @@ void sec_pack() {
     std::vector<int32_t> b = {2};
     {
         std::array<std::vector<int32_t>*, 2> __tmp_2{&a, &b};
-        auto __src_0 = each_pack(::tpy::varargs<std::vector<int32_t>>(__tmp_2));
+        auto __src_0 = ::tpyapp::main::each_pack(::tpy::varargs<std::vector<int32_t>>(__tmp_2));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -646,7 +646,7 @@ void sec_selffield() {
 //     print("framelocal", "done")
 void sec_framelocal() {
     {
-        auto __src_0 = each_local();
+        auto __src_0 = ::tpyapp::main::each_local();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -666,7 +666,7 @@ void sec_framelocal() {
 void sec_alias() {
     std::vector<Box> a = {Box(1), Box(2)};
     {
-        auto __src_0 = each_alias(a);
+        auto __src_0 = ::tpyapp::main::each_alias(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -684,7 +684,7 @@ void sec_alias() {
 //     print("ternary", "done")
 void sec_ternary() {
     {
-        auto __src_0 = each_ternary(true);
+        auto __src_0 = ::tpyapp::main::each_ternary(true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -704,7 +704,7 @@ void sec_ternary() {
 void sec_dict() {
     std::vector<::tpy::ordered_map<int32_t, int32_t>> a = {::tpy::ordered_map<int32_t, int32_t>({{1, 1}}), ::tpy::ordered_map<int32_t, int32_t>({{2, 2}})};
     {
-        auto __src_0 = each_dict(a);
+        auto __src_0 = ::tpyapp::main::each_dict(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -724,7 +724,7 @@ void sec_dict() {
 void sec_set() {
     std::vector<::tpy::ordered_set<int32_t>> a = {::tpy::ordered_set<int32_t>({1}), ::tpy::ordered_set<int32_t>({2})};
     {
-        auto __src_0 = each_set(a);
+        auto __src_0 = ::tpyapp::main::each_set(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -744,7 +744,7 @@ void sec_set() {
 void sec_with() {
     std::vector<std::vector<int32_t>> a = {{1}, {2}};
     {
-        auto __src_0 = each_with(a);
+        auto __src_0 = ::tpyapp::main::each_with(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -764,7 +764,7 @@ void sec_with() {
 void sec_finally() {
     std::vector<std::vector<int32_t>> a = {{1}, {2}};
     {
-        auto __src_0 = each_finally(a);
+        auto __src_0 = ::tpyapp::main::each_finally(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -807,8 +807,8 @@ void sec_readonly() {
 void sec_iterparam() {
     std::vector<Box> a = {Box(1), Box(2)};
     {
-        auto __tmp_3 = boxes(a);
-        auto __src_0 = relay(__tmp_3);
+        auto __tmp_3 = ::tpyapp::main::boxes(a);
+        auto __src_0 = ::tpyapp::main::relay(__tmp_3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -836,20 +836,20 @@ void sec_iterparam() {
 //     sec_readonly()
 //     sec_iterparam()
 void main() {
-    sec_freelist();
-    sec_freerec();
-    sec_method();
-    sec_pack();
-    sec_selffield();
-    sec_framelocal();
-    sec_alias();
-    sec_ternary();
-    sec_dict();
-    sec_set();
-    sec_with();
-    sec_finally();
-    sec_readonly();
-    sec_iterparam();
+    ::tpyapp::main::sec_freelist();
+    ::tpyapp::main::sec_freerec();
+    ::tpyapp::main::sec_method();
+    ::tpyapp::main::sec_pack();
+    ::tpyapp::main::sec_selffield();
+    ::tpyapp::main::sec_framelocal();
+    ::tpyapp::main::sec_alias();
+    ::tpyapp::main::sec_ternary();
+    ::tpyapp::main::sec_dict();
+    ::tpyapp::main::sec_set();
+    ::tpyapp::main::sec_with();
+    ::tpyapp::main::sec_finally();
+    ::tpyapp::main::sec_readonly();
+    ::tpyapp::main::sec_iterparam();
 }
 
 // # 3. generator METHOD, container element off a list PARAM.
@@ -942,7 +942,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

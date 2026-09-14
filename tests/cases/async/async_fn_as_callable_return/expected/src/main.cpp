@@ -37,7 +37,7 @@ __coro_triple triple(int32_t n) {
 // def pick() -> Callable[[int32], Own[Cancellable[int32]]]:
 //     return triple
 std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> pick() {
-    return [](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(triple(__a0)); };
+    return [](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::triple(__a0)); };
 }
 
 // async def main_coro() -> int32:
@@ -46,7 +46,7 @@ std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> pi
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        factory = pick();
+        factory = ::tpyapp::main::pick();
         __sub_0.emplace(std::move(::tpystd::asyncio::create_task<int32_t>(factory(7))));
         __state = S_RESUME_0;
         continue;
@@ -73,7 +73,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     print(asyncio.run(main_coro()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(main_coro())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::main_coro())) << "\n";
 }
 
 // # An `async def` can be handed back in RETURN position typed as a coroutine
@@ -91,7 +91,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

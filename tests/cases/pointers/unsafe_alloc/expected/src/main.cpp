@@ -128,11 +128,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_single();
-    test_mutate();
-    test_alloc_n();
-    test_explicit_type_arg();
-    test_alloc_n_value_type();
+    ::tpyapp::main::test_single();
+    ::tpyapp::main::test_mutate();
+    ::tpyapp::main::test_alloc_n();
+    ::tpyapp::main::test_explicit_type_arg();
+    ::tpyapp::main::test_alloc_n_value_type();
 }
 
 } // namespace tpyapp::main

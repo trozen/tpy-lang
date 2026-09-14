@@ -24,8 +24,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << describe(10) << "\n";
-    std::cout << describe(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::describe(10) << "\n";
+    std::cout << ::tpyapp::main::describe(std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

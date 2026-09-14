@@ -66,7 +66,7 @@ template<typename T>
 //     item.mutate()        # mutation through the reference
 template<Mutable T>
 void process(std::vector<T>& items) {
-    ::tpy::val_or_ref_t<T> item = first<T>(items);
+    ::tpy::val_or_ref_t<T> item = ::tpyapp::main::first<T>(items);
     item.mutate();
 }
 

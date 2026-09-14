@@ -25,8 +25,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::TuplePrinter(pick(true)) << "\n";
-    std::cout << ::tpy::TuplePrinter(pick(false)) << "\n";
+    std::cout << ::tpy::TuplePrinter(::tpyapp::main::pick(true)) << "\n";
+    std::cout << ::tpy::TuplePrinter(::tpyapp::main::pick(false)) << "\n";
 }
 
 } // namespace tpyapp::main

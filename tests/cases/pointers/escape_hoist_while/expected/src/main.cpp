@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    while_escape();
+    ::tpyapp::main::while_escape();
 }
 
 } // namespace tpyapp::main

@@ -65,10 +65,10 @@ int32_t record_enter(Holder* h) {
 //     print(record_enter(Holder(1)))
 void main() {
     Counter __tmp_1 = Counter(4);
-    std::cout << value_enter(&(__tmp_1)) << "\n";
-    std::cout << value_enter(nullptr) << "\n";
+    std::cout << ::tpyapp::main::value_enter(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::value_enter(nullptr) << "\n";
     Holder __tmp_2 = Holder(1);
-    std::cout << record_enter(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::record_enter(&(__tmp_2)) << "\n";
 }
 
 // main()
@@ -77,7 +77,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

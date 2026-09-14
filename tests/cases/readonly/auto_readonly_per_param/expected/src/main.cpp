@@ -29,7 +29,7 @@ void main() {
     std::span<int32_t> s = b.copy_into(out);
     std::cout << ::tpy::__len__(out) << "\n";
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    read_buf(b);
+    ::tpyapp::main::read_buf(b);
 }
 
 // main()
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

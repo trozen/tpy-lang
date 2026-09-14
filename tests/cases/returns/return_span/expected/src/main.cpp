@@ -18,7 +18,7 @@ std::span<int32_t> get_span(std::array<int32_t, 4>& arr) {
 //     print(s[3])
 void main() {
     std::array<int32_t, 4> nums = {1, 2, 3, 4};
-    std::span<int32_t> s = get_span(nums);
+    std::span<int32_t> s = ::tpyapp::main::get_span(nums);
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
     std::cout << ::tpy::__getitem__(s, 3) << "\n";
 }
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

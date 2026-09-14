@@ -222,25 +222,25 @@ void roundtrip() {
 //     print("---")
 //     roundtrip()
 void main() {
-    read_header_derived();
+    ::tpyapp::main::read_header_derived();
     std::cout << "---" << "\n";
-    read_explicit_fieldnames();
+    ::tpyapp::main::read_explicit_fieldnames();
     std::cout << "---" << "\n";
-    read_quoted();
+    ::tpyapp::main::read_quoted();
     std::cout << "---" << "\n";
-    read_short_row();
+    ::tpyapp::main::read_short_row();
     std::cout << "---" << "\n";
-    read_long_row();
+    ::tpyapp::main::read_long_row();
     std::cout << "---" << "\n";
-    write_basic();
+    ::tpyapp::main::write_basic();
     std::cout << "---" << "\n";
-    write_quoting();
+    ::tpyapp::main::write_quoting();
     std::cout << "---" << "\n";
-    write_missing_key();
+    ::tpyapp::main::write_missing_key();
     std::cout << "---" << "\n";
-    write_extra_key_raises();
+    ::tpyapp::main::write_extra_key_raises();
     std::cout << "---" << "\n";
-    roundtrip();
+    ::tpyapp::main::roundtrip();
 }
 
 // # csv.DictReader / csv.DictWriter (dict[str, str] row surface) over io text
@@ -258,7 +258,7 @@ void __tpy_init() {
 
     ::tpystd::io::__tpy_init();
     ::tpystd::csv::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

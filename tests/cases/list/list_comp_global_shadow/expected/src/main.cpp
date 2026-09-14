@@ -142,7 +142,7 @@ void __tpy_init() {
         return ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x)));
     });
     r7 = &__global_slot_8;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

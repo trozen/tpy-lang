@@ -30,15 +30,15 @@ int32_t test(bool cond) {
         p = &*(__slot_2 = Point());
         p->x = 99;
     }
-    return consume(std::move((*p)));
+    return ::tpyapp::main::consume(std::move((*p)));
 }
 
 // def main():
 //     print(test(True))
 //     print(test(False))
 void main() {
-    std::cout << test(true) << "\n";
-    std::cout << test(false) << "\n";
+    std::cout << ::tpyapp::main::test(true) << "\n";
+    std::cout << ::tpyapp::main::test(false) << "\n";
 }
 
 void __tpy_init() {

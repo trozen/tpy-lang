@@ -18,7 +18,7 @@ void populate(Bag& b) {
 //     print(len(b._data))
 void main() {
     Bag b = Bag();
-    populate(b);
+    ::tpyapp::main::populate(b);
     std::cout << ::tpy::__len__(b._data) << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

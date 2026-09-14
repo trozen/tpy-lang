@@ -13,7 +13,7 @@ void greet(Pet& pet) {
 // def use_dog(d: Dog) -> None:
 //     greet(d)  # lvalue, direct inheritor -- no adapter, no copy
 void use_dog(Dog& d) {
-    greet(d);
+    ::tpyapp::main::greet(d);
 }
 
 // def main() -> None:
@@ -25,10 +25,10 @@ void use_dog(Dog& d) {
 //     print(pet.make_noise())  # virtual dispatch via pointer-local
 void main() {
     Dog __tmp_1{Dog()};
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
     Dog d = Dog();
-    greet(d);
-    use_dog(d);
+    ::tpyapp::main::greet(d);
+    ::tpyapp::main::use_dog(d);
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
     std::cout << pet->make_noise() << "\n";
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

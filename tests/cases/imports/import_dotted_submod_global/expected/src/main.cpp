@@ -22,7 +22,7 @@ void __tpy_init() {
 
     ::tpyapp::geo::__tpy_init();
     ::tpyapp::geo::codec::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

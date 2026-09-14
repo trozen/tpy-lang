@@ -53,8 +53,8 @@ void main() {
     r.width = 10;
     OptHolder h = OptHolder();
     std::vector<Point> pts = std::vector<Point>();
-    h.value = ::tpy::ptr_to_optional(find_point(pts, 1));
-    h.value = ::tpy::ptr_to_optional(find_point(pts, 1));
+    h.value = ::tpy::ptr_to_optional(::tpyapp::main::find_point(pts, 1));
+    h.value = ::tpy::ptr_to_optional(::tpyapp::main::find_point(pts, 1));
     h.value = h.value;
     h.value = h.value;
     Holder<Point> hp = Holder<Point>();
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

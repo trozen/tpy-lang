@@ -251,22 +251,22 @@ void __tpy_init() {
 
     static Point __global_slot_1 = Point(0, 0);
     g = &__global_slot_1;
-    test_local_sharing();
-    test_copy_independence();
+    ::tpyapp::main::test_local_sharing();
+    ::tpyapp::main::test_copy_independence();
     static Point __global_slot_2 = Point(0, 0);
     pt = &__global_slot_2;
-    test_init_from_param((*pt));
-    test_init_from_element();
-    test_foreach_mutation();
-    test_rebinding();
-    test_rvalue_append();
-    test_build_with_copy();
-    test_init_from_global();
-    test_rebind_to_global();
-    test_list_sharing();
-    test_pointer_chain();
-    test_method_on_pointer_local();
-    test_foreach_value_from_pointer_local();
+    ::tpyapp::main::test_init_from_param((*pt));
+    ::tpyapp::main::test_init_from_element();
+    ::tpyapp::main::test_foreach_mutation();
+    ::tpyapp::main::test_rebinding();
+    ::tpyapp::main::test_rvalue_append();
+    ::tpyapp::main::test_build_with_copy();
+    ::tpyapp::main::test_init_from_global();
+    ::tpyapp::main::test_rebind_to_global();
+    ::tpyapp::main::test_list_sharing();
+    ::tpyapp::main::test_pointer_chain();
+    ::tpyapp::main::test_method_on_pointer_local();
+    ::tpyapp::main::test_foreach_value_from_pointer_local();
 }
 
 } // namespace tpyapp::main

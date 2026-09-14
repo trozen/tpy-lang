@@ -16,7 +16,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    fail_now();
+    ::tpyapp::main::fail_now();
 }
 
 } // namespace tpyapp::main

@@ -36,7 +36,7 @@ void main() {
     int32_t idx;
     {
         {
-            auto __try_tmp_2 = find(items, 20);
+            auto __try_tmp_2 = ::tpyapp::main::find(items, 20);
             if (!__try_tmp_2.has_value()) goto __except_1;
             idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

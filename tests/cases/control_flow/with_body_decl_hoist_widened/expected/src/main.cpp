@@ -178,11 +178,11 @@ int32_t kept_manager_and_reseat() {
 //     print(nonvalue_in_branch(1))
 //     print(kept_manager_and_reseat())
 void main() {
-    std::cout << in_branch(2) << "\n";
-    in_loop();
-    std::cout << nonvalue_rvalue_reassigned(5) << "\n";
-    std::cout << nonvalue_in_branch(1) << "\n";
-    std::cout << kept_manager_and_reseat() << "\n";
+    std::cout << ::tpyapp::main::in_branch(2) << "\n";
+    ::tpyapp::main::in_loop();
+    std::cout << ::tpyapp::main::nonvalue_rvalue_reassigned(5) << "\n";
+    std::cout << ::tpyapp::main::nonvalue_in_branch(1) << "\n";
+    std::cout << ::tpyapp::main::kept_manager_and_reseat() << "\n";
 }
 
 // main()
@@ -191,7 +191,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

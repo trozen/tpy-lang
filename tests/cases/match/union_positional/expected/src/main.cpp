@@ -36,10 +36,10 @@ void describe(::tpy::Union<const Circle*, const Rect*> s) {
 void main() {
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    describe(c.as_const());
+    ::tpyapp::main::describe(c.as_const());
     ::tpy::Union<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
     ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    describe(r.as_const());
+    ::tpyapp::main::describe(r.as_const());
 }
 
 // # match/case with positional class patterns via __match_args__
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

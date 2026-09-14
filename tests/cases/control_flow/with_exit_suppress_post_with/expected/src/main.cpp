@@ -37,8 +37,8 @@ namespace tpyapp::main {
 //     print(maybe_neg_one(False))   # 100 -- body returns 100 through finally chain
 //     print(maybe_neg_one(True))    # -1  -- CM suppresses, trailing return fires
 void main() {
-    std::cout << maybe_neg_one(false) << "\n";
-    std::cout << maybe_neg_one(true) << "\n";
+    std::cout << ::tpyapp::main::maybe_neg_one(false) << "\n";
+    std::cout << ::tpyapp::main::maybe_neg_one(true) << "\n";
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

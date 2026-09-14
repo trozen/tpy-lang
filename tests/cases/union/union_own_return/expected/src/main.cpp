@@ -25,13 +25,13 @@ namespace tpyapp::main {
 //     if isinstance(pet2, Cat):
 //         print(pet2.name, pet2.lives)
 void main() {
-    ::tpy::Union<Cat, Dog> __slot_1 = make_dog("Rex", 5);
+    ::tpy::Union<Cat, Dog> __slot_1 = ::tpyapp::main::make_dog("Rex", 5);
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
         std::cout << __pet.name << " " << __pet.age << "\n";
     }
-    ::tpy::Union<Cat, Dog> __slot_2 = make_cat("Whiskers", 9);
+    ::tpy::Union<Cat, Dog> __slot_2 = ::tpyapp::main::make_cat("Whiskers", 9);
     ::tpy::Union<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_2);
     if (std::holds_alternative<Cat*>(pet2)) {
         auto& __pet2 = *std::get<Cat*>(pet2);
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

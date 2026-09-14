@@ -81,18 +81,18 @@ Rec* G{};
 //         print(first.n)
 //     print(readonly_recv(Rec(7)))
 void main() {
-    std::cout << from_global() << " " << G->n << "\n";
+    std::cout << ::tpyapp::main::from_global() << " " << G->n << "\n";
     Holder h = Holder();
-    std::cout << from_field(h) << " " << h.inner.n << "\n";
-    std::cout << from_container_field(h) << " " << ::tpy::__len__(h.kid) << "\n";
+    std::cout << ::tpyapp::main::from_field(h) << " " << h.inner.n << "\n";
+    std::cout << ::tpyapp::main::from_container_field(h) << " " << ::tpy::__len__(h.kid) << "\n";
     std::vector<std::optional<Rec>> xs = {Rec(::tpy::BigInt(3))};
-    std::cout << from_optional_elem(xs) << "\n";
+    std::cout << ::tpyapp::main::from_optional_elem(xs) << "\n";
     Rec* first = ::tpy::optional_to_ptr(::tpy::__getitem__(xs, 0));
     if ((first != nullptr)) {
         std::cout << first->n << "\n";
     }
     Rec __tmp_1 = Rec(::tpy::BigInt(7));
-    std::cout << readonly_recv(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::readonly_recv(__tmp_1) << "\n";
 }
 
 // G = Rec(3)
@@ -105,7 +105,7 @@ void __tpy_init() {
 
     static Rec __global_slot_1 = Rec(::tpy::BigInt(3));
     G = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

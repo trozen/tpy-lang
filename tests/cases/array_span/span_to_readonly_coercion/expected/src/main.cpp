@@ -25,7 +25,7 @@ int32_t sum_span(std::span<const int32_t> s) {
 //     print(result)
 void main() {
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
-    int32_t result = sum_span(::tpy::as_span(arr));
+    int32_t result = ::tpyapp::main::sum_span(::tpy::as_span(arr));
     std::cout << result << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

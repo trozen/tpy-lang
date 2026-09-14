@@ -12,7 +12,7 @@ namespace tpystd::urllib::request {
 //     # CA bundle); pass a context with load_verify_locations for custom CAs.
 //     return _urlopen(url, data, timeout, context, None)
 ::tpystd::http::client::HTTPResponse urlopen(std::string_view url, std::optional<::tpy::BytesView> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context) {
-    return _urlopen(url, data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt, timeout, context, std::nullopt);
+    return ::tpystd::urllib::request::_urlopen(url, data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt, timeout, context, std::nullopt);
 }
 
 // def _urlopen(url: str, data: bytes | None, timeout: float | None,

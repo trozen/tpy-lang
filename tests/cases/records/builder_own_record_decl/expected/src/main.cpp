@@ -20,7 +20,7 @@ int32_t sink(Inner&& x) {
 void run() {
     Builder b = Builder(41);
     Inner r = b.build();
-    int32_t n = sink(std::move(r));
+    int32_t n = ::tpyapp::main::sink(std::move(r));
     std::cout << n << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    run();
+    ::tpyapp::main::run();
 }
 
 } // namespace tpyapp::main

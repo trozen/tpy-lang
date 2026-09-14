@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     r: Rc[Box[Pet]] = wrap(Box(Dog("Rex")))  # tpyc: type(Rc[Box[Pet]])
 //     print(r.get().get().name())
 void main() {
-    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = wrap<Pet>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = ::tpyapp::main::wrap<Pet>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
     std::cout << r.get().get().name() << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

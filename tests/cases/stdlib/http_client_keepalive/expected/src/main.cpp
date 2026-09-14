@@ -110,19 +110,19 @@ bool will_close_response(::tpy::BytesView response) {
 //     # keeps the unframed fallback from firing -> reusable.
 //     print(will_close_response(b"HTTP/1.1 204 No Content\r\n\r\n"))
 void will_close_variants() {
-    std::cout << ::tpy::print_bool(will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nContent-Length: 3\r\n\r\nold", 41))) << "\n";
-    std::cout << ::tpy::print_bool(will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Length: 3\r\n\r\nold", 65))) << "\n";
-    std::cout << ::tpy::print_bool(will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nKeep-Alive: timeout=15, max=100\r\nContent-Length: 3\r\n\r\nold", 74))) << "\n";
-    std::cout << ::tpy::print_bool(will_close_response(::tpy::bytes_literal("HTTP/1.1 200 OK\r\n\r\nuntil-close", 30))) << "\n";
-    std::cout << ::tpy::print_bool(will_close_response(::tpy::bytes_literal("HTTP/1.1 204 No Content\r\n\r\n", 27))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nContent-Length: 3\r\n\r\nold", 41))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Length: 3\r\n\r\nold", 65))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nKeep-Alive: timeout=15, max=100\r\nContent-Length: 3\r\n\r\nold", 74))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.1 200 OK\r\n\r\nuntil-close", 30))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.1 204 No Content\r\n\r\n", 27))) << "\n";
 }
 
 // def main() -> None:
 //     keepalive_cycles()
 //     will_close_variants()
 void main() {
-    keepalive_cycles();
-    will_close_variants();
+    ::tpyapp::main::keepalive_cycles();
+    ::tpyapp::main::will_close_variants();
 }
 
 // # http.client keep-alive: one HTTPConnection serves multiple request/response
@@ -146,7 +146,7 @@ void __tpy_init() {
     ::tpystd::socket::__tpy_init();
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

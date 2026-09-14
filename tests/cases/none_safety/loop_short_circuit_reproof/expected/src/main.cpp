@@ -23,9 +23,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << shrink(2) << "\n";
-    std::cout << shrink(0) << "\n";
-    std::cout << shrink(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::shrink(2) << "\n";
+    std::cout << ::tpyapp::main::shrink(0) << "\n";
+    std::cout << ::tpyapp::main::shrink(std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

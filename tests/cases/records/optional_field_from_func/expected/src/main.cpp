@@ -47,11 +47,11 @@ void __tpy_init() {
     pts->push_back(Point(2, 20));
     static Holder __global_slot_2 = Holder();
     h = &__global_slot_2;
-    h->value = ::tpy::ptr_to_optional(find((*pts), 2));
+    h->value = ::tpy::ptr_to_optional(::tpyapp::main::find((*pts), 2));
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
     std::cout << ::tpy::deref_optional_check(h->value).x << "\n";
     std::cout << ::tpy::deref_optional_check(h->value).y << "\n";
-    h->value = ::tpy::ptr_to_optional(find((*pts), 99));
+    h->value = ::tpy::ptr_to_optional(::tpyapp::main::find((*pts), 99));
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
 }
 

@@ -30,7 +30,7 @@ std::string amb(std::string_view x) {
 //     return local_sink(amb(armed), "go")
 bool run() {
     bool armed = true;
-    return local_sink(amb(armed), "go");
+    return ::tpyapp::main::local_sink(::tpyapp::main::amb(armed), "go");
 }
 
 // def main() -> None:
@@ -40,11 +40,11 @@ bool run() {
 //     s = "ok"
 //     print(amb(s))
 void main() {
-    std::cout << ((run()) ? (1) : (0)) << "\n";
+    std::cout << ((::tpyapp::main::run()) ? (1) : (0)) << "\n";
     std::cout << ((::tpyapp::helpermod::paint(::tpyapp::helpermod::Color::RED)) ? (1) : (0)) << "\n";
-    std::cout << ((amb(true)) ? (1) : (0)) << "\n";
+    std::cout << ((::tpyapp::main::amb(true)) ? (1) : (0)) << "\n";
     std::string_view s = "ok";
-    std::cout << amb(s) << "\n";
+    std::cout << ::tpyapp::main::amb(s) << "\n";
 }
 
 // from helpermod import paint, Color, paint as painter
@@ -57,7 +57,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::helpermod::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

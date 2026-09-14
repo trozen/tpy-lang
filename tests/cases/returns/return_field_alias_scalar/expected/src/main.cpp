@@ -19,7 +19,7 @@ Box& ret(Holder& h) {
 //     print(h.box.val)
 void main() {
     Holder h = Holder(Box(5));
-    Box& b = ret(h);
+    Box& b = ::tpyapp::main::ret(h);
     b.val = 99;
     std::cout << h.box.val << "\n";
 }
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

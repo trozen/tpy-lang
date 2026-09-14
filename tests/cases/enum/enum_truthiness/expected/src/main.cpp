@@ -59,8 +59,8 @@ void check(Signal s) {
 //     check(Signal.Off)
 //     check(Signal.On)
 void main() {
-    check(Signal::Off);
-    check(Signal::On);
+    ::tpyapp::main::check(Signal::Off);
+    ::tpyapp::main::check(Signal::On);
 }
 
 // # All enum values are truthy (even value 0)
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -20,7 +20,7 @@ std::optional<int32_t> lookup(int32_t n) {
 //         return slot
 //     return -1
 int32_t narrow(int32_t n) {
-    if (((slot = lookup(n)).has_value())) {
+    if (((slot = ::tpyapp::main::lookup(n)).has_value())) {
         return (*slot);
     }
     return -1;
@@ -43,9 +43,9 @@ void other_types() {
 //     other_types()
 //     print("globals:", ratio, flag)
 void main() {
-    std::cout << "narrow:" << " " << narrow(4) << " " << narrow(-1) << " " << ::tpy::print_optional_val(slot) << "\n";
+    std::cout << "narrow:" << " " << ::tpyapp::main::narrow(4) << " " << ::tpyapp::main::narrow(-1) << " " << ::tpy::print_optional_val(slot) << "\n";
     std::cout << "method:" << " " << Widget().retitle("renamed") << " " << title << "\n";
-    other_types();
+    ::tpyapp::main::other_types();
     std::cout << "globals:" << " " << ::tpy::print_float(ratio) << " " << ::tpy::print_bool(flag) << "\n";
 }
 
@@ -64,7 +64,7 @@ void __tpy_init() {
     flag = false;
     title = "start";
     slot = std::nullopt;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

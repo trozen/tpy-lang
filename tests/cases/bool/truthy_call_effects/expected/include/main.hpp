@@ -68,7 +68,7 @@ inline Holder::Holder() : r(Rec(::tpy::BigInt(0))) {}
 // def made(self) -> Own[Rec]:
 //     return make()
 inline Rec Holder::made() const {
-    return make();
+    return ::tpyapp::main::make();
 }
 void __tpy_init();
 } // namespace tpyapp::main

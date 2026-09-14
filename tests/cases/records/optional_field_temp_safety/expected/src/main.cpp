@@ -23,7 +23,7 @@ Holder make_holder(const Point& p) {
 //     print(v.y)
 void test_init_from_temp() {
     Point p = Point(1, 2);
-    std::optional<Point> __slot_1 = make_holder(p).value;
+    std::optional<Point> __slot_1 = ::tpyapp::main::make_holder(p).value;
     Point* v = ::tpy::optional_to_ptr(__slot_1);
     std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
     std::cout << ::tpy::deref_check(v).x << "\n";
@@ -41,7 +41,7 @@ void test_rebind_from_temp() {
     std::optional<Point> __slot_1;
     Point* v = nullptr;
     Point p = Point(3, 4);
-    v = ::tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
+    v = ::tpy::optional_to_ptr(__slot_1 = ::tpyapp::main::make_holder(p).value);
     std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
     std::cout << ::tpy::deref_check(v).x << "\n";
 }
@@ -61,7 +61,7 @@ void test_rebind_in_block() {
     Point* v = nullptr;
     Point p = Point(5, 6);
     if (true) {
-        v = ::tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
+        v = ::tpy::optional_to_ptr(__slot_1 = ::tpyapp::main::make_holder(p).value);
     }
     std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
     std::cout << ::tpy::deref_check(v).x << "\n";
@@ -76,9 +76,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_init_from_temp();
-    test_rebind_from_temp();
-    test_rebind_in_block();
+    ::tpyapp::main::test_init_from_temp();
+    ::tpyapp::main::test_rebind_from_temp();
+    ::tpyapp::main::test_rebind_in_block();
 }
 
 } // namespace tpyapp::main

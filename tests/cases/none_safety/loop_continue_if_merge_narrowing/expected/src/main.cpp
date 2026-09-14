@@ -31,8 +31,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << use_after_continue_merge(true, 2) << "\n";
-    std::cout << use_after_continue_merge(true, std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::use_after_continue_merge(true, 2) << "\n";
+    std::cout << ::tpyapp::main::use_after_continue_merge(true, std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

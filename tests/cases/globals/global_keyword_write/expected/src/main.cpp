@@ -23,8 +23,8 @@ void __tpy_init() {
     initialized = true;
 
     x = ::tpy::BigInt(0);
-    increment();
-    increment();
+    ::tpyapp::main::increment();
+    ::tpyapp::main::increment();
     std::cout << x << "\n";
 }
 

@@ -47,7 +47,7 @@ void __tpy_init() {
     d = &__global_slot_1;
     static auto __global_slot_2 = ::tpy::__iter__((*d));
     it = &__global_slot_2;
-    use_global_iter();
+    ::tpyapp::main::use_global_iter();
     static std::vector<int32_t> __global_slot_3 = {10, 20, 30};
     nums = &__global_slot_3;
     static auto __global_slot_4 = ::tpy::__iter__((*nums));

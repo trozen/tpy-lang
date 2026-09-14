@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(f(lambda a, b: a + b, xs))            # 2-arg form: was the BUGS.md failure
 void main() {
     std::vector<int32_t> xs = {1, 2, 3, 4};
-    std::cout << f<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs, 0) << "\n";
-    std::cout << f<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs) << "\n";
+    std::cout << ::tpyapp::main::f<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs, 0) << "\n";
+    std::cout << ::tpyapp::main::f<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

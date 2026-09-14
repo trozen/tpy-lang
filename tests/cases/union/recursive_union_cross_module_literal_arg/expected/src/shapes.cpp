@@ -27,7 +27,7 @@ int32_t int_leaves(const Shape& s) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& it = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, int_leaves(it));
+            total = ::tpy::add_check<int32_t>(total, ::tpyapp::shapes::int_leaves(it));
         }
         return total;
         break;

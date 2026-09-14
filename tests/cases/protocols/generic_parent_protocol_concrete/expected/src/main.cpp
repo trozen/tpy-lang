@@ -14,8 +14,8 @@ void main() {
     IntList xs = IntList();
     xs.add(7);
     xs.add(8);
-    std::cout << length_of(xs) << "\n";
-    std::cout << total(xs) << "\n";
+    std::cout << ::tpyapp::main::length_of(xs) << "\n";
+    std::cout << ::tpyapp::main::total(xs) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -70,9 +70,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_ternary("hello", "world");
-    test_or("hello", "world");
-    test_and("hello", "world");
+    ::tpyapp::main::test_ternary("hello", "world");
+    ::tpyapp::main::test_or("hello", "world");
+    ::tpyapp::main::test_and("hello", "world");
 }
 
 } // namespace tpyapp::main

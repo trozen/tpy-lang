@@ -33,8 +33,8 @@ int32_t count(const ::tpy::ordered_set<int32_t>& s) {
 //     print(count(s))
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    std::cout << ::tpy::print_bool(has(s, 2)) << " " << ::tpy::print_bool(has(s, 9)) << "\n";
-    std::cout << count(s) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::has(s, 2)) << " " << ::tpy::print_bool(::tpyapp::main::has(s, 9)) << "\n";
+    std::cout << ::tpyapp::main::count(s) << "\n";
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

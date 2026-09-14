@@ -15,7 +15,7 @@ int32_t first_n(const std::tuple<int32_t, const Leaf*>& t) {
 //     print(first_n((1, leaf)))
 void main() {
     Leaf leaf = Leaf(7);
-    std::cout << first_n(std::tuple<int32_t, Leaf*>{1, &(leaf)}) << "\n";
+    std::cout << ::tpyapp::main::first_n(std::tuple<int32_t, Leaf*>{1, &(leaf)}) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

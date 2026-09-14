@@ -30,7 +30,7 @@ int32_t use(const std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optio
         if ((ctype.has_value())) {
             n = ::tpy::add_check<int32_t>(n, ::tpy::__len__((*ctype)));
         }
-        n = ::tpy::add_check<int32_t>(n, sink(ctype));
+        n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::sink(ctype));
     }
     return n;
 }
@@ -40,7 +40,7 @@ int32_t use(const std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optio
 //     print(use(rows))
 void main() {
     std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>> rows = std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>>{};
-    std::cout << use(rows) << "\n";
+    std::cout << ::tpyapp::main::use(rows) << "\n";
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

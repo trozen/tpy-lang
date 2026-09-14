@@ -63,9 +63,9 @@ void augmented() {
 //     reverse()
 //     augmented()
 void main() {
-    forward();
-    reverse();
-    augmented();
+    ::tpyapp::main::forward();
+    ::tpyapp::main::reverse();
+    ::tpyapp::main::augmented();
 }
 
 // main()
@@ -74,7 +74,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -19,17 +19,17 @@ void __tpy_init() {
     initialized = true;
 
     auto __tmp_1 = Counter(0, 5);
-    std::cout << sum_iter(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_iter(__tmp_1) << "\n";
     auto __tmp_2 = Counter(1, 6);
-    std::cout << sum_iter(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::sum_iter(__tmp_2) << "\n";
     auto __tmp_3 = Counter(0, 7);
-    std::cout << count_iter(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::count_iter(__tmp_3) << "\n";
     auto __tmp_4 = Counter(0, 0);
-    std::cout << count_iter(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::count_iter(__tmp_4) << "\n";
     auto __tmp_5 = Counter(0, 3);
-    std::cout << first_or_fallback(__tmp_5, -1) << "\n";
+    std::cout << ::tpyapp::main::first_or_fallback(__tmp_5, -1) << "\n";
     auto __tmp_6 = Counter(0, 0);
-    std::cout << first_or_fallback(__tmp_6, -1) << "\n";
+    std::cout << ::tpyapp::main::first_or_fallback(__tmp_6, -1) << "\n";
 }
 
 } // namespace tpyapp::main

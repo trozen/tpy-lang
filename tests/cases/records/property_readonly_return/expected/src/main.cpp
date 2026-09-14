@@ -16,7 +16,7 @@ int32_t get_count(const Foo& f) {
 //     print(get_count(f))
 void main() {
     Foo f = Foo();
-    std::cout << get_count(f) << "\n";
+    std::cout << ::tpyapp::main::get_count(f) << "\n";
 }
 
 // main()
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

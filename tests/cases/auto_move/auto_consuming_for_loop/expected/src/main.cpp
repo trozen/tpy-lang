@@ -50,8 +50,8 @@ int32_t sum_not_last_use() {
 //     print(sum_last_use())
 //     print(sum_not_last_use())
 void main() {
-    std::cout << sum_last_use() << "\n";
-    std::cout << sum_not_last_use() << "\n";
+    std::cout << ::tpyapp::main::sum_last_use() << "\n";
+    std::cout << ::tpyapp::main::sum_not_last_use() << "\n";
 }
 
 // main()
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

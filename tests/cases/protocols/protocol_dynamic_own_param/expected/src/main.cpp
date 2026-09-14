@@ -48,7 +48,7 @@ std::unique_ptr<Pet> speak_and_forward(std::unique_ptr<Pet> p) {
 //     # codegen would emit ill-formed `std::make_unique<Adapter<Pet, Pet>>(...)`.
 //     return make_parrot() if use_parrot else make_dog()
 std::unique_ptr<Pet> pick(bool use_parrot) {
-    return ((use_parrot) ? (make_parrot()) : (make_dog()));
+    return ((use_parrot) ? (::tpyapp::main::make_parrot()) : (::tpyapp::main::make_dog()));
 }
 
 // def main() -> None:
@@ -61,12 +61,12 @@ std::unique_ptr<Pet> pick(bool use_parrot) {
 //     print(pick(False).name())
 //     print(widen_to_pet(make_tabby()).name())
 void main() {
-    speak_and_forward(make_parrot());
-    speak_and_forward(make_dog());
-    std::cout << make_parrot()->name() << "\n";
-    std::cout << pick(true)->name() << "\n";
-    std::cout << pick(false)->name() << "\n";
-    std::cout << widen_to_pet(make_tabby())->name() << "\n";
+    ::tpyapp::main::speak_and_forward(::tpyapp::main::make_parrot());
+    ::tpyapp::main::speak_and_forward(::tpyapp::main::make_dog());
+    std::cout << ::tpyapp::main::make_parrot()->name() << "\n";
+    std::cout << ::tpyapp::main::pick(true)->name() << "\n";
+    std::cout << ::tpyapp::main::pick(false)->name() << "\n";
+    std::cout << ::tpyapp::main::widen_to_pet(::tpyapp::main::make_tabby())->name() << "\n";
 }
 
 // main()
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

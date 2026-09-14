@@ -78,7 +78,7 @@ __coro_f f(int32_t n) {
 // def main() -> None:
 //     print(asyncio.run(f(1)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(f(1))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::f(1))) << "\n";
 }
 
 // # A whole-variable loop over `dict.items()` whose value is a record, across
@@ -92,7 +92,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -30,16 +30,16 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    std::cout << first<int32_t>((*nums)) << "\n";
-    std::cout << last<int32_t>((*nums)) << "\n";
+    std::cout << ::tpyapp::main::first<int32_t>((*nums)) << "\n";
+    std::cout << ::tpyapp::main::last<int32_t>((*nums)) << "\n";
     static std::vector<std::string> __global_slot_2 = {"hello", "world"};
     words = &__global_slot_2;
-    std::cout << first<std::string>((*words)) << "\n";
-    std::cout << last<std::string>((*words)) << "\n";
+    std::cout << ::tpyapp::main::first<std::string>((*words)) << "\n";
+    std::cout << ::tpyapp::main::last<std::string>((*words)) << "\n";
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     vals = &__global_slot_3;
-    std::cout << first<int32_t>((*vals)) << "\n";
-    std::cout << last<int32_t>((*vals)) << "\n";
+    std::cout << ::tpyapp::main::first<int32_t>((*vals)) << "\n";
+    std::cout << ::tpyapp::main::last<int32_t>((*vals)) << "\n";
 }
 
 } // namespace tpyapp::main

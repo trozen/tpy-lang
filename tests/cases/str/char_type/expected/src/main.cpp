@@ -180,7 +180,7 @@ int32_t count_vowels(std::string_view text) {
     int32_t count = 0;
     int32_t i = 0;
     while ((i < ::tpy::__len__(text))) {
-        if (is_vowel(text[static_cast<std::size_t>(i)])) {
+        if (::tpyapp::main::is_vowel(text[static_cast<std::size_t>(i)])) {
             count = ::tpy::add_check<int32_t>(count, 1);
         }
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -203,18 +203,18 @@ int32_t count_vowels(std::string_view text) {
 //     else:
 //         print("x is not vowel")
 void test_char_function_param() {
-    if (is_vowel('a')) {
+    if (::tpyapp::main::is_vowel('a')) {
         std::cout << "a is vowel" << "\n";
     }
-    if (is_vowel('b')) {
+    if (::tpyapp::main::is_vowel('b')) {
         std::cout << "b is vowel" << "\n";
     } else {
         std::cout << "b is not vowel" << "\n";
     }
-    if (is_vowel('e')) {
+    if (::tpyapp::main::is_vowel('e')) {
         std::cout << "e is vowel" << "\n";
     }
-    if (is_vowel('x')) {
+    if (::tpyapp::main::is_vowel('x')) {
         std::cout << "x is vowel" << "\n";
     } else {
         std::cout << "x is not vowel" << "\n";
@@ -244,10 +244,10 @@ void test_char_iteration() {
 //     print(count_vowels("aeiou"))
 //     print(count_vowels("xyz"))
 void test_vowel_counting() {
-    std::cout << count_vowels("hello") << "\n";
-    std::cout << count_vowels("world") << "\n";
-    std::cout << count_vowels("aeiou") << "\n";
-    std::cout << count_vowels("xyz") << "\n";
+    std::cout << ::tpyapp::main::count_vowels("hello") << "\n";
+    std::cout << ::tpyapp::main::count_vowels("world") << "\n";
+    std::cout << ::tpyapp::main::count_vowels("aeiou") << "\n";
+    std::cout << ::tpyapp::main::count_vowels("xyz") << "\n";
 }
 
 // def test_chr_function() -> None:
@@ -301,7 +301,7 @@ void accepts_str(std::string_view s) {
 void test_char_to_str_coercion() {
     std::string_view s1 = "x";
     std::cout << s1 << "\n";
-    accepts_str("w");
+    ::tpyapp::main::accepts_str("w");
     std::string_view a = "a";
     std::string_view b = "b";
     if ((a < b)) {
@@ -335,23 +335,23 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "=== literals ===" << "\n";
-    test_char_literals();
+    ::tpyapp::main::test_char_literals();
     std::cout << "=== from index ===" << "\n";
-    test_char_from_string_index();
+    ::tpyapp::main::test_char_from_string_index();
     std::cout << "=== comparison ===" << "\n";
-    test_char_comparison();
+    ::tpyapp::main::test_char_comparison();
     std::cout << "=== in string ===" << "\n";
-    test_char_in_string();
+    ::tpyapp::main::test_char_in_string();
     std::cout << "=== function param ===" << "\n";
-    test_char_function_param();
+    ::tpyapp::main::test_char_function_param();
     std::cout << "=== iteration ===" << "\n";
-    test_char_iteration();
+    ::tpyapp::main::test_char_iteration();
     std::cout << "=== vowel counting ===" << "\n";
-    test_vowel_counting();
+    ::tpyapp::main::test_vowel_counting();
     std::cout << "=== chr function ===" << "\n";
-    test_chr_function();
+    ::tpyapp::main::test_chr_function();
     std::cout << "=== char to str ===" << "\n";
-    test_char_to_str_coercion();
+    ::tpyapp::main::test_char_to_str_coercion();
 }
 
 } // namespace tpyapp::main

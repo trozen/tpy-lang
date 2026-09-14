@@ -20,7 +20,7 @@ void mutate_all(::tpy::varargs<Box> items) {
 // def outer(*xs: Box) -> None:  # tpyc: ok
 //     mutate_all(*xs)
 void outer(::tpy::varargs<Box> xs) {
-    mutate_all(::tpy::varargs<Box>(xs));
+    ::tpyapp::main::mutate_all(::tpy::varargs<Box>(xs));
 }
 
 // def main() -> None:
@@ -33,7 +33,7 @@ void main() {
     Box a = Box(1);
     Box b = Box(2);
     std::array<Box*, 2> __tmp_1{&a, &b};
-    outer(::tpy::varargs<Box>(__tmp_1));
+    ::tpyapp::main::outer(::tpy::varargs<Box>(__tmp_1));
     std::cout << a.val << "\n";
     std::cout << b.val << "\n";
 }
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

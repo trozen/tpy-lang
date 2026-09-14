@@ -25,7 +25,7 @@ std::tuple<Point*, Point, int32_t, std::string> split3(Point& p) {
 //     print(ref.x, owned.x, n, s)
 void main() {
     Point p = Point(1);
-    auto __tup_1 = split3(p);
+    auto __tup_1 = ::tpyapp::main::split3(p);
     auto&& ref = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     Point owned = std::move(std::get<1>(__tup_1));
     int32_t n = std::get<2>(__tup_1);
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

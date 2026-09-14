@@ -59,7 +59,7 @@ void main() {
     {
         Inner __tmp_1 = Inner(::tpy::BigInt(7));
         Box __tmp_2 = Box(&(__tmp_1));
-        auto __src_0 = gen(__tmp_2);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -71,7 +71,7 @@ void main() {
     std::cout << "--" << "\n";
     {
         Box __tmp_3 = Box(nullptr);
-        auto __src_2 = gen(__tmp_3);
+        auto __src_2 = ::tpyapp::main::gen(__tmp_3);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -88,7 +88,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -22,10 +22,10 @@ std::string greet(std::string_view prefix) {
 //     print(greet())
 //     print(greet("hi"))
 void main() {
-    std::cout << use_alias() << "\n";
-    std::cout << use_alias(0) << "\n";
-    std::cout << greet() << "\n";
-    std::cout << greet("hi") << "\n";
+    std::cout << ::tpyapp::main::use_alias() << "\n";
+    std::cout << ::tpyapp::main::use_alias(0) << "\n";
+    std::cout << ::tpyapp::main::greet() << "\n";
+    std::cout << ::tpyapp::main::greet("hi") << "\n";
 }
 
 // from consts import CASELESS as DEFAULT_FLAGS
@@ -37,7 +37,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::consts::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

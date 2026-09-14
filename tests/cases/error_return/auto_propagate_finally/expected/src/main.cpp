@@ -30,7 +30,7 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
         bool __fin_ran_1 = false;
         try {
             {
-                auto __try_tmp_1 = fallible(x);
+                auto __try_tmp_1 = ::tpyapp::main::fallible(x);
                 if (!__try_tmp_1.has_value()) {
                     std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_1.error());
                     __fin_ran_1 = true;
@@ -67,7 +67,7 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
         bool __fin_ran_2 = false;
         try {
             {
-                auto __try_tmp_2 = fallible(x);
+                auto __try_tmp_2 = ::tpyapp::main::fallible(x);
                 if (!__try_tmp_2.has_value()) {
                     std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_2.error());
                     __fin_ran_2 = true;
@@ -101,7 +101,7 @@ std::expected<void, MyErr> caller_stmt(int32_t x) {
         bool __fin_ran_3 = false;
         try {
             {
-                auto __try_tmp_3 = fallible(x);
+                auto __try_tmp_3 = ::tpyapp::main::fallible(x);
                 if (!__try_tmp_3.has_value()) {
                     std::expected<void, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_3.error());
                     __fin_ran_3 = true;
@@ -150,7 +150,7 @@ void main() {
     int32_t v;
     {
         {
-            auto __try_tmp_5 = caller(-1);
+            auto __try_tmp_5 = ::tpyapp::main::caller(-1);
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
@@ -164,7 +164,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_7 = caller(3);
+            auto __try_tmp_7 = ::tpyapp::main::caller(3);
             if (!__try_tmp_7.has_value()) goto __except_6;
             v = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
@@ -178,7 +178,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_9 = caller_assign(-1);
+            auto __try_tmp_9 = ::tpyapp::main::caller_assign(-1);
             if (!__try_tmp_9.has_value()) goto __except_8;
             v = ::tpy::unwrap_ref_move(*__try_tmp_9);
         }
@@ -192,7 +192,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_11 = caller_stmt(-1);
+            auto __try_tmp_11 = ::tpyapp::main::caller_stmt(-1);
             if (!__try_tmp_11.has_value()) goto __except_10;
         }
         goto __after_try_10;
@@ -209,7 +209,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

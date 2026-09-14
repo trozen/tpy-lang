@@ -85,22 +85,22 @@ void main() {
     s.insert("a");
     s.insert("b");
     s.insert("c");
-    discard_param(s, "a");
+    ::tpyapp::main::discard_param(s, "a");
     std::cout << ::tpy::__len__(s) << "\n";
-    discard_literal(s);
+    ::tpyapp::main::discard_literal(s);
     std::cout << ::tpy::__len__(s) << "\n";
-    remove_literal(s);
+    ::tpyapp::main::remove_literal(s);
     std::cout << ::tpy::__len__(s) << "\n";
     ::tpy::ordered_set<std::string> t = ::tpy::ordered_set<std::string>();
     t.insert("x");
     t.insert("y");
-    remove_param(t, "x");
+    ::tpyapp::main::remove_param(t, "x");
     std::cout << ::tpy::__len__(t) << "\n";
-    std::cout << ::tpy::print_bool(has(t, "y")) << " " << ::tpy::print_bool(has(t, "x")) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::has(t, "y")) << " " << ::tpy::print_bool(::tpyapp::main::has(t, "x")) << "\n";
     ::tpy::ordered_set<std::string> e = ::tpy::ordered_set<std::string>();
     e.insert("");
     e.insert("a");
-    empty_key(e, "");
+    ::tpyapp::main::empty_key(e, "");
 }
 
 // main()
@@ -109,7 +109,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

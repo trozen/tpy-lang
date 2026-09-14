@@ -74,7 +74,7 @@ __gen_gen gen(std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs
 void main() {
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> data = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(1), nullptr})), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P*, P>{nullptr, P(4)}))};
     {
-        auto __src_0 = gen(data);
+        auto __src_0 = ::tpyapp::main::gen(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -91,7 +91,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

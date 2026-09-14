@@ -31,9 +31,9 @@ namespace tpyapp::main {
 //     print(from_literal().decode())
 void main() {
     ::tpy::BytesView data = ::tpy::bytes_literal("abcdef", 6);
-    std::cout << ::tpy::bytes_decode(from_param(data)) << "\n";
-    std::cout << ::tpy::bytes_decode(from_param_sliced(data)) << "\n";
-    std::cout << ::tpy::bytes_decode(from_literal()) << "\n";
+    std::cout << ::tpy::bytes_decode(::tpyapp::main::from_param(data)) << "\n";
+    std::cout << ::tpy::bytes_decode(::tpyapp::main::from_param_sliced(data)) << "\n";
+    std::cout << ::tpy::bytes_decode(::tpyapp::main::from_literal()) << "\n";
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -19,7 +19,7 @@ Cell bump(Cell&& c) {
 //     d = bump(copy(c))  # tpyc: ok
 //     print("free:", c.n, d.n)
 void sec_free(const Cell& c) {
-    Cell d = bump(Cell(c));
+    Cell d = ::tpyapp::main::bump(Cell(c));
     std::cout << "free:" << " " << c.n << " " << d.n << "\n";
 }
 
@@ -54,7 +54,7 @@ void sec_generic(const Cell& c) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_copies::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        d.emplace(bump(Cell(c)));
+        d.emplace(::tpyapp::main::bump(Cell(c)));
         __state = S_RESUME_0;
         return (*d).n;
     }
@@ -85,7 +85,7 @@ __gen_gen_copies gen_copies(const Cell& c) {
 void sec_generator(const Cell& c) {
     std::vector<int32_t> out = std::vector<int32_t>{};
     {
-        auto __src_0 = gen_copies(c);
+        auto __src_0 = ::tpyapp::main::gen_copies(c);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -105,7 +105,7 @@ void sec_generator(const Cell& c) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
-        d.emplace(bump(Cell(c)));
+        d.emplace(::tpyapp::main::bump(Cell(c)));
         __state = S_DONE;
         int32_t __tpy_async_ret = (*d).n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -124,7 +124,7 @@ __coro_copy_in_task copy_in_task(const Cell& c) {
 // def sec_async(c: readonly[Cell]) -> None:
 //     print("async:", c.n, asyncio.run(copy_in_task(c)))
 void sec_async(const Cell& c) {
-    std::cout << "async:" << " " << c.n << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(copy_in_task(c))) << "\n";
+    std::cout << "async:" << " " << c.n << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::copy_in_task(c))) << "\n";
 }
 
 // # comprehension: the loop variable over a readonly list is readonly.
@@ -140,7 +140,7 @@ void sec_comprehension(const std::vector<Cell>& cs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& c = *__beg_0;
-            __result.push_back(bump(Cell(c)).n);
+            __result.push_back(::tpyapp::main::bump(Cell(c)).n);
         }
         std::move(__result);
     });
@@ -154,7 +154,7 @@ void sec_comprehension(const std::vector<Cell>& cs) {
 //     print("closure:", c.n, inner())
 void sec_closure(const Cell& c) {
     auto inner = [&c]() -> int32_t {
-        return bump(Cell(c)).n;
+        return ::tpyapp::main::bump(Cell(c)).n;
     };
     std::cout << "closure:" << " " << c.n << " " << inner() << "\n";
 }
@@ -169,7 +169,7 @@ void sec_with(const Cell& c) {
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
-        d = bump(Cell(c));
+        d = ::tpyapp::main::bump(Cell(c));
         std::cout << "with:" << " " << c.n << " " << d->n << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -194,7 +194,7 @@ void sec_try_finally(const Cell& c) {
     std::optional<Cell> d;
     {
         try {
-            d = bump(Cell(c));
+            d = ::tpyapp::main::bump(Cell(c));
             std::cout << "try-finally:" << " " << c.n << " " << d->n << "\n";
         } catch (...) {
             throw;
@@ -208,7 +208,7 @@ void sec_try_finally(const Cell& c) {
 //     d = bump(copy(c))  # tpyc: ok
 //     return d.n
 std::expected<int32_t, Missing> ret_copy(const Cell& c) {
-    Cell d = bump(Cell(c));
+    Cell d = ::tpyapp::main::bump(Cell(c));
     return d.n;
 }
 
@@ -219,7 +219,7 @@ std::expected<int32_t, Missing> ret_copy(const Cell& c) {
 //         print("error-return: missing")
 void sec_error_return(const Cell& c) {
     {
-        std::cout << "error-return:" << " " << c.n << " " << ({ auto __er_2 = ret_copy(c); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error-return:" << " " << c.n << " " << ({ auto __er_2 = ::tpyapp::main::ret_copy(c); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except Missing:
         __except_1:;
@@ -240,7 +240,7 @@ void sec_match(const Cell& c, int32_t k) {
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
-        Cell d = bump(Cell(c));
+        Cell d = ::tpyapp::main::bump(Cell(c));
         std::cout << "match:" << " " << c.n << " " << d.n << "\n";
         break;
     }
@@ -277,20 +277,20 @@ const Cell& peek(const Holder& h) {
 void main() {
     std::cout << "module-level:" << " " << TOP_SRC->cell.n << " " << TOP->n << "\n";
     Cell c = Cell(1);
-    sec_free(c);
+    ::tpyapp::main::sec_free(c);
     Holder(Cell(1)).sec_method();
     Holder(Cell(1)).sec_borrow_ret();
-    sec_ctor(c);
-    sec_generic(c);
-    sec_generator(c);
-    sec_async(c);
+    ::tpyapp::main::sec_ctor(c);
+    ::tpyapp::main::sec_generic(c);
+    ::tpyapp::main::sec_generator(c);
+    ::tpyapp::main::sec_async(c);
     std::vector<Cell> cs = {Cell(1)};
-    sec_comprehension(cs);
-    sec_closure(c);
-    sec_with(c);
-    sec_try_finally(c);
-    sec_error_return(c);
-    sec_match(c, 1);
+    ::tpyapp::main::sec_comprehension(cs);
+    ::tpyapp::main::sec_closure(c);
+    ::tpyapp::main::sec_with(c);
+    ::tpyapp::main::sec_try_finally(c);
+    ::tpyapp::main::sec_error_return(c);
+    ::tpyapp::main::sec_match(c, 1);
 }
 
 // import asyncio
@@ -309,9 +309,9 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     static Holder __global_slot_1 = Holder(Cell(1));
     TOP_SRC = &__global_slot_1;
-    static Cell __global_slot_2 = bump(Cell(peek((*TOP_SRC))));
+    static Cell __global_slot_2 = ::tpyapp::main::bump(Cell(::tpyapp::main::peek((*TOP_SRC))));
     TOP = &__global_slot_2;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

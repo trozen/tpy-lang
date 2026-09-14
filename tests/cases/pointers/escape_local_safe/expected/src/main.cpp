@@ -280,19 +280,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    loop_escape_copy_ok();
-    loop_rvalue_ok();
-    foreach_outer_container();
-    value_type_ok();
-    foreach_shadow_safe();
-    sequential_loops_same_var();
-    same_scope_ok();
-    lvalue_init_rvalue_rebind();
-    rvalue_alias_preserved();
-    if_branch_rvalue_rebind();
-    if_else_rvalue_rebinds();
-    if_alias_preserved();
-    while_rvalue_rebind();
+    ::tpyapp::main::loop_escape_copy_ok();
+    ::tpyapp::main::loop_rvalue_ok();
+    ::tpyapp::main::foreach_outer_container();
+    ::tpyapp::main::value_type_ok();
+    ::tpyapp::main::foreach_shadow_safe();
+    ::tpyapp::main::sequential_loops_same_var();
+    ::tpyapp::main::same_scope_ok();
+    ::tpyapp::main::lvalue_init_rvalue_rebind();
+    ::tpyapp::main::rvalue_alias_preserved();
+    ::tpyapp::main::if_branch_rvalue_rebind();
+    ::tpyapp::main::if_else_rvalue_rebinds();
+    ::tpyapp::main::if_alias_preserved();
+    ::tpyapp::main::while_rvalue_rebind();
 }
 
 } // namespace tpyapp::main

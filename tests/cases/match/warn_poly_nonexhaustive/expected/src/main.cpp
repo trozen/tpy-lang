@@ -28,9 +28,9 @@ std::string describe(const Pet& p) {
 //     print(describe(Cat()))
 void main() {
     Dog __tmp_1{Dog()};
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
     Cat __tmp_2{Cat()};
-    std::cout << describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

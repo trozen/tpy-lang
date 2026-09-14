@@ -49,7 +49,7 @@ void main() {
     n.fire();
     n.aim(&b, 7);
     n.fire();
-    fire_direct(a, 11);
+    ::tpyapp::main::fire_direct(a, 11);
     auto ro_ptr = &a;
     std::cout << ::tpy::ListPrinter(a.log) << "\n";
     std::cout << ::tpy::ListPrinter(b.log) << "\n";
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

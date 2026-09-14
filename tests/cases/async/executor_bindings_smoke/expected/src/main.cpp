@@ -84,9 +84,9 @@ __coro_trivial trivial() {
 //     asyncio.run(trivial())
 //     print("second run completed, null?", (_get_current_executor() is None))
 void check_teardown() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(trivial()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::trivial()));
     std::cout << "after run, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(trivial()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::trivial()));
     std::cout << "second run completed, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
 }
 
@@ -96,10 +96,10 @@ void check_teardown() {
 //     asyncio.run(check_inside())
 //     check_teardown()
 void main() {
-    check_outside();
-    check_sleep();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(check_inside()));
-    check_teardown();
+    ::tpyapp::main::check_outside();
+    ::tpyapp::main::check_sleep();
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::check_inside()));
+    ::tpyapp::main::check_teardown();
 }
 
 // # asyncio internal-helpers smoke: current-executor getter/setter/clear,
@@ -123,7 +123,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

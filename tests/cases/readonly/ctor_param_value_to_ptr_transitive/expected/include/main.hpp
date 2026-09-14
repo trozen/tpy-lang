@@ -59,7 +59,7 @@ inline Node::Node() : x(::tpy::BigInt(0)) {}
 //     helper(node)
 //     self.started = True
 inline Holder::Holder(Node& node) {
-    helper(node);
+    ::tpyapp::main::helper(node);
     this->started = true;
 }
 void __tpy_init();

@@ -256,7 +256,7 @@ inline socket::socket(int32_t family, int32_t type_, int32_t proto, int32_t file
     } else {
         int32_t new_fd = ::socket(family, type_, proto);
         if ((new_fd < 0)) {
-            _raise_errno();
+            ::tpystd::socket::_raise_errno();
         }
         this->fd = new_fd;
     }
@@ -307,7 +307,7 @@ inline void socket::close() {
 //         _raise_errno()
 inline void socket::shutdown(int32_t how) const {
     if ((::shutdown(this->fd, how) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
 }
 
@@ -358,9 +358,9 @@ inline void socket::bind(const std::tuple<std::string, int32_t>& address) const 
     const auto& __tup_1 = address;
     std::string_view host = std::get<0>(__tup_1);
     int32_t port = std::get<1>(__tup_1);
-    ::sockaddr_in addr = _build_sockaddr_in(host, port);
+    ::sockaddr_in addr = ::tpystd::socket::_build_sockaddr_in(host, port);
     if ((::bind(this->fd, &addr, _SOCKADDR_IN_LEN) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
 }
 
@@ -370,7 +370,7 @@ inline void socket::bind(const std::tuple<std::string, int32_t>& address) const 
 //         _raise_errno()
 inline void socket::listen(int32_t backlog) const {
     if ((::listen(this->fd, backlog) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
 }
 
@@ -443,7 +443,7 @@ inline int32_t socket::_send_from(::tpy::BytesView data, uint64_t offset) const 
 inline void socket::setsockopt_int(int32_t level, int32_t optname, int32_t value) const {
     int32_t v = value;
     if ((::setsockopt(this->fd, level, optname, &v, 4) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
 }
 
@@ -460,7 +460,7 @@ inline int32_t socket::getsockopt_int(int32_t level, int32_t optname) const {
     int32_t out = 0;
     uint32_t optlen = 4;
     if ((::getsockopt(this->fd, level, optname, &out, &optlen) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
     return out;
 }
@@ -476,9 +476,9 @@ inline std::tuple<std::string, int32_t> socket::getsockname() const {
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
     uint32_t addrlen = _SOCKADDR_IN_LEN;
     if ((::getsockname(this->fd, &addr, &addrlen) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
-    return std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
+    return std::tuple<std::string, int32_t>{::tpystd::socket::_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
 }
 
 // def getpeername(self) -> tuple[str, int32]:
@@ -492,9 +492,9 @@ inline std::tuple<std::string, int32_t> socket::getpeername() const {
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
     uint32_t addrlen = _SOCKADDR_IN_LEN;
     if ((::getpeername(this->fd, &addr, &addrlen) < 0)) {
-        _raise_errno();
+        ::tpystd::socket::_raise_errno();
     }
-    return std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
+    return std::tuple<std::string, int32_t>{::tpystd::socket::_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
 }
 
 // def makefile(self, mode: str = "r",

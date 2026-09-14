@@ -76,7 +76,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_2: {
         try {
-            boom(::tpy::BigInt(i));
+            ::tpyapp::main::boom(::tpy::BigInt(i));
             __state = S_RESUME_0;
             return ::tpy::BigInt(-1);
         } catch (const AErr&) {
@@ -105,7 +105,7 @@ __gen_gen gen() {
 //         print(v)
 void main() {
     {
-        auto __src_0 = gen();
+        auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -122,7 +122,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

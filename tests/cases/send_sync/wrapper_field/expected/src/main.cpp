@@ -15,7 +15,7 @@ void run_handler(const Handler& h) {
 //     run_handler(h)
 void main() {
     Handler h = Handler([](int32_t n) { std::cout << "cb" << " " << n << "\n"; });
-    run_handler(h);
+    ::tpyapp::main::run_handler(h);
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

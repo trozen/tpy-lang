@@ -55,9 +55,9 @@ void fall_through() {
 //     r = early_return()
 //     print(f"got {r}")
 void main() {
-    fall_through();
+    ::tpyapp::main::fall_through();
     std::cout << "---" << "\n";
-    ::tpy::BigInt r = early_return();
+    ::tpy::BigInt r = ::tpyapp::main::early_return();
     std::cout << std::format("got {}", (r).to_string()) << "\n";
 }
 
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

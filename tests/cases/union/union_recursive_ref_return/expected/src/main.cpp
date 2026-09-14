@@ -26,7 +26,7 @@ Expr g;
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& child = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, (leaf_count(child)).to_fixed_check<int32_t>());
+            total = ::tpy::add_check<int32_t>(total, (::tpyapp::main::leaf_count(child)).to_fixed_check<int32_t>());
         }
         return ::tpy::BigInt(total);
         break;
@@ -63,10 +63,10 @@ Expr build() {
 //     print(leaf_count(first_view(seed)))
 //     print(leaf_count(build()))
 void main() {
-    std::cout << leaf_count(get_global()) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::get_global()) << "\n";
     Expr seed = std::vector<Expr>{7, std::vector<Expr>{8, 9}};
-    std::cout << leaf_count(first_view(seed)) << "\n";
-    std::cout << leaf_count(build()) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::first_view(seed)) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::build()) << "\n";
 }
 
 // g: Expr = [1, [2, 3], 4]
@@ -78,7 +78,7 @@ void __tpy_init() {
     initialized = true;
 
     g = std::vector<Expr>{1, std::vector<Expr>{2, 3}, 4};
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

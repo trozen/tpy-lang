@@ -31,7 +31,7 @@ std::tuple<int32_t, std::string> make_pair(int32_t i) {
 void main() {
     int32_t total = 0;
     for (int32_t i = 0; i < 3; ++i) {
-        auto __tup_1 = make_pair(i);
+        auto __tup_1 = ::tpyapp::main::make_pair(i);
         int32_t n = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);
         std::cout << s << "\n";
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

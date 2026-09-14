@@ -205,7 +205,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::base64::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

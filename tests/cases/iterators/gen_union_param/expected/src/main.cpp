@@ -71,7 +71,7 @@ __gen_describe describe(::tpy::Union<Cat*, Dog*> a) {
 void main() {
     {
         Dog __tmp_1 = Dog("rex");
-        auto __src_0 = describe(::tpy::Union<Cat*, Dog*>{&__tmp_1});
+        auto __src_0 = ::tpyapp::main::describe(::tpy::Union<Cat*, Dog*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -83,7 +83,7 @@ void main() {
     ::tpy::Union<Cat, Dog> __slot_1 = Cat("tom");
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     {
-        auto __src_2 = describe(pet);
+        auto __src_2 = ::tpyapp::main::describe(pet);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -100,7 +100,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

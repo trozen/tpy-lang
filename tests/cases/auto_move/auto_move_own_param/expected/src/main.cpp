@@ -14,7 +14,7 @@ int32_t consume(Point&& p) {
 //     # p is an Own param; forwarding to another Own param at last use
 //     return consume(p)
 int32_t forward(Point&& p) {
-    return consume(std::move(p));
+    return ::tpyapp::main::consume(std::move(p));
 }
 
 // def main():
@@ -26,7 +26,7 @@ void main() {
     Point p = Point();
     p.x = 5;
     p.y = 7;
-    std::cout << forward(std::move(p)) << "\n";
+    std::cout << ::tpyapp::main::forward(std::move(p)) << "\n";
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

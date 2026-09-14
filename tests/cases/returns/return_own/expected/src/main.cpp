@@ -21,7 +21,7 @@ Point create_point(int32_t x, int32_t y) {
 //     print(pt.x)
 //     print(pt.y)
 void main() {
-    Point pt = create_point(10, 20);
+    Point pt = ::tpyapp::main::create_point(10, 20);
     std::cout << pt.x << "\n";
     std::cout << pt.y << "\n";
 }
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -111,7 +111,7 @@ void take(Pet* p) {
 //     take(d)  # tpyc: ok
 //     print("arg", d.name)
 void arg(Dog& d) {
-    take(&(d));
+    ::tpyapp::main::take(&(d));
     std::cout << "arg" << " " << d.name << "\n";
 }
 
@@ -142,9 +142,9 @@ void take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*> p) {
 //     take_union_opt(e)  # tpyc: ok
 //     print("arg_union", e.name)
 void arg_union(Dog& d, Dog& e) {
-    take_union(::tpy::Union<Cat*, Pet*>{&(d)});
+    ::tpyapp::main::take_union(::tpy::Union<Cat*, Pet*>{&(d)});
     std::cout << "arg_union" << " " << d.name << "\n";
-    take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*>{&(e)});
+    ::tpyapp::main::take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*>{&(e)});
     std::cout << "arg_union" << " " << e.name << "\n";
 }
 
@@ -161,7 +161,7 @@ Pet* give(Dog& d) {
 //         p.rename("ret-base")
 //     print("ret", d.name)
 void ret(Dog& d) {
-    Pet* p = give(d);
+    Pet* p = ::tpyapp::main::give(d);
     if ((p != nullptr)) {
         p->rename("ret-base");
     }
@@ -192,13 +192,13 @@ void ret(Dog& d) {
 //         q.rename("ret-union-opt-base")
 //     print("ret_union", e.name)
 void ret_union(Dog& d, Dog& e) {
-    ::tpy::Union<Cat*, Pet*> p = give_union(d);
+    ::tpy::Union<Cat*, Pet*> p = ::tpyapp::main::give_union(d);
     if (std::holds_alternative<Pet*>(p)) {
         auto& __p = *std::get<Pet*>(p);
         __p.rename("ret-union-base");
     }
     std::cout << "ret_union" << " " << d.name << "\n";
-    ::tpy::Union<std::monostate, Cat*, Pet*> q = give_union_opt(e);
+    ::tpy::Union<std::monostate, Cat*, Pet*> q = ::tpyapp::main::give_union_opt(e);
     if (std::holds_alternative<Pet*>(q)) {
         auto& __q = *std::get<Pet*>(q);
         __q.rename("ret-union-opt-base");
@@ -310,8 +310,8 @@ void same_type(Pet& x, Pet& y) {
     Pet* q = &(x);
     q = &(y);
     ::tpy::Union<Cat*, Pet*> u{&(x)};
-    take(&(y));
-    take_union(::tpy::Union<Cat*, Pet*>{&(y)});
+    ::tpyapp::main::take(&(y));
+    ::tpyapp::main::take_union(::tpy::Union<Cat*, Pet*>{&(y)});
     if ((p != nullptr)) {
         p->rename("same-local");
     }
@@ -322,7 +322,7 @@ void same_type(Pet& x, Pet& y) {
     }
     std::cout << "same" << " " << x.name << " " << y.name << "\n";
     {
-        auto __src_0 = gen_same(x);
+        auto __src_0 = ::tpyapp::main::gen_same(x);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -351,11 +351,11 @@ void same_type(Pet& x, Pet& y) {
 //     same_type(Pet("sx"), Pet("sy"))
 void main() {
     Dog d = Dog("rex");
-    upcast(d);
+    ::tpyapp::main::upcast(d);
     std::cout << "local" << " " << d.name << "\n";
     {
         Dog __tmp_1 = Dog("gen");
-        auto __src_0 = gen(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -366,28 +366,28 @@ void main() {
     }
     Dog __tmp_2 = Dog("rd");
     Cat __tmp_3 = Cat("rc");
-    reseat(__tmp_2, __tmp_3);
+    ::tpyapp::main::reseat(__tmp_2, __tmp_3);
     Dog __tmp_4 = Dog("ud");
-    union_(__tmp_4);
+    ::tpyapp::main::union_(__tmp_4);
     Dog __tmp_5 = Dog("uod");
-    union_opt(__tmp_5);
+    ::tpyapp::main::union_opt(__tmp_5);
     Dog __tmp_6 = Dog("ad");
-    arg(__tmp_6);
+    ::tpyapp::main::arg(__tmp_6);
     Dog __tmp_7 = Dog("aud");
     Dog __tmp_8 = Dog("aue");
-    arg_union(__tmp_7, __tmp_8);
+    ::tpyapp::main::arg_union(__tmp_7, __tmp_8);
     Dog __tmp_9 = Dog("rt");
-    ret(__tmp_9);
+    ::tpyapp::main::ret(__tmp_9);
     Dog __tmp_10 = Dog("rud");
     Dog __tmp_11 = Dog("rue");
-    ret_union(__tmp_10, __tmp_11);
+    ::tpyapp::main::ret_union(__tmp_10, __tmp_11);
     Dog __tmp_12 = Dog("ac");
-    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(coro(__tmp_12))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(__tmp_12))) << "\n";
     Dog __tmp_13 = Dog("fd");
-    field(__tmp_13);
+    ::tpyapp::main::field(__tmp_13);
     Pet __tmp_14 = Pet("sx");
     Pet __tmp_15 = Pet("sy");
-    same_type(__tmp_14, __tmp_15);
+    ::tpyapp::main::same_type(__tmp_14, __tmp_15);
 }
 
 // # A record lvalue upcast into every pointer slot (nullable/union locals, frame
@@ -402,7 +402,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

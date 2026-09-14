@@ -22,7 +22,7 @@ void fill(Slots& s) {
 //     print(s[0].value, s[1].value)
 void main() {
     Slots s = Slots();
-    fill(s);
+    ::tpyapp::main::fill(s);
     std::cout << s[0].value << " " << s[1].value << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

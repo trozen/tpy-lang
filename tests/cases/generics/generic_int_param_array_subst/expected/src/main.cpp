@@ -41,9 +41,9 @@ void main() {
     Buffer<int32_t, 3> b = Buffer<int32_t, 3>();
     std::array<int32_t, 3> concrete = {1, 2, 3};
     b.set_data(concrete);
-    use_array(b.get_data());
-    b.set_data(get_global_array());
-    use_array(b.get_data());
+    ::tpyapp::main::use_array(b.get_data());
+    b.set_data(::tpyapp::main::get_global_array());
+    ::tpyapp::main::use_array(b.get_data());
 }
 
 // arr_global: Array[int32, 3] = [int32(10), int32(20), int32(30)]
@@ -56,7 +56,7 @@ void __tpy_init() {
 
     static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
     arr_global = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

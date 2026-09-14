@@ -44,7 +44,7 @@ __coro_make make(::tpy::BigInt v) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t.emplace(::tpystd::asyncio::create_task<Box2>(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(make(::tpy::BigInt(1)))));
+        t.emplace(::tpystd::asyncio::create_task<Box2>(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(::tpyapp::main::make(::tpy::BigInt(1)))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -55,7 +55,7 @@ __coro_make make(::tpy::BigInt v) {
         a.emplace(std::move(__r0).value());
         __sub_0 = nullptr;
         std::cout << (*a).v << "\n";
-        __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(make(::tpy::BigInt(2))), 5.0);
+        __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(::tpyapp::main::make(::tpy::BigInt(2))), 5.0);
         __state = S_RESUME_1;
         continue;
     }
@@ -93,10 +93,10 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    static Box2 __global_slot_1 = ::tpystd::asyncio::run<Box2>(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(make(::tpy::BigInt(3))));
+    static Box2 __global_slot_1 = ::tpystd::asyncio::run<Box2>(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(::tpyapp::main::make(::tpy::BigInt(3))));
     direct = &__global_slot_1;
     std::cout << direct->v << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main()));
 }
 
 } // namespace tpyapp::main

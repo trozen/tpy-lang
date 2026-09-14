@@ -228,7 +228,7 @@ __gen_transform<F_fn> transform(F_fn&& fn, std::vector<int32_t>& it) {
 void main() {
     std::vector<int32_t> nums = {1, 7, 2, 9, 3};
     {
-        auto __src_0 = filterfalse(is_small, nums);
+        auto __src_0 = ::tpyapp::main::filterfalse(is_small, nums);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -240,7 +240,7 @@ void main() {
     std::cout << "--" << "\n";
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3, 7, 4};
-        auto __src_2 = takewhile(is_small, __tmp_1);
+        auto __src_2 = ::tpyapp::main::takewhile(is_small, __tmp_1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -252,7 +252,7 @@ void main() {
     std::cout << "--" << "\n";
     {
         std::vector<int32_t> __tmp_2 = {1, 9};
-        auto __src_4 = tag(is_small, __tmp_2);
+        auto __src_4 = ::tpyapp::main::tag(is_small, __tmp_2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -264,7 +264,7 @@ void main() {
     std::cout << "--" << "\n";
     {
         std::vector<int32_t> __tmp_3 = {1, 2, 3};
-        auto __src_6 = transform(double_, __tmp_3);
+        auto __src_6 = ::tpyapp::main::transform(double_, __tmp_3);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -351,7 +351,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

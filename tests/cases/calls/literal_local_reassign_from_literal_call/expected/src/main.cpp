@@ -18,7 +18,7 @@ std::string_view get_r() {
 void main() {
     std::string_view m = "r";
     std::cout << m << "\n";
-    m = get_r();
+    m = ::tpyapp::main::get_r();
     std::cout << m << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

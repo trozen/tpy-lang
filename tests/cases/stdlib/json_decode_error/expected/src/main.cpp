@@ -39,12 +39,12 @@ void expect_error(std::string_view s) {
 //     # Just whitespace
 //     expect_error("   ")
 void main() {
-    expect_error("{\"key\": ");
-    expect_error("{} extra");
-    expect_error("{\"key\": \"value");
-    expect_error("{\n  \"key\" 123\n}");
-    expect_error("");
-    expect_error("   ");
+    ::tpyapp::main::expect_error("{\"key\": ");
+    ::tpyapp::main::expect_error("{} extra");
+    ::tpyapp::main::expect_error("{\"key\": \"value");
+    ::tpyapp::main::expect_error("{\n  \"key\" 123\n}");
+    ::tpyapp::main::expect_error("");
+    ::tpyapp::main::expect_error("   ");
 }
 
 // # JSONDecodeError surface: msg, doc, pos, lineno, colno.
@@ -58,7 +58,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::json::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

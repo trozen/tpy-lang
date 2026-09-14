@@ -87,12 +87,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_int32_to_int64_append();
-    test_literal_to_int64_append();
-    test_literal_to_float_append();
-    test_int32_to_int64_insert();
-    test_same_type_no_widen();
-    test_multiple_widens();
+    ::tpyapp::main::test_int32_to_int64_append();
+    ::tpyapp::main::test_literal_to_int64_append();
+    ::tpyapp::main::test_literal_to_float_append();
+    ::tpyapp::main::test_int32_to_int64_insert();
+    ::tpyapp::main::test_same_type_no_widen();
+    ::tpyapp::main::test_multiple_widens();
 }
 
 } // namespace tpyapp::main

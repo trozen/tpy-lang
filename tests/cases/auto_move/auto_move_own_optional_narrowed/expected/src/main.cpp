@@ -24,7 +24,7 @@ void main() {
     Point pt = Point();
     pt.x = 42;
     pt.y = 7;
-    std::cout << use_optional(std::move(pt)) << "\n";
+    std::cout << ::tpyapp::main::use_optional(std::move(pt)) << "\n";
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

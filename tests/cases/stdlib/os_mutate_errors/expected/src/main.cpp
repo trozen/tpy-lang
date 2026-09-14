@@ -78,7 +78,7 @@ void teardown(std::string_view base) {
 //     print("cleaned:", exists(base))
 void main() {
     std::string_view base = "tpy_os_mutate_err";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
     ::tpystd::os::mkdir(base);
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/sub")));
     auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/f.txt")), "w");
@@ -172,7 +172,7 @@ void main() {
     std::cout << "removedirs-stopped:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/d1")))) << "\n";
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/d1/keep.txt")));
     ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/d1")));
-    teardown(base);
+    ::tpyapp::main::teardown(base);
     std::cout << "cleaned:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n";
 }
 
@@ -190,7 +190,7 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     ::tpystd::os::path::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

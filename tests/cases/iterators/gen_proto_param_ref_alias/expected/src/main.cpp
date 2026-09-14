@@ -17,7 +17,7 @@ namespace tpyapp::main {
 void main() {
     std::array<Point, 2> pts = {Point(1), Point(2)};
     {
-        auto __src_0 = bump(pts);
+        auto __src_0 = ::tpyapp::main::bump(pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -29,7 +29,7 @@ void main() {
     std::cout << "mutations reached the caller:" << " " << ::tpy::__getitem__(pts, 0).x << " " << ::tpy::__getitem__(pts, 1).x << "\n";
     std::array<int32_t, 2> ns = {10, 20};
     {
-        auto __src_2 = doubled(ns);
+        auto __src_2 = ::tpyapp::main::doubled(ns);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

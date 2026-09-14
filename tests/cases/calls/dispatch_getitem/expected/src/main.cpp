@@ -46,7 +46,7 @@ void main() {
     n.add(7);
     n.add(8);
     n.add(9);
-    read_store(n);
+    ::tpyapp::main::read_store(n);
     Digits d = Digits();
     std::span<const int32_t> tail = d.__getitem__(::tpy::BasicSlice{1, 3});
     std::cout << "scalar:" << " " << d[2] << " " << ::tpy::__getitem__(tail, 0) << " " << ::tpy::__len__(tail) << "\n";
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

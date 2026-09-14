@@ -313,12 +313,12 @@ void non_streamed_iter_content() {
 //     stream_empty_body()
 //     non_streamed_iter_content()
 void main() {
-    stream_content_length();
-    stream_chunked();
-    stream_raw();
-    stream_context_manager();
-    stream_empty_body();
-    non_streamed_iter_content();
+    ::tpyapp::main::stream_content_length();
+    ::tpyapp::main::stream_chunked();
+    ::tpyapp::main::stream_raw();
+    ::tpyapp::main::stream_context_manager();
+    ::tpyapp::main::stream_empty_body();
+    ::tpyapp::main::non_streamed_iter_content();
 }
 
 // # tplib.requests streaming: stream=True leaves the body unread and hands back a
@@ -347,7 +347,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

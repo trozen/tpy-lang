@@ -21,7 +21,7 @@ namespace tpyapp::main {
 //             print("IndexError caught")
 //         print(w[-1])      # -1 -> last element (20), proves negative-index normalization
 void main() {
-    ::tpy::Union<::tpy::BigInt, std::vector<::tpy::BigInt>> __slot_1 = get_list();
+    ::tpy::Union<::tpy::BigInt, std::vector<::tpy::BigInt>> __slot_1 = ::tpyapp::main::get_list();
     ::tpy::Union<::tpy::BigInt*, std::vector<::tpy::BigInt>*> w = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<std::vector<::tpy::BigInt>*>(w)) {
         auto& __w = *std::get<std::vector<::tpy::BigInt>*>(w);
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

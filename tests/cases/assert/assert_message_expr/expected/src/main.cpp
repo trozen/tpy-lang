@@ -28,9 +28,9 @@ int32_t check_error(int32_t n, const Error& e) {
 //     print(check_positive(5, "must be positive"))
 //     print(check_error(3, Error("bad value")))
 void main() {
-    std::cout << check_positive(5, "must be positive") << "\n";
+    std::cout << ::tpyapp::main::check_positive(5, "must be positive") << "\n";
     Error __tmp_1 = Error("bad value");
-    std::cout << check_error(3, __tmp_1) << "\n";
+    std::cout << ::tpyapp::main::check_error(3, __tmp_1) << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

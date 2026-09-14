@@ -61,7 +61,7 @@ void main() {
     std::cout << ::tpy::EnumUtil<Color>::from_name("Red") << "\n";
     std::cout << ::tpy::EnumUtil<Color>::from_name("Green") << "\n";
     std::cout << ::tpy::EnumUtil<Color>::from_name("Blue") << "\n";
-    std::cout << lookup("Green") << "\n";
+    std::cout << ::tpyapp::main::lookup("Green") << "\n";
 }
 
 // # Test enum name lookup via subscript: Color["Red"]
@@ -73,7 +73,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

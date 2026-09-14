@@ -112,9 +112,9 @@ void context_manager_closes() {
 //     session_post()
 //     context_manager_closes()
 void main() {
-    merge_and_clear();
-    session_post();
-    context_manager_closes();
+    ::tpyapp::main::merge_and_clear();
+    ::tpyapp::main::session_post();
+    ::tpyapp::main::context_manager_closes();
 }
 
 // # tplib.requests Session: default headers/params merge into each request (with
@@ -140,7 +140,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

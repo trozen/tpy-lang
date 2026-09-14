@@ -30,7 +30,7 @@ int32_t run(bool ok) {
     Box* b = nullptr;
     {
         {
-            auto __try_tmp_2 = decode(ok);
+            auto __try_tmp_2 = ::tpyapp::main::decode(ok);
             if (!__try_tmp_2.has_value()) goto __except_1;
             b = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_2));
         }
@@ -50,8 +50,8 @@ int32_t run(bool ok) {
 //     print(run(True))
 //     print(run(False))
 void main() {
-    std::cout << run(true) << "\n";
-    std::cout << run(false) << "\n";
+    std::cout << ::tpyapp::main::run(true) << "\n";
+    std::cout << ::tpyapp::main::run(false) << "\n";
 }
 
 // main()
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -31,9 +31,9 @@ int32_t local_member() {
 //     print(local_member())
 void main() {
     Box b = Box(5);
-    mutate_param_member(b);
+    ::tpyapp::main::mutate_param_member(b);
     std::cout << b.val << "\n";
-    std::cout << local_member() << "\n";
+    std::cout << ::tpyapp::main::local_member() << "\n";
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

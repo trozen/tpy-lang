@@ -18,7 +18,7 @@ Widget source() {
 //     w = source().blank()
 //     print(w.n, built)
 void main() {
-    Widget w = source().blank();
+    Widget w = ::tpyapp::main::source().blank();
     std::cout << w.n << " " << built << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     initialized = true;
 
     built = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

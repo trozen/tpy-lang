@@ -91,7 +91,7 @@ void takes_list(const std::vector<::tpy::BigInt>& items) {
 void test_param_context() {
     std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
     xs.push_back(10);
-    takes_list(xs);
+    ::tpyapp::main::takes_list(xs);
 }
 
 // def test_param_overrides_inferred() -> None:
@@ -101,7 +101,7 @@ void test_param_context() {
 void test_param_overrides_inferred() {
     std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
     xs.push_back(1);
-    takes_list(xs);
+    ::tpyapp::main::takes_list(xs);
 }
 
 // def test_alias_inference() -> None:
@@ -133,17 +133,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_append();
-    test_list_ctor();
-    test_insert();
-    test_multiple_append();
-    test_numeric_widen();
-    static std::vector<::tpy::BigInt> __global_slot_1 = test_return_context();
+    ::tpyapp::main::test_append();
+    ::tpyapp::main::test_list_ctor();
+    ::tpyapp::main::test_insert();
+    ::tpyapp::main::test_multiple_append();
+    ::tpyapp::main::test_numeric_widen();
+    static std::vector<::tpy::BigInt> __global_slot_1 = ::tpyapp::main::test_return_context();
     result = &__global_slot_1;
     std::cout << ::tpy::ListPrinter((*result)) << "\n";
-    test_param_context();
-    test_param_overrides_inferred();
-    test_alias_inference();
+    ::tpyapp::main::test_param_context();
+    ::tpyapp::main::test_param_overrides_inferred();
+    ::tpyapp::main::test_alias_inference();
 }
 
 } // namespace tpyapp::main

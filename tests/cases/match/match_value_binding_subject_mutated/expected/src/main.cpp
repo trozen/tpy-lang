@@ -88,11 +88,11 @@ void element_realloc(std::vector<::tpy::Union<Cat, Dog>>& xs) {
 //     element_realloc([Dog(4)])
 void main() {
     Holder __tmp_1 = Holder();
-    field_direct(__tmp_1);
+    ::tpyapp::main::field_direct(__tmp_1);
     Holder __tmp_2 = Holder();
-    field_method(__tmp_2);
+    ::tpyapp::main::field_method(__tmp_2);
     std::vector<::tpy::Union<Cat, Dog>> __tmp_3 = {Dog(4)};
-    element_realloc(__tmp_3);
+    ::tpyapp::main::element_realloc(__tmp_3);
 }
 
 // main()
@@ -101,7 +101,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

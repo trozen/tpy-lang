@@ -65,10 +65,10 @@ void __tpy_init() {
     std::cout << ::tpy::print_bool((e2->target.has_value())) << "\n";
     std::cout << ::tpy::deref_optional_check(e2->target).x << "\n";
     std::cout << ::tpy::deref_optional_check(e2->target).y << "\n";
-    static Edge __global_slot_5 = Edge(find((*pts), 3));
+    static Edge __global_slot_5 = Edge(::tpyapp::main::find((*pts), 3));
     e3 = &__global_slot_5;
     std::cout << ::tpy::deref_optional_check(e3->target).x << "\n";
-    static Edge __global_slot_6 = Edge(find((*pts), 99));
+    static Edge __global_slot_6 = Edge(::tpyapp::main::find((*pts), 99));
     e4 = &__global_slot_6;
     std::cout << ::tpy::print_bool((!e4->target.has_value())) << "\n";
 }

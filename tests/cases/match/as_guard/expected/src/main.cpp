@@ -64,10 +64,10 @@ std::string wildcard_as_guard(int32_t x) {
 //     print(wildcard_as_guard(int32(20)))
 //     print(wildcard_as_guard(int32(5)))
 void main() {
-    std::cout << literal_as_guard(1) << "\n";
-    std::cout << literal_as_guard(2) << "\n";
-    std::cout << wildcard_as_guard(20) << "\n";
-    std::cout << wildcard_as_guard(5) << "\n";
+    std::cout << ::tpyapp::main::literal_as_guard(1) << "\n";
+    std::cout << ::tpyapp::main::literal_as_guard(2) << "\n";
+    std::cout << ::tpyapp::main::wildcard_as_guard(20) << "\n";
+    std::cout << ::tpyapp::main::wildcard_as_guard(5) << "\n";
 }
 
 // main()
@@ -76,7 +76,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

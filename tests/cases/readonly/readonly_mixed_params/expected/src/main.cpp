@@ -21,7 +21,7 @@ void copy_into(const Point& src, Point& dest) {
 void main() {
     Point a = Point(10, 20);
     Point b = Point(0, 0);
-    copy_into(a, b);
+    ::tpyapp::main::copy_into(a, b);
     std::cout << b.x << "\n";
     std::cout << b.y << "\n";
 }
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

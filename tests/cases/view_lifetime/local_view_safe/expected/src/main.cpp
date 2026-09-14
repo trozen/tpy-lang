@@ -33,9 +33,9 @@ void slice_of_param(std::string_view s) {
 //     explicit_view_of_param("kept")
 //     slice_of_param("abcdef")
 void main() {
-    view_of_param("  trimmed  ");
-    explicit_view_of_param("kept");
-    slice_of_param("abcdef");
+    ::tpyapp::main::view_of_param("  trimmed  ");
+    ::tpyapp::main::explicit_view_of_param("kept");
+    ::tpyapp::main::slice_of_param("abcdef");
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

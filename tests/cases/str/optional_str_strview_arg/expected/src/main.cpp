@@ -69,10 +69,10 @@ std::optional<std::string> returns_str_opt() {
 //     # New: Optional[str] -> Optional[StrView] arg (reverse direction).
 //     takes_strview_opt(returns_str_opt())                   # tpyc: ok
 void main() {
-    takes_str(returns_view());
-    takes_str_opt(returns_view_opt());
-    takes_str_opt(returns_view_none());
-    takes_strview_opt(returns_str_opt());
+    ::tpyapp::main::takes_str(::tpyapp::main::returns_view());
+    ::tpyapp::main::takes_str_opt(::tpyapp::main::returns_view_opt());
+    ::tpyapp::main::takes_str_opt(::tpyapp::main::returns_view_none());
+    ::tpyapp::main::takes_strview_opt(::tpyapp::main::returns_str_opt());
 }
 
 // main()
@@ -81,7 +81,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

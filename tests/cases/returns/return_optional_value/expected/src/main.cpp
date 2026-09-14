@@ -36,14 +36,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_optional_val(maybe_int(true)) << "\n";
-    std::cout << ::tpy::print_optional_val(maybe_int(false)) << "\n";
-    result = maybe_int(true);
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe_int(true)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe_int(false)) << "\n";
+    result = ::tpyapp::main::maybe_int(true);
     if ((result.has_value())) {
         std::cout << ::tpy::print_optional_val(result) << "\n";
     }
-    std::cout << ::tpy::print_optional_val(pass_through(99)) << "\n";
-    std::cout << ::tpy::print_optional_val(pass_through(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(99)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(std::nullopt)) << "\n";
 }
 
 } // namespace tpyapp::main

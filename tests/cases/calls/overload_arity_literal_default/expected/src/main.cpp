@@ -42,8 +42,8 @@ std::string repeat(std::string_view s, const ::tpy::BigInt& count) {
 //     print(repeat("ab"))
 //     print(repeat("ab", 3))
 void main() {
-    std::cout << repeat(std::string_view("ab")) << "\n";
-    std::cout << repeat(std::string_view("ab"), ::tpy::BigInt(3)) << "\n";
+    std::cout << ::tpyapp::main::repeat(std::string_view("ab")) << "\n";
+    std::cout << ::tpyapp::main::repeat(std::string_view("ab"), ::tpy::BigInt(3)) << "\n";
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

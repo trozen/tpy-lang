@@ -241,16 +241,16 @@ Box del_other_local() {
 //     print(untouched().n)
 //     print(del_other_local().n)
 void main() {
-    std::cout << via_alias().n << "\n";
-    std::cout << via_closure().n << "\n";
-    std::cout << via_closure_rebind().n << "\n";
-    std::optional<Box> r = opt_via_closure(true);
+    std::cout << ::tpyapp::main::via_alias().n << "\n";
+    std::cout << ::tpyapp::main::via_closure().n << "\n";
+    std::cout << ::tpyapp::main::via_closure_rebind().n << "\n";
+    std::optional<Box> r = ::tpyapp::main::opt_via_closure(true);
     if ((r.has_value())) {
         std::cout << (*r).n << "\n";
     }
-    std::cout << closure_dels_other().n << "\n";
-    std::cout << untouched().n << "\n";
-    std::cout << del_other_local().n << "\n";
+    std::cout << ::tpyapp::main::closure_dels_other().n << "\n";
+    std::cout << ::tpyapp::main::untouched().n << "\n";
+    std::cout << ::tpyapp::main::del_other_local().n << "\n";
 }
 
 // main()
@@ -259,7 +259,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

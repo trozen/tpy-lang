@@ -101,7 +101,7 @@ struct JsonValue {
 //     return loads(fp.read())
 template<::tpystd::tpy::Readable T_fp>
 JsonValue load(T_fp& fp) {
-    return loads(fp.read());
+    return ::tpystd::json::loads(fp.read());
 }
 // def dump(obj: JsonValue, fp: Writable, *, indent: int32 = 0, sort_keys: bool = False) -> None:
 //     """Serialize a JsonValue as JSON to a text file object.
@@ -112,7 +112,7 @@ JsonValue load(T_fp& fp) {
 //     fp.write(dumps(obj, indent=indent, sort_keys=sort_keys))
 template<::tpystd::tpy::Writable T_fp>
 void dump(const JsonValue& obj, T_fp& fp, int32_t indent, bool sort_keys) {
-    fp.write(dumps(obj, indent, sort_keys));
+    fp.write(::tpystd::json::dumps(obj, indent, sort_keys));
 }
 
 void __tpy_init();

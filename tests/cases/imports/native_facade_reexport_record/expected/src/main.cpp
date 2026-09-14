@@ -14,7 +14,7 @@ int32_t use(const ::repro_rec::pkg::types::Counter& c) {
 //     print(use(Counter(int32(42))))
 void main() {
     ::repro_rec::pkg::types::Counter __tmp_1 = ::repro_rec::pkg::types::Counter(42);
-    std::cout << use(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use(__tmp_1) << "\n";
 }
 
 // # Native_module facade re-exporting a *record* (not just a variable).
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

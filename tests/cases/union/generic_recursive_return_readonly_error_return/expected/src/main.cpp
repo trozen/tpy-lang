@@ -24,7 +24,7 @@ int32_t leaf_count(const Tree<int32_t>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& c = *__beg_0;
-            n = ::tpy::add_check<int32_t>(n, leaf_count(c));
+            n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::leaf_count(c));
         }
         return n;
         break;
@@ -53,7 +53,7 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = &(::tpy::unwrap_ref(*__try_tmp_2));
         }
-        std::cout << leaf_count((*v)) << "\n";
+        std::cout << ::tpyapp::main::leaf_count((*v)) << "\n";
         goto __after_try_1;
         // except E:
         __except_1:;
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

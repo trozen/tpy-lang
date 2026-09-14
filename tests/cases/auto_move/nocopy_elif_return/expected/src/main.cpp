@@ -35,11 +35,11 @@ Handle test(int32_t n) {
 //     h3 = test(3)
 //     print(h3.fd)
 void main() {
-    Handle h1 = test(1);
+    Handle h1 = ::tpyapp::main::test(1);
     std::cout << h1.fd << "\n";
-    Handle h2 = test(2);
+    Handle h2 = ::tpyapp::main::test(2);
     std::cout << h2.fd << "\n";
-    Handle h3 = test(3);
+    Handle h3 = ::tpyapp::main::test(3);
     std::cout << h3.fd << "\n";
 }
 
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

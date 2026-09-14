@@ -54,8 +54,8 @@ void from_local() {
 //     from_global()
 //     from_local()
 void main() {
-    from_global();
-    from_local();
+    ::tpyapp::main::from_global();
+    ::tpyapp::main::from_local();
 }
 
 // # A generator expression over a STR source: the chars iterate off the same
@@ -71,7 +71,7 @@ void __tpy_init() {
     initialized = true;
 
     LETTERS = "abc";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

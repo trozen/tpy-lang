@@ -22,7 +22,7 @@ int32_t take_vu(const ::tpy::Union<double, int32_t>& v) {
 // def two(a: int32 | float64, b: int32 | float64) -> int32:
 //     return take_vu(a) + take_vu(b)
 int32_t two(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
-    return (::tpy::add_check<int32_t>(take_vu(a), take_vu(b)));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_vu(a), ::tpyapp::main::take_vu(b)));
 }
 
 // def use_decl(k: int32) -> int32:
@@ -30,7 +30,7 @@ int32_t two(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, i
 //     return r
 int32_t use_decl(int32_t k) {
     ::tpy::Union<double, int32_t> __tmp_1 = k;
-    int32_t r = take_vu(__tmp_1);
+    int32_t r = ::tpyapp::main::take_vu(__tmp_1);
     return r;
 }
 
@@ -41,7 +41,7 @@ int32_t use_decl(int32_t k) {
 int32_t use_reassign(int32_t k) {
     int32_t r = 0;
     ::tpy::Union<double, int32_t> __tmp_2 = (::tpy::add_check<int32_t>(k, 2));
-    r = take_vu(__tmp_2);
+    r = ::tpyapp::main::take_vu(__tmp_2);
     return r;
 }
 
@@ -50,7 +50,7 @@ int32_t use_reassign(int32_t k) {
 //     return k
 int32_t use_stmt(int32_t k) {
     ::tpy::Union<double, int32_t> __tmp_3 = k;
-    take_vu(__tmp_3);
+    ::tpyapp::main::take_vu(__tmp_3);
     return k;
 }
 
@@ -59,14 +59,14 @@ int32_t use_stmt(int32_t k) {
 int32_t use_two(int32_t k, double f) {
     ::tpy::Union<double, int32_t> __tmp_4 = k;
     ::tpy::Union<double, int32_t> __tmp_5 = f;
-    return two(__tmp_4, __tmp_5);
+    return ::tpyapp::main::two(__tmp_4, __tmp_5);
 }
 
 // def use_float() -> int32:
 //     return take_vu(2.5)
 int32_t use_float() {
     ::tpy::Union<double, int32_t> __tmp_6 = 2.5;
-    return take_vu(__tmp_6);
+    return ::tpyapp::main::take_vu(__tmp_6);
 }
 
 // def main() -> None:
@@ -76,11 +76,11 @@ int32_t use_float() {
 //     print(use_two(3, 1.5))
 //     print(use_float())
 void main() {
-    std::cout << use_decl(5) << "\n";
-    std::cout << use_reassign(5) << "\n";
-    std::cout << use_stmt(6) << "\n";
-    std::cout << use_two(3, 1.5) << "\n";
-    std::cout << use_float() << "\n";
+    std::cout << ::tpyapp::main::use_decl(5) << "\n";
+    std::cout << ::tpyapp::main::use_reassign(5) << "\n";
+    std::cout << ::tpyapp::main::use_stmt(6) << "\n";
+    std::cout << ::tpyapp::main::use_two(3, 1.5) << "\n";
+    std::cout << ::tpyapp::main::use_float() << "\n";
 }
 
 // main()
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

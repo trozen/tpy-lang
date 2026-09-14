@@ -40,18 +40,18 @@ std::expected<void, ParseError> validate(std::string_view s) {
 //     return x * 10 + y
 std::expected<int32_t, ParseError> parse_two_digits(std::string_view a, std::string_view b) {
     {
-        auto __try_tmp_1 = validate(a);
+        auto __try_tmp_1 = ::tpyapp::main::validate(a);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
     }
     int32_t x;
     {
-        auto __try_tmp_2 = parse_digit(a);
+        auto __try_tmp_2 = ::tpyapp::main::parse_digit(a);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
         x = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
     int32_t y;
     {
-        auto __try_tmp_3 = parse_digit(b);
+        auto __try_tmp_3 = ::tpyapp::main::parse_digit(b);
         if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
         y = ::tpy::unwrap_ref_move(*__try_tmp_3);
     }
@@ -76,7 +76,7 @@ void main() {
     int32_t v;
     {
         {
-            auto __try_tmp_5 = parse_two_digits("1", "0");
+            auto __try_tmp_5 = ::tpyapp::main::parse_two_digits("1", "0");
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
@@ -91,7 +91,7 @@ void main() {
     int32_t v2;
     {
         {
-            auto __try_tmp_7 = parse_two_digits("x", "0");
+            auto __try_tmp_7 = ::tpyapp::main::parse_two_digits("x", "0");
             if (!__try_tmp_7.has_value()) goto __except_6;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
@@ -111,7 +111,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

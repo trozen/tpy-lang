@@ -34,15 +34,15 @@ void main() {
     std::cout << ::tpy::print_bool(::tpy::builtin_all(std::vector<int32_t>{})) << "\n";
     std::cout << ::tpy::print_bool(::tpy::builtin_any(std::vector<int32_t>{})) << "\n";
     auto __tmp_1 = std::vector<int32_t>{};
-    std::cout << tag<int32_t>(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::tag<int32_t>(__tmp_1) << "\n";
     auto __tmp_2 = std::vector<int32_t>{};
-    std::cout << pick_or<int32_t>(__tmp_2, 7) << "\n";
+    std::cout << ::tpyapp::main::pick_or<int32_t>(__tmp_2, 7) << "\n";
     auto __tmp_3 = std::array<int32_t, 2>{1, 2};
     auto __tmp_4 = std::vector<int32_t>{};
-    std::cout << pair<int32_t>(__tmp_3, __tmp_4) << "\n";
+    std::cout << ::tpyapp::main::pair<int32_t>(__tmp_3, __tmp_4) << "\n";
     auto __tmp_5 = std::vector<int32_t>{};
     auto __tmp_6 = std::array<int32_t, 2>{1, 2};
-    std::cout << pair<int32_t>(__tmp_5, __tmp_6) << "\n";
+    std::cout << ::tpyapp::main::pair<int32_t>(__tmp_5, __tmp_6) << "\n";
     {
         auto __src_0 = ::tpy::builtin_enumerate<int32_t>(std::vector<int32_t>{});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

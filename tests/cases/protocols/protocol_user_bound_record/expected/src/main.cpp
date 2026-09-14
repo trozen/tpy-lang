@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     container.print_value()
 void main() {
     DefaultFactory factory = DefaultFactory();
-    Container<Message> container = create_container<DefaultFactory>(factory, "Hello from container");
+    Container<Message> container = ::tpyapp::main::create_container<DefaultFactory>(factory, "Hello from container");
     container.print_value();
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

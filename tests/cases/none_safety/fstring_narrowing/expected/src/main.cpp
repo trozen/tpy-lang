@@ -47,12 +47,12 @@ void show_if_else(std::optional<std::string_view> x) {
 //     show_if_else("test")
 //     show_if_else(None)
 void main() {
-    greet("world");
-    greet(std::nullopt);
-    show_int(42);
-    show_int(std::nullopt);
-    show_if_else("test");
-    show_if_else(std::nullopt);
+    ::tpyapp::main::greet("world");
+    ::tpyapp::main::greet(std::nullopt);
+    ::tpyapp::main::show_int(42);
+    ::tpyapp::main::show_int(std::nullopt);
+    ::tpyapp::main::show_if_else("test");
+    ::tpyapp::main::show_if_else(std::nullopt);
 }
 
 // main()
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

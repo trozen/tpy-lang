@@ -37,7 +37,7 @@ void fill(H& h) {
 //     print(h.arr[0], len(h.xs), len(h.d))
 void main() {
     H h = H();
-    fill(h);
+    ::tpyapp::main::fill(h);
     std::cout << ::tpy::__getitem__(h.arr, 0) << " " << ::tpy::__len__(h.xs) << " " << ::tpy::__len__(h.d) << "\n";
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -23,7 +23,7 @@ std::function<int32_t()> make_getter(const Config& cfg) {
 //     print(getter())
 void main() {
     Config c = Config(10);
-    std::function<int32_t()> getter = make_getter(c);
+    std::function<int32_t()> getter = ::tpyapp::main::make_getter(c);
     std::cout << getter() << "\n";
     c.value = 42;
     std::cout << getter() << "\n";
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

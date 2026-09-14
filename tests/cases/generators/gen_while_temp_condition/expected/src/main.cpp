@@ -34,7 +34,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull::__next
     }
     case S_JOIN_0: {
         std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
-        if ((eat(__tmp_1) > 1)) {
+        if ((::tpyapp::main::eat(__tmp_1) > 1)) {
             __state = S_RESUME_0;
             return ::tpy::BigInt(1);
         } else {
@@ -75,7 +75,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_framed:
     }
     case S_JOIN_0: {
         std::vector<::tpy::BigInt> __tmp_2 = {1, 2};
-        if ((eat(__tmp_2) > 1)) {
+        if ((::tpyapp::main::eat(__tmp_2) > 1)) {
             __state = S_RESUME_0;
             return ::tpy::BigInt(1);
         } else {
@@ -124,7 +124,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__(
         }
         i = ((*__for_i_0))++;
         std::vector<::tpy::BigInt> __tmp_3 = {1, 2, 3};
-        if ((eat(__tmp_3) > 2)) {
+        if ((::tpyapp::main::eat(__tmp_3) > 2)) {
             __state = S_RESUME_0;
             return i;
         } else {
@@ -205,7 +205,7 @@ __gen_walrus_gen walrus_gen(::tpy::BigInt limit) {
 void main() {
     int32_t pulls = 0;
     {
-        auto __src_0 = fresh_each_pull();
+        auto __src_0 = ::tpyapp::main::fresh_each_pull();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -219,7 +219,7 @@ void main() {
     }
     std::cout << pulls << "\n";
     {
-        auto __src_2 = walrus_gen(::tpy::BigInt(3));
+        auto __src_2 = ::tpyapp::main::walrus_gen(::tpy::BigInt(3));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -230,7 +230,7 @@ void main() {
     }
     int32_t framed = 0;
     {
-        auto __src_4 = fresh_each_pull_framed();
+        auto __src_4 = ::tpyapp::main::fresh_each_pull_framed();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -243,7 +243,7 @@ void main() {
         }
     }
     std::cout << "framed" << " " << framed << "\n";
-    std::cout << "if_cond" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(if_cond_temp(::tpy::BigInt(2)))) << "\n";
+    std::cout << "if_cond" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::if_cond_temp(::tpy::BigInt(2)))) << "\n";
 }
 
 // main()
@@ -252,7 +252,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

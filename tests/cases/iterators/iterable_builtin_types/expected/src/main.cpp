@@ -44,25 +44,25 @@ namespace tpyapp::main {
 //     print(sum_strs(d))
 void test_iterable_params() {
     std::vector<int32_t> nums = {10, 20, 30};
-    std::cout << sum_items(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_items(nums) << "\n";
     auto __tmp_1 = ::tpy::Range<int32_t>(5);
-    std::cout << sum_items(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_1) << "\n";
     auto __tmp_2 = "hello";
-    std::cout << count_chars(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::count_chars(__tmp_2) << "\n";
     std::array<int32_t, 3> arr = {1, 2, 3};
-    std::cout << sum_items(arr) << "\n";
+    std::cout << ::tpyapp::main::sum_items(arr) << "\n";
     std::span<int32_t> sp = std::span<int32_t>(&::tpy::__getitem__(arr, 0), static_cast<size_t>(3));
-    std::cout << sum_items(sp) << "\n";
+    std::cout << ::tpyapp::main::sum_items(sp) << "\n";
     std::span<const int32_t> rosp = ::tpy::as_span(arr);
-    std::cout << sum_items(rosp) << "\n";
+    std::cout << ::tpyapp::main::sum_items(rosp) << "\n";
     std::vector<int32_t> sl = {100, 200};
-    std::cout << sum_items(sl) << "\n";
+    std::cout << ::tpyapp::main::sum_items(sl) << "\n";
     ::tpy::String s = ::tpy::String("ab");
-    std::cout << count_chars(s) << "\n";
+    std::cout << ::tpyapp::main::count_chars(s) << "\n";
     std::string_view sv = "xyz";
-    std::cout << count_chars(sv) << "\n";
+    std::cout << ::tpyapp::main::count_chars(sv) << "\n";
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    std::cout << sum_strs(d) << "\n";
+    std::cout << ::tpyapp::main::sum_strs(d) << "\n";
 }
 
 // def test_manual_iter() -> None:
@@ -186,13 +186,13 @@ void test_iter_builtin() {
 //     bigints: list[int] = [100, 200, 300]
 //     print(sum_bigints(bigints))
 void main() {
-    test_iterable_params();
-    test_manual_iter();
+    ::tpyapp::main::test_iterable_params();
+    ::tpyapp::main::test_manual_iter();
     std::vector<int32_t> proto_input = {10, 20};
-    test_iter_on_protocol(proto_input);
-    test_iter_builtin();
+    ::tpyapp::main::test_iter_on_protocol(proto_input);
+    ::tpyapp::main::test_iter_builtin();
     std::vector<::tpy::BigInt> bigints = {100, 200, 300};
-    std::cout << sum_bigints(bigints) << "\n";
+    std::cout << ::tpyapp::main::sum_bigints(bigints) << "\n";
 }
 
 // main()
@@ -201,7 +201,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

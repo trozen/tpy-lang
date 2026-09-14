@@ -23,7 +23,7 @@ void test_while() {
     Box* result = nullptr;
     int32_t i = 0;
     while ((i < 3)) {
-        result = &*(__slot_1 = make(i));
+        result = &*(__slot_1 = ::tpyapp::main::make(i));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     if ((result != nullptr)) {
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_while();
+    ::tpyapp::main::test_while();
 }
 
 } // namespace tpyapp::main

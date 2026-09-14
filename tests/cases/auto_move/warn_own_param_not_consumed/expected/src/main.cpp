@@ -15,7 +15,7 @@ int32_t borrow_only(Box&& b) {
 // def forward(b: Own[Box]) -> int32:
 //     return borrow_only(b)
 int32_t forward(Box&& b) {
-    return borrow_only(std::move(b));
+    return ::tpyapp::main::borrow_only(std::move(b));
 }
 
 // # No warning: returns as Own[T]
@@ -60,7 +60,7 @@ int32_t both_branches(Box&& b, bool cond) {
         Holder h = Holder(std::move(b));
         return h.item.value;
     } else {
-        return forward(std::move(b));
+        return ::tpyapp::main::forward(std::move(b));
     }
 }
 
@@ -73,7 +73,7 @@ int32_t early_return(Box&& b, bool cond) {
     if (cond) {
         return 0;
     }
-    return forward(std::move(b));
+    return ::tpyapp::main::forward(std::move(b));
 }
 
 // # Warning: consumed inside loop that might not execute
@@ -87,7 +87,7 @@ int32_t loop_consume(Box&& b, const std::vector<int32_t>& items) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t item = *__beg_0;
-        return forward(std::move(b));
+        return ::tpyapp::main::forward(std::move(b));
     }
     return b.value;
 }
@@ -131,7 +131,7 @@ int32_t match_all_arms(Box&& b, int32_t x) {
     auto& __match_subject_1 = x;
     switch (__match_subject_1) {
     case 1: {
-        return forward(std::move(b));
+        return ::tpyapp::main::forward(std::move(b));
         break;
     }
     default: {
@@ -156,18 +156,18 @@ int32_t match_all_arms(Box&& b, int32_t x) {
 //     print(match_partial_arm(Box(10), 1))
 //     print(match_all_arms(Box(11), 2))
 void main() {
-    std::cout << borrow_only(Box(1)) << "\n";
-    std::cout << forward(Box(2)) << "\n";
-    std::cout << passthrough(Box(3)).value << "\n";
-    std::cout << copy_store(Box(4)) << "\n";
+    std::cout << ::tpyapp::main::borrow_only(Box(1)) << "\n";
+    std::cout << ::tpyapp::main::forward(Box(2)) << "\n";
+    std::cout << ::tpyapp::main::passthrough(Box(3)).value << "\n";
+    std::cout << ::tpyapp::main::copy_store(Box(4)) << "\n";
     std::cout << Holder(Box(5)).item.value << "\n";
-    std::cout << partial_consume(Box(6), true) << "\n";
-    std::cout << both_branches(Box(7), false) << "\n";
-    std::cout << early_return(Box(8), false) << "\n";
+    std::cout << ::tpyapp::main::partial_consume(Box(6), true) << "\n";
+    std::cout << ::tpyapp::main::both_branches(Box(7), false) << "\n";
+    std::cout << ::tpyapp::main::early_return(Box(8), false) << "\n";
     std::vector<int32_t> __tmp_1 = {1};
-    std::cout << loop_consume(Box(9), __tmp_1) << "\n";
-    std::cout << match_partial_arm(Box(10), 1) << "\n";
-    std::cout << match_all_arms(Box(11), 2) << "\n";
+    std::cout << ::tpyapp::main::loop_consume(Box(9), __tmp_1) << "\n";
+    std::cout << ::tpyapp::main::match_partial_arm(Box(10), 1) << "\n";
+    std::cout << ::tpyapp::main::match_all_arms(Box(11), 2) << "\n";
 }
 
 // main()
@@ -176,7 +176,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

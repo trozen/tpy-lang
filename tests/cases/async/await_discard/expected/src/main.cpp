@@ -59,7 +59,7 @@ __coro_caller caller() {
 //     if poll_once(caller()).is_ready():
 //         print("done")
 void main() {
-    auto __tmp_1 = caller();
+    auto __tmp_1 = ::tpyapp::main::caller();
     if (::tpystd::coro::poll_once<std::monostate>(__tmp_1).is_ready()) {
         std::cout << "done" << "\n";
     }
@@ -76,7 +76,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

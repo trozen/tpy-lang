@@ -25,7 +25,7 @@ int32_t build(int32_t x) {
 // def main() -> None:
 //     print(build(4))
 void main() {
-    std::cout << build(4) << "\n";
+    std::cout << ::tpyapp::main::build(4) << "\n";
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

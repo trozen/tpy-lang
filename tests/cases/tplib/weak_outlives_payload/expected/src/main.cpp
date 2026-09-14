@@ -31,7 +31,7 @@ std::tuple<::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>, ::t
 //     print("w2:", weaks[1].upgrade() is None)
 //     print("w3:", weaks[2].upgrade() is None)
 void main() {
-    auto weaks = make_weaks();
+    auto weaks = ::tpyapp::main::make_weaks();
     std::cout << "--- after strong death ---" << "\n";
     std::cout << "w1:" << " " << ::tpy::print_bool((!std::get<0>(weaks).upgrade().has_value())) << "\n";
     std::cout << "w2:" << " " << ::tpy::print_bool((!std::get<1>(weaks).upgrade().has_value())) << "\n";
@@ -48,7 +48,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

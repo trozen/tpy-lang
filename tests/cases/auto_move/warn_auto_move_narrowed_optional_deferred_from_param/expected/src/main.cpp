@@ -20,7 +20,7 @@ int32_t test(Point* a) {
     q = a;
     if (!((q != nullptr))) ::tpy::raise_assertion_error();
     Point __tmp_1 = (*q);
-    return consume(std::move(__tmp_1));
+    return ::tpyapp::main::consume(std::move(__tmp_1));
 }
 
 void __tpy_init() {

@@ -43,16 +43,16 @@ void bump_first(const std::tuple<T*, T*>& p) {
 void main() {
     T t1 = T(1);
     T t2 = T(2);
-    auto __tup_1 = both(t1, t2);
+    auto __tup_1 = ::tpyapp::main::both(t1, t2);
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
     if ((a != nullptr)) {
         a->x = 10;
     }
     std::cout << t1.x << "\n";
-    bump_first(std::tuple<T*, T*>{&(t1), &(t2)});
+    ::tpyapp::main::bump_first(std::tuple<T*, T*>{&(t1), &(t2)});
     std::cout << t1.x << "\n";
-    bump_first(both(t1, t2));
+    ::tpyapp::main::bump_first(::tpyapp::main::both(t1, t2));
     std::cout << t1.x << "\n";
 }
 
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

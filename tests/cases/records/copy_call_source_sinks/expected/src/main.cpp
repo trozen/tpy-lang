@@ -116,16 +116,16 @@ int32_t optional_copy(Payload* o) {
 void main() {
     Holder h = Holder();
     Sink s = Sink(h);
-    rewrite(s, h);
+    ::tpyapp::main::rewrite(s, h);
     h.p.v = 3;
     h.items.push_back(4);
     std::cout << s.q.v << " " << ::tpy::__len__(s.box) << " " << h.p.v << " " << ::tpy::__len__(h.items) << "\n";
     Holder __tmp_1 = Holder();
     Holder __tmp_2 = Holder();
     Holder __tmp_3 = Holder();
-    std::cout << setitem(__tmp_1) << " " << container_element(__tmp_2) << " " << qualified_decl(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::setitem(__tmp_1) << " " << ::tpyapp::main::container_element(__tmp_2) << " " << ::tpyapp::main::qualified_decl(__tmp_3) << "\n";
     Payload __tmp_4 = Payload(2);
-    std::cout << variant_copy(true) << " " << optional_copy(&(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::variant_copy(true) << " " << ::tpyapp::main::optional_copy(&(__tmp_4)) << "\n";
 }
 
 // main()
@@ -134,7 +134,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

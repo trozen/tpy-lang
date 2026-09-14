@@ -23,9 +23,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << add_if_both(1, 2) << "\n";
-    std::cout << add_if_both(0, 2) << "\n";
-    std::cout << add_if_both(std::nullopt, 2) << "\n";
+    std::cout << ::tpyapp::main::add_if_both(1, 2) << "\n";
+    std::cout << ::tpyapp::main::add_if_both(0, 2) << "\n";
+    std::cout << ::tpyapp::main::add_if_both(std::nullopt, 2) << "\n";
 }
 
 } // namespace tpyapp::main

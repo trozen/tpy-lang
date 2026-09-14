@@ -21,7 +21,7 @@ std::expected<Data, E> make_data(const ::tpy::BigInt& v) {
 // def get_value(v: int) -> int:
 //     return make_data(v).value
 std::expected<::tpy::BigInt, E> get_value(const ::tpy::BigInt& v) {
-    return ({ auto __er_1 = make_data(v); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); }).value;
+    return ({ auto __er_1 = ::tpyapp::main::make_data(v); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); }).value;
 }
 
 // def main() -> None:
@@ -36,7 +36,7 @@ std::expected<::tpy::BigInt, E> get_value(const ::tpy::BigInt& v) {
 //         print("caught")
 void main() {
     {
-        std::cout << ({ auto __er_3 = get_value(::tpy::BigInt(42)); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
+        std::cout << ({ auto __er_3 = ::tpyapp::main::get_value(::tpy::BigInt(42)); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
         goto __after_try_2;
         // except E:
         __except_2:;
@@ -44,7 +44,7 @@ void main() {
         __after_try_2:;
     }
     {
-        std::cout << ({ auto __er_5 = get_value(::tpy::BigInt(-1)); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n";
+        std::cout << ({ auto __er_5 = ::tpyapp::main::get_value(::tpy::BigInt(-1)); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n";
         goto __after_try_4;
         // except E:
         __except_4:;
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -16,7 +16,7 @@ int32_t total(const Tree& t) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& c = *__beg_0;
-        s = (::tpy::add_check<int32_t>(s, total(c)));
+        s = (::tpy::add_check<int32_t>(s, ::tpyapp::main::total(c)));
     }
     return s;
 }
@@ -30,7 +30,7 @@ void main() {
     Tree root = Tree(10, std::nullopt);
     root.children.push_back(Tree(1, 10));
     root.children.push_back(Tree(2, 10));
-    std::cout << total(root) << "\n";
+    std::cout << ::tpyapp::main::total(root) << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

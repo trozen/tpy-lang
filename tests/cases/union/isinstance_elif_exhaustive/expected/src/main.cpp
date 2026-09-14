@@ -49,13 +49,13 @@ namespace tpyapp::main {
 //     print(by_method(Cat(2)))
 void main() {
     Dog __tmp_1 = Dog(::tpy::BigInt(1));
-    std::cout << by_field(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::by_field(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
     Cat __tmp_2 = Cat(::tpy::BigInt(2));
-    std::cout << by_field(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::by_field(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
     Dog __tmp_3 = Dog(::tpy::BigInt(1));
-    std::cout << by_method(::tpy::Union<Cat*, Dog*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::by_method(::tpy::Union<Cat*, Dog*>{&__tmp_3}) << "\n";
     Cat __tmp_4 = Cat(::tpy::BigInt(2));
-    std::cout << by_method(::tpy::Union<Cat*, Dog*>{&__tmp_4}) << "\n";
+    std::cout << ::tpyapp::main::by_method(::tpy::Union<Cat*, Dog*>{&__tmp_4}) << "\n";
 }
 
 // main()
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -40,7 +40,7 @@ bool _is_alpha(char c) {
 //     return _is_alpha(c) or (o >= 48 and o <= 57)
 bool _is_alnum(char c) {
     int32_t o = static_cast<int32_t>(static_cast<unsigned char>(c));
-    return (_is_alpha(c) || ((o >= 48) && (o <= 57)));
+    return (::tpystd::urllib::parse::_is_alpha(c) || ((o >= 48) && (o <= 57)));
 }
 
 // def _byte_unreserved(c: int32) -> bool:
@@ -130,7 +130,7 @@ std::string _quote_impl(std::string_view s, std::string_view safe, bool plus) {
     int32_t i = 0;
     while ((i < n)) {
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
-        if ((_byte_unreserved(c) || _byte_in(c, safe))) {
+        if ((::tpystd::urllib::parse::_byte_unreserved(c) || ::tpystd::urllib::parse::_byte_in(c, safe))) {
             out.push_back(::tpy::int_cast_check<uint8_t>(c));
         } else if ((plus && (c == 32))) {
             out.push_back(43);
@@ -148,14 +148,14 @@ std::string _quote_impl(std::string_view s, std::string_view safe, bool plus) {
 //     """Percent-encode `s`, leaving unreserved chars and `safe` chars intact."""
 //     return _quote_impl(s, safe, False)
 std::string quote(std::string_view s, std::string_view safe) {
-    return _quote_impl(s, safe, false);
+    return ::tpystd::urllib::parse::_quote_impl(s, safe, false);
 }
 
 // def quote_plus(s: str, safe: str = "") -> str:
 //     """Like quote, but encode spaces as '+' (form-encoding); '/' is not safe."""
 //     return _quote_impl(s, safe, True)
 std::string quote_plus(std::string_view s, std::string_view safe) {
-    return _quote_impl(s, safe, true);
+    return ::tpystd::urllib::parse::_quote_impl(s, safe, true);
 }
 
 // def _unquote_impl(s: str, plus: bool) -> str:
@@ -189,8 +189,8 @@ std::string _unquote_impl(std::string_view s, bool plus) {
     while ((i < n)) {
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
         if (((c == 37) && ((::tpy::add_check<int32_t>(i, 2)) < n))) {
-            int32_t hi = _hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1)))));
-            int32_t lo = _hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2)))));
+            int32_t hi = ::tpystd::urllib::parse::_hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1)))));
+            int32_t lo = ::tpystd::urllib::parse::_hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2)))));
             if (((hi >= 0) && (lo >= 0))) {
                 out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(hi, 4)) | lo))));
                 i = ::tpy::add_check<int32_t>(i, 3);
@@ -213,14 +213,14 @@ std::string _unquote_impl(std::string_view s, bool plus) {
 //     """Replace %XX escapes with their byte, decoding the result as UTF-8."""
 //     return _unquote_impl(s, False)
 std::string unquote(std::string_view s) {
-    return _unquote_impl(s, false);
+    return ::tpystd::urllib::parse::_unquote_impl(s, false);
 }
 
 // def unquote_plus(s: str) -> str:
 //     """Like unquote, but also turn '+' into a space (form-decoding)."""
 //     return _unquote_impl(s, True)
 std::string unquote_plus(std::string_view s) {
-    return _unquote_impl(s, true);
+    return ::tpystd::urllib::parse::_unquote_impl(s, true);
 }
 
 // def urlencode(query: dict[str, str]) -> str:
@@ -239,7 +239,7 @@ std::string urlencode(const ::tpy::ordered_map<std::string, std::string>& query)
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        parts.push_back((::tpy::str_concat((::tpy::str_concat(quote_plus(k), "=")), quote_plus(::tpy::__getitem__(query, k)))));
+        parts.push_back((::tpy::str_concat((::tpy::str_concat(::tpystd::urllib::parse::quote_plus(k), "=")), ::tpystd::urllib::parse::quote_plus(::tpy::__getitem__(query, k)))));
     }
     return ::tpy::str_join("&", parts);
 }
@@ -277,7 +277,7 @@ std::vector<std::tuple<std::string, std::string>> parse_qsl(std::string_view qs,
         int32_t eq = ::tpy::str_find(pair, "=");
         if ((eq < 0)) {
             if (keep_blank_values) {
-                result.push_back(std::tuple<std::string, std::string>{unquote_plus(pair), ""});
+                result.push_back(std::tuple<std::string, std::string>{::tpystd::urllib::parse::unquote_plus(pair), ""});
             }
             continue;
         }
@@ -285,7 +285,7 @@ std::vector<std::tuple<std::string, std::string>> parse_qsl(std::string_view qs,
         if (((::tpy::__len__(value) == 0) && (!(keep_blank_values)))) {
             continue;
         }
-        result.push_back(std::tuple<std::string, std::string>{unquote_plus(::tpy::str_slice(pair, ::tpy::BasicSlice{std::nullopt, eq})), unquote_plus(value)});
+        result.push_back(std::tuple<std::string, std::string>{::tpystd::urllib::parse::unquote_plus(::tpy::str_slice(pair, ::tpy::BasicSlice{std::nullopt, eq})), ::tpystd::urllib::parse::unquote_plus(value)});
     }
     return result;
 }
@@ -363,7 +363,7 @@ std::string _hostinfo_port(std::string_view hostinfo) {
 //         return None
 //     return h.lower()
 std::optional<std::string> _netloc_hostname(std::string_view netloc) {
-    std::string h = _hostinfo_host(_netloc_hostinfo(netloc));
+    std::string h = ::tpystd::urllib::parse::_hostinfo_host(::tpystd::urllib::parse::_netloc_hostinfo(netloc));
     if ((::tpy::__len__(h) == 0)) {
         return std::nullopt;
     }
@@ -407,11 +407,11 @@ bool _all_ascii_digits(std::string_view s) {
 //         raise ValueError("Port out of range 0-65535")
 //     return p
 std::optional<::tpy::BigInt> _netloc_port(std::string_view netloc) {
-    std::string ps = _hostinfo_port(_netloc_hostinfo(netloc));
+    std::string ps = ::tpystd::urllib::parse::_hostinfo_port(::tpystd::urllib::parse::_netloc_hostinfo(netloc));
     if ((::tpy::__len__(ps) == 0)) {
         return std::nullopt;
     }
-    if ((!(_all_ascii_digits(ps)))) {
+    if ((!(::tpystd::urllib::parse::_all_ascii_digits(ps)))) {
         throw ::tpy::ValueError("Port could not be cast to integer value");
     }
     ::tpy::BigInt p = ::tpy::BigInt::from_str(ps);
@@ -484,13 +484,13 @@ bool _is_scheme(std::string_view s) {
     if ((n == 0)) {
         return false;
     }
-    if ((!(_is_alpha(::tpy::__getitem__(s, 0))))) {
+    if ((!(::tpystd::urllib::parse::_is_alpha(::tpy::__getitem__(s, 0))))) {
         return false;
     }
     int32_t i = 1;
     while ((i < n)) {
         char c = ::tpy::__getitem__(s, i);
-        if ((!((((_is_alnum(c) || (c == '+')) || (c == '-')) || (c == '.'))))) {
+        if ((!((((::tpystd::urllib::parse::_is_alnum(c) || (c == '+')) || (c == '-')) || (c == '.'))))) {
             return false;
         }
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -568,15 +568,15 @@ SplitResult urlsplit(std::string_view url) {
     std::string netloc = "";
     std::string query = "";
     std::string fragment = "";
-    std::string rest = _clean(url);
+    std::string rest = ::tpystd::urllib::parse::_clean(url);
     int32_t i = ::tpy::str_find(rest, ":");
-    if (((i > 0) && _is_scheme(::tpy::str_slice(rest, ::tpy::BasicSlice{std::nullopt, i})))) {
+    if (((i > 0) && ::tpystd::urllib::parse::_is_scheme(::tpy::str_slice(rest, ::tpy::BasicSlice{std::nullopt, i})))) {
         scheme = ::tpy::str_lower(::tpy::str_slice(rest, ::tpy::BasicSlice{std::nullopt, i}));
         rest = ::tpy::str_slice(rest, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), std::nullopt});
     }
     if (::tpy::str_startswith(rest, "//")) {
         std::string_view body = ::tpy::str_slice(rest, ::tpy::BasicSlice{2, std::nullopt});
-        int32_t end = _netloc_end(body);
+        int32_t end = ::tpystd::urllib::parse::_netloc_end(body);
         netloc = ::tpy::str_slice(body, ::tpy::BasicSlice{std::nullopt, end});
         rest = ::tpy::str_slice(body, ::tpy::BasicSlice{end, std::nullopt});
         if ((((netloc.find("[") != std::string::npos) && (netloc.find("]") == std::string::npos)) || ((netloc.find("]") != std::string::npos) && (netloc.find("[") == std::string::npos)))) {
@@ -626,11 +626,11 @@ std::tuple<std::string, std::string> _split_params(std::string_view path) {
 //     return ParseResult(sr.scheme, sr.netloc, path, params, sr.query,
 //                        sr.fragment)
 ParseResult urlparse(std::string_view url) {
-    SplitResult sr = urlsplit(url);
+    SplitResult sr = ::tpystd::urllib::parse::urlsplit(url);
     std::string params = "";
     std::string path = sr.path;
-    if ((_scheme_uses_params(sr.scheme) && (sr.path.find(";") != std::string::npos))) {
-        auto __tup_1 = _split_params(sr.path);
+    if ((::tpystd::urllib::parse::_scheme_uses_params(sr.scheme) && (sr.path.find(";") != std::string::npos))) {
+        auto __tup_1 = ::tpystd::urllib::parse::_split_params(sr.path);
         path = std::get<0>(__tup_1);
         params = std::get<1>(__tup_1);
     }
@@ -661,7 +661,7 @@ std::string urlunsplit(const std::tuple<std::string, std::string, std::string, s
     std::string_view query = std::get<3>(__tup_1);
     std::string_view fragment = std::get<4>(__tup_1);
     std::string url = std::string(path);
-    if (((::tpy::__len__(netloc) > 0) || (((::tpy::__len__(scheme) > 0) && _scheme_uses_netloc(scheme)) && (!(::tpy::str_startswith(path, "//")))))) {
+    if (((::tpy::__len__(netloc) > 0) || (((::tpy::__len__(scheme) > 0) && ::tpystd::urllib::parse::_scheme_uses_netloc(scheme)) && (!(::tpy::str_startswith(path, "//")))))) {
         if (((::tpy::__len__(url) > 0) && (!(::tpy::str_startswith(url, "/"))))) {
             url = (::tpy::str_concat("/", url));
         }
@@ -694,9 +694,9 @@ std::string urlunparse(const std::tuple<std::string, std::string, std::string, s
     std::string_view query = std::get<4>(__tup_1);
     std::string_view fragment = std::get<5>(__tup_1);
     if ((::tpy::__len__(params) > 0)) {
-        return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), (::tpy::str_concat((::tpy::str_concat(path, ";")), params)), std::string(query), std::string(fragment)});
+        return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), (::tpy::str_concat((::tpy::str_concat(path, ";")), params)), std::string(query), std::string(fragment)});
     }
-    return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), std::string(path), std::string(query), std::string(fragment)});
+    return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), std::string(path), std::string(query), std::string(fragment)});
 }
 
 // # ---------- relative-reference resolution ----------
@@ -770,26 +770,26 @@ std::string urljoin(std::string_view base, std::string_view url) {
     if ((::tpy::__len__(url) == 0)) {
         return std::string(base);
     }
-    SplitResult b = urlsplit(base);
-    SplitResult r = urlsplit(url);
+    SplitResult b = ::tpystd::urllib::parse::urlsplit(base);
+    SplitResult r = ::tpystd::urllib::parse::urlsplit(url);
     if (((r.scheme != b.scheme) && (::tpy::__len__(r.scheme) > 0))) {
         return std::string(url);
     }
     std::string_view scheme = b.scheme;
-    if ((!(_scheme_uses_relative(scheme)))) {
+    if ((!(::tpystd::urllib::parse::_scheme_uses_relative(scheme)))) {
         return std::string(url);
     }
     std::string_view netloc = r.netloc;
-    if (_scheme_uses_netloc(scheme)) {
+    if (::tpystd::urllib::parse::_scheme_uses_netloc(scheme)) {
         if ((::tpy::__len__(netloc) > 0)) {
-            return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), r.path, r.query, r.fragment});
+            return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), r.path, r.query, r.fragment});
         }
         netloc = b.netloc;
     }
     if ((::tpy::__len__(r.path) == 0)) {
         std::string_view path = b.path;
         std::string_view query = (((::tpy::__len__(r.query) > 0)) ? (r.query) : (b.query));
-        return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), std::string(path), std::string(query), r.fragment});
+        return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), std::string(path), std::string(query), r.fragment});
     }
     std::vector<std::string>* segments;
     if (::tpy::str_startswith(r.path, "/")) {
@@ -799,7 +799,7 @@ std::string urljoin(std::string_view base, std::string_view url) {
         if (((::tpy::__len__(base_parts) > 0) && (::tpy::__len__(::tpy::__getitem__(base_parts, (::tpy::sub_check<int32_t>(::tpy::__len__(base_parts), 1)))) > 0))) {
             ::tpy::pop_back(base_parts);
         }
-        std::vector<std::string> rel_parts = url_split_path_only(r.path);
+        std::vector<std::string> rel_parts = ::tpystd::urllib::parse::url_split_path_only(r.path);
         std::vector<std::string> merged = std::vector<std::string>{};
         auto& __obj_0 = base_parts;
         auto __beg_0 = __obj_0.begin();
@@ -815,7 +815,7 @@ std::string urljoin(std::string_view base, std::string_view url) {
             std::string_view p = *__beg_1;
             merged.push_back(std::string(p));
         }
-        segments = &*(__slot_2 = _drop_inner_empties(merged));
+        segments = &*(__slot_2 = ::tpystd::urllib::parse::_drop_inner_empties(merged));
     }
     std::vector<std::string> resolved = std::vector<std::string>{};
     auto& __obj_2 = (*segments);
@@ -841,7 +841,7 @@ std::string urljoin(std::string_view base, std::string_view url) {
     if ((::tpy::__len__(joined) == 0)) {
         joined = "/";
     }
-    return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), joined, r.query, r.fragment});
+    return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), joined, r.query, r.fragment});
 }
 
 // def url_split_path_only(path: str) -> Own[list[str]]:

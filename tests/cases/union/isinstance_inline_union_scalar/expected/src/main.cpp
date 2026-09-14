@@ -25,9 +25,9 @@ std::string kind(const ::tpy::Union<double, ::tpy::BigInt, std::string>& v) {
 //     print(kind(b))
 void main() {
     ::tpy::Union<double, ::tpy::BigInt, std::string> a = 5;
-    std::cout << kind(a) << "\n";
+    std::cout << ::tpyapp::main::kind(a) << "\n";
     ::tpy::Union<double, ::tpy::BigInt, std::string> b = "hi";
-    std::cout << kind(b) << "\n";
+    std::cout << ::tpyapp::main::kind(b) << "\n";
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

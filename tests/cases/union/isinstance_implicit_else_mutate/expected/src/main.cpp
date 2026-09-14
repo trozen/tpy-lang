@@ -23,7 +23,7 @@ void bump(::tpy::Union<Box*, Other*> x) {
 //     print(b.n)          # 6 -> the narrowed access aliased, did not copy
 void main() {
     Box b = Box(::tpy::BigInt(5));
-    bump(::tpy::Union<Box*, Other*>{&(b)});
+    ::tpyapp::main::bump(::tpy::Union<Box*, Other*>{&(b)});
     std::cout << b.n << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -71,19 +71,19 @@ void main() {
     Bag(&(init_items), &(init_by_key), &(init_elems), ::tpy::bytes_literal_owned("hi", 2), &(init_buf)).show_fields();
     Bag(nullptr, nullptr, nullptr, std::nullopt, nullptr).show_fields();
     std::vector<::tpy::BigInt> lst = {10, 20};
-    show_list_param(&(lst));
-    show_list_param(nullptr);
+    ::tpyapp::main::show_list_param(&(lst));
+    ::tpyapp::main::show_list_param(nullptr);
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"k", 7}});
-    show_dict_param(&(d));
-    show_dict_param(nullptr);
+    ::tpyapp::main::show_dict_param(&(d));
+    ::tpyapp::main::show_dict_param(nullptr);
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({9});
-    show_set_param(&(s));
-    show_set_param(nullptr);
-    show_bytes_param(::tpy::bytes_literal_owned("abc", 3));
-    show_bytes_param(std::nullopt);
+    ::tpyapp::main::show_set_param(&(s));
+    ::tpyapp::main::show_set_param(nullptr);
+    ::tpyapp::main::show_bytes_param(::tpy::bytes_literal_owned("abc", 3));
+    ::tpyapp::main::show_bytes_param(std::nullopt);
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("ok", 2));
-    show_bytearray_param(&(buf));
-    show_bytearray_param(nullptr);
+    ::tpyapp::main::show_bytearray_param(&(buf));
+    ::tpyapp::main::show_bytearray_param(nullptr);
 }
 
 // main()
@@ -92,7 +92,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

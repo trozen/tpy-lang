@@ -14,7 +14,7 @@ void fail() {
 // def main() -> None:
 //     fail()
 void main() {
-    fail();
+    ::tpyapp::main::fail();
 }
 
 // main()
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

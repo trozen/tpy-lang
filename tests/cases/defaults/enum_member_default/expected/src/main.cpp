@@ -60,8 +60,8 @@ Color describe(Color c) {
 //     print(int(p.paint().value))            # 2 -- default BLUE
 //     print(int(p.paint(Color.RED).value))   # 0 -- explicit override
 void main() {
-    std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(describe()))) << "\n";
-    std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(describe(Color::RED)))) << "\n";
+    std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(::tpyapp::main::describe()))) << "\n";
+    std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(::tpyapp::main::describe(Color::RED)))) << "\n";
     Painter p = Painter();
     std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(p.paint()))) << "\n";
     std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(p.paint(Color::RED)))) << "\n";
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

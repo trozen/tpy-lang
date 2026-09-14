@@ -142,7 +142,7 @@ __coro_receiver receiver(::tpystd::socket::socket& sock) {
         b.emplace(std::move(std::get<1>(__tup_1)));
         (*a).setblocking(false);
         (*b).setblocking(false);
-        rx.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(receiver((*b)))));
+        rx.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::receiver((*b)))));
         __sub_0.emplace((*a));
         __state = S_RESUME_0;
         continue;
@@ -178,7 +178,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Regression guard for sock_sendall's offset advance across parks: the
@@ -206,8 +206,8 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
     _N = ::tpy::lshift_check<int32_t>(1, 20);
-    _PAYLOAD = _make_payload();
-    main();
+    _PAYLOAD = ::tpyapp::main::_make_payload();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -17,7 +17,7 @@ namespace tpyapp::main {
 void main() {
     Point p1 = Point(1, 2);
     Point p2 = Point(3, 4);
-    add_points(p1, p2);
+    ::tpyapp::main::add_points(p1, p2);
     Point p3 = ((p1) + (p2));
     std::cout << p3.x << "\n";
     std::cout << p3.y << "\n";
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

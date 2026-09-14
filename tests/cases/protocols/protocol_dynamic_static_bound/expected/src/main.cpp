@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     speak(d)
 void main() {
     Dog d = Dog();
-    speak<Dog>(d);
+    ::tpyapp::main::speak<Dog>(d);
 }
 
 // main()
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

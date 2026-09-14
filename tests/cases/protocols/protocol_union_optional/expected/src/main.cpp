@@ -26,12 +26,12 @@ namespace tpyapp::main {
 //     print(h3.count)
 void main() {
     std::vector<::tpy::BigInt> nums = {10, 20, 30};
-    std::cout << process(&(nums)) << "\n";
-    std::cout << process(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    std::cout << process() << "\n";
-    std::cout << with_else(&(nums)) << "\n";
-    std::cout << with_else(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    std::cout << with_else() << "\n";
+    std::cout << ::tpyapp::main::process(&(nums)) << "\n";
+    std::cout << ::tpyapp::main::process(static_cast<std::nullptr_t*>(nullptr)) << "\n";
+    std::cout << ::tpyapp::main::process() << "\n";
+    std::cout << ::tpyapp::main::with_else(&(nums)) << "\n";
+    std::cout << ::tpyapp::main::with_else(static_cast<std::nullptr_t*>(nullptr)) << "\n";
+    std::cout << ::tpyapp::main::with_else() << "\n";
     Holder h1 = Holder(&(nums));
     std::cout << h1.count << "\n";
     Holder h2 = Holder(static_cast<std::nullptr_t*>(nullptr));
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

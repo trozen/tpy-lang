@@ -26,7 +26,7 @@ int32_t drain_sum(Source& src) {
 //     print(drain_sum(Source(4, 9)))   # 3 + 2 + 1 + 0
 void main() {
     Source __tmp_1 = Source(4, 9);
-    std::cout << drain_sum(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::drain_sum(__tmp_1) << "\n";
 }
 
 // def __iter__(self) -> Iterator[int32]:
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

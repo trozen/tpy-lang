@@ -64,10 +64,10 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    test_extend_warns();
-    test_extend_value_type_no_warn();
-    test_ctor_warns();
-    test_ctor_last_use_no_warn();
+    ::tpyapp::main::test_extend_warns();
+    ::tpyapp::main::test_extend_value_type_no_warn();
+    ::tpyapp::main::test_ctor_warns();
+    ::tpyapp::main::test_ctor_last_use_no_warn();
 }
 
 } // namespace tpyapp::main

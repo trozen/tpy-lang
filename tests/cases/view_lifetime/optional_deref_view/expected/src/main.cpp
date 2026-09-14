@@ -47,9 +47,9 @@ void bytes_compound(std::optional<::tpy::BytesView> a, ::tpy::BytesView b) {
 //     str_compound("then", "x")
 //     bytes_compound(b"abcd", b"ef")
 void main() {
-    str_single("solo");
-    str_compound("then", "x");
-    bytes_compound(::tpy::bytes_literal_owned("abcd", 4), ::tpy::bytes_literal("ef", 2));
+    ::tpyapp::main::str_single("solo");
+    ::tpyapp::main::str_compound("then", "x");
+    ::tpyapp::main::bytes_compound(::tpy::bytes_literal_owned("abcd", 4), ::tpy::bytes_literal("ef", 2));
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

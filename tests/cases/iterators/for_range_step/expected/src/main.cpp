@@ -65,7 +65,7 @@ void __tpy_init() {
     for (int32_t i = 10; i > 0; i += -2) {
         std::cout << i << "\n";
     }
-    std::cout << sum_range_step(0, 10, 3) << "\n";
+    std::cout << ::tpyapp::main::sum_range_step(0, 10, 3) << "\n";
     n = 5;
     int32_t __stop_4 = n;
     for (int32_t i = 0; i < __stop_4; ++i) {

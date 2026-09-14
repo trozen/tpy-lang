@@ -75,16 +75,16 @@ std::vector<::tpystd::tplib::box::Box<int32_t>> grow_boxes(int32_t n) {
 //     bs.append(Box(4))
 //     print(len(bs))
 void main() {
-    std::array<int32_t, 3> a = fresh_array();
+    std::array<int32_t, 3> a = ::tpyapp::main::fresh_array();
     ::tpy::__setitem__(a, 1, 42);
     std::cout << ::tpy::__getitem__(a, 0) << " " << ::tpy::__getitem__(a, 1) << " " << ::tpy::__len__(a) << "\n";
-    ::tpy::ByteArray b = grow_bytes(4);
+    ::tpy::ByteArray b = ::tpyapp::main::grow_bytes(4);
     b.push_back(70);
     std::cout << ::tpy::__len__(b) << " " << static_cast<int>(::tpy::bytes_getitem(b, -1)) << "\n";
-    std::vector<int32_t> xs = grow_list(4);
+    std::vector<int32_t> xs = ::tpyapp::main::grow_list(4);
     xs.push_back(9);
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, -1) << "\n";
-    std::vector<::tpystd::tplib::box::Box<int32_t>> bs = grow_boxes(4);
+    std::vector<::tpystd::tplib::box::Box<int32_t>> bs = ::tpyapp::main::grow_boxes(4);
     bs.push_back(::tpystd::tplib::box::Box<int32_t>(4));
     std::cout << ::tpy::__len__(bs) << "\n";
 }
@@ -99,7 +99,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

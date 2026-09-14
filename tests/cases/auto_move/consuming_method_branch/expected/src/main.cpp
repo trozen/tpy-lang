@@ -28,8 +28,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_branch(true);
-    test_branch(false);
+    ::tpyapp::main::test_branch(true);
+    ::tpyapp::main::test_branch(false);
 }
 
 } // namespace tpyapp::main

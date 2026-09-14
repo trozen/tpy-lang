@@ -11,11 +11,11 @@ namespace tpyapp::main {
 void main() {
     auto __tmp_1 = Meters(::tpy::BigInt(30));
     auto __tmp_2 = Meters(::tpy::BigInt(12));
-    combine(__tmp_1, __tmp_2);
+    ::tpyapp::main::combine(__tmp_1, __tmp_2);
     auto __tmp_3 = Num(::tpy::BigInt(8));
-    chain(__tmp_3);
+    ::tpyapp::main::chain(__tmp_3);
     auto __tmp_4 = Ping();
-    bounce(__tmp_4);
+    ::tpyapp::main::bounce(__tmp_4);
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

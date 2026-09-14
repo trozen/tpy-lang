@@ -62,11 +62,11 @@ std::string describe(int32_t x) {
 //     print(describe(int32(0)))
 //     print(describe(int32(42)))
 void main() {
-    std::cout << classify(20) << "\n";
-    std::cout << classify(7) << "\n";
-    std::cout << classify(3) << "\n";
-    std::cout << describe(0) << "\n";
-    std::cout << describe(42) << "\n";
+    std::cout << ::tpyapp::main::classify(20) << "\n";
+    std::cout << ::tpyapp::main::classify(7) << "\n";
+    std::cout << ::tpyapp::main::classify(3) << "\n";
+    std::cout << ::tpyapp::main::describe(0) << "\n";
+    std::cout << ::tpyapp::main::describe(42) << "\n";
 }
 
 // main()
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

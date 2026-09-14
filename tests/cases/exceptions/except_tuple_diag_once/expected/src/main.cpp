@@ -26,7 +26,7 @@ void boom(const ::tpy::BigInt& which) {
 void caught(const ::tpy::BigInt& which, const Plain& p) {
     {
         try {
-            boom(which);
+            ::tpyapp::main::boom(which);
         } catch (const AErr&) {
             if (false) {
                 std::cout << "unreachable" << "\n";
@@ -48,7 +48,7 @@ void caught(const ::tpy::BigInt& which, const Plain& p) {
 void main() {
     Plain p = Plain();
     for (int32_t i = 0; i < 2; ++i) {
-        caught(::tpy::BigInt(i), p);
+        ::tpyapp::main::caught(::tpy::BigInt(i), p);
     }
 }
 
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

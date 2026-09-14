@@ -30,7 +30,7 @@ void main() {
     {
         try {
             p = nullptr;
-            boom();
+            ::tpyapp::main::boom();
             p = &*(__slot_2 = Point(4));
         } catch (...) {
             std::cout << ::tpy::deref_check(p).x << "\n";
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

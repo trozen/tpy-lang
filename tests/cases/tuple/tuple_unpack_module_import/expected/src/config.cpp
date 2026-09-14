@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    auto __tup_1 = get_bounds();
+    auto __tup_1 = ::tpyapp::config::get_bounds();
     lo = std::get<0>(__tup_1);
     hi = std::get<1>(__tup_1);
 }

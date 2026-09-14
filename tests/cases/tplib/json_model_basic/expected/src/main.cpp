@@ -191,14 +191,14 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    test_deserialize();
-    test_optional_missing();
-    test_optional_null();
-    test_serialize();
-    test_serialize_null();
-    test_roundtrip();
-    test_skip_unknown();
-    test_pretty();
+    ::tpyapp::main::test_deserialize();
+    ::tpyapp::main::test_optional_missing();
+    ::tpyapp::main::test_optional_null();
+    ::tpyapp::main::test_serialize();
+    ::tpyapp::main::test_serialize_null();
+    ::tpyapp::main::test_roundtrip();
+    ::tpyapp::main::test_skip_unknown();
+    ::tpyapp::main::test_pretty();
 }
 
 } // namespace tpyapp::main

@@ -25,13 +25,13 @@ void main() {
     Dog __slot_1{Dog()};
     Pet* p1 = &__slot_1;
     Pet* p2 = &(*p1);
-    greet((*p1));
-    greet((*p2));
+    ::tpyapp::main::greet((*p1));
+    ::tpyapp::main::greet((*p2));
     __slot_2.emplace(Cat());
     p2 = &*__slot_2;
-    greet((*p2));
+    ::tpyapp::main::greet((*p2));
     p2 = &(*p1);
-    greet((*p2));
+    ::tpyapp::main::greet((*p2));
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

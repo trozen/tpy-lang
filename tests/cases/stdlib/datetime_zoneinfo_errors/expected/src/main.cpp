@@ -40,12 +40,12 @@ std::string probe(std::string_view key) {
 //     except KeyError:
 //         print("KeyError-base")
 void main() {
-    std::cout << probe("Europe/Warsaw") << "\n";
-    std::cout << probe("Not/AZone") << "\n";
-    std::cout << probe("") << "\n";
-    std::cout << probe("../etc/passwd") << "\n";
-    std::cout << probe("/etc/localtime") << "\n";
-    std::cout << probe("Europe//Warsaw") << "\n";
+    std::cout << ::tpyapp::main::probe("Europe/Warsaw") << "\n";
+    std::cout << ::tpyapp::main::probe("Not/AZone") << "\n";
+    std::cout << ::tpyapp::main::probe("") << "\n";
+    std::cout << ::tpyapp::main::probe("../etc/passwd") << "\n";
+    std::cout << ::tpyapp::main::probe("/etc/localtime") << "\n";
+    std::cout << ::tpyapp::main::probe("Europe//Warsaw") << "\n";
     {
         try {
             ::tpystd::datetime::ZoneInfo z = ::tpystd::datetime::ZoneInfo("Also/NotAZone");
@@ -68,7 +68,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::zoneinfo::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -44,7 +44,7 @@ __gen_g g(std::vector<Box>& items) {
 void main() {
     std::vector<Box> items = {Box(::tpy::BigInt(1))};
     {
-        auto __src_0 = g(items);
+        auto __src_0 = ::tpyapp::main::g(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

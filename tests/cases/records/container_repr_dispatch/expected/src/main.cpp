@@ -78,7 +78,7 @@ void main() {
     std::cout << s << "\n";
     std::cout << r << "\n";
     std::cout << ::tpy::repr_of(b) << "\n";
-    std::cout << ::tpy::print_bool(matches_default_repr(::tpy::repr_of(s), "StrOnly")) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(::tpy::repr_of(s), "StrOnly")) << "\n";
     std::cout << ::tpy::repr_of(r) << "\n";
     std::cout << ::tpy::ListPrinter(std::array<Both, 1>{b}) << "\n";
     std::vector<StrOnly> bs = ::tpy::make_vector<StrOnly>(std::move(s));
@@ -94,7 +94,7 @@ void main() {
     std::cout << ::tpy::repr_of((*opt_some)) << "\n";
     std::cout << ::tpy::repr_of(opt_none) << "\n";
     Neither n = Neither(8);
-    std::cout << ::tpy::print_bool(matches_default_repr(::tpy::repr_of(n), "Neither")) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(::tpy::repr_of(n), "Neither")) << "\n";
     ChildOfRepr c = ChildOfRepr(9);
     std::cout << ::tpy::repr_of(c) << "\n";
     std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n";
@@ -107,7 +107,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

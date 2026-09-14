@@ -50,8 +50,8 @@ void main() {
     (void)(p.x);
     (void)(7);
     (void)(n);
-    (void)((ok && (peek(n) > 0)));
-    (void)(((ok) ? (peek(n)) : (0)));
+    (void)((ok && (::tpyapp::main::peek(n) > 0)));
+    (void)(((ok) ? (::tpyapp::main::peek(n)) : (0)));
     int32_t z = 0;
     {
         try {
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

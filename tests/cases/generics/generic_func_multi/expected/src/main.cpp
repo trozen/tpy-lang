@@ -22,11 +22,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static Pair<int32_t, std::string> __global_slot_1 = create_pair<int32_t, std::string>(10, "hello");
+    static Pair<int32_t, std::string> __global_slot_1 = ::tpyapp::main::create_pair<int32_t, std::string>(10, "hello");
     p1 = &__global_slot_1;
     std::cout << p1->first << "\n";
     std::cout << p1->second << "\n";
-    static Pair<std::string, int32_t> __global_slot_2 = swap_pair<int32_t, std::string>((*p1));
+    static Pair<std::string, int32_t> __global_slot_2 = ::tpyapp::main::swap_pair<int32_t, std::string>((*p1));
     p2 = &__global_slot_2;
     std::cout << p2->first << "\n";
     std::cout << p2->second << "\n";

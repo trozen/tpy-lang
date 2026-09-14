@@ -55,10 +55,10 @@ void main() {
     ::tpystd::tplib::rc::Rc<Counter> a = Rc<Counter>::new_<Counter>(Counter(1));
     ::tpystd::tplib::rc::Rc<Counter> b = a.clone();
     b.get().n = 42;
-    std::cout << observe(a) << "\n";
-    std::cout << downgrade_readonly(a) << "\n";
+    std::cout << ::tpyapp::main::observe(a) << "\n";
+    std::cout << ::tpyapp::main::downgrade_readonly(a) << "\n";
     ::tpystd::tplib::rc::Weak<Counter> wk = a.downgrade();
-    std::cout << via_readonly_weak(wk) << "\n";
+    std::cout << ::tpyapp::main::via_readonly_weak(wk) << "\n";
     Registry reg = Registry(a.clone());
     std::cout << reg.handle().get().n << "\n";
 }
@@ -74,7 +74,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

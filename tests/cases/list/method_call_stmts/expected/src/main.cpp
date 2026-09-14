@@ -55,8 +55,8 @@ void show_last(std::vector<int32_t>& xs) {
 //     print(len(xs))
 void main() {
     std::vector<int32_t> xs = {3, 1};
-    grow(xs, 9);
-    show_last(xs);
+    ::tpyapp::main::grow(xs, 9);
+    ::tpyapp::main::show_last(xs);
     std::cout << ::tpy::__len__(xs) << "\n";
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
@@ -65,9 +65,9 @@ void main() {
         int32_t x = *__beg_0;
         std::cout << x << "\n";
     }
-    std::cout << take_two(xs) << "\n";
+    std::cout << ::tpyapp::main::take_two(xs) << "\n";
     std::cout << ::tpy::__len__(xs) << "\n";
-    wipe(xs);
+    ::tpyapp::main::wipe(xs);
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
@@ -77,7 +77,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -134,13 +134,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_while_basic();
-    test_while_increment_before_access();
-    test_while_no_literal_init();
-    test_while_negative_init();
-    test_while_list();
-    test_while_bigint_index();
-    test_while_post_loop_not_safe();
+    ::tpyapp::main::test_while_basic();
+    ::tpyapp::main::test_while_increment_before_access();
+    ::tpyapp::main::test_while_no_literal_init();
+    ::tpyapp::main::test_while_negative_init();
+    ::tpyapp::main::test_while_list();
+    ::tpyapp::main::test_while_bigint_index();
+    ::tpyapp::main::test_while_post_loop_not_safe();
 }
 
 } // namespace tpyapp::main

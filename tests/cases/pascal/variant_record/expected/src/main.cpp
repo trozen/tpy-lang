@@ -116,7 +116,7 @@ void __tpy_init() {
     std::cout << "id=";
     std::cout << s->id;
     std::cout << " area=";
-    std::cout << ::tpy::print_float(area(&(*s))) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n";
     s->id = 2;
     s->kind = shapekind::screct;
     s->w = 3.0;
@@ -124,7 +124,7 @@ void __tpy_init() {
     std::cout << "id=";
     std::cout << s->id;
     std::cout << " area=";
-    std::cout << ::tpy::print_float(area(&(*s))) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n";
     s->id = 3;
     s->kind = shapekind::sctri;
     s->a = 5.0;
@@ -133,7 +133,7 @@ void __tpy_init() {
     std::cout << "id=";
     std::cout << s->id;
     std::cout << " area=";
-    std::cout << ::tpy::print_float(area(&(*s))) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n";
 }
 
 } // namespace tpyapp::main

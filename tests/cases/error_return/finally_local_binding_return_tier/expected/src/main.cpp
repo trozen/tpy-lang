@@ -32,7 +32,7 @@ void run(int32_t x) {
     {
         try {
             {
-                auto __try_tmp_2 = fallible(x);
+                auto __try_tmp_2 = ::tpyapp::main::fallible(x);
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 y = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
@@ -57,8 +57,8 @@ void run(int32_t x) {
 //     run(3)
 //     run(-1)
 void main() {
-    run(3);
-    run(-1);
+    ::tpyapp::main::run(3);
+    ::tpyapp::main::run(-1);
 }
 
 // main()
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

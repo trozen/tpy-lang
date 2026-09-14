@@ -30,7 +30,7 @@ int32_t h(std::string_view a, int32_t b) {
 // def main() -> None:
 //     print(h("x"), h("y", 2))
 void main() {
-    std::cout << h__lit_x("x") << " " << h(std::string_view("y"), 2) << "\n";
+    std::cout << ::tpyapp::main::h__lit_x("x") << " " << ::tpyapp::main::h(std::string_view("y"), 2) << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -46,7 +46,7 @@ void __tpy_init() {
     initialized = true;
 
     p = nullptr;
-    static Point __global_slot_1 = make_point();
+    static Point __global_slot_1 = ::tpyapp::main::make_point();
     p = &__global_slot_1;
     std::cout << p->x << "\n";
     n = std::nullopt;
@@ -59,7 +59,7 @@ void __tpy_init() {
     f = 1.5;
     std::cout << ::tpy::print_float(f) << "\n";
     flag = std::nullopt;
-    flag = get_flag();
+    flag = ::tpyapp::main::get_flag();
     std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(flag) << "\n";
 }
 

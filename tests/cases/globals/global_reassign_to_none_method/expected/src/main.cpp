@@ -37,7 +37,7 @@ void __tpy_init() {
 
     _ptr_g = nullptr;
     _opt_int_g = std::nullopt;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

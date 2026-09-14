@@ -20,7 +20,7 @@ int32_t calls{};
 //     print(calls, len(out[0]))
 void single_eval_into_list() {
     std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
-    out.push_back(::tpy::Bytes(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3})));
+    out.push_back(::tpy::Bytes(::tpy::bytes_slice(::tpyapp::main::make(), ::tpy::BasicSlice{1, 3})));
     std::cout << calls << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << "\n";
 }
 
@@ -33,7 +33,7 @@ void single_eval_into_list() {
 void single_eval_into_field() {
     calls = 0;
     Holder h = Holder();
-    h.b = ::tpy::Bytes(::tpy::bytes_slice(make(), ::tpy::BasicSlice{0, 2}));
+    h.b = ::tpy::Bytes(::tpy::bytes_slice(::tpyapp::main::make(), ::tpy::BasicSlice{0, 2}));
     std::cout << calls << " " << ::tpy::__len__(h.b) << "\n";
 }
 
@@ -44,7 +44,7 @@ void single_eval_into_field() {
 //     print(calls, len(ba))
 void single_eval_into_bytearray() {
     calls = 0;
-    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_slice(::tpyapp::main::make(), ::tpy::BasicSlice{1, 3}));
     std::cout << calls << " " << ::tpy::__len__(ba) << "\n";
 }
 
@@ -57,7 +57,7 @@ void single_eval_into_bytearray() {
 void single_eval_into_any() {
     calls = 0;
     std::vector<::tpy::Any> items = std::vector<::tpy::Any>{};
-    items.push_back(::tpy::make_any(::tpy::Bytes(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}))));
+    items.push_back(::tpy::make_any(::tpy::Bytes(::tpy::bytes_slice(::tpyapp::main::make(), ::tpy::BasicSlice{1, 3}))));
     std::cout << calls << " " << ::tpy::__len__(items) << "\n";
 }
 
@@ -71,10 +71,10 @@ void single_eval_into_any() {
 //     h.set_str("world")
 //     print(len(h.b), h.s)
 void main() {
-    single_eval_into_list();
-    single_eval_into_field();
-    single_eval_into_bytearray();
-    single_eval_into_any();
+    ::tpyapp::main::single_eval_into_list();
+    ::tpyapp::main::single_eval_into_field();
+    ::tpyapp::main::single_eval_into_bytearray();
+    ::tpyapp::main::single_eval_into_any();
     Holder h = Holder();
     h.set_bytes(::tpy::bytes_literal("hello", 5));
     h.set_str("world");
@@ -90,7 +90,7 @@ void __tpy_init() {
     initialized = true;
 
     calls = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

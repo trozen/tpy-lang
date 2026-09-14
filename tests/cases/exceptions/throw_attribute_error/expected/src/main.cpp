@@ -28,9 +28,9 @@ std::string looker(std::string_view name) {
 void main() {
     {
         try {
-            std::string v = looker("host");
+            std::string v = ::tpyapp::main::looker("host");
             std::cout << v << "\n";
-            v = looker("missing");
+            v = ::tpyapp::main::looker("missing");
             std::cout << "never" << "\n";
         } catch (const ::tpy::AttributeError& e) {
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -38,7 +38,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         done.emplace(::tpystd::asyncio::Future<int32_t>());
-        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(background((*done)))));
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::background((*done)))));
         { auto __del_sink = std::move(t); }
         __sub_0 = &((*done));
         __state = S_RESUME_0;
@@ -67,7 +67,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Fire-and-forget: a task spawned via create_task and never awaited
@@ -89,7 +89,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -22,9 +22,9 @@ namespace tpyapp::main {
 //     print(show(Dog(2)))
 void main() {
     Cat __tmp_1 = Cat(::tpy::BigInt(1));
-    std::cout << show(::tpy::Union<Cat*, Dog*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::show(::tpy::Union<Cat*, Dog*>{&__tmp_1}) << "\n";
     Dog __tmp_2 = Dog(::tpy::BigInt(2));
-    std::cout << show(::tpy::Union<Cat*, Dog*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::show(::tpy::Union<Cat*, Dog*>{&__tmp_2}) << "\n";
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

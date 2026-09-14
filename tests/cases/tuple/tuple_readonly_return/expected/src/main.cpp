@@ -21,7 +21,7 @@ std::tuple<const P*, const P*> pick(const std::vector<P>& items) {
 //     print(pair[0].x)
 void main() {
     std::vector<P> items = {P(1), P(2), P(3)};
-    auto pair = pick(items);
+    auto pair = ::tpyapp::main::pick(items);
     std::cout << std::get<0>(pair)->x << "\n";
     std::cout << std::get<1>(pair)->x << "\n";
     ::tpy::__getitem__(items, 0).x = 99;
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

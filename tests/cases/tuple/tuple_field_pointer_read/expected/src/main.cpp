@@ -18,9 +18,9 @@ void bump(const std::tuple<int32_t, Box*>& t) {
 //     print(h.pair[1].val)
 void main() {
     Holder h = Holder(Box(5));
-    bump(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
+    ::tpyapp::main::bump(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
     std::cout << std::get<1>(h.pair).val << "\n";
-    bump(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
+    ::tpyapp::main::bump(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

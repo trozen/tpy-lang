@@ -43,16 +43,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << sum_span(::tpy::as_mut_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
     static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    std::cout << sum_span(::tpy::as_mut_span((*nums))) << "\n";
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span((*nums))) << "\n";
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
     arr = &__global_slot_2;
-    std::cout << sum_span(::tpy::as_mut_span((*arr))) << "\n";
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span((*arr))) << "\n";
     static std::vector<int32_t> __global_slot_3 = {1000, 2000, 3000, 4000};
     items = &__global_slot_3;
-    std::cout << sum_span(::tpy::as_mut_span((*items))) << "\n";
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span((*items))) << "\n";
 }
 
 } // namespace tpyapp::main

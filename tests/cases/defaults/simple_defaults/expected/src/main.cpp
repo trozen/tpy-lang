@@ -48,14 +48,14 @@ void log(std::string_view msg, bool verbose) {
 //     log("info")
 //     log("debug", True)
 void main() {
-    greet("World");
-    greet("World", "Hi");
-    std::cout << add(5) << "\n";
-    std::cout << add(5, 3) << "\n";
-    std::cout << ::tpy::print_float(scale(2.5)) << "\n";
-    std::cout << ::tpy::print_float(scale(2.5, 3.0)) << "\n";
-    log("info");
-    log("debug", true);
+    ::tpyapp::main::greet("World");
+    ::tpyapp::main::greet("World", "Hi");
+    std::cout << ::tpyapp::main::add(5) << "\n";
+    std::cout << ::tpyapp::main::add(5, 3) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::scale(2.5)) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::scale(2.5, 3.0)) << "\n";
+    ::tpyapp::main::log("info");
+    ::tpyapp::main::log("debug", true);
 }
 
 // main()
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

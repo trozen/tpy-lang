@@ -36,7 +36,7 @@ void main() {
         std::cout << p->x << "\n";
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    log();
+    ::tpyapp::main::log();
     std::cout << p->x << "\n";
     {
         try {
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

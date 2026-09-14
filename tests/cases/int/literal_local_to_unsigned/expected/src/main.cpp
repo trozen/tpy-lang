@@ -26,7 +26,7 @@ uint64_t take_u64(uint64_t x) {
 uint64_t loop_shape(uint64_t limit) {
     uint64_t offset = 0;
     while ((offset < limit)) {
-        offset = (::tpy::add_check<uint64_t>(take_u64(offset), 1));
+        offset = (::tpy::add_check<uint64_t>(::tpyapp::main::take_u64(offset), 1));
     }
     return offset;
 }
@@ -38,8 +38,8 @@ uint64_t loop_shape(uint64_t limit) {
 //     print(take_u32(a + 1))
 void repeated_use() {
     uint32_t a = 5;
-    std::cout << take_u32(a) << "\n";
-    std::cout << take_u32((::tpy::add_check<uint32_t>(a, 1))) << "\n";
+    std::cout << ::tpyapp::main::take_u32(a) << "\n";
+    std::cout << ::tpyapp::main::take_u32((::tpy::add_check<uint32_t>(a, 1))) << "\n";
 }
 
 // def literal_only_branch() -> None:
@@ -54,7 +54,7 @@ void literal_only_branch() {
     if (true) {
         n = 7;
     }
-    std::cout << take_u64(n) << "\n";
+    std::cout << ::tpyapp::main::take_u64(n) << "\n";
 }
 
 // def main() -> None:
@@ -62,9 +62,9 @@ void literal_only_branch() {
 //     repeated_use()
 //     literal_only_branch()
 void main() {
-    std::cout << loop_shape(3) << "\n";
-    repeated_use();
-    literal_only_branch();
+    std::cout << ::tpyapp::main::loop_shape(3) << "\n";
+    ::tpyapp::main::repeated_use();
+    ::tpyapp::main::literal_only_branch();
 }
 
 // main()
@@ -73,7 +73,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

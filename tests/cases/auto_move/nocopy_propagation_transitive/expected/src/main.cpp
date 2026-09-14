@@ -15,7 +15,7 @@ int32_t consume(Outer&& o) {
 //     print(consume(o))  # tpyc: ok
 void main() {
     Outer o = Outer(Wrapper(Resource(99)));
-    std::cout << consume(std::move(o)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(o)) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

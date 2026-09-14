@@ -19,7 +19,7 @@ void test() {
     Point pt = Point(10, 20);
     Ref r = Ref(pt);
     Point __tmp_1 = r.__deref__();
-    print_point(__tmp_1);
+    ::tpyapp::main::print_point(__tmp_1);
 }
 
 // test()
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

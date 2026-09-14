@@ -39,7 +39,7 @@ __gen_drain drain(::tpystd::tplib::box::Box<int32_t> b) {
 void main() {
     ::tpystd::tplib::box::Box<int32_t> box = ::tpystd::tplib::box::Box<int32_t>(7);
     {
-        auto __src_0 = drain(std::move(box));
+        auto __src_0 = ::tpyapp::main::drain(std::move(box));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -60,7 +60,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

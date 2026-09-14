@@ -330,7 +330,7 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         int32_t a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        operators(::tpy::BigInt(a), ::tpy::BigInt(b));
+        ::tpyapp::main::operators(::tpy::BigInt(a), ::tpy::BigInt(b));
     }
     auto __obj_1 = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{low, -(one)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{high, one}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{low, high}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{high, low}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{((high) + (::tpy::BigInt(1))), high}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{((low) - (::tpy::BigInt(1))), low}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{high, ((high) + (::tpy::BigInt(1)))}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{low, ((low) - (::tpy::BigInt(1)))}};
     auto __beg_1 = __obj_1.begin();
@@ -340,7 +340,7 @@ void main() {
         const auto& __tup_2 = __for_tup_1;
         ::tpy::BigInt a = std::get<0>(__tup_2);
         ::tpy::BigInt b = std::get<1>(__tup_2);
-        operators(a, b);
+        ::tpyapp::main::operators(a, b);
     }
     auto __obj_2 = {0, 1, 61, 62, 63, 64, 200};
     auto __beg_2 = __obj_2.begin();
@@ -366,14 +366,14 @@ void main() {
     Number number = Number(::tpy::BigInt(-17), ::tpy::BigInt(3));
     std::cout << "constructor" << " " << number.value << "\n";
     std::cout << "method" << " " << ::tpy::print_bool(number.check(-5)) << "\n";
-    std::cout << "generic twin" << " " << ::tpy::print_bool(compare(low, high)) << " " << ::tpy::print_bool(generic_compare<::tpy::BigInt>(low, high)) << "\n";
+    std::cout << "generic twin" << " " << ::tpy::print_bool(::tpyapp::main::compare(low, high)) << " " << ::tpy::print_bool(::tpyapp::main::generic_compare<::tpy::BigInt>(low, high)) << "\n";
     ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = high;
-    wrappers(-17, __tmp_1, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(-17), ::tpy::BigInt(3)});
+    ::tpyapp::main::wrappers(-17, __tmp_1, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(-17), ::tpy::BigInt(3)});
     ::tpy::Union<::tpy::BigInt, std::string> __tmp_2 = "inverse";
-    wrappers(std::nullopt, __tmp_2, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(17), ::tpy::BigInt(3)});
+    ::tpyapp::main::wrappers(std::nullopt, __tmp_2, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(17), ::tpy::BigInt(3)});
     {
         ::tpy::BigInt __tmp_3 = ::tpy::BigInt(-17);
-        auto __src_3 = generated(__tmp_3, ::tpy::BigInt(3));
+        auto __src_3 = ::tpyapp::main::generated(__tmp_3, ::tpy::BigInt(3));
         auto&& __itr_3 = ::tpy::__iter__(__src_3);
         for (;;) {
             auto __r_4 = __itr_3.__next__();
@@ -383,7 +383,7 @@ void main() {
         }
     }
     ::tpy::BigInt __tmp_4 = ::tpy::BigInt(-17);
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(async_ops(__tmp_4, ::tpy::BigInt(3)))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_ops(__tmp_4, ::tpy::BigInt(3)))) << "\n";
     std::array<::tpy::BigInt, 4> values = {low, -(one), one, high};
     std::vector<::tpy::BigInt> results = ({
         std::vector<::tpy::BigInt> __result;
@@ -425,9 +425,9 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     {
-        std::cout << "error_return" << " " << ({ auto __er_2 = checked_floor(::tpy::BigInt(-17), ::tpy::BigInt(3)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::checked_floor(::tpy::BigInt(-17), ::tpy::BigInt(3)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         {
-            auto __try_tmp_3 = checked_floor(::tpy::BigInt(17), ::tpy::BigInt(0));
+            auto __try_tmp_3 = ::tpyapp::main::checked_floor(::tpy::BigInt(17), ::tpy::BigInt(0));
             if (!__try_tmp_3.has_value()) goto __except_1;
         }
         goto __after_try_1;
@@ -436,11 +436,11 @@ void main() {
         std::cout << "error_return caught" << "\n";
         __after_try_1:;
     }
-    exceptions(::tpy::BigInt(-17), ::tpy::BigInt(0), ::tpy::BigInt(-1));
+    ::tpyapp::main::exceptions(::tpy::BigInt(-17), ::tpy::BigInt(0), ::tpy::BigInt(-1));
     Counter counter = Counter();
     bool chain = ({ auto&& _cmp0 = counter.get(-17); auto&& _cmp1 = counter.get(3); (_cmp0 < _cmp1) && (_cmp1 < counter.get(17)); });
     bool stopped = ({ auto&& _cmp0 = counter.get(17); auto&& _cmp1 = counter.get(3); (_cmp0 < _cmp1) && (_cmp1 < counter.get(-17)); });
-    bool lazy = (compare(high, low) && compare(counter.get(1), high));
+    bool lazy = (::tpyapp::main::compare(high, low) && ::tpyapp::main::compare(counter.get(1), high));
     std::cout << "evaluation" << " " << ::tpy::print_bool(chain) << " " << ::tpy::print_bool(stopped) << " " << ::tpy::print_bool(lazy) << " " << counter.calls << "\n";
     ::tpy::BigInt rounded = ((((one) << (::tpy::BigInt(60)))) + (((one) << (::tpy::BigInt(7)))));
     ::tpy::BigInt divisor = ::tpy::BigInt(3);
@@ -469,7 +469,7 @@ void __tpy_init() {
     module_b = ::tpy::BigInt(-3);
     module_less = (module_a < module_b);
     std::cout << "module" << " " << ::tpy::print_bool(module_less) << "\n";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

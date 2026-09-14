@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(seq_at(sp, int32(-2)))
 void main() {
     std::array<int32_t, 3> a = {10, 20, 30};
-    std::cout << seq_at(a, -1) << "\n";
-    std::cout << seq_at(a, 0) << "\n";
+    std::cout << ::tpyapp::main::seq_at(a, -1) << "\n";
+    std::cout << ::tpyapp::main::seq_at(a, 0) << "\n";
     std::span<int32_t> sp = ::tpy::as_mut_span(a);
-    std::cout << seq_at(sp, -1) << "\n";
-    std::cout << seq_at(sp, -2) << "\n";
+    std::cout << ::tpyapp::main::seq_at(sp, -1) << "\n";
+    std::cout << ::tpyapp::main::seq_at(sp, -2) << "\n";
 }
 
 // main()
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

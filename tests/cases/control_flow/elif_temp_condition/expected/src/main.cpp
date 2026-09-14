@@ -22,7 +22,7 @@ int32_t test(int32_t x) {
         return -1;
     } else {
         std::vector<int32_t> __tmp_1 = {10, 20};
-        if (has_items(__tmp_1)) {
+        if (::tpyapp::main::has_items(__tmp_1)) {
             return 0;
         } else {
             return 1;
@@ -35,9 +35,9 @@ int32_t test(int32_t x) {
 //     print(test(0))
 //     print(test(5))
 void main() {
-    std::cout << test(-5) << "\n";
-    std::cout << test(0) << "\n";
-    std::cout << test(5) << "\n";
+    std::cout << ::tpyapp::main::test(-5) << "\n";
+    std::cout << ::tpyapp::main::test(0) << "\n";
+    std::cout << ::tpyapp::main::test(5) << "\n";
 }
 
 // main()
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

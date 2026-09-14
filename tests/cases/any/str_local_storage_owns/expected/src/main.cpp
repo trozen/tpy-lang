@@ -106,8 +106,8 @@ void main() {
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"k", ::tpy::make_any(std::string(v))}});
     ::tpy::__setitem__(d, "j", ::tpy::make_any(std::string(w)));
     std::cout << "dict" << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(d, "k")) << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(d, "j")) << "\n";
-    std::cout << "param" << " " << ::tpy::any_cast_or_panic<std::string>(take(::tpy::make_any(std::string(v)))) << "\n";
-    std::cout << "return" << " " << ::tpy::any_cast_or_panic<std::string>(ret_local()) << "\n";
+    std::cout << "param" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::take(::tpy::make_any(std::string(v)))) << "\n";
+    std::cout << "return" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::ret_local()) << "\n";
     H h = H();
     h.slot = ::tpy::make_any(std::string(v));
     std::cout << "method" << " " << h.local_in_method() << "\n";
@@ -124,12 +124,12 @@ void main() {
     std::cout << "scalars" << " " << ::tpy::any_cast_or_panic<int64_t>(i) << " " << static_cast<int>(::tpy::any_cast_or_panic<uint8_t>(u)) << " " << ::tpy::print_float(static_cast<double>(::tpy::any_cast_or_panic<float>(f))) << "\n";
     ::tpy::Any lit = ::tpy::make_any(std::string("lit"));
     std::cout << "literal" << " " << ::tpy::any_cast_or_panic<std::string>(lit) << "\n";
-    std::cout << "str-param" << " " << ::tpy::any_cast_or_panic<std::string>(take_str("p")) << "\n";
+    std::cout << "str-param" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::take_str("p")) << "\n";
     ::tpy::Any owned = ::tpy::make_any(std::string(::tpy::String("own")));
     std::cout << "String" << " " << ::tpy::any_cast_or_panic<std::string>(owned) << "\n";
     ::tpy::Any sl = ::tpy::make_any(std::string(::tpy::str_slice(v, ::tpy::BasicSlice{0, 1})));
     std::cout << "slice" << " " << ::tpy::any_cast_or_panic<std::string>(sl) << "\n";
-    ::tpy::Any made = ::tpy::make_any(std::string(mk()));
+    ::tpy::Any made = ::tpy::make_any(std::string(::tpyapp::main::mk()));
     std::cout << "call" << " " << ::tpy::any_cast_or_panic<std::string>(made) << "\n";
 }
 
@@ -146,7 +146,7 @@ void __tpy_init() {
     gv = "g";
     ga = ::tpy::make_any(std::string(gv));
     std::cout << "global" << " " << ::tpy::any_cast_or_panic<std::string>(ga) << "\n";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

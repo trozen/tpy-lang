@@ -23,10 +23,10 @@ void show(std::optional<int32_t> x) {
 //     n: int32 = 10
 //     show(n)
 void main() {
-    show(42);
-    show(std::nullopt);
+    ::tpyapp::main::show(42);
+    ::tpyapp::main::show(std::nullopt);
     int32_t n = 10;
-    show(n);
+    ::tpyapp::main::show(n);
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

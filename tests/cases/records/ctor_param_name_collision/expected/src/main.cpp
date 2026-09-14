@@ -38,7 +38,7 @@ __gen_g g(::tpy::Union<const A*, const B*> v) {
 void main() {
     {
         A __tmp_1 = A(1);
-        auto __src_0 = g(::tpy::Union<const A*, const B*>{&__tmp_1});
+        auto __src_0 = ::tpyapp::main::g(::tpy::Union<const A*, const B*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -15,9 +15,9 @@ void emit(int32_t n, bool to_out) {
 //     emit(2, False)
 //     emit(3, True)
 void main() {
-    emit(1, true);
-    emit(2, false);
-    emit(3, true);
+    ::tpyapp::main::emit(1, true);
+    ::tpyapp::main::emit(2, false);
+    ::tpyapp::main::emit(3, true);
 }
 
 // # A `print(file=...)` sink chosen by a ternary: each arm is an admitted sink
@@ -32,7 +32,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

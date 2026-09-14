@@ -92,7 +92,7 @@ __gen_gen_match gen_match(::tpy::BigInt n) {
 //         print(y)
 void main() {
     {
-        auto __src_0 = gen_if(::tpy::BigInt(5));
+        auto __src_0 = ::tpyapp::main::gen_if(::tpy::BigInt(5));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -102,7 +102,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = gen_match(::tpy::BigInt(5));
+        auto __src_2 = ::tpyapp::main::gen_match(::tpy::BigInt(5));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -112,7 +112,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = gen_if(::tpy::BigInt(0));
+        auto __src_4 = ::tpyapp::main::gen_if(::tpy::BigInt(0));
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -122,7 +122,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = gen_match(::tpy::BigInt(0));
+        auto __src_6 = ::tpyapp::main::gen_match(::tpy::BigInt(0));
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -139,7 +139,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

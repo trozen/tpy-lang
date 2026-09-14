@@ -22,8 +22,8 @@ bool via_ptr_same(Dog* d) {
 //     print(via_ptr_same(d))
 void main() {
     Dog d = Dog("Rex", "lab");
-    std::cout << ::tpy::print_bool(via_ptr_up(&d)) << "\n";
-    std::cout << ::tpy::print_bool(via_ptr_same(&d)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::via_ptr_up(&d)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::via_ptr_same(&d)) << "\n";
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

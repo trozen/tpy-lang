@@ -31,7 +31,7 @@ void observe(int32_t _) {
 //     return 0
 int32_t use(Box& b) {
     if ((b.value.has_value())) {
-        observe(mutate_and_get(b));
+        ::tpyapp::main::observe(::tpyapp::main::mutate_and_get(b));
         return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(b.value), 1));
     }
     return 0;
@@ -44,7 +44,7 @@ void __tpy_init() {
     initialized = true;
 
     Box __tmp_1 = Box(4);
-    std::cout << use(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use(__tmp_1) << "\n";
 }
 
 } // namespace tpyapp::main

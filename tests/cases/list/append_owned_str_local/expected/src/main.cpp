@@ -23,7 +23,7 @@ void add_joined(std::vector<std::string>& xs, std::string_view a, std::string_vi
 //     print(len(xs), xs[0], xs[1])
 void main() {
     std::vector<std::string> xs = {"seed"};
-    add_joined(xs, "ab", "cd");
+    ::tpyapp::main::add_joined(xs, "ab", "cd");
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

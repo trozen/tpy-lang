@@ -65,11 +65,11 @@ void __tpy_init() {
     initialized = true;
 
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << sum_items(__tmp_1, 10) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_1, 10) << "\n";
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    std::cout << sum_items(__tmp_2, std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_2, std::nullopt) << "\n";
     std::vector<int32_t> __tmp_3 = {1, 2, 3};
-    std::cout << assert_then_loop(5, __tmp_3) << "\n";
+    std::cout << ::tpyapp::main::assert_then_loop(5, __tmp_3) << "\n";
 }
 
 } // namespace tpyapp::main

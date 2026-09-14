@@ -90,9 +90,9 @@ void in_loop() {
 //     in_branch(False)
 //     in_loop()
 void main() {
-    in_branch(true);
-    in_branch(false);
-    in_loop();
+    ::tpyapp::main::in_branch(true);
+    ::tpyapp::main::in_branch(false);
+    ::tpyapp::main::in_loop();
 }
 
 // main()
@@ -101,7 +101,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

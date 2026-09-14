@@ -63,7 +63,7 @@ void eval_order() {
     {
         try {
             int32_t __unpack_2_0 = 70;
-            int32_t __unpack_2_1 = boom();
+            int32_t __unpack_2_1 = ::tpyapp::main::boom();
             a = __unpack_2_0;
             b = __unpack_2_1;
         } catch (const ::tpy::ValueError&) {
@@ -78,9 +78,9 @@ void eval_order() {
 //     fib()
 //     eval_order()
 void main() {
-    swap();
-    fib();
-    eval_order();
+    ::tpyapp::main::swap();
+    ::tpyapp::main::fib();
+    ::tpyapp::main::eval_order();
 }
 
 // main()
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

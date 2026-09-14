@@ -14,9 +14,9 @@ namespace tpyapp::main {
 //     print(len(s))  # Should print 5
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::vector<int32_t>& items = identity<std::vector<int32_t>>(__tmp_1);
+    std::vector<int32_t>& items = ::tpyapp::main::identity<std::vector<int32_t>>(__tmp_1);
     std::cout << ::tpy::__len__(items) << "\n";
-    std::string s = identity<std::string>("hello");
+    std::string s = ::tpyapp::main::identity<std::string>("hello");
     std::cout << ::tpy::__len__(s) << "\n";
 }
 

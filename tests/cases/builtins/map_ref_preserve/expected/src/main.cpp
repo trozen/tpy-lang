@@ -51,7 +51,7 @@ void main() {
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
     std::cout << ::tpy::__getitem__(pts, 2).x << "\n";
     {
-        auto __src_2 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>([](Point& p) -> Point& { return scale(p, 2); }, pts);
+        auto __src_2 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>([](Point& p) -> Point& { return ::tpyapp::main::scale(p, 2); }, pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

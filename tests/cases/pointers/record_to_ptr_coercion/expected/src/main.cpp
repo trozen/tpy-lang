@@ -33,12 +33,12 @@ int32_t read_point(const Point* p) {
 //     print(result2)  # Should print 999
 void test_coercion() {
     Point pt = Point(10, 20);
-    modify_point(&pt);
+    ::tpyapp::main::modify_point(&pt);
     std::cout << pt.x << "\n";
-    int32_t result = read_point(&pt);
+    int32_t result = ::tpyapp::main::read_point(&pt);
     std::cout << result << "\n";
     Point* ptr = &pt;
-    int32_t result2 = read_point(ptr);
+    int32_t result2 = ::tpyapp::main::read_point(ptr);
     std::cout << result2 << "\n";
 }
 
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_coercion();
+    ::tpyapp::main::test_coercion();
 }
 
 } // namespace tpyapp::main

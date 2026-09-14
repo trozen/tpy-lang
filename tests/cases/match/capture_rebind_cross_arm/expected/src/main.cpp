@@ -35,9 +35,9 @@ namespace tpyapp::main {
 //     print(score(Dog(7)))   # 7 -- the non-rebinding arm's value still flows out
 void main() {
     Cat __tmp_1 = Cat(::tpy::BigInt(9));
-    std::cout << score(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::score(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
     Dog __tmp_2 = Dog(::tpy::BigInt(7));
-    std::cout << score(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::score(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
 }
 
 // main()
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

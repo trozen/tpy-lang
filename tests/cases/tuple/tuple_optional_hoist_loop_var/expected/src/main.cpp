@@ -38,7 +38,7 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         last = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(*__beg_0);
     }
-    consume(last);
+    ::tpyapp::main::consume(last);
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -59,7 +59,7 @@ void main() {
     WithOpt wo = WithOpt();
     std::cout << wo.get_child_value() << "\n";
     Valued __tmp_1{Valued(7)};
-    show(__tmp_1);
+    ::tpyapp::main::show(__tmp_1);
 }
 
 // main()
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

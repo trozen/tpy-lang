@@ -19,7 +19,7 @@ Point make(int32_t i) {
 void main() {
     std::array<Point, 4> pts = ::tpy::array_from_index<Point, 4>([&](std::size_t __i_0) -> Point {
         int32_t i = int32_t(__i_0);
-        return make(i);
+        return ::tpyapp::main::make(i);
     });
     int32_t total = 0;
     auto& __obj_1 = pts;
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -64,7 +64,7 @@ void teardown(std::string_view base) {
 //     teardown(base)
 void main() {
     std::string_view base = "tpy_os_scandir";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
     ::tpystd::os::mkdir(base);
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/sub")));
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/empty")));
@@ -113,7 +113,7 @@ void main() {
         n = ::tpy::add_check<int32_t>(n, 1);
     }
     std::cout << "empty entries:" << " " << n << "\n";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
 }
 
 // # os.scandir + DirEntry (name / is_dir / is_file / is_symlink / stat). Builds a
@@ -130,7 +130,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::os::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

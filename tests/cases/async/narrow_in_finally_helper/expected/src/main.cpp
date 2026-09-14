@@ -459,7 +459,7 @@ __coro_amain amain() {
 void main() {
     Cat c3 = Cat();
     {
-        auto __src_0 = g_assert(::tpy::Union<Cat*, Dog*>{&(c3)});
+        auto __src_0 = ::tpyapp::main::g_assert(::tpy::Union<Cat*, Dog*>{&(c3)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -471,7 +471,7 @@ void main() {
     std::cout << c3.meows << "\n";
     Dog d3 = Dog();
     {
-        auto __src_2 = g_post_if(::tpy::Union<Cat*, Dog*>{&(d3)});
+        auto __src_2 = ::tpyapp::main::g_post_if(::tpy::Union<Cat*, Dog*>{&(d3)});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -481,7 +481,7 @@ void main() {
         }
     }
     std::cout << d3.barks << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 
 // # A union narrowing established INSIDE the `finally` of a resumable body:
@@ -496,7 +496,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

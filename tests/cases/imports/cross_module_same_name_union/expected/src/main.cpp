@@ -36,12 +36,12 @@ std::string describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::p
 //     print(describe(Bar(int32(7))))
 void main() {
     ::tpyapp::pkg_a::Foo a = ::tpyapp::pkg_a::Foo(42);
-    std::cout << uses_pkg_a(a) << "\n";
+    std::cout << ::tpyapp::main::uses_pkg_a(a) << "\n";
     std::cout << ::tpyapp::pkg_a::name_of(a) << "\n";
     std::cout << ::tpyapp::pkg_b::name_of_b() << "\n";
-    std::cout << describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&(a)}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&(a)}) << "\n";
     ::tpyapp::pkg_b::Bar __tmp_1 = ::tpyapp::pkg_b::Bar(7);
-    std::cout << describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&__tmp_1}) << "\n";
 }
 
 // # Cross-module same-name identity end-to-end.
@@ -68,7 +68,7 @@ void __tpy_init() {
 
     ::tpyapp::pkg_a::__tpy_init();
     ::tpyapp::pkg_b::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

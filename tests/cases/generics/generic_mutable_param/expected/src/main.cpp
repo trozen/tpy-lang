@@ -43,7 +43,7 @@ void main() {
         std::cout << x << "\n";
     }
     std::vector<int32_t> nums = {10, 20};
-    modify_list(nums);
+    ::tpyapp::main::modify_list(nums);
     auto& __obj_1 = nums;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

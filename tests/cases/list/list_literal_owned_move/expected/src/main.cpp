@@ -45,9 +45,9 @@ void not_last_use() {
 //     vector_lit()
 //     not_last_use()
 void main() {
-    array_lit();
-    vector_lit();
-    not_last_use();
+    ::tpyapp::main::array_lit();
+    ::tpyapp::main::vector_lit();
+    ::tpyapp::main::not_last_use();
 }
 
 // from tplib.box import Box
@@ -60,7 +60,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

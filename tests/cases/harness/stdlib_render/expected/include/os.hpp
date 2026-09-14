@@ -311,7 +311,7 @@ inline bool DirEntry::is_dir() const {
     if ((this->_kind == 2)) {
         return false;
     }
-    return ((static_cast<int64_t>(_wrap_stat(::tpy::stdlib::os::stat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFDIR);
+    return ((static_cast<int64_t>(::tpystd::os::_wrap_stat(::tpy::stdlib::os::stat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFDIR);
 }
 
 // def is_file(self) -> bool:
@@ -327,7 +327,7 @@ inline bool DirEntry::is_file() const {
     if ((this->_kind == 1)) {
         return false;
     }
-    return ((static_cast<int64_t>(_wrap_stat(::tpy::stdlib::os::stat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFREG);
+    return ((static_cast<int64_t>(::tpystd::os::_wrap_stat(::tpy::stdlib::os::stat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFREG);
 }
 
 // def is_symlink(self) -> bool:
@@ -343,13 +343,13 @@ inline bool DirEntry::is_symlink() const {
     if (((this->_kind == 1) || (this->_kind == 2))) {
         return false;
     }
-    return ((static_cast<int64_t>(_wrap_stat(::tpy::stdlib::os::lstat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFLNK);
+    return ((static_cast<int64_t>(::tpystd::os::_wrap_stat(::tpy::stdlib::os::lstat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFLNK);
 }
 
 // def stat(self) -> Own[stat_result]:
 //     return _wrap_stat(_stat_raw(self.path))
 inline ::tpystd::os::_types::stat_result DirEntry::stat() const {
-    return _wrap_stat(::tpy::stdlib::os::stat_raw(this->path));
+    return ::tpystd::os::_wrap_stat(::tpy::stdlib::os::stat_raw(this->path));
 }
 
 // def __init__(self, path: str) -> None:

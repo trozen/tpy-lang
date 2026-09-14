@@ -94,7 +94,7 @@ __gen_pairs pairs(::tpy::ordered_map<int32_t, C>& d) {
 void main() {
     ::tpy::ordered_map<int32_t, C> d = ::tpy::ordered_map<int32_t, C>({{1, C(10)}, {2, C(20)}});
     {
-        auto __src_0 = bump(d);
+        auto __src_0 = ::tpyapp::main::bump(d);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -105,7 +105,7 @@ void main() {
     }
     std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n";
     {
-        auto __src_2 = pairs(d);
+        auto __src_2 = ::tpyapp::main::pairs(d);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -123,7 +123,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

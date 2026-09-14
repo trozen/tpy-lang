@@ -31,9 +31,9 @@ void __tpy_init() {
 
     counter = 0;
     flag = false;
-    bump();
-    bump();
-    bump();
+    ::tpyapp::main::bump();
+    ::tpyapp::main::bump();
+    ::tpyapp::main::bump();
     std::cout << counter << "\n";
     std::cout << ::tpy::print_bool(flag) << "\n";
 }

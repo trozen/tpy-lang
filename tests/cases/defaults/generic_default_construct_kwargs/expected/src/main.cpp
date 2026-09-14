@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //     # T inferred from first arg
 //     three_params(42)
 void main() {
-    three_params<int32_t>(10, int32_t{}, 5);
-    three_params<int32_t>(1, 2, 3);
-    three_params<int32_t>(42);
+    ::tpyapp::main::three_params<int32_t>(10, int32_t{}, 5);
+    ::tpyapp::main::three_params<int32_t>(1, 2, 3);
+    ::tpyapp::main::three_params<int32_t>(42);
 }
 
 // main()
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

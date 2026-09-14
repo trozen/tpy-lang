@@ -32,7 +32,7 @@ void main() {
     p = &*(__slot_2 = Point());
     p->x = 10;
     p->y = 20;
-    std::cout << consume(std::move((*p))) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move((*p))) << "\n";
     std::cout << alias.x << "\n";
 }
 
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

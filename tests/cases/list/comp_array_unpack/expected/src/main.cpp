@@ -58,13 +58,13 @@ void sum_pairs(const std::array<std::tuple<int32_t, int32_t>, 3>& ps) {
 //     print(len(empty))
 void main() {
     std::array<int32_t, 4> xs = {1, 2, 3, 4};
-    double_all(xs);
-    pass_through(xs);
+    ::tpyapp::main::double_all(xs);
+    ::tpyapp::main::pass_through(xs);
     std::array<std::tuple<int32_t, int32_t>, 3> pairs = ::tpy::array_from_index<std::tuple<int32_t, int32_t>, 3>([&](std::size_t __i_0) -> std::tuple<int32_t, int32_t> {
         int32_t i = int32_t(__i_0);
         return std::tuple<int32_t, int32_t>{i, (::tpy::mul_check<int32_t>(i, 10))};
     });
-    sum_pairs(pairs);
+    ::tpyapp::main::sum_pairs(pairs);
     std::array<int32_t, 0> empty = ::tpy::array_from_index<int32_t, 0>([&](std::size_t __i_1) -> int32_t {
         int32_t i = int32_t(__i_1);
         return i;
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -22,9 +22,9 @@ void greet(std::string_view name, std::string_view greeting) {
 //     greet(greeting="Hi", name="Alice")
 //     print(add(a=3, b=4))
 void main() {
-    greet("World");
-    greet("Alice", "Hi");
-    std::cout << add(::tpy::BigInt(3), ::tpy::BigInt(4)) << "\n";
+    ::tpyapp::main::greet("World");
+    ::tpyapp::main::greet("Alice", "Hi");
+    std::cout << ::tpyapp::main::add(::tpy::BigInt(3), ::tpy::BigInt(4)) << "\n";
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

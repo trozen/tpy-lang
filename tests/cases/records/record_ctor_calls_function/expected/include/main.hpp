@@ -38,6 +38,6 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 // def __init__(self, x: int32):
 //     self.a = x
 //     self.b = twice(x)
-inline Pair::Pair(int32_t x) : a(x), b(twice(x)) {}
+inline Pair::Pair(int32_t x) : a(x), b(::tpyapp::main::twice(x)) {}
 void __tpy_init();
 } // namespace tpyapp::main

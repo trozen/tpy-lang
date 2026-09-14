@@ -13,7 +13,7 @@ void main() {
     Adder a = Adder(10);
     std::cout << a.__call__(1) << "\n";
     std::cout << a.__call__(1, 2) << "\n";
-    use(a);
+    ::tpyapp::main::use(a);
 }
 
 // main()
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

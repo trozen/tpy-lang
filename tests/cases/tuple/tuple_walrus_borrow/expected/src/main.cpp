@@ -34,8 +34,8 @@ void storage_source() {
 //     literal_capture()
 //     storage_source()
 void main() {
-    literal_capture();
-    storage_source();
+    ::tpyapp::main::literal_capture();
+    ::tpyapp::main::storage_source();
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

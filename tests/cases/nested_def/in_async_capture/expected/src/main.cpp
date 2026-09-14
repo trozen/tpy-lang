@@ -107,7 +107,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 ::tpystd::tpy::Poll<int32_t> __coro_lambda_capture::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        first = apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
+        first = ::tpyapp::main::apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -118,7 +118,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(first, apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 2)));
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(first, ::tpyapp::main::apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 2)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -194,7 +194,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main()));
 }
 
 } // namespace tpyapp::main

@@ -55,10 +55,10 @@ void test() {
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_2);
-    rename(c, "Fluffy");
-    rename(d, "Buddy");
-    std::cout << read_name(c.as_const()) << "\n";
-    std::cout << read_name(d.as_const()) << "\n";
+    ::tpyapp::main::rename(c, "Fluffy");
+    ::tpyapp::main::rename(d, "Buddy");
+    std::cout << ::tpyapp::main::read_name(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::read_name(d.as_const()) << "\n";
 }
 
 // test()
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

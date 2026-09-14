@@ -25,8 +25,8 @@ void skipped() {
 //     print(free_fn() + c.bump() + c.bump())
 void main() {
     Counter c = Counter();
-    skipped();
-    std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(free_fn(), c.bump())), c.bump())) << "\n";
+    ::tpyapp::main::skipped();
+    std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpyapp::main::free_fn(), c.bump())), c.bump())) << "\n";
 }
 
 // # A docstring emits no code, but the `#` comments preceding it still reach the
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

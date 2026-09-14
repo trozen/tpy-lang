@@ -17,7 +17,7 @@ Box& first(std::vector<Box>& xs) {
 //     _ = Sink(items)  # tpyc: warning(/borrowed container/)
 void main() {
     std::vector<Box> items = {Box(1), Box(2)};
-    Box& head = first(items);
+    Box& head = ::tpyapp::main::first(items);
     std::cout << head.v << "\n";
     Sink _ = Sink(items);
 }
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

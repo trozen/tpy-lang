@@ -20,7 +20,7 @@ void __tpy_init() {
     initialized = true;
 
     x = nullptr;
-    static Product __global_slot_1 = get_factory().create();
+    static Product __global_slot_1 = ::tpyapp::main::get_factory().create();
     x = &__global_slot_1;
     std::cout << x->value << "\n";
 }

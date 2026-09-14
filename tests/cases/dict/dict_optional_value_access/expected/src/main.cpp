@@ -41,7 +41,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& v = *__beg_0;
-        std::cout << borrow(::tpy::optional_to_ptr(v)) << "\n";
+        std::cout << ::tpyapp::main::borrow(::tpy::optional_to_ptr(v)) << "\n";
     }
 }
 
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

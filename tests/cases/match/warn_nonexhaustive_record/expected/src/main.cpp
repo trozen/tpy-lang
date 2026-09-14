@@ -57,15 +57,15 @@ std::string describe_exhaustive(const Point& p) {
 //     print(describe_exhaustive(Point(3, 4)))
 void main() {
     Point __tmp_1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
-    std::cout << describe_guarded(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe_guarded(__tmp_1) << "\n";
     Point __tmp_2 = Point(::tpy::BigInt(-1), ::tpy::BigInt(2));
-    std::cout << describe_guarded(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe_guarded(__tmp_2) << "\n";
     Point __tmp_3 = Point(::tpy::BigInt(0), ::tpy::BigInt(5));
-    std::cout << describe_literal(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::describe_literal(__tmp_3) << "\n";
     Point __tmp_4 = Point(::tpy::BigInt(1), ::tpy::BigInt(5));
-    std::cout << describe_literal(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::describe_literal(__tmp_4) << "\n";
     Point __tmp_5 = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
-    std::cout << describe_exhaustive(__tmp_5) << "\n";
+    std::cout << ::tpyapp::main::describe_exhaustive(__tmp_5) << "\n";
 }
 
 // main()
@@ -74,7 +74,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

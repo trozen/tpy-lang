@@ -21,13 +21,13 @@ namespace tpyapp::main {
 //     print(contains_value(nums, 99))  # False
 void main() {
     std::array<int32_t, 3> arr = {10, 20, 30};
-    std::cout << process_and_sum(arr) << "\n";
+    std::cout << ::tpyapp::main::process_and_sum(arr) << "\n";
     std::vector<int32_t> a = {1, 2};
     std::vector<int32_t> b = {10, 20};
-    std::cout << nested_iteration(a, b) << "\n";
+    std::cout << ::tpyapp::main::nested_iteration(a, b) << "\n";
     std::vector<int32_t> nums = {1, 2, 3};
-    std::cout << ::tpy::print_bool(contains_value(nums, 2)) << "\n";
-    std::cout << ::tpy::print_bool(contains_value(nums, 99)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::contains_value(nums, 2)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::contains_value(nums, 99)) << "\n";
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

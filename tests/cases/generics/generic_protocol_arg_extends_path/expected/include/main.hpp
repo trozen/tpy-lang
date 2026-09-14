@@ -116,7 +116,7 @@ int32_t length(T_xs& xs) {
 //     return length(xs)
 template<typename T>
 int32_t total_of(MyList<T>& xs) {
-    return length<T>(xs);
+    return ::tpyapp::main::length<T>(xs);
 }
 
 void __tpy_init();

@@ -22,8 +22,8 @@ std::string describe(bool b) {
 //     print(describe(True))
 //     print(describe(False))
 void main() {
-    std::cout << describe(true) << "\n";
-    std::cout << describe(false) << "\n";
+    std::cout << ::tpyapp::main::describe(true) << "\n";
+    std::cout << ::tpyapp::main::describe(false) << "\n";
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -16,7 +16,7 @@ void insert(::tpy::ordered_map<std::string, int32_t>& d, std::string_view key, i
 //     print(d)
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    insert(d, "b", 2);
+    ::tpyapp::main::insert(d, "b", 2);
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

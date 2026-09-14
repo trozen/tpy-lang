@@ -58,7 +58,7 @@ int32_t depth(const Tree<T>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            int32_t d = depth<T>(child);
+            int32_t d = ::tpyapp::main::depth<T>(child);
             if ((d > best)) {
                 best = d;
             }

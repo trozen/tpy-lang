@@ -114,9 +114,9 @@ std::tuple<Node*, ::tpy::BigInt> first_pair(std::vector<Node>& items) {
 //         print(r.val)
 void test_collapse_passthrough() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
-    std::cout << ::tpy::print_bool((passthrough(nullptr) == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((::tpyapp::main::passthrough(nullptr) == nullptr)) << "\n";
     Node* p1 = &::tpy::__getitem__(items, 0);
-    Node* r = passthrough(p1);
+    Node* r = ::tpyapp::main::passthrough(p1);
     if ((r != nullptr)) {
         std::cout << r->val << "\n";
     }
@@ -129,7 +129,7 @@ void test_collapse_passthrough() {
 //         print(p.val)
 void test_optional_return_into_ptr_local() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
-    Node* p = first(items);
+    Node* p = ::tpyapp::main::first(items);
     if ((p != nullptr)) {
         std::cout << p->val << "\n";
     }
@@ -143,11 +143,11 @@ void test_optional_return_into_ptr_local() {
 //     print(find(items, 99) is None)
 void test_ptr_value_into_optional_return() {
     std::vector<Node> items = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2)), Node(::tpy::BigInt(3))};
-    Node* found = find(items, ::tpy::BigInt(2));
+    Node* found = ::tpyapp::main::find(items, ::tpy::BigInt(2));
     if ((found != nullptr)) {
         std::cout << found->val << "\n";
     }
-    std::cout << ::tpy::print_bool((find(items, ::tpy::BigInt(99)) == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((::tpyapp::main::find(items, ::tpy::BigInt(99)) == nullptr)) << "\n";
 }
 
 // def test_readonly_variant() -> None:
@@ -159,7 +159,7 @@ void test_ptr_value_into_optional_return() {
 void test_readonly_variant() {
     std::vector<Node> items = {Node(::tpy::BigInt(3))};
     const Node* cp = &::tpy::__getitem__(items, 0);
-    const Node* rc = passthrough_ro(cp);
+    const Node* rc = ::tpyapp::main::passthrough_ro(cp);
     if ((rc != nullptr)) {
         std::cout << rc->val << "\n";
     }
@@ -172,7 +172,7 @@ void test_readonly_variant() {
 void test_ptr_into_optional_call_arg() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
     Node* p = &::tpy::__getitem__(items, 0);
-    std::cout << consume(p) << "\n";
+    std::cout << ::tpyapp::main::consume(p) << "\n";
 }
 
 // def test_ptr_into_optional_tuple_slot() -> None:
@@ -181,7 +181,7 @@ void test_ptr_into_optional_call_arg() {
 //     print(pair[1])
 void test_ptr_into_optional_tuple_slot() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
-    auto pair = first_pair(items);
+    auto pair = ::tpyapp::main::first_pair(items);
     std::cout << std::get<1>(pair) << "\n";
 }
 
@@ -192,7 +192,7 @@ void test_ptr_into_optional_tuple_slot() {
 void test_mutable_to_readonly_widening() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
     Node* p = &::tpy::__getitem__(items, 0);
-    std::cout << consume_ro(p) << "\n";
+    std::cout << ::tpyapp::main::consume_ro(p) << "\n";
 }
 
 // def test_storage_form_optional_lifts_to_ptr() -> None:
@@ -200,7 +200,7 @@ void test_mutable_to_readonly_widening() {
 //     print(take_ptr_node(h.opt))
 void test_storage_form_optional_lifts_to_ptr() {
     Holder h = Holder(Node(::tpy::BigInt(2)));
-    std::cout << take_ptr_node(::tpy::optional_to_ptr(h.opt)) << "\n";
+    std::cout << ::tpyapp::main::take_ptr_node(::tpy::optional_to_ptr(h.opt)) << "\n";
 }
 
 // def main() -> None:
@@ -213,14 +213,14 @@ void test_storage_form_optional_lifts_to_ptr() {
 //     test_mutable_to_readonly_widening()
 //     test_storage_form_optional_lifts_to_ptr()
 void main() {
-    test_collapse_passthrough();
-    test_optional_return_into_ptr_local();
-    test_ptr_value_into_optional_return();
-    test_readonly_variant();
-    test_ptr_into_optional_call_arg();
-    test_ptr_into_optional_tuple_slot();
-    test_mutable_to_readonly_widening();
-    test_storage_form_optional_lifts_to_ptr();
+    ::tpyapp::main::test_collapse_passthrough();
+    ::tpyapp::main::test_optional_return_into_ptr_local();
+    ::tpyapp::main::test_ptr_value_into_optional_return();
+    ::tpyapp::main::test_readonly_variant();
+    ::tpyapp::main::test_ptr_into_optional_call_arg();
+    ::tpyapp::main::test_ptr_into_optional_tuple_slot();
+    ::tpyapp::main::test_mutable_to_readonly_widening();
+    ::tpyapp::main::test_storage_form_optional_lifts_to_ptr();
 }
 
 // main()
@@ -229,7 +229,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -67,7 +67,7 @@ template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t maybe_total(const T_items* items) {
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        return total((*items));
+        return ::tpyapp::main::total((*items));
     }
     return -1;
 }

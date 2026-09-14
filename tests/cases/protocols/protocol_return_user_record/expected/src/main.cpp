@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     print(p.y)
 void main() {
     DefaultFactory factory = DefaultFactory();
-    Point p = make_point<DefaultFactory>(factory, 10, 20);
+    Point p = ::tpyapp::main::make_point<DefaultFactory>(factory, 10, 20);
     std::cout << p.x << "\n";
     std::cout << p.y << "\n";
 }
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

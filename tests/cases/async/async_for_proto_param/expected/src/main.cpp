@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     asyncio.run(consume(c))
 void main() {
     Counter c = Counter(0, 3);
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consume(c)));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::consume(c)));
 }
 
 // # Async coroutine that for-loops over a static-protocol param across an await.
@@ -27,7 +27,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

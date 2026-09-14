@@ -40,8 +40,8 @@ void main() {
     ::tpy::BytesView b = ::tpy::bytes_literal("xy", 2);
     ::tpy::BytesView v = ::tpy::BytesView(b);
     std::cout << ::tpy::__len__(v) << "\n";
-    std::cout << owned("hi") << "\n";
-    std::cout << ::tpy::__len__(owned_bytes(::tpy::bytes_literal("abc", 3))) << "\n";
+    std::cout << ::tpyapp::main::owned("hi") << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::owned_bytes(::tpy::bytes_literal("abc", 3))) << "\n";
 }
 
 // main()
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -111,9 +111,9 @@ void body_raises_exit_throws() {
 //     nested_inner_throws()
 //     body_raises_exit_throws()
 void main() {
-    fall_through();
-    nested_inner_throws();
-    body_raises_exit_throws();
+    ::tpyapp::main::fall_through();
+    ::tpyapp::main::nested_inner_throws();
+    ::tpyapp::main::body_raises_exit_throws();
 }
 
 // main()
@@ -122,7 +122,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

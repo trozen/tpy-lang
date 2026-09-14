@@ -35,12 +35,12 @@ void add_tag(Tags& t, int32_t tag) {
 void main() {
     Counter c = Counter("hits");
     ::tpy::__setitem__(c, "a", 1);
-    bump(c, "a");
-    bump(c, "b");
+    ::tpyapp::main::bump(c, "a");
+    ::tpyapp::main::bump(c, "b");
     std::cout << c.label << " " << ::tpy::__len__(c) << " " << c["a"] << " " << c["b"] << "\n";
     Tags t = Tags();
     t.insert(7);
-    add_tag(t, 8);
+    ::tpyapp::main::add_tag(t, 8);
     t.insert(7);
     std::cout << ::tpy::__len__(t) << "\n";
     t.erase(7);
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -66,7 +66,7 @@ void main() {
     std::vector<P> items = std::vector<P>{};
     items.push_back(P(42));
     {
-        auto __src_0 = gen_n_times(&(::tpy::__getitem__(items, 0)), 3);
+        auto __src_0 = ::tpyapp::main::gen_n_times(&(::tpy::__getitem__(items, 0)), 3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -76,7 +76,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = gen_n_times(nullptr, 2);
+        auto __src_2 = ::tpyapp::main::gen_n_times(nullptr, 2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -93,7 +93,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -14,8 +14,8 @@ std::string apply_str(const std::function<std::string(std::string_view)>& f, std
 //     print(apply(triple, 14))         # 42
 //     print(apply_str(shout, "hello")) # HELLO
 void main() {
-    std::cout << apply(::tpyapp::helper::triple, 14) << "\n";
-    std::cout << apply_str(::tpyapp::helper::shout, "hello") << "\n";
+    std::cout << ::tpyapp::main::apply(::tpyapp::helper::triple, 14) << "\n";
+    std::cout << ::tpyapp::main::apply_str(::tpyapp::helper::shout, "hello") << "\n";
 }
 
 // from helper import triple, shout
@@ -27,7 +27,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::helper::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

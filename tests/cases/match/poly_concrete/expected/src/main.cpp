@@ -33,11 +33,11 @@ std::string classify(const Animal& a) {
 //     print(classify(Animal(6)))
 void main() {
     Dog __tmp_1 = Dog();
-    std::cout << classify(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::classify(__tmp_1) << "\n";
     Snake __tmp_2 = Snake();
-    std::cout << classify(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::classify(__tmp_2) << "\n";
     Animal __tmp_3 = Animal(::tpy::BigInt(6));
-    std::cout << classify(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::classify(__tmp_3) << "\n";
 }
 
 // main()
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

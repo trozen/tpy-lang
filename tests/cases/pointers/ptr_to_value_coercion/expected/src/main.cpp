@@ -47,10 +47,10 @@ Point& deref_and_return(Point* ptr) {
 void test_ptr_to_value() {
     Point pt = Point(10, 20);
     Point* ptr = &pt;
-    print_point(::tpy::deref_check(ptr));
-    int32_t result = get_sum(::tpy::deref_check(ptr));
+    ::tpyapp::main::print_point(::tpy::deref_check(ptr));
+    int32_t result = ::tpyapp::main::get_sum(::tpy::deref_check(ptr));
     std::cout << result << "\n";
-    modify_point(::tpy::deref_check(ptr));
+    ::tpyapp::main::modify_point(::tpy::deref_check(ptr));
     std::cout << pt.x << "\n";
 }
 
@@ -80,7 +80,7 @@ void test_ptr_to_value_assign() {
 void test_ptr_to_value_return() {
     Point pt = Point(100, 200);
     Point* ptr = &pt;
-    Point& p2 = deref_and_return(ptr);
+    Point& p2 = ::tpyapp::main::deref_and_return(ptr);
     std::cout << p2.x << "\n";
 }
 
@@ -97,11 +97,11 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "=== call ===" << "\n";
-    test_ptr_to_value();
+    ::tpyapp::main::test_ptr_to_value();
     std::cout << "=== assign ===" << "\n";
-    test_ptr_to_value_assign();
+    ::tpyapp::main::test_ptr_to_value_assign();
     std::cout << "=== return ===" << "\n";
-    test_ptr_to_value_return();
+    ::tpyapp::main::test_ptr_to_value_return();
 }
 
 } // namespace tpyapp::main

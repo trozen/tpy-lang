@@ -16,7 +16,7 @@ Handle forward_via_alias(Handle&& h) {
 //     r = forward_via_alias(Handle(55))
 //     print(r.fd)
 void main() {
-    Handle r = forward_via_alias(Handle(55));
+    Handle r = ::tpyapp::main::forward_via_alias(Handle(55));
     std::cout << r.fd << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

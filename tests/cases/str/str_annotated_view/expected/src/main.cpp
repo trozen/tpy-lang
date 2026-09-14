@@ -51,10 +51,10 @@ void multiple_views() {
 //     literal_promote_reassign()
 //     multiple_views()
 void main() {
-    literal_view();
-    literal_promote_augassign();
-    literal_promote_reassign();
-    multiple_views();
+    ::tpyapp::main::literal_view();
+    ::tpyapp::main::literal_promote_augassign();
+    ::tpyapp::main::literal_promote_reassign();
+    ::tpyapp::main::multiple_views();
 }
 
 // main()
@@ -63,7 +63,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ int32_t boom() {
 //     print(boom())
 //     print(Registry.code)
 void main() {
-    std::cout << boom() << "\n";
+    std::cout << ::tpyapp::main::boom() << "\n";
     std::cout << Registry::code << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

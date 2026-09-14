@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    multi_hoist();
+    ::tpyapp::main::multi_hoist();
 }
 
 } // namespace tpyapp::main

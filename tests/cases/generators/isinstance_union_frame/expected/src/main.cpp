@@ -131,7 +131,7 @@ __gen_first_value first_value(::tpy::Union<const Emit*, const Push*> t) {
 //     print("plain", plain(Emit("z")))
 void main() {
     {
-        auto __src_0 = run();
+        auto __src_0 = ::tpyapp::main::run();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -142,7 +142,7 @@ void main() {
     }
     {
         Push __tmp_1 = Push({7, 8});
-        auto __src_2 = first_value(::tpy::Union<const Emit*, const Push*>{&__tmp_1});
+        auto __src_2 = ::tpyapp::main::first_value(::tpy::Union<const Emit*, const Push*>{&__tmp_1});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -152,9 +152,9 @@ void main() {
         }
     }
     Push __tmp_2 = Push({1, 2, 3, 4});
-    std::cout << "plain" << " " << plain(::tpy::Union<const Emit*, const Push*>{&__tmp_2}) << "\n";
+    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_2}) << "\n";
     Emit __tmp_3 = Emit("z");
-    std::cout << "plain" << " " << plain(::tpy::Union<const Emit*, const Push*>{&__tmp_3}) << "\n";
+    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_3}) << "\n";
 }
 
 // main()
@@ -163,7 +163,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

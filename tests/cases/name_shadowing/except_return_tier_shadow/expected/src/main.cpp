@@ -26,7 +26,7 @@ int32_t outer(std::string_view key) {
     int32_t got;
     {
         std::optional<NotFound> __err_opt_1;
-        return ({ auto __er_2 = inner(key); if (!__er_2.has_value()) { __err_opt_1 = std::move(__er_2.error()); goto __except_1; } ::tpy::unwrap_ref_move(*__er_2); });
+        return ({ auto __er_2 = ::tpyapp::main::inner(key); if (!__er_2.has_value()) { __err_opt_1 = std::move(__er_2.error()); goto __except_1; } ::tpy::unwrap_ref_move(*__er_2); });
         goto __after_try_1;
         // except NotFound:
         __except_1:;
@@ -44,8 +44,8 @@ int32_t outer(std::string_view key) {
 //     print(outer("y"))
 //     print(Registry.code)
 void main() {
-    std::cout << outer("x") << "\n";
-    std::cout << outer("y") << "\n";
+    std::cout << ::tpyapp::main::outer("x") << "\n";
+    std::cout << ::tpyapp::main::outer("y") << "\n";
     std::cout << Registry::code << "\n";
 }
 
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

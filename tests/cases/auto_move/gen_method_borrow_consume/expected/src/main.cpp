@@ -26,7 +26,7 @@ void main() {
     std::vector<int32_t> xs = {1, 2, 3};
     auto g = w.walk(xs);
     std::vector<int32_t> __tmp_1 = xs;
-    std::cout << drop(std::move(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::drop(std::move(__tmp_1)) << "\n";
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -73,7 +73,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

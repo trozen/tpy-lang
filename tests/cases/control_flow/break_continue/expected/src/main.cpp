@@ -95,10 +95,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_break();
-    test_continue();
-    test_nested_break();
-    test_nested_continue();
+    ::tpyapp::main::test_break();
+    ::tpyapp::main::test_continue();
+    ::tpyapp::main::test_nested_break();
+    ::tpyapp::main::test_nested_continue();
 }
 
 } // namespace tpyapp::main

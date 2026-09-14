@@ -71,9 +71,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_set_with_literals();
-    test_dict_with_literals();
-    test_dict_with_bytes_keys();
+    ::tpyapp::main::test_set_with_literals();
+    ::tpyapp::main::test_dict_with_literals();
+    ::tpyapp::main::test_dict_with_bytes_keys();
 }
 
 } // namespace tpyapp::main

@@ -17,7 +17,7 @@ void show(Container<int32_t>& c) {
 //     print(c.get())
 void main() {
     IntBox b = IntBox();
-    show(b);
+    ::tpyapp::main::show(b);
     IntBox __slot_1{IntBox()};
     Container<int32_t>* c = &__slot_1;
     std::cout << c->get() << "\n";
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

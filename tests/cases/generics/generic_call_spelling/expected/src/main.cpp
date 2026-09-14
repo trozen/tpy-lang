@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(Util.smax(x, y))
 //     print(genmod.gf(x, y))
 void main() {
-    int32_t p = pick<int32_t>(1, 2);
+    int32_t p = ::tpyapp::main::pick<int32_t>(1, 2);
     int32_t x = 3;
     int32_t y = 4;
-    std::cout << p << " " << pick<int32_t>(x, y) << "\n";
+    std::cout << p << " " << ::tpyapp::main::pick<int32_t>(x, y) << "\n";
     std::cout << Util::smax<int32_t>(x, y) << "\n";
     std::cout << ::tpyapp::genmod::gf<int32_t>(x, y) << "\n";
 }
@@ -32,7 +32,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::genmod::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -376,7 +376,7 @@ __coro_amain amain() {
 void main() {
     {
         Cat __tmp_1 = Cat(5);
-        auto __src_0 = guarded(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
+        auto __src_0 = ::tpyapp::main::guarded(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -387,7 +387,7 @@ void main() {
     }
     {
         Dog __tmp_2 = Dog(9);
-        auto __src_2 = guarded(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
+        auto __src_2 = ::tpyapp::main::guarded(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -398,7 +398,7 @@ void main() {
     }
     {
         Cat __tmp_3 = Cat(9);
-        auto __src_4 = guarded_cond(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}, true);
+        auto __src_4 = ::tpyapp::main::guarded_cond(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}, true);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -409,7 +409,7 @@ void main() {
     }
     {
         Dog __tmp_4 = Dog(2);
-        auto __src_6 = guarded_cond(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}, true);
+        auto __src_6 = ::tpyapp::main::guarded_cond(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}, true);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -421,7 +421,7 @@ void main() {
     {
         Cat __tmp_5 = Cat(3);
         Holder __tmp_6 = Holder(::tpy::Union<const Cat*, const Dog*>{&__tmp_5});
-        auto __src_8 = nested(__tmp_6);
+        auto __src_8 = ::tpyapp::main::nested(__tmp_6);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -433,7 +433,7 @@ void main() {
     {
         Cat __tmp_7 = Cat(7);
         Holder __tmp_8 = Holder(::tpy::Union<const Cat*, const Dog*>{&__tmp_7});
-        auto __src_10 = nested_shadow(__tmp_8);
+        auto __src_10 = ::tpyapp::main::nested_shadow(__tmp_8);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -442,7 +442,7 @@ void main() {
         std::cout << v << "\n";
         }
     }
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 
 // # Field sub-patterns in a `match` whose arms suspend: a GUARDED union arm's
@@ -457,7 +457,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

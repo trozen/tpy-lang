@@ -24,9 +24,9 @@ void set_renamed(int32_t val) {
 //     set_renamed(int32(20))
 //     print(counter)
 void main() {
-    set_same_name(10);
+    ::tpyapp::main::set_same_name(10);
     std::cout << ::opentop << "\n";
-    set_renamed(20);
+    ::tpyapp::main::set_renamed(20);
     std::cout << ::g_counter << "\n";
 }
 
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

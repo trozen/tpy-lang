@@ -98,7 +98,7 @@ __gen_relay_twice relay_twice(std::vector<std::tuple<int32_t, C>>& items) {
 void main() {
     std::vector<std::tuple<int32_t, C>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, C(5)}), ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{2, C(6)})};
     {
-        auto __src_0 = storage_relay(xs);
+        auto __src_0 = ::tpyapp::main::storage_relay(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -125,7 +125,7 @@ void main() {
         std::move(__result);
     })) << "\n";
     {
-        auto __src_3 = relay_twice(xs);
+        auto __src_3 = ::tpyapp::main::relay_twice(xs);
         auto&& __itr_3 = ::tpy::__iter__(__src_3);
         for (;;) {
             auto __r_4 = __itr_3.__next__();
@@ -223,7 +223,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

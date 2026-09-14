@@ -24,7 +24,7 @@ int32_t count(const Tree<int32_t>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& c = *__beg_0;
-            n = ::tpy::add_check<int32_t>(n, count(c));
+            n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::count(c));
         }
         return n;
         break;
@@ -59,7 +59,7 @@ void main() {
         break;
     }
     }
-    std::cout << count(h.get()) << "\n";
+    std::cout << ::tpyapp::main::count(h.get()) << "\n";
 }
 
 // main()
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

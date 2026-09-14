@@ -49,8 +49,8 @@ void main() {
     std::string_view s = std::string_view{"\000null", 5};
     std::cout << ::tpy::__len__(s) << "\n";
     std::cout << ::tpy::print_bool((s == std::string_view{"\000null", 5})) << "\n";
-    std::cout << take_str(std::string_view{"ab\000cd", 5}) << "\n";
-    std::cout << use_default() << "\n";
+    std::cout << ::tpyapp::main::take_str(std::string_view{"ab\000cd", 5}) << "\n";
+    std::cout << ::tpyapp::main::use_default() << "\n";
     std::string_view target = std::string_view{"\000x", 2};
     auto& __match_subject_1 = target;
     if (__match_subject_1 == std::string_view{"\000x", 2}) {
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

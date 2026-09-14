@@ -14,7 +14,7 @@ std::tuple<int32_t, int32_t> make(int32_t n) {
 //     a, b = make(n)  # tpyc: ok
 //     return a + b
 int32_t from_call(int32_t n) {
-    auto __tup_1 = make(n);
+    auto __tup_1 = ::tpyapp::main::make(n);
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>(a, b));
@@ -34,9 +34,9 @@ int32_t from_field(const Holder& h) {
 //     print(from_call(10))
 //     print(from_field(Holder()))
 void main() {
-    std::cout << from_call(10) << "\n";
+    std::cout << ::tpyapp::main::from_call(10) << "\n";
     Holder __tmp_1 = Holder();
-    std::cout << from_field(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::from_field(__tmp_1) << "\n";
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

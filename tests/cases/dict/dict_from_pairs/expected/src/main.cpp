@@ -80,11 +80,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    from_list_of_tuples();
-    from_items_view();
-    from_empty_list();
-    with_int_keys();
-    with_duplicate_keys();
+    ::tpyapp::main::from_list_of_tuples();
+    ::tpyapp::main::from_items_view();
+    ::tpyapp::main::from_empty_list();
+    ::tpyapp::main::with_int_keys();
+    ::tpyapp::main::with_duplicate_keys();
 }
 
 } // namespace tpyapp::main

@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << nested_warn(4, 1) << "\n";
+    std::cout << ::tpyapp::main::nested_warn(4, 1) << "\n";
 }
 
 } // namespace tpyapp::main

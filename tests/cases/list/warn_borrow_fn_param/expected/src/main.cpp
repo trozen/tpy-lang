@@ -39,7 +39,7 @@ int32_t safe_read(const std::vector<Point>& items) {
 void test_pass_borrowed_to_mutating_func() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    mutate_list(items);
+    ::tpyapp::main::mutate_list(items);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -52,7 +52,7 @@ void test_pass_borrowed_to_mutating_func() {
 void test_pass_borrowed_to_readonly_func() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    read_list(items);
+    ::tpyapp::main::read_list(items);
     std::cout << v.x << "\n";
 }
 
@@ -65,7 +65,7 @@ void test_pass_borrowed_to_readonly_func() {
 void test_pass_borrowed_to_pure_func() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    count_list(items);
+    ::tpyapp::main::count_list(items);
     std::cout << v.x << "\n";
 }
 
@@ -78,7 +78,7 @@ void test_pass_borrowed_to_pure_func() {
 void test_pass_borrowed_to_readonly_param() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    safe_read(items);
+    ::tpyapp::main::safe_read(items);
     std::cout << v.x << "\n";
 }
 
@@ -89,7 +89,7 @@ void test_pass_borrowed_to_readonly_param() {
 //     print(len(items))
 void test_no_borrow_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
-    mutate_list(items);
+    ::tpyapp::main::mutate_list(items);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -117,12 +117,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_pass_borrowed_to_mutating_func();
-    test_pass_borrowed_to_readonly_func();
-    test_pass_borrowed_to_pure_func();
-    test_pass_borrowed_to_readonly_param();
-    test_no_borrow_no_warn();
-    test_builtin_pure_no_warn();
+    ::tpyapp::main::test_pass_borrowed_to_mutating_func();
+    ::tpyapp::main::test_pass_borrowed_to_readonly_func();
+    ::tpyapp::main::test_pass_borrowed_to_pure_func();
+    ::tpyapp::main::test_pass_borrowed_to_readonly_param();
+    ::tpyapp::main::test_no_borrow_no_warn();
+    ::tpyapp::main::test_builtin_pure_no_warn();
 }
 
 } // namespace tpyapp::main

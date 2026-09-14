@@ -38,13 +38,13 @@ std::string classify__lit_rb__wb(std::string_view mode) {
 //         print(classify(mode))
 void dispatch_str(std::string_view mode) {
     if ((mode == "rb")) {
-        std::cout << classify__lit_rb__wb(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n";
     } else if ((mode == "wb")) {
-        std::cout << classify__lit_rb__wb(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n";
     } else if ((mode == "r")) {
-        std::cout << classify__lit_r__w(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n";
     } else {
-        std::cout << classify__lit_r__w(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n";
     }
 }
 
@@ -95,11 +95,11 @@ std::string bucket(int32_t x) {
 //         print(bucket(x))
 void dispatch_int(int32_t x) {
     if ((x == 1)) {
-        std::cout << bucket__lit_1__2(x) << "\n";
+        std::cout << ::tpyapp::main::bucket__lit_1__2(x) << "\n";
     } else if ((x == 3)) {
-        std::cout << bucket__lit_3__4(x) << "\n";
+        std::cout << ::tpyapp::main::bucket__lit_3__4(x) << "\n";
     } else {
-        std::cout << bucket(x) << "\n";
+        std::cout << ::tpyapp::main::bucket(x) << "\n";
     }
 }
 
@@ -112,9 +112,9 @@ void dispatch_int(int32_t x) {
 //         print(classify(mode))
 void dispatch_ne(std::string_view mode) {
     if ((mode != "r")) {
-        std::cout << classify__lit_rb__wb(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n";
     } else {
-        std::cout << classify__lit_r__w(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n";
     }
 }
 
@@ -128,9 +128,9 @@ void dispatch_ne(std::string_view mode) {
 //         print(classify(mode))
 void dispatch_or(std::string_view mode) {
     if (((mode == "rb") || (mode == "wb"))) {
-        std::cout << classify__lit_rb__wb(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n";
     } else {
-        std::cout << classify__lit_r__w(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n";
     }
 }
 
@@ -217,21 +217,21 @@ void reassign_clears_fold(int32_t x) {
 //
 //     reassign_clears_fold(1)
 void main() {
-    dispatch_str("rb");
-    dispatch_str("wb");
-    dispatch_str("r");
-    dispatch_str("w");
-    dispatch_int(1);
-    dispatch_int(3);
-    dispatch_int(2);
-    dispatch_ne("rb");
-    dispatch_ne("r");
-    dispatch_or("rb");
-    dispatch_or("r");
-    dispatch_out_of_range("r");
-    nested_fold("rb");
-    nested_fold("r");
-    reassign_clears_fold(1);
+    ::tpyapp::main::dispatch_str("rb");
+    ::tpyapp::main::dispatch_str("wb");
+    ::tpyapp::main::dispatch_str("r");
+    ::tpyapp::main::dispatch_str("w");
+    ::tpyapp::main::dispatch_int(1);
+    ::tpyapp::main::dispatch_int(3);
+    ::tpyapp::main::dispatch_int(2);
+    ::tpyapp::main::dispatch_ne("rb");
+    ::tpyapp::main::dispatch_ne("r");
+    ::tpyapp::main::dispatch_or("rb");
+    ::tpyapp::main::dispatch_or("r");
+    ::tpyapp::main::dispatch_out_of_range("r");
+    ::tpyapp::main::nested_fold("rb");
+    ::tpyapp::main::nested_fold("r");
+    ::tpyapp::main::reassign_clears_fold(1);
 }
 
 // main()
@@ -240,7 +240,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

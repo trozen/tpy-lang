@@ -42,7 +42,7 @@ void _hang_request() {
 void main() {
     {
         try {
-            _hang_request();
+            ::tpyapp::main::_hang_request();
             std::cout << "NO TIMEOUT" << "\n";
         } catch (const ::tpystd::tplib::requests::Timeout& e) {
             std::cout << "timeout msg ok:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find("timed out") != std::string::npos)) << "\n";
@@ -50,7 +50,7 @@ void main() {
     }
     {
         try {
-            _hang_request();
+            ::tpyapp::main::_hang_request();
             std::cout << "NO TIMEOUT" << "\n";
         } catch (const ::tpystd::tplib::requests::RequestException& e) {
             std::cout << "caught as base:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find("timed out") != std::string::npos)) << "\n";
@@ -80,7 +80,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

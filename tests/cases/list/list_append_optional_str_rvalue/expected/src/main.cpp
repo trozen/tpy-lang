@@ -29,12 +29,12 @@ std::optional<std::string_view> maybe_prefix(std::string_view subject, bool keep
 void main() {
     std::vector<std::optional<std::string>> items = std::vector<std::optional<std::string>>{};
     std::string_view subject = "hello world";
-    std::optional<std::string_view> local = maybe_prefix(subject, true);
+    std::optional<std::string_view> local = ::tpyapp::main::maybe_prefix(subject, true);
     items.push_back(({ auto __ov = (local); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
-    items.push_back(({ auto __ov = (maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
-    items.push_back(({ auto __ov = (maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
-    ::tpy::list_insert(items, 1, ({ auto __ov = (maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
-    ::tpy::__setitem__(items, 0, ({ auto __ov = (maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
+    items.push_back(({ auto __ov = (::tpyapp::main::maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
+    items.push_back(({ auto __ov = (::tpyapp::main::maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
+    ::tpy::list_insert(items, 1, ({ auto __ov = (::tpyapp::main::maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
+    ::tpy::__setitem__(items, 0, ({ auto __ov = (::tpyapp::main::maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

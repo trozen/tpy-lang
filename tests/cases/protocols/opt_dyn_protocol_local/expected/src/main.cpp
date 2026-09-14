@@ -43,8 +43,8 @@ std::string describe_structural() {
 //     print(describe())
 //     print(describe_structural())
 void main() {
-    std::cout << describe() << "\n";
-    std::cout << describe_structural() << "\n";
+    std::cout << ::tpyapp::main::describe() << "\n";
+    std::cout << ::tpyapp::main::describe_structural() << "\n";
 }
 
 // main()
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

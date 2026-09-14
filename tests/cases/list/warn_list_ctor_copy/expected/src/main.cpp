@@ -60,7 +60,7 @@ void test_list_ctor_last_use_no_warn() {
 //     b = list([Node(int32(2))])  # tpyc: ok
 //     print(len(a))
 void test_list_ctor_rvalue_no_warn() {
-    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(make_nodes());
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpyapp::main::make_nodes());
     std::vector<Node> b = std::vector<Node>({Node(2)});
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -76,13 +76,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_list_ctor_ref_type_warns();
-    test_list_ctor_value_type_no_warn();
-    test_list_ctor_copy_no_warn();
-    test_list_ctor_last_use_no_warn();
-    test_list_ctor_rvalue_no_warn();
+    ::tpyapp::main::test_list_ctor_ref_type_warns();
+    ::tpyapp::main::test_list_ctor_value_type_no_warn();
+    ::tpyapp::main::test_list_ctor_copy_no_warn();
+    ::tpyapp::main::test_list_ctor_last_use_no_warn();
+    ::tpyapp::main::test_list_ctor_rvalue_no_warn();
     std::vector<Node> __tmp_1 = {Node(1)};
-    test_list_ctor_generic_warns<Node>(__tmp_1);
+    ::tpyapp::main::test_list_ctor_generic_warns<Node>(__tmp_1);
 }
 
 } // namespace tpyapp::main

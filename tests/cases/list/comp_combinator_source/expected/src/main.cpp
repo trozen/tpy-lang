@@ -285,7 +285,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_17 = ::tpy::builtin_enumerate<Node>(make_nodes());
+        auto __obj_17 = ::tpy::builtin_enumerate<Node>(::tpyapp::main::make_nodes());
         auto __beg_17 = __obj_17.begin();
         auto __end_17 = __obj_17.end();
         for (; __beg_17 != __end_17; ++__beg_17) {
@@ -331,7 +331,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -22,7 +22,7 @@ void __tpy_init() {
     initialized = true;
 
     SCALE = 4;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

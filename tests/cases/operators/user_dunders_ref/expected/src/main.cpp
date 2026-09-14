@@ -60,14 +60,14 @@ void test_field_ops() {
 void test_param_ops() {
     Vec a = Vec(1.0, 2.0);
     Vec b = Vec(3.0, 4.0);
-    Vec s = add_params(a, b);
+    Vec s = ::tpyapp::main::add_params(a, b);
     std::cout << ::tpy::print_float(s.x) << " " << ::tpy::print_float(s.y) << "\n";
-    Vec sc = scale_param(a, 3.0);
+    Vec sc = ::tpyapp::main::scale_param(a, 3.0);
     std::cout << ::tpy::print_float(sc.x) << " " << ::tpy::print_float(sc.y) << "\n";
-    Vec n = negate_param(b);
+    Vec n = ::tpyapp::main::negate_param(b);
     std::cout << ::tpy::print_float(n.x) << " " << ::tpy::print_float(n.y) << "\n";
-    std::cout << ::tpy::print_bool(compare_params(a, a)) << "\n";
-    std::cout << ::tpy::print_bool(compare_params(a, b)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::compare_params(a, a)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::compare_params(a, b)) << "\n";
 }
 
 // def test_chained() -> None:
@@ -120,12 +120,12 @@ void test_iadd_ref(const Vec& delta) {
 //     test_binop_assign()
 //     test_iadd_ref(Vec(5.0, 7.0))
 void main() {
-    test_field_ops();
-    test_param_ops();
-    test_chained();
-    test_binop_assign();
+    ::tpyapp::main::test_field_ops();
+    ::tpyapp::main::test_param_ops();
+    ::tpyapp::main::test_chained();
+    ::tpyapp::main::test_binop_assign();
     Vec __tmp_1 = Vec(5.0, 7.0);
-    test_iadd_ref(__tmp_1);
+    ::tpyapp::main::test_iadd_ref(__tmp_1);
 }
 
 // main()
@@ -134,7 +134,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

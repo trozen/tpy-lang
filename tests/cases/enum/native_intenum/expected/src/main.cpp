@@ -72,8 +72,8 @@ std::string desc(::ns::dir_t d) {
 void main() {
     ::ns::dir_t d = ::ns::dir_t::UP;
     std::cout << ::tpy::__repr__(d) << "\n";
-    std::cout << desc(d) << "\n";
-    std::cout << desc(::ns::dir_t::DOWN) << "\n";
+    std::cout << ::tpyapp::main::desc(d) << "\n";
+    std::cout << ::tpyapp::main::desc(::ns::dir_t::DOWN) << "\n";
     std::cout << static_cast<int>(static_cast<int8_t>(d)) << "\n";
 }
 
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

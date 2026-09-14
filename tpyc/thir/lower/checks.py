@@ -127,6 +127,7 @@ from ...value_category import (
 )
 from ...codegen_cpp.context import (
     escape_cpp_name,
+    free_callee_cpp,
     imported_free_callee_cpp,
     module_qualified_callee_cpp,
     module_static_class_cpp,
@@ -3803,6 +3804,24 @@ def copy_ctor_rvalue_source(e: TpyExpr, analyzer) -> 'TpyExpr | None':
     return _record_ctor_arg(copy_call_arg(e, analyzer), analyzer)
 
 
+def free_literal_mangled_name(e: TpyCall, fi, analyzer) -> 'str | None':
+    """The `f__lit_N` rename of a literal-specialized free callee, or None
+    when the plain name applies -- the free-call sibling of
+    `method_literal_mangled_cpp`. Mangling applies only when there are
+    MULTIPLE overloads (a single Literal-param stub is a plain call) AND the
+    callee is not a @native import (a native literal overload's name is its
+    resolved native symbol, picked by sema's overload resolution -- no
+    `__lit_` mangling). The rename threads into the same-module and imported
+    spellings alike; the generic pairing keeps its reject."""
+    if not any(isinstance(p.type, LiteralType) for p in fi.params):
+        return None
+    overloads = analyzer.registry.get_function(e.func_name)
+    if (overloads is None or len(overloads) <= 1
+            or fi.native_function or fi.native_name):
+        return None
+    return literal_mangled_name(e.func_name, fi)
+
+
 def _free_callee_kind(e: TpyCall, analyzer, *,
                       generator_ok: bool = False,
                       error_return_ok: bool = False,
@@ -3811,8 +3830,11 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
                       ) -> 'tuple[str, str] | None':
     """Classify a bare-name free callee into its emit kind + pre-rendered
     payload -- the routing fact consumed by lowering:
-    `("plain", "")` the raw same-module `name(args)`; `("imported", cpp)`
-    the cross-module qualified spelling (`imported_free_callee_cpp`; lowering
+    `("plain", cpp)` the same-module ABSOLUTE spelling
+    (`free_callee_cpp`, never empty); `("local", "")` the bare
+    `name(args)` of a callee no namespace can name (a nested def's
+    frame lambda, a `Callable`/`Fn` value); `("imported", cpp)`
+    the cross-module qualified spelling (`free_callee_cpp`; lowering
     stamps `THIRCall.callee_cpp`); `("native", native_name)` the
     `::native(args)` arm (C++ @native imports only -- extern-C spells the
     raw unqualified symbol, a different arm); `("template", tmpl)` the
@@ -3892,24 +3914,11 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     if fi.error_return_type is not None and not error_return_ok:
         note_detail("call.error_return")
         return None
-    # A literal-specialized overload mangles its DEFAULT-linkage callee to
-    # `f__lit_N` (literal_mangled_name). Mangling applies only when there are
-    # MULTIPLE overloads (a single Literal-param stub is a plain call) AND
-    # the callee is not a @native import (a native literal overload's name
-    # is its resolved native symbol, picked by sema's overload resolution --
-    # no `__lit_` mangling): those two shapes keep the native/plain
-    # spelling below. The mangled name threads into the plain (bare) and
-    # imported (qualified) spellings; the generic pairing keeps its reject.
-    lit_mangled = None
-    if any(isinstance(p.type, LiteralType) for p in fi.params):
-        overloads = analyzer.registry.get_function(e.func_name)
-        if (overloads is not None and len(overloads) > 1
-                and not (fi.native_function or fi.native_name)):
-            lit_mangled = literal_mangled_name(e.func_name, fi)
+    lit_mangled = free_literal_mangled_name(e, fi, analyzer)
     if fi.frame_captures is not None:
         # A closure local (nested def): the bare lambda-variable call --
-        # spelled exactly like the plain arm, decided BEFORE the registry /
-        # import spellings. A
+        # the callee is a C++ LOCAL, so no namespace can name it. Decided
+        # BEFORE the registry / import spellings. A
         # closure shadowing an imported OR builtin name is ambiguous here
         # (resolving it to the BUILTIN is a CPython divergence, see
         # BUGS.md) -> reject the shadow.
@@ -3918,7 +3927,7 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
                                             e.func_name)):
             note_detail("call.closure_import_shadow")
             return None
-        return ("plain", "")
+        return ("local", "")
     # A native-FUNCTION `__init__` ctor (`int(str)` -> `tpy::BigInt::from_str`,
     # float/bytes from_str) is receiver-less -- it spells like a native free
     # call, so let it reach the native arm below rather than the method reject.
@@ -4030,14 +4039,21 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
             return None
         if icc is None and e.func_name in analyzer.imported_names:
             # The tail's conditional-qualification refinement: a
-            # LOCAL generic shadowing an imported/builtin name spells the
-            # bare explicit-targ call (`enumerate<std::string>(words)`);
-            # only an fi genuinely living in the imported module rejects.
+            # LOCAL generic shadowing an imported/builtin name spells its OWN
+            # namespace with the explicit targs
+            # (`::tpyapp::main::enumerate<std::string>(words)`); only an fi
+            # genuinely living in the imported module rejects.
             _gsrc_mod = analyzer.imported_names[e.func_name][0]
             if (fi.qualified_name or "").startswith(_gsrc_mod + "."):
                 note_detail("call.imported_symbol")
                 return None
-        return ("generic", icc or "")
+        gcpp = free_callee_cpp(analyzer.ctx.module_attributes,
+                               analyzer.ctx.module_name,
+                               analyzer.ctx.cpp_module_name, e.func_name, fi)
+        if gcpp is None:
+            note_detail("call.callee_kind.generic")
+            return None
+        return ("generic", gcpp)
     if icc is not None:
         return ("imported", icc)
     if e.func_name in analyzer.imported_names:
@@ -4045,18 +4061,29 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         # resolved fi actually lives in the imported source module (inert
         # today -- every such builtin is @native/@cpp_template, handled
         # above) -> reject. A LOCAL function shadowing an imported name
-        # resolves to the local module and emits the bare UNQUALIFIED call
-        # (`from time import time` + `def time(): ...` -> `time()`), the
-        # plain kind.
+        # resolves to the local module and spells THAT module's namespace
+        # (`from time import time` + `def time(): ...` ->
+        # `::tpyapp::main::time()`), the plain kind.
         _src_mod = analyzer.imported_names[e.func_name][0]
         if (fi.qualified_name or "").startswith(_src_mod + "."):
             note_detail("call.imported_symbol")
             return None
-    # A local literal-specialized callee spells the bare mangled name
-    # (`escape_cpp_name(mangled)`); the payload rides callee_cpp.
-    if lit_mangled is not None:
-        return ("plain", escape_cpp_name(lit_mangled))
-    return ("plain", "")
+    cpp = free_callee_cpp(analyzer.ctx.module_attributes,
+                          analyzer.ctx.module_name,
+                          analyzer.ctx.cpp_module_name, e.func_name, fi,
+                          lit_mangled)
+    if cpp is None:
+        # No namespace names this callee. The only shape that legitimately
+        # spells the bare name here is a `Callable`/`Fn` VALUE (param, local
+        # or field); a nested def's frame lambda already returned above on
+        # `frame_captures`. Anything else reaching this point is a
+        # registration-fact drift, and a bare spelling would be ADL-visible,
+        # so it rejects rather than falling back.
+        if not fi.is_callable_value:
+            note_detail("call.callee_unnamed")
+            return None
+        return ("local", "")
+    return ("plain", cpp)
 
 
 def _call_type_fam(t: TpyType) -> str:
@@ -4074,13 +4101,14 @@ def _call_type_fam(t: TpyType) -> str:
 
 
 def _plain_free_callee_ok(e: TpyCall, analyzer) -> bool:
-    """The plain/imported/generic subset of `_free_callee_kind` -- the
+    """The plain/local/imported/generic subset of `_free_callee_kind` -- the
     callee-shape head of the by-value record-returning call face
     (native/template record returns reject there). A generic callee's
-    record rvalue rides the same bare spelling with the explicit targs
-    (`BoxC cloned = clone_it<BoxC>(box);`)."""
+    record rvalue rides the same spelling with the explicit targs appended
+    (`BoxC cloned = ::tpyapp::main::clone_it<BoxC>(box);`)."""
     kind = _free_callee_kind(e, analyzer)
-    return kind is not None and kind[0] in ("plain", "imported", "generic")
+    return kind is not None and kind[0] in ("plain", "local", "imported",
+                                            "generic")
 
 
 def _record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
@@ -4290,7 +4318,7 @@ def _er_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
     if not _call_arity_ok(e, fi):
         return False
     kind = _free_callee_kind(e, analyzer, error_return_ok=True)
-    return (kind is not None and kind[0] in ("plain", "imported")
+    return (kind is not None and kind[0] in ("plain", "local", "imported")
             and _witness("call.er_record_rvalue"))
 
 
@@ -9469,7 +9497,7 @@ def _dyn_own_coro_factory_arg(a: TpyExpr, ptype: 'TpyType | None',
             return None
         return proto
     k = _free_callee_kind(a, analyzer, coro_factory_ok=True)
-    if k is None or k[0] not in ("plain", "imported"):
+    if k is None or k[0] not in ("plain", "local", "imported"):
         return None
     return proto
 

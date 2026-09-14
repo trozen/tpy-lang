@@ -85,13 +85,13 @@ void test_strings() {
 //     test_mixed_annotated_literal()
 //     test_strings()
 void main() {
-    test_add();
-    test_iadd();
-    test_empty();
-    test_inferred();
-    test_literal();
-    test_mixed_annotated_literal();
-    test_strings();
+    ::tpyapp::main::test_add();
+    ::tpyapp::main::test_iadd();
+    ::tpyapp::main::test_empty();
+    ::tpyapp::main::test_inferred();
+    ::tpyapp::main::test_literal();
+    ::tpyapp::main::test_mixed_annotated_literal();
+    ::tpyapp::main::test_strings();
 }
 
 // main()
@@ -100,7 +100,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

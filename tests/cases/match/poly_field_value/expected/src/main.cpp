@@ -39,11 +39,11 @@ std::string describe(const Pet& p) {
 //     print(describe(Cat()))
 void main() {
     Dog __tmp_1{Dog(::tpy::BigInt(4))};
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
     Dog __tmp_2{Dog(::tpy::BigInt(3))};
-    std::cout << describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
     Cat __tmp_3{Cat()};
-    std::cout << describe(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n";
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

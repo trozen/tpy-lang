@@ -35,14 +35,14 @@ void print_area(::tpystd::tplib::box::Box<Shape>& b) {
 void main() {
     ::tpystd::tplib::box::Box<Circle> bc = ::tpystd::tplib::box::Box<Circle>(Circle(5.0));
     ::tpystd::tplib::box::Box<Shape> __tmp_1 = std::move(bc);
-    print_area(__tmp_1);
+    ::tpyapp::main::print_area(__tmp_1);
     ::tpystd::tplib::box::Box<Square> bs = ::tpystd::tplib::box::Box<Square>(Square(3.0));
     ::tpystd::tplib::box::Box<Shape> __tmp_2 = std::move(bs);
-    print_area(__tmp_2);
+    ::tpyapp::main::print_area(__tmp_2);
     ::tpystd::tplib::box::Box<Circle> bc2 = ::tpystd::tplib::box::Box<Circle>(Circle(2.0));
     ::tpystd::tplib::box::Box<Shape> b_shape = std::move(bc2);
     std::cout << ::tpy::print_float(b_shape.get().area()) << "\n";
-    ::tpystd::tplib::box::Box<Shape> b3 = make_shape();
+    ::tpystd::tplib::box::Box<Shape> b3 = ::tpyapp::main::make_shape();
     std::cout << ::tpy::print_float(b3.get().area()) << "\n";
 }
 
@@ -55,7 +55,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

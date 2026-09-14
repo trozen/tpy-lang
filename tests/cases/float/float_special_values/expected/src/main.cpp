@@ -87,8 +87,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::math::__tpy_init();
-    main();
-    test_shadow();
+    ::tpyapp::main::main();
+    ::tpyapp::main::test_shadow();
 }
 
 } // namespace tpyapp::main

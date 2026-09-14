@@ -83,11 +83,11 @@ int64_t tag_value(const std::tuple<Color, int64_t>& t) {
 //     print(tag_value((Color.Red, 7)))
 void main() {
     ::tpy::ordered_map<Color, int64_t> m = ::tpy::ordered_map<Color, int64_t>({{Color::Red, 10}, {Color::Blue, 30}});
-    std::cout << weight(m, Color::Blue) << "\n";
+    std::cout << ::tpyapp::main::weight(m, Color::Blue) << "\n";
     std::vector<Color> __tmp_1 = {Color::Red, Color::Green, Color::Red};
-    std::cout << dedup(__tmp_1) << "\n";
-    std::cout << tag_value(std::tuple<Color, int64_t>{Color::Green, 7}) << "\n";
-    std::cout << tag_value(std::tuple<Color, int64_t>{Color::Red, 7}) << "\n";
+    std::cout << ::tpyapp::main::dedup(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::tag_value(std::tuple<Color, int64_t>{Color::Green, 7}) << "\n";
+    std::cout << ::tpyapp::main::tag_value(std::tuple<Color, int64_t>{Color::Red, 7}) << "\n";
 }
 
 // # An enum used in the three container positions that had no corpus coverage
@@ -100,7 +100,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

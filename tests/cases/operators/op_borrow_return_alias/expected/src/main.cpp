@@ -64,10 +64,10 @@ void test_unary_alias() {
 //     test_reflected_alias()
 //     test_unary_alias()
 void main() {
-    test_binary_alias();
-    test_binary_operand_alias();
-    test_reflected_alias();
-    test_unary_alias();
+    ::tpyapp::main::test_binary_alias();
+    ::tpyapp::main::test_binary_operand_alias();
+    ::tpyapp::main::test_reflected_alias();
+    ::tpyapp::main::test_unary_alias();
 }
 
 // main()
@@ -76,7 +76,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

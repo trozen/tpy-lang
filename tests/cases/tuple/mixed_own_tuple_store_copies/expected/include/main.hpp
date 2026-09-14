@@ -76,6 +76,6 @@ inline Box::Box(int32_t val) : val(val) {}
 
 // def __init__(self, b: Box) -> None:
 //     self.t = make_mixed(b)  # tpyc: warning(/copies Box into field/)
-inline Holder::Holder(Box& b) : t(::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))) {}
+inline Holder::Holder(Box& b) : t(::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))) {}
 void __tpy_init();
 } // namespace tpyapp::main

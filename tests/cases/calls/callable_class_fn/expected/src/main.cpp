@@ -15,12 +15,12 @@ namespace tpyapp::main {
 //     print(apply_twice(a, 0))
 void main() {
     Doubler d = Doubler();
-    std::cout << apply(d, 5) << "\n";
-    std::cout << apply(d, 100) << "\n";
-    std::cout << apply_twice(d, 3) << "\n";
+    std::cout << ::tpyapp::main::apply(d, 5) << "\n";
+    std::cout << ::tpyapp::main::apply(d, 100) << "\n";
+    std::cout << ::tpyapp::main::apply_twice(d, 3) << "\n";
     Adder a = Adder(10);
-    std::cout << apply(a, 5) << "\n";
-    std::cout << apply_twice(a, 0) << "\n";
+    std::cout << ::tpyapp::main::apply(a, 5) << "\n";
+    std::cout << ::tpyapp::main::apply_twice(a, 0) << "\n";
 }
 
 // main()
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

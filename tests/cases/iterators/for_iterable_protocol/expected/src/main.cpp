@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(sum_items(c2))
 void main() {
     Counter c = Counter(0, 5);
-    std::cout << sum_items(c) << "\n";
+    std::cout << ::tpyapp::main::sum_items(c) << "\n";
     Counter c2 = Counter(10, 15);
-    std::cout << sum_items(c2) << "\n";
+    std::cout << ::tpyapp::main::sum_items(c2) << "\n";
 }
 
 // main()
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

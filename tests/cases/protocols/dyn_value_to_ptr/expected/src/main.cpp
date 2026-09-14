@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     # Identity at a callee site: forwards a protocol value through Ptr[P].
 //     _consume(h, task_id)
 void make_waker(Awaker& h, int32_t task_id) {
-    _consume(&h, task_id);
+    ::tpyapp::main::_consume(&h, task_id);
 }
 
 // def _consume(p: Ptr[Awaker], task_id: int32) -> None:
@@ -43,12 +43,12 @@ const Awaker* read_only_take(const Awaker& h) {
 //     print(rp is not None)
 void main() {
     Executor e = Executor();
-    make_waker(e, 7);
+    ::tpyapp::main::make_waker(e, 7);
     std::cout << ::tpy::__getitem__(e.log, 0) << "\n";
     Holder h = Holder(e);
     ::tpy::deref_check(h.awaker).mark(99);
     std::cout << ::tpy::__getitem__(e.log, 1) << "\n";
-    auto rp = read_only_take(e);
+    auto rp = ::tpyapp::main::read_only_take(e);
     std::cout << ::tpy::print_bool((rp != nullptr)) << "\n";
 }
 
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

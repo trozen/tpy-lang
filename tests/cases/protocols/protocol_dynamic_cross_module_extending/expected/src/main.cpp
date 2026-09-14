@@ -27,16 +27,16 @@ void greet_named(NamedPet& pet) {
 //     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, cross-module upcast)
 void main() {
     Dog dog = Dog();
-    greet_pet(dog);
-    greet_named(dog);
+    ::tpyapp::main::greet_pet(dog);
+    ::tpyapp::main::greet_named(dog);
     Dog __slot_1{Dog()};
     NamedPet* np = &__slot_1;
-    greet_pet((*np));
+    ::tpyapp::main::greet_pet((*np));
     ::tpy::Adapter<NamedPet, Parrot> __tmp_1{Parrot()};
-    greet_named(__tmp_1);
+    ::tpyapp::main::greet_named(__tmp_1);
     ::tpy::Adapter<NamedPet, Parrot> __slot_2{Parrot()};
     NamedPet* parrot_np = &__slot_2;
-    greet_pet((*parrot_np));
+    ::tpyapp::main::greet_pet((*parrot_np));
 }
 
 // # Cross-module @dynamic extending @dynamic: child protocol imports and extends parent from another module.
@@ -50,7 +50,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::pet::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

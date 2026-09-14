@@ -25,7 +25,7 @@ void __tpy_init() {
     ::tpyapp::outer::__tpy_init();
     ::tpyapp::outer::inner::__tpy_init();
     ::tpyapp::outer::inner::consumer::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

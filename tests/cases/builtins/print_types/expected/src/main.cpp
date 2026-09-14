@@ -105,7 +105,7 @@ void __tpy_init() {
     std::cout << ::tpy::Range<int32_t>(5) << "\n";
     std::cout << ::tpy::Range<int32_t>(2, 7) << "\n";
     std::cout << ::tpy::Range<int32_t>(0, 10, 3) << "\n";
-    print_range();
+    ::tpyapp::main::print_range();
     std::cout << "x:" << " " << 42 << " " << ::tpy::print_bool(true) << " " << ::tpy::print_float(3.14) << "\n";
     x = 10;
     std::cout << ::tpy::print_optional_val(x) << "\n";

@@ -21,7 +21,7 @@ std::function<void()> make_greeter(std::string_view name) {
 //     greeter = make_greeter("world")
 //     greeter()
 void main() {
-    std::function<void()> greeter = make_greeter("world");
+    std::function<void()> greeter = ::tpyapp::main::make_greeter("world");
     greeter();
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

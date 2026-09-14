@@ -26,7 +26,7 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     std::vector<std::string> __tmp_1 = {"-v", "a", "--x", "hello"};
-    __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
     std::cout << (::tpy::str_concat("verbose=", std::string(::tpy::bool_to_str(args.verbose)))) << "\n";
     std::cout << (::tpy::str_concat("cmd=", args.cmd)) << "\n";
     if ((args.x.has_value())) {
@@ -95,7 +95,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     int32_t __tpy_argparse_h = 0;
     while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
         if (((argv[static_cast<std::size_t>(__tpy_argparse_h)] == "-h") || (argv[static_cast<std::size_t>(__tpy_argparse_h)] == "--help"))) {
-            __tpy_builder_argparse_help_1();
+            ::tpyapp::main::__tpy_builder_argparse_help_1();
         }
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
@@ -109,14 +109,14 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             __tpy_argparse_acc_cmd = "a";
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             std::vector<std::string> __tmp_2 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice(argv, ::tpy::BasicSlice{__tpy_argparse_i, std::nullopt}));
-            __tpy_builder_argparse_a_args_1 __tpy_argparse_sub_a = __tpy_builder_argparse_a_parse_1(__tmp_2);
+            __tpy_builder_argparse_a_args_1 __tpy_argparse_sub_a = ::tpyapp::main::__tpy_builder_argparse_a_parse_1(__tmp_2);
             __tpy_argparse_flat_x = __tpy_argparse_sub_a.x;
             break;
         } else if ((__tpy_argparse_tok == "b")) {
             __tpy_argparse_acc_cmd = "b";
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             std::vector<std::string> __tmp_3 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice(argv, ::tpy::BasicSlice{__tpy_argparse_i, std::nullopt}));
-            __tpy_builder_argparse_b_args_1 __tpy_argparse_sub_b = __tpy_builder_argparse_b_parse_1(__tmp_3);
+            __tpy_builder_argparse_b_args_1 __tpy_argparse_sub_b = ::tpyapp::main::__tpy_builder_argparse_b_parse_1(__tmp_3);
             __tpy_argparse_flat_y = __tpy_argparse_sub_b.y;
             break;
         } else if (::tpy::str_startswith(__tpy_argparse_tok, "-")) {
@@ -145,7 +145,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

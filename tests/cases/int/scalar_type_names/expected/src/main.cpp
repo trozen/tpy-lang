@@ -263,27 +263,27 @@ int32_t alias_shadow() {
 //     print("alias-shadow", alias_shadow())
 //     print("module", uint16, float64)
 void main() {
-    std::cout << "widths" << " " << widths(1, 2, 3, 4) << "\n";
+    std::cout << "widths" << " " << ::tpyapp::main::widths(1, 2, 3, 4) << "\n";
     std::cout << "ctor" << " " << 7 << " " << static_cast<int>(255) << " " << ::tpy::print_float(static_cast<double>(1.5f)) << "\n";
     std::cout << "enum" << " " << Level::HIGH << " " << static_cast<int>(static_cast<int8_t>(Level::LOW)) << "\n";
-    std::cout << "bound" << " " << same<int32_t>(21) << " " << same<uint64_t>(3) << "\n";
-    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<uint8_t>>(bytes_of(3))) << "\n";
+    std::cout << "bound" << " " << ::tpyapp::main::same<int32_t>(21) << " " << ::tpyapp::main::same<uint64_t>(3) << "\n";
+    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<uint8_t>>(::tpyapp::main::bytes_of(3))) << "\n";
     double f = 2.5;
     std::cout << "float64" << " " << ::tpy::print_float(f) << "\n";
     std::cout << "char" << " " << ::tpy::char_from_str("x") << "\n";
-    std::cout << "shadow-param" << " " << static_cast<int>(shadowed(9)) << "\n";
-    std::cout << "shadow-local" << " " << shadowed_local("abc") << "\n";
-    std::cout << "shadow-unpack" << " " << shadowed_unpack(std::tuple<int32_t, int32_t>{1, 2}) << "\n";
-    std::cout << "shadow-walrus" << " " << shadowed_walrus(1) << "\n";
+    std::cout << "shadow-param" << " " << static_cast<int>(::tpyapp::main::shadowed(9)) << "\n";
+    std::cout << "shadow-local" << " " << ::tpyapp::main::shadowed_local("abc") << "\n";
+    std::cout << "shadow-unpack" << " " << ::tpyapp::main::shadowed_unpack(std::tuple<int32_t, int32_t>{1, 2}) << "\n";
+    std::cout << "shadow-walrus" << " " << ::tpyapp::main::shadowed_walrus(1) << "\n";
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "shadow-for" << " " << shadowed_for(__tmp_1) << "\n";
-    std::cout << "shadow-with" << " " << shadowed_with() << "\n";
-    std::cout << "shadow-nested" << " " << shadowed_nested() << "\n";
+    std::cout << "shadow-for" << " " << ::tpyapp::main::shadowed_for(__tmp_1) << "\n";
+    std::cout << "shadow-with" << " " << ::tpyapp::main::shadowed_with() << "\n";
+    std::cout << "shadow-nested" << " " << ::tpyapp::main::shadowed_nested() << "\n";
     std::vector<int32_t> __tmp_2 = {4, 5};
-    std::cout << "shadow-comp" << " " << shadowed_comp(__tmp_2) << "\n";
-    std::cout << "shadow-except" << " " << shadowed_except(6) << " " << shadowed_except(-6) << "\n";
-    std::cout << "alias-free" << " " << alias_free() << "\n";
-    std::cout << "alias-shadow" << " " << alias_shadow() << "\n";
+    std::cout << "shadow-comp" << " " << ::tpyapp::main::shadowed_comp(__tmp_2) << "\n";
+    std::cout << "shadow-except" << " " << ::tpyapp::main::shadowed_except(6) << " " << ::tpyapp::main::shadowed_except(-6) << "\n";
+    std::cout << "alias-free" << " " << ::tpyapp::main::alias_free() << "\n";
+    std::cout << "alias-shadow" << " " << ::tpyapp::main::alias_shadow() << "\n";
     std::cout << "module" << " " << uint16 << " " << ::tpy::print_float(float64) << "\n";
 }
 
@@ -307,7 +307,7 @@ void __tpy_init() {
 
     uint16 = 7;
     float64 = 1.5;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

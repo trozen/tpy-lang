@@ -24,9 +24,9 @@ void show_port(const Config& cfg) {
 //     show_port(Config(None))
 void main() {
     Config __tmp_1 = Config(8080);
-    show_port(__tmp_1);
+    ::tpyapp::main::show_port(__tmp_1);
     Config __tmp_2 = Config(std::nullopt);
-    show_port(__tmp_2);
+    ::tpyapp::main::show_port(__tmp_2);
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

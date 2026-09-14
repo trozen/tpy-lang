@@ -124,7 +124,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
         continue;
     }
     case S_RESUME_0: {  // after: yield t  # tpyc: ok
-        v.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
+        v.emplace(::tpyapp::main::mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
         return std::move((*v));
     }
@@ -135,7 +135,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            t.emplace(mk(i));
+            t.emplace(::tpyapp::main::mk(i));
             __state = S_RESUME_0;
             return std::move((*t));
         } else {
@@ -176,7 +176,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            t.emplace(mk(i));
+            t.emplace(::tpyapp::main::mk(i));
             __state = S_RESUME_0;
             return std::move((*t));
         } else {
@@ -218,7 +218,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
     }
     case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
         std::cout << "borrowed" << " " << ::tpy::__getitem__(saved->items, 0) << "\n";
-        u.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
+        u.emplace(::tpyapp::main::mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
         return std::move((*u));
     }
@@ -229,7 +229,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            t.emplace(mk(i));
+            t.emplace(::tpyapp::main::mk(i));
             saved = &std::get<1>((*t));
             __state = S_RESUME_0;
             return (*t);
@@ -272,7 +272,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
         continue;
     }
     case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
-        u.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
+        u.emplace(::tpyapp::main::mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
         return std::move((*u));
     }
@@ -283,7 +283,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            t.emplace(mk(i));
+            t.emplace(::tpyapp::main::mk(i));
             saved = &std::get<1>((*t));
             std::cout << "dead-borrow" << " " << ::tpy::__getitem__(saved->items, 0) << "\n";
             __state = S_RESUME_0;
@@ -315,7 +315,7 @@ __gen_gen_call_init_borrow_dead gen_call_init_borrow_dead(int32_t n) {
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t.emplace(mk(7));
+        t.emplace(::tpyapp::main::mk(7));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
@@ -327,7 +327,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop:
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            std::cout << "preloop-kept" << " " << first_item(std::get<1>((*t))) << "\n";
+            std::cout << "preloop-kept" << " " << ::tpyapp::main::first_item(std::get<1>((*t))) << "\n";
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
@@ -440,7 +440,7 @@ __gen_gen_live gen_live(int32_t n) {
 //         print("method", pair[0], pair[1].val)
 void main() {
     {
-        auto __src_0 = gen(3);
+        auto __src_0 = ::tpyapp::main::gen(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -450,7 +450,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = gen_twice(2);
+        auto __src_2 = ::tpyapp::main::gen_twice(2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -461,7 +461,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = gen_call_init(2);
+        auto __src_4 = ::tpyapp::main::gen_call_init(2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -471,7 +471,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = gen_call_init_once(2);
+        auto __src_6 = ::tpyapp::main::gen_call_init_once(2);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -482,7 +482,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = gen_call_init_borrowed(2);
+        auto __src_8 = ::tpyapp::main::gen_call_init_borrowed(2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -492,7 +492,7 @@ void main() {
         }
     }
     {
-        auto __src_10 = gen_call_init_borrow_dead(2);
+        auto __src_10 = ::tpyapp::main::gen_call_init_borrow_dead(2);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -502,7 +502,7 @@ void main() {
         }
     }
     {
-        auto __src_12 = gen_preloop(2);
+        auto __src_12 = ::tpyapp::main::gen_preloop(2);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -512,7 +512,7 @@ void main() {
         }
     }
     {
-        auto __src_14 = gen_live(2);
+        auto __src_14 = ::tpyapp::main::gen_live(2);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -582,7 +582,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

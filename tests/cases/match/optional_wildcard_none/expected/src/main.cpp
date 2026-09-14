@@ -42,11 +42,11 @@ int32_t pick(std::optional<int32_t> v) {
 //     print(pick(5))
 //     print(pick(None))
 void main() {
-    label(5);
-    label(1);
-    label(std::nullopt);
-    std::cout << pick(5) << "\n";
-    std::cout << pick(std::nullopt) << "\n";
+    ::tpyapp::main::label(5);
+    ::tpyapp::main::label(1);
+    ::tpyapp::main::label(std::nullopt);
+    std::cout << ::tpyapp::main::pick(5) << "\n";
+    std::cout << ::tpyapp::main::pick(std::nullopt) << "\n";
 }
 
 // main()
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

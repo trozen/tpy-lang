@@ -19,7 +19,7 @@ void stash(std::vector<Point>& items, const Point& p) {
 void main() {
     Point p = Point();
     std::vector<Point> items = std::vector<Point>{};
-    stash(items, p);
+    ::tpyapp::main::stash(items, p);
     p.x = 9;
     std::cout << ::tpy::__len__(items) << " " << ::tpy::__getitem__(items, 0).x << " " << p.x << "\n";
 }
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

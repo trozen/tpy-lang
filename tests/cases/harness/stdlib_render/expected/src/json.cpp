@@ -77,7 +77,7 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
             }
             JsonValue val;
             {
-                auto __try_tmp_3 = _read_value(reader);
+                auto __try_tmp_3 = ::tpystd::json::_read_value(reader);
                 if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
                 val = ::tpy::unwrap_ref_move(*__try_tmp_3);
             }
@@ -98,7 +98,7 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
         while (reader.has_next()) {
             JsonValue item;
             {
-                auto __try_tmp_6 = _read_value(reader);
+                auto __try_tmp_6 = ::tpystd::json::_read_value(reader);
                 if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
                 item = ::tpy::unwrap_ref_move(*__try_tmp_6);
             }
@@ -183,7 +183,7 @@ JsonValue loads(std::string_view s) {
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_12;
         {
-            auto __try_tmp_13 = _read_value(reader);
+            auto __try_tmp_13 = ::tpystd::json::_read_value(reader);
             if (!__try_tmp_13.has_value()) { __err_opt_12 = std::move(__try_tmp_13.error()); goto __except_12; }
             value = ::tpy::unwrap_ref_move(*__try_tmp_13);
         }
@@ -269,7 +269,7 @@ void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter&
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& item = *__beg_0;
-            _write_value(item, w, sort_keys);
+            ::tpystd::json::_write_value(item, w, sort_keys);
         }
         w.array_end();
         break;
@@ -285,7 +285,7 @@ void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter&
         for (; __beg_1 != __end_1; ++__beg_1) {
             std::string_view k = *__beg_1;
             w.key(k);
-            _write_value(::tpy::__getitem__(d, k), w, sort_keys);
+            ::tpystd::json::_write_value(::tpy::__getitem__(d, k), w, sort_keys);
         }
         w.object_end();
         break;
@@ -304,7 +304,7 @@ void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter&
 //     return w.finish()
 std::string dumps(const JsonValue& obj, int32_t indent, bool sort_keys) {
     ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter(indent);
-    _write_value(obj, w, sort_keys);
+    ::tpystd::json::_write_value(obj, w, sort_keys);
     return w.finish();
 }
 

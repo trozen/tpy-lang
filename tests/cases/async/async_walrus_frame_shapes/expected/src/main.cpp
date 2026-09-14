@@ -235,7 +235,7 @@ Node* pick(std::vector<Node>& nodes, int32_t i) {
     }
     case S_JOIN_0: {
         if ((i < 3)) {
-            m = pick(nodes, i);
+            m = ::tpyapp::main::pick(nodes, i);
             std::cout << "optptr bound" << " " << ::tpy::print_bool(((p = m) != nullptr)) << "\n";
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
@@ -325,7 +325,7 @@ __coro_drive drive() {
 // def main() -> None:
 //     asyncio.run(drive())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(drive()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::drive()));
 }
 
 // # Async coroutines share the resumable frame with generators, so a walrus target
@@ -340,7 +340,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

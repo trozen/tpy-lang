@@ -22,7 +22,7 @@ void main() {
     Scores s = Scores();
     std::cout << s["a"] << " " << s["b"] << "\n";
     std::string_view k = "a";
-    std::cout << lookup(s, k) << " " << lookup(s, "b") << "\n";
+    std::cout << ::tpyapp::main::lookup(s, k) << " " << ::tpyapp::main::lookup(s, "b") << "\n";
 }
 
 // main()
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

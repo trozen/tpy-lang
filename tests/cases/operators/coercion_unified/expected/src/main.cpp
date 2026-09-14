@@ -83,10 +83,10 @@ void test_bigint_to_int32() {
     big = ::tpy::BigInt(200);
     small = (big).to_fixed_check<int32_t>();
     std::cout << small << "\n";
-    int32_t result = return_bigint_as_int32();
+    int32_t result = ::tpyapp::main::return_bigint_as_int32();
     std::cout << result << "\n";
     big = ::tpy::BigInt(300);
-    std::cout << take_int32((big).to_fixed_check<int32_t>()) << "\n";
+    std::cout << ::tpyapp::main::take_int32((big).to_fixed_check<int32_t>()) << "\n";
 }
 
 // # --- Record -> Ptr coercion ---
@@ -117,7 +117,7 @@ void test_record_to_ptr() {
     ptr = &pt2;
     std::cout << ptr->x << "\n";
     Point pt3 = Point(50, 60);
-    take_ptr(&pt3);
+    ::tpyapp::main::take_ptr(&pt3);
     std::cout << pt3.x << "\n";
 }
 
@@ -148,7 +148,7 @@ void test_record_to_const_ptr() {
     cptr = &pt2;
     std::cout << cptr->x << "\n";
     Point pt3 = Point(100, 200);
-    std::cout << take_const_ptr(&pt3) << "\n";
+    std::cout << ::tpyapp::main::take_const_ptr(&pt3) << "\n";
 }
 
 // # --- Ptr -> Record coercion (dereference) ---
@@ -194,11 +194,11 @@ void test_ptr_to_record() {
     copy = &(::tpy::deref_check(ptr2));
     std::cout << copy->x << "\n";
     Point pt3 = Point(11, 12);
-    Point& returned = return_record_from_ptr(&pt3);
+    Point& returned = ::tpyapp::main::return_record_from_ptr(&pt3);
     std::cout << returned.x << "\n";
     Point pt4 = Point(13, 14);
     Point* ptr4 = &pt4;
-    std::cout << take_point(::tpy::deref_check(ptr4)) << "\n";
+    std::cout << ::tpyapp::main::take_point(::tpy::deref_check(ptr4)) << "\n";
 }
 
 // # --- Ptr -> Ptr[readonly[...]] coercion ---
@@ -240,7 +240,7 @@ void test_ptr_to_const_ptr() {
     std::cout << cptr->x << "\n";
     Point pt3 = Point(7, 8);
     Point* ptr3 = &pt3;
-    std::cout << take_const_ptr_val(ptr3) << "\n";
+    std::cout << ::tpyapp::main::take_const_ptr_val(ptr3) << "\n";
 }
 
 // # --- ArrayList -> Span coercion ---
@@ -260,7 +260,7 @@ void test_arraylist_to_span() {
     al.append(1);
     al.append(2);
     al.append(3);
-    std::cout << take_span(al.__span__()) << "\n";
+    std::cout << ::tpyapp::main::take_span(al.__span__()) << "\n";
 }
 
 // # --- Array -> Span coercion ---
@@ -274,7 +274,7 @@ void test_arraylist_to_span() {
 void test_array_to_span() {
     std::cout << "Array -> Span coercions:" << "\n";
     std::array<int32_t, 3> arr = {10, 20, 30};
-    std::cout << take_span(::tpy::as_mut_span(arr)) << "\n";
+    std::cout << ::tpyapp::main::take_span(::tpy::as_mut_span(arr)) << "\n";
 }
 
 // # --- List -> Span coercion ---
@@ -288,7 +288,7 @@ void test_array_to_span() {
 void test_list_to_span() {
     std::cout << "List -> Span coercions:" << "\n";
     std::vector<int32_t> lst = {100, 200, 300};
-    std::cout << take_span(::tpy::as_mut_span(lst)) << "\n";
+    std::cout << ::tpyapp::main::take_span(::tpy::as_mut_span(lst)) << "\n";
 }
 
 // # --- Chained coercions: subscript -> Ptr ---
@@ -306,9 +306,9 @@ void test_list_to_span() {
 void test_subscript_to_ptr() {
     std::cout << "Subscript -> Ptr coercions:" << "\n";
     std::array<Point, 2> arr = {Point(1, 2), Point(3, 4)};
-    take_ptr(&::tpy::__getitem__(arr, 0));
+    ::tpyapp::main::take_ptr(&::tpy::__getitem__(arr, 0));
     std::cout << ::tpy::__getitem__(arr, 0).x << "\n";
-    std::cout << take_const_ptr(&::tpy::__getitem__(arr, 1)) << "\n";
+    std::cout << ::tpyapp::main::take_const_ptr(&::tpy::__getitem__(arr, 1)) << "\n";
 }
 
 // """Tests all type coercions through the unified _apply_coercion path.
@@ -337,15 +337,15 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    test_bigint_to_int32();
-    test_record_to_ptr();
-    test_record_to_const_ptr();
-    test_ptr_to_record();
-    test_ptr_to_const_ptr();
-    test_arraylist_to_span();
-    test_array_to_span();
-    test_list_to_span();
-    test_subscript_to_ptr();
+    ::tpyapp::main::test_bigint_to_int32();
+    ::tpyapp::main::test_record_to_ptr();
+    ::tpyapp::main::test_record_to_const_ptr();
+    ::tpyapp::main::test_ptr_to_record();
+    ::tpyapp::main::test_ptr_to_const_ptr();
+    ::tpyapp::main::test_arraylist_to_span();
+    ::tpyapp::main::test_array_to_span();
+    ::tpyapp::main::test_list_to_span();
+    ::tpyapp::main::test_subscript_to_ptr();
 }
 
 } // namespace tpyapp::main

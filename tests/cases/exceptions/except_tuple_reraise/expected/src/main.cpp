@@ -41,7 +41,7 @@ void main() {
     for (int32_t i = 0; i < 2; ++i) {
         {
             try {
-                inner(::tpy::BigInt(i));
+                ::tpyapp::main::inner(::tpy::BigInt(i));
             } catch (const AErr&) {
                 std::cout << "outer: AErr" << "\n";
             } catch (const BErr&) {
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

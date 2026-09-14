@@ -31,7 +31,7 @@ void boom(const ::tpy::BigInt& which) {
 void with_binding(const ::tpy::BigInt& which) {
     {
         try {
-            boom(which);
+            ::tpyapp::main::boom(which);
         } catch (const AErr& e) {
             std::cout << "tuple arm, code =" << " " << e.code << "\n";
         } catch (const BErr& e) {
@@ -52,7 +52,7 @@ void with_binding(const ::tpy::BigInt& which) {
 void without_binding(const ::tpy::BigInt& which) {
     {
         try {
-            boom(which);
+            ::tpyapp::main::boom(which);
         } catch (const AErr&) {
             std::cout << "no binding, caught" << " " << which << "\n";
         } catch (const BErr&) {
@@ -74,7 +74,7 @@ void without_binding(const ::tpy::BigInt& which) {
 void single_element(const ::tpy::BigInt& which) {
     {
         try {
-            boom(which);
+            ::tpyapp::main::boom(which);
         } catch (const AErr&) {
             std::cout << "single-element tuple" << "\n";
         } catch (const ::tpy::Exception&) {
@@ -109,14 +109,14 @@ void repeated() {
 //     repeated()
 void main() {
     for (int32_t i = 0; i < 3; ++i) {
-        with_binding(::tpy::BigInt(i));
+        ::tpyapp::main::with_binding(::tpy::BigInt(i));
     }
     for (int32_t i = 0; i < 3; ++i) {
-        without_binding(::tpy::BigInt(i));
+        ::tpyapp::main::without_binding(::tpy::BigInt(i));
     }
-    single_element(::tpy::BigInt(0));
-    single_element(::tpy::BigInt(1));
-    repeated();
+    ::tpyapp::main::single_element(::tpy::BigInt(0));
+    ::tpyapp::main::single_element(::tpy::BigInt(1));
+    ::tpyapp::main::repeated();
 }
 
 // main()
@@ -125,7 +125,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

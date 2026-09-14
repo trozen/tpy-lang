@@ -36,7 +36,7 @@ int32_t consume(::tpy::UninitHeapStorage<int32_t>&& s) {
 void test_pass_own() {
     ::tpy::UninitHeapStorage<int32_t> s2 = ::tpy::UninitHeapStorage<int32_t>(2);
     s2.init(0, 300);
-    std::cout << consume(std::move(s2)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(s2)) << "\n";
 }
 
 // from tpy.mem import UninitHeapStorage
@@ -53,13 +53,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static ::tpy::UninitHeapStorage<int32_t> __global_slot_1 = make_storage();
+    static ::tpy::UninitHeapStorage<int32_t> __global_slot_1 = ::tpyapp::main::make_storage();
     storage = &__global_slot_1;
     std::cout << storage->load(0) << "\n";
     std::cout << storage->load(1) << "\n";
     storage->drop(0);
     storage->drop(1);
-    test_pass_own();
+    ::tpyapp::main::test_pass_own();
 }
 
 } // namespace tpyapp::main

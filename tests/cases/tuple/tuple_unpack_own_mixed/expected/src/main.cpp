@@ -21,10 +21,10 @@ void consume(Counter&& c) {
 //     consume(a)
 //     print(n)
 void main() {
-    auto __tup_1 = make();
+    auto __tup_1 = ::tpyapp::main::make();
     Counter a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    consume(std::move(a));
+    ::tpyapp::main::consume(std::move(a));
     std::cout << n << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

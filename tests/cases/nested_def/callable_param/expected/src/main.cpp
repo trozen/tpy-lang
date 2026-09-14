@@ -20,7 +20,7 @@ void main() {
     auto add_offset = [offset](int32_t x) -> int32_t {
         return (::tpy::add_check<int32_t>(x, offset));
     };
-    std::cout << invoke(add_offset, 7) << "\n";
+    std::cout << ::tpyapp::main::invoke(add_offset, 7) << "\n";
 }
 
 // main()
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

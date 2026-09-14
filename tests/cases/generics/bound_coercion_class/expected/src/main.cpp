@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(pa.base_code(), pa2.base_code(), pa_ro.code)
 void main() {
     Dog d = Dog(7);
-    Animal* pa = as_animal<Dog>(&d);
+    Animal* pa = ::tpyapp::main::as_animal<Dog>(&d);
     Animal a = Animal(3);
-    Animal* pa2 = as_animal<Animal>(&a);
+    Animal* pa2 = ::tpyapp::main::as_animal<Animal>(&a);
     const Dog* cdp = &d;
-    const Animal* pa_ro = as_animal_ro<Dog>(cdp);
+    const Animal* pa_ro = ::tpyapp::main::as_animal_ro<Dog>(cdp);
     std::cout << ::tpy::deref_check(pa).base_code() << " " << ::tpy::deref_check(pa2).base_code() << " " << ::tpy::deref_check(pa_ro).code << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

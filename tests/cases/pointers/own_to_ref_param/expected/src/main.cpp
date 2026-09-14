@@ -25,8 +25,8 @@ void use_point(const Point& p) {
 // def main():
 //     use_point(make_point())  # tpyc: ok
 void main() {
-    Point __tmp_1 = make_point();
-    use_point(__tmp_1);
+    Point __tmp_1 = ::tpyapp::main::make_point();
+    ::tpyapp::main::use_point(__tmp_1);
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

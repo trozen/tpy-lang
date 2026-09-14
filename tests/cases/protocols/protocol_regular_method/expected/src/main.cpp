@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     print(v2.x)
 void main() {
     Value v = Value(21);
-    double_it(v);
+    ::tpyapp::main::double_it(v);
     Value v2 = v.duplicate();
     std::cout << v2.x << "\n";
 }
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

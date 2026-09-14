@@ -137,28 +137,28 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
+    ::tpyapp::main::test_basic();
     std::cout << "---" << "\n";
-    test_negative();
+    ::tpyapp::main::test_negative();
     std::cout << "---" << "\n";
-    test_clamping();
+    ::tpyapp::main::test_clamping();
     std::cout << "---" << "\n";
-    test_empty();
+    ::tpyapp::main::test_empty();
     std::cout << "---" << "\n";
-    test_type_inference();
+    ::tpyapp::main::test_type_inference();
     std::cout << "---" << "\n";
-    test_array();
+    ::tpyapp::main::test_array();
     std::cout << "---" << "\n";
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30, 40};
     span_src = &__global_slot_1;
-    test_span(::tpy::as_mut_span((*span_src)));
+    ::tpyapp::main::test_span(::tpy::as_mut_span((*span_src)));
     std::cout << "---" << "\n";
     std::vector<int32_t> __tmp_1 = {10, 20, 30};
-    test_readonly_list(__tmp_1);
+    ::tpyapp::main::test_readonly_list(__tmp_1);
     std::cout << "---" << "\n";
-    test_readonly_span_param(::tpy::as_span(std::array<int32_t, 4>{10, 20, 30, 40}));
+    ::tpyapp::main::test_readonly_span_param(::tpy::as_span(std::array<int32_t, 4>{10, 20, 30, 40}));
     std::cout << "---" << "\n";
-    test_single_element();
+    ::tpyapp::main::test_single_element();
 }
 
 } // namespace tpyapp::main

@@ -41,9 +41,9 @@ namespace tpyapp::main {
 //     print(bytes_or(b"abcd", b"z"), bytes_or(None, b"zz"))
 //     print(passthrough_str("hi"), passthrough_bytes(b"xyz"))
 void main() {
-    std::cout << join_or("hello", "z") << " " << join_or(std::nullopt, "zz") << "\n";
-    std::cout << bytes_or(::tpy::bytes_literal_owned("abcd", 4), ::tpy::bytes_literal("z", 1)) << " " << bytes_or(std::nullopt, ::tpy::bytes_literal("zz", 2)) << "\n";
-    std::cout << passthrough_str("hi") << " " << passthrough_bytes(::tpy::bytes_literal("xyz", 3)) << "\n";
+    std::cout << ::tpyapp::main::join_or("hello", "z") << " " << ::tpyapp::main::join_or(std::nullopt, "zz") << "\n";
+    std::cout << ::tpyapp::main::bytes_or(::tpy::bytes_literal_owned("abcd", 4), ::tpy::bytes_literal("z", 1)) << " " << ::tpyapp::main::bytes_or(std::nullopt, ::tpy::bytes_literal("zz", 2)) << "\n";
+    std::cout << ::tpyapp::main::passthrough_str("hi") << " " << ::tpyapp::main::passthrough_bytes(::tpy::bytes_literal("xyz", 3)) << "\n";
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

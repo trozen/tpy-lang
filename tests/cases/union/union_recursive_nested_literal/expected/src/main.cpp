@@ -30,7 +30,7 @@ int32_t depth(const Tree& t) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            int32_t d = depth(child);
+            int32_t d = ::tpyapp::main::depth(child);
             if ((d > result)) {
                 result = d;
             }
@@ -62,7 +62,7 @@ int32_t depth(const Tree& t) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            ::tpy::BigInt d = int_depth(child);
+            ::tpy::BigInt d = ::tpyapp::main::int_depth(child);
             if ((d > result)) {
                 result = d;
             }
@@ -145,31 +145,31 @@ int32_t depth(const Tree& t) {
 //     print(json_keys(g_dict))
 void main() {
     Tree x = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), Leaf(3)}};
-    std::cout << depth(x) << "\n";
+    std::cout << ::tpyapp::main::depth(x) << "\n";
     Tree y = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3)}}};
-    std::cout << depth(y) << "\n";
+    std::cout << ::tpyapp::main::depth(y) << "\n";
     std::vector<Tree> zs = {Leaf(1), std::vector<Tree>{Leaf(2), Leaf(3)}};
-    std::cout << depth(::tpy::__getitem__(zs, 1)) << "\n";
+    std::cout << ::tpyapp::main::depth(::tpy::__getitem__(zs, 1)) << "\n";
     Tree __tmp_1 = std::vector<Tree>{Leaf(10), std::vector<Tree>{Leaf(20), Leaf(30)}};
-    std::cout << depth(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::depth(__tmp_1) << "\n";
     Tree __tmp_2 = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3), Leaf(4)}}};
-    std::cout << depth(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::depth(__tmp_2) << "\n";
     IntTree a = std::vector<IntTree>{1, std::vector<IntTree>{2, 3}};
-    std::cout << int_depth(a) << "\n";
+    std::cout << ::tpyapp::main::int_depth(a) << "\n";
     IntTree b = std::vector<IntTree>{1, std::vector<IntTree>{2, std::vector<IntTree>{3}}};
-    std::cout << int_depth(b) << "\n";
+    std::cout << ::tpyapp::main::int_depth(b) << "\n";
     IntTree __tmp_3 = std::vector<IntTree>{10, std::vector<IntTree>{20, 30}};
-    std::cout << int_depth(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::int_depth(__tmp_3) << "\n";
     JsonValue d = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}, {"d", 3}})}});
-    std::cout << json_keys(d) << "\n";
+    std::cout << ::tpyapp::main::json_keys(d) << "\n";
     JsonValue __tmp_4 = ::tpy::ordered_map<std::string, JsonValue>({{"x", 1}, {"y", ::tpy::ordered_map<std::string, JsonValue>({{"z", 2}})}});
-    std::cout << json_keys(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::json_keys(__tmp_4) << "\n";
     std::cout << ::tpy::__str__(x) << "\n";
     std::cout << ::tpy::__str__(a) << "\n";
     std::cout << ::tpy::__str__(d) << "\n";
-    std::cout << depth(g) << "\n";
-    std::cout << int_depth(g_int) << "\n";
-    std::cout << json_keys(g_dict) << "\n";
+    std::cout << ::tpyapp::main::depth(g) << "\n";
+    std::cout << ::tpyapp::main::int_depth(g_int) << "\n";
+    std::cout << ::tpyapp::main::json_keys(g_dict) << "\n";
 }
 
 // # Annotation-driven literal inference for recursive union types
@@ -190,7 +190,7 @@ void __tpy_init() {
     g = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3)}}};
     g_int = std::vector<IntTree>{1, std::vector<IntTree>{2, std::vector<IntTree>{3}}};
     g_dict = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}})}});
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

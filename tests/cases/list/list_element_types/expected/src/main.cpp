@@ -44,7 +44,7 @@ int32_t sum_span(std::span<int32_t> nums) {
 //     return sum_span(local_data)
 int32_t test_local_span() {
     std::array<int32_t, 3> local_data = {4, 5, 6};
-    return sum_span(::tpy::as_mut_span(local_data));
+    return ::tpyapp::main::sum_span(::tpy::as_mut_span(local_data));
 }
 
 // # Case 9: Span[int] (BigInt span)
@@ -115,14 +115,14 @@ void __tpy_init() {
     static std::vector<::tpy::BigInt> __global_slot_5 = {100, 200, 300};
     annotated_bigint = &__global_slot_5;
     std::cout << ::tpy::__getitem__((*annotated_bigint), 0) << "\n";
-    std::cout << local_mixed() << "\n";
+    std::cout << ::tpyapp::main::local_mixed() << "\n";
     static std::vector<int32_t> __global_slot_6 = {1, 2, 3};
     global_for_span = &__global_slot_6;
-    std::cout << sum_span(::tpy::as_mut_span((*global_for_span))) << "\n";
-    std::cout << test_local_span() << "\n";
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span((*global_for_span))) << "\n";
+    std::cout << ::tpyapp::main::test_local_span() << "\n";
     static std::vector<::tpy::BigInt> __global_slot_7 = {1000, 2000, 3000};
     bigint_list = &__global_slot_7;
-    std::cout << sum_span_bigint(::tpy::as_mut_span((*bigint_list))) << "\n";
+    std::cout << ::tpyapp::main::sum_span_bigint(::tpy::as_mut_span((*bigint_list))) << "\n";
 }
 
 } // namespace tpyapp::main

@@ -37,7 +37,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> parse_bad() {
 void main() {
     {
         {
-            auto __try_tmp_5 = parse_bad();
+            auto __try_tmp_5 = ::tpyapp::main::parse_bad();
             if (!__try_tmp_5.has_value()) goto __except_4;
         }
         goto __after_try_4;
@@ -58,7 +58,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -17,7 +17,7 @@ std::tuple<int32_t, int32_t> swap(const std::tuple<int32_t, int32_t>& p) {
 //     print(q)
 void main() {
     std::tuple<int32_t, int32_t> p = std::tuple<int32_t, int32_t>{1, 2};
-    std::tuple<int32_t, int32_t> q = swap(p);
+    std::tuple<int32_t, int32_t> q = ::tpyapp::main::swap(p);
     std::cout << ::tpy::TuplePrinter(p) << "\n";
     std::cout << ::tpy::TuplePrinter(q) << "\n";
 }
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

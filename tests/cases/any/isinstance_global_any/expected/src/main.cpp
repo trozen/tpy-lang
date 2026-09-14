@@ -30,7 +30,7 @@ void __tpy_init() {
     initialized = true;
 
     g = ::tpy::make_any(::tpy::BigInt(42));
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

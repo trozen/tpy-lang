@@ -15,7 +15,7 @@ std::string stub(std::string_view val) {
 //     r: int32 = stub[int32](lambda x: x * int32(2))
 //     print(r)
 void main() {
-    int32_t r = stub<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); });
+    int32_t r = ::tpyapp::main::stub<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); });
     std::cout << r << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

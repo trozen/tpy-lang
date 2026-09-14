@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << build_flag() << "\n";
+    std::cout << ::tpyapp::main::build_flag() << "\n";
 }
 
 } // namespace tpyapp::main

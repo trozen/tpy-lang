@@ -26,7 +26,7 @@ void __tpy_init() {
 
     t = std::tuple<int32_t, int32_t, int32_t, int32_t>{1, 2, 3, 4};
     t2 = std::tuple<int32_t, std::tuple<int32_t, int32_t>>{10, std::tuple<int32_t, int32_t>{20, 30}};
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     forward(5)
 void main() {
-    forward<int32_t>(5);
+    ::tpyapp::main::forward<int32_t>(5);
 }
 
 // main()
@@ -16,7 +16,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

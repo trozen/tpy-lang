@@ -62,11 +62,11 @@ Color pick() {
 //         print("enum walrus:", c.name)
 void main() {
     std::optional<Rec> r;
-    if ((static_cast<void>((r = make(::tpy::BigInt(7)), *r)), true)) {
+    if ((static_cast<void>((r = ::tpyapp::main::make(::tpy::BigInt(7)), *r)), true)) {
         std::cout << "record walrus:" << " " << (*r).v << "\n";
     }
     Color c;
-    if ((static_cast<void>((c = pick())), true)) {
+    if ((static_cast<void>((c = ::tpyapp::main::pick())), true)) {
         std::cout << "enum walrus:" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
     }
 }
@@ -84,7 +84,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

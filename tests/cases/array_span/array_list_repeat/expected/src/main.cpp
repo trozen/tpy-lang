@@ -47,9 +47,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
-    test_nonzero();
-    test_multi_element();
+    ::tpyapp::main::test_basic();
+    ::tpyapp::main::test_nonzero();
+    ::tpyapp::main::test_multi_element();
 }
 
 } // namespace tpyapp::main

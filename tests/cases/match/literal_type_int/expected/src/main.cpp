@@ -36,9 +36,9 @@ std::string priority_label(int32_t level) {
 //     print(priority_label(2))
 //     print(priority_label(3))
 void main() {
-    std::cout << priority_label(1) << "\n";
-    std::cout << priority_label(2) << "\n";
-    std::cout << priority_label(3) << "\n";
+    std::cout << ::tpyapp::main::priority_label(1) << "\n";
+    std::cout << ::tpyapp::main::priority_label(2) << "\n";
+    std::cout << ::tpyapp::main::priority_label(3) << "\n";
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

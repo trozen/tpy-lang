@@ -25,7 +25,7 @@ namespace tpyapp::main {
 //         inner.n = 99               # mutate through the borrowed element
 //         print(v["a"].n)            # 99 -- proves the read aliases, not a copy
 void main() {
-    ::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> __slot_1 = get_dict();
+    ::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> __slot_1 = ::tpyapp::main::get_dict();
     ::tpy::Union<::tpy::ordered_map<std::string, Cell>*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<::tpy::ordered_map<std::string, Cell>*>(v)) {
         auto& __v = *std::get<::tpy::ordered_map<std::string, Cell>*>(v);
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

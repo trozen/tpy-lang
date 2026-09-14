@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     int32_t a = 21;
     int32_t b = 21;
-    add_values(a, b);
+    ::tpyapp::main::add_values(a, b);
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

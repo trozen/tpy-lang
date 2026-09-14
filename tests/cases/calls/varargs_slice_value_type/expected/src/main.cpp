@@ -25,7 +25,7 @@ int32_t sum_tail(::tpy::varargs<const int32_t> nums) {
 //     print(sum_tail(10, 20, 30, 40))  # 20+30+40 = 90
 void main() {
     std::array<const int32_t, 4> __tmp_1{10, 20, 30, 40};
-    std::cout << sum_tail(::tpy::varargs<const int32_t>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::sum_tail(::tpy::varargs<const int32_t>(__tmp_1)) << "\n";
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

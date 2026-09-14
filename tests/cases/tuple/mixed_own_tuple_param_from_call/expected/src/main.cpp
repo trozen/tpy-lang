@@ -32,7 +32,7 @@ int32_t take_owned(std::tuple<Box, Box>&& p) {
 //     # The param forwards onward as a param -- still no conversion.
 //     return take_mixed(make_mixed(b))
 int32_t relay(Box& b) {
-    return take_mixed(make_mixed(b));
+    return ::tpyapp::main::take_mixed(::tpyapp::main::make_mixed(b));
 }
 
 // def mutate_borrowed(p: tuple[Own[Box], Box]) -> None:
@@ -56,10 +56,10 @@ void mutate_borrowed(const std::tuple<Box, Box*>& p) {
 //     print(b.n)
 void main() {
     Box b = Box(2);
-    std::cout << take_mixed(make_mixed(b)) << "\n";
-    std::cout << relay(b) << "\n";
-    std::cout << take_owned(make_owned()) << "\n";
-    mutate_borrowed(make_mixed(b));
+    std::cout << ::tpyapp::main::take_mixed(::tpyapp::main::make_mixed(b)) << "\n";
+    std::cout << ::tpyapp::main::relay(b) << "\n";
+    std::cout << ::tpyapp::main::take_owned(::tpyapp::main::make_owned()) << "\n";
+    ::tpyapp::main::mutate_borrowed(::tpyapp::main::make_mixed(b));
     std::cout << b.n << "\n";
 }
 
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

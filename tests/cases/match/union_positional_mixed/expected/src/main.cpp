@@ -38,10 +38,10 @@ void describe(::tpy::Union<const Label*, const Point*> s) {
 void main() {
     ::tpy::Union<Label, Point> __slot_1 = Point(1.0, 2.0, 3.0);
     ::tpy::Union<Label*, Point*> p = ::tpy::to_ptr_variant(__slot_1);
-    describe(p.as_const());
+    ::tpyapp::main::describe(p.as_const());
     ::tpy::Union<Label, Point> __slot_2 = Label("hello");
     ::tpy::Union<Label*, Point*> la = ::tpy::to_ptr_variant(__slot_2);
-    describe(la.as_const());
+    ::tpyapp::main::describe(la.as_const());
 }
 
 // # match/case mixing positional and keyword patterns
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

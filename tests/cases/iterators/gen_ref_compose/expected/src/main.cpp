@@ -49,7 +49,7 @@ void main() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
     std::vector<int32_t> vals = {10, 20};
     {
-        auto __src_0 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+        auto __src_0 = ::tpyapp::main::my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -59,7 +59,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = my_map<int32_t, int32_t>(double_, vals);
+        auto __src_2 = ::tpyapp::main::my_map<int32_t, int32_t>(double_, vals);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -69,7 +69,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = my_enumerate<Point>(pts);
+        auto __src_4 = ::tpyapp::main::my_enumerate<Point>(pts);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -82,8 +82,8 @@ void main() {
         }
     }
     {
-        auto __tmp_1 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
-        auto __src_6 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_1);
+        auto __tmp_1 = ::tpyapp::main::my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+        auto __src_6 = ::tpyapp::main::my_enumerate<::tpy::val_or_ref<Point>>(__tmp_1);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -96,7 +96,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+        auto __src_8 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpyapp::main::my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -109,8 +109,8 @@ void main() {
         }
     }
     {
-        auto __tmp_2 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
-        auto __src_10 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_2);
+        auto __tmp_2 = ::tpyapp::main::my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+        auto __src_10 = ::tpyapp::main::my_enumerate<::tpy::val_or_ref<Point>>(__tmp_2);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -137,7 +137,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -30,7 +30,7 @@ int32_t test(Point& a, bool cond) {
         p = &(a);
     }
     Point __tmp_1 = (*p);
-    return consume(std::move(__tmp_1));
+    return ::tpyapp::main::consume(std::move(__tmp_1));
 }
 
 void __tpy_init() {

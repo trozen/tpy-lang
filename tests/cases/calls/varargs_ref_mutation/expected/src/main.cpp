@@ -50,12 +50,12 @@ void main() {
     Counter b = Counter(::tpy::BigInt(0));
     Counter c = Counter(::tpy::BigInt(0));
     std::array<Counter*, 3> __tmp_1{&a, &b, &c};
-    increment_all(::tpy::varargs<Counter>(__tmp_1));
+    ::tpyapp::main::increment_all(::tpy::varargs<Counter>(__tmp_1));
     std::cout << a.value << "\n";
     std::cout << b.value << "\n";
     std::cout << c.value << "\n";
     std::array<Counter*, 2> __tmp_2{&a, &b};
-    set_values(::tpy::varargs<Counter>(__tmp_2));
+    ::tpyapp::main::set_values(::tpy::varargs<Counter>(__tmp_2));
     std::cout << a.value << "\n";
     std::cout << b.value << "\n";
     std::cout << c.value << "\n";
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -31,17 +31,17 @@ namespace tpyapp::main {
 //     print(keys[0], keys[1])
 void main() {
     std::vector<Point> pts = {Point(::tpy::BigInt(1), ::tpy::BigInt(2)), Point(::tpy::BigInt(3), ::tpy::BigInt(4))};
-    mutate_via_iterable(pts);
+    ::tpyapp::main::mutate_via_iterable(pts);
     std::cout << ::tpy::__getitem__(pts, 0).x << " " << ::tpy::__getitem__(pts, 0).y << "\n";
     std::cout << ::tpy::__getitem__(pts, 1).x << " " << ::tpy::__getitem__(pts, 1).y << "\n";
     std::vector<Point> pts2 = {Point(::tpy::BigInt(10), ::tpy::BigInt(20)), Point(::tpy::BigInt(30), ::tpy::BigInt(40))};
     auto __tmp_1 = ::tpy::__iter__(pts2);
-    mutate_via_iterator(__tmp_1);
+    ::tpyapp::main::mutate_via_iterator(__tmp_1);
     std::cout << ::tpy::__getitem__(pts2, 0).x << " " << ::tpy::__getitem__(pts2, 0).y << "\n";
     std::cout << ::tpy::__getitem__(pts2, 1).x << " " << ::tpy::__getitem__(pts2, 1).y << "\n";
     std::vector<Point> pts3 = {Point(::tpy::BigInt(5), ::tpy::BigInt(6))};
     {
-        auto __src_0 = gen_double_x(pts3);
+        auto __src_0 = ::tpyapp::main::gen_double_x(pts3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -40,7 +40,7 @@ __coro_add add(int32_t a, int32_t b) {
 ::tpystd::tpy::Poll<int32_t> __coro_with_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(add(5))));
+        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::add(5))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -70,7 +70,7 @@ __coro_with_default with_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_with_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(add(5, 2))));
+        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::add(5, 2))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -621,21 +621,21 @@ __coro_cross_module_override cross_module_override() {
 //     print("xmod", asyncio.run(cross_module_default()))
 //     print("xmod-override", asyncio.run(cross_module_override()))
 void main() {
-    std::cout << "task-default" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(with_default())) << "\n";
-    std::cout << "task-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(with_override())) << "\n";
-    std::cout << "inline-default" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(inline_default())) << "\n";
-    std::cout << "inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(inline_override())) << "\n";
-    std::cout << "generic-inline" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(generic_default())) << "\n";
-    std::cout << "generic-inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(generic_override())) << "\n";
-    std::cout << "method-inline" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(method_inline_default())) << "\n";
-    std::cout << "method-inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(method_inline_override())) << "\n";
-    std::cout << "method-task" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(method_task_default())) << "\n";
-    std::cout << "method-task-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(method_task_override())) << "\n";
-    std::cout << "aenter" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(aenter_default())) << "\n";
-    std::cout << "aexit-extra" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(aexit_default())) << "\n";
-    std::cout << "anext" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(anext_default())) << "\n";
-    std::cout << "xmod" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cross_module_default())) << "\n";
-    std::cout << "xmod-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cross_module_override())) << "\n";
+    std::cout << "task-default" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_default())) << "\n";
+    std::cout << "task-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_override())) << "\n";
+    std::cout << "inline-default" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::inline_default())) << "\n";
+    std::cout << "inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::inline_override())) << "\n";
+    std::cout << "generic-inline" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::generic_default())) << "\n";
+    std::cout << "generic-inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::generic_override())) << "\n";
+    std::cout << "method-inline" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::method_inline_default())) << "\n";
+    std::cout << "method-inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::method_inline_override())) << "\n";
+    std::cout << "method-task" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::method_task_default())) << "\n";
+    std::cout << "method-task-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::method_task_override())) << "\n";
+    std::cout << "aenter" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::aenter_default())) << "\n";
+    std::cout << "aexit-extra" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::aexit_default())) << "\n";
+    std::cout << "anext" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::anext_default())) << "\n";
+    std::cout << "xmod" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::cross_module_default())) << "\n";
+    std::cout << "xmod-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::cross_module_override())) << "\n";
 }
 
 // async def add(self, a: int32, b: int32 = 10) -> int32:
@@ -825,7 +825,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::defmod::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -53,7 +53,7 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         data.emplace(std::vector<int32_t>{10, 20});
-        std::cout << ::tpy::builtin_sum<int32_t>(tail((*data))) << "\n";
+        std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::tail((*data))) << "\n";
         h.emplace(Holder());
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
@@ -92,9 +92,9 @@ __coro_amain amain() {
 //     asyncio.run(amain())
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << ::tpy::builtin_sum<int32_t>(tail(__tmp_1)) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::tail(__tmp_1)) << "\n";
     std::vector<int32_t> __tmp_2 = {3, 4};
-    auto g = tail(__tmp_2);
+    auto g = ::tpyapp::main::tail(__tmp_2);
     int32_t total = 0;
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -105,7 +105,7 @@ void main() {
         total = ::tpy::add_check<int32_t>(total, x);
     }
     std::cout << total << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 
 // async def total(self) -> int32:
@@ -168,7 +168,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -290,7 +290,7 @@ inline int32_t Counter::index() {
 //             pass
 template<typename T>
 void generic_read(::tpy::param_val_or_ref_t<T> marker) {
-    ::tpy::Union<int32_t, std::string> x = union_text(true);
+    ::tpy::Union<int32_t, std::string> x = ::tpyapp::main::union_text(true);
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     case 1: {

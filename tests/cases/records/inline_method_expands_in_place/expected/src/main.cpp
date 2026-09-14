@@ -15,7 +15,7 @@ void sink(int32_t n) {
 //     b.emit()  # expands to sink(b.v)
 void main() {
     Box b = Box(3);
-    sink(b.v);
+    ::tpyapp::main::sink(b.v);
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -61,11 +61,11 @@ int32_t count_total(const std::vector<Counter>& cs) {
 //     print(count_total(cs))  # 12
 void main() {
     std::vector<P> ps = {P(1), P(2), P(3)};
-    std::cout << total(ps) << "\n";
-    bump_all(ps);
-    std::cout << total(ps) << "\n";
+    std::cout << ::tpyapp::main::total(ps) << "\n";
+    ::tpyapp::main::bump_all(ps);
+    std::cout << ::tpyapp::main::total(ps) << "\n";
     std::vector<Counter> cs = ::tpy::make_vector<Counter>(Counter(5), Counter(7));
-    std::cout << count_total(cs) << "\n";
+    std::cout << ::tpyapp::main::count_total(cs) << "\n";
 }
 
 // main()
@@ -74,7 +74,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ void main() {
     V3 b = V3(2.0);
     std::cout << ::tpy::print_float(a.add(b.muls(3.0)).x) << "\n";
     std::cout << ::tpy::print_float(a.add(b.muls(3.0)).add(b.muls(4.0)).x) << "\n";
-    std::cout << ::tpy::print_float(a.add(mk(4.0)).x) << "\n";
+    std::cout << ::tpy::print_float(a.add(::tpyapp::main::mk(4.0)).x) << "\n";
     std::cout << ::tpy::print_float(a.add(V3(5.0)).x) << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

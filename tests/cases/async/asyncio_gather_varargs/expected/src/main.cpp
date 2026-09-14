@@ -62,9 +62,9 @@ __coro_fetch fetch(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(1))));
-        t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(2))));
-        t3.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(3))));
+        t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(1))));
+        t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(2))));
+        t3.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(3))));
         std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 3> __tmp_1{&(*t1), &(*t2), &(*t3)};
         __sub_0.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(__tmp_1))));
         __state = S_RESUME_0;
@@ -83,7 +83,7 @@ __coro_fetch fetch(int32_t n) {
             int32_t r = *__beg_0;
             std::cout << r << "\n";
         }
-        s1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(10))));
+        s1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(10))));
         std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 1> __tmp_2{&(*s1)};
         __sub_1.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(__tmp_2))));
         __state = S_RESUME_1;
@@ -103,8 +103,8 @@ __coro_fetch fetch(int32_t n) {
             std::cout << r << "\n";
         }
         pending.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(4))));
-        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(5))));
+        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(4))));
+        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(5))));
         __sub_2.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(::tpy::as_mut_span((*pending))))));
         __state = S_RESUME_2;
         continue;
@@ -139,7 +139,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio.gather (variadic-positional form): homogeneous Task[T] args
@@ -156,7 +156,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

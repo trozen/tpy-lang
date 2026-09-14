@@ -5565,7 +5565,9 @@ Each module initializes only once (double-init guard prevents diamond dependency
 main.py:1: warning: import 'math' shadows builtin module
 ```
 
-**C++ mapping:** Each module gets its own namespace (`tpyapp::utils::Point`). Cross-module references use fully qualified names. Package modules use nested namespaces (`tpyapp::mypackage::submod::func`).
+**C++ mapping:** Each module gets its own namespace (`tpyapp::utils::Point`). Cross-module references use fully qualified names. Package modules use nested namespaces (`tpyapp::mypackage::submod::func`). A `# tpy: cpp_namespace("ns")` directive replaces `tpyapp::<module>` for that module and its package children.
+
+A call to a module-level function is qualified too, including a SAME-module one (`::tpyapp::main::apply(f, v)`, never a bare `apply(f, v)`). A bare call is an unqualified-id, so C++ argument-dependent lookup adds the namespaces of every argument type to the overload set: a `std::function` or `list` argument pulls in `std` and a `::tpy::` type pulls in `::tpy::`, and a same-named template there (`std::invoke`, `std::apply`) can be a better match than the user's own function. A qualified-id disables ADL, so a user function may safely carry any name. Calls through a LOCAL callable -- a nested `def` or a `Callable`/`Fn` value -- stay bare: they name a C++ local, which no namespace can reach.
 
 ### Packages (Working)
 

@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_str_ptr();
+    ::tpyapp::main::test_str_ptr();
 }
 
 } // namespace tpyapp::main

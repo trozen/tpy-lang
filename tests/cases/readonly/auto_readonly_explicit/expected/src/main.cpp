@@ -23,7 +23,7 @@ void main() {
     Buffer b = Buffer();
     std::span<int32_t> s = b.as_span();
     std::cout << ::tpy::__getitem__(s, 2) << "\n";
-    read_buf(b);
+    ::tpyapp::main::read_buf(b);
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

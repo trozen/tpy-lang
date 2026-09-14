@@ -58,7 +58,7 @@ int32_t neg(Prio p) {
 void main() {
     Prio p = Prio::HIGH;
     std::cout << (-static_cast<int32_t>(p)) << "\n";
-    std::cout << neg(Prio::LOW) << "\n";
+    std::cout << ::tpyapp::main::neg(Prio::LOW) << "\n";
     std::cout << std::format("m={}", (-static_cast<int32_t>(p))) << "\n";
 }
 
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

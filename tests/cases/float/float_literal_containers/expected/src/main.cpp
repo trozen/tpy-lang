@@ -67,12 +67,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_list_inferred();
-    test_list_annotated_float32();
-    test_dict_inferred();
-    test_set_inferred();
-    test_ternary_float_literal();
-    test_annotated_float64();
+    ::tpyapp::main::test_list_inferred();
+    ::tpyapp::main::test_list_annotated_float32();
+    ::tpyapp::main::test_dict_inferred();
+    ::tpyapp::main::test_set_inferred();
+    ::tpyapp::main::test_ternary_float_literal();
+    ::tpyapp::main::test_annotated_float64();
 }
 
 } // namespace tpyapp::main

@@ -16,7 +16,7 @@ int32_t use(const ::tpyapp::pkg::state::Counter& c) {
 void main() {
     std::cout << ::tpyapp::pkg::state::LIMIT << "\n";
     ::tpyapp::pkg::state::Counter __tmp_1 = ::tpyapp::pkg::state::Counter(7);
-    std::cout << use(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use(__tmp_1) << "\n";
 }
 
 // # `from pkg import submod as alias` -- the alias must work as a namespace
@@ -33,7 +33,7 @@ void __tpy_init() {
 
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::state::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

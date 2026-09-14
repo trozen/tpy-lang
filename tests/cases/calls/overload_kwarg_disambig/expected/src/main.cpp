@@ -28,9 +28,9 @@ int32_t pick(int32_t x, int32_t tag) {
 //     b: int32 = pick(int32(10), tag=int32(5))
 //     print(b)                                # 15
 void main() {
-    std::string a = pick(10, std::string_view("label"));
+    std::string a = ::tpyapp::main::pick(10, std::string_view("label"));
     std::cout << a << "\n";
-    int32_t b = pick(10, 5);
+    int32_t b = ::tpyapp::main::pick(10, 5);
     std::cout << b << "\n";
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

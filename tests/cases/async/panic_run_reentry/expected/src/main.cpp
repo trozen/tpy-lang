@@ -31,7 +31,7 @@ __coro_inner inner() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
-        ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(inner()));
+        ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::inner()));
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -49,7 +49,7 @@ __coro_outer outer() {
 // def main() -> None:
 //     asyncio.run(outer())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(outer()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::outer()));
 }
 
 // # Nested asyncio.run raises RuntimeError (mirrors CPython's "asyncio.run()
@@ -66,7 +66,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

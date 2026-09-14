@@ -29,7 +29,7 @@ void mut() {
 //         print(i)
 void f(const std::vector<std::optional<int32_t>>& items) {
     if ((::tpy::__getitem__(items, 0).has_value())) {
-        mut();
+        ::tpyapp::main::mut();
         int32_t i = (::tpy::add_check<int32_t>(1, ::tpy::deref_optional_check(::tpy::__getitem__(items, 0))));
         std::cout << i << "\n";
     }
@@ -43,9 +43,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::vector<std::optional<int32_t>> __global_slot_1 = make_list();
+    static std::vector<std::optional<int32_t>> __global_slot_1 = ::tpyapp::main::make_list();
     l = &__global_slot_1;
-    f((*l));
+    ::tpyapp::main::f((*l));
 }
 
 } // namespace tpyapp::main

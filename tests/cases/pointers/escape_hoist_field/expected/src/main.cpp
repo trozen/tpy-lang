@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    field_access_escape();
+    ::tpyapp::main::field_access_escape();
 }
 
 } // namespace tpyapp::main

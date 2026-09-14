@@ -23,7 +23,7 @@ void main() {
     Acc __tmp_2 = Acc(1);
     Acc __tmp_3 = Acc(3);
     Acc __tmp_4 = Acc(1);
-    std::cout << bigger(__tmp_1, __tmp_2).n << " " << bigger_copy(__tmp_3, __tmp_4).n << "\n";
+    std::cout << ::tpyapp::main::bigger(__tmp_1, __tmp_2).n << " " << ::tpyapp::main::bigger_copy(__tmp_3, __tmp_4).n << "\n";
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

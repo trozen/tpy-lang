@@ -64,7 +64,7 @@ void test_while(Point* p) {
 void test_while_reassign(Point* p) {
     while ((p != nullptr)) {
         std::cout << p->x << "\n";
-        p = get_ptr(p);
+        p = ::tpyapp::main::get_ptr(p);
         break;
     }
 }
@@ -107,13 +107,13 @@ void main() {
     Point pt = Point(10, 20);
     Point* p = &pt;
     const Point* cp = &pt;
-    std::cout << test_if_not_none(p) << "\n";
-    std::cout << test_is_none_early_return(p) << "\n";
-    std::cout << test_assert(p) << "\n";
-    test_while(p);
-    test_while_reassign(p);
-    std::cout << test_readonly_ptr(cp) << "\n";
-    std::cout << test_merge_no_guarantee(p) << "\n";
+    std::cout << ::tpyapp::main::test_if_not_none(p) << "\n";
+    std::cout << ::tpyapp::main::test_is_none_early_return(p) << "\n";
+    std::cout << ::tpyapp::main::test_assert(p) << "\n";
+    ::tpyapp::main::test_while(p);
+    ::tpyapp::main::test_while_reassign(p);
+    std::cout << ::tpyapp::main::test_readonly_ptr(cp) << "\n";
+    std::cout << ::tpyapp::main::test_merge_no_guarantee(p) << "\n";
 }
 
 // main()
@@ -122,7 +122,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

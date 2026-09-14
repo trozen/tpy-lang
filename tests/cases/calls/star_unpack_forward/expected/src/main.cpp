@@ -24,7 +24,7 @@ int32_t sum_all(::tpy::varargs<const int32_t> args) {
 // def double_sum(*args: int32) -> int32:
 //     return sum_all(*args) * 2
 int32_t double_sum(::tpy::varargs<const int32_t> args) {
-    return (::tpy::mul_check<int32_t>(sum_all(::tpy::varargs<const int32_t>(args)), 2));
+    return (::tpy::mul_check<int32_t>(::tpyapp::main::sum_all(::tpy::varargs<const int32_t>(args)), 2));
 }
 
 // def main() -> None:
@@ -32,9 +32,9 @@ int32_t double_sum(::tpy::varargs<const int32_t> args) {
 //     print(double_sum(10))
 void main() {
     std::array<const int32_t, 3> __tmp_1{1, 2, 3};
-    std::cout << double_sum(::tpy::varargs<const int32_t>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::double_sum(::tpy::varargs<const int32_t>(__tmp_1)) << "\n";
     std::array<const int32_t, 1> __tmp_2{10};
-    std::cout << double_sum(::tpy::varargs<const int32_t>(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::double_sum(::tpy::varargs<const int32_t>(__tmp_2)) << "\n";
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

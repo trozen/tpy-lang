@@ -18,9 +18,9 @@ int32_t fn(uint32_t flags, int32_t limit) {
 //     print(e.run())
 //     print(e.run(uint32(2), int32(1)))
 void main() {
-    std::cout << fn() << "\n";
-    std::cout << fn(7) << "\n";
-    std::cout << fn(0, 3) << "\n";
+    std::cout << ::tpyapp::main::fn() << "\n";
+    std::cout << ::tpyapp::main::fn(7) << "\n";
+    std::cout << ::tpyapp::main::fn(0, 3) << "\n";
     Engine e = Engine();
     std::cout << e.run() << "\n";
     std::cout << e.run(2, 1) << "\n";
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

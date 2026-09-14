@@ -194,9 +194,9 @@ __gen_gen_return_in_loop gen_return_in_loop() {
 //     print(list(gen_return_suppresses_exc()))
 //     print(list(gen_return_in_loop()))
 void main() {
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_return_normal())) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_return_suppresses_exc())) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_return_in_loop())) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_return_normal())) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_return_suppresses_exc())) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_return_in_loop())) << "\n";
 }
 
 // main()
@@ -205,7 +205,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

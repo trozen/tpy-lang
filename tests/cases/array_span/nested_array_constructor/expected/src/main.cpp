@@ -15,7 +15,7 @@ int32_t take_span_nested(std::span<std::array<int32_t, 2>> s) {
 //     result: int32 = take_span_nested(Array[Array[int32, 2], 2]([[1, 2], [3, 4]]))
 //     print(result)  # 1 + 4 = 5
 void main() {
-    int32_t result = take_span_nested(::tpy::as_mut_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
+    int32_t result = ::tpyapp::main::take_span_nested(::tpy::as_mut_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
     std::cout << result << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

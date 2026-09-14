@@ -183,7 +183,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_roundtrip() {
 void main() {
     {
         {
-            auto __try_tmp_14 = test_reader_standard();
+            auto __try_tmp_14 = ::tpyapp::main::test_reader_standard();
             if (!__try_tmp_14.has_value()) goto __except_13;
         }
         goto __after_try_13;
@@ -194,7 +194,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_16 = test_reader_bf();
+            auto __try_tmp_16 = ::tpyapp::main::test_reader_bf();
             if (!__try_tmp_16.has_value()) goto __except_15;
         }
         goto __after_try_15;
@@ -205,7 +205,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_18 = test_reader_unicode();
+            auto __try_tmp_18 = ::tpyapp::main::test_reader_unicode();
             if (!__try_tmp_18.has_value()) goto __except_17;
         }
         goto __after_try_17;
@@ -214,10 +214,10 @@ void main() {
         std::cout << "ERROR" << "\n";
         __after_try_17:;
     }
-    test_writer_control_chars();
+    ::tpyapp::main::test_writer_control_chars();
     {
         {
-            auto __try_tmp_20 = test_roundtrip();
+            auto __try_tmp_20 = ::tpyapp::main::test_roundtrip();
             if (!__try_tmp_20.has_value()) goto __except_19;
         }
         goto __after_try_19;
@@ -238,7 +238,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

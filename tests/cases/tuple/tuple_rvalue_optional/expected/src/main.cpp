@@ -63,13 +63,13 @@ void show2(const std::tuple<const Point*, const Point*>& p) {
 //     show2((Point(20), p))
 //     show2((p, Point(30)))
 void main() {
-    show(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1), 42}));
+    ::tpyapp::main::show(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1), 42}));
     Point p = Point(7);
-    show(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(2), 99}));
-    show(std::tuple<Point*, int32_t>{nullptr, 5});
-    show(std::tuple<Point*, int32_t>{&(p), 11});
-    show2(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point*>{Point(20), &(p)}));
-    show2(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point*, Point>{&(p), Point(30)}));
+    ::tpyapp::main::show(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(2), 99}));
+    ::tpyapp::main::show(std::tuple<Point*, int32_t>{nullptr, 5});
+    ::tpyapp::main::show(std::tuple<Point*, int32_t>{&(p), 11});
+    ::tpyapp::main::show2(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point*>{Point(20), &(p)}));
+    ::tpyapp::main::show2(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point*, Point>{&(p), Point(30)}));
 }
 
 // main()
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

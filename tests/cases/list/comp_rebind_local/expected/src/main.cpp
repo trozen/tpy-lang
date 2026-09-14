@@ -573,31 +573,31 @@ void call_rebinds() {
 //     print("async:", asyncio.run(coro()))
 //     call_rebinds()
 void main() {
-    free_self();
-    other_source();
-    filtered();
-    loop();
-    if_body_after_empty();
-    std::cout << "both_arms:" << " " << both_arms(1) << " " << both_arms(0) << "\n";
-    comp_first();
-    dict_comp();
-    set_comp();
-    str_elems();
-    tuple_elems();
-    record_elems();
+    ::tpyapp::main::free_self();
+    ::tpyapp::main::other_source();
+    ::tpyapp::main::filtered();
+    ::tpyapp::main::loop();
+    ::tpyapp::main::if_body_after_empty();
+    std::cout << "both_arms:" << " " << ::tpyapp::main::both_arms(1) << " " << ::tpyapp::main::both_arms(0) << "\n";
+    ::tpyapp::main::comp_first();
+    ::tpyapp::main::dict_comp();
+    ::tpyapp::main::set_comp();
+    ::tpyapp::main::str_elems();
+    ::tpyapp::main::tuple_elems();
+    ::tpyapp::main::record_elems();
     std::cout << "method_local:" << " " << C().bump({10}) << "\n";
     std::cout << "ctor_local:" << " " << C().n << "\n";
     C c = C();
     c.bump_field();
     std::cout << "field:" << " " << ::tpy::ListPrinter(c.xs) << "\n";
-    closure();
-    with_body();
-    try_finally();
-    match_arm();
+    ::tpyapp::main::closure();
+    ::tpyapp::main::with_body();
+    ::tpyapp::main::try_finally();
+    ::tpyapp::main::match_arm();
     int32_t v;
     {
         {
-            auto __try_tmp_2 = err_ret();
+            auto __try_tmp_2 = ::tpyapp::main::err_ret();
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -607,8 +607,8 @@ void main() {
         __except_1:;
         __after_try_1:;
     }
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(coro())) << "\n";
-    call_rebinds();
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro())) << "\n";
+    ::tpyapp::main::call_rebinds();
 }
 
 // # A container local rebound from a comprehension (`xs = [f(x) for x in xs]`)
@@ -627,7 +627,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     gxs = &__global_slot_1;
     (*gxs) = ({

@@ -15,8 +15,8 @@ namespace tpyapp::main {
 //     a, b = (make(7), make(9))
 //     return (a, b)
 std::tuple<::tpystd::tplib::box::Box<int32_t>, ::tpystd::tplib::box::Box<int32_t>> pair() {
-    ::tpystd::tplib::box::Box<int32_t> __unpack_0_0 = make(7);
-    ::tpystd::tplib::box::Box<int32_t> __unpack_0_1 = make(9);
+    ::tpystd::tplib::box::Box<int32_t> __unpack_0_0 = ::tpyapp::main::make(7);
+    ::tpystd::tplib::box::Box<int32_t> __unpack_0_1 = ::tpyapp::main::make(9);
     ::tpystd::tplib::box::Box<int32_t> a = std::move(__unpack_0_0);
     ::tpystd::tplib::box::Box<int32_t> b = std::move(__unpack_0_1);
     return std::tuple<::tpystd::tplib::box::Box<int32_t>, ::tpystd::tplib::box::Box<int32_t>>{std::move(a), std::move(b)};
@@ -27,7 +27,7 @@ std::tuple<::tpystd::tplib::box::Box<int32_t>, ::tpystd::tplib::box::Box<int32_t
 //     print(x.get())
 //     print(y.get())
 void main() {
-    auto __tup_1 = pair();
+    auto __tup_1 = ::tpyapp::main::pair();
     ::tpystd::tplib::box::Box<int32_t> x = std::move(std::get<0>(__tup_1));
     ::tpystd::tplib::box::Box<int32_t> y = std::move(std::get<1>(__tup_1));
     std::cout << x.get() << "\n";
@@ -44,7 +44,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

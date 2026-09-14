@@ -102,25 +102,25 @@ std::string with_capture(const Point& p) {
 //     print(with_capture(Point(int32(7), int32(8))))
 void main() {
     Point __tmp_1 = Point(0, 0);
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
     Point __tmp_2 = Point(3, 0);
-    std::cout << describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
     Point __tmp_3 = Point(0, 5);
-    std::cout << describe(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n";
     Point __tmp_4 = Point(3, 4);
-    std::cout << describe(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_4) << "\n";
     Point __tmp_5 = Point(0, 0);
-    std::cout << check_quadrant(__tmp_5) << "\n";
+    std::cout << ::tpyapp::main::check_quadrant(__tmp_5) << "\n";
     Point __tmp_6 = Point(1, 2);
-    std::cout << check_quadrant(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::check_quadrant(__tmp_6) << "\n";
     Point __tmp_7 = Point(0, 0);
-    std::cout << positional(__tmp_7) << "\n";
+    std::cout << ::tpyapp::main::positional(__tmp_7) << "\n";
     Point __tmp_8 = Point(5, 0);
-    std::cout << positional(__tmp_8) << "\n";
+    std::cout << ::tpyapp::main::positional(__tmp_8) << "\n";
     Point __tmp_9 = Point(1, 2);
-    std::cout << positional(__tmp_9) << "\n";
+    std::cout << ::tpyapp::main::positional(__tmp_9) << "\n";
     Point __tmp_10 = Point(7, 8);
-    std::cout << with_capture(__tmp_10) << "\n";
+    std::cout << ::tpyapp::main::with_capture(__tmp_10) << "\n";
 }
 
 // # match/case on concrete record subjects with field-value matching
@@ -132,7 +132,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -36,7 +36,7 @@ int32_t leaf_count(const Tree<int32_t>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, leaf_count(child));
+            total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::leaf_count(child));
         }
         return total;
         break;
@@ -53,10 +53,10 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 //     print(leaf_count(make_leaf()))
 //     print(leaf_count(make_branch()))
 void main() {
-    Tree<int32_t> __tmp_1 = make_leaf();
-    std::cout << leaf_count(__tmp_1) << "\n";
-    Tree<int32_t> __tmp_2 = make_branch();
-    std::cout << leaf_count(__tmp_2) << "\n";
+    Tree<int32_t> __tmp_1 = ::tpyapp::main::make_leaf();
+    std::cout << ::tpyapp::main::leaf_count(__tmp_1) << "\n";
+    Tree<int32_t> __tmp_2 = ::tpyapp::main::make_branch();
+    std::cout << ::tpyapp::main::leaf_count(__tmp_2) << "\n";
 }
 
 // main()
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

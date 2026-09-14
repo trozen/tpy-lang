@@ -22,7 +22,7 @@ Handle chain_reads() {
 //     r = chain_reads()
 //     print(r.fd)
 void main() {
-    Handle r = chain_reads();
+    Handle r = ::tpyapp::main::chain_reads();
     std::cout << r.fd << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

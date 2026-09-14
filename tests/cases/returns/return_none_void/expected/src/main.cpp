@@ -404,24 +404,24 @@ std::optional<std::string> opt_str_none(int32_t k) {
 //     zero = union_bare(0)
 //     print("union_bare", pos, neg, zero)
 void main() {
-    free_fn();
+    ::tpyapp::main::free_fn();
     Rec r = Rec(1);
     r.bump();
     std::cout << "method" << " " << r.n << "\n";
     Rec::announce();
-    try_finally();
-    with_body();
-    match_arm(0);
-    match_arm(1);
-    closure_host();
-    unannotated();
+    ::tpyapp::main::try_finally();
+    ::tpyapp::main::with_body();
+    ::tpyapp::main::match_arm(0);
+    ::tpyapp::main::match_arm(1);
+    ::tpyapp::main::closure_host();
+    ::tpyapp::main::unannotated();
     {
         {
-            auto __try_tmp_2 = er_step(true);
+            auto __try_tmp_2 = ::tpyapp::main::er_step(true);
             if (!__try_tmp_2.has_value()) goto __except_1;
         }
         {
-            auto __try_tmp_3 = er_step(false);
+            auto __try_tmp_3 = ::tpyapp::main::er_step(false);
             if (!__try_tmp_3.has_value()) goto __except_1;
         }
         goto __after_try_1;
@@ -430,20 +430,20 @@ void main() {
         std::cout << "er caught" << "\n";
         __after_try_1:;
     }
-    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen())) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_bare())) << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
-    std::cout << "opt_int_bare" << " " << ::tpy::print_optional_val(opt_int_bare(1)) << " " << ::tpy::print_optional_val(opt_int_bare(0)) << "\n";
+    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen())) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_bare())) << "\n";
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
+    std::cout << "opt_int_bare" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_bare(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_bare(0)) << "\n";
     Rec store = Rec(10);
-    Rec* found = opt_rec_bare(store, true);
+    Rec* found = ::tpyapp::main::opt_rec_bare(store, true);
     if ((found != nullptr)) {
         found->n = 11;
     }
-    std::cout << "opt_rec_bare" << " " << store.n << " " << ::tpy::print_bool((opt_rec_bare(store, false) == nullptr)) << "\n";
-    std::cout << "opt_int_none" << " " << ::tpy::print_optional_val(opt_int_none(1)) << " " << ::tpy::print_optional_val(opt_int_none(0)) << "\n";
-    std::cout << "opt_str_none" << " " << ::tpy::print_optional_val(opt_str_none(1)) << " " << ::tpy::print_optional_val(opt_str_none(0)) << "\n";
-    ::tpy::Union<std::monostate, int32_t, std::string> pos = union_bare(1);
-    ::tpy::Union<std::monostate, int32_t, std::string> neg = union_bare(-1);
-    ::tpy::Union<std::monostate, int32_t, std::string> zero = union_bare(0);
+    std::cout << "opt_rec_bare" << " " << store.n << " " << ::tpy::print_bool((::tpyapp::main::opt_rec_bare(store, false) == nullptr)) << "\n";
+    std::cout << "opt_int_none" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_none(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_none(0)) << "\n";
+    std::cout << "opt_str_none" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_str_none(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_str_none(0)) << "\n";
+    ::tpy::Union<std::monostate, int32_t, std::string> pos = ::tpyapp::main::union_bare(1);
+    ::tpy::Union<std::monostate, int32_t, std::string> neg = ::tpyapp::main::union_bare(-1);
+    ::tpy::Union<std::monostate, int32_t, std::string> zero = ::tpyapp::main::union_bare(0);
     std::cout << "union_bare" << " " << ::tpy::__str__(pos) << " " << ::tpy::__str__(neg) << " " << ::tpy::__str__(zero) << "\n";
 }
 
@@ -459,7 +459,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

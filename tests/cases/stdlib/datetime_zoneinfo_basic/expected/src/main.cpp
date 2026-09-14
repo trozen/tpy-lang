@@ -80,7 +80,7 @@ void __tpy_init() {
 
     ::tpystd::datetime::__tpy_init();
     ::tpystd::zoneinfo::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

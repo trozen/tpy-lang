@@ -55,25 +55,25 @@ std::string roundtrip(std::string_view s) {
 void main() {
     {
         try {
-            std::cout << roundtrip("null") << "\n";
-            std::cout << roundtrip("true") << "\n";
-            std::cout << roundtrip("false") << "\n";
-            std::cout << roundtrip("42") << "\n";
-            std::cout << roundtrip("-7") << "\n";
-            std::cout << roundtrip("0") << "\n";
-            std::cout << roundtrip("3.14") << "\n";
-            std::cout << roundtrip("\"hello\"") << "\n";
-            std::cout << roundtrip("{\"name\": \"Alice\", \"age\": 30}") << "\n";
-            std::cout << roundtrip("[1, 2, 3]") << "\n";
-            std::cout << roundtrip("{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"count\": 2}") << "\n";
-            std::cout << roundtrip("[1, 2, 3]") << "\n";
-            std::cout << roundtrip("[1.0, 2.0, 3.0]") << "\n";
-            std::cout << roundtrip("[1, null, \"x\"]") << "\n";
-            std::cout << roundtrip("{\"a\": null}") << "\n";
-            std::cout << roundtrip("\"line1\\nline2\"") << "\n";
-            std::cout << roundtrip("\"quote\\\"\"") << "\n";
-            std::cout << roundtrip("{}") << "\n";
-            std::cout << roundtrip("[]") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("null") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("true") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("false") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("42") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("-7") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("0") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("3.14") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("\"hello\"") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("{\"name\": \"Alice\", \"age\": 30}") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("[1, 2, 3]") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"count\": 2}") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("[1, 2, 3]") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("[1.0, 2.0, 3.0]") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("[1, null, \"x\"]") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("{\"a\": null}") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("\"line1\\nline2\"") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("\"quote\\\"\"") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("{}") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("[]") << "\n";
             ::tpystd::json::JsonValue sk = ::tpystd::json::loads("{\"b\": 1, \"a\": 2, \"c\": 3}");
             std::cout << ::tpystd::json::dumps(sk, 0, true) << "\n";
         } catch (const ::tpystd::json::JSONDecodeError& e) {
@@ -93,7 +93,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::json::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

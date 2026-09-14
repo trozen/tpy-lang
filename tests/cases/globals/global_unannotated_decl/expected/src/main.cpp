@@ -27,11 +27,11 @@ void reset() {
 //     reset()
 //     print(count)
 void main() {
-    bump();
+    ::tpyapp::main::bump();
     P();
     P::boost();
     std::cout << count << "\n";
-    reset();
+    ::tpyapp::main::reset();
     std::cout << count << "\n";
 }
 
@@ -46,7 +46,7 @@ void __tpy_init() {
     initialized = true;
 
     count = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

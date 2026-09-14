@@ -56,10 +56,10 @@ Payload unwrap_record(std::optional<Payload> x) {
 //     print(unwrap_bigint(100))
 //     print(unwrap_string_with_print("test"))
 void main() {
-    std::cout << unwrap_record(Payload("hello", ::tpy::BigInt(42))).data << "\n";
-    std::cout << unwrap_string("world") << "\n";
-    std::cout << unwrap_bigint(100) << "\n";
-    std::cout << unwrap_string_with_print("test") << "\n";
+    std::cout << ::tpyapp::main::unwrap_record(Payload("hello", ::tpy::BigInt(42))).data << "\n";
+    std::cout << ::tpyapp::main::unwrap_string("world") << "\n";
+    std::cout << ::tpyapp::main::unwrap_bigint(100) << "\n";
+    std::cout << ::tpyapp::main::unwrap_string_with_print("test") << "\n";
 }
 
 // main()
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -15,14 +15,14 @@ int32_t sink(std::tuple<Box, int32_t>&& p) {
 //     return sink(pair)
 int32_t f(const Box& b) {
     auto pair = std::tuple<Box, int32_t>{Box(b), 0};
-    return sink(std::move(pair));
+    return ::tpyapp::main::sink(std::move(pair));
 }
 
 // def main() -> None:
 //     print(f(Box(5)))  # 5
 void main() {
     Box __tmp_1 = Box(5);
-    std::cout << f(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1) << "\n";
 }
 
 // main()
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

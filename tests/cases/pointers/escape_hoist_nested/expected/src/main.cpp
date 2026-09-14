@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    nested_loop_escape();
+    ::tpyapp::main::nested_loop_escape();
 }
 
 } // namespace tpyapp::main

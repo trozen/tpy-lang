@@ -22,7 +22,7 @@ std::optional<std::string> maybe() {
 void main() {
     std::optional<std::string> src1 = "one";
     std::optional<std::string> src2 = std::nullopt;
-    std::optional<std::string> src3 = maybe();
+    std::optional<std::string> src3 = ::tpyapp::main::maybe();
     std::vector<std::optional<std::string_view>> items = std::vector<std::optional<std::string_view>>{};
     items.push_back(src1);
     items.push_back(({ auto __ov = (src2); __ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }));
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

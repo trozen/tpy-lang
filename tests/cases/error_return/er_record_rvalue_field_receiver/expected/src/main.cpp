@@ -21,7 +21,7 @@ std::expected<Data, E> make_data(int32_t v) {
 //     # The receiver of `.value` is the unwrapped call result.
 //     return make_data(v).value
 std::expected<int32_t, E> get_value(int32_t v) {
-    return ({ auto __er_1 = make_data(v); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); }).value;
+    return ({ auto __er_1 = ::tpyapp::main::make_data(v); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); }).value;
 }
 
 // def main() -> None:
@@ -32,8 +32,8 @@ std::expected<int32_t, E> get_value(int32_t v) {
 //         print("raised")
 void main() {
     {
-        std::cout << ({ auto __er_3 = get_value(4); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
-        std::cout << ({ auto __er_4 = get_value(-1); if (!__er_4.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << ({ auto __er_3 = ::tpyapp::main::get_value(4); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
+        std::cout << ({ auto __er_4 = ::tpyapp::main::get_value(-1); if (!__er_4.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
         goto __after_try_2;
         // except E:
         __except_2:;
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

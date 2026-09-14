@@ -25,10 +25,10 @@ void add_num(int32_t n) {
 //     add_num(3)
 //     print(len(NUMS))
 void main() {
-    add(67);
+    ::tpyapp::main::add(67);
     std::cout << ::tpy::__len__((*BUF)) << " " << static_cast<int>(::tpy::bytes_getitem((*BUF), 2)) << "\n";
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper((*BUF))) << "\n";
-    add_num(3);
+    ::tpyapp::main::add_num(3);
     std::cout << ::tpy::__len__((*NUMS)) << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     BUF = &__global_slot_1;
     static std::vector<int32_t> __global_slot_2 = {1, 2};
     NUMS = &__global_slot_2;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

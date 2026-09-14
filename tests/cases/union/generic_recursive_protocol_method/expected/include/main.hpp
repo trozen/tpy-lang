@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // def absorb(self, t: Tree[int32]) -> int32:
 //     return leaf_count(t)
 inline int32_t Counter::absorb(const Tree<int32_t>& t) const {
-    return leaf_count(t);
+    return ::tpyapp::main::leaf_count(t);
 }
 
 // def sprout(self) -> Own[Tree[int32]]:
@@ -80,7 +80,7 @@ inline Tree<int32_t> Counter::sprout() const {
 template<TreeSink T_s>
 int32_t use(T_s& s, Tree<int32_t>& t) {
     Tree<int32_t> __tmp_1 = s.sprout();
-    return (::tpy::add_check<int32_t>(s.absorb(t), leaf_count(__tmp_1)));
+    return (::tpy::add_check<int32_t>(s.absorb(t), ::tpyapp::main::leaf_count(__tmp_1)));
 }
 
 void __tpy_init();

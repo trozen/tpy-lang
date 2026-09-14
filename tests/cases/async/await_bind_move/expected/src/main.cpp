@@ -81,7 +81,7 @@ __coro_into_container into_container() {
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = take(std::move((*p)));
+        int32_t __tpy_async_ret = ::tpyapp::main::take(std::move((*p)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -284,7 +284,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # An await-bound local is auto-moved at its last use, like any other owned
@@ -299,7 +299,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

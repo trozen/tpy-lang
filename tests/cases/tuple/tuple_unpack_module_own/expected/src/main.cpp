@@ -31,14 +31,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    auto __tup_1 = make_pair();
+    auto __tup_1 = ::tpyapp::main::make_pair();
     n = std::get<0>(__tup_1);
     static Point __global_slot_1 = std::move(std::get<1>(__tup_1));
     p = &__global_slot_1;
     std::cout << n << "\n";
     std::cout << p->x << "\n";
     std::cout << p->y << "\n";
-    read_point();
+    ::tpyapp::main::read_point();
 }
 
 } // namespace tpyapp::main

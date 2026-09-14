@@ -14,7 +14,7 @@ namespace tpyapp::main {
 std::string show(const Value& v) {
     if (std::holds_alternative<Neg>(v.value)) {
         const auto& __v = std::get<Neg>(v.value);
-        return (::tpy::str_concat("-", show(__v.inner.get())));
+        return (::tpy::str_concat("-", ::tpyapp::main::show(__v.inner.get())));
     } else if (std::holds_alternative<::tpy::BigInt>(v.value)) {
         const auto& __v = std::get<::tpy::BigInt>(v.value);
         return (__v).to_string();
@@ -29,9 +29,9 @@ std::string show(const Value& v) {
 //     print(show("hello"))
 void main() {
     Value __tmp_1 = 42;
-    std::cout << show(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::show(__tmp_1) << "\n";
     Value __tmp_2 = "hello";
-    std::cout << show(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::show(__tmp_2) << "\n";
 }
 
 // # Mutual recursion with mix of primitives and records
@@ -44,7 +44,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

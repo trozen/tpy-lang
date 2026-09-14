@@ -20,7 +20,7 @@ int32_t combine(int32_t a, int32_t b) {
 // def main() -> None:
 //     print(combine(3, 4))
 void main() {
-    std::cout << combine(3, 4) << "\n";
+    std::cout << ::tpyapp::main::combine(3, 4) << "\n";
 }
 
 // # A deferred (post-sema) function macro reads an argument's inferred int32 type
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

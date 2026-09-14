@@ -48,19 +48,19 @@ bool is_value_error(const ::tpy::BaseException* e) {
 //     print(is_value_error(None))
 void main() {
     ::tpy::ValueError __tmp_1 = ::tpy::ValueError("v");
-    std::cout << classify(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n";
     ::tpy::RuntimeError __tmp_2 = ::tpy::RuntimeError("r");
-    std::cout << classify(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n";
     ::tpy::AssertionError __tmp_3 = ::tpy::AssertionError("a");
-    std::cout << classify(&(__tmp_3)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_3)) << "\n";
     ::tpy::CancelledError __tmp_4 = ::tpy::CancelledError("c");
-    std::cout << classify(&(__tmp_4)) << "\n";
-    std::cout << classify(nullptr) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::classify(nullptr) << "\n";
     ::tpy::ValueError __tmp_5 = ::tpy::ValueError("v2");
-    std::cout << ::tpy::print_bool(is_value_error(&(__tmp_5))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_value_error(&(__tmp_5))) << "\n";
     ::tpy::RuntimeError __tmp_6 = ::tpy::RuntimeError("r2");
-    std::cout << ::tpy::print_bool(is_value_error(&(__tmp_6))) << "\n";
-    std::cout << ::tpy::print_bool(is_value_error(nullptr)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_value_error(&(__tmp_6))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_value_error(nullptr)) << "\n";
 }
 
 // main()
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -28,7 +28,7 @@ std::string run(bool fail) {
     std::string b;
     {
         try {
-            auto __tup_1 = maybe_pair(fail);
+            auto __tup_1 = ::tpyapp::main::maybe_pair(fail);
             a = std::get<0>(__tup_1);
             b = std::get<1>(__tup_1);
         } catch (const ::tpy::OSError&) {
@@ -43,8 +43,8 @@ std::string run(bool fail) {
 //     print(run(False))
 //     print(run(True))
 void main() {
-    std::cout << run(false) << "\n";
-    std::cout << run(true) << "\n";
+    std::cout << ::tpyapp::main::run(false) << "\n";
+    std::cout << ::tpyapp::main::run(true) << "\n";
 }
 
 // main()
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

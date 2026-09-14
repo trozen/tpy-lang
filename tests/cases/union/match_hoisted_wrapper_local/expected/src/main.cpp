@@ -46,7 +46,7 @@ void grow(Tree<int32_t>& src) {
 //             print(0)
 void main() {
     Tree<int32_t> tree = std::vector<Tree<int32_t>>{1, 2, 3};
-    grow(tree);
+    ::tpyapp::main::grow(tree);
     auto& __match_subject_1 = tree;
     switch (__match_subject_1.value.index()) {
     case 1: {
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

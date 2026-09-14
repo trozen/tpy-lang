@@ -34,8 +34,8 @@ void pack(::tpy::ByteArray& dst, const ::tpy::BigInt& v) {
 //     print(borrow(buf))
 void main() {
     ::tpy::ByteArray buf = ::tpy::ByteArray();
-    pack(buf, ::tpy::BigInt(65));
-    pack(buf, ::tpy::BigInt(67));
+    ::tpyapp::main::pack(buf, ::tpy::BigInt(65));
+    ::tpyapp::main::pack(buf, ::tpy::BigInt(67));
     std::cout << ::tpy::__len__(buf) << "\n";
     auto& __obj_0 = buf;
     auto __beg_0 = __obj_0.begin();
@@ -44,7 +44,7 @@ void main() {
         uint8_t b = *__beg_0;
         std::cout << static_cast<int>(b) << "\n";
     }
-    std::cout << borrow(buf) << "\n";
+    std::cout << ::tpyapp::main::borrow(buf) << "\n";
 }
 
 // main()
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

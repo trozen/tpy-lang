@@ -39,7 +39,7 @@ void main() {
         std::cout << v << "\n";
         }
     }
-    std::cout << total(5) << "\n";
+    std::cout << ::tpyapp::main::total(5) << "\n";
 }
 
 // import itersrc
@@ -51,7 +51,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::itersrc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -320,13 +320,21 @@ which still rounds the integer to a double
 (`BUGS.md#int-float-compare-rounds-bigint`). The monomorphic side is what
 must move; nobody should "fix" these two toward the rounding twin.
 
-**Residual divergences from CPython** (both acknowledged, not planned):
+**Residual divergences from CPython** (both acknowledged, neither fixed in v1):
 two cells of one record type with no `__eq__` compare False where CPython
 falls back to identity -- `Any` owns copies, so identity is unanswerable;
 and `char` `'a'` against `str` `"a"` compares False where CPython (which
 has no `char`) returns True. The auto-coerce divergence (`n: int = any_var`
 raises `TypeError` in TPy where CPython silently assigns) is unrelated to
-equality and stands.
+equality and stands. The eventual fix for the `char` half is symmetric to
+`as_number`: an `as_text` canonicalization slot (populated for `char` and
+the string types) that yields the canonical text, so a `char` payload and
+a length-one `str` payload compare equal, with `__hash__(char)` made equal
+to the one-char string's hash so the dict/set contract holds -- after which
+that half of `tests/cases/any/residual_divergences` moves into the
+cpy-checked case, while the record-identity half stays (`Any` is
+`typing.Any` under CPython, and assignment has no hook to preserve
+identity through).
 
 **`x is None` only**: `is` for any other RHS is a compile error in v1.
 Worded diagnostic: `is is only supported with None on Any -- did you mean

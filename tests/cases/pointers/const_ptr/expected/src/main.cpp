@@ -44,10 +44,10 @@ void test_ptr_to_const_ptr() {
     Point* mp = &pt;
     std::cout << mp->x << "\n";
     std::cout << mp->y << "\n";
-    modify_via_ptr(mp, 100);
+    ::tpyapp::main::modify_via_ptr(mp, 100);
     std::cout << pt.x << "\n";
     const Point* cp = mp;
-    int32_t total = read_point(cp);
+    int32_t total = ::tpyapp::main::read_point(cp);
     std::cout << total << "\n";
 }
 
@@ -82,9 +82,9 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "=== ptr to const ===" << "\n";
-    test_ptr_to_const_ptr();
+    ::tpyapp::main::test_ptr_to_const_ptr();
     std::cout << "=== preserves value ===" << "\n";
-    test_const_ptr_preserves_value();
+    ::tpyapp::main::test_const_ptr_preserves_value();
 }
 
 } // namespace tpyapp::main

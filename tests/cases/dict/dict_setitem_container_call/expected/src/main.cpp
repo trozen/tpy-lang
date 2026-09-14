@@ -81,29 +81,29 @@ std::vector<::tpystd::tplib::box::Box<int32_t>> make_boxes() {
 void main() {
     Source s = Source(10);
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    ::tpy::__setitem__(d, "free", make_list());
+    ::tpy::__setitem__(d, "free", ::tpyapp::main::make_list());
     ::tpy::__setitem__(d, "meth", s.rows());
     ::tpy::__getitem__(d, "free").push_back(3);
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(::tpy::__getitem__(d, "free")) << " " << ::tpy::__getitem__(::tpy::__getitem__(d, "free"), 2) << " " << ::tpy::__getitem__(::tpy::__getitem__(d, "meth"), 0) << "\n";
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> nested = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>();
-    ::tpy::__setitem__(nested, "in", make_inner());
+    ::tpy::__setitem__(nested, "in", ::tpyapp::main::make_inner());
     ::tpy::__setitem__(::tpy::__getitem__(nested, "in"), "m", 6);
     std::cout << ::tpy::__len__(::tpy::__getitem__(nested, "in")) << " " << ::tpy::__getitem__(::tpy::__getitem__(nested, "in"), "n") << " " << ::tpy::__getitem__(::tpy::__getitem__(nested, "in"), "m") << "\n";
     ::tpy::ordered_map<std::string, std::array<int32_t, 2>> pairs = ::tpy::ordered_map<std::string, std::array<int32_t, 2>>();
-    ::tpy::__setitem__(pairs, "p", make_pair());
+    ::tpy::__setitem__(pairs, "p", ::tpyapp::main::make_pair());
     ::tpy::__setitem__(::tpy::__getitem__(pairs, "p"), 0, 42);
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(pairs, "p"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(pairs, "p"), 1) << "\n";
     ::tpy::ordered_map<std::string, ::tpy::ByteArray> blobs = ::tpy::ordered_map<std::string, ::tpy::ByteArray>();
-    ::tpy::__setitem__(blobs, "b", make_blob());
+    ::tpy::__setitem__(blobs, "b", ::tpyapp::main::make_blob());
     ::tpy::ByteArray owned = ::tpy::ByteArray(::tpy::bytes_literal("de", 2));
     ::tpy::__setitem__(blobs, "n", std::move(owned));
     ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> tags = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>();
-    ::tpy::__setitem__(tags, "t", make_tags());
+    ::tpy::__setitem__(tags, "t", ::tpyapp::main::make_tags());
     ::tpy::ordered_map<std::string, std::vector<::tpystd::tplib::box::Box<int32_t>>> boxes = ::tpy::ordered_map<std::string, std::vector<::tpystd::tplib::box::Box<int32_t>>>();
-    ::tpy::__setitem__(boxes, "b", make_boxes());
+    ::tpy::__setitem__(boxes, "b", ::tpyapp::main::make_boxes());
     std::cout << ::tpy::__len__(blobs) << " " << ::tpy::__len__(tags) << " " << ::tpy::__len__(::tpy::__getitem__(boxes, "b")) << "\n";
     std::vector<std::vector<int32_t>> rows = {{0}};
-    ::tpy::__setitem__(rows, 0, make_list());
+    ::tpy::__setitem__(rows, 0, ::tpyapp::main::make_list());
     ::tpy::__getitem__(rows, 0).push_back(7);
     std::cout << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 2) << "\n";
 }
@@ -118,7 +118,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

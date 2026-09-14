@@ -34,10 +34,10 @@ int32_t borrow(::tpy::Union<const A*, const B*> u) {
 //     print(borrow(p))
 //     print(n)
 void main() {
-    auto __tup_1 = pair();
+    auto __tup_1 = ::tpyapp::main::pair();
     ::tpy::Union<A*, B*> p = ::tpy::to_ptr_variant(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << borrow(p.as_const()) << "\n";
+    std::cout << ::tpyapp::main::borrow(p.as_const()) << "\n";
     std::cout << n << "\n";
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

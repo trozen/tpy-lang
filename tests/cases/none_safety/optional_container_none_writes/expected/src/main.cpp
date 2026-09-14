@@ -33,7 +33,7 @@ void __tpy_init() {
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
     vals->push_back(7);
-    std::cout << write_none((*vals)) << "\n";
+    std::cout << ::tpyapp::main::write_none((*vals)) << "\n";
 }
 
 } // namespace tpyapp::main

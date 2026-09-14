@@ -29,8 +29,8 @@ namespace tpyapp::main {
         auto& l = __case_1.left;
         auto& op = __case_1.op;
         auto& r = __case_1.right;
-        ::tpy::BigInt lv = eval_expr(l.get());
-        ::tpy::BigInt rv = eval_expr(r.get());
+        ::tpy::BigInt lv = ::tpyapp::main::eval_expr(l.get());
+        ::tpy::BigInt rv = ::tpyapp::main::eval_expr(r.get());
         if ((op == "+")) {
             return ((lv) + (rv));
         } else {
@@ -48,10 +48,10 @@ namespace tpyapp::main {
 //     print(eval_expr(e))
 void main() {
     Expr __tmp_1 = Lit(::tpy::BigInt(42));
-    std::cout << eval_expr(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n";
     BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(1))));
     Expr __tmp_2 = std::move(e);
-    std::cout << eval_expr(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_2) << "\n";
 }
 
 // # D20 mutual recursion with classes defined BEFORE the union alias.
@@ -66,7 +66,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

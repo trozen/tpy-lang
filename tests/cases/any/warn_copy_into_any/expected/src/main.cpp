@@ -116,7 +116,7 @@ void takes_any(::tpy::Any a) {
 //     print(n.n)
 void warn_arg_coerce_not_last_use() {
     Node n = Node(5);
-    takes_any(::tpy::make_any(n));
+    ::tpyapp::main::takes_any(::tpy::make_any(n));
     std::cout << n.n << "\n";
 }
 
@@ -136,7 +136,7 @@ void warn_arg_coerce_not_last_use() {
 //         print(a.n)
 void exercise_returns_any() {
     Node n = Node(6);
-    ::tpy::Any a = returns_any(n);
+    ::tpy::Any a = ::tpyapp::main::returns_any(n);
     std::cout << n.n << "\n";
     if ((a.value.has_value() && a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
@@ -209,21 +209,21 @@ void warn_field_assign_any() {
 //     warn_subscript_assign_dict_any()
 //     warn_field_assign_any()
 void main() {
-    warn_record_not_last_use();
-    no_warn_record_last_use();
-    no_warn_record_explicit_copy();
-    no_warn_record_rvalue();
-    warn_list_not_last_use();
-    warn_dict_not_last_use();
-    warn_set_not_last_use();
-    no_warn_str_not_last_use();
-    no_warn_int_not_last_use();
-    warn_arg_coerce_not_last_use();
-    exercise_returns_any();
-    warn_list_literal_element();
-    warn_dict_literal_value();
-    warn_subscript_assign_dict_any();
-    warn_field_assign_any();
+    ::tpyapp::main::warn_record_not_last_use();
+    ::tpyapp::main::no_warn_record_last_use();
+    ::tpyapp::main::no_warn_record_explicit_copy();
+    ::tpyapp::main::no_warn_record_rvalue();
+    ::tpyapp::main::warn_list_not_last_use();
+    ::tpyapp::main::warn_dict_not_last_use();
+    ::tpyapp::main::warn_set_not_last_use();
+    ::tpyapp::main::no_warn_str_not_last_use();
+    ::tpyapp::main::no_warn_int_not_last_use();
+    ::tpyapp::main::warn_arg_coerce_not_last_use();
+    ::tpyapp::main::exercise_returns_any();
+    ::tpyapp::main::warn_list_literal_element();
+    ::tpyapp::main::warn_dict_literal_value();
+    ::tpyapp::main::warn_subscript_assign_dict_any();
+    ::tpyapp::main::warn_field_assign_any();
 }
 
 // main()
@@ -232,7 +232,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

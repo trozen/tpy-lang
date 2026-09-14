@@ -26,7 +26,7 @@ void main() {
     ::tpy::Bytes head = ::tpy::bytes_literal_owned("abcdefghijklmnop", 16);
     int32_t acc = 0;
     while ((::tpy::__len__(head) > 1)) {
-        auto __tup_1 = split_b(head);
+        auto __tup_1 = ::tpyapp::main::split_b(head);
         head = std::get<0>(__tup_1);
         ::tpy::BytesView tail = std::get<1>(__tup_1);
         acc = (::tpy::add_check<int32_t>(acc, ::tpy::__len__(tail)));
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -27,7 +27,7 @@ void __tpy_init() {
 
     ::tpyapp::label_infra::__tpy_init();
     ::tpyapp::const_mod::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

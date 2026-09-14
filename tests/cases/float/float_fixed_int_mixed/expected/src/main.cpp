@@ -48,8 +48,8 @@ void reverse() {
 //     forward()
 //     reverse()
 void main() {
-    forward();
-    reverse();
+    ::tpyapp::main::forward();
+    ::tpyapp::main::reverse();
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

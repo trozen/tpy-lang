@@ -66,8 +66,8 @@ int32_t outer(bool flag) {
 //     print(outer(True))
 //     print(outer(False))
 void main() {
-    std::cout << outer(true) << "\n";
-    std::cout << outer(false) << "\n";
+    std::cout << ::tpyapp::main::outer(true) << "\n";
+    std::cout << ::tpyapp::main::outer(false) << "\n";
 }
 
 // main()
@@ -76,7 +76,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

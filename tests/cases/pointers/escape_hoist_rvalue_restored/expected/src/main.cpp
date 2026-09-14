@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    rvalue_restored();
+    ::tpyapp::main::rvalue_restored();
 }
 
 } // namespace tpyapp::main

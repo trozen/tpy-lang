@@ -251,42 +251,42 @@ int32_t all_paths_terminate() {
 void main() {
     {
         try {
-            raise_from_finally();
+            ::tpyapp::main::raise_from_finally();
         } catch (const ::tpy::RuntimeError&) {
             std::cout << "caught from raise_from_finally" << "\n";
         }
     }
-    std::cout << return_from_finally() << "\n";
+    std::cout << ::tpyapp::main::return_from_finally() << "\n";
     {
         try {
-            handler_falls_through();
+            ::tpyapp::main::handler_falls_through();
         } catch (const ::tpy::RuntimeError&) {
             std::cout << "caught from handler_falls_through" << "\n";
         }
     }
-    std::cout << finally_return_wins() << "\n";
+    std::cout << ::tpyapp::main::finally_return_wins() << "\n";
     {
         try {
-            tuple_clause_falls_through();
+            ::tpyapp::main::tuple_clause_falls_through();
         } catch (const ::tpy::RuntimeError&) {
             std::cout << "caught from tuple_clause_falls_through" << "\n";
         }
     }
     {
         try {
-            deep_terminating_finally(true);
+            ::tpyapp::main::deep_terminating_finally(true);
         } catch (const ::tpy::RuntimeError&) {
             std::cout << "caught from deep if-branch" << "\n";
         }
     }
     {
         try {
-            deep_terminating_finally(false);
+            ::tpyapp::main::deep_terminating_finally(false);
         } catch (const ::tpy::RuntimeError&) {
             std::cout << "caught from deep else-branch" << "\n";
         }
     }
-    std::cout << all_paths_terminate() << "\n";
+    std::cout << ::tpyapp::main::all_paths_terminate() << "\n";
 }
 
 // main()
@@ -295,7 +295,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

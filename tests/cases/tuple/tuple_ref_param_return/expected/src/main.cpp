@@ -21,7 +21,7 @@ std::tuple<int32_t, Point*> make_pair(int32_t n, Point& p) {
 //     print(pair[1].x)
 void main() {
     Point p = Point(1, 2);
-    auto pair = make_pair(42, p);
+    auto pair = ::tpyapp::main::make_pair(42, p);
     std::cout << std::get<0>(pair) << "\n";
     std::cout << std::get<1>(pair)->x << "\n";
     std::cout << std::get<1>(pair)->y << "\n";
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -104,13 +104,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
-    test_setter();
-    test_eq();
-    test_describe();
-    test_reset();
-    test_static();
-    test_quote_expr();
+    ::tpyapp::main::test_basic();
+    ::tpyapp::main::test_setter();
+    ::tpyapp::main::test_eq();
+    ::tpyapp::main::test_describe();
+    ::tpyapp::main::test_reset();
+    ::tpyapp::main::test_static();
+    ::tpyapp::main::test_quote_expr();
 }
 
 } // namespace tpyapp::main

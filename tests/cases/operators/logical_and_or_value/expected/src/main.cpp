@@ -195,8 +195,8 @@ int32_t returns_int(int32_t a, int32_t b) {
 void test_as_arg_and_return() {
     int32_t a = 0;
     int32_t b = 7;
-    accepts_int((a ? a : b));
-    std::cout << returns_int(0, 5) << "\n";
+    ::tpyapp::main::accepts_int((a ? a : b));
+    std::cout << ::tpyapp::main::returns_int(0, 5) << "\n";
 }
 
 // def test_bool_operands(flag: bool, other: bool) -> bool:
@@ -393,24 +393,24 @@ void test_literal_or_literal() {
 //     test_annotated()
 //     test_literal_or_literal()
 void main() {
-    test_or_int();
-    test_and_int();
-    test_or_str();
-    test_and_str();
-    test_or_float();
-    test_and_float();
-    test_or_bigint();
-    test_chained();
-    test_or_with_literal();
-    test_as_arg_and_return();
-    std::cout << ::tpy::print_bool(test_bool_operands(true, false)) << " " << ::tpy::print_bool(test_bool_operands(true, true)) << "\n";
-    test_mixed_returns_bool();
-    test_condition_context();
-    test_record_with_bool();
-    test_record_without_bool();
-    test_record_or_constructor();
-    test_annotated();
-    test_literal_or_literal();
+    ::tpyapp::main::test_or_int();
+    ::tpyapp::main::test_and_int();
+    ::tpyapp::main::test_or_str();
+    ::tpyapp::main::test_and_str();
+    ::tpyapp::main::test_or_float();
+    ::tpyapp::main::test_and_float();
+    ::tpyapp::main::test_or_bigint();
+    ::tpyapp::main::test_chained();
+    ::tpyapp::main::test_or_with_literal();
+    ::tpyapp::main::test_as_arg_and_return();
+    std::cout << ::tpy::print_bool(::tpyapp::main::test_bool_operands(true, false)) << " " << ::tpy::print_bool(::tpyapp::main::test_bool_operands(true, true)) << "\n";
+    ::tpyapp::main::test_mixed_returns_bool();
+    ::tpyapp::main::test_condition_context();
+    ::tpyapp::main::test_record_with_bool();
+    ::tpyapp::main::test_record_without_bool();
+    ::tpyapp::main::test_record_or_constructor();
+    ::tpyapp::main::test_annotated();
+    ::tpyapp::main::test_literal_or_literal();
 }
 
 // main()
@@ -419,7 +419,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

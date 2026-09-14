@@ -37,8 +37,8 @@ void main() {
     std::vector<::tpystd::tplib::box::Box<Animal>> animals = std::vector<::tpystd::tplib::box::Box<Animal>>{};
     animals.push_back(::tpystd::tplib::box::Box<Dog>(Dog()));
     animals.push_back(::tpystd::tplib::box::Box<Snake>(Snake()));
-    std::cout << describe(animals, ::tpy::BigInt(0)) << "\n";
-    std::cout << describe(animals, ::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::describe(animals, ::tpy::BigInt(0)) << "\n";
+    std::cout << ::tpyapp::main::describe(animals, ::tpy::BigInt(1)) << "\n";
 }
 
 // from tplib import Box
@@ -50,7 +50,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

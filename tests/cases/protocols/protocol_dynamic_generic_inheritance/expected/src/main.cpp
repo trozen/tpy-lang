@@ -26,7 +26,7 @@ void main() {
     c->bump();
     c->bump();
     std::cout << c->get() << "\n";
-    show_source((*c));
+    ::tpyapp::main::show_source((*c));
     ::tpy::Adapter<Source<int32_t>, IntCounter> __slot_2{IntCounter()};
     Source<int32_t>* s = &__slot_2;
     std::cout << s->get() << "\n";
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

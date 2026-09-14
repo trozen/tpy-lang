@@ -50,12 +50,12 @@ __match_end_2:;
 //     f(B(), True)
 void main() {
     A __tmp_1 = A();
-    f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}, true);
+    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}, true);
     A __tmp_2 = A();
-    f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}, false);
-    f(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}, true);
+    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}, false);
+    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}, true);
     B __tmp_3 = B();
-    f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_3}, true);
+    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_3}, true);
 }
 
 // main()
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

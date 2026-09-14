@@ -18,7 +18,7 @@ Handle transfer() {
 //     r = transfer()
 //     print(r.fd)
 void main() {
-    Handle r = transfer();
+    Handle r = ::tpyapp::main::transfer();
     std::cout << r.fd << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

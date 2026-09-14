@@ -74,7 +74,7 @@ __coro_total_of total_of(std::vector<::tpy::BigInt>& xs) {
 //     print(asyncio.run(total_of([1, 2, 3])))
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(total_of(__tmp_1))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::total_of(__tmp_1))) << "\n";
 }
 
 // # `await` inside a sync `for x in <list>:` body. Verifies the
@@ -89,7 +89,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

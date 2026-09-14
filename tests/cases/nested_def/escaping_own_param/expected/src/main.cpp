@@ -28,7 +28,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 // def own_value(p: Own[Pt]) -> int32:  # tpyc: ok
 //     return apply(lambda i: i + p.x, 1)
 int32_t own_value(Pt p) {
-    return apply([p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);
+    return ::tpyapp::main::apply([p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);
 }
 
 // def main() -> None:
@@ -38,9 +38,9 @@ int32_t own_value(Pt p) {
 //     print("own_value", own_value(Pt(10)))
 void main() {
     Config c = Config(42);
-    std::function<int32_t()> getter = make_getter(std::move(c));
+    std::function<int32_t()> getter = ::tpyapp::main::make_getter(std::move(c));
     std::cout << getter() << "\n";
-    std::cout << "own_value" << " " << own_value(Pt(10)) << "\n";
+    std::cout << "own_value" << " " << ::tpyapp::main::own_value(Pt(10)) << "\n";
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

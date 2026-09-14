@@ -48,7 +48,7 @@ std::vector<std::vector<double>> rows(const std::vector<std::vector<double>>& sr
 void main() {
     std::vector<std::vector<double>> base = std::vector<std::vector<double>>{};
     base.push_back({1.0, 2.0});
-    std::vector<std::vector<double>> out = rows(base);
+    std::vector<std::vector<double>> out = ::tpyapp::main::rows(base);
     ::tpy::__getitem__(out, 0).push_back(9.0);
     std::cout << ::tpy::__len__(out) << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(out, 0), 2)) << "\n";
     std::vector<std::vector<int32_t>> local = std::vector<std::vector<int32_t>>{};
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

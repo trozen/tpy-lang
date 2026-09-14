@@ -24,7 +24,7 @@ void main() {
     Point p3 = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
     std::cout << ::tpy::print_bool((::tpy::__hash__(p1) == ::tpy::__hash__(p2))) << "\n";
     std::cout << ::tpy::print_bool((::tpy::__hash__(p1) != ::tpy::__hash__(p3))) << "\n";
-    std::cout << ::tpy::print_bool((get_hash(p1) == get_hash(p2))) << "\n";
+    std::cout << ::tpy::print_bool((::tpyapp::main::get_hash(p1) == ::tpyapp::main::get_hash(p2))) << "\n";
     std::cout << "ok" << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -31,9 +31,9 @@ void bump(T* p) {
 //     print(t.x)
 void main() {
     T t = T(1);
-    show(&(t));
-    show(nullptr);
-    bump(&(t));
+    ::tpyapp::main::show(&(t));
+    ::tpyapp::main::show(nullptr);
+    ::tpyapp::main::bump(&(t));
     std::cout << t.x << "\n";
 }
 
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

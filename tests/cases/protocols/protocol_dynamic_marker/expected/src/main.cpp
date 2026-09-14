@@ -29,10 +29,10 @@ std::string classify(const Root* r) {
 //     print(classify(None))
 void main() {
     Sub __tmp_1 = Sub("a", ::tpy::BigInt(7));
-    std::cout << classify(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n";
     Root __tmp_2 = Root("b");
-    std::cout << classify(&(__tmp_2)) << "\n";
-    std::cout << classify(nullptr) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::classify(nullptr) << "\n";
 }
 
 // main()
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

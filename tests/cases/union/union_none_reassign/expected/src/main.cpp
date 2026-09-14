@@ -50,8 +50,8 @@ std::string test_init_none_then_assign() {
 //     print(test_reassign_to_none())
 //     print(test_init_none_then_assign())
 void main() {
-    std::cout << test_reassign_to_none() << "\n";
-    std::cout << test_init_none_then_assign() << "\n";
+    std::cout << ::tpyapp::main::test_reassign_to_none() << "\n";
+    std::cout << ::tpyapp::main::test_init_none_then_assign() << "\n";
 }
 
 // main()
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -31,11 +31,11 @@ Pet& get_global() {
 //     print(echo(dog).name())
 void main() {
     Dog dog = Dog();
-    Pet* result = &echo(dog);
+    Pet* result = &::tpyapp::main::echo(dog);
     std::cout << result->name() << "\n";
-    Pet* g = &get_global();
+    Pet* g = &::tpyapp::main::get_global();
     std::cout << g->name() << "\n";
-    std::cout << echo(dog).name() << "\n";
+    std::cout << ::tpyapp::main::echo(dog).name() << "\n";
 }
 
 // global_pet: Pet = Cat()
@@ -49,7 +49,7 @@ void __tpy_init() {
     static std::optional<Cat> __global_slot_1;
     __global_slot_1.emplace(Cat());
     global_pet = &*__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

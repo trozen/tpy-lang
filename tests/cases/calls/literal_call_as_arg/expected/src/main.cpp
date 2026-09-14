@@ -30,7 +30,7 @@ int32_t pick(std::string_view v) {
 // def main() -> None:
 //     print(pick(get_r()))
 void main() {
-    std::cout << pick__lit_r__w(get_r()) << "\n";
+    std::cout << ::tpyapp::main::pick__lit_r__w(::tpyapp::main::get_r()) << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

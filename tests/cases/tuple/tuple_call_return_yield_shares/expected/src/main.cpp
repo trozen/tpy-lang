@@ -16,7 +16,7 @@ std::tuple<int32_t, Box*> make(Box& b) {
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        u = make(b);
+        u = ::tpyapp::main::make(b);
         __state = S_RESUME_0;
         return u;
     }
@@ -43,7 +43,7 @@ __gen_gen gen(Box& b) {
 void main() {
     Box shared = Box(5);
     {
-        auto __src_0 = gen(shared);
+        auto __src_0 = ::tpyapp::main::gen(shared);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

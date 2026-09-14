@@ -48,7 +48,7 @@ __gen_gen gen(std::vector<Res>& items) {
 void main() {
     std::vector<Res> data = ::tpy::make_vector<Res>(Res(1), Res(2));
     {
-        auto __src_0 = gen(data);
+        auto __src_0 = ::tpyapp::main::gen(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

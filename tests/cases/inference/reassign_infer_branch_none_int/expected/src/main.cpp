@@ -35,8 +35,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    pick(true);
-    pick(false);
+    ::tpyapp::main::pick(true);
+    ::tpyapp::main::pick(false);
 }
 
 } // namespace tpyapp::main

@@ -74,12 +74,12 @@ void main() {
     std::cout << c2.count << "\n";
     c2.update(nums, static_cast<std::nullptr_t*>(nullptr));
     std::cout << c2.count << "\n";
-    std::cout << count_items(nums, &(more)) << "\n";
-    std::cout << count_items(nums) << "\n";
-    std::cout << count_items(nums, static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    std::cout << only_optional() << "\n";
-    std::cout << only_optional(&(nums)) << "\n";
-    std::cout << only_optional(static_cast<std::nullptr_t*>(nullptr)) << "\n";
+    std::cout << ::tpyapp::main::count_items(nums, &(more)) << "\n";
+    std::cout << ::tpyapp::main::count_items(nums) << "\n";
+    std::cout << ::tpyapp::main::count_items(nums, static_cast<std::nullptr_t*>(nullptr)) << "\n";
+    std::cout << ::tpyapp::main::only_optional() << "\n";
+    std::cout << ::tpyapp::main::only_optional(&(nums)) << "\n";
+    std::cout << ::tpyapp::main::only_optional(static_cast<std::nullptr_t*>(nullptr)) << "\n";
     MixedContainer mc = MixedContainer(nums);
     std::cout << mc.count << "\n";
     MixedContainer mc2 = MixedContainer(nums, &(more));
@@ -92,9 +92,9 @@ void main() {
     std::cout << gc2.count << "\n";
     GenericContainer<::tpy::BigInt> gc3 = GenericContainer<::tpy::BigInt>(static_cast<std::nullptr_t*>(nullptr));
     std::cout << gc3.count << "\n";
-    std::cout << sum_optional(nums) << "\n";
-    std::cout << sum_optional(nums, &(more)) << "\n";
-    std::cout << sum_optional(nums, static_cast<std::nullptr_t*>(nullptr)) << "\n";
+    std::cout << ::tpyapp::main::sum_optional(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_optional(nums, &(more)) << "\n";
+    std::cout << ::tpyapp::main::sum_optional(nums, static_cast<std::nullptr_t*>(nullptr)) << "\n";
 }
 
 // main()
@@ -103,7 +103,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

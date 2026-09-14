@@ -34,7 +34,7 @@ void main() {
     {
         try {
             Cat __tmp_1 = Cat(::tpy::BigInt(2));
-            check(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
+            ::tpyapp::main::check(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         } catch (const PetError& e) {
             std::cout << e.code << "\n";
         }
@@ -42,7 +42,7 @@ void main() {
     {
         try {
             Dog __tmp_2 = Dog(::tpy::BigInt(1));
-            check(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
+            ::tpyapp::main::check(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
         } catch (const PetError& e) {
             std::cout << e.code << "\n";
         }
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

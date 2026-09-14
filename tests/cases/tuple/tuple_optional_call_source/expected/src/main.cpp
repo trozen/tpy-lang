@@ -26,9 +26,9 @@ void main() {
     P a = P(1);
     P b = P(2);
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = std::vector<std::tuple<std::optional<P>, std::optional<P>>>{};
-    pairs.push_back(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(make_pair(a, b)));
+    pairs.push_back(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpyapp::main::make_pair(a, b)));
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
-    ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(make_pair(a, b)));
+    ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpyapp::main::make_pair(a, b)));
     std::cout << ::tpy::__len__(pairs) << "\n";
     std::cout << ::tpy::__len__(d) << "\n";
 }
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

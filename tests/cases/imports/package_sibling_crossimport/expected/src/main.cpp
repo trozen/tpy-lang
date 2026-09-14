@@ -32,11 +32,11 @@ void main() {
     ::tpyapp::pkg::a::Container<int32_t> box = ::tpyapp::pkg::a::Container<int32_t>(42);
     std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a.value(), b.value())), ::tpyapp::pkg::b::V)), ::tpyapp::pkg::a::f(5))) << "\n";
     std::cout << ::tpyapp::pkg::b::K::ONE << "\n";
-    std::cout << cap() << "\n";
-    std::cout << cap(10) << "\n";
+    std::cout << ::tpyapp::main::cap() << "\n";
+    std::cout << ::tpyapp::main::cap(10) << "\n";
     std::cout << box.get() << "\n";
     ::tpy::RefAdapter<::tpyapp::pkg::b::Greeter, ::tpyapp::pkg::b::B> __tmp_1{b};
-    std::cout << takes_greeter(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::takes_greeter(__tmp_1) << "\n";
 }
 
 // from pkg import A, B, Container, Greeter, K, V, f
@@ -48,7 +48,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::pkg::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

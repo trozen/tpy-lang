@@ -19,7 +19,7 @@ int32_t forward_optional(std::optional<Point> p) {
     if ((!p.has_value())) {
         return -1;
     }
-    return consume_own(std::move((*p)));
+    return ::tpyapp::main::consume_own(std::move((*p)));
 }
 
 // def main():
@@ -31,7 +31,7 @@ void main() {
     Point p = Point();
     p.x = 5;
     p.y = 7;
-    std::cout << forward_optional(std::move(p)) << "\n";
+    std::cout << ::tpyapp::main::forward_optional(std::move(p)) << "\n";
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -43,7 +43,7 @@ void __tpy_init() {
 
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    test((*h));
+    ::tpyapp::main::test((*h));
 }
 
 } // namespace tpyapp::main

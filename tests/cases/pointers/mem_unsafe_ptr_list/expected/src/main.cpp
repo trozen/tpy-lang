@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_list_ptr();
+    ::tpyapp::main::test_list_ptr();
 }
 
 } // namespace tpyapp::main

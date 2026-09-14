@@ -18,7 +18,7 @@ int32_t consume_optional(std::optional<Box> b) {
     if ((!b.has_value())) {
         return -1;
     }
-    return consume_own(std::move((*b)));
+    return ::tpyapp::main::consume_own(std::move((*b)));
 }
 
 // def main():
@@ -29,7 +29,7 @@ int32_t consume_optional(std::optional<Box> b) {
 void main() {
     Box b = Box();
     b.value = 42;
-    std::cout << consume_optional(Box(b)) << "\n";
+    std::cout << ::tpyapp::main::consume_optional(Box(b)) << "\n";
 }
 
 // main()
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

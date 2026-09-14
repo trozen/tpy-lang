@@ -29,7 +29,7 @@ void __tpy_init() {
     std::cout << Helper::add(10, 20) << "\n";
     static Helper __global_slot_1 = Helper(42);
     h = &__global_slot_1;
-    std::cout << use_helper((*h)) << "\n";
+    std::cout << ::tpyapp::main::use_helper((*h)) << "\n";
 }
 
 } // namespace tpyapp::main

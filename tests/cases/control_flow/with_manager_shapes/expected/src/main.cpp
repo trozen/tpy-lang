@@ -47,7 +47,7 @@ void suppress() {
     __ctx_3.__enter__();
     try {
         std::cout << "before" << "\n";
-        boom();
+        ::tpyapp::main::boom();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         if (!__ctx_3.__exit__({}, &__exc_3, {})) throw;
@@ -195,21 +195,21 @@ void loop_exits(Gate& cm) {
 //     print("---")
 //     print(ret_through(Gate(9)))
 void main() {
-    multi();
+    ::tpyapp::main::multi();
     std::cout << "---" << "\n";
-    suppress();
+    ::tpyapp::main::suppress();
     std::cout << "---" << "\n";
-    ref_target();
+    ::tpyapp::main::ref_target();
     std::cout << "---" << "\n";
     Holder __tmp_1 = Holder();
     Holder __tmp_2 = Holder();
-    deref_manager(__tmp_1, __tmp_2);
+    ::tpyapp::main::deref_manager(__tmp_1, __tmp_2);
     std::cout << "---" << "\n";
     Gate __tmp_3 = Gate(::tpy::BigInt(7));
-    loop_exits(__tmp_3);
+    ::tpyapp::main::loop_exits(__tmp_3);
     std::cout << "---" << "\n";
     Gate __tmp_4 = Gate(::tpy::BigInt(9));
-    std::cout << ret_through(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::ret_through(__tmp_4) << "\n";
 }
 
 // main()
@@ -218,7 +218,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

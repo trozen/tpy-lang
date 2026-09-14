@@ -24,7 +24,7 @@ void describe(const Point& p) {
 void test() {
     Point pt = Point(3, 7);
     Point* p = &pt;
-    describe(::tpy::deref_check(p));
+    ::tpyapp::main::describe(::tpy::deref_check(p));
 }
 
 // test()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

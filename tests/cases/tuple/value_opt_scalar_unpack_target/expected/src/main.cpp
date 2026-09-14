@@ -23,8 +23,8 @@ int32_t total(const std::tuple<std::optional<int32_t>, int32_t>& p) {
 //     print(total((3, 4)))
 //     print(total((None, 9)))
 void main() {
-    std::cout << total(std::tuple<std::optional<int32_t>, int32_t>{3, 4}) << "\n";
-    std::cout << total(std::tuple<std::optional<int32_t>, int32_t>{std::nullopt, 9}) << "\n";
+    std::cout << ::tpyapp::main::total(std::tuple<std::optional<int32_t>, int32_t>{3, 4}) << "\n";
+    std::cout << ::tpyapp::main::total(std::tuple<std::optional<int32_t>, int32_t>{std::nullopt, 9}) << "\n";
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

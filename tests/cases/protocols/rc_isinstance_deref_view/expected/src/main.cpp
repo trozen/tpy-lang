@@ -27,9 +27,9 @@ std::string describe(::tpystd::tplib::rc::Rc<Pet>& rc) {
 //     print(describe(Rc.new(Cat("felix"))))
 void main() {
     ::tpystd::tplib::rc::Rc<Pet> __tmp_1 = Rc<Pet>::new_<Dog>(Dog());
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
     ::tpystd::tplib::rc::Rc<Pet> __tmp_2 = Rc<Pet>::new_<::tpy::Adapter<Pet, Cat>>(Cat("felix"));
-    std::cout << describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
 }
 
 // from tplib.rc import Rc
@@ -42,7 +42,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

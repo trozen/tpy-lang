@@ -28,7 +28,7 @@ namespace tpyapp::main {
 //     print(f(Cat(Pet(5))))   # 3 + 5 = 8
 void main() {
     Cat __tmp_1 = Cat(Pet(::tpy::BigInt(5)));
-    std::cout << f(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1) << "\n";
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

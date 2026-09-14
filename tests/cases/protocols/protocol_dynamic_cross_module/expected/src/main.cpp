@@ -40,10 +40,10 @@ void main() {
     ::tpyapp::pet::Pet* cat = &__slot_2;
     std::cout << cat->speak() << "\n";
     Dog __tmp_1{Dog()};
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
     ::tpy::Adapter<::tpyapp::pet::Pet, Cat> __tmp_2{Cat()};
-    greet(__tmp_2);
-    ::tpyapp::pet::Pet* p = &echo((*dog));
+    ::tpyapp::main::greet(__tmp_2);
+    ::tpyapp::pet::Pet* p = &::tpyapp::main::echo((*dog));
     std::cout << p->speak() << "\n";
 }
 
@@ -57,7 +57,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::pet::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

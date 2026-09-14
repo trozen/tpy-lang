@@ -39,8 +39,8 @@ __coro_greet greet() {
 //     bound = asyncio.run(greet())
 //     print(bound)
 void main() {
-    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(greet())) << "\n";
-    std::string bound = ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(greet()));
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::greet())) << "\n";
+    std::string bound = ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::greet()));
     std::cout << bound << "\n";
 }
 
@@ -55,7 +55,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

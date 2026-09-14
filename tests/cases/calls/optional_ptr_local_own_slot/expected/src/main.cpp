@@ -84,8 +84,8 @@ void append_try_reassigned(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d) {
         }
         patches.push_back(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt);
     }
-    bump_all(patches);
-    show("append_try_reassigned", patches);
+    ::tpyapp::main::bump_all(patches);
+    ::tpyapp::main::show("append_try_reassigned", patches);
 }
 
 // # Reassigned only on one arm of an if.
@@ -105,8 +105,8 @@ void append_branch_reassigned(bool c) {
         patch = &*(__slot_1 = Pic(1));
     }
     patches.push_back(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt);
-    bump_all(patches);
-    show("append_branch_reassigned", patches);
+    ::tpyapp::main::bump_all(patches);
+    ::tpyapp::main::show("append_branch_reassigned", patches);
 }
 
 // # Declared None and never reassigned.
@@ -119,7 +119,7 @@ void append_none_declared() {
     std::vector<std::optional<Pic>> patches = std::vector<std::optional<Pic>>{};
     Pic* patch = nullptr;
     patches.push_back(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt);
-    show("append_none_declared", patches);
+    ::tpyapp::main::show("append_none_declared", patches);
 }
 
 // # Free function and user method slots, and the `Own[record] | None` spelling.
@@ -158,29 +158,29 @@ void other_slots(bool c) {
     if (c) {
         patch = &*(__slot_1 = Pic(5));
     }
-    take_own_opt(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt, sink);
-    bump_all(sink);
-    show("free_own_optional", sink);
+    ::tpyapp::main::take_own_opt(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt, sink);
+    ::tpyapp::main::bump_all(sink);
+    ::tpyapp::main::show("free_own_optional", sink);
     Pic* other = nullptr;
     if (c) {
         other = &*(__slot_2 = Pic(6));
     }
-    std::cout << "opt_own_spelling" << " " << take_opt_own(::tpy::ptr_to_optional_move(other)) << "\n";
+    std::cout << "opt_own_spelling" << " " << ::tpyapp::main::take_opt_own(::tpy::ptr_to_optional_move(other)) << "\n";
     Bag b = Bag();
     Pic* third = nullptr;
     if (c) {
         third = &*(__slot_3 = Pic(7));
     }
     b.add(third ? std::optional<Pic>(std::move(*third)) : std::nullopt);
-    bump_all(b.items);
-    show("method_own_optional", b.items);
+    ::tpyapp::main::bump_all(b.items);
+    ::tpyapp::main::show("method_own_optional", b.items);
     Pic* fourth = nullptr;
     if (c) {
         fourth = &*(__slot_4 = Pic(8));
     }
     Bag::put(fourth ? std::optional<Pic>(std::move(*fourth)) : std::nullopt, sink);
-    bump_all(sink);
-    show("static_method", sink);
+    ::tpyapp::main::bump_all(sink);
+    ::tpyapp::main::show("static_method", sink);
 }
 
 // # A dict stub's element slot, as a statement (the result read-back is its
@@ -244,8 +244,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            bump_all((*patches));
-            show("generator", (*patches));
+            ::tpyapp::main::bump_all((*patches));
+            ::tpyapp::main::show("generator", (*patches));
             __state = S_RESUME_1;
             return -1;
         }
@@ -304,7 +304,7 @@ __gen_gen gen(int32_t k) {
         if (c) {
             other = &*(__ptr_slot_f1 = Pic(21));
         }
-        take_own_opt(other ? std::optional<Pic>(std::move(*other)) : std::nullopt, (*patches));
+        ::tpyapp::main::take_own_opt(other ? std::optional<Pic>(std::move(*other)) : std::nullopt, (*patches));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -320,10 +320,10 @@ __gen_gen gen(int32_t k) {
         }
         b.emplace(Bag());
         (*b).add(third ? std::optional<Pic>(std::move(*third)) : std::nullopt);
-        bump_all((*patches));
-        bump_all((*b).items);
-        show("async_body", (*patches));
-        show("async_method", (*b).items);
+        ::tpyapp::main::bump_all((*patches));
+        ::tpyapp::main::bump_all((*b).items);
+        ::tpyapp::main::show("async_body", (*patches));
+        ::tpyapp::main::show("async_method", (*b).items);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -352,15 +352,15 @@ __coro_async_body async_body(bool c) {
 //     asyncio.run(async_body(False))
 void main() {
     ::tpy::ordered_map<::tpy::Bytes, int32_t> __tmp_1 = ::tpy::ordered_map<::tpy::Bytes, int32_t>({{::tpy::bytes_literal_owned("a", 1), 1}});
-    append_try_reassigned(__tmp_1);
-    append_branch_reassigned(true);
-    append_branch_reassigned(false);
-    append_none_declared();
-    other_slots(true);
-    other_slots(false);
-    setdefault_slot(true);
+    ::tpyapp::main::append_try_reassigned(__tmp_1);
+    ::tpyapp::main::append_branch_reassigned(true);
+    ::tpyapp::main::append_branch_reassigned(false);
+    ::tpyapp::main::append_none_declared();
+    ::tpyapp::main::other_slots(true);
+    ::tpyapp::main::other_slots(false);
+    ::tpyapp::main::setdefault_slot(true);
     {
-        auto __src_0 = gen(3);
+        auto __src_0 = ::tpyapp::main::gen(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -369,8 +369,8 @@ void main() {
         std::cout << "generator" << " " << v << "\n";
         }
     }
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_body(true)));
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_body(false)));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_body(true)));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_body(false)));
 }
 
 // # A pointer-repr `Optional[record]` LOCAL that may still be None (declared
@@ -399,7 +399,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

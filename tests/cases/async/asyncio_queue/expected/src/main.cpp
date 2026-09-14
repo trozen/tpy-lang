@@ -139,8 +139,8 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
         q.emplace(::tpystd::asyncio::Queue<int32_t>(2));
         std::cout << "empty:" << " " << ::tpy::print_bool((*q).empty()) << " " << "full:" << " " << ::tpy::print_bool((*q).full()) << " " << "qsize:" << " " << (*q).qsize() << " " << "maxsize:" << " " << (*q).maxsize << "\n";
         out.emplace(std::vector<int32_t>{});
-        pt.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*q)))));
-        ct.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer((*q), (*out)))));
+        pt.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::producer((*q)))));
+        ct.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::consumer((*q), (*out)))));
         __sub_0.emplace((*q));
         __state = S_RESUME_0;
         continue;
@@ -220,7 +220,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio.Queue: bounded producer/consumer with backpressure (maxsize 2),
@@ -235,7 +235,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

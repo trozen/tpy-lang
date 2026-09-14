@@ -54,9 +54,9 @@ void test_record() {
 //     test_inferred()
 //     test_record()
 void main() {
-    test_explicit();
-    test_inferred();
-    test_record();
+    ::tpyapp::main::test_explicit();
+    ::tpyapp::main::test_inferred();
+    ::tpyapp::main::test_record();
 }
 
 // main()
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -67,7 +67,7 @@ __gen_gen gen(std::vector<::tpy::BigInt>& items) {
 void main() {
     {
         std::vector<::tpy::BigInt> __tmp_1 = {1, 0, 2};
-        auto __src_0 = gen(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -84,7 +84,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

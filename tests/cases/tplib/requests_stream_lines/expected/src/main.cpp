@@ -154,9 +154,9 @@ void lines_crlf() {
 //     lines_trailing_newline()
 //     lines_crlf()
 void main() {
-    lines_chunked();
-    lines_trailing_newline();
-    lines_crlf();
+    ::tpyapp::main::lines_chunked();
+    ::tpyapp::main::lines_trailing_newline();
+    ::tpyapp::main::lines_crlf();
 }
 
 // # tplib.requests streaming: Response.iter_lines() yields body lines with the
@@ -181,7 +181,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

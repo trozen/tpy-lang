@@ -77,12 +77,12 @@ void test_set_aug() {
 //     test_name_rhs()
 //     test_set_aug()
 void main() {
-    test_direct();
-    test_alias();
-    test_in_branch(true);
-    test_in_branch(false);
-    test_name_rhs();
-    test_set_aug();
+    ::tpyapp::main::test_direct();
+    ::tpyapp::main::test_alias();
+    ::tpyapp::main::test_in_branch(true);
+    ::tpyapp::main::test_in_branch(false);
+    ::tpyapp::main::test_name_rhs();
+    ::tpyapp::main::test_set_aug();
 }
 
 // main()
@@ -91,7 +91,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

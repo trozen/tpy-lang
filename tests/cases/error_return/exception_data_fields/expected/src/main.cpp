@@ -47,7 +47,7 @@ void main() {
     {
         std::optional<ParseError> __err_opt_1;
         {
-            auto __try_tmp_2 = parse("ok");
+            auto __try_tmp_2 = ::tpyapp::main::parse("ok");
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -66,7 +66,7 @@ void main() {
     {
         std::optional<ParseError> __err_opt_3;
         {
-            auto __try_tmp_4 = parse("bad");
+            auto __try_tmp_4 = ::tpyapp::main::parse("bad");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -86,7 +86,7 @@ void main() {
     int32_t v3;
     {
         {
-            auto __try_tmp_6 = parse("bad");
+            auto __try_tmp_6 = ::tpyapp::main::parse("bad");
             if (!__try_tmp_6.has_value()) goto __except_5;
             v3 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
@@ -106,7 +106,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

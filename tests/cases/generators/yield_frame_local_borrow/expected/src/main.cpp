@@ -50,7 +50,7 @@ __gen_counter counter() {
 void mutate_observe() {
     int32_t seen = 0;
     {
-        auto __src_0 = counter();
+        auto __src_0 = ::tpyapp::main::counter();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -111,7 +111,7 @@ __gen_walk walk() {
 //         dirs[:] = kept            # in-place prune, os.walk-style
 void walk_prune() {
     {
-        auto __src_0 = walk();
+        auto __src_0 = ::tpyapp::main::walk();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -172,7 +172,7 @@ __gen_no_later_read no_later_read() {
 //         print("once:", v)
 void read_once() {
     {
-        auto __src_0 = no_later_read();
+        auto __src_0 = ::tpyapp::main::no_later_read();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -188,9 +188,9 @@ void read_once() {
 //     walk_prune()
 //     read_once()
 void main() {
-    mutate_observe();
-    walk_prune();
-    read_once();
+    ::tpyapp::main::mutate_observe();
+    ::tpyapp::main::walk_prune();
+    ::tpyapp::main::read_once();
 }
 
 // main()
@@ -199,7 +199,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

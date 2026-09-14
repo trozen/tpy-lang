@@ -59,7 +59,7 @@ std::string describe(Color c) {
 // def describe_default() -> str:
 //     return describe(lookup())
 std::string describe_default() {
-    return describe(::tpyapp::a::lookup());
+    return ::tpyapp::b::describe(::tpyapp::a::lookup());
 }
 
 // from a import lookup

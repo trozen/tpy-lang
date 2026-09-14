@@ -65,7 +65,7 @@ __gen_fresh fresh() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t.emplace(std::tuple<int32_t, A>{1, make()});
+        t.emplace(std::tuple<int32_t, A>{1, ::tpyapp::main::make()});
         __state = S_RESUME_0;
         return std::get<1>((*t)).v;
     }
@@ -285,7 +285,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_literal_then_call::__next__()
         if (c) {
             t.emplace(std::tuple<A, int32_t>{A(1), 2});
         } else {
-            t.emplace(make_pair());
+            t.emplace(::tpyapp::main::make_pair());
         }
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
@@ -323,7 +323,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_call_then_literal::__next__()
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         if (c) {
-            t.emplace(make_pair());
+            t.emplace(::tpyapp::main::make_pair());
         } else {
             t.emplace(std::tuple<A, int32_t>{A(1), 2});
         }
@@ -361,12 +361,12 @@ __gen_call_then_literal call_then_literal(bool c) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_call_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t.emplace(make_pair());
+        t.emplace(::tpyapp::main::make_pair());
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {  // after: yield t[0].v
-        t.emplace(make_pair());
+        t.emplace(::tpyapp::main::make_pair());
         std::get<0>((*t)).v = ::tpy::add_check<int32_t>(std::get<0>((*t)).v, 1);
         __state = S_RESUME_1;
         return std::get<0>((*t)).v;
@@ -397,7 +397,7 @@ __gen_call_reassigned call_reassigned() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_elem_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        t.emplace(own_elem_pair());
+        t.emplace(::tpyapp::main::own_elem_pair());
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
@@ -612,7 +612,7 @@ __coro_async_section async_section() {
 //     asyncio.run(async_section())
 void main() {
     {
-        auto __src_0 = fresh();
+        auto __src_0 = ::tpyapp::main::fresh();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -622,7 +622,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = own_call();
+        auto __src_2 = ::tpyapp::main::own_call();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -633,7 +633,7 @@ void main() {
     }
     A a = A(1);
     {
-        auto __src_4 = lvalue(a);
+        auto __src_4 = ::tpyapp::main::lvalue(a);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -644,7 +644,7 @@ void main() {
     }
     A b = A(5);
     {
-        auto __src_6 = mixed_fresh_first(b);
+        auto __src_6 = ::tpyapp::main::mixed_fresh_first(b);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -655,7 +655,7 @@ void main() {
     }
     A c = A(5);
     {
-        auto __src_8 = mixed_lvalue_first(c);
+        auto __src_8 = ::tpyapp::main::mixed_lvalue_first(c);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -665,7 +665,7 @@ void main() {
         }
     }
     {
-        auto __src_10 = moved_last_use();
+        auto __src_10 = ::tpyapp::main::moved_last_use();
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -675,7 +675,7 @@ void main() {
         }
     }
     {
-        auto __src_12 = loop_reassigned();
+        auto __src_12 = ::tpyapp::main::loop_reassigned();
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -685,7 +685,7 @@ void main() {
         }
     }
     {
-        auto __src_14 = literal_then_call(true);
+        auto __src_14 = ::tpyapp::main::literal_then_call(true);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -695,7 +695,7 @@ void main() {
         }
     }
     {
-        auto __src_16 = literal_then_call(false);
+        auto __src_16 = ::tpyapp::main::literal_then_call(false);
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
@@ -705,7 +705,7 @@ void main() {
         }
     }
     {
-        auto __src_18 = call_then_literal(true);
+        auto __src_18 = ::tpyapp::main::call_then_literal(true);
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
         for (;;) {
             auto __r_19 = __itr_18.__next__();
@@ -715,7 +715,7 @@ void main() {
         }
     }
     {
-        auto __src_20 = call_then_literal(false);
+        auto __src_20 = ::tpyapp::main::call_then_literal(false);
         auto&& __itr_20 = ::tpy::__iter__(__src_20);
         for (;;) {
             auto __r_21 = __itr_20.__next__();
@@ -725,7 +725,7 @@ void main() {
         }
     }
     {
-        auto __src_22 = call_reassigned();
+        auto __src_22 = ::tpyapp::main::call_reassigned();
         auto&& __itr_22 = ::tpy::__iter__(__src_22);
         for (;;) {
             auto __r_23 = __itr_22.__next__();
@@ -735,7 +735,7 @@ void main() {
         }
     }
     {
-        auto __src_24 = own_elem_call();
+        auto __src_24 = ::tpyapp::main::own_elem_call();
         auto&& __itr_24 = ::tpy::__iter__(__src_24);
         for (;;) {
             auto __r_25 = __itr_24.__next__();
@@ -745,7 +745,7 @@ void main() {
         }
     }
     {
-        auto __src_26 = try_body();
+        auto __src_26 = ::tpyapp::main::try_body();
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
         for (;;) {
             auto __r_27 = __itr_26.__next__();
@@ -765,7 +765,7 @@ void main() {
         std::cout << "method" << " " << n << "\n";
         }
     }
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_section()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_section()));
 }
 
 // # generator method: same classification behind a receiver
@@ -811,7 +811,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

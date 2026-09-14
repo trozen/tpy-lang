@@ -57,10 +57,10 @@ int32_t pick(int32_t n) {
 //     print(pick(0))
 //     print(pick(5))
 void main() {
-    std::cout << route(0) << "\n";
-    std::cout << route(7) << "\n";
-    std::cout << pick(0) << "\n";
-    std::cout << pick(5) << "\n";
+    std::cout << ::tpyapp::main::route(0) << "\n";
+    std::cout << ::tpyapp::main::route(7) << "\n";
+    std::cout << ::tpyapp::main::pick(0) << "\n";
+    std::cout << ::tpyapp::main::pick(5) << "\n";
 }
 
 // main()
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ int32_t test() {
     int32_t result = 0;
     for (int32_t i = 0; i < 3; ++i) {
         if ((i == 1)) {
-            result = close(std::move(h));
+            result = ::tpyapp::main::close(std::move(h));
             break;
         }
     }
@@ -35,7 +35,7 @@ int32_t test() {
 // def main():
 //     print(test())
 void main() {
-    std::cout << test() << "\n";
+    std::cout << ::tpyapp::main::test() << "\n";
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

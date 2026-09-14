@@ -24,7 +24,7 @@ int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, sum_leaves(child));
+            total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::sum_leaves(child));
         }
         return total;
         break;
@@ -49,10 +49,10 @@ int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
 //     print(a == b)
 void main() {
     Tree<::tpy::BigInt> t = std::vector<Tree<::tpy::BigInt>>{1, std::vector<Tree<::tpy::BigInt>>{2, 3}, 4};
-    std::cout << leaf_count<::tpy::BigInt>(t) << "\n";
-    std::cout << sum_leaves(t) << "\n";
+    std::cout << ::tpyapp::main::leaf_count<::tpy::BigInt>(t) << "\n";
+    std::cout << ::tpyapp::main::sum_leaves(t) << "\n";
     Tree<::tpy::BigInt> leaf = 9;
-    std::cout << leaf_count<::tpy::BigInt>(leaf) << "\n";
+    std::cout << ::tpyapp::main::leaf_count<::tpy::BigInt>(leaf) << "\n";
     Tree<::tpy::BigInt> a = std::vector<Tree<::tpy::BigInt>>{1, 2};
     Tree<::tpy::BigInt> b = std::vector<Tree<::tpy::BigInt>>{1, 2};
     std::cout << ::tpy::print_bool((a == b)) << "\n";
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

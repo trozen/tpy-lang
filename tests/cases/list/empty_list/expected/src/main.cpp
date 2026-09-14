@@ -79,10 +79,10 @@ void __tpy_init() {
     global_list = &__global_slot_1;
     static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
     global_list2 = &__global_slot_2;
-    std::cout << test_empty_list() << "\n";
-    std::cout << test_empty_list_int32() << "\n";
-    std::cout << test_list_constructor() << "\n";
-    std::cout << test_list_constructor_int32() << "\n";
+    std::cout << ::tpyapp::main::test_empty_list() << "\n";
+    std::cout << ::tpyapp::main::test_empty_list_int32() << "\n";
+    std::cout << ::tpyapp::main::test_list_constructor() << "\n";
+    std::cout << ::tpyapp::main::test_list_constructor_int32() << "\n";
     global_list->push_back(100);
     std::cout << ::tpy::__len__((*global_list)) << "\n";
     global_list2->push_back(50);

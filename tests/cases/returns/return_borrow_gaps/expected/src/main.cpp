@@ -28,7 +28,7 @@ void test_reassign_then_mutate_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point __slot_1 = Point(0, 0);
     Point* x = &__slot_1;
-    x = &(get_first(items));
+    x = &(::tpyapp::main::get_first(items));
     items.push_back(Point(5, 6));
     std::cout << ::tpy::__len__(items) << "\n";
 }
@@ -43,7 +43,7 @@ void test_reassign_no_mutation_ok() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point __slot_1 = Point(0, 0);
     Point* x = &__slot_1;
-    x = &(get_first(items));
+    x = &(::tpyapp::main::get_first(items));
     std::cout << x->x << "\n";
 }
 
@@ -61,8 +61,8 @@ void test_reassign_overwrite_clears_borrow() {
     std::vector<Point> other = {Point(9, 9)};
     Point __slot_1 = Point(0, 0);
     Point* x = &__slot_1;
-    x = &(get_first(items));
-    x = &(get_first(other));
+    x = &(::tpyapp::main::get_first(items));
+    x = &(::tpyapp::main::get_first(other));
     items.push_back(Point(5, 6));
     std::cout << x->x << "\n";
 }
@@ -77,7 +77,7 @@ void test_reassign_overwrite_clears_borrow() {
 //     print(len(items))           # 3
 void test_for_call_iterable_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    auto& __obj_0 = get_list(items);
+    auto& __obj_0 = ::tpyapp::main::get_list(items);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -98,7 +98,7 @@ void test_for_call_iterable_warns() {
 void test_for_call_iterable_readonly_ok() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     int32_t total = 0;
-    auto& __obj_0 = get_list(items);
+    auto& __obj_0 = ::tpyapp::main::get_list(items);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -113,7 +113,7 @@ void test_for_call_iterable_readonly_ok() {
 //     """Returns the result of a call with return_borrows_from -- should propagate."""
 //     return get_first(items)  # transitive: return_borrows_from = {0} via get_first
 Point& get_first_wrapper(std::vector<Point>& items) {
-    return get_first(items);
+    return ::tpyapp::main::get_first(items);
 }
 
 // def test_transitive_return_warns() -> None:
@@ -124,7 +124,7 @@ Point& get_first_wrapper(std::vector<Point>& items) {
 //     print(len(items))           # 3
 void test_transitive_return_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    Point& x = get_first_wrapper(items);
+    Point& x = ::tpyapp::main::get_first_wrapper(items);
     items.push_back(Point(5, 6));
     std::cout << ::tpy::__len__(items) << "\n";
 }
@@ -136,7 +136,7 @@ void test_transitive_return_warns() {
 //     print(x.x)                      # 1
 void test_transitive_return_no_mutation_ok() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    Point& x = get_first_wrapper(items);
+    Point& x = ::tpyapp::main::get_first_wrapper(items);
     std::cout << x.x << "\n";
 }
 
@@ -149,13 +149,13 @@ void test_transitive_return_no_mutation_ok() {
 //     test_transitive_return_warns()
 //     test_transitive_return_no_mutation_ok()
 void main() {
-    test_reassign_then_mutate_warns();
-    test_reassign_no_mutation_ok();
-    test_reassign_overwrite_clears_borrow();
-    test_for_call_iterable_warns();
-    test_for_call_iterable_readonly_ok();
-    test_transitive_return_warns();
-    test_transitive_return_no_mutation_ok();
+    ::tpyapp::main::test_reassign_then_mutate_warns();
+    ::tpyapp::main::test_reassign_no_mutation_ok();
+    ::tpyapp::main::test_reassign_overwrite_clears_borrow();
+    ::tpyapp::main::test_for_call_iterable_warns();
+    ::tpyapp::main::test_for_call_iterable_readonly_ok();
+    ::tpyapp::main::test_transitive_return_warns();
+    ::tpyapp::main::test_transitive_return_no_mutation_ok();
 }
 
 // main()
@@ -164,7 +164,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

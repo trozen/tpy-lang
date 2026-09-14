@@ -45,11 +45,11 @@ __match_end_2:;
 //     print(describe(Other(1)))
 void main() {
     Wrapper __tmp_1 = Wrapper(std::nullopt);
-    std::cout << describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_1}) << "\n";
     Wrapper __tmp_2 = Wrapper("hi");
-    std::cout << describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_2}) << "\n";
     Other __tmp_3 = Other(::tpy::BigInt(1));
-    std::cout << describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_3}) << "\n";
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

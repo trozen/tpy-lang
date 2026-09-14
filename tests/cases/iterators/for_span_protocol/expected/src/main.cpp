@@ -116,11 +116,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_mut();
-    test_ro();
-    test_iterate_twice();
-    test_readonly_param(MutBuffer());
-    test_rvalue_span();
+    ::tpyapp::main::test_mut();
+    ::tpyapp::main::test_ro();
+    ::tpyapp::main::test_iterate_twice();
+    ::tpyapp::main::test_readonly_param(MutBuffer());
+    ::tpyapp::main::test_rvalue_span();
     std::cout << "done" << "\n";
 }
 

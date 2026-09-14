@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_list_subscript_oob();
+    ::tpyapp::main::test_list_subscript_oob();
 }
 
 } // namespace tpyapp::main

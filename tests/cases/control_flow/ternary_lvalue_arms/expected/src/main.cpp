@@ -73,17 +73,17 @@ int32_t pick_array(std::array<int32_t, 2>& a, std::array<int32_t, 2>& b, bool c)
 //     print(pick_array(arr, brr, True), arr[0])
 void main() {
     std::vector<Rec> rs = {Rec(1), Rec(2)};
-    std::cout << pick_elem(rs, true) << " " << ::tpy::__getitem__(rs, 0).n << "\n";
-    std::cout << pick_opt_elem(rs, true) << " " << ::tpy::__getitem__(rs, 0).n << "\n";
+    std::cout << ::tpyapp::main::pick_elem(rs, true) << " " << ::tpy::__getitem__(rs, 0).n << "\n";
+    std::cout << ::tpyapp::main::pick_opt_elem(rs, true) << " " << ::tpy::__getitem__(rs, 0).n << "\n";
     std::vector<std::optional<Rec>> xs = {Rec(5)};
-    std::cout << pick_optional_element(xs, true) << "\n";
+    std::cout << ::tpyapp::main::pick_optional_element(xs, true) << "\n";
     Rec* first = ::tpy::optional_to_ptr(::tpy::__getitem__(xs, 0));
     if ((first != nullptr)) {
         std::cout << first->n << "\n";
     }
     std::array<int32_t, 2> arr = {0, 0};
     std::array<int32_t, 2> brr = {0, 0};
-    std::cout << pick_array(arr, brr, true) << " " << ::tpy::__getitem__(arr, 0) << "\n";
+    std::cout << ::tpyapp::main::pick_array(arr, brr, true) << " " << ::tpy::__getitem__(arr, 0) << "\n";
 }
 
 // main()
@@ -92,7 +92,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

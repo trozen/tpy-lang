@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     check_not(nums)
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
-    describe(nums);
-    check_not(nums);
+    ::tpyapp::main::describe(nums);
+    ::tpyapp::main::check_not(nums);
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

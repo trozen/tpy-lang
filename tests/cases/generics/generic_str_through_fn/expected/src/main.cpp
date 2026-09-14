@@ -20,13 +20,13 @@ namespace tpyapp::main {
 //     n2 = reduce2(lambda a, b: a + b, 10, 20)
 //     print(n2)
 void main() {
-    std::string s1 = apply<std::string>([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "!")); }, "hello");
+    std::string s1 = ::tpyapp::main::apply<std::string>([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "!")); }, "hello");
     std::cout << s1 << "\n";
-    std::string s2 = reduce2<std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, "foo", "bar");
+    std::string s2 = ::tpyapp::main::reduce2<std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, "foo", "bar");
     std::cout << s2 << "\n";
-    int32_t n1 = apply<int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 41);
+    int32_t n1 = ::tpyapp::main::apply<int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 41);
     std::cout << n1 << "\n";
-    int32_t n2 = reduce2<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 10, 20);
+    int32_t n2 = ::tpyapp::main::reduce2<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 10, 20);
     std::cout << n2 << "\n";
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

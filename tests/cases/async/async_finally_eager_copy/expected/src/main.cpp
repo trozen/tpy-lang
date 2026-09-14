@@ -52,7 +52,7 @@ __coro_total_up total_up(int32_t k) {
 // def main() -> None:
 //     print(asyncio.run(total_up(3)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(total_up(3))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::total_up(3))) << "\n";
 }
 
 // # A movable (BigInt) local returned under a NON-suspending finally: the
@@ -69,7 +69,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -42,10 +42,10 @@ std::string classify(int64_t x) {
 //     x: int64 = 99
 //     print(classify(x))
 void main() {
-    std::cout << classify__lit_1__2(1) << "\n";
-    std::cout << classify__lit_1__2(2) << "\n";
+    std::cout << ::tpyapp::main::classify__lit_1__2(1) << "\n";
+    std::cout << ::tpyapp::main::classify__lit_1__2(2) << "\n";
     int64_t x = 99;
-    std::cout << classify(x) << "\n";
+    std::cout << ::tpyapp::main::classify(x) << "\n";
 }
 
 // main()
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

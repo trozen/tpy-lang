@@ -183,7 +183,7 @@ __gen_rebind_after_none rebind_after_none() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __ptr_slot_f0 = make_opt(3);
+        __ptr_slot_f0 = ::tpyapp::main::make_opt(3);
         got = ::tpy::optional_to_ptr(__ptr_slot_f0);
         __state = S_RESUME_0;
         return 1;
@@ -293,7 +293,7 @@ __gen_loop_rebind loop_rebind(int32_t n) {
 //         print(v)
 void main() {
     {
-        auto __src_0 = rvalue_init();
+        auto __src_0 = ::tpyapp::main::rvalue_init();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -304,7 +304,7 @@ void main() {
     }
     std::vector<Point> pts = {Point(1)};
     {
-        auto __src_2 = rebind_after_alias(pts);
+        auto __src_2 = ::tpyapp::main::rebind_after_alias(pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -315,7 +315,7 @@ void main() {
     }
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     {
-        auto __src_4 = rebind_after_none();
+        auto __src_4 = ::tpyapp::main::rebind_after_none();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -325,7 +325,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = own_opt_call();
+        auto __src_6 = ::tpyapp::main::own_opt_call();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -335,7 +335,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = loop_rebind(2);
+        auto __src_8 = ::tpyapp::main::loop_rebind(2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -352,7 +352,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

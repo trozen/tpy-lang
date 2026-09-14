@@ -644,7 +644,7 @@ void test_describe() {
 void main() {
     {
         {
-            auto __try_tmp_65 = test_basic_object();
+            auto __try_tmp_65 = ::tpyapp::main::test_basic_object();
             if (!__try_tmp_65.has_value()) goto __except_64;
         }
         goto __after_try_64;
@@ -655,7 +655,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_67 = test_nested();
+            auto __try_tmp_67 = ::tpyapp::main::test_nested();
             if (!__try_tmp_67.has_value()) goto __except_66;
         }
         goto __after_try_66;
@@ -666,7 +666,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_69 = test_null_and_escape();
+            auto __try_tmp_69 = ::tpyapp::main::test_null_and_escape();
             if (!__try_tmp_69.has_value()) goto __except_68;
         }
         goto __after_try_68;
@@ -677,7 +677,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_71 = test_float();
+            auto __try_tmp_71 = ::tpyapp::main::test_float();
             if (!__try_tmp_71.has_value()) goto __except_70;
         }
         goto __after_try_70;
@@ -688,7 +688,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_73 = test_skip();
+            auto __try_tmp_73 = ::tpyapp::main::test_skip();
             if (!__try_tmp_73.has_value()) goto __except_72;
         }
         goto __after_try_72;
@@ -699,7 +699,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_75 = test_empty_containers();
+            auto __try_tmp_75 = ::tpyapp::main::test_empty_containers();
             if (!__try_tmp_75.has_value()) goto __except_74;
         }
         goto __after_try_74;
@@ -710,7 +710,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_77 = test_negative_int();
+            auto __try_tmp_77 = ::tpyapp::main::test_negative_int();
             if (!__try_tmp_77.has_value()) goto __except_76;
         }
         goto __after_try_76;
@@ -721,7 +721,7 @@ void main() {
     }
     {
         {
-            auto __try_tmp_79 = test_raw_methods();
+            auto __try_tmp_79 = ::tpyapp::main::test_raw_methods();
             if (!__try_tmp_79.has_value()) goto __except_78;
         }
         goto __after_try_78;
@@ -730,7 +730,7 @@ void main() {
         std::cout << "ERROR" << "\n";
         __after_try_78:;
     }
-    test_describe();
+    ::tpyapp::main::test_describe();
 }
 
 // from tplib.json import JsonError, JsonReader, JsonToken
@@ -743,7 +743,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -54,7 +54,7 @@ void __tpy_init() {
 
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

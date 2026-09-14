@@ -48,11 +48,11 @@ void dict_key(const ::tpy::String& s) {
 //     dict_key(s)
 void main() {
     ::tpy::String s = ::tpy::String("a");
-    repr_and_str(s);
-    fstring(s);
-    container_element(s);
-    show<::tpy::String>(s);
-    dict_key(s);
+    ::tpyapp::main::repr_and_str(s);
+    ::tpyapp::main::fstring(s);
+    ::tpyapp::main::container_element(s);
+    ::tpyapp::main::show<::tpy::String>(s);
+    ::tpyapp::main::dict_key(s);
 }
 
 // main()
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

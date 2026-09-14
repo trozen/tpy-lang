@@ -34,8 +34,8 @@ void bump(const std::tuple<T*, T*>& p) {
 void main() {
     T t1 = T(1);
     T t2 = T(2);
-    show(std::tuple<T*, T*>{&(t1), &(t2)});
-    bump(std::tuple<T*, T*>{&(t1), &(t2)});
+    ::tpyapp::main::show(std::tuple<T*, T*>{&(t1), &(t2)});
+    ::tpyapp::main::bump(std::tuple<T*, T*>{&(t1), &(t2)});
     std::cout << t1.x << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

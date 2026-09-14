@@ -19,8 +19,8 @@ std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>> make_pair(int32_t i, int32_t 
 //         print(c.get().value)
 void main() {
     std::vector<std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>>> pairs = std::vector<std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>>>{};
-    pairs.push_back(make_pair(1, 10));
-    pairs.push_back(make_pair(2, 20));
+    pairs.push_back(::tpyapp::main::make_pair(1, 10));
+    pairs.push_back(::tpyapp::main::make_pair(2, 20));
     std::vector<::tpystd::tplib::rc::Rc<Node>> clones = ({
         std::vector<::tpystd::tplib::rc::Rc<Node>> __result;
         auto& __obj_0 = pairs;
@@ -52,7 +52,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

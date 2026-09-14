@@ -47,22 +47,22 @@ Point* pick(bool flag, Point* a, Point* b) {
 void main() {
     Point p = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     Point q = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
-    Point* r1 = get_or_none(true, p);
+    Point* r1 = ::tpyapp::main::get_or_none(true, p);
     if ((r1 != nullptr)) {
         std::cout << r1->x << "\n";
     }
-    Point* r2 = get_or_none(false, p);
+    Point* r2 = ::tpyapp::main::get_or_none(false, p);
     std::cout << ::tpy::print_optional(r2) << "\n";
-    Point* r3 = pick(true, &(p), &(q));
+    Point* r3 = ::tpyapp::main::pick(true, &(p), &(q));
     if ((r3 != nullptr)) {
         std::cout << r3->x << "\n";
     }
-    Point* r4 = pick(false, &(p), &(q));
+    Point* r4 = ::tpyapp::main::pick(false, &(p), &(q));
     if ((r4 != nullptr)) {
         std::cout << r4->x << "\n";
     }
-    std::cout << narrowed_field(&(p)) << "\n";
-    std::cout << narrowed_field(nullptr) << "\n";
+    std::cout << ::tpyapp::main::narrowed_field(&(p)) << "\n";
+    std::cout << ::tpyapp::main::narrowed_field(nullptr) << "\n";
 }
 
 // main()
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

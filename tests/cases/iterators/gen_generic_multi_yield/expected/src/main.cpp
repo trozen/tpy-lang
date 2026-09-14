@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //         print(s)
 void main() {
     {
-        auto __src_0 = two_yields<int32_t>(1, 2);
+        auto __src_0 = ::tpyapp::main::two_yields<int32_t>(1, 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -22,7 +22,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = two_yields<std::string>("x", "y");
+        auto __src_2 = ::tpyapp::main::two_yields<std::string>("x", "y");
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

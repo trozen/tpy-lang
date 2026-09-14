@@ -250,27 +250,27 @@ void roundtrip() {
 //     print("---")
 //     roundtrip()
 void main() {
-    read_basic();
+    ::tpyapp::main::read_basic();
     std::cout << "---" << "\n";
-    read_quoted();
+    ::tpyapp::main::read_quoted();
     std::cout << "---" << "\n";
-    read_custom_delim();
+    ::tpyapp::main::read_custom_delim();
     std::cout << "---" << "\n";
-    read_skipinitialspace();
+    ::tpyapp::main::read_skipinitialspace();
     std::cout << "---" << "\n";
-    read_empty_fields();
+    ::tpyapp::main::read_empty_fields();
     std::cout << "---" << "\n";
-    read_blank_and_empty();
+    ::tpyapp::main::read_blank_and_empty();
     std::cout << "---" << "\n";
-    read_then_mutate();
+    ::tpyapp::main::read_then_mutate();
     std::cout << "---" << "\n";
-    write_basic();
+    ::tpyapp::main::write_basic();
     std::cout << "---" << "\n";
-    write_quoting();
+    ::tpyapp::main::write_quoting();
     std::cout << "---" << "\n";
-    write_custom();
+    ::tpyapp::main::write_custom();
     std::cout << "---" << "\n";
-    roundtrip();
+    ::tpyapp::main::roundtrip();
 }
 
 // # csv.reader / csv.writer (list[str] row surface) over io text buffers --
@@ -286,7 +286,7 @@ void __tpy_init() {
 
     ::tpystd::csv::__tpy_init();
     ::tpystd::io::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

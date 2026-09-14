@@ -17,9 +17,9 @@ void connect(const Options& kwargs) {
 //     connect(host="example.com", port=int32(443))
 void main() {
     Options __tmp_1 = Options("localhost", 8080);
-    connect(__tmp_1);
+    ::tpyapp::main::connect(__tmp_1);
     Options __tmp_2 = Options("example.com", 443);
-    connect(__tmp_2);
+    ::tpyapp::main::connect(__tmp_2);
 }
 
 // main()
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

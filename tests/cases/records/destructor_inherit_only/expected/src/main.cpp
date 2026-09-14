@@ -19,9 +19,9 @@ void consume(Child&& c) {
 //     print("done")
 void main() {
     Child c = Child("x", "t1");
-    consume(std::move(c));
+    ::tpyapp::main::consume(std::move(c));
     std::cout << "---" << "\n";
-    consume(Child("y", "t2"));
+    ::tpyapp::main::consume(Child("y", "t2"));
     std::cout << "done" << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

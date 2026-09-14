@@ -22,7 +22,7 @@ bool _is_leap(const ::tpy::BigInt& year) {
 //         return 29
 //     return _DAYS_IN_MONTH[month]
 ::tpy::BigInt _days_in_month(const ::tpy::BigInt& year, const ::tpy::BigInt& month) {
-    if (((month == 2) && _is_leap(year))) {
+    if (((month == 2) && ::tpystd::_datetime_cal::_is_leap(year))) {
         return ::tpy::BigInt(29);
     }
     return ::tpy::__getitem__((*_DAYS_IN_MONTH), month.to_fixed_check<int32_t>());
@@ -40,14 +40,14 @@ bool _is_leap(const ::tpy::BigInt& year) {
 //     extra = 1 if (month > 2 and _is_leap(year)) else 0
 //     return _DAYS_BEFORE_MONTH[month] + extra
 ::tpy::BigInt _days_before_month(const ::tpy::BigInt& year, const ::tpy::BigInt& month) {
-    int32_t extra = ((((month > 2) && _is_leap(year))) ? (1) : (0));
+    int32_t extra = ((((month > 2) && ::tpystd::_datetime_cal::_is_leap(year))) ? (1) : (0));
     return ((::tpy::__getitem__((*_DAYS_BEFORE_MONTH), month.to_fixed_check<int32_t>())) + (::tpy::BigInt(extra)));
 }
 
 // def _ymd2ord(year: int, month: int, day: int) -> int:
 //     return _days_before_year(year) + _days_before_month(year, month) + day
 ::tpy::BigInt _ymd2ord(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day) {
-    return ((((_days_before_year(year)) + (_days_before_month(year, month)))) + (day));
+    return ((((::tpystd::_datetime_cal::_days_before_year(year)) + (::tpystd::_datetime_cal::_days_before_month(year, month)))) + (day));
 }
 
 // def _ord2ymd(n: int) -> tuple[int, int, int]:
@@ -109,7 +109,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _ord2ymd(const ::tpy::Bi
 //         week1monday = week1monday + 7
 //     return week1monday
 ::tpy::BigInt _isoweek1monday(const ::tpy::BigInt& year) {
-    ::tpy::BigInt firstday = _ymd2ord(year, ::tpy::BigInt(1), ::tpy::BigInt(1));
+    ::tpy::BigInt firstday = ::tpystd::_datetime_cal::_ymd2ord(year, ::tpy::BigInt(1), ::tpy::BigInt(1));
     ::tpy::BigInt firstweekday = ((((firstday) + (::tpy::BigInt(6)))) % (::tpy::BigInt(7)));
     ::tpy::BigInt week1monday = ((firstday) - (firstweekday));
     if ((firstweekday > 3)) {
@@ -133,18 +133,18 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _ord2ymd(const ::tpy::Bi
 //     return (y, week + 1, day + 1)
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _iso_calendar(const ::tpy::BigInt& __param_y, const ::tpy::BigInt& mo, const ::tpy::BigInt& d) {
     ::tpy::BigInt y = __param_y;
-    ::tpy::BigInt week1monday = _isoweek1monday(y);
-    ::tpy::BigInt today = _ymd2ord(y, mo, d);
+    ::tpy::BigInt week1monday = ::tpystd::_datetime_cal::_isoweek1monday(y);
+    ::tpy::BigInt today = ::tpystd::_datetime_cal::_ymd2ord(y, mo, d);
     auto __tup_1 = ::tpy::divmod_bigint(((today) - (week1monday)), ::tpy::BigInt(7));
     ::tpy::BigInt week = std::get<0>(__tup_1);
     ::tpy::BigInt day = std::get<1>(__tup_1);
     if ((week < 0)) {
         y = ((y) - (::tpy::BigInt(1)));
-        week1monday = _isoweek1monday(y);
+        week1monday = ::tpystd::_datetime_cal::_isoweek1monday(y);
         auto __tup_2 = ::tpy::divmod_bigint(((today) - (week1monday)), ::tpy::BigInt(7));
         week = std::get<0>(__tup_2);
         day = std::get<1>(__tup_2);
-    } else if (((week >= 52) && (today >= _isoweek1monday(((y) + (::tpy::BigInt(1))))))) {
+    } else if (((week >= 52) && (today >= ::tpystd::_datetime_cal::_isoweek1monday(((y) + (::tpy::BigInt(1))))))) {
         y = ((y) + (::tpy::BigInt(1)));
         week = ::tpy::BigInt(0);
     }
@@ -178,19 +178,19 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _isoweek_to_gregorian(co
         throw ::tpy::ValueError(std::format("Invalid week: {}", (week).to_string()));
     }
     if ((week == 53)) {
-        ::tpy::BigInt first_weekday = ((_ymd2ord(year, ::tpy::BigInt(1), ::tpy::BigInt(1))) % (::tpy::BigInt(7)));
-        if ((!(((first_weekday == 4) || ((first_weekday == 3) && _is_leap(year)))))) {
+        ::tpy::BigInt first_weekday = ((::tpystd::_datetime_cal::_ymd2ord(year, ::tpy::BigInt(1), ::tpy::BigInt(1))) % (::tpy::BigInt(7)));
+        if ((!(((first_weekday == 4) || ((first_weekday == 3) && ::tpystd::_datetime_cal::_is_leap(year)))))) {
             throw ::tpy::ValueError(std::format("Invalid week: {}", (week).to_string()));
         }
     }
     if (((day < 1) || (day > 7))) {
         throw ::tpy::ValueError(std::format("Invalid weekday: {} (range is [1, 7])", (day).to_string()));
     }
-    ::tpy::BigInt ord_day = ((((_isoweek1monday(year)) + (((((week) - (::tpy::BigInt(1)))) * (::tpy::BigInt(7)))))) + (((day) - (::tpy::BigInt(1)))));
+    ::tpy::BigInt ord_day = ((((::tpystd::_datetime_cal::_isoweek1monday(year)) + (((((week) - (::tpy::BigInt(1)))) * (::tpy::BigInt(7)))))) + (((day) - (::tpy::BigInt(1)))));
     if (((ord_day < 1) || (ord_day > _MAXORDINAL))) {
         throw ::tpy::ValueError("ISO date out of range");
     }
-    return _ord2ymd(ord_day);
+    return ::tpystd::_datetime_cal::_ord2ymd(ord_day);
 }
 
 // # Calendar constants/helpers, ported from CPython's datetime.py. The lists are

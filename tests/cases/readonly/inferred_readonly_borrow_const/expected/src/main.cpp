@@ -46,8 +46,8 @@ void main() {
     std::cout << d.read_named() << "\n";
     d.bump();
     std::cout << d.read_sub() << "\n";
-    std::cout << read_param(d.store) << "\n";
-    std::cout << read_call(d) << "\n";
+    std::cout << ::tpyapp::main::read_param(d.store) << "\n";
+    std::cout << ::tpyapp::main::read_call(d) << "\n";
 }
 
 // main()
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -34,10 +34,10 @@ void clear() {
 //     print(_opt_int_g is None)
 void main() {
     Holder h = Holder(::tpy::BigInt(7));
-    install(&h, ::tpy::BigInt(42));
+    ::tpyapp::main::install(&h, ::tpy::BigInt(42));
     std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n";
     std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n";
-    clear();
+    ::tpyapp::main::clear();
     std::cout << ::tpy::print_bool((_ptr_g == nullptr)) << "\n";
     std::cout << ::tpy::print_bool((!_opt_int_g.has_value())) << "\n";
 }
@@ -53,7 +53,7 @@ void __tpy_init() {
 
     _ptr_g = nullptr;
     _opt_int_g = std::nullopt;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

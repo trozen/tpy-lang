@@ -17,8 +17,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << negate(3) << "\n";
-    std::cout << negate(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::negate(3) << "\n";
+    std::cout << ::tpyapp::main::negate(std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

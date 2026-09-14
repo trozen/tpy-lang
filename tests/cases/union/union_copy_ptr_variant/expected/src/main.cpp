@@ -79,7 +79,7 @@ void main() {
     }
     Dog d2 = Dog("Fido");
     ::tpy::Union<Cat*, Dog*> param_pet{&(d2)};
-    print_copy_param(param_pet.as_const());
+    ::tpyapp::main::print_copy_param(param_pet.as_const());
     Cat c2 = Cat("Mittens");
     ::tpy::Union<Cat*, Dog*> pet6{&(c2)};
     if (true) {
@@ -109,7 +109,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

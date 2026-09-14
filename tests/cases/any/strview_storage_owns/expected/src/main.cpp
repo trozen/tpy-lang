@@ -18,7 +18,7 @@ namespace tpyapp::main {
 //     # `a` owns its own std::string copy regardless.
 //     print("stored")
 void main() {
-    ::tpy::Any a = take("ephemeral");
+    ::tpy::Any a = ::tpyapp::main::take("ephemeral");
     std::cout << "stored" << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

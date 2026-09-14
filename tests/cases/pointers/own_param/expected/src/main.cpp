@@ -28,7 +28,7 @@ int32_t take_point(Point&& p) {
 //     result: int32 = take_point(make_point(10, 20))
 //     print(result)
 void main() {
-    int32_t result = take_point(make_point(10, 20));
+    int32_t result = ::tpyapp::main::take_point(::tpyapp::main::make_point(10, 20));
     std::cout << result << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

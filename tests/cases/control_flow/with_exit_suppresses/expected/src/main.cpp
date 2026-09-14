@@ -52,9 +52,9 @@ void normal_inside() {
 //     print("---")
 //     normal_inside()
 void main() {
-    raises_inside();
+    ::tpyapp::main::raises_inside();
     std::cout << "---" << "\n";
-    normal_inside();
+    ::tpyapp::main::normal_inside();
 }
 
 // main()
@@ -63,7 +63,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

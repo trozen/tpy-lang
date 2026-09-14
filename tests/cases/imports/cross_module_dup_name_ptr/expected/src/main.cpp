@@ -18,7 +18,7 @@ void bump(::tpyapp::red::Tag* p) {
 //     print(b.n)
 void main() {
     ::tpyapp::red::Tag t = ::tpyapp::red::Tag(::tpy::BigInt(5));
-    bump(&t);
+    ::tpyapp::main::bump(&t);
     std::cout << t.n << "\n";
     ::tpyapp::blue::Tag b = ::tpyapp::blue::Tag(::tpy::BigInt(10));
     std::cout << b.n << "\n";
@@ -35,7 +35,7 @@ void __tpy_init() {
 
     ::tpyapp::red::__tpy_init();
     ::tpyapp::blue::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

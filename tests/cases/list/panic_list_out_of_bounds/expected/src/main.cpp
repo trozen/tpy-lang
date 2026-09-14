@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_out_of_bounds();
+    ::tpyapp::main::test_out_of_bounds();
 }
 
 } // namespace tpyapp::main

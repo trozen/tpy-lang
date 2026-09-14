@@ -15,7 +15,7 @@ void show(int32_t n, bool ok, double ratio, uint8_t small) {
     std::cout << n << " " << ::tpy::print_bool(ok) << " " << ::tpy::print_float(ratio) << "\n";
     std::cout << static_cast<int>(small) << "\n";
     std::cout << "\n";
-    banner();
+    ::tpyapp::main::banner();
 }
 
 // def banner() -> None:
@@ -28,8 +28,8 @@ void banner() {
 //     show(42, True, 2.5, 200)
 //     show(-7, False, 0.0, 0)
 void main() {
-    show(42, true, 2.5, 200);
-    show(-7, false, 0.0, 0);
+    ::tpyapp::main::show(42, true, 2.5, 200);
+    ::tpyapp::main::show(-7, false, 0.0, 0);
 }
 
 // main()
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

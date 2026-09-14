@@ -74,10 +74,10 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::helpers::__tpy_init();
-    test_imported_read_no_warn();
-    test_imported_mutate_warns();
-    test_imported_transitive_mutation_warns();
-    test_imported_transitive_read_no_warn();
+    ::tpyapp::main::test_imported_read_no_warn();
+    ::tpyapp::main::test_imported_mutate_warns();
+    ::tpyapp::main::test_imported_transitive_mutation_warns();
+    ::tpyapp::main::test_imported_transitive_read_no_warn();
 }
 
 } // namespace tpyapp::main

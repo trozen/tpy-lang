@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    COUNTER = _seed();
+    COUNTER = ::dotted_init::pkg::inner::leaf::_seed();
 }
 
 } // namespace dotted_init::pkg::inner::leaf

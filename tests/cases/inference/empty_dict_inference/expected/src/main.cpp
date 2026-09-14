@@ -84,7 +84,7 @@ void takes_dict(const ::tpy::ordered_map<std::string, int32_t>& d) {
 void test_param_context() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::__setitem__(d, "a", 1);
-    takes_dict(d);
+    ::tpyapp::main::takes_dict(d);
 }
 
 // def test_param_only() -> None:
@@ -92,7 +92,7 @@ void test_param_context() {
 //     takes_dict(d)
 void test_param_only() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    takes_dict(d);
+    ::tpyapp::main::takes_dict(d);
 }
 
 // test_literal()
@@ -107,13 +107,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_literal();
-    test_dict_ctor();
-    test_multiple();
-    test_numeric_widen();
-    test_getitem_after_infer();
-    test_param_context();
-    test_param_only();
+    ::tpyapp::main::test_literal();
+    ::tpyapp::main::test_dict_ctor();
+    ::tpyapp::main::test_multiple();
+    ::tpyapp::main::test_numeric_widen();
+    ::tpyapp::main::test_getitem_after_infer();
+    ::tpyapp::main::test_param_context();
+    ::tpyapp::main::test_param_only();
 }
 
 } // namespace tpyapp::main

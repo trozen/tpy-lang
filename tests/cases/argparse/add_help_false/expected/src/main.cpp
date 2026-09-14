@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     std::vector<std::string> __tmp_1 = {"-h", "--count", "3"};
-    __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
     std::cout << ::tpy::print_bool(args.h) << " " << args.count << "\n";
     return 0;
 }
@@ -53,7 +53,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

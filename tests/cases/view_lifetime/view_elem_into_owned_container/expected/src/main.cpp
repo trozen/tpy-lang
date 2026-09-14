@@ -117,14 +117,14 @@ void owned_source_inverse() {
 //     bytes_optional_deref(None)
 //     owned_source_inverse()
 void main() {
-    str_param_sinks("hi");
-    str_optional_deref("x");
-    str_optional_deref(std::nullopt);
-    str_slice("abcdef");
-    bytes_sinks(::tpy::bytes_literal("hello", 5));
-    bytes_optional_deref(::tpy::bytes_literal_owned("world", 5));
-    bytes_optional_deref(std::nullopt);
-    owned_source_inverse();
+    ::tpyapp::main::str_param_sinks("hi");
+    ::tpyapp::main::str_optional_deref("x");
+    ::tpyapp::main::str_optional_deref(std::nullopt);
+    ::tpyapp::main::str_slice("abcdef");
+    ::tpyapp::main::bytes_sinks(::tpy::bytes_literal("hello", 5));
+    ::tpyapp::main::bytes_optional_deref(::tpy::bytes_literal_owned("world", 5));
+    ::tpyapp::main::bytes_optional_deref(std::nullopt);
+    ::tpyapp::main::owned_source_inverse();
 }
 
 // main()
@@ -133,7 +133,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

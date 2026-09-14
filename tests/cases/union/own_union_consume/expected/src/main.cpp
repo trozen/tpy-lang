@@ -31,13 +31,13 @@ Json build_arr() {
 //         arr.append(4)
 //         print(len(arr))
 void main() {
-    Json obj = build_obj();
+    Json obj = ::tpyapp::main::build_obj();
     if (std::holds_alternative<::tpy::ordered_map<std::string, Json>>(obj.value)) {
         auto& __obj = std::get<::tpy::ordered_map<std::string, Json>>(obj.value);
         ::tpy::__setitem__(__obj, "c", 3);
         std::cout << ::tpy::__len__(__obj) << "\n";
     }
-    Json arr = build_arr();
+    Json arr = ::tpyapp::main::build_arr();
     if (std::holds_alternative<std::vector<Json>>(arr.value)) {
         auto& __arr = std::get<std::vector<Json>>(arr.value);
         __arr.push_back(4);
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

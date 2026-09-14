@@ -31,11 +31,11 @@ void take(::tpy::Union<const Apple*, const Banana*> f) {
 //     take(Banana())
 void main() {
     std::vector<int32_t> __tmp_1 = {11, 12, 13};
-    std::cout << first(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::first(__tmp_1) << "\n";
     Apple __tmp_2 = Apple();
-    take(::tpy::Union<const Apple*, const Banana*>{&__tmp_2});
+    ::tpyapp::main::take(::tpy::Union<const Apple*, const Banana*>{&__tmp_2});
     Banana __tmp_3 = Banana();
-    take(::tpy::Union<const Apple*, const Banana*>{&__tmp_3});
+    ::tpyapp::main::take(::tpy::Union<const Apple*, const Banana*>{&__tmp_3});
 }
 
 // main()
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

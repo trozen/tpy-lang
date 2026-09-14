@@ -119,14 +119,14 @@ std::vector<Counter> collect_refs(const std::vector<Counter>& src) {
 //     print(got[0].n)
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpy::__len__(collect_for(__tmp_1)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::collect_for(__tmp_1)) << "\n";
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    std::cout << ::tpy::__len__(widen_collect(__tmp_2)) << "\n";
-    std::cout << ::tpy::__len__(collect_while(4)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::widen_collect(__tmp_2)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::collect_while(4)) << "\n";
     std::vector<int32_t> __tmp_3 = {1, 2, 3, 4};
-    std::cout << ::tpy::__len__(collect_cond(__tmp_3)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::collect_cond(__tmp_3)) << "\n";
     std::vector<int32_t> __tmp_4 = {5, 6};
-    std::cout << ::tpy::__len__(generic_collect<int32_t>(__tmp_4)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::generic_collect<int32_t>(__tmp_4)) << "\n";
     std::vector<int32_t> acc = std::vector<int32_t>{};
     auto __obj_0 = {10, 20, 30};
     auto __beg_0 = __obj_0.begin();
@@ -135,9 +135,9 @@ void main() {
         int32_t v = *__beg_0;
         acc.push_back(v);
     }
-    std::cout << total(acc) << "\n";
+    std::cout << ::tpyapp::main::total(acc) << "\n";
     std::vector<Counter> __tmp_5 = {Counter(1), Counter(2)};
-    std::vector<Counter> got = collect_refs(__tmp_5);
+    std::vector<Counter> got = ::tpyapp::main::collect_refs(__tmp_5);
     ::tpy::__getitem__(got, 0).n = 99;
     std::cout << ::tpy::__getitem__(got, 0).n << "\n";
 }
@@ -148,7 +148,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

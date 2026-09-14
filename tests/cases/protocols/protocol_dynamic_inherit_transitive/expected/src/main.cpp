@@ -22,9 +22,9 @@ void main() {
     ValErr v = ValErr("v-msg");
     OsErr o = OsErr("o-msg");
     BaseExc b = BaseExc("b-msg");
-    std::cout << report(v) << "\n";
-    std::cout << report(o) << "\n";
-    std::cout << report(b) << "\n";
+    std::cout << ::tpyapp::main::report(v) << "\n";
+    std::cout << ::tpyapp::main::report(o) << "\n";
+    std::cout << ::tpyapp::main::report(b) << "\n";
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

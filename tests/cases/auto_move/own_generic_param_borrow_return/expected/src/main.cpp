@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(passthrough(7))
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
-    std::cout << first_val<int32_t>(std::move(nums)) << "\n";
-    std::cout << passthrough<int32_t>(7) << "\n";
+    std::cout << ::tpyapp::main::first_val<int32_t>(std::move(nums)) << "\n";
+    std::cout << ::tpyapp::main::passthrough<int32_t>(7) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -213,17 +213,17 @@ void hatch_fresh_name_section() {
 //     hatch_rc_section()
 //     hatch_fresh_name_section()
 void main() {
-    sync_first_section();
-    rebind_in_loop_section();
-    branch_arms_section(true);
-    branch_arms_section(false);
-    dead_alias_section();
-    none_rebind_section();
-    container_insert_section();
-    rebound_ptr_section();
-    hatch_copy_section();
-    hatch_rc_section();
-    hatch_fresh_name_section();
+    ::tpyapp::main::sync_first_section();
+    ::tpyapp::main::rebind_in_loop_section();
+    ::tpyapp::main::branch_arms_section(true);
+    ::tpyapp::main::branch_arms_section(false);
+    ::tpyapp::main::dead_alias_section();
+    ::tpyapp::main::none_rebind_section();
+    ::tpyapp::main::container_insert_section();
+    ::tpyapp::main::rebound_ptr_section();
+    ::tpyapp::main::hatch_copy_section();
+    ::tpyapp::main::hatch_rc_section();
+    ::tpyapp::main::hatch_fresh_name_section();
 }
 
 // from tplib.rc import Rc
@@ -236,7 +236,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

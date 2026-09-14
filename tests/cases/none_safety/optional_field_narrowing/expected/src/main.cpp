@@ -70,10 +70,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_field_narrowing();
-    test_nested_field();
-    test_alias();
-    test_method_call();
+    ::tpyapp::main::test_field_narrowing();
+    ::tpyapp::main::test_nested_field();
+    ::tpyapp::main::test_alias();
+    ::tpyapp::main::test_method_call();
 }
 
 } // namespace tpyapp::main

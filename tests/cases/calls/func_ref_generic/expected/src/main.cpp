@@ -48,14 +48,14 @@ std::function<int32_t(int32_t)> get_identity() {
 //     # Void hint with generic function (return discarded)
 //     run_void(identity, 0)                   # (no output)
 void main() {
-    std::cout << apply_fn(identity<int32_t>, 42) << "\n";
-    std::cout << apply_callable(identity<int32_t>, 42) << "\n";
-    std::cout << ::tpy::TuplePrinter(make_pair(pair<int32_t, int32_t>, 3, 7)) << "\n";
-    std::cout << apply2(max_val<int32_t>, 10, 3) << "\n";
-    use_local();
-    std::function<int32_t(int32_t)> f = get_identity();
+    std::cout << ::tpyapp::main::apply_fn(identity<int32_t>, 42) << "\n";
+    std::cout << ::tpyapp::main::apply_callable(identity<int32_t>, 42) << "\n";
+    std::cout << ::tpy::TuplePrinter(::tpyapp::main::make_pair(pair<int32_t, int32_t>, 3, 7)) << "\n";
+    std::cout << ::tpyapp::main::apply2(max_val<int32_t>, 10, 3) << "\n";
+    ::tpyapp::main::use_local();
+    std::function<int32_t(int32_t)> f = ::tpyapp::main::get_identity();
     std::cout << f(7) << "\n";
-    run_void(identity<int32_t>, 0);
+    ::tpyapp::main::run_void(identity<int32_t>, 0);
 }
 
 // main()
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

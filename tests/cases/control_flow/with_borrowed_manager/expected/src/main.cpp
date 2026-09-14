@@ -32,7 +32,7 @@ void run(Counter& c) {
 //     print("second after:", c.n)
 void main() {
     Counter c = Counter();
-    run(c);
+    ::tpyapp::main::run(c);
     auto& __ctx_2 = c;
     __ctx_2.__enter__();
     try {
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

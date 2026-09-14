@@ -28,14 +28,14 @@ void main() {
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 2: {
-        std::tuple<std::string, std::string> t1 = make("X");
+        std::tuple<std::string, std::string> t1 = ::tpyapp::main::make("X");
         const auto& __tup_1 = t1;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         break;
     }
     default: {
-        std::tuple<std::string, std::string> t2 = make("Y");
+        std::tuple<std::string, std::string> t2 = ::tpyapp::main::make("Y");
         const auto& __tup_2 = t2;
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

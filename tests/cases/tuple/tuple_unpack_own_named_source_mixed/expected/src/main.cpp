@@ -23,11 +23,11 @@ int32_t consume(Box&& b) {
 //     box, n = t
 //     print(consume(box) + n)
 void main() {
-    std::tuple<Box, int32_t> t = make();
+    std::tuple<Box, int32_t> t = ::tpyapp::main::make();
     auto&& __tup_1 = std::move(t);
     Box box = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << (::tpy::add_check<int32_t>(consume(std::move(box)), n)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(::tpyapp::main::consume(std::move(box)), n)) << "\n";
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

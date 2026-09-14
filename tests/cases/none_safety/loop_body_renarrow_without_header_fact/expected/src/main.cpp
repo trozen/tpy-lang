@@ -27,8 +27,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << body_renarrow(true, 8) << "\n";
-    std::cout << body_renarrow(true, std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::body_renarrow(true, 8) << "\n";
+    std::cout << ::tpyapp::main::body_renarrow(true, std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

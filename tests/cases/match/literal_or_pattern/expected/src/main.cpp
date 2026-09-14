@@ -99,17 +99,17 @@ std::string classify_as(int32_t x) {
 //     print(classify_as(int32(2)))
 //     print(classify_as(int32(9)))
 void main() {
-    std::cout << classify_num(1) << "\n";
-    std::cout << classify_num(3) << "\n";
-    std::cout << classify_num(5) << "\n";
-    std::cout << classify_num(9) << "\n";
-    std::cout << classify_str("hello") << "\n";
-    std::cout << classify_str("hi") << "\n";
-    std::cout << classify_str("goodbye") << "\n";
-    std::cout << classify_str("wow") << "\n";
-    std::cout << classify_as(1) << "\n";
-    std::cout << classify_as(2) << "\n";
-    std::cout << classify_as(9) << "\n";
+    std::cout << ::tpyapp::main::classify_num(1) << "\n";
+    std::cout << ::tpyapp::main::classify_num(3) << "\n";
+    std::cout << ::tpyapp::main::classify_num(5) << "\n";
+    std::cout << ::tpyapp::main::classify_num(9) << "\n";
+    std::cout << ::tpyapp::main::classify_str("hello") << "\n";
+    std::cout << ::tpyapp::main::classify_str("hi") << "\n";
+    std::cout << ::tpyapp::main::classify_str("goodbye") << "\n";
+    std::cout << ::tpyapp::main::classify_str("wow") << "\n";
+    std::cout << ::tpyapp::main::classify_as(1) << "\n";
+    std::cout << ::tpyapp::main::classify_as(2) << "\n";
+    std::cout << ::tpyapp::main::classify_as(9) << "\n";
 }
 
 // main()
@@ -118,7 +118,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

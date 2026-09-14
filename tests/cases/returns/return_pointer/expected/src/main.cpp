@@ -34,8 +34,8 @@ void main() {
     pt.x = 10;
     pt.y = 20;
     Point* ptr = &pt;
-    Point* ptr1 = identity_ptr(ptr);
-    Point* ptr2 = get_ptr_copy(ptr);
+    Point* ptr1 = ::tpyapp::main::identity_ptr(ptr);
+    Point* ptr2 = ::tpyapp::main::get_ptr_copy(ptr);
     std::cout << ::tpy::deref_check(ptr1).x << "\n";
     std::cout << ::tpy::deref_check(ptr2).y << "\n";
 }
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -37,14 +37,14 @@ const std::vector<int32_t>& view(std::vector<int32_t>& items) {
 //     print(total)
 void own_returns() {
     int32_t total = 0;
-    auto __obj_0 = make_list(4);
+    auto __obj_0 = ::tpyapp::main::make_list(4);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    auto __obj_1 = make_dict();
+    auto __obj_1 = ::tpyapp::main::make_dict();
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -58,7 +58,7 @@ void own_returns() {
 //     for c in get_cells(cells):
 //         c.v += 10
 void bump(std::vector<Cell>& cells) {
-    auto& __obj_0 = get_cells(cells);
+    auto& __obj_0 = ::tpyapp::main::get_cells(cells);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -74,7 +74,7 @@ void bump(std::vector<Cell>& cells) {
 //     return s
 int32_t readonly_sum(std::vector<int32_t>& items) {
     int32_t s = 0;
-    auto& __obj_0 = view(items);
+    auto& __obj_0 = ::tpyapp::main::view(items);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -91,12 +91,12 @@ int32_t readonly_sum(std::vector<int32_t>& items) {
 //     print(cells[0].v, cells[1].v)
 //     print(readonly_sum([7, 8]))
 void main() {
-    own_returns();
+    ::tpyapp::main::own_returns();
     std::vector<Cell> cells = {Cell(1), Cell(2)};
-    bump(cells);
+    ::tpyapp::main::bump(cells);
     std::cout << ::tpy::__getitem__(cells, 0).v << " " << ::tpy::__getitem__(cells, 1).v << "\n";
     std::vector<int32_t> __tmp_1 = {7, 8};
-    std::cout << readonly_sum(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::readonly_sum(__tmp_1) << "\n";
 }
 
 // main()
@@ -105,7 +105,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

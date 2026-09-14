@@ -41,8 +41,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_array_to_ptr();
-    test_write_through_array_ptr();
+    ::tpyapp::main::test_array_to_ptr();
+    ::tpyapp::main::test_write_through_array_ptr();
 }
 
 } // namespace tpyapp::main

@@ -153,14 +153,14 @@ int32_t helper(int32_t f) {
 //     print("helper", helper(1))
 //     print("decorated", Reader().peek())
 void main() {
-    std::cout << "shaped" << " " << shaped(1, 2) << "\n";
-    std::cout << "quoted" << " " << quoted() << "\n";
+    std::cout << "shaped" << " " << ::tpyapp::main::shaped(1, 2) << "\n";
+    std::cout << "quoted" << " " << ::tpyapp::main::quoted() << "\n";
     Counter c = Counter(5);
     std::cout << "method" << " " << c.bump(3) << "\n";
-    std::cout << "simple-gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(upto(3))) << "\n";
-    std::cout << "resumable-gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(pair(1))) << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubled(4))) << "\n";
-    std::cout << "helper" << " " << helper(1) << "\n";
+    std::cout << "simple-gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::upto(3))) << "\n";
+    std::cout << "resumable-gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::pair(1))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::doubled(4))) << "\n";
+    std::cout << "helper" << " " << ::tpyapp::main::helper(1) << "\n";
     std::cout << "decorated" << " " << Reader().peek() << "\n";
 }
 
@@ -186,7 +186,7 @@ void __tpy_init() {
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     TABLE = &__global_slot_1;
     std::cout << "module" << " " << (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*TABLE), "a"), ::tpy::__getitem__((*TABLE), "b"))), SCALE)) << "\n";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //         print(k, n)
 void main() {
     std::vector<std::tuple<int32_t, std::string>> ps = {std::tuple<int32_t, std::string>{1, "c"}, std::tuple<int32_t, std::string>{2, "a"}, std::tuple<int32_t, std::string>{3, "b"}};
-    auto __obj_0 = names<int32_t>(ps);
+    auto __obj_0 = ::tpyapp::main::names<int32_t>(ps);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -21,7 +21,7 @@ void main() {
         std::cout << s << "\n";
     }
     std::vector<std::tuple<std::string, int32_t>> qs = {std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 7}, std::tuple<std::string, int32_t>{"c", 1}};
-    auto __obj_1 = keep<std::string>(qs);
+    auto __obj_1 = ::tpyapp::main::keep<std::string>(qs);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

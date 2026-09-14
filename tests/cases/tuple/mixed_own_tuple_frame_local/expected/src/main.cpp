@@ -18,7 +18,7 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        p.emplace(make_mixed(b));
+        p.emplace(::tpyapp::main::make_mixed(b));
         std::get<1>((*p))->val = 88;
         __state = S_RESUME_0;
         return std::get<0>((*p)).val;
@@ -50,7 +50,7 @@ __gen_gen gen(Box& b) {
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        p.emplace(make_mixed(b));
+        p.emplace(::tpyapp::main::make_mixed(b));
         std::get<1>((*p))->val = 99;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -88,7 +88,7 @@ __coro_coro coro(Box& b) {
 void main() {
     Box b = Box(7);
     {
-        auto __src_0 = gen(b);
+        auto __src_0 = ::tpyapp::main::gen(b);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -99,7 +99,7 @@ void main() {
     }
     std::cout << "after gen:" << " " << b.val << "\n";
     Box c = Box(7);
-    std::cout << "coro:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(coro(c))) << "\n";
+    std::cout << "coro:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(c))) << "\n";
     std::cout << "after coro:" << " " << c.val << "\n";
 }
 
@@ -116,7 +116,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

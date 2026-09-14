@@ -45,17 +45,17 @@ std::vector<int32_t>& longer(std::vector<int32_t>& a, std::vector<int32_t>& b) {
 void main() {
     std::vector<int32_t> la = {1, 2, 3};
     std::vector<int32_t> lb = {4};
-    std::vector<int32_t>& got = longer(la, lb);
+    std::vector<int32_t>& got = ::tpyapp::main::longer(la, lb);
     got.push_back(99);
     std::cout << ::tpy::__len__(la) << " " << ::tpy::__getitem__(la, 3) << "\n";
     ::tpy::ordered_map<int32_t, int32_t> da = ::tpy::ordered_map<int32_t, int32_t>({{1, 1}, {2, 2}});
     ::tpy::ordered_map<int32_t, int32_t> db = ::tpy::ordered_map<int32_t, int32_t>({{3, 3}});
-    ::tpy::ordered_map<int32_t, int32_t>& d = wider(da, db);
+    ::tpy::ordered_map<int32_t, int32_t>& d = ::tpyapp::main::wider(da, db);
     ::tpy::__setitem__(d, 7, 7);
     std::cout << ::tpy::__len__(da) << " " << ::tpy::__getitem__(da, 7) << "\n";
     ::tpy::ordered_set<int32_t> sa = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::ordered_set<int32_t> sb = ::tpy::ordered_set<int32_t>({3});
-    ::tpy::ordered_set<int32_t>& s = fuller(sa, sb);
+    ::tpy::ordered_set<int32_t>& s = ::tpyapp::main::fuller(sa, sb);
     s.insert(9);
     std::cout << ::tpy::__len__(sa) << "\n";
 }
@@ -66,7 +66,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

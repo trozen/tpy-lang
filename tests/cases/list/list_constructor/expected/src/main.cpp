@@ -101,7 +101,7 @@ void __tpy_init() {
     nested->push_back((*inner));
     std::cout << ::tpy::__len__((*nested)) << "\n";
     std::cout << ::tpy::__getitem__(::tpy::__getitem__((*nested), 0), 0).x << "\n";
-    test_local_list();
+    ::tpyapp::main::test_local_list();
     std::cout << ::tpy::ListPrinter(std::vector<int32_t>()) << "\n";
     std::cout << ::tpy::ListPrinter(std::vector<::tpy::BigInt>()) << "\n";
     std::cout << ::tpy::ListPrinter(std::vector<int32_t>({1, 2, 3})) << "\n";

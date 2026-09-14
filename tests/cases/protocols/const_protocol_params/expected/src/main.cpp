@@ -21,14 +21,14 @@ void print_area(const Shape& s) {
 //     print_area(Rect(3, 4))
 void main() {
     Box b = Box(10);
-    std::cout << get_measure(b) << "\n";
-    std::cout << double_resize(b) << "\n";
-    std::cout << get_measure(b) << "\n";
+    std::cout << ::tpyapp::main::get_measure(b) << "\n";
+    std::cout << ::tpyapp::main::double_resize(b) << "\n";
+    std::cout << ::tpyapp::main::get_measure(b) << "\n";
     auto __tmp_1 = Box(5);
-    copy_measure(__tmp_1, b);
+    ::tpyapp::main::copy_measure(__tmp_1, b);
     std::cout << b.measure() << "\n";
     ::tpy::Adapter<Shape, Rect> __tmp_2{Rect(3, 4)};
-    print_area(__tmp_2);
+    ::tpyapp::main::print_area(__tmp_2);
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

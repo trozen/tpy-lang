@@ -109,17 +109,17 @@ __gen_gen_frame gen_frame(std::string_view sv) {
 //     for n in gen_frame("frame"):
 //         print(n)
 void main() {
-    view_from_param("hello");
-    view_from_borrowing_call("  hi  ");
-    bytes_view_from_param(::tpy::bytes_literal("abc", 3));
-    view_reassigned_from_view("one", "two");
-    std::cout << mutated_stays_owned("own") << "\n";
-    std::cout << owned_return_still_copies("ret") << "\n";
-    hoisted_branch("first", true);
-    hoisted_branch("first", false);
+    ::tpyapp::main::view_from_param("hello");
+    ::tpyapp::main::view_from_borrowing_call("  hi  ");
+    ::tpyapp::main::bytes_view_from_param(::tpy::bytes_literal("abc", 3));
+    ::tpyapp::main::view_reassigned_from_view("one", "two");
+    std::cout << ::tpyapp::main::mutated_stays_owned("own") << "\n";
+    std::cout << ::tpyapp::main::owned_return_still_copies("ret") << "\n";
+    ::tpyapp::main::hoisted_branch("first", true);
+    ::tpyapp::main::hoisted_branch("first", false);
     {
         std::string __tmp_1 = "frame";
-        auto __src_0 = gen_frame(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen_frame(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -136,7 +136,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

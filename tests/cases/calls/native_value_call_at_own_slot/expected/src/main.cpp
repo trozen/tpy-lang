@@ -14,13 +14,13 @@ int32_t take(::tpy::Bytes b) {
 //     # A bytes method result at an owning parameter.
 //     print(take(v.strip()))
 void f(::tpy::BytesView v) {
-    std::cout << take(::tpy::Bytes(::tpy::bytes_strip_view(v))) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::Bytes(::tpy::bytes_strip_view(v))) << "\n";
 }
 
 // def main() -> None:
 //     f(b"  hi  ")
 void main() {
-    f(::tpy::bytes_literal("  hi  ", 6));
+    ::tpyapp::main::f(::tpy::bytes_literal("  hi  ", 6));
 }
 
 // main()
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

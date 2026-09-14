@@ -30,10 +30,10 @@ int32_t use_owned_point(Point&& p) {
 //     print(pt.x)
 //     print(pt.y)
 void main() {
-    std::cout << make_point(10, 20).x << "\n";
-    std::cout << make_point(30, 40).y << "\n";
-    std::cout << use_owned_point(make_point(50, 60)) << "\n";
-    Point pt = make_point(70, 80);
+    std::cout << ::tpyapp::main::make_point(10, 20).x << "\n";
+    std::cout << ::tpyapp::main::make_point(30, 40).y << "\n";
+    std::cout << ::tpyapp::main::use_owned_point(::tpyapp::main::make_point(50, 60)) << "\n";
+    Point pt = ::tpyapp::main::make_point(70, 80);
     std::cout << pt.x << "\n";
     std::cout << pt.y << "\n";
 }
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

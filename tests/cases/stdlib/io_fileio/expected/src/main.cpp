@@ -51,7 +51,7 @@ int64_t feed(::tpy::BytesView data) {
 //     os.close(fd)
 //     print("closefd-ok")
 void main() {
-    ::tpystd::io::FileIO f = ::tpystd::io::FileIO(feed(::tpy::bytes_literal("hello world", 11)));
+    ::tpystd::io::FileIO f = ::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("hello world", 11)));
     std::cout << ::tpy::print_bool((f.fileno() >= 0)) << "\n";
     std::cout << ::tpy::BytesPrinter(f.read(5)) << "\n";
     std::cout << ::tpy::BytesPrinter(f.read(0)) << "\n";
@@ -61,7 +61,7 @@ void main() {
     std::cout << ::tpy::print_bool(f.closed()) << "\n";
     f.close();
     std::cout << ::tpy::print_bool(f.closed()) << "\n";
-    auto __ctx_1 = ::tpystd::io::FileIO(feed(::tpy::bytes_literal("ctx", 3)));
+    auto __ctx_1 = ::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("ctx", 3)));
     auto& cf = __ctx_1.__enter__();
     try {
         std::cout << ::tpy::BytesPrinter(cf.read(-1)) << "\n";
@@ -84,7 +84,7 @@ void main() {
             std::cout << "negfd-ValueError" << "\n";
         }
     }
-    int64_t fd = feed(::tpy::bytes_literal("abc", 3));
+    int64_t fd = ::tpyapp::main::feed(::tpy::bytes_literal("abc", 3));
     ::tpystd::io::FileIO g = ::tpystd::io::FileIO(fd, false);
     std::cout << ::tpy::BytesPrinter(g.read(-1)) << "\n";
     g.close();
@@ -107,7 +107,7 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     ::tpystd::io::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

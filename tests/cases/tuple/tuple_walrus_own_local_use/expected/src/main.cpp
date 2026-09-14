@@ -16,7 +16,7 @@ std::tuple<int32_t, Box> make_pair(int32_t v) {
 //     return 0
 int32_t use() {
     std::optional<std::tuple<int32_t, Box>> t;
-    if ((std::get<0>((t = make_pair(5), *t)) > 0)) {
+    if ((std::get<0>((t = ::tpyapp::main::make_pair(5), *t)) > 0)) {
         return (::tpy::add_check<int32_t>(std::get<0>((*t)), std::get<1>((*t)).val));
     }
     return 0;
@@ -32,7 +32,7 @@ int32_t use() {
 //         return t[1].val
 int32_t use_branches(bool c) {
     std::optional<std::tuple<int32_t, Box>> t;
-    if (((std::get<0>((t = make_pair(7), *t)) > 0) && c)) {
+    if (((std::get<0>((t = ::tpyapp::main::make_pair(7), *t)) > 0) && c)) {
         return std::get<0>((*t));
     } else {
         return std::get<1>((*t)).val;
@@ -44,9 +44,9 @@ int32_t use_branches(bool c) {
 //     print(use_branches(True))
 //     print(use_branches(False))
 void main() {
-    std::cout << use() << "\n";
-    std::cout << use_branches(true) << "\n";
-    std::cout << use_branches(false) << "\n";
+    std::cout << ::tpyapp::main::use() << "\n";
+    std::cout << ::tpyapp::main::use_branches(true) << "\n";
+    std::cout << ::tpyapp::main::use_branches(false) << "\n";
 }
 
 // main()
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

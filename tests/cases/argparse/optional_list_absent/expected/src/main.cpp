@@ -29,7 +29,7 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    __tpy_builder_argparse_args_1 a1 = __tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 a1 = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
     if ((!a1.tag.has_value())) {
         std::cout << "tag none" << "\n";
     }
@@ -37,12 +37,12 @@ int32_t main() {
         std::cout << "num none" << "\n";
     }
     std::vector<std::string> __tmp_2 = {"--tag", "x", "--tag", "y"};
-    __tpy_builder_argparse_args_2 a2 = __tpy_builder_argparse_parse_2(__tmp_2);
+    __tpy_builder_argparse_args_2 a2 = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_2);
     if (!((a2.tag.has_value()))) ::tpy::raise_assertion_error();
     std::cout << ::tpy::__getitem__((*a2.tag), 0) << "\n";
     std::cout << ::tpy::__getitem__((*a2.tag), 1) << "\n";
     std::vector<std::string> __tmp_3 = std::vector<std::string>{};
-    __tpy_builder_argparse_args_3 a3 = __tpy_builder_argparse_parse_3(__tmp_3);
+    __tpy_builder_argparse_args_3 a3 = ::tpyapp::main::__tpy_builder_argparse_parse_3(__tmp_3);
     if ((!a3.coord.has_value())) {
         std::cout << "coord none" << "\n";
     }
@@ -69,7 +69,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     int32_t __tpy_argparse_h = 0;
     while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
         if (((argv[static_cast<std::size_t>(__tpy_argparse_h)] == "-h") || (argv[static_cast<std::size_t>(__tpy_argparse_h)] == "--help"))) {
-            __tpy_builder_argparse_help_1();
+            ::tpyapp::main::__tpy_builder_argparse_help_1();
         }
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
@@ -122,7 +122,7 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
     int32_t __tpy_argparse_h = 0;
     while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
         if (((argv[static_cast<std::size_t>(__tpy_argparse_h)] == "-h") || (argv[static_cast<std::size_t>(__tpy_argparse_h)] == "--help"))) {
-            __tpy_builder_argparse_help_2();
+            ::tpyapp::main::__tpy_builder_argparse_help_2();
         }
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
@@ -165,7 +165,7 @@ __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<s
     int32_t __tpy_argparse_h = 0;
     while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
         if (((argv[static_cast<std::size_t>(__tpy_argparse_h)] == "-h") || (argv[static_cast<std::size_t>(__tpy_argparse_h)] == "--help"))) {
-            __tpy_builder_argparse_help_3();
+            ::tpyapp::main::__tpy_builder_argparse_help_3();
         }
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
@@ -205,7 +205,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

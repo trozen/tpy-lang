@@ -21,7 +21,7 @@ void reference_element() {
     std::array<Point, 2> pts = {Point(1), Point(2)};
     int32_t seen = 0;
     {
-        auto __src_0 = each<Point>(std::move(pts));
+        auto __src_0 = ::tpyapp::main::each<Point>(std::move(pts));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -47,7 +47,7 @@ void reference_element() {
 void value_element() {
     std::array<int32_t, 2> nums = {10, 20};
     {
-        auto __src_0 = each<int32_t>(std::move(nums));
+        auto __src_0 = ::tpyapp::main::each<int32_t>(std::move(nums));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -76,7 +76,7 @@ void reused_source() {
     std::vector<int32_t> nums = {30, 40};
     {
         std::vector<int32_t> __tmp_1 = nums;
-        auto __src_0 = each<int32_t>(std::move(__tmp_1));
+        auto __src_0 = ::tpyapp::main::each<int32_t>(std::move(__tmp_1));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -97,9 +97,9 @@ void reused_source() {
 //     value_element()
 //     reused_source()
 void main() {
-    reference_element();
-    value_element();
-    reused_source();
+    ::tpyapp::main::reference_element();
+    ::tpyapp::main::value_element();
+    ::tpyapp::main::reused_source();
 }
 
 // # An `Own[<static protocol>]` param on a resumable body: the frame captures the
@@ -113,7 +113,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -55,7 +55,7 @@ __gen_maybe_count maybe_count(int32_t n) {
 //         print(x)
 void main() {
     {
-        auto __src_0 = maybe_count(0);
+        auto __src_0 = ::tpyapp::main::maybe_count(0);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -66,7 +66,7 @@ void main() {
     }
     std::cout << "empty done" << "\n";
     {
-        auto __src_2 = maybe_count(3);
+        auto __src_2 = ::tpyapp::main::maybe_count(3);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -83,7 +83,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -44,7 +44,7 @@ std::tuple<T*, T*> neither() {
 void main() {
     T a = T(1);
     T b = T(2);
-    auto __tup_1 = both(a, b);
+    auto __tup_1 = ::tpyapp::main::both(a, b);
     T* p1 = std::get<0>(__tup_1);
     T* p2 = std::get<1>(__tup_1);
     if ((p1 != nullptr)) {
@@ -53,7 +53,7 @@ void main() {
     if ((p2 != nullptr)) {
         std::cout << p2->x << "\n";
     }
-    auto __tup_2 = first_only(a);
+    auto __tup_2 = ::tpyapp::main::first_only(a);
     T* p3 = std::get<0>(__tup_2);
     T* p4 = std::get<1>(__tup_2);
     if ((p3 != nullptr)) {
@@ -62,7 +62,7 @@ void main() {
     if ((p4 == nullptr)) {
         std::cout << "p4 is None" << "\n";
     }
-    auto __tup_3 = neither();
+    auto __tup_3 = ::tpyapp::main::neither();
     T* p5 = std::get<0>(__tup_3);
     T* p6 = std::get<1>(__tup_3);
     if (((p5 == nullptr) && (p6 == nullptr))) {
@@ -76,7 +76,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

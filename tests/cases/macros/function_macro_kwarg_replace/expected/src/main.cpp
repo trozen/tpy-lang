@@ -16,15 +16,15 @@ int32_t takes(bool flag) {
 //     y = takes(flag="false")
 //     return x + y
 int32_t run() {
-    int32_t x = takes(true);
-    int32_t y = takes(false);
+    int32_t x = ::tpyapp::main::takes(true);
+    int32_t y = ::tpyapp::main::takes(false);
     return (::tpy::add_check<int32_t>(x, y));
 }
 
 // def main() -> None:
 //     print(run())
 void main() {
-    std::cout << run() << "\n";
+    std::cout << ::tpyapp::main::run() << "\n";
 }
 
 // # A function macro replaces string-literal bool kwargs (`flag="true"`) with
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

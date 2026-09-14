@@ -57,7 +57,7 @@ inline std::function<int32_t(int32_t)> Src::reader() const {
 // def offset(self, k: int32) -> int32:
 //     return apply(lambda x: x + k + self.n, 1)
 inline int32_t Src::offset(int32_t k) const {
-    return apply([k, this](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, k)), this->n)); }, 1);
+    return ::tpyapp::main::apply([k, this](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, k)), this->n)); }, 1);
 }
 void __tpy_init();
 } // namespace tpyapp::main

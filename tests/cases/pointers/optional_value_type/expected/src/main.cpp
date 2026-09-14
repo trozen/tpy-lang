@@ -72,7 +72,7 @@ void __tpy_init() {
     z = 0;
     std::cout << ::tpy::print_bool((!z.has_value())) << "\n";
     std::cout << ::tpy::print_optional_val(z) << "\n";
-    use_global();
+    ::tpyapp::main::use_global();
 }
 
 } // namespace tpyapp::main

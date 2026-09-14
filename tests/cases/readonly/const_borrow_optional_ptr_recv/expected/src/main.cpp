@@ -56,10 +56,10 @@ void bump(H* h) {
 //     print(read_ref(h))     # 11 -- the readonly reader aliases the shared object, not a copy
 void main() {
     H h = H();
-    std::cout << read_ref(&(h)) << "\n";
-    std::cout << read_opt(&(h)) << "\n";
-    bump(&(h));
-    std::cout << read_ref(&(h)) << "\n";
+    std::cout << ::tpyapp::main::read_ref(&(h)) << "\n";
+    std::cout << ::tpyapp::main::read_opt(&(h)) << "\n";
+    ::tpyapp::main::bump(&(h));
+    std::cout << ::tpyapp::main::read_ref(&(h)) << "\n";
 }
 
 // main()
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

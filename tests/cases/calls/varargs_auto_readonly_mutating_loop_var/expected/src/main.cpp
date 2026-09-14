@@ -27,7 +27,7 @@ void via_loop(std::vector<Box>& xs) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
         std::array<Box*, 1> __tmp_1{&b};
-        bump_all(::tpy::varargs<Box>(__tmp_1));
+        ::tpyapp::main::bump_all(::tpy::varargs<Box>(__tmp_1));
     }
 }
 
@@ -42,7 +42,7 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(5));
     items.push_back(Box(6));
-    via_loop(items);
+    ::tpyapp::main::via_loop(items);
     std::cout << ::tpy::__getitem__(items, 0).val << "\n";
     std::cout << ::tpy::__getitem__(items, 1).val << "\n";
 }
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -38,8 +38,8 @@ void classify(std::string_view s) {
 //     classify("a")
 //     classify("b")
 void main() {
-    classify("a");
-    classify("b");
+    ::tpyapp::main::classify("a");
+    ::tpyapp::main::classify("b");
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

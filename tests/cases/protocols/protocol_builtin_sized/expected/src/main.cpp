@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(count(nums))
 void main() {
     std::vector<int32_t> nums = {1, 2, 3};
-    std::cout << count(nums) << "\n";
+    std::cout << ::tpyapp::main::count(nums) << "\n";
 }
 
 // main()
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

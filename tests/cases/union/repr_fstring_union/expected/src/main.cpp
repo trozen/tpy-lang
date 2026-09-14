@@ -42,9 +42,9 @@ namespace tpyapp::main {
 //     n: int32 = 99
 //     print(f"{n!r}")
 void main() {
-    ::tpy::Union<int32_t, std::string> a = make_iu();
-    ::tpy::Union<int32_t, std::string> b = make_su();
-    ::tpy::Union<Point, int32_t, std::string> __slot_1 = make_3u();
+    ::tpy::Union<int32_t, std::string> a = ::tpyapp::main::make_iu();
+    ::tpy::Union<int32_t, std::string> b = ::tpyapp::main::make_su();
+    ::tpy::Union<Point, int32_t, std::string> __slot_1 = ::tpyapp::main::make_3u();
     ::tpy::Union<Point*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);
     std::cout << ::tpy::repr_of(a) << "\n";
     std::cout << ::tpy::repr_of(b) << "\n";
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

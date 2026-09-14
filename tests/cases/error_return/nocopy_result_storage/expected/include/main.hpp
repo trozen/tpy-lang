@@ -100,7 +100,7 @@ inline Sink::Sink() : p(Payload(0)) {}
 inline void Sink::fill(int32_t n) {
     {
         {
-            auto __try_tmp_2 = make(n);
+            auto __try_tmp_2 = ::tpyapp::main::make(n);
             if (!__try_tmp_2.has_value()) goto __except_1;
             this->p = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }

@@ -38,10 +38,10 @@ void describe(::tpy::Union<const Child*, const Other*> s) {
 void main() {
     ::tpy::Union<Child, Other> __slot_1 = Child(1.0, 2.0, 3.0);
     ::tpy::Union<Child*, Other*> obj = ::tpy::to_ptr_variant(__slot_1);
-    describe(obj.as_const());
+    ::tpyapp::main::describe(obj.as_const());
     ::tpy::Union<Child, Other> __slot_2 = Other(9.0);
     ::tpy::Union<Child*, Other*> o = ::tpy::to_ptr_variant(__slot_2);
-    describe(o.as_const());
+    ::tpyapp::main::describe(o.as_const());
 }
 
 // # positional patterns on inherited @dataclass (parent + own fields)
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

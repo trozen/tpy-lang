@@ -68,17 +68,17 @@ std::string describe(int32_t x) {
 //     val: int32 = 100 if flag else 200
 //     print(val)
 void main() {
-    std::cout << abs_val(5) << "\n";
-    std::cout << abs_val(-3) << "\n";
-    std::cout << max_val(10, 20) << "\n";
-    std::cout << max_val(30, 15) << "\n";
-    std::cout << clamp(-5, 0, 10) << "\n";
-    std::cout << clamp(5, 0, 10) << "\n";
-    std::cout << clamp(15, 0, 10) << "\n";
-    std::cout << greet(true) << "\n";
-    std::cout << greet(false) << "\n";
-    std::cout << describe(1) << "\n";
-    std::cout << describe(-1) << "\n";
+    std::cout << ::tpyapp::main::abs_val(5) << "\n";
+    std::cout << ::tpyapp::main::abs_val(-3) << "\n";
+    std::cout << ::tpyapp::main::max_val(10, 20) << "\n";
+    std::cout << ::tpyapp::main::max_val(30, 15) << "\n";
+    std::cout << ::tpyapp::main::clamp(-5, 0, 10) << "\n";
+    std::cout << ::tpyapp::main::clamp(5, 0, 10) << "\n";
+    std::cout << ::tpyapp::main::clamp(15, 0, 10) << "\n";
+    std::cout << ::tpyapp::main::greet(true) << "\n";
+    std::cout << ::tpyapp::main::greet(false) << "\n";
+    std::cout << ::tpyapp::main::describe(1) << "\n";
+    std::cout << ::tpyapp::main::describe(-1) << "\n";
     int32_t x = 7;
     std::cout << (((x > 5)) ? (x) : (0)) << "\n";
     bool flag = true;
@@ -92,7 +92,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

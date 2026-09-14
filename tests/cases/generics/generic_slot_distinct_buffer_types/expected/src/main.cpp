@@ -88,10 +88,10 @@ void store_bytes(std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v) {
 //     print("String", has_item(strings, s), has_item_string(strings, s))  # tpyc: ok
 void str_family(std::string_view k) {
     std::vector<std::string> names = {"a", "b"};
-    std::cout << "str" << " " << ::tpy::print_bool(has_item<std::string>(names, k)) << " " << ::tpy::print_bool(has_item_str(names, k)) << "\n";
+    std::cout << "str" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>(names, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str(names, k)) << "\n";
     ::tpy::String s = ::tpy::String("a");
     std::vector<::tpy::String> strings = {::tpy::String("a"), ::tpy::String("b")};
-    std::cout << "String" << " " << ::tpy::print_bool(has_item<::tpy::String>(strings, s)) << " " << ::tpy::print_bool(has_item_string(strings, s)) << "\n";
+    std::cout << "String" << " " << ::tpy::print_bool(::tpyapp::main::has_item<::tpy::String>(strings, s)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_string(strings, s)) << "\n";
 }
 
 // def bytes_family(p: bytes) -> None:
@@ -119,15 +119,15 @@ void str_family(std::string_view k) {
 //     print("borrow", n1, size_of(buf))
 void bytes_family(::tpy::BytesView p) {
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
-    std::cout << "bytes" << " " << ::tpy::print_bool(has_item<::tpy::Bytes>(keys, p)) << " " << ::tpy::print_bool(has_item_bytes(keys, p)) << "\n";
+    std::cout << "bytes" << " " << ::tpy::print_bool(::tpyapp::main::has_item<::tpy::Bytes>(keys, p)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_bytes(keys, p)) << "\n";
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
-    ::tpy::ByteArray& r = echo_ref<::tpy::ByteArray>(ba);
+    ::tpy::ByteArray& r = ::tpyapp::main::echo_ref<::tpy::ByteArray>(ba);
     r.push_back(9);
     std::cout << "bytearray" << " " << ::tpy::__len__(ba) << " " << ::tpy::__len__(r) << "\n";
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    int32_t n1 = size_of(buf);
+    int32_t n1 = ::tpyapp::main::size_of(buf);
     buf.push_back(7);
-    std::cout << "borrow" << " " << n1 << " " << size_of(buf) << "\n";
+    std::cout << "borrow" << " " << n1 << " " << ::tpyapp::main::size_of(buf) << "\n";
 }
 
 // def u8_list() -> None:
@@ -143,8 +143,8 @@ void bytes_family(::tpy::BytesView p) {
 void u8_list() {
     std::vector<uint8_t> v = {1};
     std::vector<std::vector<uint8_t>> xs = {v};
-    std::cout << "list" << " " << ::tpy::print_bool(has_item<std::vector<uint8_t>>(xs, v)) << "\n";
-    std::vector<uint8_t>& r = echo_ref<std::vector<uint8_t>>(v);
+    std::cout << "list" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::vector<uint8_t>>(xs, v)) << "\n";
+    std::vector<uint8_t>& r = ::tpyapp::main::echo_ref<std::vector<uint8_t>>(v);
     r.push_back(2);
     std::cout << "list" << " " << ::tpy::__len__(v) << " " << ::tpy::__len__(r) << "\n";
 }
@@ -164,13 +164,13 @@ void u8_list() {
 void storing(std::string_view k, ::tpy::BytesView p) {
     std::vector<std::string> a = std::vector<std::string>{};
     std::vector<std::string> b = std::vector<std::string>{};
-    store<std::string>(a, k);
-    store_str(b, k);
+    ::tpyapp::main::store<std::string>(a, k);
+    ::tpyapp::main::store_str(b, k);
     std::cout << "store" << " " << ::tpy::ListPrinter(a) << " " << ::tpy::ListPrinter(b) << "\n";
     std::vector<::tpy::Bytes> c = std::vector<::tpy::Bytes>{};
     std::vector<::tpy::Bytes> d = std::vector<::tpy::Bytes>{};
-    store<::tpy::Bytes>(c, p);
-    store_bytes(d, p);
+    ::tpyapp::main::store<::tpy::Bytes>(c, p);
+    ::tpyapp::main::store_bytes(d, p);
     std::cout << "store" << " " << ::tpy::ListPrinter(c) << " " << ::tpy::ListPrinter(d) << "\n";
 }
 
@@ -191,11 +191,11 @@ void readonly_method(std::string_view k) {
 //     storing("z", b"z")
 //     readonly_method("a")
 void main() {
-    str_family("a");
-    bytes_family(::tpy::bytes_literal("a", 1));
-    u8_list();
-    storing("z", ::tpy::bytes_literal("z", 1));
-    readonly_method("a");
+    ::tpyapp::main::str_family("a");
+    ::tpyapp::main::bytes_family(::tpy::bytes_literal("a", 1));
+    ::tpyapp::main::u8_list();
+    ::tpyapp::main::storing("z", ::tpy::bytes_literal("z", 1));
+    ::tpyapp::main::readonly_method("a");
 }
 
 // main()
@@ -204,7 +204,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

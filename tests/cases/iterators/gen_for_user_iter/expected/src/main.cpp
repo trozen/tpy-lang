@@ -51,7 +51,7 @@ __gen_doubled_range doubled_range(NumberRange& r) {
 void main() {
     NumberRange nr = NumberRange(1, 5);
     {
-        auto __src_0 = doubled_range(nr);
+        auto __src_0 = ::tpyapp::main::doubled_range(nr);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -21,7 +21,7 @@ void copy_alias(Holder& h, const Holder& other) {
 void main() {
     Holder a = Holder();
     Holder b = Holder();
-    copy_alias(a, b);
+    ::tpyapp::main::copy_alias(a, b);
     std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(a.pair)) == nullptr)) << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

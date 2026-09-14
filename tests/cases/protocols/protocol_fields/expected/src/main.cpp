@@ -28,17 +28,17 @@ namespace tpyapp::main {
 //     print(get_item(ih))
 void main() {
     Point p = Point(42);
-    std::cout << get_value<Point>(p) << "\n";
+    std::cout << ::tpyapp::main::get_value<Point>(p) << "\n";
     Vec2 v = Vec2(10, 20);
-    std::cout << sum_xy<Vec2>(v) << "\n";
+    std::cout << ::tpyapp::main::sum_xy<Vec2>(v) << "\n";
     Box b1 = Box(5);
     Box b2 = Box(0);
-    std::cout << describe<Box>(b1) << "\n";
-    std::cout << describe<Box>(b2) << "\n";
+    std::cout << ::tpyapp::main::describe<Box>(b1) << "\n";
+    std::cout << ::tpyapp::main::describe<Box>(b2) << "\n";
     Wrapper<Point> w = Wrapper<Point>(Point(100));
     std::cout << w.get_inner_value() << "\n";
     IntHolder ih = IntHolder(77);
-    std::cout << get_item<IntHolder>(ih) << "\n";
+    std::cout << ::tpyapp::main::get_item<IntHolder>(ih) << "\n";
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

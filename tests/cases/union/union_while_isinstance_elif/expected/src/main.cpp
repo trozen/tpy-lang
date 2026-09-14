@@ -41,13 +41,13 @@ void describe(::tpy::Union<const Circle*, const Rect*, const Triangle*> s) {
 void main() {
     ::tpy::Union<Circle, Rect, Triangle> __slot_1 = Circle(1.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> c = ::tpy::to_ptr_variant(__slot_1);
-    describe(c.as_const());
+    ::tpyapp::main::describe(c.as_const());
     ::tpy::Union<Circle, Rect, Triangle> __slot_2 = Rect(2.0, 3.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> r = ::tpy::to_ptr_variant(__slot_2);
-    describe(r.as_const());
+    ::tpyapp::main::describe(r.as_const());
     ::tpy::Union<Circle, Rect, Triangle> __slot_3 = Triangle(4.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> t = ::tpy::to_ptr_variant(__slot_3);
-    describe(t.as_const());
+    ::tpyapp::main::describe(t.as_const());
 }
 
 // main()
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

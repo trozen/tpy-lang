@@ -28,13 +28,13 @@ std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32
 std::expected<int32_t, NotFound> lookup_twice(const std::vector<int32_t>& items, int32_t a, int32_t b) {
     int32_t ia;
     {
-        auto __try_tmp_1 = lookup(items, a);
+        auto __try_tmp_1 = ::tpyapp::main::lookup(items, a);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         ia = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
     int32_t ib;
     {
-        auto __try_tmp_2 = lookup(items, b);
+        auto __try_tmp_2 = ::tpyapp::main::lookup(items, b);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
         ib = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
@@ -57,7 +57,7 @@ std::expected<int32_t, NotFound> lookup_sum(const std::vector<int32_t>& items, c
         int32_t t = *__beg_0;
         int32_t idx;
         {
-            auto __try_tmp_3 = lookup_twice(items, t, t);
+            auto __try_tmp_3 = ::tpyapp::main::lookup_twice(items, t, t);
             if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
             idx = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
@@ -90,7 +90,7 @@ void main() {
     {
         std::vector<int32_t> __tmp_1 = {10, 20};
         {
-            auto __try_tmp_5 = lookup_sum(items, __tmp_1);
+            auto __try_tmp_5 = ::tpyapp::main::lookup_sum(items, __tmp_1);
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
@@ -106,7 +106,7 @@ void main() {
     {
         std::vector<int32_t> __tmp_2 = {10, 99};
         {
-            auto __try_tmp_7 = lookup_sum(items, __tmp_2);
+            auto __try_tmp_7 = ::tpyapp::main::lookup_sum(items, __tmp_2);
             if (!__try_tmp_7.has_value()) goto __except_6;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
@@ -126,7 +126,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

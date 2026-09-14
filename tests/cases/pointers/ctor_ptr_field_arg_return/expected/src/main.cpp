@@ -20,8 +20,8 @@ Handle rewrap(const Handle& h) {
 //     h = Handle(addr(n))
 //     return rewrap(h)
 Handle make_handle(Node& n) {
-    Handle h = Handle(addr(n));
-    return rewrap(h);
+    Handle h = Handle(::tpyapp::main::addr(n));
+    return ::tpyapp::main::rewrap(h);
 }
 
 // def main() -> None:
@@ -32,7 +32,7 @@ Handle make_handle(Node& n) {
 //     print(n.v)
 void main() {
     Node n = Node(5);
-    Handle h = make_handle(n);
+    Handle h = ::tpyapp::main::make_handle(n);
     std::cout << ::tpy::deref_check(h.p).v << "\n";
     h.p->v = 99;
     std::cout << n.v << "\n";
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

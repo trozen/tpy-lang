@@ -51,8 +51,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_set();
-    test_dict();
+    ::tpyapp::main::test_set();
+    ::tpyapp::main::test_dict();
 }
 
 } // namespace tpyapp::main

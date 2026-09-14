@@ -354,7 +354,7 @@ __gen_post_continue post_continue(std::vector<int32_t>& items) {
 void main() {
     {
         std::vector<int32_t> __tmp_1 = {10, 20, 30, 40};
-        auto __src_0 = take(__tmp_1, 2);
+        auto __src_0 = ::tpyapp::main::take(__tmp_1, 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -365,7 +365,7 @@ void main() {
     }
     {
         std::vector<int32_t> __tmp_2 = {1, 2, 3, 4, 5, 6};
-        auto __src_2 = evens(__tmp_2);
+        auto __src_2 = ::tpyapp::main::evens(__tmp_2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -375,7 +375,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = stride();
+        auto __src_4 = ::tpyapp::main::stride();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -385,7 +385,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = upto_range(10);
+        auto __src_6 = ::tpyapp::main::upto_range(10);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -395,7 +395,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = upto_while();
+        auto __src_8 = ::tpyapp::main::upto_while();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -406,7 +406,7 @@ void main() {
     }
     {
         std::vector<int32_t> __tmp_3 = {10, 20, 30};
-        auto __src_10 = iter_post_break(__tmp_3);
+        auto __src_10 = ::tpyapp::main::iter_post_break(__tmp_3);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -417,7 +417,7 @@ void main() {
     }
     {
         std::vector<int32_t> __tmp_4 = {3, -1, 5};
-        auto __src_12 = post_continue(__tmp_4);
+        auto __src_12 = ::tpyapp::main::post_continue(__tmp_4);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -501,7 +501,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

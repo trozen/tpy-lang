@@ -32,8 +32,8 @@ __coro_value value(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        c.emplace(value(::tpy::BigInt(1)));
-        c.emplace(value(::tpy::BigInt(2)));
+        c.emplace(::tpyapp::main::value(::tpy::BigInt(1)));
+        c.emplace(::tpyapp::main::value(::tpy::BigInt(2)));
         __state = S_RESUME_0;
         continue;
     }
@@ -63,9 +63,9 @@ __coro_main_coro main_coro() {
 //     asyncio.run(main_coro())
 //     print(asyncio.run(d))
 void main() {
-    std::optional<__coro_value> d = value(::tpy::BigInt(3));
-    d.emplace(value(::tpy::BigInt(4)));
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    std::optional<__coro_value> d = ::tpyapp::main::value(::tpy::BigInt(3));
+    d.emplace(::tpyapp::main::value(::tpy::BigInt(4)));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(d)))) << "\n";
 }
 
@@ -81,7 +81,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -29,7 +29,7 @@ std::tuple<int32_t, Box*> f(Box& b, bool cond) {
 //     print(b.val)
 void main() {
     Box b = Box(5);
-    auto pair = f(b, true);
+    auto pair = ::tpyapp::main::f(b, true);
     std::get<1>(pair)->val = 99;
     std::cout << b.val << "\n";
 }
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

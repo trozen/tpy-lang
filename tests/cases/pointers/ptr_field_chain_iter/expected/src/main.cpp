@@ -80,10 +80,10 @@ void main() {
     Map m = Map();
     std::vector<SubSector*> subsectors = std::vector<SubSector*>{};
     subsectors.push_back(&::tpy::__getitem__(m.subsectors, 0));
-    std::cout << head_floor(subsectors) << "\n";
-    std::cout << via_local(::tpy::__getitem__(subsectors, 0)) << "\n";
-    std::cout << total(subsectors) << "\n";
-    raise_floors(subsectors);
+    std::cout << ::tpyapp::main::head_floor(subsectors) << "\n";
+    std::cout << ::tpyapp::main::via_local(::tpy::__getitem__(subsectors, 0)) << "\n";
+    std::cout << ::tpyapp::main::total(subsectors) << "\n";
+    ::tpyapp::main::raise_floors(subsectors);
     std::cout << ::tpy::__getitem__(m.sectors, 0).floor_h << " " << ::tpy::__getitem__(m.sectors, 1).floor_h << "\n";
 }
 
@@ -93,7 +93,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

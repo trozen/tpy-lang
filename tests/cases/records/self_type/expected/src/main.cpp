@@ -59,8 +59,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_builder();
-    test_generic();
+    ::tpyapp::main::test_builder();
+    ::tpyapp::main::test_generic();
 }
 
 } // namespace tpyapp::main

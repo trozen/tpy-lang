@@ -14,14 +14,14 @@ std::tuple<int32_t, Box> make_pair(int32_t v) {
 //     t = make_pair(5)
 //     return t[0] + t[1].val
 int32_t use() {
-    auto t = make_pair(5);
+    auto t = ::tpyapp::main::make_pair(5);
     return (::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t).val));
 }
 
 // def main() -> None:
 //     print(use())
 void main() {
-    std::cout << use() << "\n";
+    std::cout << ::tpyapp::main::use() << "\n";
 }
 
 // main()
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -63,9 +63,9 @@ void test_value_type_try_hoist() {
 //     test_record_try_hoist()
 //     test_value_type_try_hoist()
 void main() {
-    test_list_try_hoist();
-    test_record_try_hoist();
-    test_value_type_try_hoist();
+    ::tpyapp::main::test_list_try_hoist();
+    ::tpyapp::main::test_record_try_hoist();
+    ::tpyapp::main::test_value_type_try_hoist();
 }
 
 // main()
@@ -74,7 +74,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

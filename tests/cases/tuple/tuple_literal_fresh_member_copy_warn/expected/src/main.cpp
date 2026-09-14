@@ -37,9 +37,9 @@ void exempt_copy() {
 //     exempt_fresh(0)
 //     exempt_copy()
 void main() {
-    list_member();
-    exempt_fresh(0);
-    exempt_copy();
+    ::tpyapp::main::list_member();
+    ::tpyapp::main::exempt_fresh(0);
+    ::tpyapp::main::exempt_copy();
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

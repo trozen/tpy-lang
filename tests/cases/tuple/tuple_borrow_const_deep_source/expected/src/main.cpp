@@ -42,8 +42,8 @@ void main() {
     h.bump("a");
     std::cout << std::get<1>(::tpy::__getitem__(h.store, "a")).val << "\n";
     std::vector<std::tuple<int32_t, Box>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{40, Box(7)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{41, Box(8)})};
-    std::cout << first_weight(rows, false) << "\n";
-    std::cout << first_weight(rows, true) << "\n";
+    std::cout << ::tpyapp::main::first_weight(rows, false) << "\n";
+    std::cout << ::tpyapp::main::first_weight(rows, true) << "\n";
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

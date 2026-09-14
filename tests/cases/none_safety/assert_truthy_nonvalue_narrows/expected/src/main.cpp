@@ -22,7 +22,7 @@ void __tpy_init() {
 
     static Point __global_slot_1 = Point(7);
     pt = &__global_slot_1;
-    std::cout << get_x(pt) << "\n";
+    std::cout << ::tpyapp::main::get_x(pt) << "\n";
 }
 
 } // namespace tpyapp::main

@@ -28,7 +28,7 @@ Payload& frec(Holder& h) {
 //     # is, for either family.
 //     return copy(first(rows))  # tpyc: ok
 std::vector<int32_t> take_free(std::vector<std::vector<int32_t>>& rows) {
-    return std::vector<int32_t>(first(rows));
+    return std::vector<int32_t>(::tpyapp::main::first(rows));
 }
 
 // def take_record(h: Holder) -> Own[Payload]:
@@ -41,7 +41,7 @@ Payload take_record(Holder& h) {
 // def take_record_free(h: Holder) -> Own[Payload]:
 //     return copy(frec(h))  # tpyc: ok
 Payload take_record_free(Holder& h) {
-    return Payload(frec(h));
+    return Payload(::tpyapp::main::frec(h));
 }
 
 // def take_record_field(h: Holder) -> Own[Payload]:
@@ -56,7 +56,7 @@ Payload take_record_field(const Holder& h) {
 //     # copy-construct tail wraps whichever one runs.
 //     return copy(h.brec() if pick else frec(h))  # tpyc: ok
 Payload take_record_ifexpr(Holder& h, bool pick) {
-    return Payload(((pick) ? (h.brec()) : (frec(h))));
+    return Payload(((pick) ? (h.brec()) : (::tpyapp::main::frec(h))));
 }
 
 // def main() -> None:
@@ -92,23 +92,23 @@ Payload take_record_ifexpr(Holder& h, bool pick) {
 //     print(len(h.items), len(got), h.p.n, rec.n)
 void main() {
     Holder h = Holder();
-    std::vector<int32_t> got = take_container(h);
+    std::vector<int32_t> got = ::tpyapp::main::take_container(h);
     got.push_back(3);
     std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(got) << "\n";
-    Payload rec = take_record(h);
+    Payload rec = ::tpyapp::main::take_record(h);
     rec.n = 42;
     std::cout << h.p.n << " " << rec.n << "\n";
-    Payload rec_free = take_record_free(h);
+    Payload rec_free = ::tpyapp::main::take_record_free(h);
     rec_free.n = 43;
     std::cout << h.p.n << " " << rec_free.n << "\n";
-    Payload rec_field = take_record_field(h);
+    Payload rec_field = ::tpyapp::main::take_record_field(h);
     rec_field.n = 44;
     std::cout << h.p.n << " " << rec_field.n << "\n";
-    Payload rec_if = take_record_ifexpr(h, false);
+    Payload rec_if = ::tpyapp::main::take_record_ifexpr(h, false);
     rec_if.n = 45;
     std::cout << h.p.n << " " << rec_if.n << "\n";
     std::vector<std::vector<int32_t>> rows = {{5}};
-    std::vector<int32_t> free = take_free(rows);
+    std::vector<int32_t> free = ::tpyapp::main::take_free(rows);
     free.push_back(6);
     std::cout << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__len__(free) << "\n";
     h.items.push_back(9);
@@ -122,7 +122,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

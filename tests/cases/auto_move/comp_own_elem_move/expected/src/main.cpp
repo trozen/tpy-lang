@@ -86,7 +86,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
 ::tpy::BigInt collect_list_nocopy() {
     std::vector<Widget> xs = ({
         std::vector<Widget> __result;
-        auto __obj_0 = widgets(::tpy::BigInt(3));
+        auto __obj_0 = ::tpyapp::main::widgets(::tpy::BigInt(3));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -104,7 +104,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
 ::tpy::BigInt collect_set() {
     ::tpy::ordered_set<Node> s = ({
         ::tpy::ordered_set<Node> __result;
-        auto __obj_0 = nodes(::tpy::BigInt(3));
+        auto __obj_0 = ::tpyapp::main::nodes(::tpy::BigInt(3));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -147,7 +147,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
 ::tpy::BigInt filtered_moves() {
     std::vector<Widget> ys = ({
         std::vector<Widget> __result;
-        auto __obj_0 = widgets(::tpy::BigInt(3));
+        auto __obj_0 = ::tpyapp::main::widgets(::tpy::BigInt(3));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -168,11 +168,11 @@ __gen_nodes nodes(::tpy::BigInt n) {
 //     print(borrow_source_copies(src), len(src))
 //     print(filtered_moves())
 void main() {
-    std::cout << collect_list_nocopy() << "\n";
-    std::cout << collect_set() << "\n";
+    std::cout << ::tpyapp::main::collect_list_nocopy() << "\n";
+    std::cout << ::tpyapp::main::collect_set() << "\n";
     std::vector<Node> src = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2))};
-    std::cout << borrow_source_copies(src) << " " << ::tpy::__len__(src) << "\n";
-    std::cout << filtered_moves() << "\n";
+    std::cout << ::tpyapp::main::borrow_source_copies(src) << " " << ::tpy::__len__(src) << "\n";
+    std::cout << ::tpyapp::main::filtered_moves() << "\n";
 }
 
 // main()
@@ -181,7 +181,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

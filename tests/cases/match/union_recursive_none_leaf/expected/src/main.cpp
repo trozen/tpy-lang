@@ -28,7 +28,7 @@ int32_t branch_count(const Tree<std::monostate>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, branch_count(child));
+            total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::branch_count(child));
         }
         return total;
         break;
@@ -54,7 +54,7 @@ int32_t branch_count(const Tree<std::monostate>& t) {
 //     print(branch_count(forest))
 void main() {
     Tree<std::monostate> forest = std::vector<Tree<std::monostate>>{std::vector<Tree<std::monostate>>{}, std::vector<Tree<std::monostate>>{}};
-    std::cout << branch_count(forest) << "\n";
+    std::cout << ::tpyapp::main::branch_count(forest) << "\n";
     auto& __match_subject_1 = forest;
     switch (__match_subject_1.value.index()) {
     case 1: {
@@ -84,7 +84,7 @@ void main() {
         break;
     }
     }
-    std::cout << branch_count(forest) << "\n";
+    std::cout << ::tpyapp::main::branch_count(forest) << "\n";
 }
 
 // main()
@@ -93,7 +93,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

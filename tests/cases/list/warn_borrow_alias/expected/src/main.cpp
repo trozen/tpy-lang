@@ -66,7 +66,7 @@ void test_alias_pass_to_func() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     std::vector<Point>& alias = items;
-    mutate_list(alias);
+    ::tpyapp::main::mutate_list(alias);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -123,13 +123,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_alias_append();
-    test_alias_subscript_assign();
-    test_alias_del();
-    test_alias_pass_to_func();
-    test_alias_aug_assign();
-    test_alias_no_element_borrow();
-    test_direct_still_works();
+    ::tpyapp::main::test_alias_append();
+    ::tpyapp::main::test_alias_subscript_assign();
+    ::tpyapp::main::test_alias_del();
+    ::tpyapp::main::test_alias_pass_to_func();
+    ::tpyapp::main::test_alias_aug_assign();
+    ::tpyapp::main::test_alias_no_element_borrow();
+    ::tpyapp::main::test_direct_still_works();
 }
 
 } // namespace tpyapp::main

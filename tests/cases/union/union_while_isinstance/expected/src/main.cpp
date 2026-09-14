@@ -31,10 +31,10 @@ void drain_circles(::tpy::Union<const Circle*, const Rect*> s) {
 void main() {
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    drain_circles(c.as_const());
+    ::tpyapp::main::drain_circles(c.as_const());
     ::tpy::Union<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
     ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    drain_circles(r.as_const());
+    ::tpyapp::main::drain_circles(r.as_const());
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

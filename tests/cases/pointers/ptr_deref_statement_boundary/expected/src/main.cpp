@@ -46,9 +46,9 @@ void assign_first(A* p) {
 void main() {
     A a = A(10, 20);
     A* p = &a;
-    cross_statement(p);
-    within_expression(p);
-    assign_first(p);
+    ::tpyapp::main::cross_statement(p);
+    ::tpyapp::main::within_expression(p);
+    ::tpyapp::main::assign_first(p);
     std::cout << a.x << " " << a.y << "\n";
 }
 
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -56,7 +56,7 @@ void __tpy_init() {
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TZ", "EST5EDT,M3.2.0,M11.1.0");
     ::tpy::stdlib::time::tzset();
     ::tpystd::datetime::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

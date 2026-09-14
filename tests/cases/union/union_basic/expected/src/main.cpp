@@ -25,10 +25,10 @@ void accept_three(const ::tpy::Union<bool, int32_t, std::string>& x) {
 void test() {
     ::tpy::Union<int32_t, std::string> a = 10;
     ::tpy::Union<int32_t, std::string> b = "hello";
-    accept_two(a);
-    accept_two(b);
+    ::tpyapp::main::accept_two(a);
+    ::tpyapp::main::accept_two(b);
     ::tpy::Union<bool, int32_t, std::string> c = true;
-    accept_three(c);
+    ::tpyapp::main::accept_three(c);
     std::cout << "ok" << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

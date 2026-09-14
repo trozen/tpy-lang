@@ -84,7 +84,7 @@ inline Grid::Grid(int32_t n) : cells(::tpy::from_range<std::vector<int32_t>>(::t
 // def fill_own(self, n: int32) -> None:
 //     self.data = make_list(n)  # the Own return lands by value, no copy
 inline void Grid::fill_own(int32_t n) {
-    this->data = make_list(n);
+    this->data = ::tpyapp::main::make_list(n);
 }
 
 // # The mirror write COPIES where CPython aliases; sema warns on the line, so

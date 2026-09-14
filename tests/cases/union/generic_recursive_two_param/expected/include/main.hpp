@@ -56,7 +56,7 @@ int32_t leaf_count(const DictTree<K, V>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& v = *__beg_0;
-            acc = ::tpy::add_check<int32_t>(acc, leaf_count<K, V>(v));
+            acc = ::tpy::add_check<int32_t>(acc, ::tpyapp::main::leaf_count<K, V>(v));
         }
         return acc;
         break;

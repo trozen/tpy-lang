@@ -62,7 +62,7 @@ __coro_consume consume(std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        c.emplace(add_one(::tpy::BigInt(1)));
+        c.emplace(::tpyapp::main::add_one(::tpy::BigInt(1)));
         d.emplace(std::move(*c));
         c.reset();
         __state = S_RESUME_0;
@@ -74,7 +74,7 @@ __coro_consume consume(std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt
         __await_lift_0 = std::move(__r0).value();
         d.reset();
         std::cout << __await_lift_0 << "\n";
-        e.emplace(add_one(::tpy::BigInt(9)));
+        e.emplace(::tpyapp::main::add_one(::tpy::BigInt(9)));
         __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(e))));
         __state = S_RESUME_1;
         continue;
@@ -102,7 +102,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Ownership-transfer forms of a bound coroutine: binding by name at the
@@ -120,7 +120,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

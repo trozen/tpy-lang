@@ -105,7 +105,7 @@ bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv) {
 //     print("eof:", len(reader.read()) == 0)
 //     reader.close()
 void main() {
-    write_fixtures();
+    ::tpyapp::main::write_fixtures();
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
@@ -117,7 +117,7 @@ void main() {
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    if ((!(drive(cli, srv)))) {
+    if ((!(::tpyapp::main::drive(cli, srv)))) {
         std::cout << "FAIL: handshake did not converge" << "\n";
         return;
     }
@@ -147,7 +147,7 @@ void __tpy_init() {
 
     ::tpystd::ssl::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

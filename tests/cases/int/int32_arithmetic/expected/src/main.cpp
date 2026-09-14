@@ -94,10 +94,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_binary_ops();
-    test_unary_neg();
-    test_mixed_literals();
-    test_negative_division();
+    ::tpyapp::main::test_binary_ops();
+    ::tpyapp::main::test_unary_neg();
+    ::tpyapp::main::test_mixed_literals();
+    ::tpyapp::main::test_negative_division();
 }
 
 } // namespace tpyapp::main

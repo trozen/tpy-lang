@@ -26,7 +26,7 @@ void main() {
     Holder h = Holder(p, 42);
     std::cout << std::get<0>(h.data).x << " " << std::get<1>(h.data) << "\n";
     Point p2 = Point(10, 20);
-    update(h, p2);
+    ::tpyapp::main::update(h, p2);
     std::cout << std::get<0>(h.data).x << " " << std::get<1>(h.data) << "\n";
     p2.x = 55;
     std::cout << std::get<0>(h.data).x << "\n";
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    rebind_gap();
+    ::tpyapp::main::rebind_gap();
 }
 
 } // namespace tpyapp::main

@@ -49,7 +49,7 @@ __gen_pairs pairs(std::vector<P>& items) {
 void main() {
     std::vector<P> points = {P(1), P(2), P(3)};
     {
-        auto __src_0 = pairs(points);
+        auto __src_0 = ::tpyapp::main::pairs(points);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

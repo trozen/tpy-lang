@@ -62,7 +62,7 @@ void __tpy_init() {
     initialized = true;
 
     G = 9;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -14,7 +14,7 @@ std::string show(const std::vector<int32_t>& xs) {
 //     print(show([1, 2]))
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << show(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::show(__tmp_1) << "\n";
 }
 
 // main()
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

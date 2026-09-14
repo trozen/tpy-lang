@@ -62,7 +62,7 @@ int32_t run(bool flag) {
 //     r = run(True)
 //     print("returned:", r)
 void main() {
-    int32_t r = run(true);
+    int32_t r = ::tpyapp::main::run(true);
     std::cout << "returned:" << " " << r << "\n";
 }
 
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

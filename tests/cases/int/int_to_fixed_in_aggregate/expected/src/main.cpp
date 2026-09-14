@@ -13,7 +13,7 @@ namespace tpyapp::main {
 // def make_addr() -> tuple[str, int32]:
 //     return ("127.0.0.1", port())  # tuple return-position element
 std::tuple<std::string, int32_t> make_addr() {
-    return std::tuple<std::string, int32_t>{"127.0.0.1", (port()).to_fixed_check<int32_t>()};
+    return std::tuple<std::string, int32_t>{"127.0.0.1", (::tpyapp::main::port()).to_fixed_check<int32_t>()};
 }
 
 // def main() -> None:
@@ -35,13 +35,13 @@ std::tuple<std::string, int32_t> make_addr() {
 //     boxes[0].set(99)
 //     print(boxes[0].get())
 void main() {
-    std::vector<int32_t> ports = {(port()).to_fixed_check<int32_t>(), (port()).to_fixed_check<int32_t>()};
+    std::vector<int32_t> ports = {(::tpyapp::main::port()).to_fixed_check<int32_t>(), (::tpyapp::main::port()).to_fixed_check<int32_t>()};
     std::cout << ::tpy::__getitem__(ports, 0) << "\n";
-    auto __tup_1 = make_addr();
+    auto __tup_1 = ::tpyapp::main::make_addr();
     std::string_view host = std::get<0>(__tup_1);
     int32_t p = std::get<1>(__tup_1);
     std::cout << p << "\n";
-    std::vector<std::tuple<std::string, int32_t>> addrs = {std::tuple<std::string, int32_t>{"a", (port()).to_fixed_check<int32_t>()}};
+    std::vector<std::tuple<std::string, int32_t>> addrs = {std::tuple<std::string, int32_t>{"a", (::tpyapp::main::port()).to_fixed_check<int32_t>()}};
     auto __tup_2 = ::tpy::__getitem__(addrs, 0);
     int32_t np = std::get<1>(__tup_2);
     std::cout << np << "\n";
@@ -59,7 +59,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

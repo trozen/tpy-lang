@@ -57,8 +57,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_last_use();
-    test_borrowing_not_last_use();
+    ::tpyapp::main::test_last_use();
+    ::tpyapp::main::test_borrowing_not_last_use();
 }
 
 } // namespace tpyapp::main

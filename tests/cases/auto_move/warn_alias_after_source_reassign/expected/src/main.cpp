@@ -30,7 +30,7 @@ void main() {
     p->y = 2;
     Point& alias = (*p);
     Point __tmp_1 = (*p);
-    std::cout << consume(std::move(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(__tmp_1)) << "\n";
     std::cout << alias.x << "\n";
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

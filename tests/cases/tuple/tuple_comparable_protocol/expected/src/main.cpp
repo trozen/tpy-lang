@@ -23,14 +23,14 @@ void main() {
     std::tuple<int32_t, int32_t> a = std::tuple<int32_t, int32_t>{1, 2};
     std::tuple<int32_t, int32_t> b = std::tuple<int32_t, int32_t>{1, 3};
     std::tuple<int32_t, int32_t> c = std::tuple<int32_t, int32_t>{1, 2};
-    std::cout << ::tpy::print_bool(less<std::tuple<int32_t, int32_t>>(a, b)) << "\n";
-    std::cout << ::tpy::print_bool(less<std::tuple<int32_t, int32_t>>(b, a)) << "\n";
-    std::cout << ::tpy::print_bool(eq<std::tuple<int32_t, int32_t>>(a, c)) << "\n";
-    std::cout << ::tpy::print_bool(eq<std::tuple<int32_t, int32_t>>(a, b)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<int32_t, int32_t>>(a, b)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<int32_t, int32_t>>(b, a)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq<std::tuple<int32_t, int32_t>>(a, c)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq<std::tuple<int32_t, int32_t>>(a, b)) << "\n";
     std::tuple<int32_t, std::string> p = std::tuple<int32_t, std::string>{1, "apple"};
     std::tuple<int32_t, std::string> q = std::tuple<int32_t, std::string>{1, "banana"};
-    std::cout << ::tpy::print_bool(less<std::tuple<int32_t, std::string>>(p, q)) << "\n";
-    std::cout << ::tpy::print_bool(eq<std::tuple<int32_t, std::string>>(p, p)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<int32_t, std::string>>(p, q)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq<std::tuple<int32_t, std::string>>(p, p)) << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

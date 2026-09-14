@@ -48,7 +48,7 @@ __gen_counter counter() {
 //         print("x =", x, "seen =", seen)
 void main() {
     {
-        auto __src_0 = counter();
+        auto __src_0 = ::tpyapp::main::counter();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -68,7 +68,7 @@ void __tpy_init() {
     initialized = true;
 
     seen = ::tpy::BigInt(0);
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -15,7 +15,7 @@ std::string_view borrow_through_method(Wrapper& w) {
 //     print(borrow_through_method(w))
 void main() {
     Wrapper w = Wrapper("hello");
-    std::cout << borrow_through_method(w) << "\n";
+    std::cout << ::tpyapp::main::borrow_through_method(w) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

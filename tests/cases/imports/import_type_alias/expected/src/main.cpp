@@ -24,7 +24,7 @@ void __tpy_init() {
 
     x = 42;
     ch = 'x';
-    greet(x, ch);
+    ::tpyapp::main::greet(x, ch);
 }
 
 } // namespace tpyapp::main

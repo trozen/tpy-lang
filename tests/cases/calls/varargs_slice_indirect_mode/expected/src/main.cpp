@@ -30,11 +30,11 @@ void main() {
     const Box __tmp_2 = Box(2);
     const Box __tmp_3 = Box(3);
     std::array<const Box*, 3> __tmp_4{&__tmp_1, &__tmp_2, &__tmp_3};
-    std::cout << sum_tail(::tpy::varargs<const Box>(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::sum_tail(::tpy::varargs<const Box>(__tmp_4)) << "\n";
     const Box __tmp_5 = Box(10);
     std::array<const Box*, 1> __tmp_6{&__tmp_5};
-    std::cout << sum_tail(::tpy::varargs<const Box>(__tmp_6)) << "\n";
-    std::cout << sum_tail(::tpy::varargs<const Box>()) << "\n";
+    std::cout << ::tpyapp::main::sum_tail(::tpy::varargs<const Box>(__tmp_6)) << "\n";
+    std::cout << ::tpyapp::main::sum_tail(::tpy::varargs<const Box>()) << "\n";
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

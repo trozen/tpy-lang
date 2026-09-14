@@ -77,7 +77,7 @@ __gen_multi multi(std::vector<int32_t>& items, int32_t n) {
 void main() {
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3};
-        auto __src_0 = multi(__tmp_1, 4);
+        auto __src_0 = ::tpyapp::main::multi(__tmp_1, 4);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -94,7 +94,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

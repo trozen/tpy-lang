@@ -27,7 +27,7 @@ Point& param_then_trusted(Point& seed, int32_t n) {
     Point* result = &(seed);
     int32_t i = 0;
     while ((i < n)) {
-        result = &(trusted(seed));
+        result = &(::tpyapp::main::trusted(seed));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     return (*result);
@@ -41,7 +41,7 @@ Point& param_then_trusted(Point& seed, int32_t n) {
 //         i += 1
 //     return result  # tpyc: ok
 Point& trusted_then_param(Point& seed, int32_t n) {
-    Point* result = &(trusted(seed));
+    Point* result = &(::tpyapp::main::trusted(seed));
     int32_t i = 0;
     while ((i < n)) {
         result = &(seed);
@@ -61,7 +61,7 @@ std::string_view strview_param_then_trusted(std::string_view p, int32_t n) {
     std::string_view sv = p;
     int32_t i = 0;
     while ((i < n)) {
-        sv = pick_view("x");
+        sv = ::tpyapp::main::pick_view("x");
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     return sv;
@@ -77,12 +77,12 @@ std::string_view strview_param_then_trusted(std::string_view p, int32_t n) {
 //     print(strview_param_then_trusted("hello", 3))
 void main() {
     Point seed = Point(11);
-    std::cout << param_then_trusted(seed, 0).x << "\n";
-    std::cout << param_then_trusted(seed, 3).x << "\n";
-    std::cout << trusted_then_param(seed, 0).x << "\n";
-    std::cout << trusted_then_param(seed, 3).x << "\n";
-    std::cout << strview_param_then_trusted("hello", 0) << "\n";
-    std::cout << strview_param_then_trusted("hello", 3) << "\n";
+    std::cout << ::tpyapp::main::param_then_trusted(seed, 0).x << "\n";
+    std::cout << ::tpyapp::main::param_then_trusted(seed, 3).x << "\n";
+    std::cout << ::tpyapp::main::trusted_then_param(seed, 0).x << "\n";
+    std::cout << ::tpyapp::main::trusted_then_param(seed, 3).x << "\n";
+    std::cout << ::tpyapp::main::strview_param_then_trusted("hello", 0) << "\n";
+    std::cout << ::tpyapp::main::strview_param_then_trusted("hello", 3) << "\n";
 }
 
 // main()
@@ -91,7 +91,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

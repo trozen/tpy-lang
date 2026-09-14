@@ -38,7 +38,7 @@ int32_t pick(::tpy::Union<Item*, Other*> v) {
 //     print(Registry.code)
 void main() {
     Item it = Item(6);
-    std::cout << pick(::tpy::Union<Item*, Other*>{&(it)}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<Item*, Other*>{&(it)}) << "\n";
     std::cout << it.code << "\n";
     std::cout << Registry::code << "\n";
 }
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

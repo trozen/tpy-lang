@@ -20,7 +20,7 @@ void __tpy_init() {
     initialized = true;
 
     x = nullptr;
-    static Point __global_slot_1 = make_owned_point();
+    static Point __global_slot_1 = ::tpyapp::main::make_owned_point();
     x = &__global_slot_1;
     std::cout << x->x << "\n";
 }

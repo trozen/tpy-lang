@@ -96,7 +96,7 @@ void __tpy_init() {
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TZ", "Europe/Warsaw");
     ::tpy::stdlib::time::tzset();
     ::tpystd::datetime::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -92,25 +92,25 @@ namespace tpyapp::main {
 //     print(toplevel(B(6)))          # 6
 void main() {
     A __tmp_1 = A(::tpy::BigInt(5));
-    std::cout << in_loop(__tmp_1, ::tpy::BigInt(0)) << "\n";
+    std::cout << ::tpyapp::main::in_loop(__tmp_1, ::tpy::BigInt(0)) << "\n";
     A __tmp_2 = A(::tpy::BigInt(5));
-    std::cout << in_loop(__tmp_2, ::tpy::BigInt(3)) << "\n";
+    std::cout << ::tpyapp::main::in_loop(__tmp_2, ::tpy::BigInt(3)) << "\n";
     B __tmp_3 = B(::tpy::BigInt(7));
-    std::cout << in_loop(__tmp_3, ::tpy::BigInt(0)) << "\n";
+    std::cout << ::tpyapp::main::in_loop(__tmp_3, ::tpy::BigInt(0)) << "\n";
     B __tmp_4 = B(::tpy::BigInt(7));
-    std::cout << in_loop(__tmp_4, ::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::in_loop(__tmp_4, ::tpy::BigInt(2)) << "\n";
     A __tmp_5 = A(::tpy::BigInt(9));
-    std::cout << in_branch(__tmp_5, false) << "\n";
+    std::cout << ::tpyapp::main::in_branch(__tmp_5, false) << "\n";
     A __tmp_6 = A(::tpy::BigInt(9));
-    std::cout << in_branch(__tmp_6, true) << "\n";
+    std::cout << ::tpyapp::main::in_branch(__tmp_6, true) << "\n";
     B __tmp_7 = B(::tpy::BigInt(4));
-    std::cout << in_branch(__tmp_7, false) << "\n";
+    std::cout << ::tpyapp::main::in_branch(__tmp_7, false) << "\n";
     B __tmp_8 = B(::tpy::BigInt(4));
-    std::cout << in_branch(__tmp_8, true) << "\n";
+    std::cout << ::tpyapp::main::in_branch(__tmp_8, true) << "\n";
     A __tmp_9 = A(::tpy::BigInt(2));
-    std::cout << toplevel(__tmp_9) << "\n";
+    std::cout << ::tpyapp::main::toplevel(__tmp_9) << "\n";
     B __tmp_10 = B(::tpy::BigInt(6));
-    std::cout << toplevel(__tmp_10) << "\n";
+    std::cout << ::tpyapp::main::toplevel(__tmp_10) << "\n";
 }
 
 // main()
@@ -119,7 +119,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

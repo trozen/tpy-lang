@@ -28,11 +28,11 @@ std::tuple<bool, int32_t, std::string> get_triple() {
 //     print(triple[1])
 //     print(triple[2])
 void main() {
-    std::tuple<int32_t, std::string> pair = get_pair();
+    std::tuple<int32_t, std::string> pair = ::tpyapp::main::get_pair();
     std::cout << ::tpy::TuplePrinter(pair) << "\n";
     std::cout << std::get<0>(pair) << "\n";
     std::cout << std::get<1>(pair) << "\n";
-    std::tuple<bool, int32_t, std::string> triple = get_triple();
+    std::tuple<bool, int32_t, std::string> triple = ::tpyapp::main::get_triple();
     std::cout << ::tpy::TuplePrinter(triple) << "\n";
     std::cout << ::tpy::print_bool(std::get<0>(triple)) << "\n";
     std::cout << std::get<1>(triple) << "\n";
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

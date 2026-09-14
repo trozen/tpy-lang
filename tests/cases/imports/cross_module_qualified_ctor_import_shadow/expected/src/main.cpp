@@ -34,7 +34,7 @@ void __tpy_init() {
 
     ::tpyapp::pa::__tpy_init();
     ::tpyapp::pb::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

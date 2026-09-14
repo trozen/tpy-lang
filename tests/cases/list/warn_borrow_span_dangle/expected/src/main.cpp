@@ -91,12 +91,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_span_append_warns();
-    test_span_subscript_write_ok();
-    test_span_del_warns();
-    test_span_no_mutation_no_warn();
-    test_no_span_no_warn();
-    test_value_type_span_warns();
+    ::tpyapp::main::test_span_append_warns();
+    ::tpyapp::main::test_span_subscript_write_ok();
+    ::tpyapp::main::test_span_del_warns();
+    ::tpyapp::main::test_span_no_mutation_no_warn();
+    ::tpyapp::main::test_no_span_no_warn();
+    ::tpyapp::main::test_value_type_span_warns();
 }
 
 } // namespace tpyapp::main

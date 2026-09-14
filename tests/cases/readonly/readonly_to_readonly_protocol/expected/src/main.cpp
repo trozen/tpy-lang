@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(get_len(items))
 //     print(get_first(items))
 void observe(const std::vector<int32_t>& items) {
-    std::cout << get_len(items) << "\n";
-    std::cout << get_first(items) << "\n";
+    std::cout << ::tpyapp::main::get_len(items) << "\n";
+    std::cout << ::tpyapp::main::get_first(items) << "\n";
 }
 
 // def main() -> None:
@@ -17,7 +17,7 @@ void observe(const std::vector<int32_t>& items) {
 //     observe(xs)
 void main() {
     std::vector<int32_t> xs = {10, 20, 30};
-    observe(xs);
+    ::tpyapp::main::observe(xs);
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

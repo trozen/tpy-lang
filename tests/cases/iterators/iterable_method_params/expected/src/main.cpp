@@ -40,20 +40,20 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> nums = {1, 2};
     std::vector<int32_t> more = {3, 4, 5};
-    extend_from(nums, more);
+    ::tpyapp::main::extend_from(nums, more);
     std::cout << ::tpy::ListPrinter(nums) << "\n";
     std::vector<int32_t> nums2 = {10};
     auto __tmp_1 = std::array<int32_t, 2>{20, 30};
-    extend_from(nums2, __tmp_1);
+    ::tpyapp::main::extend_from(nums2, __tmp_1);
     std::cout << ::tpy::ListPrinter(nums2) << "\n";
     std::vector<int32_t> target = {100};
     std::vector<int32_t> vals = {200, 300};
-    extend_from(target, vals);
+    ::tpyapp::main::extend_from(target, vals);
     std::cout << ::tpy::ListPrinter(target) << "\n";
     std::vector<std::string> words = {"a", "b", "c"};
-    std::cout << join_from("-", words) << "\n";
+    std::cout << ::tpyapp::main::join_from("-", words) << "\n";
     std::vector<int32_t> src = {7, 8, 9};
-    std::vector<int32_t> result = list_from(src);
+    std::vector<int32_t> result = ::tpyapp::main::list_from(src);
     std::cout << ::tpy::ListPrinter(result) << "\n";
     std::vector<int32_t> direct = {1};
     ::tpy::list_extend(direct, std::array<int32_t, 2>{2, 3});
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

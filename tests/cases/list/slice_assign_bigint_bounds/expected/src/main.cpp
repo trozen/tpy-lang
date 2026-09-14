@@ -44,9 +44,9 @@ std::vector<int32_t> upper_only(const ::tpy::BigInt& hi) {
 //     # The field mutation is observed through the receiver, not a copy.
 //     print(h.xs)
 void main() {
-    std::cout << ::tpy::ListPrinter(stepped(::tpy::BigInt(2), ::tpy::BigInt(4))) << "\n";
-    std::cout << ::tpy::ListPrinter(basic(::tpy::BigInt(3), ::tpy::BigInt(6))) << "\n";
-    std::cout << ::tpy::ListPrinter(upper_only(::tpy::BigInt(4))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::stepped(::tpy::BigInt(2), ::tpy::BigInt(4))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::basic(::tpy::BigInt(3), ::tpy::BigInt(6))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::upper_only(::tpy::BigInt(4))) << "\n";
     Holder h = Holder();
     h.blank(1, 5);
     std::cout << ::tpy::ListPrinter(h.xs) << "\n";
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

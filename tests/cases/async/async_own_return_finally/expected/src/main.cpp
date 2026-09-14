@@ -79,7 +79,7 @@ __coro_driver driver() {
 // def main() -> None:
 //     print(asyncio.run(driver()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(driver())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::driver())) << "\n";
 }
 
 // # An async Own[T] return of a local under try/finally: the finally reads
@@ -94,7 +94,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

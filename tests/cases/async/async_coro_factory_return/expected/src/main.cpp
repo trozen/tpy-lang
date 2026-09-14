@@ -28,7 +28,7 @@ __coro_add_one add_one(::tpy::BigInt n) {
 // def make(n: int) -> Own[Cancellable[int]]:
 //     return add_one(n)
 std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> make(const ::tpy::BigInt& n) {
-    return ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(add_one(n));
+    return ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::add_one(n));
 }
 
 // async def spawn_via(factory: Callable[[int], Own[Cancellable[int]]], n: int) -> int:
@@ -68,9 +68,9 @@ __coro_spawn_via spawn_via(std::function<std::unique_ptr<::tpystd::coro::Cancell
 //     print(asyncio.run(c))
 //     print(asyncio.run(spawn_via(make, 20)))
 void main() {
-    std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> c = make(::tpy::BigInt(41));
+    std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> c = ::tpyapp::main::make(::tpy::BigInt(41));
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::move(c)) << "\n";
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(spawn_via(make, ::tpy::BigInt(20)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::spawn_via(make, ::tpy::BigInt(20)))) << "\n";
 }
 
 // import asyncio
@@ -85,7 +85,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

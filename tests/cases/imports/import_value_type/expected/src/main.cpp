@@ -21,7 +21,7 @@ void main() {
     ::tpyapp::shapes::Vec2 b = a;
     std::cout << a.x << "\n";
     std::cout << b.y << "\n";
-    std::cout << length_sq(a) << "\n";
+    std::cout << ::tpyapp::main::length_sq(a) << "\n";
 }
 
 // # Cross-module ValueType: an imported value-type record constructs and
@@ -35,7 +35,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::shapes::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

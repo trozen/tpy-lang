@@ -14,7 +14,7 @@ std::string describe(const Tag& t) {
 //     raise ValueError(describe(Tag(7)))  # the temp sits under `describe`, one level below the ctor
 void fail_nested() {
     Tag __tmp_1 = Tag(::tpy::BigInt(7));
-    throw ::tpy::ValueError(describe(__tmp_1));
+    throw ::tpy::ValueError(::tpyapp::main::describe(__tmp_1));
 }
 
 // def fail_direct() -> None:
@@ -35,14 +35,14 @@ void fail_direct() {
 void main() {
     {
         try {
-            fail_nested();
+            ::tpyapp::main::fail_nested();
         } catch (const ::tpy::ValueError& e) {
             std::cout << "nested:" << " " << e << "\n";
         }
     }
     {
         try {
-            fail_direct();
+            ::tpyapp::main::fail_direct();
         } catch (const TagError& e) {
             std::cout << "direct:" << " " << e.n << "\n";
         }
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

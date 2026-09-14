@@ -91,10 +91,10 @@ bool check_span_contains(std::span<int32_t> data, int32_t value) {
 //         print("999 in span: no")
 void test_span_membership() {
     std::array<int32_t, 5> nums = {100, 200, 300, 400, 500};
-    if (check_span_contains(::tpy::as_mut_span(nums), 300)) {
+    if (::tpyapp::main::check_span_contains(::tpy::as_mut_span(nums), 300)) {
         std::cout << "300 in span: yes" << "\n";
     }
-    if (check_span_contains(::tpy::as_mut_span(nums), 999)) {
+    if (::tpyapp::main::check_span_contains(::tpy::as_mut_span(nums), 999)) {
         std::cout << "999 in span: yes" << "\n";
     } else {
         std::cout << "999 in span: no" << "\n";
@@ -218,12 +218,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_list_membership();
-    test_array_membership();
-    test_span_membership();
-    test_string_membership();
-    test_membership_in_conditions();
-    test_membership_with_variables();
+    ::tpyapp::main::test_list_membership();
+    ::tpyapp::main::test_array_membership();
+    ::tpyapp::main::test_span_membership();
+    ::tpyapp::main::test_string_membership();
+    ::tpyapp::main::test_membership_in_conditions();
+    ::tpyapp::main::test_membership_with_variables();
 }
 
 } // namespace tpyapp::main

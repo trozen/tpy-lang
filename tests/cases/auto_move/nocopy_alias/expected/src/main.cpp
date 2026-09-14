@@ -21,7 +21,7 @@ void main() {
     h.fd = 42;
     Handle& alias = h;
     std::cout << alias.fd << "\n";
-    std::cout << close(std::move(h)) << "\n";
+    std::cout << ::tpyapp::main::close(std::move(h)) << "\n";
 }
 
 // main()
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

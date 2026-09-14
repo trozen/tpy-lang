@@ -58,7 +58,7 @@ __gen_bump_all bump_all(Holder& h) {
 void main() {
     Holder h = Holder();
     {
-        auto __src_0 = bump_all(h);
+        auto __src_0 = ::tpyapp::main::bump_all(h);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -99,7 +99,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

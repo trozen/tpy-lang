@@ -40,7 +40,7 @@ void run() {
 // def main() -> None:
 //     run()
 void main() {
-    run();
+    ::tpyapp::main::run();
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -56,7 +56,7 @@ __coro_add_one add_one(::tpy::BigInt n) {
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
         i = ((*__for_i_0))++;
-        c.emplace(add_one(::tpy::BigInt(i)));
+        c.emplace(::tpyapp::main::add_one(::tpy::BigInt(i)));
         __state = S_RESUME_0;
         continue;
     }
@@ -74,7 +74,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Same-coroutine rebind + consume inside a loop body (the retry shape):
@@ -88,7 +88,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

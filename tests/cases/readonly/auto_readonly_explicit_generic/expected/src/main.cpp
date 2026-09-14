@@ -27,7 +27,7 @@ void main() {
     v.push(20);
     std::span<int32_t> s = v.data();
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    read_vec(v);
+    ::tpyapp::main::read_vec(v);
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -91,13 +91,13 @@ uint64_t method_arg_with_own_param() {
 //     print(dict_key_typed())
 //     print(method_arg_with_own_param())
 void main() {
-    std::cout << ret_unsigned() << "\n";
-    std::cout << init_typed_local() << "\n";
-    std::cout << reassign_existing_typed() << "\n";
-    std::cout << setitem_typed_list() << "\n";
-    std::cout << field_assign_typed() << "\n";
-    std::cout << dict_key_typed() << "\n";
-    std::cout << method_arg_with_own_param() << "\n";
+    std::cout << ::tpyapp::main::ret_unsigned() << "\n";
+    std::cout << ::tpyapp::main::init_typed_local() << "\n";
+    std::cout << ::tpyapp::main::reassign_existing_typed() << "\n";
+    std::cout << ::tpyapp::main::setitem_typed_list() << "\n";
+    std::cout << ::tpyapp::main::field_assign_typed() << "\n";
+    std::cout << ::tpyapp::main::dict_key_typed() << "\n";
+    std::cout << ::tpyapp::main::method_arg_with_own_param() << "\n";
 }
 
 // main()
@@ -106,7 +106,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

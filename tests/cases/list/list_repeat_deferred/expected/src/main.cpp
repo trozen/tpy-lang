@@ -102,7 +102,7 @@ void takes_span(std::span<int32_t> s) {
 void test_variable_repeat_assigned_to_span() {
     int32_t n = 2;
     std::vector<int32_t> x = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(n, {6}));
-    takes_span(::tpy::as_mut_span(x));
+    ::tpyapp::main::takes_span(::tpy::as_mut_span(x));
 }
 
 // test_array_resolution()
@@ -115,11 +115,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_array_resolution();
-    test_list_promotion();
-    test_annotated_list();
-    test_subscript_stays_array();
-    test_variable_repeat_assigned_to_span();
+    ::tpyapp::main::test_array_resolution();
+    ::tpyapp::main::test_list_promotion();
+    ::tpyapp::main::test_annotated_list();
+    ::tpyapp::main::test_subscript_stays_array();
+    ::tpyapp::main::test_variable_repeat_assigned_to_span();
 }
 
 } // namespace tpyapp::main

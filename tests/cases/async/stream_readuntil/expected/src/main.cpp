@@ -183,7 +183,7 @@ __coro_client_role client_role(int32_t port) {
         (*listener).listen(1);
         (*listener).setblocking(false);
         port = std::get<1>((*listener).getsockname());
-        client.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(client_role(port))));
+        client.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::client_role(port))));
         __sub_0.emplace(std::move((*loop).sock_accept((*listener))));
         __state = S_RESUME_0;
         continue;
@@ -233,7 +233,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio StreamReader.readuntil: reads through a bytes separator (included in
@@ -250,7 +250,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -71,7 +71,7 @@ __coro_second second() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(first()), 5.0);
+        __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::first()), 5.0);
         __state = S_RESUME_0;
         continue;
     }
@@ -80,7 +80,7 @@ __coro_second second() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
         __sub_0.reset();
-        __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(second()), 5.0);
+        __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::second()), 5.0);
         __state = S_RESUME_1;
         continue;
     }
@@ -107,7 +107,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Two sequential `await asyncio.wait_for(...)` calls in the same
@@ -125,7 +125,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

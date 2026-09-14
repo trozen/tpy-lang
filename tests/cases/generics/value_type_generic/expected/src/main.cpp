@@ -33,7 +33,7 @@ void main() {
     Pair<int32_t> q = p;
     std::cout << p.first << "\n";
     std::cout << q.first << "\n";
-    Pair<int32_t> s = swap(p);
+    Pair<int32_t> s = ::tpyapp::main::swap(p);
     std::cout << s.first << "\n";
     std::cout << s.second << "\n";
     Pair<Vec2> vp = Pair<Vec2>(Vec2(1, 2), Vec2(3, 4));
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

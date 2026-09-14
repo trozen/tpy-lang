@@ -85,8 +85,8 @@ void main() {
     std::cout << ::tpy::__repr__(::cfg::Mode::None) << "\n";
     std::cout << ::tpy::__repr__(::cfg::Mode::Auto) << "\n";
     std::cout << ::tpy::__repr__(::cfg::Mode::Manual) << "\n";
-    std::cout << describe(::cfg::Mode::None) << "\n";
-    std::cout << describe(::cfg::Mode::Auto) << "\n";
+    std::cout << ::tpyapp::main::describe(::cfg::Mode::None) << "\n";
+    std::cout << ::tpyapp::main::describe(::cfg::Mode::Auto) << "\n";
     std::cout << ::tpy::EnumUtil<::cfg::Mode>::name(::cfg::Mode::Manual) << "\n";
     std::cout << static_cast<int32_t>(::cfg::Mode::Manual) << "\n";
 }
@@ -103,7 +103,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

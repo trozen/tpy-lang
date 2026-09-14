@@ -148,7 +148,7 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     _PREFIX = "TPY_ITER_";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     p = make_ready()
 //     print("ok")
 void main() {
-    ::tpystd::tpy::Poll<std::monostate> p = make_ready();
+    ::tpystd::tpy::Poll<std::monostate> p = ::tpyapp::main::make_ready();
     std::cout << "ok" << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::coro::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -52,7 +52,7 @@ int32_t borrow(const P* p) {
 //     # convert std::optional<P> to const P*.
 //     return borrow(x)
 int32_t forward_borrow(std::optional<P>&& x) {
-    return borrow(::tpy::optional_to_ptr(x));
+    return ::tpyapp::main::borrow(::tpy::optional_to_ptr(x));
 }
 
 // def reassign_pointer(x: Own[P | None]) -> int32:
@@ -93,9 +93,9 @@ int32_t first_decl(std::optional<P>&& x) {
 //     a = P(7)
 //     print(take(a))
 void test_call_arg_lvalue_and_none() {
-    std::cout << take(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::take(std::nullopt) << "\n";
     P a = P(7);
-    std::cout << take(std::move(a)) << "\n";
+    std::cout << ::tpyapp::main::take(std::move(a)) << "\n";
 }
 
 // def test_field_assign() -> None:
@@ -125,12 +125,12 @@ void test_field_assign() {
 //     s = make(int32(-1))
 //     print(s is None)
 void test_return_into_pointer_receiver() {
-    std::optional<P> __slot_1 = make(11);
+    std::optional<P> __slot_1 = ::tpyapp::main::make(11);
     P* r = ::tpy::optional_to_ptr(__slot_1);
     if ((r != nullptr)) {
         std::cout << r->x << "\n";
     }
-    std::optional<P> __slot_2 = make(-1);
+    std::optional<P> __slot_2 = ::tpyapp::main::make(-1);
     P* s = ::tpy::optional_to_ptr(__slot_2);
     std::cout << ::tpy::print_bool((s == nullptr)) << "\n";
 }
@@ -138,7 +138,7 @@ void test_return_into_pointer_receiver() {
 // def test_forward_own_return_to_own_param() -> None:
 //     print(take(make(int32(13))))
 void test_forward_own_return_to_own_param() {
-    std::cout << take(make(13)) << "\n";
+    std::cout << ::tpyapp::main::take(::tpyapp::main::make(13)) << "\n";
 }
 
 // def test_return_passthrough() -> None:
@@ -150,12 +150,12 @@ void test_forward_own_return_to_own_param() {
 //     nope = passthrough(None)
 //     print(nope is None)
 void test_return_passthrough() {
-    std::optional<P> __slot_1 = passthrough(P(17));
+    std::optional<P> __slot_1 = ::tpyapp::main::passthrough(P(17));
     P* pt = ::tpy::optional_to_ptr(__slot_1);
     if ((pt != nullptr)) {
         std::cout << pt->x << "\n";
     }
-    std::optional<P> __slot_2 = passthrough(std::nullopt);
+    std::optional<P> __slot_2 = ::tpyapp::main::passthrough(std::nullopt);
     P* nope = ::tpy::optional_to_ptr(__slot_2);
     std::cout << ::tpy::print_bool((nope == nullptr)) << "\n";
 }
@@ -165,24 +165,24 @@ void test_return_passthrough() {
 //     print(forward_borrow(P(19)))
 //     print(forward_borrow(None))
 void test_forward_to_borrow_slot() {
-    std::cout << forward_borrow(P(19)) << "\n";
-    std::cout << forward_borrow(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::forward_borrow(P(19)) << "\n";
+    std::cout << ::tpyapp::main::forward_borrow(std::nullopt) << "\n";
 }
 
 // def test_reassign_pointer_local() -> None:
 //     print(reassign_pointer(P(31)))
 //     print(reassign_pointer(None))
 void test_reassign_pointer_local() {
-    std::cout << reassign_pointer(P(31)) << "\n";
-    std::cout << reassign_pointer(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::reassign_pointer(P(31)) << "\n";
+    std::cout << ::tpyapp::main::reassign_pointer(std::nullopt) << "\n";
 }
 
 // def test_first_decl_pointer_local() -> None:
 //     print(first_decl(P(37)))
 //     print(first_decl(None))
 void test_first_decl_pointer_local() {
-    std::cout << first_decl(P(37)) << "\n";
-    std::cout << first_decl(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::first_decl(P(37)) << "\n";
+    std::cout << ::tpyapp::main::first_decl(std::nullopt) << "\n";
 }
 
 // def test_rebind_from_successive_returns() -> None:
@@ -197,14 +197,14 @@ void test_first_decl_pointer_local() {
 void test_rebind_from_successive_returns() {
     std::optional<P> __slot_2;
     std::optional<P> __slot_3;
-    std::optional<P> __slot_1 = make(41);
+    std::optional<P> __slot_1 = ::tpyapp::main::make(41);
     P* z = ::tpy::optional_to_ptr(__slot_1);
-    __slot_2 = make(43);
+    __slot_2 = ::tpyapp::main::make(43);
     z = ::tpy::optional_to_ptr(__slot_2);
     if ((z != nullptr)) {
         std::cout << z->x << "\n";
     }
-    __slot_3 = make(-1);
+    __slot_3 = ::tpyapp::main::make(-1);
     z = ::tpy::optional_to_ptr(__slot_3);
     std::cout << ::tpy::print_bool((z == nullptr)) << "\n";
 }
@@ -220,15 +220,15 @@ void test_rebind_from_successive_returns() {
 //     test_first_decl_pointer_local()
 //     test_rebind_from_successive_returns()
 void main() {
-    test_call_arg_lvalue_and_none();
-    test_field_assign();
-    test_return_into_pointer_receiver();
-    test_forward_own_return_to_own_param();
-    test_return_passthrough();
-    test_forward_to_borrow_slot();
-    test_reassign_pointer_local();
-    test_first_decl_pointer_local();
-    test_rebind_from_successive_returns();
+    ::tpyapp::main::test_call_arg_lvalue_and_none();
+    ::tpyapp::main::test_field_assign();
+    ::tpyapp::main::test_return_into_pointer_receiver();
+    ::tpyapp::main::test_forward_own_return_to_own_param();
+    ::tpyapp::main::test_return_passthrough();
+    ::tpyapp::main::test_forward_to_borrow_slot();
+    ::tpyapp::main::test_reassign_pointer_local();
+    ::tpyapp::main::test_first_decl_pointer_local();
+    ::tpyapp::main::test_rebind_from_successive_returns();
 }
 
 // main()
@@ -237,7 +237,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

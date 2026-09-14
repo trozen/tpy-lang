@@ -120,7 +120,7 @@ void main() {
     std::cout << h << "\n";
     {
         try {
-            refuse();
+            ::tpyapp::main::refuse();
         } catch (const ::tpy::ConnectionError& exc) {
             std::cout << exc << "\n";
             std::cout << exc.error_number << "\n";
@@ -137,28 +137,28 @@ void main() {
     std::cout << ::tpy::print_bool((std::string(::tpy::__str__(z)) == "")) << " " << ::tpy::print_bool((!(z.error_number))) << "\n";
     {
         try {
-            direct_mapped_enoent();
+            ::tpyapp::main::direct_mapped_enoent();
         } catch (const ::tpy::FileNotFoundError& exc) {
             std::cout << "direct mapped:" << " " << exc << "\n";
         }
     }
     {
         try {
-            bound_mapped();
+            ::tpyapp::main::bound_mapped();
         } catch (const ::tpy::FileExistsError& exc) {
             std::cout << "bound mapped:" << " " << exc << "\n";
         }
     }
     {
         try {
-            direct_mapped();
+            ::tpyapp::main::direct_mapped();
         } catch (const ::tpy::OSError& exc) {
             std::cout << "unmapped errno stays plain:" << " " << exc << "\n";
         }
     }
     {
         try {
-            posthoc_plain();
+            ::tpyapp::main::posthoc_plain();
         } catch (const ::tpy::FileNotFoundError&) {
             std::cout << "WRONG: post-hoc assignment re-mapped" << "\n";
         } catch (const ::tpy::OSError& exc) {
@@ -196,7 +196,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -23,8 +23,8 @@ void incomplete(std::string_view mode) {
 //     incomplete("r")
 //     incomplete("w")
 void main() {
-    incomplete("r");
-    incomplete("w");
+    ::tpyapp::main::incomplete("r");
+    ::tpyapp::main::incomplete("w");
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

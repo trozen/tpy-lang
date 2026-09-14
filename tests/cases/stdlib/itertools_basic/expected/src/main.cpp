@@ -279,7 +279,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::itertools::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -43,11 +43,11 @@ namespace tpyapp::main {
 //     print(use_foreign(Foreign(7)))
 void main() {
     Point __tmp_1 = Point(::tpy::BigInt(9));
-    std::cout << pick(::tpy::Union<const Other*, const Point*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const Other*, const Point*>{&__tmp_1}) << "\n";
     Other __tmp_2 = Other(::tpy::BigInt(4));
-    std::cout << pick(::tpy::Union<const Other*, const Point*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const Other*, const Point*>{&__tmp_2}) << "\n";
     ::tpyapp::shapes::Point __tmp_3 = ::tpyapp::shapes::Point(::tpy::BigInt(7));
-    std::cout << use_foreign(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::use_foreign(__tmp_3) << "\n";
 }
 
 // # A class pattern for a LOCAL record in a union must still match under a
@@ -61,7 +61,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::shapes::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

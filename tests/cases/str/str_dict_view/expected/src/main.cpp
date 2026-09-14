@@ -60,9 +60,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_dict_value_view();
-    test_dict_mutation_fallback();
-    test_dict_int_key_view();
+    ::tpyapp::main::test_dict_value_view();
+    ::tpyapp::main::test_dict_mutation_fallback();
+    ::tpyapp::main::test_dict_int_key_view();
 }
 
 } // namespace tpyapp::main

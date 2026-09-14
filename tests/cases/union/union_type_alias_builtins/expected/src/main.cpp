@@ -27,8 +27,8 @@ void show_num(const Num& x) {
 void main() {
     Num a = 42;
     Num b = true;
-    show_num(a);
-    show_num(b);
+    ::tpyapp::main::show_num(a);
+    ::tpyapp::main::show_num(b);
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -132,7 +132,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = ::tpy::builtin_enumerate<int32_t>(triple_gen(::tpy::as_mut_span(xs)));
+        auto __src_8 = ::tpy::builtin_enumerate<int32_t>(::tpyapp::main::triple_gen(::tpy::as_mut_span(xs)));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -154,7 +154,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

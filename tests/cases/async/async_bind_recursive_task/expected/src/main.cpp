@@ -19,7 +19,7 @@ namespace tpyapp::main {
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         __coro_arg_0 = ((n) - (::tpy::BigInt(1)));
-        t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(fact(__coro_arg_0))));
+        t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::fact(__coro_arg_0))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -47,7 +47,7 @@ __coro_fact fact(::tpy::BigInt n) {
 // def main() -> None:
 //     print(asyncio.run(fact(5)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(fact(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::fact(::tpy::BigInt(5)))) << "\n";
 }
 
 // # Recursion through create_task works: the Task is the heap indirection
@@ -62,7 +62,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

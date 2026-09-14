@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(depth(leaf))
 void main() {
     Tree<std::string> t = std::vector<Tree<std::string>>{"a", std::vector<Tree<std::string>>{"b", std::vector<Tree<std::string>>{"c", "d"}}, "e"};
-    std::cout << depth<std::string>(t) << "\n";
+    std::cout << ::tpyapp::main::depth<std::string>(t) << "\n";
     Tree<std::string> leaf = "x";
-    std::cout << depth<std::string>(leaf) << "\n";
+    std::cout << ::tpyapp::main::depth<std::string>(leaf) << "\n";
 }
 
 // main()
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

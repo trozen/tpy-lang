@@ -59,9 +59,9 @@ bool second_has_auth(::tpy::BytesView location) {
 //     # Same host but a different port also strips (should_strip_auth).
 //     print(second_has_auth(b"http://api.test:8080/next"))
 void main() {
-    std::cout << ::tpy::print_bool(second_has_auth(::tpy::bytes_literal("http://api.test/next", 20))) << "\n";
-    std::cout << ::tpy::print_bool(second_has_auth(::tpy::bytes_literal("http://other.test/next", 22))) << "\n";
-    std::cout << ::tpy::print_bool(second_has_auth(::tpy::bytes_literal("http://api.test:8080/next", 25))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::second_has_auth(::tpy::bytes_literal("http://api.test/next", 20))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::second_has_auth(::tpy::bytes_literal("http://other.test/next", 22))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::second_has_auth(::tpy::bytes_literal("http://api.test:8080/next", 25))) << "\n";
 }
 
 // # A redirect drops the Authorization header unless host, scheme, and port all
@@ -84,7 +84,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -79,17 +79,17 @@ Prio make(Prio v) {
 //         print("member ZERO falsy")
 //     print("total:", calls)
 void main() {
-    if ((static_cast<int32_t>(make(Prio::HIGH)) != 0)) {
+    if ((static_cast<int32_t>(::tpyapp::main::make(Prio::HIGH)) != 0)) {
         std::cout << "high:" << " " << calls << "\n";
     }
-    if ((static_cast<int32_t>(make(Prio::ZERO)) != 0)) {
+    if ((static_cast<int32_t>(::tpyapp::main::make(Prio::ZERO)) != 0)) {
         std::cout << "unreachable" << "\n";
     }
     std::cout << "zero:" << " " << calls << "\n";
-    if ((!((static_cast<int32_t>(make(Prio::ZERO)) != 0)))) {
+    if ((!((static_cast<int32_t>(::tpyapp::main::make(Prio::ZERO)) != 0)))) {
         std::cout << "not zero:" << " " << calls << "\n";
     }
-    while ((static_cast<int32_t>(make(Prio::HIGH)) != 0)) {
+    while ((static_cast<int32_t>(::tpyapp::main::make(Prio::HIGH)) != 0)) {
         break;
     }
     std::cout << "while:" << " " << calls << "\n";
@@ -119,7 +119,7 @@ void __tpy_init() {
     initialized = true;
 
     calls = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

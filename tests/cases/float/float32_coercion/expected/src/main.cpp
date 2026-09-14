@@ -56,10 +56,10 @@ void test_narrowing_assignment() {
 //     print(r2)
 void test_param_coercion() {
     float v = 4.0f;
-    double r = accepts_float(static_cast<double>(v));
+    double r = ::tpyapp::main::accepts_float(static_cast<double>(v));
     std::cout << ::tpy::print_float(r) << "\n";
     double w = 4.0;
-    float r2 = accepts_f32(static_cast<float>(w));
+    float r2 = ::tpyapp::main::accepts_f32(static_cast<float>(w));
     std::cout << ::tpy::print_float(static_cast<double>(r2)) << "\n";
 }
 
@@ -68,7 +68,7 @@ void test_param_coercion() {
 //     f: float = returns_f32()  # tpyc: ok
 //     print(f)
 void test_return_coercion() {
-    double f = static_cast<double>(returns_f32());
+    double f = static_cast<double>(::tpyapp::main::returns_f32());
     std::cout << ::tpy::print_float(f) << "\n";
 }
 
@@ -137,13 +137,13 @@ void test_chained_coercion() {
 //     test_int_to_float32_coercion()
 //     test_chained_coercion()
 void main() {
-    test_widening_assignment();
-    test_narrowing_assignment();
-    test_param_coercion();
-    test_return_coercion();
-    test_mixed_type_inference();
-    test_int_to_float32_coercion();
-    test_chained_coercion();
+    ::tpyapp::main::test_widening_assignment();
+    ::tpyapp::main::test_narrowing_assignment();
+    ::tpyapp::main::test_param_coercion();
+    ::tpyapp::main::test_return_coercion();
+    ::tpyapp::main::test_mixed_type_inference();
+    ::tpyapp::main::test_int_to_float32_coercion();
+    ::tpyapp::main::test_chained_coercion();
 }
 
 // main()
@@ -152,7 +152,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

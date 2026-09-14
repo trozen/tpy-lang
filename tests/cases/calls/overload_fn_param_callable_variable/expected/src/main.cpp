@@ -14,8 +14,8 @@ namespace tpyapp::main {
 void main() {
     std::function<int32_t(int32_t)> f1 = [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); };
     std::function<int32_t(int32_t, int32_t)> f2 = [](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); };
-    std::cout << apply<int32_t>(f1, 5) << "\n";
-    std::cout << apply<int32_t>(f2, 5) << "\n";
+    std::cout << ::tpyapp::main::apply<int32_t>(f1, 5) << "\n";
+    std::cout << ::tpyapp::main::apply<int32_t>(f2, 5) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

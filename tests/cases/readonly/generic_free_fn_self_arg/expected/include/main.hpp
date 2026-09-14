@@ -58,7 +58,7 @@ inline void Counter::bump() {
 // def step(self) -> None:
 //     trigger(self)
 inline void Counter::step() {
-    trigger<Counter>((*this));
+    ::tpyapp::main::trigger<Counter>((*this));
 }
 // def trigger[T: Bumpable](x: T) -> None:
 //     x.bump()

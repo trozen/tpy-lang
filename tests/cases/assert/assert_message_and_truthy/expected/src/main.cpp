@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << bump_positive(4) << "\n";
+    std::cout << ::tpyapp::main::bump_positive(4) << "\n";
 }
 
 } // namespace tpyapp::main

@@ -78,9 +78,9 @@ std::string describe(Color c) {
 //     print(describe(Color.Green))
 //     print(describe(Color.Blue))
 void main() {
-    std::cout << describe(Color::Red) << "\n";
-    std::cout << describe(Color::Green) << "\n";
-    std::cout << describe(Color::Blue) << "\n";
+    std::cout << ::tpyapp::main::describe(Color::Red) << "\n";
+    std::cout << ::tpyapp::main::describe(Color::Green) << "\n";
+    std::cout << ::tpyapp::main::describe(Color::Blue) << "\n";
 }
 
 // # match/case on enum subject with value patterns (Color.RED)
@@ -92,7 +92,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -67,8 +67,8 @@ void main() {
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
     s.insert("only-one\n");
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    show_optional("a\nb");
-    show_optional(std::nullopt);
+    ::tpyapp::main::show_optional("a\nb");
+    ::tpyapp::main::show_optional(std::nullopt);
     std::cout << ::tpy::repr_of("") << "\n";
 }
 
@@ -84,7 +84,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_setitem_mutation();
+    ::tpyapp::main::test_setitem_mutation();
 }
 
 } // namespace tpyapp::main

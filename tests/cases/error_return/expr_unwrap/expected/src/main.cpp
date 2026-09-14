@@ -32,28 +32,28 @@ std::expected<std::string, E> get_name(std::string_view s) {
 // def add(a: str, b: str) -> int:
 //     return parse(a) + parse(b)
 std::expected<::tpy::BigInt, E> add(std::string_view a, std::string_view b) {
-    return ((({ auto __er_1 = parse(a); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); })) + (({ auto __er_2 = parse(b); if (!__er_2.has_value()) return ::tpy::make_unexpected(__er_2.error()); ::tpy::unwrap_ref_move(*__er_2); })));
+    return ((({ auto __er_1 = ::tpyapp::main::parse(a); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); })) + (({ auto __er_2 = ::tpyapp::main::parse(b); if (!__er_2.has_value()) return ::tpy::make_unexpected(__er_2.error()); ::tpy::unwrap_ref_move(*__er_2); })));
 }
 
 // @error_return(E)
 // def mul3(a: str, b: str, c: str) -> int:
 //     return parse(a) + parse(b) * parse(c)
 std::expected<::tpy::BigInt, E> mul3(std::string_view a, std::string_view b, std::string_view c) {
-    return ((({ auto __er_3 = parse(a); if (!__er_3.has_value()) return ::tpy::make_unexpected(__er_3.error()); ::tpy::unwrap_ref_move(*__er_3); })) + (((({ auto __er_4 = parse(b); if (!__er_4.has_value()) return ::tpy::make_unexpected(__er_4.error()); ::tpy::unwrap_ref_move(*__er_4); })) * (({ auto __er_5 = parse(c); if (!__er_5.has_value()) return ::tpy::make_unexpected(__er_5.error()); ::tpy::unwrap_ref_move(*__er_5); })))));
+    return ((({ auto __er_3 = ::tpyapp::main::parse(a); if (!__er_3.has_value()) return ::tpy::make_unexpected(__er_3.error()); ::tpy::unwrap_ref_move(*__er_3); })) + (((({ auto __er_4 = ::tpyapp::main::parse(b); if (!__er_4.has_value()) return ::tpy::make_unexpected(__er_4.error()); ::tpy::unwrap_ref_move(*__er_4); })) * (({ auto __er_5 = ::tpyapp::main::parse(c); if (!__er_5.has_value()) return ::tpy::make_unexpected(__er_5.error()); ::tpy::unwrap_ref_move(*__er_5); })))));
 }
 
 // @error_return(E)
 // def as_arg(s: str) -> int:
 //     return abs(parse(s))
 std::expected<::tpy::BigInt, E> as_arg(std::string_view s) {
-    return ::tpy::BigInt::abs(({ auto __er_6 = parse(s); if (!__er_6.has_value()) return ::tpy::make_unexpected(__er_6.error()); ::tpy::unwrap_ref_move(*__er_6); }));
+    return ::tpy::BigInt::abs(({ auto __er_6 = ::tpyapp::main::parse(s); if (!__er_6.has_value()) return ::tpy::make_unexpected(__er_6.error()); ::tpy::unwrap_ref_move(*__er_6); }));
 }
 
 // @error_return(E)
 // def greet(s: str) -> str:
 //     return get_name(s) + " world"
 std::expected<std::string, E> greet(std::string_view s) {
-    return (::tpy::str_concat(({ auto __er_7 = get_name(s); if (!__er_7.has_value()) return ::tpy::make_unexpected(__er_7.error()); ::tpy::unwrap_ref_move(*__er_7); }), " world"));
+    return (::tpy::str_concat(({ auto __er_7 = ::tpyapp::main::get_name(s); if (!__er_7.has_value()) return ::tpy::make_unexpected(__er_7.error()); ::tpy::unwrap_ref_move(*__er_7); }), " world"));
 }
 
 // @error_return(E)
@@ -74,7 +74,7 @@ std::expected<Point, E> positive(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
 //     # slot copies it, like any other borrow-returning call.
 //     return positive(x, y).updated()  # tpyc: warning(/copies Point into owned storage/)
 std::expected<Point, E> modify(const ::tpy::BigInt& x, const ::tpy::BigInt& y) {
-    return ({ auto __er_8 = positive(x, y); if (!__er_8.has_value()) return ::tpy::make_unexpected(__er_8.error()); ::tpy::unwrap_ref_move(*__er_8); }).updated();
+    return ({ auto __er_8 = ::tpyapp::main::positive(x, y); if (!__er_8.has_value()) return ::tpy::make_unexpected(__er_8.error()); ::tpy::unwrap_ref_move(*__er_8); }).updated();
 }
 
 // def main() -> None:
@@ -152,7 +152,7 @@ void main() {
     ::tpy::BigInt v;
     {
         {
-            auto __try_tmp_10 = add("10", "20");
+            auto __try_tmp_10 = ::tpyapp::main::add("10", "20");
             if (!__try_tmp_10.has_value()) goto __except_9;
             v = ::tpy::unwrap_ref_move(*__try_tmp_10);
         }
@@ -167,7 +167,7 @@ void main() {
     ::tpy::BigInt v2;
     {
         {
-            auto __try_tmp_12 = add("10", "");
+            auto __try_tmp_12 = ::tpyapp::main::add("10", "");
             if (!__try_tmp_12.has_value()) goto __except_11;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_12);
         }
@@ -180,7 +180,7 @@ void main() {
     ::tpy::BigInt v3;
     {
         {
-            auto __try_tmp_14 = mul3("2", "3", "4");
+            auto __try_tmp_14 = ::tpyapp::main::mul3("2", "3", "4");
             if (!__try_tmp_14.has_value()) goto __except_13;
             v3 = ::tpy::unwrap_ref_move(*__try_tmp_14);
         }
@@ -195,7 +195,7 @@ void main() {
     ::tpy::BigInt v4;
     {
         {
-            auto __try_tmp_16 = as_arg("-5");
+            auto __try_tmp_16 = ::tpyapp::main::as_arg("-5");
             if (!__try_tmp_16.has_value()) goto __except_15;
             v4 = ::tpy::unwrap_ref_move(*__try_tmp_16);
         }
@@ -210,7 +210,7 @@ void main() {
     std::string v5;
     {
         {
-            auto __try_tmp_18 = greet("hello");
+            auto __try_tmp_18 = ::tpyapp::main::greet("hello");
             if (!__try_tmp_18.has_value()) goto __except_17;
             v5 = ::tpy::unwrap_ref_move(*__try_tmp_18);
         }
@@ -225,7 +225,7 @@ void main() {
     std::string v6;
     {
         {
-            auto __try_tmp_20 = greet("");
+            auto __try_tmp_20 = ::tpyapp::main::greet("");
             if (!__try_tmp_20.has_value()) goto __except_19;
             v6 = ::tpy::unwrap_ref_move(*__try_tmp_20);
         }
@@ -238,7 +238,7 @@ void main() {
     std::optional<Point> v7;
     {
         {
-            auto __try_tmp_22 = modify(::tpy::BigInt(1), ::tpy::BigInt(2));
+            auto __try_tmp_22 = ::tpyapp::main::modify(::tpy::BigInt(1), ::tpy::BigInt(2));
             if (!__try_tmp_22.has_value()) goto __except_21;
             v7 = ::tpy::unwrap_ref_move(*__try_tmp_22);
         }
@@ -254,7 +254,7 @@ void main() {
     std::optional<Point> v8;
     {
         {
-            auto __try_tmp_24 = modify(::tpy::BigInt(-1), ::tpy::BigInt(2));
+            auto __try_tmp_24 = ::tpyapp::main::modify(::tpy::BigInt(-1), ::tpy::BigInt(2));
             if (!__try_tmp_24.has_value()) goto __except_23;
             v8 = ::tpy::unwrap_ref_move(*__try_tmp_24);
         }
@@ -265,7 +265,7 @@ void main() {
         __after_try_23:;
     }
     {
-        std::cout << ({ auto __er_26 = parse("99"); if (!__er_26.has_value()) goto __except_25; ::tpy::unwrap_ref_move(*__er_26); }) << "\n";
+        std::cout << ({ auto __er_26 = ::tpyapp::main::parse("99"); if (!__er_26.has_value()) goto __except_25; ::tpy::unwrap_ref_move(*__er_26); }) << "\n";
         goto __after_try_25;
         // except E:
         __except_25:;
@@ -273,14 +273,14 @@ void main() {
         __after_try_25:;
     }
     {
-        std::cout << ({ auto __er_28 = add("3", ""); if (!__er_28.has_value()) goto __except_27; ::tpy::unwrap_ref_move(*__er_28); }) << "\n";
+        std::cout << ({ auto __er_28 = ::tpyapp::main::add("3", ""); if (!__er_28.has_value()) goto __except_27; ::tpy::unwrap_ref_move(*__er_28); }) << "\n";
         goto __after_try_27;
         // except E:
         __except_27:;
         std::cout << "caught direct" << "\n";
         __after_try_27:;
     }
-    test_as_binding();
+    ::tpyapp::main::test_as_binding();
 }
 
 // @error_return(ParseErr)
@@ -304,7 +304,7 @@ std::expected<::tpy::BigInt, ParseErr> checked_parse(std::string_view s) {
 // def checked_add(a: str, b: str) -> int:
 //     return checked_parse(a) + checked_parse(b)
 std::expected<::tpy::BigInt, ParseErr> checked_add(std::string_view a, std::string_view b) {
-    return ((({ auto __er_29 = checked_parse(a); if (!__er_29.has_value()) return ::tpy::make_unexpected(__er_29.error()); ::tpy::unwrap_ref_move(*__er_29); })) + (({ auto __er_30 = checked_parse(b); if (!__er_30.has_value()) return ::tpy::make_unexpected(__er_30.error()); ::tpy::unwrap_ref_move(*__er_30); })));
+    return ((({ auto __er_29 = ::tpyapp::main::checked_parse(a); if (!__er_29.has_value()) return ::tpy::make_unexpected(__er_29.error()); ::tpy::unwrap_ref_move(*__er_29); })) + (({ auto __er_30 = ::tpyapp::main::checked_parse(b); if (!__er_30.has_value()) return ::tpy::make_unexpected(__er_30.error()); ::tpy::unwrap_ref_move(*__er_30); })));
 }
 
 // def test_as_binding() -> None:
@@ -329,7 +329,7 @@ void test_as_binding() {
     {
         std::optional<ParseErr> __err_opt_31;
         {
-            auto __try_tmp_32 = checked_add("10", "20");
+            auto __try_tmp_32 = ::tpyapp::main::checked_add("10", "20");
             if (!__try_tmp_32.has_value()) { __err_opt_31 = std::move(__try_tmp_32.error()); goto __except_31; }
             v = ::tpy::unwrap_ref_move(*__try_tmp_32);
         }
@@ -348,7 +348,7 @@ void test_as_binding() {
     {
         std::optional<ParseErr> __err_opt_33;
         {
-            auto __try_tmp_34 = checked_add("10", "?");
+            auto __try_tmp_34 = ::tpyapp::main::checked_add("10", "?");
             if (!__try_tmp_34.has_value()) { __err_opt_33 = std::move(__try_tmp_34.error()); goto __except_33; }
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_34);
         }
@@ -365,7 +365,7 @@ void test_as_binding() {
     {
         std::optional<ParseErr> __err_opt_35;
         {
-            auto __try_tmp_36 = checked_add("", "5");
+            auto __try_tmp_36 = ::tpyapp::main::checked_add("", "5");
             if (!__try_tmp_36.has_value()) { __err_opt_35 = std::move(__try_tmp_36.error()); goto __except_35; }
             v3 = ::tpy::unwrap_ref_move(*__try_tmp_36);
         }
@@ -388,7 +388,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

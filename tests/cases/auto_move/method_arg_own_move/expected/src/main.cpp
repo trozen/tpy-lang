@@ -18,8 +18,8 @@ void forward(Sink& s, Payload&& p) {
 //     print(s.total)
 void main() {
     Sink s = Sink();
-    forward(s, Payload(5));
-    forward(s, Payload(7));
+    ::tpyapp::main::forward(s, Payload(5));
+    ::tpyapp::main::forward(s, Payload(7));
     std::cout << s.total << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

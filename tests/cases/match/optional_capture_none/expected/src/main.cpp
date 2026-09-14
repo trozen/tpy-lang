@@ -52,10 +52,10 @@ void narrowed(std::optional<int32_t> v) {
 //     narrowed(10)
 //     narrowed(None)
 void main() {
-    full(4);
-    full(std::nullopt);
-    narrowed(10);
-    narrowed(std::nullopt);
+    ::tpyapp::main::full(4);
+    ::tpyapp::main::full(std::nullopt);
+    ::tpyapp::main::narrowed(10);
+    ::tpyapp::main::narrowed(std::nullopt);
 }
 
 // main()
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

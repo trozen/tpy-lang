@@ -51,11 +51,11 @@ void test_nested_bool() {
 //     test_bool_array()
 //     test_nested_bool()
 void main() {
-    test_bool_list();
-    test_float_list();
-    test_str_list();
-    test_bool_array();
-    test_nested_bool();
+    ::tpyapp::main::test_bool_list();
+    ::tpyapp::main::test_float_list();
+    ::tpyapp::main::test_str_list();
+    ::tpyapp::main::test_bool_array();
+    ::tpyapp::main::test_nested_bool();
 }
 
 // main()
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

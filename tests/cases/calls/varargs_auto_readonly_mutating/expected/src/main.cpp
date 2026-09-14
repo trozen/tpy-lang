@@ -27,7 +27,7 @@ void main() {
     Box a = Box(3);
     Box b = Box(4);
     std::array<Box*, 2> __tmp_1{&a, &b};
-    bump_all(::tpy::varargs<Box>(__tmp_1));
+    ::tpyapp::main::bump_all(::tpy::varargs<Box>(__tmp_1));
     std::cout << a.val << "\n";
     std::cout << b.val << "\n";
 }
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

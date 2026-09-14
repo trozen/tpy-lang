@@ -47,7 +47,7 @@ void main() {
         std::cout << x << "\n";
     }
     auto __tmp_1 = ::tpy::__iter__(s);
-    consume(__tmp_1);
+    ::tpyapp::main::consume(__tmp_1);
     std::cout << ::tpy::__iter__(s) << "\n";
 }
 
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

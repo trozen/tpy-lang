@@ -96,11 +96,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_list_aug_assign();
-    test_list_method_still_warns();
-    test_value_type_no_warn();
-    test_iter_borrow_aug_assign();
-    test_reassign_borrower_clears();
+    ::tpyapp::main::test_list_aug_assign();
+    ::tpyapp::main::test_list_method_still_warns();
+    ::tpyapp::main::test_value_type_no_warn();
+    ::tpyapp::main::test_iter_borrow_aug_assign();
+    ::tpyapp::main::test_reassign_borrower_clears();
 }
 
 } // namespace tpyapp::main

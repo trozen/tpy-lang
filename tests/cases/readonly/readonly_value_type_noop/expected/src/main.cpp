@@ -15,7 +15,7 @@ int32_t add_one(int32_t x) {
 //     print(add_one(v))
 void main() {
     int32_t v = 10;
-    std::cout << add_one(v) << "\n";
+    std::cout << ::tpyapp::main::add_one(v) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

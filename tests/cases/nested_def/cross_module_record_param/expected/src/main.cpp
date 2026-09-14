@@ -20,7 +20,7 @@ int32_t make_value() {
 // def main() -> None:
 //     print(make_value())
 void main() {
-    std::cout << make_value() << "\n";
+    std::cout << ::tpyapp::main::make_value() << "\n";
 }
 
 // from widgets import Widget
@@ -32,7 +32,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::widgets::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

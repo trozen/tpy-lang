@@ -37,7 +37,7 @@ std::string _format_row(const std::vector<std::string>& row, std::string_view de
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view field = *__beg_0;
-        if (_needs_quoting(field, delimiter, quotechar)) {
+        if (::tpystd::csv::_needs_quoting(field, delimiter, quotechar)) {
             std::string inner = ((doublequote) ? (::tpy::str_replace(field, quotechar, (::tpy::str_concat(quotechar, quotechar)))) : (std::string(field)));
             cells.push_back((::tpy::str_concat((::tpy::str_concat(quotechar, inner)), quotechar)));
         } else {

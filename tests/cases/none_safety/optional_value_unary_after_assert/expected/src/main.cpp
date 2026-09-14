@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << negate_checked(3) << "\n";
+    std::cout << ::tpyapp::main::negate_checked(3) << "\n";
 }
 
 } // namespace tpyapp::main

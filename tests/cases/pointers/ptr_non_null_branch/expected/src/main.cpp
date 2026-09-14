@@ -59,7 +59,7 @@ void main() {
     std::cout << p->x << "\n";
     Point* q = &a;
     if ((a.x > 0)) {
-        q = get_ptr(q);
+        q = ::tpyapp::main::get_ptr(q);
     }
     std::cout << ::tpy::deref_check(q).x << "\n";
     Point* r = &a;
@@ -72,7 +72,7 @@ void main() {
     int32_t j = 0;
     while ((j < 3)) {
         std::cout << ::tpy::deref_check(s).x << "\n";
-        s = get_ptr(s);
+        s = ::tpyapp::main::get_ptr(s);
         j = (::tpy::add_check<int32_t>(j, 1));
     }
     std::cout << ::tpy::deref_check(s).x << "\n";
@@ -84,7 +84,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

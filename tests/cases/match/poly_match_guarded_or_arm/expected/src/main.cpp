@@ -35,11 +35,11 @@ std::string size_of(const Pet& p, bool flag) {
 //     print(size_of(Dog("d"), True))
 void main() {
     Cat __tmp_1{Cat()};
-    std::cout << size_of(__tmp_1, true) << "\n";
+    std::cout << ::tpyapp::main::size_of(__tmp_1, true) << "\n";
     Dog __tmp_2{Dog("d")};
-    std::cout << size_of(__tmp_2, false) << "\n";
+    std::cout << ::tpyapp::main::size_of(__tmp_2, false) << "\n";
     Dog __tmp_3{Dog("d")};
-    std::cout << size_of(__tmp_3, true) << "\n";
+    std::cout << ::tpyapp::main::size_of(__tmp_3, true) << "\n";
 }
 
 // main()
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

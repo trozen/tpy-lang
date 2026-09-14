@@ -16,7 +16,7 @@ void main() {
     Dog __tmp_1 = Dog();
     Dog __tmp_2 = Dog();
     Pet __tmp_3 = Pet();
-    std::cout << ::tpy::print_bool(check_and(__tmp_1, 2)) << " " << ::tpy::print_bool(check_and(__tmp_2, 9)) << " " << ::tpy::print_bool(check_and(__tmp_3, 0)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::check_and(__tmp_1, 2)) << " " << ::tpy::print_bool(::tpyapp::main::check_and(__tmp_2, 9)) << " " << ::tpy::print_bool(::tpyapp::main::check_and(__tmp_3, 0)) << "\n";
 }
 
 // main()
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

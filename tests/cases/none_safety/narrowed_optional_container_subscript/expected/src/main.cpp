@@ -116,19 +116,19 @@ void read_user_record(const Doubler* g) {
 //     read_user_record(Doubler())
 void main() {
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2, 3};
-    read_list(&(__tmp_1));
+    ::tpyapp::main::read_list(&(__tmp_1));
     std::vector<int32_t> __tmp_2 = std::vector<int32_t>{1, 2, 3};
-    aug_assign(&(__tmp_2));
+    ::tpyapp::main::aug_assign(&(__tmp_2));
     ::tpy::ordered_map<int32_t, int32_t> __tmp_3 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
-    read_dict(&(__tmp_3));
+    ::tpyapp::main::read_dict(&(__tmp_3));
     ::tpy::ordered_map<int32_t, int32_t> __tmp_4 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
-    read_dict_readonly(&(__tmp_4));
+    ::tpyapp::main::read_dict_readonly(&(__tmp_4));
     ::tpy::ByteArray __tmp_5 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    read_bytearray(&(__tmp_5));
+    ::tpyapp::main::read_bytearray(&(__tmp_5));
     std::vector<std::vector<int32_t>> __tmp_6 = std::vector<std::vector<int32_t>>{{1, 2}, {3, 4}};
-    read_nested(&(__tmp_6));
+    ::tpyapp::main::read_nested(&(__tmp_6));
     Doubler __tmp_7 = Doubler();
-    read_user_record(&(__tmp_7));
+    ::tpyapp::main::read_user_record(&(__tmp_7));
 }
 
 // main()
@@ -137,7 +137,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

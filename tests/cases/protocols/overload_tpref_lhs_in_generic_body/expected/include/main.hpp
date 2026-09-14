@@ -40,7 +40,7 @@ template<typename U>
 //     return r
 template<typename T>
 ::tpy::val_or_ref_t<T> use(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    ::tpy::val_or_ref_t<T> r = pick<T>(a, b);
+    ::tpy::val_or_ref_t<T> r = ::tpyapp::main::pick<T>(a, b);
     return r;
 }
 

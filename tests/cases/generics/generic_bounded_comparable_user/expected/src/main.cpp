@@ -24,9 +24,9 @@ void main() {
     MyInt x = MyInt(10);
     MyInt y = MyInt(20);
     MyInt z = MyInt(10);
-    std::cout << ::tpy::print_bool(is_less<MyInt>(x, y)) << "\n";
-    std::cout << ::tpy::print_bool(is_less<MyInt>(y, x)) << "\n";
-    MyInt& result = find_min<MyInt>(x, y);
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<MyInt>(x, y)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<MyInt>(y, x)) << "\n";
+    MyInt& result = ::tpyapp::main::find_min<MyInt>(x, y);
     std::cout << result.value << "\n";
     std::cout << ::tpy::print_bool(((x) == (z))) << "\n";
     std::cout << ::tpy::print_bool(((x) == (y))) << "\n";
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

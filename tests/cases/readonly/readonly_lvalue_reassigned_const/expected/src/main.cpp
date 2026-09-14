@@ -26,8 +26,8 @@ int32_t pick(const Box& a, const Box& b, bool flag) {
 void main() {
     Box a = Box(10);
     Box b = Box(20);
-    std::cout << pick(a, b, true) << "\n";
-    std::cout << pick(a, b, false) << "\n";
+    std::cout << ::tpyapp::main::pick(a, b, true) << "\n";
+    std::cout << ::tpyapp::main::pick(a, b, false) << "\n";
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -76,7 +76,7 @@ inline void Holder::set_ctor(const ::tpy::BigInt& n) {
 // def set_call(self, n: int):
 //     self.v = mk(n)
 inline void Holder::set_call(const ::tpy::BigInt& n) {
-    this->v = mk(n);
+    this->v = ::tpyapp::main::mk(n);
 }
 
 // def bump(self):

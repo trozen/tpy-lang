@@ -98,7 +98,7 @@ void live_cookie_resent() {
     c2.sock = std::move(a2);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c2));
     s.get("http://api.test/two");
-    _cookie_line(b2.recv(65536));
+    ::tpyapp::main::_cookie_line(b2.recv(65536));
     b2.close();
 }
 
@@ -140,22 +140,22 @@ void live_cookie_resent() {
 //
 //     live_cookie_resent()
 void main() {
-    std::cout << "past expires kept:" << " " << ::tpy::print_bool((one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: a=1; Expires=", 25), PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("a"))) << "\n";
-    ::tpystd::tplib::requests::CookieJar fut = one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: b=2; Expires=", 25), FUTURE)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies;
+    std::cout << "past expires kept:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: a=1; Expires=", 25), PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("a"))) << "\n";
+    ::tpystd::tplib::requests::CookieJar fut = ::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: b=2; Expires=", 25), FUTURE)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies;
     std::cout << "future kept:" << " " << ::tpy::print_bool((fut.__contains__("b"))) << "\n";
     std::cout << "future now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", fut.header_for("api.test", "/", false, 0.0))), "'")) << "\n";
     std::cout << "future after:" << " " << (::tpy::str_concat((::tpy::str_concat("'", fut.header_for("api.test", "/", false, AFTER_2099))), "'")) << "\n";
-    ::tpystd::tplib::requests::CookieJar ma = one(::tpy::bytes_literal("Set-Cookie: c=3; Max-Age=3600\r\n", 31)).cookies;
+    ::tpystd::tplib::requests::CookieJar ma = ::tpyapp::main::one(::tpy::bytes_literal("Set-Cookie: c=3; Max-Age=3600\r\n", 31)).cookies;
     std::cout << "maxage now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", ma.header_for("api.test", "/", false, 0.0))), "'")) << "\n";
     std::cout << "maxage later:" << " " << (::tpy::str_concat((::tpy::str_concat("'", ma.header_for("api.test", "/", false, 1e+18))), "'")) << "\n";
-    std::cout << "maxage0 over expires:" << " " << ::tpy::print_bool((one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: d=4; Max-Age=0; Expires=", 36), FUTURE)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("d"))) << "\n";
-    std::cout << "maxage over past expires:" << " " << ::tpy::print_bool((one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: e=5; Max-Age=3600; Expires=", 39), PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("e"))) << "\n";
-    std::cout << "bad maxage kept:" << " " << ::tpy::print_bool((one(::tpy::bytes_literal("Set-Cookie: f=6; Max-Age=abc\r\n", 30)).cookies.__contains__("f"))) << "\n";
-    std::cout << "rfc850 past kept:" << " " << ::tpy::print_bool((one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: g=7; Expires=", 25), RFC850_PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("g"))) << "\n";
-    ::tpystd::tplib::requests::CookieJar asc = one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: h=8; Expires=", 25), ASCTIME)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies;
+    std::cout << "maxage0 over expires:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: d=4; Max-Age=0; Expires=", 36), FUTURE)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("d"))) << "\n";
+    std::cout << "maxage over past expires:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: e=5; Max-Age=3600; Expires=", 39), PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("e"))) << "\n";
+    std::cout << "bad maxage kept:" << " " << ::tpy::print_bool((::tpyapp::main::one(::tpy::bytes_literal("Set-Cookie: f=6; Max-Age=abc\r\n", 30)).cookies.__contains__("f"))) << "\n";
+    std::cout << "rfc850 past kept:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: g=7; Expires=", 25), RFC850_PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("g"))) << "\n";
+    ::tpystd::tplib::requests::CookieJar asc = ::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: h=8; Expires=", 25), ASCTIME)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies;
     std::cout << "asctime kept:" << " " << ::tpy::print_bool((asc.__contains__("h"))) << "\n";
     std::cout << "asctime now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", asc.header_for("api.test", "/", false, 0.0))), "'")) << "\n";
-    live_cookie_resent();
+    ::tpyapp::main::live_cookie_resent();
 }
 
 // # Cookie expiry is honored (RFC 6265, matching CPython's http.cookiejar). A
@@ -194,7 +194,7 @@ void __tpy_init() {
     RFC850_PAST = ::tpy::bytes_literal_owned("Sunday, 06-Nov-94 08:49:37 GMT", 30);
     ASCTIME = ::tpy::bytes_literal_owned("Sun Nov  6 08:49:37 1994", 24);
     AFTER_2099 = 4200000000.0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -74,12 +74,12 @@ void store_optional_value(std::optional<std::string_view> a) {
 //     store_optional_value("x")
 //     store_optional_value(None)
 void main() {
-    store_str("hello");
-    store_str(std::nullopt);
-    store_bytes(::tpy::bytes_literal_owned("hi", 2));
-    store_list("bound");
-    store_optional_value("x");
-    store_optional_value(std::nullopt);
+    ::tpyapp::main::store_str("hello");
+    ::tpyapp::main::store_str(std::nullopt);
+    ::tpyapp::main::store_bytes(::tpy::bytes_literal_owned("hi", 2));
+    ::tpyapp::main::store_list("bound");
+    ::tpyapp::main::store_optional_value("x");
+    ::tpyapp::main::store_optional_value(std::nullopt);
 }
 
 // main()
@@ -88,7 +88,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

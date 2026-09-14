@@ -32,15 +32,15 @@ std::string classify(const ::tpy::BaseException* e) {
 //     print(classify(RuntimeError("r")))
 //     print(classify(KeyError("k")))
 void main() {
-    std::cout << classify(nullptr) << "\n";
+    std::cout << ::tpyapp::main::classify(nullptr) << "\n";
     ::tpy::ValueError __tmp_1 = ::tpy::ValueError("v");
-    std::cout << classify(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n";
     ::tpy::OSError __tmp_2 = ::tpy::OSError("o");
-    std::cout << classify(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n";
     ::tpy::RuntimeError __tmp_3 = ::tpy::RuntimeError("r");
-    std::cout << classify(&(__tmp_3)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_3)) << "\n";
     ::tpy::KeyError __tmp_4 = ::tpy::KeyError("k");
-    std::cout << classify(&(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_4)) << "\n";
 }
 
 // main()
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

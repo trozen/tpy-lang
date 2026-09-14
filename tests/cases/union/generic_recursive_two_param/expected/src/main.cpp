@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(leaf_count(leaf))
 void main() {
     DictTree<std::string, int32_t> t = ::tpy::ordered_map<std::string, DictTree<std::string, int32_t>>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, DictTree<std::string, int32_t>>({{"c", 2}, {"d", 3}})}});
-    std::cout << leaf_count<std::string, int32_t>(t) << "\n";
+    std::cout << ::tpyapp::main::leaf_count<std::string, int32_t>(t) << "\n";
     DictTree<std::string, int32_t> leaf = 5;
-    std::cout << leaf_count<std::string, int32_t>(leaf) << "\n";
+    std::cout << ::tpyapp::main::leaf_count<std::string, int32_t>(leaf) << "\n";
 }
 
 // main()
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -17,8 +17,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_float(add_offset(1.5)) << "\n";
-    std::cout << ::tpy::print_float(add_offset(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::add_offset(1.5)) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::add_offset(std::nullopt)) << "\n";
 }
 
 } // namespace tpyapp::main

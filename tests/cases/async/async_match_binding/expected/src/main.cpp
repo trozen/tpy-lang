@@ -81,8 +81,8 @@ __coro_caller caller(::tpy::BigInt tag) {
 //     print(asyncio.run(caller(0)))
 //     print(asyncio.run(caller(5)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(0)))) << "\n";
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(0)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(5)))) << "\n";
 }
 
 // # H1: `await` inside a `match` arm, plus a capture binding (`v`) read after
@@ -96,7 +96,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

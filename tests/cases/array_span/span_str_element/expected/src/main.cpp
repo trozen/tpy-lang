@@ -30,9 +30,9 @@ void main() {
     src.push_back("gamma");
     std::span<std::string> tail = ::tpy::list_slice(src, ::tpy::BasicSlice{1, std::nullopt});
     std::cout << ::tpy::__len__(tail) << " " << ::tpy::__getitem__(tail, 0) << " " << ::tpy::__getitem__(tail, 1) << "\n";
-    std::cout << first(tail) << "\n";
+    std::cout << ::tpyapp::main::first(tail) << "\n";
     ::tpy::__setitem__(tail, 0, "BETA");
-    std::cout << ::tpy::__getitem__(tail, 0) << " " << first(tail) << "\n";
+    std::cout << ::tpy::__getitem__(tail, 0) << " " << ::tpyapp::main::first(tail) << "\n";
 }
 
 // main()
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

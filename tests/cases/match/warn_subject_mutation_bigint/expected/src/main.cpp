@@ -34,7 +34,7 @@ void poke(Holder& h) {
 //     poke(Holder())
 void main() {
     Holder __tmp_1 = Holder();
-    poke(__tmp_1);
+    ::tpyapp::main::poke(__tmp_1);
 }
 
 // main()
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

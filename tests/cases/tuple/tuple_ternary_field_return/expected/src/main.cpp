@@ -20,10 +20,10 @@ std::tuple<int32_t, Box*> pick(Holder& h, bool c) {
 //     print(h.b[1].val)
 void main() {
     Holder h = Holder();
-    auto t = pick(h, true);
+    auto t = ::tpyapp::main::pick(h, true);
     std::get<1>(t)->val = 99;
     std::cout << std::get<1>(h.a).val << "\n";
-    auto u = pick(h, false);
+    auto u = ::tpyapp::main::pick(h, false);
     std::get<1>(u)->val = 88;
     std::cout << std::get<1>(h.b).val << "\n";
 }
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

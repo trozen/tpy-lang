@@ -37,7 +37,7 @@ __gen_gen gen() {
 //     raise RuntimeError("empty")
 std::tuple<int32_t, Box*> pick(Holder& h) {
     {
-        auto __src_0 = gen();
+        auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -59,7 +59,7 @@ std::tuple<int32_t, Box*> pick(Holder& h) {
 //     print(h.pair[1].val)
 void main() {
     Holder h = Holder(Box(7));
-    auto t = pick(h);
+    auto t = ::tpyapp::main::pick(h);
     std::get<1>(t)->val = 99;
     std::cout << std::get<0>(t) << "\n";
     std::cout << std::get<1>(h.pair).val << "\n";
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

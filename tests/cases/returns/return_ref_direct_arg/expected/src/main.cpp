@@ -29,10 +29,10 @@ void bump(Point& p) {
 //     print(h.inner.x)  # 15
 void test() {
     std::vector<Point> pts = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
-    bump(find_first(pts));
+    ::tpyapp::main::bump(::tpyapp::main::find_first(pts));
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     Holder h = Holder();
-    bump(h.get());
+    ::tpyapp::main::bump(h.get());
     std::cout << h.inner.x << "\n";
 }
 
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

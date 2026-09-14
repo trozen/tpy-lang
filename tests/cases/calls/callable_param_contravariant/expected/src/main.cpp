@@ -22,7 +22,7 @@ void cb(std::optional<int32_t> x) {
 //     use(g)
 void main() {
     std::function<void(std::optional<int32_t>)> g = cb;
-    use(g);
+    ::tpyapp::main::use(g);
 }
 
 // main()
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

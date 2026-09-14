@@ -54,7 +54,7 @@ __coro_read_after_await read_after_await() {
 // def main() -> None:
 //     asyncio.run(read_after_await())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(read_after_await()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::read_after_await()));
 }
 
 // # Async sibling of generators/gen_ptr_local_rvalue_frame: rvalue writes
@@ -68,7 +68,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

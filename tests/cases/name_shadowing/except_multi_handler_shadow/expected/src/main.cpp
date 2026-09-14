@@ -35,8 +35,8 @@ int32_t pick(int32_t which) {
 //     print(pick(1))
 //     print(Registry.code)
 void main() {
-    std::cout << pick(0) << "\n";
-    std::cout << pick(1) << "\n";
+    std::cout << ::tpyapp::main::pick(0) << "\n";
+    std::cout << ::tpyapp::main::pick(1) << "\n";
     std::cout << Registry::code << "\n";
 }
 
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

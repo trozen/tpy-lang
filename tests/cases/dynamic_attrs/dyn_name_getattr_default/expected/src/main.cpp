@@ -23,7 +23,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        std::cout << k << " " << "=>" << " " << lookup(h, k) << "\n";
+        std::cout << k << " " << "=>" << " " << ::tpyapp::main::lookup(h, k) << "\n";
     }
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

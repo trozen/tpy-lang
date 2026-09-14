@@ -86,7 +86,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_aug_assign();
+    ::tpyapp::main::test_aug_assign();
 }
 
 } // namespace tpyapp::main

@@ -33,19 +33,19 @@ void main() {
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     if (true) {
         auto& __pet = *std::get<Dog*>(pet);
-        greet_dog(__pet);
+        ::tpyapp::main::greet_dog(__pet);
     } else {
         auto& __pet = *std::get<Cat*>(pet);
-        greet_cat(__pet);
+        ::tpyapp::main::greet_cat(__pet);
     }
     __slot_2.emplace(Cat("Whiskers"));
     pet = ::tpy::to_ptr_variant(*__slot_2);
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        greet_cat(__pet);
+        ::tpyapp::main::greet_cat(__pet);
     } else {
         auto& __pet = *std::get<Dog*>(pet);
-        greet_dog(__pet);
+        ::tpyapp::main::greet_dog(__pet);
     }
 }
 
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

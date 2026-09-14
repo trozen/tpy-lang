@@ -58,12 +58,12 @@ bool tuple_no_match(const Dog& d) {
 void main() {
     Dog d = Dog("Rex", "lab");
     Puppy p = Puppy("Spot", "pug", ::tpy::BigInt(1));
-    std::cout << ::tpy::print_bool(up_one(d)) << "\n";
-    std::cout << ::tpy::print_bool(up_two(p)) << "\n";
-    std::cout << ::tpy::print_bool(up_one_from_grandchild(p)) << "\n";
-    std::cout << ::tpy::print_bool(same(d)) << "\n";
-    std::cout << ::tpy::print_bool(unrelated(d)) << "\n";
-    std::cout << ::tpy::print_bool(tuple_any_ancestor(p)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::up_one(d)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::up_two(p)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::up_one_from_grandchild(p)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::same(d)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::unrelated(d)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_any_ancestor(p)) << "\n";
 }
 
 // main()
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

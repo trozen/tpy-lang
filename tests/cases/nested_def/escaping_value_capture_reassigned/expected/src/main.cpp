@@ -18,7 +18,7 @@ std::function<::tpy::BigInt()> hold(const std::function<::tpy::BigInt()>& f) {
 //     print(k)
 void lambda_reassigned() {
     int32_t k = 10;
-    std::function<::tpy::BigInt()> f = hold([k]() -> ::tpy::BigInt { return k; });
+    std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return k; });
     std::cout << f() << "\n";
     k = 20;
     std::cout << k << "\n";
@@ -68,7 +68,7 @@ std::function<::tpy::BigInt()> nested_def_direct_return() {
 //     print(c)
 void aug_assign_counter() {
     int32_t c = 0;
-    std::function<::tpy::BigInt()> f = hold([c]() -> ::tpy::BigInt { return c; });
+    std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([c]() -> ::tpy::BigInt { return c; });
     std::cout << f() << "\n";
     c = ::tpy::add_check<int32_t>(c, 1);
     std::cout << c << "\n";
@@ -83,7 +83,7 @@ void aug_assign_counter() {
 //     print(k)
 void walrus_reassigned() {
     int32_t k = 10;
-    std::function<::tpy::BigInt()> f = hold([k]() -> ::tpy::BigInt { return k; });
+    std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return k; });
     std::cout << f() << "\n";
     int32_t n = (k = 20);
     std::cout << n << "\n";
@@ -99,7 +99,7 @@ void walrus_reassigned() {
 //     print(m)
 void tuple_unpack_reassigned() {
     int32_t k = 1;
-    std::function<::tpy::BigInt()> f = hold([k]() -> ::tpy::BigInt { return k; });
+    std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return k; });
     std::cout << f() << "\n";
     k = 2;
     int32_t m = 3;
@@ -113,7 +113,7 @@ void tuple_unpack_reassigned() {
 //     print(f())
 void clean_no_reassign() {
     int32_t k = 7;
-    std::function<::tpy::BigInt()> f = hold([k]() -> ::tpy::BigInt { return k; });
+    std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return k; });
     std::cout << f() << "\n";
 }
 
@@ -125,7 +125,7 @@ void clean_no_reassign() {
 void reassign_before_capture() {
     int32_t k = 1;
     k = 2;
-    std::function<::tpy::BigInt()> f = hold([k]() -> ::tpy::BigInt { return k; });
+    std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return k; });
     std::cout << f() << "\n";
 }
 
@@ -138,7 +138,7 @@ void reassign_before_capture() {
 //         print(f())
 void loop_capture_no_warn() {
     for (int32_t k = 0; k < 3; ++k) {
-        std::function<::tpy::BigInt()> f = hold([k]() -> ::tpy::BigInt { return k; });
+        std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return k; });
         std::cout << f() << "\n";
     }
 }
@@ -155,16 +155,16 @@ void loop_capture_no_warn() {
 //     reassign_before_capture()
 //     loop_capture_no_warn()
 void main() {
-    lambda_reassigned();
-    nested_def_via_local();
-    nested_def_direct_return();
-    aug_assign_counter();
-    walrus_reassigned();
-    tuple_unpack_reassigned();
+    ::tpyapp::main::lambda_reassigned();
+    ::tpyapp::main::nested_def_via_local();
+    ::tpyapp::main::nested_def_direct_return();
+    ::tpyapp::main::aug_assign_counter();
+    ::tpyapp::main::walrus_reassigned();
+    ::tpyapp::main::tuple_unpack_reassigned();
     Box().make();
-    clean_no_reassign();
-    reassign_before_capture();
-    loop_capture_no_warn();
+    ::tpyapp::main::clean_no_reassign();
+    ::tpyapp::main::reassign_before_capture();
+    ::tpyapp::main::loop_capture_no_warn();
 }
 
 // main()
@@ -173,7 +173,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

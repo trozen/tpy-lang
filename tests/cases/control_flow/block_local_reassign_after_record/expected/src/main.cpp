@@ -125,13 +125,13 @@ namespace tpyapp::main {
 //     print(in_try_body())
 //     print(loop_var_rebind([Point(1), Point(2)]))
 void main() {
-    std::cout << escaped_alias() << "\n";
-    std::cout << mutate_through_alias() << "\n";
-    std::cout << in_match_arm(::tpy::BigInt(1)) << "\n";
-    std::cout << in_match_arm(::tpy::BigInt(2)) << "\n";
-    std::cout << in_try_body() << "\n";
+    std::cout << ::tpyapp::main::escaped_alias() << "\n";
+    std::cout << ::tpyapp::main::mutate_through_alias() << "\n";
+    std::cout << ::tpyapp::main::in_match_arm(::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::in_match_arm(::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::in_try_body() << "\n";
     std::vector<Point> __tmp_1 = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
-    std::cout << loop_var_rebind(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::loop_var_rebind(__tmp_1) << "\n";
 }
 
 // main()
@@ -140,7 +140,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -46,11 +46,11 @@ bool is_empty(::tpy::BytesView data) {
 //     print(copied == b)
 void main() {
     ::tpy::BytesView b = ::tpy::bytes_literal("hello", 5);
-    std::cout << byte_len(b) << "\n";
-    std::cout << first_byte(b) << "\n";
-    std::cout << ::tpy::print_bool(is_empty(b)) << "\n";
-    std::cout << ::tpy::print_bool(is_empty(::tpy::BytesView{})) << "\n";
-    ::tpy::Bytes copied = copy_bytes(b);
+    std::cout << ::tpyapp::main::byte_len(b) << "\n";
+    std::cout << ::tpyapp::main::first_byte(b) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_empty(b)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_empty(::tpy::BytesView{})) << "\n";
+    ::tpy::Bytes copied = ::tpyapp::main::copy_bytes(b);
     std::cout << ::tpy::BytesPrinter(copied) << "\n";
     std::cout << ::tpy::print_bool((copied == b)) << "\n";
 }
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

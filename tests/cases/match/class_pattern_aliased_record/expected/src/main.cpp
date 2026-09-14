@@ -39,9 +39,9 @@ namespace tpyapp::main {
 //     print(local_y(Point(9)))
 void main() {
     ::tpyapp::shapes::Point __tmp_1 = ::tpyapp::shapes::Point(::tpy::BigInt(7));
-    std::cout << foreign_x(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::foreign_x(__tmp_1) << "\n";
     Point __tmp_2 = Point(::tpy::BigInt(9));
-    std::cout << local_y(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::local_y(__tmp_2) << "\n";
 }
 
 // # Under a same-named-record collision (aliased Foreign + local Point), each
@@ -55,7 +55,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::shapes::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

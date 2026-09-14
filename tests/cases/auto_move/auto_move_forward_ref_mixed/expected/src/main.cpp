@@ -16,7 +16,7 @@ void main() {
     b1.value = 10;
     Box b2 = Box();
     b2.value = 20;
-    mixed<Box>(std::move(b1), b2);
+    ::tpyapp::main::mixed<Box>(std::move(b1), b2);
     std::cout << "done" << "\n";
 }
 

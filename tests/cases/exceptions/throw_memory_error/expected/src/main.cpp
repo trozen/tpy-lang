@@ -22,7 +22,7 @@ void fail() {
 void main() {
     {
         try {
-            fail();
+            ::tpyapp::main::fail();
         } catch (const ::tpy::MemoryError& e) {
             std::cout << "caught MemoryError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

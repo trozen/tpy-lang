@@ -29,8 +29,8 @@ Box make_box(int32_t v) {
 void main() {
     Box b = Box();
     b.value = 42;
-    std::cout << consume(Box(b)) << "\n";
-    std::cout << make_box(99).value << "\n";
+    std::cout << ::tpyapp::main::consume(Box(b)) << "\n";
+    std::cout << ::tpyapp::main::make_box(99).value << "\n";
 }
 
 // main()
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

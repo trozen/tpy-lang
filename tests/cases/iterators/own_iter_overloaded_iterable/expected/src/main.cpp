@@ -18,15 +18,15 @@ namespace tpyapp::main {
 //     print(keysum(each_twice(items)))   # tpyc: ok
 void main() {
     std::vector<int32_t> nums = {3, 1, 2};
-    auto __tmp_1 = each<int32_t>(nums);
-    std::cout << total(__tmp_1) << "\n";
+    auto __tmp_1 = ::tpyapp::main::each<int32_t>(nums);
+    std::cout << ::tpyapp::main::total(__tmp_1) << "\n";
     std::vector<Item> items = {Item(3), Item(1), Item(2)};
-    auto __tmp_2 = each<Item>(items);
-    std::cout << keysum(__tmp_2) << "\n";
-    auto __tmp_3 = each_twice<int32_t>(nums);
-    std::cout << total(__tmp_3) << "\n";
-    auto __tmp_4 = each_twice<Item>(items);
-    std::cout << keysum(__tmp_4) << "\n";
+    auto __tmp_2 = ::tpyapp::main::each<Item>(items);
+    std::cout << ::tpyapp::main::keysum(__tmp_2) << "\n";
+    auto __tmp_3 = ::tpyapp::main::each_twice<int32_t>(nums);
+    std::cout << ::tpyapp::main::total(__tmp_3) << "\n";
+    auto __tmp_4 = ::tpyapp::main::each_twice<Item>(items);
+    std::cout << ::tpyapp::main::keysum(__tmp_4) << "\n";
 }
 
 // main()
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

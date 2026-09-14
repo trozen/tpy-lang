@@ -396,7 +396,7 @@ inline void SSLContext::load_cert_chain(std::string_view certfile, std::string_v
 //     self._system_cafile = _resolve_system_ca_file()
 inline void SSLContext::load_default_certs() {
     this->_use_bundled_ca = true;
-    this->_system_cafile = _resolve_system_ca_file();
+    this->_system_cafile = ::tpystd::ssl::_resolve_system_ca_file();
 }
 
 // def _config_server(self, s: Ptr[mbedtls.Session]) -> None:
@@ -413,13 +413,13 @@ inline void SSLContext::load_default_certs() {
 //         _fail(s, _errstr(rc))
 inline void SSLContext::_config_server(::tpy_tls_session* s) const {
     if ((::tpy::__len__(this->_certfile) == 0)) {
-        _fail(s, "server_side wrap_socket requires load_cert_chain");
+        ::tpystd::ssl::_fail(s, "server_side wrap_socket requires load_cert_chain");
     }
     std::string_view cf = this->_certfile;
     std::string_view kf = this->_keyfile;
     int32_t rc = ::tpy_tls_config_server(s, reinterpret_cast<const uint8_t*>(cf.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(cf)), reinterpret_cast<const uint8_t*>(kf.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(kf)));
     if ((rc != 0)) {
-        _fail(s, _errstr(rc));
+        ::tpystd::ssl::_fail(s, ::tpystd::ssl::_errstr(rc));
     }
 }
 
@@ -456,7 +456,7 @@ inline ::tpy::Bytes SSLSocket::recv(int32_t bufsize) {
 inline int32_t SSLSocket::send(::tpy::BytesView data) {
     int32_t rc = ::tpy_tls_write(this->_session.get().raw(), data.data(), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)));
     if ((rc < 0)) {
-        _raise_io_error(rc);
+        ::tpystd::ssl::_raise_io_error(rc);
     }
     return rc;
 }

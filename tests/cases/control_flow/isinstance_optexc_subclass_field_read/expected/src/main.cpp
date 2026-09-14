@@ -27,11 +27,11 @@ std::string describe(Event* e) {
 //     print(describe(Event()))
 //     print(describe(ClickEvent(3, 7)))
 void main() {
-    std::cout << describe(nullptr) << "\n";
+    std::cout << ::tpyapp::main::describe(nullptr) << "\n";
     Event __tmp_1 = Event();
-    std::cout << describe(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::describe(&(__tmp_1)) << "\n";
     ClickEvent __tmp_2 = ClickEvent(::tpy::BigInt(3), ::tpy::BigInt(7));
-    std::cout << describe(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::describe(&(__tmp_2)) << "\n";
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

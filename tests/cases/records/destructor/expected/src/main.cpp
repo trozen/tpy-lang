@@ -23,7 +23,7 @@ void __tpy_init() {
 
     static Resource __global_slot_1 = Resource("global");
     g = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -19,8 +19,8 @@ int32_t maybe_double(std::optional<int32_t> x) {
 //     print(maybe_double(int32(5)))
 //     print(maybe_double(None))
 void main() {
-    std::cout << maybe_double(5) << "\n";
-    std::cout << maybe_double(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::maybe_double(5) << "\n";
+    std::cout << ::tpyapp::main::maybe_double(std::nullopt) << "\n";
 }
 
 // main()
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

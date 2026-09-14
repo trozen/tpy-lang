@@ -31,7 +31,7 @@ void poke(std::vector<Item>& xs) {
 //     poke([Item(1, 5), Item(2, 50)])
 void main() {
     std::vector<Item> __tmp_1 = {Item(1, 5), Item(2, 50)};
-    poke(__tmp_1);
+    ::tpyapp::main::poke(__tmp_1);
 }
 
 // main()
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

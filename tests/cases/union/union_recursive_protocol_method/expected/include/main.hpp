@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // def take(self, e: Expr) -> int32:
 //     return depth(e)
 inline int32_t Counter::take(const Expr& e) const {
-    return depth(e);
+    return ::tpyapp::main::depth(e);
 }
 struct Expr {
     using variant_type = ::tpy::Union<int32_t, std::vector<Expr>>;

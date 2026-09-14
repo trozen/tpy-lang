@@ -209,19 +209,19 @@ void test_builtin_pos() {
 //     test_invert()
 //     test_builtin_pos()
 void main() {
-    test_unary();
-    test_sub_mul();
-    test_contains();
-    test_iadd();
-    test_isub();
-    test_hash();
-    test_len();
-    test_eq();
-    test_explicit_ne();
-    test_inherited_eq();
-    test_comparisons();
-    test_invert();
-    test_builtin_pos();
+    ::tpyapp::main::test_unary();
+    ::tpyapp::main::test_sub_mul();
+    ::tpyapp::main::test_contains();
+    ::tpyapp::main::test_iadd();
+    ::tpyapp::main::test_isub();
+    ::tpyapp::main::test_hash();
+    ::tpyapp::main::test_len();
+    ::tpyapp::main::test_eq();
+    ::tpyapp::main::test_explicit_ne();
+    ::tpyapp::main::test_inherited_eq();
+    ::tpyapp::main::test_comparisons();
+    ::tpyapp::main::test_invert();
+    ::tpyapp::main::test_builtin_pos();
 }
 
 // main()
@@ -230,7 +230,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

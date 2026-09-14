@@ -61,7 +61,7 @@ std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) 
 //     line, has_body, has_ct = run_redirect(status_line)
 //     print(line, has_body, has_ct)
 void report(::tpy::BytesView status_line) {
-    auto __tup_1 = run_redirect(status_line);
+    auto __tup_1 = ::tpyapp::main::run_redirect(status_line);
     ::tpy::BytesView line = std::get<0>(__tup_1);
     bool has_body = std::get<1>(__tup_1);
     bool has_ct = std::get<2>(__tup_1);
@@ -74,10 +74,10 @@ void report(::tpy::BytesView status_line) {
 //     report(b"HTTP/1.1 307 Temporary Redirect")  # POST kept, body + CT preserved
 //     report(b"HTTP/1.1 308 Permanent Redirect")  # POST kept, body + CT preserved
 void main() {
-    report(::tpy::bytes_literal("HTTP/1.1 301 Moved Permanently", 30));
-    report(::tpy::bytes_literal("HTTP/1.1 303 See Other", 22));
-    report(::tpy::bytes_literal("HTTP/1.1 307 Temporary Redirect", 31));
-    report(::tpy::bytes_literal("HTTP/1.1 308 Permanent Redirect", 31));
+    ::tpyapp::main::report(::tpy::bytes_literal("HTTP/1.1 301 Moved Permanently", 30));
+    ::tpyapp::main::report(::tpy::bytes_literal("HTTP/1.1 303 See Other", 22));
+    ::tpyapp::main::report(::tpy::bytes_literal("HTTP/1.1 307 Temporary Redirect", 31));
+    ::tpyapp::main::report(::tpy::bytes_literal("HTTP/1.1 308 Permanent Redirect", 31));
 }
 
 // # Method/body rewrite on redirect, mirroring requests.Session.rebuild_method:
@@ -101,7 +101,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

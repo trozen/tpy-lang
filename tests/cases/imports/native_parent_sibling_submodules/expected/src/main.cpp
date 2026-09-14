@@ -29,7 +29,7 @@ void __tpy_init() {
 
     ::sibling_submod::pkg::leaf_a::__tpy_init();
     ::sibling_submod::pkg::leaf_b::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

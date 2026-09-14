@@ -76,7 +76,7 @@ void takes_set(const ::tpy::ordered_set<int32_t>& s) {
 void test_param_context() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     s.insert(42);
-    takes_set(s);
+    ::tpyapp::main::takes_set(s);
 }
 
 // def test_param_only() -> None:
@@ -84,7 +84,7 @@ void test_param_context() {
 //     takes_set(s)
 void test_param_only() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    takes_set(s);
+    ::tpyapp::main::takes_set(s);
 }
 
 // def test_discard_infers() -> None:
@@ -111,13 +111,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
-    test_str();
-    test_multiple();
-    test_numeric_widen();
-    test_param_context();
-    test_param_only();
-    test_discard_infers();
+    ::tpyapp::main::test_basic();
+    ::tpyapp::main::test_str();
+    ::tpyapp::main::test_multiple();
+    ::tpyapp::main::test_numeric_widen();
+    ::tpyapp::main::test_param_context();
+    ::tpyapp::main::test_param_only();
+    ::tpyapp::main::test_discard_infers();
 }
 
 } // namespace tpyapp::main

@@ -37,7 +37,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::datetime::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -36,9 +36,9 @@ void main() {
     std::cout << ::tpy::print_bool(::tpy::builtin_all(bs)) << "\n";
     std::cout << ::tpy::print_bool(::tpy::builtin_any(bs)) << "\n";
     std::vector<int32_t> ns = {1, 2, 3};
-    std::cout << total(ns) << "\n";
-    std::cout << ::tpy::print_bool(check_all(bs)) << "\n";
-    std::cout << ::tpy::print_bool(check_any(bs)) << "\n";
+    std::cout << ::tpyapp::main::total(ns) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::check_all(bs)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::check_any(bs)) << "\n";
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

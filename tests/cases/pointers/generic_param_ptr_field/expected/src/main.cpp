@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     print(s.total)
 void main() {
     Sink s = Sink();
-    Adder<Sink> a = make_adder<Sink>(s);
+    Adder<Sink> a = ::tpyapp::main::make_adder<Sink>(s);
     a.push(10);
     a.push(5);
     std::cout << s.total << "\n";
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -230,7 +230,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
     }
     case S_RESUME_0: {  // after: yield "int:" + str(a + 1)
         const auto& __a = std::get<::tpy::BigInt>(a);
-        a = remake();
+        a = ::tpyapp::main::remake();
         __state = S_RESUME_1;
         return "rebound";
     }
@@ -300,7 +300,7 @@ __gen_kill kill(::tpy::Union<::tpy::BigInt, std::string> a) {
 void main() {
     {
         Dog __tmp_1 = Dog();
-        auto __src_0 = voices(::tpy::Union<Cat*, Dog*>{&__tmp_1});
+        auto __src_0 = ::tpyapp::main::voices(::tpy::Union<Cat*, Dog*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -311,7 +311,7 @@ void main() {
     }
     {
         Cat __tmp_2 = Cat();
-        auto __src_2 = voices(::tpy::Union<Cat*, Dog*>{&__tmp_2});
+        auto __src_2 = ::tpyapp::main::voices(::tpy::Union<Cat*, Dog*>{&__tmp_2});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -322,7 +322,7 @@ void main() {
     }
     {
         Dog __tmp_3 = Dog();
-        auto __src_4 = capture(::tpy::Union<Cat*, Dog*>{&__tmp_3});
+        auto __src_4 = ::tpyapp::main::capture(::tpy::Union<Cat*, Dog*>{&__tmp_3});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -333,7 +333,7 @@ void main() {
     }
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_4 = 42;
-        auto __src_6 = guarded(__tmp_4, true);
+        auto __src_6 = ::tpyapp::main::guarded(__tmp_4, true);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -344,7 +344,7 @@ void main() {
     }
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_5 = 3;
-        auto __src_8 = guarded(__tmp_5, false);
+        auto __src_8 = ::tpyapp::main::guarded(__tmp_5, false);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -355,7 +355,7 @@ void main() {
     }
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_6 = 5;
-        auto __src_10 = kill(__tmp_6);
+        auto __src_10 = ::tpyapp::main::kill(__tmp_6);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -372,7 +372,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -21,7 +21,7 @@ void main() {
     IntContainer ic = IntContainer(42);
     Container<int32_t>& c = ic;
     std::cout << c.value << "\n";
-    read_container(ic);
+    ::tpyapp::main::read_container(ic);
 }
 
 // main()
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

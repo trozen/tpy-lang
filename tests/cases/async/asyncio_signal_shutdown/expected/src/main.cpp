@@ -82,7 +82,7 @@ __coro_serve serve() {
 void main() {
     {
         try {
-            ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(serve()));
+            ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::serve()));
             std::cout << "run returned normally" << "\n";
         } catch (const ::tpy::KeyboardInterrupt&) {
             std::cout << "caught KeyboardInterrupt" << "\n";
@@ -106,7 +106,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::signal::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

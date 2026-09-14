@@ -26,8 +26,8 @@ void use_callable(const std::function<void(const std::vector<int32_t>&)>& f) {
 //     use_fn(total)
 //     use_callable(total)
 void main() {
-    use_fn(total);
-    use_callable(total);
+    ::tpyapp::main::use_fn(total);
+    ::tpyapp::main::use_callable(total);
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     print(result)
 void main() {
     MyContainer c = MyContainer({1, 2, 3, 4, 5});
-    int32_t result = get_length<MyContainer>(c);
+    int32_t result = ::tpyapp::main::get_length<MyContainer>(c);
     std::cout << result << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

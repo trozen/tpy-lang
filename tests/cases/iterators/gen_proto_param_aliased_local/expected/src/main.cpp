@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //         print(v)
 void main() {
     std::vector<int32_t> data = {1, 2};
-    auto g = echo(data);
+    auto g = ::tpyapp::main::echo(data);
     data.push_back(3);
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

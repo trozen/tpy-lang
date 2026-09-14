@@ -57,7 +57,7 @@ void main() {
             std::cout << __p.name << "\n";
         }
     }
-    s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(identity(new_pet));
+    s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(::tpyapp::main::identity(new_pet));
     ::tpy::Union<std::monostate, Cat*, Dog*> p2 = ::tpy::to_ptr_variant(s.pet);
     if ((!std::holds_alternative<std::monostate>(p2))) {
         if (std::holds_alternative<Cat*>(p2)) {
@@ -88,7 +88,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -17,7 +17,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __tup_1 = make_pair();
+        auto __tup_1 = ::tpyapp::main::make_pair();
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -47,7 +47,7 @@ __coro_f f() {
 // def main() -> None:
 //     print(asyncio.run(f()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(f())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::f())) << "\n";
 }
 
 // # Value-type tuple-unpack targets must survive an await: the unpacked locals
@@ -62,7 +62,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

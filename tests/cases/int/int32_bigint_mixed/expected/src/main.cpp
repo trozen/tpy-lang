@@ -128,12 +128,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_int32_plus_bigint();
-    test_bigint_plus_int32();
-    test_mixed_arithmetic();
-    test_large_bigint();
-    test_augmented_assign_mixed();
-    test_nested_literal_binop();
+    ::tpyapp::main::test_int32_plus_bigint();
+    ::tpyapp::main::test_bigint_plus_int32();
+    ::tpyapp::main::test_mixed_arithmetic();
+    ::tpyapp::main::test_large_bigint();
+    ::tpyapp::main::test_augmented_assign_mixed();
+    ::tpyapp::main::test_nested_literal_binop();
 }
 
 } // namespace tpyapp::main

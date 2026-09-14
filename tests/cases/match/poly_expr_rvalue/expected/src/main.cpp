@@ -24,7 +24,7 @@ namespace tpyapp::main {
 //         case _:
 //             return "?"
 std::string describe(const ::tpy::BigInt& kind) {
-    auto __match_subject_1 = make_box(kind);
+    auto __match_subject_1 = ::tpyapp::main::make_box(kind);
     if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(__match_subject_1.__deref__()))) {
         Dog& __case_0 = *__mpoly_0;
         return "dog";
@@ -42,8 +42,8 @@ std::string describe(const ::tpy::BigInt& kind) {
 //     print(describe(0))
 //     print(describe(1))
 void main() {
-    std::cout << describe(::tpy::BigInt(0)) << "\n";
-    std::cout << describe(::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::BigInt(0)) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::BigInt(1)) << "\n";
 }
 
 // from tplib import Box
@@ -55,7 +55,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

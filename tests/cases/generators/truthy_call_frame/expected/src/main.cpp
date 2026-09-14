@@ -39,7 +39,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_while::__next__() {
         }
     }
     case S_JOIN_0: {
-        if ((static_cast<void>(make()), true)) {
+        if ((static_cast<void>(::tpyapp::main::make()), true)) {
             __state = S_RESUME_0;
             return ::tpy::BigInt(i);
         } else {
@@ -83,7 +83,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_branch::__next__() 
     }
     case S_JOIN_0: {
         if ((::tpy::BigInt(i) < n)) {
-            if ((static_cast<void>(make()), true)) {
+            if ((static_cast<void>(::tpyapp::main::make()), true)) {
                 __state = S_RESUME_0;
                 return ::tpy::BigInt(i);
             } else {
@@ -121,7 +121,7 @@ __gen_gen_branch gen_branch(::tpy::BigInt n) {
 //     print("after branch:", calls)
 void main() {
     {
-        auto __src_0 = gen_while(::tpy::BigInt(2));
+        auto __src_0 = ::tpyapp::main::gen_while(::tpy::BigInt(2));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -132,7 +132,7 @@ void main() {
     }
     std::cout << "after while:" << " " << calls << "\n";
     {
-        auto __src_2 = gen_branch(::tpy::BigInt(2));
+        auto __src_2 = ::tpyapp::main::gen_branch(::tpy::BigInt(2));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -153,7 +153,7 @@ void __tpy_init() {
     initialized = true;
 
     calls = 0;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

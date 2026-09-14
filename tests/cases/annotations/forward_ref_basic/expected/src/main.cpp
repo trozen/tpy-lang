@@ -22,10 +22,10 @@ void show(const Container& c) {
 //     c2 = c.clone()
 //     show(c2)
 void main() {
-    Container c = make();
-    show(c);
+    Container c = ::tpyapp::main::make();
+    ::tpyapp::main::show(c);
     Container c2 = c.clone();
-    show(c2);
+    ::tpyapp::main::show(c2);
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

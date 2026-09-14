@@ -31,7 +31,7 @@ std::string free_text(::tpy::BytesView b) {
 //     print(len(r))
 void main() {
     Box b = Box(::tpy::bytes_literal("a payload well beyond the sixteen byte small-string buffer here", 63), "a-stable-field-label");
-    std::string f = free_text(b.payload);
+    std::string f = ::tpyapp::main::free_text(b.payload);
     std::cout << f << "\n";
     std::string m = b.m_text();
     std::cout << m << "\n";
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

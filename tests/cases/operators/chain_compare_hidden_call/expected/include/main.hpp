@@ -50,14 +50,14 @@ inline P::P() : plain(::tpy::BigInt(5)) {}
 // def mid(self) -> int:
 //     return bump(2, 5)
 inline ::tpy::BigInt P::mid() const {
-    return bump(::tpy::BigInt(2), ::tpy::BigInt(5));
+    return ::tpyapp::main::bump(::tpy::BigInt(2), ::tpy::BigInt(5));
 }
 
 // @property
 // def first(self) -> int:
 //     return bump(1, 1)
 inline ::tpy::BigInt P::first() const {
-    return bump(::tpy::BigInt(1), ::tpy::BigInt(1));
+    return ::tpyapp::main::bump(::tpy::BigInt(1), ::tpy::BigInt(1));
 }
 void __tpy_init();
 } // namespace tpyapp::main

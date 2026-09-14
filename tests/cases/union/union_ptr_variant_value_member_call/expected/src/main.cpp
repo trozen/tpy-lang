@@ -63,15 +63,15 @@ std::string show(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::
 //     print(d["k"])
 void main() {
     ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> body = std::monostate{};
-    std::cout << show(body.as_const()) << "\n";
+    std::cout << ::tpyapp::main::show(body.as_const()) << "\n";
     ::tpy::Union<std::monostate, ::tpy::Bytes, ::tpy::ordered_map<std::string, std::string>> __slot_1 = ::tpy::bytes_from_str("ab");
     body = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << show(body.as_const()) << "\n";
-    ::tpy::Union<std::monostate, ::tpy::Bytes, ::tpy::ordered_map<std::string, std::string>> __slot_2 = make_bytes("cde");
+    std::cout << ::tpyapp::main::show(body.as_const()) << "\n";
+    ::tpy::Union<std::monostate, ::tpy::Bytes, ::tpy::ordered_map<std::string, std::string>> __slot_2 = ::tpyapp::main::make_bytes("cde");
     body = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << show(body.as_const()) << "\n";
+    std::cout << ::tpyapp::main::show(body.as_const()) << "\n";
     ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>*, std::string*> text = std::monostate{};
-    ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_3 = make_str("x");
+    ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_3 = ::tpyapp::main::make_str("x");
     text = ::tpy::to_ptr_variant(__slot_3);
     if (std::holds_alternative<std::string*>(text)) {
         auto& __text = *std::get<std::string*>(text);
@@ -98,7 +98,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

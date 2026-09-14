@@ -317,10 +317,10 @@ void main() {
     std::vector<Mixed> mf = {1.0};
     std::vector<Mixed> m2 = {2};
     std::cout << "module" << " " << ::tpy::print_bool(module_eq) << "\n";
-    std::cout << "free_fn" << " " << ::tpy::print_bool(mixed_list_eq(mi, mf)) << " " << ::tpy::print_bool(mixed_list_eq(mi, m2)) << "\n";
+    std::cout << "free_fn" << " " << ::tpy::print_bool(::tpyapp::main::mixed_list_eq(mi, mf)) << " " << ::tpy::print_bool(::tpyapp::main::mixed_list_eq(mi, m2)) << "\n";
     std::cout << "ctor" << " " << ::tpy::print_bool(Kennel(mi, mf).flag) << "\n";
     {
-        auto __src_0 = gen_eq(mi, mf);
+        auto __src_0 = ::tpyapp::main::gen_eq(mi, mf);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -329,20 +329,20 @@ void main() {
         std::cout << "generator" << " " << ::tpy::print_bool(g) << "\n";
         }
     }
-    std::cout << "closure" << " " << ::tpy::print_bool(in_closure(mi, mf)) << "\n";
-    std::cout << "with" << " " << ::tpy::print_bool(in_with(mi, mf)) << "\n";
-    std::cout << "try" << " " << ::tpy::print_bool(in_try(mi, mf)) << "\n";
+    std::cout << "closure" << " " << ::tpy::print_bool(::tpyapp::main::in_closure(mi, mf)) << "\n";
+    std::cout << "with" << " " << ::tpy::print_bool(::tpyapp::main::in_with(mi, mf)) << "\n";
+    std::cout << "try" << " " << ::tpy::print_bool(::tpyapp::main::in_try(mi, mf)) << "\n";
     {
-        std::cout << "error_return" << " " << ::tpy::print_bool(({ auto __er_2 = in_error_return(mi, mf); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << "\n";
+        std::cout << "error_return" << " " << ::tpy::print_bool(({ auto __er_2 = ::tpyapp::main::in_error_return(mi, mf); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << "\n";
         goto __after_try_1;
         // except Boom:
         __except_1:;
         std::cout << "error_return boom" << "\n";
         __after_try_1:;
     }
-    std::cout << "match" << " " << ::tpy::print_bool(in_match(mi, mf)) << "\n";
-    std::cout << "comprehension" << " " << in_comprehension(mi, mf) << "\n";
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain(mi, mf)));
+    std::cout << "match" << " " << ::tpy::print_bool(::tpyapp::main::in_match(mi, mf)) << "\n";
+    std::cout << "comprehension" << " " << ::tpyapp::main::in_comprehension(mi, mf) << "\n";
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain(mi, mf)));
     ::tpy::ordered_map<std::string, Mixed> dm1 = ::tpy::ordered_map<std::string, Mixed>({{"k", 1}});
     ::tpy::ordered_map<std::string, Mixed> dm2 = ::tpy::ordered_map<std::string, Mixed>({{"k", 1.0}});
     ::tpy::ordered_map<std::string, Mixed> dm3 = ::tpy::ordered_map<std::string, Mixed>({{"k", 2}});
@@ -352,12 +352,12 @@ void main() {
     std::vector<Pet> d2 = {Dog(1)};
     std::vector<Pet> d3 = {Dog(2)};
     std::vector<Pet> c1 = {Cat(1)};
-    std::cout << "record same alternative" << " " << ::tpy::print_bool(pet_list_eq(d1, d2)) << " " << ::tpy::print_bool(pet_list_eq(d1, d3)) << "\n";
+    std::cout << "record same alternative" << " " << ::tpy::print_bool(::tpyapp::main::pet_list_eq(d1, d2)) << " " << ::tpy::print_bool(::tpyapp::main::pet_list_eq(d1, d3)) << "\n";
     std::vector<Labelled> t1 = {Tag(1)};
     std::vector<Labelled> t2 = {Tag(1)};
     std::vector<Labelled> t3 = {Tag(2)};
-    std::cout << "container ne" << " " << ::tpy::print_bool(tag_list_ne(t1, t2)) << " " << ::tpy::print_bool(tag_list_ne(t1, t3)) << "\n";
-    std::cout << "record cross alternative" << " " << ::tpy::print_bool(pet_list_eq(d1, c1)) << "\n";
+    std::cout << "container ne" << " " << ::tpy::print_bool(::tpyapp::main::tag_list_ne(t1, t2)) << " " << ::tpy::print_bool(::tpyapp::main::tag_list_ne(t1, t3)) << "\n";
+    std::cout << "record cross alternative" << " " << ::tpy::print_bool(::tpyapp::main::pet_list_eq(d1, c1)) << "\n";
     ::tpy::ordered_map<std::string, Pet> pd1 = ::tpy::ordered_map<std::string, Pet>({{"k", Dog(3)}});
     ::tpy::ordered_map<std::string, Pet> pd2 = ::tpy::ordered_map<std::string, Pet>({{"k", Dog(3)}});
     ::tpy::ordered_map<std::string, Pet> pd3 = ::tpy::ordered_map<std::string, Pet>({{"k", Cat(3)}});
@@ -366,12 +366,12 @@ void main() {
     std::vector<::tpy::Union<std::monostate, Cat, Dog>> nn1 = {std::monostate{}};
     std::vector<::tpy::Union<std::monostate, Cat, Dog>> nn2 = {std::monostate{}};
     std::vector<::tpy::Union<std::monostate, Cat, Dog>> nd = {Dog(1)};
-    std::cout << "nullable" << " " << ::tpy::print_bool(nullable_eq(nn1, nn2)) << " " << ::tpy::print_bool(nullable_eq(nn1, nd)) << "\n";
+    std::cout << "nullable" << " " << ::tpy::print_bool(::tpyapp::main::nullable_eq(nn1, nn2)) << " " << ::tpy::print_bool(::tpyapp::main::nullable_eq(nn1, nd)) << "\n";
     Dog __tmp_1 = Dog(7);
     Crate __tmp_2 = Crate(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
-    std::cout << "field" << " " << crate_pet_n(__tmp_2) << "\n";
-    bump_first(d1);
-    std::cout << "mutate through element" << " " << first_n(d1) << " " << ::tpy::print_bool(pet_list_eq(d1, d2)) << "\n";
+    std::cout << "field" << " " << ::tpyapp::main::crate_pet_n(__tmp_2) << "\n";
+    ::tpyapp::main::bump_first(d1);
+    std::cout << "mutate through element" << " " << ::tpyapp::main::first_n(d1) << " " << ::tpy::print_bool(::tpyapp::main::pet_list_eq(d1, d2)) << "\n";
 }
 
 // # A REFERENCE union at a storage position (a container element) compares BY
@@ -398,7 +398,7 @@ void __tpy_init() {
     static std::vector<Mixed> __global_slot_2 = {1.0};
     MOD_B = &__global_slot_2;
     module_eq = ((*MOD_A) == (*MOD_B));
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

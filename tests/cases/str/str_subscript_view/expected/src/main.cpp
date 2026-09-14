@@ -44,9 +44,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_tuple();
-    test_list_view();
-    test_nested_tuple();
+    ::tpyapp::main::test_tuple();
+    ::tpyapp::main::test_list_view();
+    ::tpyapp::main::test_nested_tuple();
 }
 
 } // namespace tpyapp::main

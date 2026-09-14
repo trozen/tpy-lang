@@ -34,9 +34,9 @@ int32_t head(const Tree& t) {
 void main() {
     Tree a = Leaf(42);
     std::vector<Tree> b = {Leaf(1)};
-    std::cout << head(a) << "\n";
+    std::cout << ::tpyapp::main::head(a) << "\n";
     Tree __tmp_1 = std::move(b);
-    std::cout << head(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::head(__tmp_1) << "\n";
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

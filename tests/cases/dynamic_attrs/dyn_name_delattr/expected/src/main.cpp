@@ -22,7 +22,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        del_it(t, k);
+        ::tpyapp::main::del_it(t, k);
     }
     std::cout << t._last_deleted << "\n";
 }
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

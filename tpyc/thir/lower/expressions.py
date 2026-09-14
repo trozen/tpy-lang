@@ -128,6 +128,7 @@ from ...modules.type_resolution import (
 from ...codegen_cpp.context import (
     enum_cpp_name,
     escape_cpp_name,
+    free_callee_cpp,
     qualified_cpp_name,
     qualify_native_name,
     view_key_target,
@@ -738,6 +739,7 @@ from .checks import (
     _subscript_recv_reject,
     _str_aug_append_ok,
     _str_list_method_iterable_ok,
+    free_literal_mangled_name,
     method_literal_mangled_cpp,
     _record_method_call_supported,
     _recv_own_dyn,
@@ -5103,10 +5105,13 @@ def _async_factory_wrap_cpp_facts(e: 'TpyName', target: 'TpyType | None',
     ret = target.return_type
     if not (isinstance(ret, OwnType) and is_dyn_protocol(ret.wrapped)):
         return None
-    qual = lookup_imported(analyzer.ctx.module_attributes, e.name,
-                           SymbolKind.FUNCTION)
-    factory = (qualified_cpp_name(*qual) if qual is not None
-               else escape_cpp_name(e.name))
+    # The lambda body CALLS the factory, so a bare same-module spelling would
+    # be ADL-visible inside `namespace tpyapp::<mod>`.
+    factory = free_callee_cpp(analyzer.ctx.module_attributes,
+                              analyzer.ctx.module_name,
+                              analyzer.ctx.cpp_module_name, e.name, fi)
+    if factory is None:
+        return None
     base_cpp = dynamic_base_name(ret.wrapped, analyzer)
     params = []
     forwards = []
@@ -8827,11 +8832,19 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 return _er_wrap(_lower_generic_plain_call(
                     e, k[1] or None, lc, declared, temp_args=temp_args,
                     form=form, loc=loc))
-        if native_name is None and k is not None and k[0] == "plain" and k[1]:
-            # A local literal-specialized callee: the bare mangled spelling
-            # (`pick__lit_r__w(m)`).
+        if native_name is None and k is not None and k[0] == "plain":
+            # A same-module callee: the absolute-qualified spelling
+            # (`::tpyapp::main::f`, or the literal-specialized mangling
+            # `::tpyapp::main::pick__lit_r__w`). Qualified, not bare, so ADL
+            # cannot pull a same-named `std::`/`::tpy::` template into the
+            # overload set (see `free_callee_cpp`).
             callee_cpp = k[1]
-            _witness("call.literal_mangled")
+            _witness("call.same_module")
+            if free_literal_mangled_name(e, fi, analyzer) is not None:
+                # The mangling is a distinct rename inside the qualified
+                # spelling; keep its own census face so requalification did
+                # not swallow the discriminator.
+                _witness("call.literal_mangled")
         if (callee_cpp is None and cpp_template is None
                 and native_name is None
                 and _value_opt_callable(declared.get(e.func_name),

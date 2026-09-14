@@ -23,11 +23,11 @@ void main() {
     int32_t a;
     int32_t b;
     if (flag) {
-        auto __tup_1 = pair(1);
+        auto __tup_1 = ::tpyapp::main::pair(1);
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
     } else {
-        auto __tup_2 = pair(10);
+        auto __tup_2 = ::tpyapp::main::pair(10);
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
     }
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

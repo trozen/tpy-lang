@@ -88,8 +88,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
-    loop_mutate();
+    ::tpyapp::main::main();
+    ::tpyapp::main::loop_mutate();
 }
 
 } // namespace tpyapp::main

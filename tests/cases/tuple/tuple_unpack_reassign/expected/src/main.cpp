@@ -23,7 +23,7 @@ void main() {
     int32_t b = 0;
     std::cout << a << "\n";
     std::cout << b << "\n";
-    auto __tup_1 = get_pair();
+    auto __tup_1 = ::tpyapp::main::get_pair();
     a = std::get<0>(__tup_1);
     b = std::get<1>(__tup_1);
     std::cout << a << "\n";
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

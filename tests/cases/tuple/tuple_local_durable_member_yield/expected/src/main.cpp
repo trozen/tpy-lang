@@ -37,7 +37,7 @@ __gen_gen gen(Box& b) {
 void main() {
     Box shared = Box(5);
     {
-        auto __src_0 = gen(shared);
+        auto __src_0 = ::tpyapp::main::gen(shared);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

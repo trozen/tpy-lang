@@ -23,7 +23,7 @@ int32_t use(Holder& h, bool c) {
     std::optional<std::tuple<int32_t, Box>> __slot_1;
     std::tuple<int32_t, Box*> t;
     if (c) {
-        if ((std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(9))), t)) > 0)) {
+        if ((std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(9))), t)) > 0)) {
             return std::get<1>(t)->val;
         }
     } else {
@@ -41,9 +41,9 @@ int32_t use(Holder& h, bool c) {
 //     print(h.pair[1].val)                # 77 (aliased, not copied)
 void main() {
     Holder __tmp_1 = Holder(Box(5));
-    std::cout << use(__tmp_1, true) << "\n";
+    std::cout << ::tpyapp::main::use(__tmp_1, true) << "\n";
     Holder h = Holder(Box(5));
-    std::cout << use(h, false) << "\n";
+    std::cout << ::tpyapp::main::use(h, false) << "\n";
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

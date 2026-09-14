@@ -164,10 +164,10 @@ void exit_closes_pool() {
 //     failed_request_drops_entry()
 //     exit_closes_pool()
 void main() {
-    pooled_reuse();
-    pool_key_shapes();
-    failed_request_drops_entry();
-    exit_closes_pool();
+    ::tpyapp::main::pooled_reuse();
+    ::tpyapp::main::pool_key_shapes();
+    ::tpyapp::main::failed_request_drops_entry();
+    ::tpyapp::main::exit_closes_pool();
 }
 
 // # tplib.requests Session connection pooling: a pooled connection (seeded via
@@ -195,7 +195,7 @@ void __tpy_init() {
     ::tpystd::http::client::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

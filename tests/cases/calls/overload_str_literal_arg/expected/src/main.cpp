@@ -57,13 +57,13 @@ std::string echo(std::string_view x) {
 //     print(c.kind("ok"))
 //     print(c.kind(True))
 void main() {
-    std::cout << kind(std::string_view("ok")) << "\n";
-    std::cout << kind(true) << "\n";
+    std::cout << ::tpyapp::main::kind(std::string_view("ok")) << "\n";
+    std::cout << ::tpyapp::main::kind(true) << "\n";
     std::string_view s = "ok";
-    std::cout << kind(s) << "\n";
-    std::cout << sv(std::string_view("v")) << "\n";
-    std::cout << gen_ov<std::string>("hi") << "\n";
-    std::cout << echo("hi") << "\n";
+    std::cout << ::tpyapp::main::kind(s) << "\n";
+    std::cout << ::tpyapp::main::sv(std::string_view("v")) << "\n";
+    std::cout << ::tpyapp::main::gen_ov<std::string>("hi") << "\n";
+    std::cout << ::tpyapp::main::echo("hi") << "\n";
     C c = C();
     std::cout << c.kind(std::string_view("ok")) << "\n";
     std::cout << c.kind(true) << "\n";
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

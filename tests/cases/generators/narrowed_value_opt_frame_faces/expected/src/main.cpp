@@ -287,7 +287,7 @@ __gen_g_view g_view(std::optional<std::string_view> s) {
 //         print(s)
 void main() {
     {
-        auto __src_0 = g(4);
+        auto __src_0 = ::tpyapp::main::g(4);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -298,7 +298,7 @@ void main() {
     }
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"a", 1}, {"b", std::nullopt}, {"c", 2}});
     {
-        auto __src_2 = g_loop(d);
+        auto __src_2 = ::tpyapp::main::g_loop(d);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -308,7 +308,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = g_whole(6);
+        auto __src_4 = ::tpyapp::main::g_whole(6);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -322,7 +322,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = g_frame_whole(8);
+        auto __src_6 = ::tpyapp::main::g_frame_whole(8);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -332,7 +332,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = g_global();
+        auto __src_8 = ::tpyapp::main::g_global();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -343,7 +343,7 @@ void main() {
     }
     {
         std::string __tmp_1 = "v";
-        auto __src_10 = g_view(__tmp_1);
+        auto __src_10 = ::tpyapp::main::g_view(__tmp_1);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -363,7 +363,7 @@ void __tpy_init() {
     initialized = true;
 
     G = 5;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

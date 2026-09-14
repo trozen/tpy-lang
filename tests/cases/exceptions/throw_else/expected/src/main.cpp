@@ -33,7 +33,7 @@ void fail(bool do_raise) {
 void main() {
     {
         try {
-            fail(false);
+            ::tpyapp::main::fail(false);
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught" << "\n";
             goto __after_else_1;
@@ -44,7 +44,7 @@ void main() {
     }
     {
         try {
-            fail(true);
+            ::tpyapp::main::fail(true);
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught" << "\n";
             goto __after_else_2;
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

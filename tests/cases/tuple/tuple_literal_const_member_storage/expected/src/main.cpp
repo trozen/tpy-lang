@@ -36,9 +36,9 @@ void comp_member(const std::vector<P>& cells) {
 //     comp_member([P(7)])
 void main() {
     P __tmp_1 = P(5);
-    param_member(__tmp_1);
+    ::tpyapp::main::param_member(__tmp_1);
     std::vector<P> __tmp_2 = {P(7)};
-    comp_member(__tmp_2);
+    ::tpyapp::main::comp_member(__tmp_2);
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

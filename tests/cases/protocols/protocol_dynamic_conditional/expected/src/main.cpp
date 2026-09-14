@@ -128,18 +128,18 @@ void branch_in_loop(int32_t n) {
 //     branch_in_loop(2)
 //     branch_in_loop(3)
 void main() {
-    branch_init(true);
-    branch_init(false);
-    branch_reassign(true);
-    branch_reassign(false);
-    nested_branches(true, true);
-    nested_branches(true, false);
-    nested_branches(false, true);
-    loop_reassign(0);
-    loop_reassign(3);
-    branch_in_loop(1);
-    branch_in_loop(2);
-    branch_in_loop(3);
+    ::tpyapp::main::branch_init(true);
+    ::tpyapp::main::branch_init(false);
+    ::tpyapp::main::branch_reassign(true);
+    ::tpyapp::main::branch_reassign(false);
+    ::tpyapp::main::nested_branches(true, true);
+    ::tpyapp::main::nested_branches(true, false);
+    ::tpyapp::main::nested_branches(false, true);
+    ::tpyapp::main::loop_reassign(0);
+    ::tpyapp::main::loop_reassign(3);
+    ::tpyapp::main::branch_in_loop(1);
+    ::tpyapp::main::branch_in_loop(2);
+    ::tpyapp::main::branch_in_loop(3);
 }
 
 // main()
@@ -148,7 +148,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

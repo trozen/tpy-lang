@@ -108,7 +108,7 @@ __gen_twice_list twice_list(std::vector<int32_t>& xs) {
 void main() {
     ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     {
-        auto __src_0 = twice_buf(b);
+        auto __src_0 = ::tpyapp::main::twice_buf(b);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -120,7 +120,7 @@ void main() {
     std::cout << ::tpy::__len__(b) << "\n";
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
     {
-        auto __src_2 = twice_arr(a);
+        auto __src_2 = ::tpyapp::main::twice_arr(a);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -132,7 +132,7 @@ void main() {
     std::cout << ::tpy::__getitem__(a, 0) << "\n";
     std::vector<int32_t> xs = {1};
     {
-        auto __src_4 = twice_list(xs);
+        auto __src_4 = ::tpyapp::main::twice_list(xs);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -150,7 +150,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ std::string caught() {
 // def main() -> None:
 //     print(caught())
 void main() {
-    std::cout << caught() << "\n";
+    std::cout << ::tpyapp::main::caught() << "\n";
 }
 
 // main()
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

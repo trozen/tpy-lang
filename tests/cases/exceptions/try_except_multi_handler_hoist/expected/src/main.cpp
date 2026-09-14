@@ -32,7 +32,7 @@ int32_t run(int32_t n) {
     int32_t x;
     {
         try {
-            x = risky(n);
+            x = ::tpyapp::main::risky(n);
         } catch (const ::tpy::ValueError&) {
             x = -1;
         } catch (const ::tpy::OSError&) {
@@ -47,9 +47,9 @@ int32_t run(int32_t n) {
 //     print(run(1))
 //     print(run(2))
 void main() {
-    std::cout << run(0) << "\n";
-    std::cout << run(1) << "\n";
-    std::cout << run(2) << "\n";
+    std::cout << ::tpyapp::main::run(0) << "\n";
+    std::cout << ::tpyapp::main::run(1) << "\n";
+    std::cout << ::tpyapp::main::run(2) << "\n";
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

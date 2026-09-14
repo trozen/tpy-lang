@@ -61,9 +61,9 @@ int32_t set_ops() {
 //     print(empty_dict(1, 42))
 //     print(set_ops())
 void main() {
-    std::cout << dict_ops() << "\n";
-    std::cout << empty_dict(1, 42) << "\n";
-    std::cout << set_ops() << "\n";
+    std::cout << ::tpyapp::main::dict_ops() << "\n";
+    std::cout << ::tpyapp::main::empty_dict(1, 42) << "\n";
+    std::cout << ::tpyapp::main::set_ops() << "\n";
 }
 
 // main()
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

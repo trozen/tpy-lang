@@ -16,7 +16,7 @@ int32_t consume(Holder<Handle>&& h) {
 //     print(result)
 void main() {
     Holder<Handle> h = Holder<Handle>(Handle(42));
-    int32_t result = consume(std::move(h));
+    int32_t result = ::tpyapp::main::consume(std::move(h));
     std::cout << result << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

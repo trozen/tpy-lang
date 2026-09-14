@@ -39,7 +39,7 @@ __gen_first_two first_two(std::vector<int32_t>& xs) {
 void main() {
     std::vector<int32_t> data = {10, 20, 30};
     {
-        auto __src_0 = first_two(data);
+        auto __src_0 = ::tpyapp::main::first_two(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

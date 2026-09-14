@@ -23,8 +23,8 @@ const Pet& get_global_readonly() {
 //     print(get_global_readonly().name())
 void main() {
     Dog dog = Dog();
-    std::cout << echo_readonly(dog).name() << "\n";
-    std::cout << get_global_readonly().name() << "\n";
+    std::cout << ::tpyapp::main::echo_readonly(dog).name() << "\n";
+    std::cout << ::tpyapp::main::get_global_readonly().name() << "\n";
 }
 
 // global_pet: Pet = Cat()
@@ -38,7 +38,7 @@ void __tpy_init() {
     static std::optional<Cat> __global_slot_1;
     __global_slot_1.emplace(Cat());
     global_pet = &*__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

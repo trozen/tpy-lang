@@ -37,7 +37,7 @@ void __tpy_init() {
     static Point __global_slot_1 = Point(10, 20);
     p = &__global_slot_1;
     std::cout << p->x << " " << p->y << "\n";
-    foo(true);
+    ::tpyapp::main::foo(true);
     Picker(99).pick(true);
 }
 

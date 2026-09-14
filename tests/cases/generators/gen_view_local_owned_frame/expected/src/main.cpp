@@ -20,7 +20,7 @@ std::tuple<std::string, std::string> pair(int32_t n) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __tup_1 = pair(7);
+        auto __tup_1 = ::tpyapp::main::pair(7);
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
         __state = S_RESUME_0;
@@ -178,7 +178,7 @@ __gen_static_sources static_sources() {
 //         print(v)
 void main() {
     {
-        auto __src_0 = unpack_across_yield();
+        auto __src_0 = ::tpyapp::main::unpack_across_yield();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -189,7 +189,7 @@ void main() {
     }
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     {
-        auto __src_2 = dict_keys(d);
+        auto __src_2 = ::tpyapp::main::dict_keys(d);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -200,7 +200,7 @@ void main() {
     }
     {
         std::vector<::tpy::Bytes> __tmp_1 = {::tpy::bytes_literal_owned("xy", 2), ::tpy::bytes_literal_owned("z", 1)};
-        auto __src_4 = blob_slices(__tmp_1);
+        auto __src_4 = ::tpyapp::main::blob_slices(__tmp_1);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -210,7 +210,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = static_sources();
+        auto __src_6 = ::tpyapp::main::static_sources();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -227,7 +227,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -112,17 +112,17 @@ void from_field(const Holder& h) {
 //     from_field(h)
 void main() {
     Leaf leaf = Leaf(3);
-    show(&(leaf));
-    show(nullptr);
-    bump_and_peek(&(leaf));
+    ::tpyapp::main::show(&(leaf));
+    ::tpyapp::main::show(nullptr);
+    ::tpyapp::main::bump_and_peek(&(leaf));
     std::cout << leaf.n << "\n";
-    std::cout << label(&(leaf)) << "\n";
-    std::cout << label(nullptr) << "\n";
-    peek(&(leaf));
+    std::cout << ::tpyapp::main::label(&(leaf)) << "\n";
+    std::cout << ::tpyapp::main::label(nullptr) << "\n";
+    ::tpyapp::main::peek(&(leaf));
     Holder h = Holder();
-    from_field(h);
+    ::tpyapp::main::from_field(h);
     h.opt = Leaf(7);
-    from_field(h);
+    ::tpyapp::main::from_field(h);
 }
 
 // main()
@@ -131,7 +131,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

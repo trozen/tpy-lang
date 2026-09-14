@@ -183,17 +183,17 @@ void test_float64_alias() {
 //     test_fstring()
 //     test_float64_alias()
 void main() {
-    test_construction();
-    test_literal_coercion();
-    test_arithmetic();
-    test_negation();
-    test_mixed_with_float();
-    test_mixed_with_int();
-    test_augmented_assignment();
-    test_conversions();
-    test_comparison();
-    test_fstring();
-    test_float64_alias();
+    ::tpyapp::main::test_construction();
+    ::tpyapp::main::test_literal_coercion();
+    ::tpyapp::main::test_arithmetic();
+    ::tpyapp::main::test_negation();
+    ::tpyapp::main::test_mixed_with_float();
+    ::tpyapp::main::test_mixed_with_int();
+    ::tpyapp::main::test_augmented_assignment();
+    ::tpyapp::main::test_conversions();
+    ::tpyapp::main::test_comparison();
+    ::tpyapp::main::test_fstring();
+    ::tpyapp::main::test_float64_alias();
 }
 
 // main()
@@ -202,7 +202,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

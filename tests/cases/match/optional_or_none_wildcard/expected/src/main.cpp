@@ -37,11 +37,11 @@ void none_or_five(std::optional<int32_t> v) {
 //     none_or_five(5)
 //     none_or_five(2)
 void main() {
-    all_arm(1);
-    all_arm(std::nullopt);
-    none_or_five(std::nullopt);
-    none_or_five(5);
-    none_or_five(2);
+    ::tpyapp::main::all_arm(1);
+    ::tpyapp::main::all_arm(std::nullopt);
+    ::tpyapp::main::none_or_five(std::nullopt);
+    ::tpyapp::main::none_or_five(5);
+    ::tpyapp::main::none_or_five(2);
 }
 
 // main()
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

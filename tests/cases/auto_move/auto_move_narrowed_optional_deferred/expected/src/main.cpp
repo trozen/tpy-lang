@@ -22,13 +22,13 @@ int32_t test() {
     h = &*(__slot_1 = Handle());
     h->value = 77;
     if (!((h != nullptr))) ::tpy::raise_assertion_error();
-    return consume(std::move((*h)));
+    return ::tpyapp::main::consume(std::move((*h)));
 }
 
 // def main():
 //     print(test())
 void main() {
-    std::cout << test() << "\n";
+    std::cout << ::tpyapp::main::test() << "\n";
 }
 
 // main()
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

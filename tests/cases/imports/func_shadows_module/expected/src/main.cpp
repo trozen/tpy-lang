@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << time() << "\n";
+    std::cout << ::tpyapp::main::time() << "\n";
 }
 
 } // namespace tpyapp::main

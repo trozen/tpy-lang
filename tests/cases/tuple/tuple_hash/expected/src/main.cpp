@@ -40,8 +40,8 @@ void main() {
     std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{1, 2}) << "\n";
     std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{3, 4}) << "\n";
     std::cout << ::tpy::__len__(d) << "\n";
-    test_nocopy_hash();
-    test_hash_delegation();
+    ::tpyapp::main::test_nocopy_hash();
+    ::tpyapp::main::test_hash_delegation();
 }
 
 // def test_nocopy_hash() -> None:
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

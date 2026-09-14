@@ -26,11 +26,11 @@ std::vector<int32_t> gen(int32_t n) {
 //             best = copy(cur)
 //     return best
 std::vector<int32_t> longest(int32_t n) {
-    std::vector<int32_t> __slot_1 = gen(0);
+    std::vector<int32_t> __slot_1 = ::tpyapp::main::gen(0);
     std::vector<int32_t>* best = &__slot_1;
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::vector<int32_t> cur = gen(i);
+        std::vector<int32_t> cur = ::tpyapp::main::gen(i);
         if ((::tpy::__len__(cur) > ::tpy::__len__((*best)))) {
             (*best) = std::vector<int32_t>(cur);
         }
@@ -45,7 +45,7 @@ std::vector<int32_t> longest(int32_t n) {
 //     got.append(99)
 //     print(len(got), got[-1])
 void main() {
-    std::vector<int32_t> got = longest(4);
+    std::vector<int32_t> got = ::tpyapp::main::longest(4);
     got.push_back(99);
     std::cout << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, -1) << "\n";
 }
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

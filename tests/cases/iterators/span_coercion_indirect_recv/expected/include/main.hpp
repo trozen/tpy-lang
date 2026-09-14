@@ -60,7 +60,7 @@ inline std::span<const int32_t> Buf::__span__() const {
 // def own_total(self) -> int32:
 //     return total(self)      # tpyc: ok -- `self` is the indirect receiver
 inline int32_t Buf::own_total() const {
-    return total((*this).__span__());
+    return ::tpyapp::main::total((*this).__span__());
 }
 void __tpy_init();
 } // namespace tpyapp::main

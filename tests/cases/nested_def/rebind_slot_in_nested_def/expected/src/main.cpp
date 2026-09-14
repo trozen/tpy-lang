@@ -52,8 +52,8 @@ int32_t outer(int32_t flag) {
 //     print(outer(1))
 //     print(outer(0))
 void main() {
-    std::cout << outer(1) << "\n";
-    std::cout << outer(0) << "\n";
+    std::cout << ::tpyapp::main::outer(1) << "\n";
+    std::cout << ::tpyapp::main::outer(0) << "\n";
 }
 
 // main()
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

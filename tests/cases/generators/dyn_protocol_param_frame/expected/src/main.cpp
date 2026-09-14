@@ -111,7 +111,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_forward_gen::__next__() {
         return s.get();
     }
     case S_RESUME_0: {  // after: yield s.get()
-        __for_src_0.emplace(free_gen(s));
+        __for_src_0.emplace(::tpyapp::main::free_gen(s));
         __state = S_JOIN_0;
         continue;
     }
@@ -231,7 +231,7 @@ void main() {
     Impl free_src = Impl(7);
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_1{free_src};
-        auto __src_0 = free_gen(__tmp_1);
+        auto __src_0 = ::tpyapp::main::free_gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -258,7 +258,7 @@ void main() {
     Impl ro_src = Impl(5);
     {
         ::tpy::RefAdapter<RoSrc, Impl> __tmp_3{ro_src};
-        auto __src_4 = ro_gen(__tmp_3);
+        auto __src_4 = ::tpyapp::main::ro_gen(__tmp_3);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -270,7 +270,7 @@ void main() {
     Impl gen_src = Impl(30);
     {
         ::tpy::RefAdapter<Src2<int32_t>, Impl> __tmp_4{gen_src};
-        auto __src_6 = generic_gen(__tmp_4);
+        auto __src_6 = ::tpyapp::main::generic_gen(__tmp_4);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -282,7 +282,7 @@ void main() {
     std::cout << "generic after" << " " << gen_src.get() << "\n";
     Inh inh_src = Inh(40);
     {
-        auto __src_8 = free_gen(inh_src);
+        auto __src_8 = ::tpyapp::main::free_gen(inh_src);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -295,7 +295,7 @@ void main() {
     Impl struct_src = Impl(50);
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_5{struct_src};
-        auto __src_10 = free_gen(__tmp_5);
+        auto __src_10 = ::tpyapp::main::free_gen(__tmp_5);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -306,7 +306,7 @@ void main() {
     }
     std::cout << "inherit struct after" << " " << struct_src.get() << "\n";
     {
-        auto __src_12 = own_gen(::tpy::make_adapter<Src>(Impl(60)));
+        auto __src_12 = ::tpyapp::main::own_gen(::tpy::make_adapter<Src>(Impl(60)));
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -317,7 +317,7 @@ void main() {
     }
     {
         ::tpy::Adapter<Src, Impl> __tmp_6{Impl(99)};
-        auto __src_14 = free_gen(__tmp_6);
+        auto __src_14 = ::tpyapp::main::free_gen(__tmp_6);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -329,7 +329,7 @@ void main() {
     Impl fwd_src = Impl(90);
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_7{fwd_src};
-        auto __src_16 = forward_gen(__tmp_7);
+        auto __src_16 = ::tpyapp::main::forward_gen(__tmp_7);
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
@@ -341,7 +341,7 @@ void main() {
     std::cout << "forward after" << " " << fwd_src.get() << "\n";
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_8{(*GLOBAL_SRC)};
-        auto __src_18 = free_gen(__tmp_8);
+        auto __src_18 = ::tpyapp::main::free_gen(__tmp_8);
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
         for (;;) {
             auto __r_19 = __itr_18.__next__();
@@ -390,7 +390,7 @@ void __tpy_init() {
 
     static Impl __global_slot_1 = Impl(80);
     GLOBAL_SRC = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

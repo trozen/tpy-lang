@@ -29,10 +29,10 @@ std::optional<Point> maybe_make(int32_t x) {
 //     print(h2.value is None)
 void test() {
     Holder h2 = Holder();
-    h2.value = maybe_make(3);
+    h2.value = ::tpyapp::main::maybe_make(3);
     std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n";
     std::cout << ::tpy::deref_optional_check(h2.value).x << "\n";
-    h2.value = maybe_make(-1);
+    h2.value = ::tpyapp::main::maybe_make(-1);
     std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n";
 }
 
@@ -54,13 +54,13 @@ void __tpy_init() {
 
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    h->value = maybe_make(5);
+    h->value = ::tpyapp::main::maybe_make(5);
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
     std::cout << ::tpy::deref_optional_check(h->value).x << "\n";
     std::cout << ::tpy::deref_optional_check(h->value).y << "\n";
-    h->value = maybe_make(-1);
+    h->value = ::tpyapp::main::maybe_make(-1);
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
-    test();
+    ::tpyapp::main::test();
 }
 
 } // namespace tpyapp::main

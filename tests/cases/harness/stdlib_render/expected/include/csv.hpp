@@ -101,7 +101,7 @@ struct _Writer {
     //         row, self._delimiter, self._quotechar,
     //         self._doublequote, self._lineterminator))
     void writerow(const std::vector<std::string>& row) {
-        ::tpy::deref_check(this->_fp).write(_format_row(row, this->_delimiter, this->_quotechar, this->_doublequote, this->_lineterminator));
+        ::tpy::deref_check(this->_fp).write(::tpystd::csv::_format_row(row, this->_delimiter, this->_quotechar, this->_doublequote, this->_lineterminator));
     }
 
     // def writerows(self, rows: list[list[str]]) -> None:
@@ -810,7 +810,7 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         first = true;
-        __for_src_0.emplace(_parse_rows<W>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace));
+        __for_src_0.emplace(::tpystd::csv::_parse_rows<W>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace));
         __state = S_JOIN_0;
         continue;
     }

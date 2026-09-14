@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     h: Holder[Leaf] = make(Leaf("a"))  # tpyc: type(Holder[Leaf])
 //     print(h.get().kind())
 void main() {
-    Holder<Leaf> h = make<Leaf, Leaf, Leaf>(Leaf("a"));
+    Holder<Leaf> h = ::tpyapp::main::make<Leaf, Leaf, Leaf>(Leaf("a"));
     std::cout << h.get().kind() << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

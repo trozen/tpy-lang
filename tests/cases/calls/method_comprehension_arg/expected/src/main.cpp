@@ -56,7 +56,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << take(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::take(__tmp_1) << "\n";
 }
 
 // main()
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

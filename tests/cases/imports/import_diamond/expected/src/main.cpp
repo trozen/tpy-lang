@@ -25,7 +25,7 @@ void __tpy_init() {
 
     ::tpyapp::mod_b::__tpy_init();
     ::tpyapp::mod_c::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

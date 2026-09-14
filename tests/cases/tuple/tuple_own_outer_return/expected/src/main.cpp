@@ -19,7 +19,7 @@ std::tuple<Handle, Handle> make_pair() {
 //     print(pair[0].fd)
 //     print(pair[1].fd)
 void main() {
-    auto pair = make_pair();
+    auto pair = ::tpyapp::main::make_pair();
     std::cout << std::get<0>(pair).fd << "\n";
     std::cout << std::get<1>(pair).fd << "\n";
 }
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

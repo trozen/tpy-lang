@@ -47,13 +47,13 @@ void describe(::tpy::Union<const Build*, const Test*> s) {
 //     describe(Test(None))
 void main() {
     Build __tmp_1 = Build("release", "4");
-    describe(::tpy::Union<const Build*, const Test*>{&__tmp_1});
+    ::tpyapp::main::describe(::tpy::Union<const Build*, const Test*>{&__tmp_1});
     Build __tmp_2 = Build(std::nullopt, "1");
-    describe(::tpy::Union<const Build*, const Test*>{&__tmp_2});
+    ::tpyapp::main::describe(::tpy::Union<const Build*, const Test*>{&__tmp_2});
     Test __tmp_3 = Test("smoke");
-    describe(::tpy::Union<const Build*, const Test*>{&__tmp_3});
+    ::tpyapp::main::describe(::tpy::Union<const Build*, const Test*>{&__tmp_3});
     Test __tmp_4 = Test(std::nullopt);
-    describe(::tpy::Union<const Build*, const Test*>{&__tmp_4});
+    ::tpyapp::main::describe(::tpy::Union<const Build*, const Test*>{&__tmp_4});
 }
 
 // main()
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

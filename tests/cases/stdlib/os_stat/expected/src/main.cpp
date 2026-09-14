@@ -66,7 +66,7 @@ void teardown(std::string_view base) {
 //     print("clean:", os.path.exists(base))
 void main() {
     std::string_view base = "tpy_os_stat";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
     ::tpystd::os::mkdir(base);
     auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/f.txt")), "w");
     auto& fh = __ctx_1.__enter__();
@@ -101,7 +101,7 @@ void main() {
     std::cout << "ismount-root:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_ismount("/")) << "\n";
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/d700")), 448);
     std::cout << "mkdir-mode:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::stat((::tpy::str_concat(base, "/d700"))).st_mode & 63)) == 0)) << "\n";
-    teardown(base);
+    ::tpyapp::main::teardown(base);
     std::cout << "clean:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n";
 }
 
@@ -120,7 +120,7 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     ::tpystd::os::path::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

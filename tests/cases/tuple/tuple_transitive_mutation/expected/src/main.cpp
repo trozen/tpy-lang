@@ -23,7 +23,7 @@ void inner(const std::tuple<T*, T*>& p) {
 //     # and break this call.
 //     inner(p)
 void outer(const std::tuple<T*, T*>& p) {
-    inner(p);
+    ::tpyapp::main::inner(p);
 }
 
 // def main() -> None:
@@ -34,7 +34,7 @@ void outer(const std::tuple<T*, T*>& p) {
 void main() {
     T t1 = T(1);
     T t2 = T(2);
-    outer(std::tuple<T*, T*>{&(t1), &(t2)});
+    ::tpyapp::main::outer(std::tuple<T*, T*>{&(t1), &(t2)});
     std::cout << t1.x << "\n";
 }
 
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -83,8 +83,8 @@ void main() {
     m.log_auto("ctx", 99);
     Service svc = Service("S");
     svc.log_auto("hello");
-    log_from_module(m, 77);
-    log_from_service(svc, 88);
+    ::tpyapp::main::log_from_module(m, 77);
+    ::tpyapp::main::log_from_service(svc, 88);
     ::mylog::log_dispatch(m._logger, "plain", std::tuple<>{});
     ::mylog::log_dispatch(h, "free_plain", std::tuple<>{});
     ::mylog::log_dispatch(m._logger, "val={{}}", std::tuple<>{});
@@ -101,7 +101,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

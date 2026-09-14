@@ -37,12 +37,12 @@ void both_literals(bool flag) {
 //     both_literals(True)
 //     both_literals(False)
 void main() {
-    std::cout << wider(true, 42, 100) << "\n";
-    std::cout << wider(false, 42, 100) << "\n";
-    std::cout << literal_with_typed(true, 5) << "\n";
-    std::cout << literal_with_typed(false, 5) << "\n";
-    both_literals(true);
-    both_literals(false);
+    std::cout << ::tpyapp::main::wider(true, 42, 100) << "\n";
+    std::cout << ::tpyapp::main::wider(false, 42, 100) << "\n";
+    std::cout << ::tpyapp::main::literal_with_typed(true, 5) << "\n";
+    std::cout << ::tpyapp::main::literal_with_typed(false, 5) << "\n";
+    ::tpyapp::main::both_literals(true);
+    ::tpyapp::main::both_literals(false);
 }
 
 // main()
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

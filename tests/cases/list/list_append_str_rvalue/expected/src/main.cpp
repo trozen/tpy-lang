@@ -29,7 +29,7 @@ void main() {
     std::string_view subject = "hello world";
     items.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{std::nullopt, 5})));
     items.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{6, std::nullopt})));
-    items.push_back(first_word(subject));
+    items.push_back(::tpyapp::main::first_word(subject));
     ::tpy::list_insert(items, 1, std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{4, 5})));
     ::tpy::__setitem__(items, 0, std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{6, std::nullopt})));
     std::cout << ::tpy::ListPrinter(items) << "\n";
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -39,7 +39,7 @@ void validate(int32_t x) {
 void main() {
     {
         try {
-            validate(-5);
+            ::tpyapp::main::validate(-5);
         } catch (const AppError& e) {
             std::cout << e.code << "\n";
             std::cout << e.detail << "\n";
@@ -47,7 +47,7 @@ void main() {
     }
     {
         try {
-            validate(200);
+            ::tpyapp::main::validate(200);
         } catch (const AppError& e) {
             std::cout << e.code << "\n";
             std::cout << e.detail << "\n";
@@ -55,7 +55,7 @@ void main() {
     }
     {
         try {
-            validate(50);
+            ::tpyapp::main::validate(50);
             std::cout << "ok" << "\n";
         } catch (const AppError& e) {
             std::cout << e.detail << "\n";
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

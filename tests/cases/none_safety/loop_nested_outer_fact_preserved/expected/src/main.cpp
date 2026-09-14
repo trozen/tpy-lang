@@ -27,8 +27,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << nested_ok(4, 1) << "\n";
-    std::cout << nested_ok(std::nullopt, 1) << "\n";
+    std::cout << ::tpyapp::main::nested_ok(4, 1) << "\n";
+    std::cout << ::tpyapp::main::nested_ok(std::nullopt, 1) << "\n";
 }
 
 } // namespace tpyapp::main

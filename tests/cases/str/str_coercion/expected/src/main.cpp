@@ -52,17 +52,17 @@ void take_strview(std::string_view s) {
 //     take_string(c)  # X
 void main() {
     ::tpy::String s1 = ::tpy::String("hello");
-    take_str(s1);
+    ::tpyapp::main::take_str(s1);
     std::string s2 = "world";
-    take_string(s2);
-    take_strview(s1);
-    take_strview(s2);
+    ::tpyapp::main::take_string(s2);
+    ::tpyapp::main::take_strview(s1);
+    ::tpyapp::main::take_strview(s2);
     std::string_view sv = "view";
-    take_string(::tpy::String(sv));
-    take_str(sv);
+    ::tpyapp::main::take_string(::tpy::String(sv));
+    ::tpyapp::main::take_str(sv);
     char c = 'X';
-    take_str(std::string(::tpy::char_to_str(c)));
-    take_string(std::string(1, c));
+    ::tpyapp::main::take_str(std::string(::tpy::char_to_str(c)));
+    ::tpyapp::main::take_string(std::string(1, c));
 }
 
 // main()
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

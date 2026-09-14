@@ -29,7 +29,7 @@ Obj take_field_copy(Holder& h) {
 //     print(take_field(h).n, take_global().n, take_field_copy(h).n)
 void main() {
     Holder h = Holder();
-    std::cout << take_field(h).n << " " << take_global().n << " " << take_field_copy(h).n << "\n";
+    std::cout << ::tpyapp::main::take_field(h).n << " " << ::tpyapp::main::take_global().n << " " << ::tpyapp::main::take_field_copy(h).n << "\n";
 }
 
 // G = Obj(7)
@@ -42,7 +42,7 @@ void __tpy_init() {
 
     static Obj __global_slot_1 = Obj(7);
     G = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

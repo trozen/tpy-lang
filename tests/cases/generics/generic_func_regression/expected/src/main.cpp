@@ -52,7 +52,7 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    std::cout << First<int32_t>((*nums)) << "\n";
+    std::cout << ::tpyapp::main::First<int32_t>((*nums)) << "\n";
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3};
     nums2 = &__global_slot_2;
     std::cout << ::tpy::__len__((*nums2)) << "\n";
@@ -62,18 +62,18 @@ void __tpy_init() {
     std::cout << ::tpy::__len__((*items)) << "\n";
     static std::vector<std::string> __global_slot_4 = {"hello", "world"};
     strs = &__global_slot_4;
-    std::cout << First<std::string>((*strs)) << "\n";
+    std::cout << ::tpyapp::main::First<std::string>((*strs)) << "\n";
     static std::vector<Point> __global_slot_5 = {Point(1, 2), Point(3, 4)};
     points = &__global_slot_5;
-    p = &(get_item<Point>((*points), 0));
+    p = &(::tpyapp::main::get_item<Point>((*points), 0));
     std::cout << p->x << "\n";
     std::vector<int32_t> __tmp_1 = {10, 20, 30};
-    first_num = First<int32_t>(__tmp_1);
+    first_num = ::tpyapp::main::First<int32_t>(__tmp_1);
     std::vector<int32_t> __tmp_2 = {first_num, 40, 50};
-    second_num = First<int32_t>(__tmp_2);
+    second_num = ::tpyapp::main::First<int32_t>(__tmp_2);
     std::cout << second_num << "\n";
     std::vector<int32_t> __tmp_3 = {5, 6, 7};
-    result = (::tpy::add_check<int32_t>(First<int32_t>(__tmp_3), 10));
+    result = (::tpy::add_check<int32_t>(::tpyapp::main::First<int32_t>(__tmp_3), 10));
     std::cout << result << "\n";
 }
 

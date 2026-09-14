@@ -109,7 +109,7 @@ __coro_caller caller() {
 // def main() -> None:
 //     print(asyncio.run(caller()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(caller())) << "\n";
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::caller())) << "\n";
 }
 
 // # Handler returns one value, then the suspending finally returns another
@@ -124,7 +124,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

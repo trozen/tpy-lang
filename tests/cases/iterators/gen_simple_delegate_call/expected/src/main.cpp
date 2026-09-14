@@ -38,7 +38,7 @@ __gen_src src() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_src_0.emplace(src());
+        __for_src_0.emplace(::tpyapp::main::src());
         __state = S_JOIN_0;
         continue;
     }
@@ -72,7 +72,7 @@ __gen_g g() {
 //         print(v)
 void main() {
     {
-        auto __src_0 = g();
+        auto __src_0 = ::tpyapp::main::g();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

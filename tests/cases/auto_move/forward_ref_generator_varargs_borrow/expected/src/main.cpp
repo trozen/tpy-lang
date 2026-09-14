@@ -70,9 +70,9 @@ void main() {
     std::vector<int32_t> a = {1, 2, 3};
     std::vector<int32_t> b = {4};
     std::array<const std::vector<int32_t>*, 2> __tmp_1{&a, &b};
-    auto g = gen(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
+    auto g = ::tpyapp::main::gen(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
     std::vector<int32_t> __tmp_2 = a;
-    std::cout << "gen:" << " " << drop(std::move(__tmp_2)) << "\n";
+    std::cout << "gen:" << " " << ::tpyapp::main::drop(std::move(__tmp_2)) << "\n";
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
@@ -84,9 +84,9 @@ void main() {
     std::vector<int32_t> c = {5, 6};
     std::vector<int32_t> d = {7};
     std::array<std::vector<int32_t>*, 2> __tmp_3{&c, &d};
-    std::vector<int32_t>& r = first(::tpy::varargs<std::vector<int32_t>>(__tmp_3));
+    std::vector<int32_t>& r = ::tpyapp::main::first(::tpy::varargs<std::vector<int32_t>>(__tmp_3));
     std::vector<int32_t> __tmp_4 = c;
-    std::cout << "plain:" << " " << drop(std::move(__tmp_4)) << "\n";
+    std::cout << "plain:" << " " << ::tpyapp::main::drop(std::move(__tmp_4)) << "\n";
     r.push_back(99);
     std::cout << "plain:" << " " << ::tpy::__len__(c) << " " << ::tpy::__len__(r) << "\n";
     std::cout << "method:" << " " << Caller().run() << "\n";
@@ -94,9 +94,9 @@ void main() {
     std::vector<int32_t> f = {3};
     std::vector<int32_t> h = {4, 5, 6, 7};
     std::array<const std::vector<int32_t>*, 2> __tmp_5{&e, &f};
-    auto gk = kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_5), h);
+    auto gk = ::tpyapp::main::kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_5), h);
     std::vector<int32_t> __tmp_6 = h;
-    std::cout << "kwonly:" << " " << drop(std::move(__tmp_6)) << "\n";
+    std::cout << "kwonly:" << " " << ::tpyapp::main::drop(std::move(__tmp_6)) << "\n";
     auto& __src_2 = gk;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
@@ -109,9 +109,9 @@ void main() {
     std::vector<int32_t> q = {3};
     std::vector<int32_t> s = {9};
     std::array<const std::vector<int32_t>*, 2> __tmp_7{&p, &q};
-    auto gp = kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_7), s);
+    auto gp = ::tpyapp::main::kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_7), s);
     std::vector<int32_t> __tmp_8 = p;
-    std::cout << "kwpack:" << " " << drop(std::move(__tmp_8)) << "\n";
+    std::cout << "kwpack:" << " " << ::tpyapp::main::drop(std::move(__tmp_8)) << "\n";
     auto& __src_4 = gp;
     auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
@@ -123,17 +123,17 @@ void main() {
     std::vector<int32_t> t = {8, 9, 10};
     std::vector<int32_t> u = {11};
     std::array<std::vector<int32_t>*, 2> __tmp_9{&t, &u};
-    std::vector<int32_t>& fr = forward(::tpy::varargs<std::vector<int32_t>>(__tmp_9));
+    std::vector<int32_t>& fr = ::tpyapp::main::forward(::tpy::varargs<std::vector<int32_t>>(__tmp_9));
     std::vector<int32_t> __tmp_10 = t;
-    std::cout << "fwd:" << " " << drop(std::move(__tmp_10)) << "\n";
+    std::cout << "fwd:" << " " << ::tpyapp::main::drop(std::move(__tmp_10)) << "\n";
     fr.push_back(99);
     std::cout << "fwd:" << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(fr) << "\n";
     std::vector<int32_t> w = {1, 2};
     std::vector<int32_t> y = {3};
     std::array<std::vector<int32_t>*, 2> __tmp_11{&w, &y};
-    std::vector<int32_t>& f2 = forward2(::tpy::varargs<std::vector<int32_t>>(__tmp_11));
+    std::vector<int32_t>& f2 = ::tpyapp::main::forward2(::tpy::varargs<std::vector<int32_t>>(__tmp_11));
     std::vector<int32_t> __tmp_12 = w;
-    std::cout << "fwd2:" << " " << drop(std::move(__tmp_12)) << "\n";
+    std::cout << "fwd2:" << " " << ::tpyapp::main::drop(std::move(__tmp_12)) << "\n";
     f2.push_back(99);
     std::cout << "fwd2:" << " " << ::tpy::__len__(w) << " " << ::tpy::__len__(f2) << "\n";
 }
@@ -235,13 +235,13 @@ std::vector<int32_t>& first(::tpy::varargs<std::vector<int32_t>> xs) {
 // def forward(*xs: list[int32]) -> list[int32]:
 //     return first(*xs)
 std::vector<int32_t>& forward(::tpy::varargs<std::vector<int32_t>> xs) {
-    return first(::tpy::varargs<std::vector<int32_t>>(xs));
+    return ::tpyapp::main::first(::tpy::varargs<std::vector<int32_t>>(xs));
 }
 
 // def forward2(*zs: list[int32]) -> list[int32]:
 //     return forward(*zs)
 std::vector<int32_t>& forward2(::tpy::varargs<std::vector<int32_t>> zs) {
-    return forward(::tpy::varargs<std::vector<int32_t>>(zs));
+    return ::tpyapp::main::forward(::tpy::varargs<std::vector<int32_t>>(zs));
 }
 
 // def drop(xs: Own[list[int32]]) -> int32:
@@ -315,7 +315,7 @@ int32_t Caller::run() const {
     std::array<const std::vector<int32_t>*, 2> __tmp_13{&a, &b};
     auto g = c.sizes(::tpy::varargs<const std::vector<int32_t>>(__tmp_13));
     std::vector<int32_t> __tmp_14 = a;
-    int32_t n = drop(std::move(__tmp_14));
+    int32_t n = ::tpyapp::main::drop(std::move(__tmp_14));
     int32_t total = 0;
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -333,7 +333,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

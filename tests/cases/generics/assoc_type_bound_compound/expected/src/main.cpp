@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print(first(IntListBox([7, 8, 9])))   # tpyc: ok
 void main() {
     IntListBox __tmp_1 = IntListBox({7, 8, 9});
-    std::cout << first<::tpy::BigInt, IntListBox>(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::first<::tpy::BigInt, IntListBox>(__tmp_1) << "\n";
 }
 
 // main()
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

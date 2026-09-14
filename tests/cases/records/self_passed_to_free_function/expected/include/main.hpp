@@ -75,14 +75,14 @@ inline void Module::log(std::string_view s) const {
 // def init(self):
 //     on_init(self)
 inline void Module::init() {
-    on_init((*this));
+    ::tpyapp::main::on_init((*this));
 }
 
 // # Passes self to readonly free function -- SHOULD be const
 // def describe(self) -> str:
 //     return get_description(self)
 inline std::string Module::describe() const {
-    return get_description((*this));
+    return ::tpyapp::main::get_description((*this));
 }
 
 // # Passes self.field to a free function -- should stay const
@@ -90,7 +90,7 @@ inline std::string Module::describe() const {
 // def name_upper(self) -> str:
 //     return to_upper(self._name)
 inline std::string Module::name_upper() const {
-    return to_upper(this->_name);
+    return ::tpyapp::main::to_upper(this->_name);
 }
 
 // # Calls a method that itself passes self to a mutating free function
@@ -106,7 +106,7 @@ inline void Module::reinit() {
 // def add_item(self, val: int32):
 //     append_item(self, val)
 inline void Module::add_item(int32_t val) {
-    append_item((*this), val);
+    ::tpyapp::main::append_item((*this), val);
 }
 void __tpy_init();
 } // namespace tpyapp::main

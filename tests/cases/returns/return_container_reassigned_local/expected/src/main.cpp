@@ -31,7 +31,7 @@ std::vector<int32_t> longest(int32_t n) {
     std::vector<int32_t>* best = &__slot_1;
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::vector<int32_t> cur = gen(i);
+        std::vector<int32_t> cur = ::tpyapp::main::gen(i);
         if ((::tpy::__len__(cur) > ::tpy::__len__((*best)))) {
             (*best) = std::vector<int32_t>(cur);
         }
@@ -86,12 +86,12 @@ std::vector<int32_t> longest(int32_t n) {
 //     u = uniq(3)
 //     print(len(u))
 void main() {
-    std::vector<int32_t> got = longest(4);
+    std::vector<int32_t> got = ::tpyapp::main::longest(4);
     got.push_back(99);
     std::cout << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, -1) << "\n";
-    ::tpy::ordered_map<std::string, int32_t> d = tally(3);
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpyapp::main::tally(3);
     std::cout << ::tpy::__getitem__(d, "n") << "\n";
-    ::tpy::ordered_set<int32_t> u = uniq(3);
+    ::tpy::ordered_set<int32_t> u = ::tpyapp::main::uniq(3);
     std::cout << ::tpy::__len__(u) << "\n";
 }
 
@@ -101,7 +101,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -15,9 +15,9 @@ void greet(Pet& pet) {
 //     greet(Cat())
 void main() {
     Dog __tmp_1{Dog()};
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
     Cat __tmp_2{Cat()};
-    greet(__tmp_2);
+    ::tpyapp::main::greet(__tmp_2);
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

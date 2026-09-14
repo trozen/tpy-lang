@@ -17,8 +17,8 @@ namespace tpyapp::main {
 //     print(text[2])             # l
 void main() {
     std::string_view text = "hello";
-    std::cout << first_char(text) << "\n";
-    std::cout << count_chars(text) << "\n";
+    std::cout << ::tpyapp::main::first_char(text) << "\n";
+    std::cout << ::tpyapp::main::count_chars(text) << "\n";
     std::cout << ::tpy::__getitem__(text, 0) << "\n";
     std::cout << ::tpy::__getitem__(text, -1) << "\n";
     std::cout << ::tpy::__getitem__(text, 2) << "\n";
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -66,9 +66,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    alias_chain();
-    unpack_method_and_ternary();
-    reassign_to_ref();
+    ::tpyapp::main::alias_chain();
+    ::tpyapp::main::unpack_method_and_ternary();
+    ::tpyapp::main::reassign_to_ref();
 }
 
 } // namespace tpyapp::main

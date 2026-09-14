@@ -21,7 +21,7 @@ std::tuple<Point*, int32_t> get_first(std::span<Point> s) {
 //     print(arr[0].x)
 void main() {
     std::array<Point, 3> arr = {Point(1, 2), Point(3, 4), Point(5, 6)};
-    auto t = get_first(::tpy::as_mut_span(arr));
+    auto t = ::tpyapp::main::get_first(::tpy::as_mut_span(arr));
     std::cout << std::get<0>(t)->x << " " << std::get<0>(t)->y << " " << std::get<1>(t) << "\n";
     std::get<0>(t)->x = 99;
     std::cout << ::tpy::__getitem__(arr, 0).x << "\n";
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

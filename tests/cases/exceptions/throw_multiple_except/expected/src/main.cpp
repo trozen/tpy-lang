@@ -35,7 +35,7 @@ void throw_my_error() {
 void main() {
     {
         try {
-            throw_value_error();
+            ::tpyapp::main::throw_value_error();
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught ValueError" << "\n";
         } catch (const MyError&) {
@@ -44,7 +44,7 @@ void main() {
     }
     {
         try {
-            throw_my_error();
+            ::tpyapp::main::throw_my_error();
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught ValueError" << "\n";
         } catch (const MyError&) {
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

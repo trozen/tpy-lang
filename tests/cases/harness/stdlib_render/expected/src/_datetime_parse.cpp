@@ -63,7 +63,7 @@ bool _char_ieq(char a, char b) {
 std::tuple<::tpy::BigInt, ::tpy::BigInt> _take_num(std::string_view data, const ::tpy::BigInt& p, const ::tpy::BigInt& max_len, const ::tpy::BigInt& lo, const ::tpy::BigInt& hi) {
     int32_t m = ::tpy::__len__(data);
     int32_t avail = 0;
-    while ((((::tpy::BigInt(avail) < max_len) && (((p) + (::tpy::BigInt(avail))) < ::tpy::BigInt(m))) && _is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(avail))).to_fixed_check<int32_t>())))) {
+    while ((((::tpy::BigInt(avail) < max_len) && (((p) + (::tpy::BigInt(avail))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(avail))).to_fixed_check<int32_t>())))) {
         avail = (::tpy::add_check<int32_t>(avail, 1));
     }
     int32_t ln = avail;
@@ -89,7 +89,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> _take_num(std::string_view data, const 
 std::tuple<::tpy::BigInt, ::tpy::BigInt> _take_exact_num(std::string_view data, const ::tpy::BigInt& p, const ::tpy::BigInt& ln) {
     int32_t m = ::tpy::__len__(data);
     int32_t k = 0;
-    while ((((::tpy::BigInt(k) < ln) && (((p) + (::tpy::BigInt(k))) < ::tpy::BigInt(m))) && _is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
+    while ((((::tpy::BigInt(k) < ln) && (((p) + (::tpy::BigInt(k))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
         k = (::tpy::add_check<int32_t>(k, 1));
     }
     if ((::tpy::BigInt(k) < ln)) {
@@ -222,26 +222,26 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
         return ((p) + (::tpy::BigInt(1)));
     }
     if (((p >= m) || ((::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) != '+') && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) != '-')))) {
-        _parse_fail(data, fmt);
+        ::tpystd::_datetime_parse::_parse_fail(data, fmt);
     }
     bool negative = (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == '-');
     p = ((p) + (::tpy::BigInt(1)));
-    auto __tup_1 = _take_exact_num(data, p, ::tpy::BigInt(2));
+    auto __tup_1 = ::tpystd::_datetime_parse::_take_exact_num(data, p, ::tpy::BigInt(2));
     const ::tpy::BigInt& hh = std::get<0>(__tup_1);
     ::tpy::BigInt p2 = std::get<1>(__tup_1);
     if ((hh < 0)) {
-        _parse_fail(data, fmt);
+        ::tpystd::_datetime_parse::_parse_fail(data, fmt);
     }
     p = p2;
     bool colon = ((p < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == ':'));
     if (colon) {
         p = ((p) + (::tpy::BigInt(1)));
     }
-    auto __tup_2 = _take_exact_num(data, p, ::tpy::BigInt(2));
+    auto __tup_2 = ::tpystd::_datetime_parse::_take_exact_num(data, p, ::tpy::BigInt(2));
     const ::tpy::BigInt& mm = std::get<0>(__tup_2);
     p2 = std::get<1>(__tup_2);
     if (((mm < 0) || (mm > 59))) {
-        _parse_fail(data, fmt);
+        ::tpystd::_datetime_parse::_parse_fail(data, fmt);
     }
     p = p2;
     ::tpy::BigInt ss = ::tpy::BigInt(0);
@@ -251,7 +251,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
             if ((!(colon))) {
                 throw ::tpy::ValueError(std::format("Inconsistent use of : in {}", data));
             }
-            auto __tup_3 = _take_exact_num(data, ((p) + (::tpy::BigInt(1))), ::tpy::BigInt(2));
+            auto __tup_3 = ::tpystd::_datetime_parse::_take_exact_num(data, ((p) + (::tpy::BigInt(1))), ::tpy::BigInt(2));
             const ::tpy::BigInt& sv = std::get<0>(__tup_3);
             const ::tpy::BigInt& sp = std::get<1>(__tup_3);
             if (((0 <= sv) && (sv <= 59))) {
@@ -259,14 +259,14 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
                 has_ss = true;
                 p = sp;
             }
-        } else if (((((!(colon)) && _is_digit_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>()))) && (((p) + (::tpy::BigInt(1))) < ::tpy::BigInt(m))) && _is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>())))) {
+        } else if (((((!(colon)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>()))) && (((p) + (::tpy::BigInt(1))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>())))) {
             ::tpy::BigInt v2 = ::tpy::BigInt::from_str(::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), ((p) + (::tpy::BigInt(2))).to_fixed_check<int32_t>()}));
             if ((v2 <= 59)) {
                 ss = v2;
                 has_ss = true;
                 p = ((p) + (::tpy::BigInt(2)));
             }
-        } else if ((colon && _is_digit_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>())))) {
+        } else if ((colon && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>())))) {
             throw ::tpy::ValueError(std::format("Inconsistent use of : in {}", data));
         }
     }
@@ -274,11 +274,11 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
     if (((has_ss && (p < ::tpy::BigInt(m))) && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == '.'))) {
         ::tpy::BigInt q = ((p) + (::tpy::BigInt(1)));
         int32_t k = 0;
-        while ((((((q) + (::tpy::BigInt(k))) < ::tpy::BigInt(m)) && (k < 6)) && _is_digit_char(::tpy::__getitem__(data, ((q) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
+        while ((((((q) + (::tpy::BigInt(k))) < ::tpy::BigInt(m)) && (k < 6)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((q) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
             k = (::tpy::add_check<int32_t>(k, 1));
         }
         if ((k < 1)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         frac = ((::tpy::BigInt::from_str(::tpy::str_slice(data, ::tpy::BasicSlice{q.to_fixed_check<int32_t>(), ((q) + (::tpy::BigInt(k))).to_fixed_check<int32_t>()}))) * (::tpy::BigInt((::tpy::pow_check<int32_t>(10, (::tpy::sub_check<int32_t>(6, k)))))));
         p = ((q) + (::tpy::BigInt(k)));
@@ -453,231 +453,231 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
     int32_t m = ::tpy::__len__(data);
     if ((d == '%')) {
         if (((p >= m) || (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) != '%'))) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         return ((p) + (::tpy::BigInt(1)));
     }
     if ((d == 'd')) {
-        auto __tup_1 = _take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(1), ::tpy::BigInt(31));
+        auto __tup_1 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(1), ::tpy::BigInt(31));
         const ::tpy::BigInt& v = std::get<0>(__tup_1);
         const ::tpy::BigInt& p2 = std::get<1>(__tup_1);
         if ((v < 0)) {
-            if (((((((p) + (::tpy::BigInt(1))) < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == ' ')) && _is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>()))) && (::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>()) != '0'))) {
+            if (((((((p) + (::tpy::BigInt(1))) < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == ' ')) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>()))) && (::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>()) != '0'))) {
                 st.day = ::tpy::BigInt::from_str(::tpy::str_slice(data, ::tpy::BasicSlice{((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>(), ((p) + (::tpy::BigInt(2))).to_fixed_check<int32_t>()}));
                 return ((p) + (::tpy::BigInt(2)));
             }
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.day = v;
         return p2;
     }
     if ((d == 'm')) {
-        auto __tup_2 = _take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(1), ::tpy::BigInt(12));
+        auto __tup_2 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(1), ::tpy::BigInt(12));
         const ::tpy::BigInt& vm = std::get<0>(__tup_2);
         const ::tpy::BigInt& pm2 = std::get<1>(__tup_2);
         if ((vm < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.month = vm;
         return pm2;
     }
     if ((d == 'H')) {
-        auto __tup_3 = _take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(23));
+        auto __tup_3 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(23));
         const ::tpy::BigInt& vh = std::get<0>(__tup_3);
         const ::tpy::BigInt& ph2 = std::get<1>(__tup_3);
         if ((vh < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.hour = vh;
         return ph2;
     }
     if ((d == 'I')) {
-        auto __tup_4 = _take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(1), ::tpy::BigInt(12));
+        auto __tup_4 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(1), ::tpy::BigInt(12));
         const ::tpy::BigInt& vi = std::get<0>(__tup_4);
         const ::tpy::BigInt& pi2 = std::get<1>(__tup_4);
         if ((vi < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.has_hour12 = true;
         st.hour12 = vi;
         return pi2;
     }
     if ((d == 'M')) {
-        auto __tup_5 = _take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(59));
+        auto __tup_5 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(59));
         const ::tpy::BigInt& vmin = std::get<0>(__tup_5);
         const ::tpy::BigInt& pmin2 = std::get<1>(__tup_5);
         if ((vmin < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.minute = vmin;
         return pmin2;
     }
     if ((d == 'S')) {
-        auto __tup_6 = _take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(61));
+        auto __tup_6 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(61));
         const ::tpy::BigInt& vs = std::get<0>(__tup_6);
         const ::tpy::BigInt& ps2 = std::get<1>(__tup_6);
         if ((vs < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.second = vs;
         return ps2;
     }
     if ((d == 'y')) {
-        auto __tup_7 = _take_exact_num(data, p, ::tpy::BigInt(2));
+        auto __tup_7 = ::tpystd::_datetime_parse::_take_exact_num(data, p, ::tpy::BigInt(2));
         const ::tpy::BigInt& vy = std::get<0>(__tup_7);
         const ::tpy::BigInt& py2 = std::get<1>(__tup_7);
         if ((vy < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.has_year = true;
         st.year = (((vy <= 68)) ? (((vy) + (::tpy::BigInt(2000)))) : (((vy) + (::tpy::BigInt(1900)))));
         return py2;
     }
     if ((d == 'Y')) {
-        auto __tup_8 = _take_exact_num(data, p, ::tpy::BigInt(4));
+        auto __tup_8 = ::tpystd::_datetime_parse::_take_exact_num(data, p, ::tpy::BigInt(4));
         const ::tpy::BigInt& vyy = std::get<0>(__tup_8);
         const ::tpy::BigInt& pyy2 = std::get<1>(__tup_8);
         if ((vyy < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.has_year = true;
         st.year = vyy;
         return pyy2;
     }
     if ((d == 'G')) {
-        auto __tup_9 = _take_exact_num(data, p, ::tpy::BigInt(4));
+        auto __tup_9 = ::tpystd::_datetime_parse::_take_exact_num(data, p, ::tpy::BigInt(4));
         const ::tpy::BigInt& vg = std::get<0>(__tup_9);
         const ::tpy::BigInt& pg2 = std::get<1>(__tup_9);
         if ((vg < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.has_iso_year = true;
         st.iso_year = vg;
         return pg2;
     }
     if ((d == 'j')) {
-        auto __tup_10 = _take_num(data, p, ::tpy::BigInt(3), ::tpy::BigInt(1), ::tpy::BigInt(366));
+        auto __tup_10 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(3), ::tpy::BigInt(1), ::tpy::BigInt(366));
         const ::tpy::BigInt& vj = std::get<0>(__tup_10);
         const ::tpy::BigInt& pj2 = std::get<1>(__tup_10);
         if ((vj < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.has_julian = true;
         st.julian = vj;
         return pj2;
     }
     if (((d == 'U') || (d == 'W'))) {
-        auto __tup_11 = _take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(53));
+        auto __tup_11 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(53));
         const ::tpy::BigInt& vw = std::get<0>(__tup_11);
         const ::tpy::BigInt& pw2 = std::get<1>(__tup_11);
         if ((vw < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.week_of_year = vw;
         st.week_starts_mon = (d == 'W');
         return pw2;
     }
     if ((d == 'V')) {
-        auto __tup_12 = _take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(1), ::tpy::BigInt(53));
+        auto __tup_12 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(2), ::tpy::BigInt(1), ::tpy::BigInt(53));
         const ::tpy::BigInt& vv = std::get<0>(__tup_12);
         const ::tpy::BigInt& pv2 = std::get<1>(__tup_12);
         if ((vv < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.has_iso_week = true;
         st.iso_week = vv;
         return pv2;
     }
     if ((d == 'w')) {
-        auto __tup_13 = _take_num(data, p, ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(6));
+        auto __tup_13 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(6));
         const ::tpy::BigInt& vwd = std::get<0>(__tup_13);
         const ::tpy::BigInt& pwd2 = std::get<1>(__tup_13);
         if ((vwd < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.weekday = (((vwd == 0)) ? (::tpy::BigInt(6)) : (((vwd) - (::tpy::BigInt(1)))));
         return pwd2;
     }
     if ((d == 'u')) {
-        auto __tup_14 = _take_num(data, p, ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(7));
+        auto __tup_14 = ::tpystd::_datetime_parse::_take_num(data, p, ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(7));
         const ::tpy::BigInt& vu = std::get<0>(__tup_14);
         const ::tpy::BigInt& pu2 = std::get<1>(__tup_14);
         if ((vu < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.weekday = ((vu) - (::tpy::BigInt(1)));
         return pu2;
     }
     if ((d == 'f')) {
         int32_t k = 0;
-        while ((((((p) + (::tpy::BigInt(k))) < ::tpy::BigInt(m)) && (k < 6)) && _is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
+        while ((((((p) + (::tpy::BigInt(k))) < ::tpy::BigInt(m)) && (k < 6)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
             k = (::tpy::add_check<int32_t>(k, 1));
         }
         if ((k < 1)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.fraction = ((::tpy::BigInt::from_str(::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), ((p) + (::tpy::BigInt(k))).to_fixed_check<int32_t>()}))) * (::tpy::BigInt((::tpy::pow_check<int32_t>(10, (::tpy::sub_check<int32_t>(6, k)))))));
         return ((p) + (::tpy::BigInt(k)));
     }
     if ((d == 'a')) {
-        auto __tup_15 = _match_name(data, p, (*::tpystd::_datetime_cal::_DAY_ABBR), ::tpy::BigInt(0));
+        auto __tup_15 = ::tpystd::_datetime_parse::_match_name(data, p, (*::tpystd::_datetime_cal::_DAY_ABBR), ::tpy::BigInt(0));
         const ::tpy::BigInt& ida = std::get<0>(__tup_15);
         const ::tpy::BigInt& nda = std::get<1>(__tup_15);
         if ((ida < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.weekday = ida;
         return nda;
     }
     if ((d == 'A')) {
-        auto __tup_16 = _match_name(data, p, (*::tpystd::_datetime_cal::_DAY_FULL), ::tpy::BigInt(0));
+        auto __tup_16 = ::tpystd::_datetime_parse::_match_name(data, p, (*::tpystd::_datetime_cal::_DAY_FULL), ::tpy::BigInt(0));
         const ::tpy::BigInt& idA = std::get<0>(__tup_16);
         const ::tpy::BigInt& ndA = std::get<1>(__tup_16);
         if ((idA < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.weekday = idA;
         return ndA;
     }
     if ((d == 'b')) {
-        auto __tup_17 = _match_name(data, p, (*::tpystd::_datetime_cal::_MONTH_ABBR), ::tpy::BigInt(1));
+        auto __tup_17 = ::tpystd::_datetime_parse::_match_name(data, p, (*::tpystd::_datetime_cal::_MONTH_ABBR), ::tpy::BigInt(1));
         const ::tpy::BigInt& imb = std::get<0>(__tup_17);
         const ::tpy::BigInt& nmb = std::get<1>(__tup_17);
         if ((imb < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.month = imb;
         return nmb;
     }
     if ((d == 'B')) {
-        auto __tup_18 = _match_name(data, p, (*::tpystd::_datetime_cal::_MONTH_FULL), ::tpy::BigInt(1));
+        auto __tup_18 = ::tpystd::_datetime_parse::_match_name(data, p, (*::tpystd::_datetime_cal::_MONTH_FULL), ::tpy::BigInt(1));
         const ::tpy::BigInt& imB = std::get<0>(__tup_18);
         const ::tpy::BigInt& nmB = std::get<1>(__tup_18);
         if ((imB < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.month = imB;
         return nmB;
     }
     if ((d == 'p')) {
-        auto __tup_19 = _match_name(data, p, (*_AM_PM), ::tpy::BigInt(0));
+        auto __tup_19 = ::tpystd::_datetime_parse::_match_name(data, p, (*_AM_PM), ::tpy::BigInt(0));
         const ::tpy::BigInt& iap = std::get<0>(__tup_19);
         const ::tpy::BigInt& nap = std::get<1>(__tup_19);
         if ((iap < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.ampm = iap;
         return nap;
     }
     if ((d == 'z')) {
-        return _parse_zoffset(data, p, st, fmt);
+        return ::tpystd::_datetime_parse::_parse_zoffset(data, p, st, fmt);
     }
     if ((d == 'Z')) {
-        auto __tup_20 = _match_name(data, p, (*_ZNAMES), ::tpy::BigInt(0));
+        auto __tup_20 = ::tpystd::_datetime_parse::_match_name(data, p, (*_ZNAMES), ::tpy::BigInt(0));
         const ::tpy::BigInt& izn = std::get<0>(__tup_20);
         const ::tpy::BigInt& nzn = std::get<1>(__tup_20);
         if ((izn < 0)) {
-            _parse_fail(data, fmt);
+            ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         st.has_zname = true;
         st.zname = std::string(::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), nzn.to_fixed_check<int32_t>()}));
@@ -889,22 +889,22 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
             if (((::tpy::add_check<int32_t>(i, 1)) >= n)) {
                 throw ::tpy::ValueError(std::format("stray % in format '{}'", fmt));
             }
-            p = _apply_directive(::tpy::__getitem__(scan, (::tpy::add_check<int32_t>(i, 1))), data, ::tpy::BigInt(p), st, fmt);
+            p = ::tpystd::_datetime_parse::_apply_directive(::tpy::__getitem__(scan, (::tpy::add_check<int32_t>(i, 1))), data, ::tpy::BigInt(p), st, fmt);
             i = (::tpy::add_check<int32_t>(i, 2));
-        } else if (_is_space_char(ch)) {
-            while (((i < n) && _is_space_char(::tpy::__getitem__(scan, i)))) {
+        } else if (::tpystd::_datetime_parse::_is_space_char(ch)) {
+            while (((i < n) && ::tpystd::_datetime_parse::_is_space_char(::tpy::__getitem__(scan, i)))) {
                 i = (::tpy::add_check<int32_t>(i, 1));
             }
             ::tpy::BigInt q = p;
-            while (((p < ::tpy::BigInt(m)) && _is_space_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>())))) {
+            while (((p < ::tpy::BigInt(m)) && ::tpystd::_datetime_parse::_is_space_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>())))) {
                 p = ((p) + (::tpy::BigInt(1)));
             }
             if ((p == q)) {
-                _parse_fail(data, fmt);
+                ::tpystd::_datetime_parse::_parse_fail(data, fmt);
             }
         } else {
-            if (((p >= m) || (!(_char_ieq(::tpy::__getitem__(data, p.to_fixed_check<int32_t>()), ch))))) {
-                _parse_fail(data, fmt);
+            if (((p >= m) || (!(::tpystd::_datetime_parse::_char_ieq(::tpy::__getitem__(data, p.to_fixed_check<int32_t>()), ch))))) {
+                ::tpystd::_datetime_parse::_parse_fail(data, fmt);
             }
             i = (::tpy::add_check<int32_t>(i, 1));
             p = ((p) + (::tpy::BigInt(1)));
@@ -942,7 +942,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
     bool has_julian = st.has_julian;
     if (((!(has_julian)) && (st.weekday >= 0))) {
         if ((st.week_of_year >= 0)) {
-            julian = _calc_julian_from_week(year, st.week_of_year, st.weekday, st.week_starts_mon);
+            julian = ::tpystd::_datetime_parse::_calc_julian_from_week(year, st.week_of_year, st.weekday, st.week_starts_mon);
             has_julian = true;
         } else if ((st.has_iso_year && st.has_iso_week)) {
             auto __tup_1 = ::tpystd::_datetime_cal::_isoweek_to_gregorian(st.iso_year, st.iso_week, ((st.weekday) + (::tpy::BigInt(1))));
@@ -1008,7 +1008,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
     int32_t i = 0;
     int32_t n = ::tpy::__len__(s);
     while ((i < n)) {
-        if ((!(_is_digit_char(::tpy::__getitem__(s, i))))) {
+        if ((!(::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(s, i))))) {
             throw ::tpy::ValueError("non-digit in numeric field");
         }
         i = (::tpy::add_check<int32_t>(i, 1));
@@ -1063,7 +1063,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
                 if ((n == 9)) {
                     throw ::tpy::ValueError("Invalid ISO string");
                 }
-                if (((n > 10) && _is_digit_char(::tpy::__getitem__(dtstr, 10)))) {
+                if (((n > 10) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(dtstr, 10)))) {
                     return ::tpy::BigInt(8);
                 }
                 return ::tpy::BigInt(10);
@@ -1075,7 +1075,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
     if ((::tpy::__getitem__(dtstr, 4) == 'W')) {
         int32_t idx = 7;
         while ((idx < n)) {
-            if ((!(_is_digit_char(::tpy::__getitem__(dtstr, idx))))) {
+            if ((!(::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(dtstr, idx))))) {
                 break;
             }
             idx = (::tpy::add_check<int32_t>(idx, 1));
@@ -1118,12 +1118,12 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
 //     day = _int_digits(dtstr[pos:pos + 2])
 //     return (year, month, day)
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _parse_iso_date(std::string_view dtstr) {
-    ::tpy::BigInt year = _int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{0, 4}));
+    ::tpy::BigInt year = ::tpystd::_datetime_parse::_int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{0, 4}));
     bool has_sep = (::tpy::__getitem__(dtstr, 4) == '-');
     int32_t pos = ((has_sep) ? (5) : (4));
     if ((::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 1))}) == "W")) {
         pos = (::tpy::add_check<int32_t>(pos, 1));
-        ::tpy::BigInt weekno = _int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 2))}));
+        ::tpy::BigInt weekno = ::tpystd::_datetime_parse::_int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 2))}));
         pos = (::tpy::add_check<int32_t>(pos, 2));
         ::tpy::BigInt dayno = ::tpy::BigInt(1);
         if ((::tpy::__len__(dtstr) > pos)) {
@@ -1133,11 +1133,11 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _parse_iso_date(std::str
             if (has_sep) {
                 pos = (::tpy::add_check<int32_t>(pos, 1));
             }
-            dayno = _int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 1))}));
+            dayno = ::tpystd::_datetime_parse::_int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 1))}));
         }
         return ::tpystd::_datetime_cal::_isoweek_to_gregorian(year, weekno, dayno);
     }
-    ::tpy::BigInt month = _int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 2))}));
+    ::tpy::BigInt month = ::tpystd::_datetime_parse::_int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 2))}));
     pos = (::tpy::add_check<int32_t>(pos, 2));
     if (((::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 1))}) == "-") != has_sep)) {
         throw ::tpy::ValueError("Inconsistent use of dash separator");
@@ -1145,7 +1145,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _parse_iso_date(std::str
     if (has_sep) {
         pos = (::tpy::add_check<int32_t>(pos, 1));
     }
-    ::tpy::BigInt day = _int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 2))}));
+    ::tpy::BigInt day = ::tpystd::_datetime_parse::_int_digits(::tpy::str_slice(dtstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 2))}));
     return std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt>{year, month, day};
 }
 
@@ -1212,7 +1212,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _parse_is
         if (((::tpy::sub_check<int32_t>(n, pos)) < 2)) {
             throw ::tpy::ValueError("Incomplete time component");
         }
-        ::tpy::BigInt v = _int_digits(::tpy::str_slice(tstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 2))}));
+        ::tpy::BigInt v = ::tpystd::_datetime_parse::_int_digits(::tpy::str_slice(tstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, 2))}));
         if ((comp == 0)) {
             hh = v;
         } else if ((comp == 1)) {
@@ -1244,14 +1244,14 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _parse_is
         pos = (::tpy::add_check<int32_t>(pos, 1));
         int32_t remainder = (::tpy::sub_check<int32_t>(n, pos));
         int32_t to_parse = (((remainder >= 6)) ? (6) : (remainder));
-        us = _int_digits(::tpy::str_slice(tstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, to_parse))}));
+        us = ::tpystd::_datetime_parse::_int_digits(::tpy::str_slice(tstr, ::tpy::BasicSlice{pos, (::tpy::add_check<int32_t>(pos, to_parse))}));
         if ((to_parse < 6)) {
             us = ((us) * (::tpy::BigInt((::tpy::pow_check<int32_t>(10, (::tpy::sub_check<int32_t>(6, to_parse)))))));
         }
         if ((remainder > to_parse)) {
             int32_t k = (::tpy::add_check<int32_t>(pos, to_parse));
             while ((k < n)) {
-                if ((!(_is_digit_char(::tpy::__getitem__(tstr, k))))) {
+                if ((!(::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(tstr, k))))) {
                     throw ::tpy::ValueError("Non-digit values in unparsed fraction");
                 }
                 k = (::tpy::add_check<int32_t>(k, 1));
@@ -1307,7 +1307,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
     if ((tz_pos > 0)) {
         timestr = ::tpy::str_slice(tstr, ::tpy::BasicSlice{std::nullopt, (::tpy::sub_check<int32_t>(tz_pos, 1))});
     }
-    auto __tup_1 = _parse_iso_time_comps(timestr);
+    auto __tup_1 = ::tpystd::_datetime_parse::_parse_iso_time_comps(timestr);
     const ::tpy::BigInt& hh = std::get<0>(__tup_1);
     const ::tpy::BigInt& mm = std::get<1>(__tup_1);
     const ::tpy::BigInt& ss = std::get<2>(__tup_1);
@@ -1321,7 +1321,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
         if ((((tn == 0) || (tn == 1)) || (tn == 3))) {
             throw ::tpy::ValueError("Malformed time zone string");
         }
-        auto __tup_2 = _parse_iso_time_comps(tzstr);
+        auto __tup_2 = ::tpystd::_datetime_parse::_parse_iso_time_comps(tzstr);
         const ::tpy::BigInt& tzh = std::get<0>(__tup_2);
         const ::tpy::BigInt& tzm = std::get<1>(__tup_2);
         const ::tpy::BigInt& tzs = std::get<2>(__tup_2);

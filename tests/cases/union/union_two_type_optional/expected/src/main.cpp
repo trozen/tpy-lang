@@ -19,8 +19,8 @@ std::string check(std::optional<int32_t> v) {
 //     print(check(int32(42)))
 //     print(check(None))
 void main() {
-    std::cout << check(42) << "\n";
-    std::cout << check(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::check(42) << "\n";
+    std::cout << ::tpyapp::main::check(std::nullopt) << "\n";
 }
 
 // main()
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

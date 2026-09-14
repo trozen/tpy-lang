@@ -14,7 +14,7 @@ int32_t use(int32_t x, int32_t y) {
 //     print(use(5, 6), use(9, 2))
 //     print(helpers.Util.second("a", "b"))
 void main() {
-    std::cout << use(5, 6) << " " << use(9, 2) << "\n";
+    std::cout << ::tpyapp::main::use(5, 6) << " " << ::tpyapp::main::use(9, 2) << "\n";
     std::cout << ::tpyapp::helpers::Util::second<std::string>("a", "b") << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::helpers::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

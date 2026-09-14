@@ -18,9 +18,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_bool(ne_check(5, 5)) << "\n";
-    std::cout << ::tpy::print_bool(ne_check(3, 5)) << "\n";
-    std::cout << ::tpy::print_bool(ne_check(std::nullopt, 5)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_check(5, 5)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_check(3, 5)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_check(std::nullopt, 5)) << "\n";
 }
 
 } // namespace tpyapp::main

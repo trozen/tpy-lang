@@ -37,7 +37,7 @@ void __tpy_init() {
 
     static std::vector<::tpy::BigInt> __global_slot_1 = std::vector<::tpy::BigInt>{};
     log = &__global_slot_1;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

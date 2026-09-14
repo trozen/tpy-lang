@@ -33,7 +33,7 @@ std::optional<::tpy::Bytes> maybe_blob(int32_t k) {
 //     return -1
 int32_t text_len(int32_t k) {
     std::optional<std::string> s;
-    if (((s = maybe_text(k)).has_value())) {
+    if (((s = ::tpyapp::main::maybe_text(k)).has_value())) {
         std::cout << ::tpy::print_optional_val(s) << "\n";
         return ::tpy::__len__((*s));
     }
@@ -46,7 +46,7 @@ int32_t text_len(int32_t k) {
 //     return -1
 int32_t blob_len(int32_t k) {
     std::optional<::tpy::Bytes> b;
-    if (((b = maybe_blob(k)).has_value())) {
+    if (((b = ::tpyapp::main::maybe_blob(k)).has_value())) {
         return ::tpy::__len__((*b));
     }
     return -1;
@@ -88,9 +88,9 @@ int32_t from_blob_param(std::optional<::tpy::BytesView> t) {
 //             return len(s)
 //     return 0
 int32_t reassigned(int32_t k) {
-    std::optional<std::string> s = maybe_text(k);
+    std::optional<std::string> s = ::tpyapp::main::maybe_text(k);
     if ((!s.has_value())) {
-        if (((s = maybe_text(1)).has_value())) {
+        if (((s = ::tpyapp::main::maybe_text(1)).has_value())) {
             return ::tpy::__len__((*s));
         }
     }
@@ -104,11 +104,11 @@ int32_t reassigned(int32_t k) {
 //     print(from_blob_param(b"abc"), from_blob_param(None))
 //     print(reassigned(0))
 void main() {
-    std::cout << text_len(1) << " " << text_len(0) << "\n";
-    std::cout << blob_len(1) << " " << blob_len(0) << "\n";
-    std::cout << from_text_param("abcd") << " " << from_text_param(std::nullopt) << "\n";
-    std::cout << from_blob_param(::tpy::bytes_literal_owned("abc", 3)) << " " << from_blob_param(std::nullopt) << "\n";
-    std::cout << reassigned(0) << "\n";
+    std::cout << ::tpyapp::main::text_len(1) << " " << ::tpyapp::main::text_len(0) << "\n";
+    std::cout << ::tpyapp::main::blob_len(1) << " " << ::tpyapp::main::blob_len(0) << "\n";
+    std::cout << ::tpyapp::main::from_text_param("abcd") << " " << ::tpyapp::main::from_text_param(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::from_blob_param(::tpy::bytes_literal_owned("abc", 3)) << " " << ::tpyapp::main::from_blob_param(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::reassigned(0) << "\n";
 }
 
 // main()
@@ -117,7 +117,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

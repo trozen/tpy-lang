@@ -27,9 +27,9 @@ int32_t sum_triple(const std::tuple<int32_t, int32_t, int32_t>& t) {
 //     print(result)
 void main() {
     std::tuple<int32_t, std::string> pair = std::tuple<int32_t, std::string>{5, "five"};
-    print_pair(pair);
+    ::tpyapp::main::print_pair(pair);
     std::tuple<int32_t, int32_t, int32_t> nums = std::tuple<int32_t, int32_t, int32_t>{10, 20, 30};
-    int32_t result = sum_triple(nums);
+    int32_t result = ::tpyapp::main::sum_triple(nums);
     std::cout << result << "\n";
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

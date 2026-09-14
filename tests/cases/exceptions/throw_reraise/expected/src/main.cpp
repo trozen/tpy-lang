@@ -19,7 +19,7 @@ void fail() {
 void middle() {
     {
         try {
-            fail();
+            ::tpyapp::main::fail();
         } catch (const MyError& e) {
             std::cout << e.code << "\n";
             throw;
@@ -35,7 +35,7 @@ void middle() {
 void main() {
     {
         try {
-            middle();
+            ::tpyapp::main::middle();
         } catch (const MyError& e) {
             std::cout << e.code << "\n";
         }
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

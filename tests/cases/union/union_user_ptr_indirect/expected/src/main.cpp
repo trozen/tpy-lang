@@ -32,7 +32,7 @@ std::string describe(const Expr& e) {
 //     print(describe(a))
 void main() {
     Expr a = Lit(::tpy::BigInt(1));
-    std::cout << describe(a) << "\n";
+    std::cout << ::tpyapp::main::describe(a) << "\n";
 }
 
 // # Cycle detection should accept a recursive union broken by a user-defined
@@ -52,7 +52,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::mywrap::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

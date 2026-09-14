@@ -78,11 +78,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_list_view();
-    test_list_mutation_fallback();
-    test_list_reassign_fallback();
-    test_list_subscript_write_fallback();
-    test_list_pop_fallback();
+    ::tpyapp::main::test_list_view();
+    ::tpyapp::main::test_list_mutation_fallback();
+    ::tpyapp::main::test_list_reassign_fallback();
+    ::tpyapp::main::test_list_subscript_write_fallback();
+    ::tpyapp::main::test_list_pop_fallback();
 }
 
 } // namespace tpyapp::main

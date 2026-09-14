@@ -75,13 +75,13 @@ void append_needle(std::vector<std::string>* xs) {
 //     print(narrow_list_hits(data))
 void main() {
     std::vector<std::string> data = {NEEDLE, "short", "another-string-past-sso-length"};
-    std::cout << proto_hits(data) << "\n";
-    std::cout << narrow_list_hits(&(data)) << "\n";
+    std::cout << ::tpyapp::main::proto_hits(data) << "\n";
+    std::cout << ::tpyapp::main::narrow_list_hits(&(data)) << "\n";
     ::tpy::ordered_set<std::string> __tmp_2 = ::tpy::ordered_set<std::string>({NEEDLE, "another-string-past-sso-length"});
-    std::cout << narrow_set_hits(&(__tmp_2)) << "\n";
-    std::cout << narrow_list_hits(nullptr) << "\n";
-    append_needle(&(data));
-    std::cout << narrow_list_hits(&(data)) << "\n";
+    std::cout << ::tpyapp::main::narrow_set_hits(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::narrow_list_hits(nullptr) << "\n";
+    ::tpyapp::main::append_needle(&(data));
+    std::cout << ::tpyapp::main::narrow_list_hits(&(data)) << "\n";
 }
 
 // NEEDLE = "transfer-encoding-very-long-key"
@@ -93,7 +93,7 @@ void __tpy_init() {
     initialized = true;
 
     NEEDLE = "transfer-encoding-very-long-key";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

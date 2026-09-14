@@ -31,12 +31,12 @@ int32_t read_pair(const std::tuple<const Item*, int32_t>& p) {
 //     print(relay((it, 3)))
 void main() {
     Item it = Item(5);
-    bump_first(std::tuple<Item*, int32_t>{&(it), 2});
+    ::tpyapp::main::bump_first(std::tuple<Item*, int32_t>{&(it), 2});
     std::cout << it.n << "\n";
-    bump_first(std::tuple<Item*, int32_t>{&(it), 10});
+    ::tpyapp::main::bump_first(std::tuple<Item*, int32_t>{&(it), 10});
     std::cout << it.n << "\n";
-    std::cout << read_pair(::tpy::tuple_value_to_borrow<std::tuple<Item*, int32_t>>(std::tuple<Item, int32_t>{Item(4), 3})) << "\n";
-    std::cout << relay<Item>(std::tuple<Item*, int32_t>{&(it), 3}) << "\n";
+    std::cout << ::tpyapp::main::read_pair(::tpy::tuple_value_to_borrow<std::tuple<Item*, int32_t>>(std::tuple<Item, int32_t>{Item(4), 3})) << "\n";
+    std::cout << ::tpyapp::main::relay<Item>(std::tuple<Item*, int32_t>{&(it), 3}) << "\n";
 }
 
 // main()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

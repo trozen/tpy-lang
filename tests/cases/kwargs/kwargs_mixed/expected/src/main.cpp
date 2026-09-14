@@ -22,9 +22,9 @@ void greet(std::string_view name, std::string_view greeting, std::string_view pu
 //     greet("Bob", punctuation=".")
 //     print(compute(1, 2, c=3))
 void main() {
-    greet("World", "Hi");
-    greet("Bob", "Hello", ".");
-    std::cout << compute(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
+    ::tpyapp::main::greet("World", "Hi");
+    ::tpyapp::main::greet("Bob", "Hello", ".");
+    std::cout << ::tpyapp::main::compute(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

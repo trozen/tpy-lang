@@ -28,7 +28,7 @@ void __tpy_init() {
     initialized = true;
 
     g = ::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>(std::tuple<int32_t, Cell>{1, Cell(2)});
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

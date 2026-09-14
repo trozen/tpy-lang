@@ -123,11 +123,11 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
         (*e_fast).set();
         (*e_fast).set();
         std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
-        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(fast_path_consumer((*e_fast))));
+        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::fast_path_consumer((*e_fast))));
         e.emplace(::tpystd::asyncio::Event());
         std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
-        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer((*e)))));
-        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*e))));
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::consumer((*e)))));
+        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::producer((*e))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -157,7 +157,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # Event is the no-payload completion signal -- producer set(), consumer
@@ -172,7 +172,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

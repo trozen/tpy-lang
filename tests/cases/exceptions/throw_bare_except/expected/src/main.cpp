@@ -19,7 +19,7 @@ void fail() {
 void main() {
     {
         try {
-            fail();
+            ::tpyapp::main::fail();
         } catch (...) {
             std::cout << "caught something" << "\n";
         }
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

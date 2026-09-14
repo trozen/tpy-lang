@@ -605,49 +605,49 @@ __gen_peephole_or peephole_or(std::vector<int32_t>& xs, std::string_view t) {
 //     print("or", list(peephole_or([1], "")), list(peephole_or([], "")))
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
-    std::cout << "list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_list(xs))) << "\n";
+    std::cout << "list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::drain_list(xs))) << "\n";
     std::cout << "drained" << " " << ::tpy::ListPrinter(xs) << "\n";
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::cout << "empty" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_list(__tmp_1))) << "\n";
+    std::cout << "empty" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::drain_list(__tmp_1))) << "\n";
     ::tpy::ordered_map<int32_t, int32_t> dd = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
     std::vector<int32_t> __tmp_2 = {2, 1};
-    std::cout << "dict" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_dict(dd, __tmp_2))) << " " << ::tpy::DictPrinter(dd) << "\n";
+    std::cout << "dict" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::drain_dict(dd, __tmp_2))) << " " << ::tpy::DictPrinter(dd) << "\n";
     ::tpy::ordered_map<int32_t, int32_t> __tmp_3 = ::tpy::ordered_map<int32_t, int32_t>();
     std::vector<int32_t> __tmp_4 = std::vector<int32_t>{};
-    std::cout << "dict0" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_dict(__tmp_3, __tmp_4))) << "\n";
+    std::cout << "dict0" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::drain_dict(__tmp_3, __tmp_4))) << "\n";
     ::tpy::ordered_set<int32_t> ss = ::tpy::ordered_set<int32_t>({7, 9});
-    std::cout << "set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::construct<std::vector<int32_t>>(drain_set(ss)))) << " " << ::tpy::SetPrinter(ss) << "\n";
+    std::cout << "set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::drain_set(ss)))) << " " << ::tpy::SetPrinter(ss) << "\n";
     ::tpy::ordered_set<int32_t> __tmp_5 = ::tpy::ordered_set<int32_t>();
-    std::cout << "set0" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_set(__tmp_5))) << "\n";
+    std::cout << "set0" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::drain_set(__tmp_5))) << "\n";
     std::string __tmp_6 = "x";
     std::string __tmp_7 = "";
-    std::cout << "str" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(str_branch(__tmp_6))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(str_branch(__tmp_7))) << "\n";
+    std::cout << "str" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::str_branch(__tmp_6))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::str_branch(__tmp_7))) << "\n";
     ::tpy::Bytes __tmp_8 = ::tpy::bytes_literal_owned("x", 1);
     ::tpy::Bytes __tmp_9 = ::tpy::Bytes{};
-    std::cout << "bytes" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(bytes_branch(__tmp_8))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(bytes_branch(__tmp_9))) << "\n";
+    std::cout << "bytes" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::bytes_branch(__tmp_8))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::bytes_branch(__tmp_9))) << "\n";
     Bag __tmp_10 = Bag(3);
     Bag __tmp_11 = Bag(0);
-    std::cout << "len" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(record_len_branch(__tmp_10))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(record_len_branch(__tmp_11))) << "\n";
+    std::cout << "len" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::record_len_branch(__tmp_10))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::record_len_branch(__tmp_11))) << "\n";
     Flag __tmp_12 = Flag(true);
     Flag __tmp_13 = Flag(false);
-    std::cout << "bool" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(record_bool_branch(__tmp_12))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(record_bool_branch(__tmp_13))) << "\n";
-    std::cout << "enum" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(enum_branch(Color::RED))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(enum_branch(Color::BLUE))) << "\n";
-    std::cout << "intenum" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(int_enum_branch(Level::HIGH))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(int_enum_branch(Level::ZERO))) << "\n";
+    std::cout << "bool" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::record_bool_branch(__tmp_12))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::record_bool_branch(__tmp_13))) << "\n";
+    std::cout << "enum" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::enum_branch(Color::RED))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::enum_branch(Color::BLUE))) << "\n";
+    std::cout << "intenum" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::int_enum_branch(Level::HIGH))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::int_enum_branch(Level::ZERO))) << "\n";
     Plain __tmp_14 = Plain(0);
-    std::cout << "plain" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(plain_record_branch(__tmp_14))) << "\n";
-    std::cout << "any" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(any_branch(::tpy::make_any(::tpy::BigInt(1))))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(any_branch(::tpy::make_any(::tpy::BigInt(0))))) << "\n";
+    std::cout << "plain" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::plain_record_branch(__tmp_14))) << "\n";
+    std::cout << "any" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::any_branch(::tpy::make_any(::tpy::BigInt(1))))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::any_branch(::tpy::make_any(::tpy::BigInt(0))))) << "\n";
     std::vector<int32_t> __tmp_15 = {1};
     std::string __tmp_16 = "x";
     std::vector<int32_t> __tmp_17 = std::vector<int32_t>{};
     std::string __tmp_18 = "x";
     std::vector<int32_t> __tmp_19 = {1};
     std::string __tmp_20 = "";
-    std::cout << "and" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(and_branch(__tmp_15, __tmp_16))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(and_branch(__tmp_17, __tmp_18))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(and_branch(__tmp_19, __tmp_20))) << "\n";
+    std::cout << "and" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::and_branch(__tmp_15, __tmp_16))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::and_branch(__tmp_17, __tmp_18))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::and_branch(__tmp_19, __tmp_20))) << "\n";
     std::vector<int32_t> __tmp_21 = {1};
     std::string __tmp_22 = "";
     std::vector<int32_t> __tmp_23 = std::vector<int32_t>{};
     std::string __tmp_24 = "";
-    std::cout << "or" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(peephole_or(__tmp_21, __tmp_22))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(peephole_or(__tmp_23, __tmp_24))) << "\n";
+    std::cout << "or" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::peephole_or(__tmp_21, __tmp_22))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::peephole_or(__tmp_23, __tmp_24))) << "\n";
 }
 
 // # Container / str / record truthiness of a generator-frame local. These
@@ -663,7 +663,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

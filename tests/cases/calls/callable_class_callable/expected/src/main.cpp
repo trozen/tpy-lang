@@ -18,9 +18,9 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t x) {
 //     print(apply(a, 5))
 void main() {
     Doubler d = Doubler();
-    std::cout << apply(d, 5) << "\n";
+    std::cout << ::tpyapp::main::apply(d, 5) << "\n";
     Adder a = Adder(100);
-    std::cout << apply(a, 5) << "\n";
+    std::cout << ::tpyapp::main::apply(a, 5) << "\n";
 }
 
 // main()
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -68,11 +68,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_float(bigint_widen()) << "\n";
-    std::cout << ::tpy::print_float(int32_literal_widen()) << "\n";
-    std::cout << ::tpy::print_float(chain_widen()) << "\n";
-    std::cout << ::tpy::print_float(use_after_widen()) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(float32_stays())) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::bigint_widen()) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::int32_literal_widen()) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::chain_widen()) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::use_after_widen()) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(::tpyapp::main::float32_stays())) << "\n";
 }
 
 } // namespace tpyapp::main

@@ -25,9 +25,9 @@ std::string describe(const Outer& o) {
 //     print(describe(Outer(Inner("hi"))))
 void main() {
     Outer __tmp_1 = Outer(Inner(std::nullopt));
-    std::cout << describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
     Outer __tmp_2 = Outer(Inner("hi"));
-    std::cout << describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

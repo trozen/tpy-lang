@@ -24,7 +24,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        set_it(h, k, (::tpy::str_concat("v-", k)));
+        ::tpyapp::main::set_it(h, k, (::tpy::str_concat("v-", k)));
     }
     std::cout << h._last_name << " " << h._last_value << "\n";
 }
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

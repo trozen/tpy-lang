@@ -30,8 +30,8 @@ void shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*> p) {
 void main() {
     ::tpyapp::screen::Point s = ::tpyapp::screen::Point(::tpy::BigInt(10));
     ::tpyapp::world::Point w = ::tpyapp::world::Point(::tpy::BigInt(20));
-    shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(s)});
-    shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(w)});
+    ::tpyapp::main::shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(s)});
+    ::tpyapp::main::shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(w)});
     std::cout << s.x << "\n";
     std::cout << w.lat << "\n";
 }
@@ -53,7 +53,7 @@ void __tpy_init() {
 
     ::tpyapp::screen::__tpy_init();
     ::tpyapp::world::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

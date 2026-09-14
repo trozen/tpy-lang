@@ -16,7 +16,7 @@ Holder make() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_simple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_src_0.emplace(make());
+        __for_src_0.emplace(::tpyapp::main::make());
         ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;
         continue;
@@ -57,7 +57,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        __for_src_0.emplace(make());
+        __for_src_0.emplace(::tpyapp::main::make());
         ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;
         continue;
@@ -94,7 +94,7 @@ __gen_g_resumable g_resumable() {
 //         print(v)
 void main() {
     {
-        auto __src_0 = g_simple();
+        auto __src_0 = ::tpyapp::main::g_simple();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -104,7 +104,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = g_resumable();
+        auto __src_2 = ::tpyapp::main::g_resumable();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -151,7 +151,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

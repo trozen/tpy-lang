@@ -112,7 +112,7 @@ void test_field_aug_assign_mutates() {
 //     print(s)
 void test_array_passed_to_func(std::array<std::string, 2>& arr) {
     std::string s = ::tpy::__getitem__(arr, 0);
-    mutate_array(arr);
+    ::tpyapp::main::mutate_array(arr);
     std::cout << s << "\n";
 }
 
@@ -154,17 +154,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_array_subscript_view();
-    test_array_subscript_mutated();
-    test_record_field_view();
-    test_record_field_mutated();
-    test_record_reassigned();
-    test_record_method_mutates();
-    test_readonly_method_preserves_view();
-    test_field_aug_assign_mutates();
+    ::tpyapp::main::test_array_subscript_view();
+    ::tpyapp::main::test_array_subscript_mutated();
+    ::tpyapp::main::test_record_field_view();
+    ::tpyapp::main::test_record_field_mutated();
+    ::tpyapp::main::test_record_reassigned();
+    ::tpyapp::main::test_record_method_mutates();
+    ::tpyapp::main::test_readonly_method_preserves_view();
+    ::tpyapp::main::test_field_aug_assign_mutates();
     std::array<std::string, 2> __tmp_1 = {"first", "second"};
-    test_array_passed_to_func(__tmp_1);
-    test_multiple_views_one_source();
+    ::tpyapp::main::test_array_passed_to_func(__tmp_1);
+    ::tpyapp::main::test_multiple_views_one_source();
 }
 
 } // namespace tpyapp::main

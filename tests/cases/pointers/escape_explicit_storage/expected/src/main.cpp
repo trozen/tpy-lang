@@ -83,9 +83,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    copy_is_independent();
-    copy_outlives_the_loop();
-    copy_into_optional_target();
+    ::tpyapp::main::copy_is_independent();
+    ::tpyapp::main::copy_outlives_the_loop();
+    ::tpyapp::main::copy_into_optional_target();
 }
 
 } // namespace tpyapp::main

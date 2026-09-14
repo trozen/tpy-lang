@@ -131,7 +131,7 @@ __coro_client client(int32_t port, std::string_view msg) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __coro_arg_0 = "127.0.0.1";
-        __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(handle(std::move(__a0), std::move(__a1))); }, __coro_arg_0, 0);
+        __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::handle(std::move(__a0), std::move(__a1))); }, __coro_arg_0, 0);
         __state = S_RESUME_0;
         continue;
     }
@@ -142,9 +142,9 @@ __coro_client client(int32_t port, std::string_view msg) {
         __sub_0.reset();
         port = std::get<1>((*server).sockets[0].getsockname());
         __coro_arg_1 = "hello";
-        a.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(client(port, __coro_arg_1))));
+        a.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::client(port, __coro_arg_1))));
         __coro_arg_2 = "world";
-        b.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(client(port, __coro_arg_2))));
+        b.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::client(port, __coro_arg_2))));
         __sub_1 = &((*a));
         __state = S_RESUME_1;
         continue;
@@ -192,7 +192,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio.start_server: two clients concurrently get their line echoed back
@@ -208,7 +208,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -17,7 +17,7 @@ Holder make() {
 //             q.n = 42       # mutate through the (non-rebound) aliasing capture
 //     print(h.inner.n)       # 42 -- proves the capture aliased, was not copied
 void main() {
-    Holder h = make();
+    Holder h = ::tpyapp::main::make();
     Inner* q;
     auto& __match_subject_1 = h;
     {
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

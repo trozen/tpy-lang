@@ -32,9 +32,9 @@ __coro_add_one add_one(::tpy::BigInt n) {
 //     c = d  # tpyc: warning(/drops the previous coroutine/)
 //     print(asyncio.run(c))
 void main() {
-    std::optional<__coro_add_one> c = add_one(::tpy::BigInt(41));
-    c.emplace(add_one(::tpy::BigInt(1)));
-    std::optional<__coro_add_one> d = add_one(::tpy::BigInt(7));
+    std::optional<__coro_add_one> c = ::tpyapp::main::add_one(::tpy::BigInt(41));
+    c.emplace(::tpyapp::main::add_one(::tpy::BigInt(1)));
+    std::optional<__coro_add_one> d = ::tpyapp::main::add_one(::tpy::BigInt(7));
     c.emplace(std::move(*d));
     d.reset();
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))) << "\n";
@@ -52,7 +52,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

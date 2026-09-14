@@ -32,7 +32,7 @@ int32_t run() {
 //     print(run())
 //     print(Registry.code)
 void main() {
-    std::cout << run() << "\n";
+    std::cout << ::tpyapp::main::run() << "\n";
     std::cout << Registry::code << "\n";
 }
 
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

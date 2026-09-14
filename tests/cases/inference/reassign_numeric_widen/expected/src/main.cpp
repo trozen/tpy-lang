@@ -75,12 +75,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_int_widen();
-    test_float_absorbs_int();
-    test_float_stays_float();
-    test_bigint_absorbs_fixedint();
-    test_unsigned_to_wider_signed();
-    test_uint32_to_int64();
+    ::tpyapp::main::test_int_widen();
+    ::tpyapp::main::test_float_absorbs_int();
+    ::tpyapp::main::test_float_stays_float();
+    ::tpyapp::main::test_bigint_absorbs_fixedint();
+    ::tpyapp::main::test_unsigned_to_wider_signed();
+    ::tpyapp::main::test_uint32_to_int64();
 }
 
 } // namespace tpyapp::main

@@ -21,9 +21,9 @@ int32_t f(const Point* p) {
 //     print(f(None))
 //     print(f(Point(3)))
 void main() {
-    std::cout << f(nullptr) << "\n";
+    std::cout << ::tpyapp::main::f(nullptr) << "\n";
     Point __tmp_1 = Point(3);
-    std::cout << f(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::f(&(__tmp_1)) << "\n";
 }
 
 // main()
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

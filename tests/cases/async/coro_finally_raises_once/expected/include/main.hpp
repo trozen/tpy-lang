@@ -333,7 +333,7 @@ inline ::tpy::BigInt Thrower::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     raise Err(bump())
 inline void Thrower::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    throw Err(bump());
+    throw Err(::tpyapp::main::bump());
 }
 void __tpy_init();
 } // namespace tpyapp::main

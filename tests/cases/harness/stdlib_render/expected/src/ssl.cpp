@@ -74,15 +74,15 @@ void _fail(::tpy_tls_session* s, std::string_view msg) {
 void _raise_io_error(int32_t rc) {
     int32_t c = ::tpy_tls_classify(rc);
     if ((c == 1)) {
-        throw SSLWantReadError(_errstr(rc));
+        throw SSLWantReadError(::tpystd::ssl::_errstr(rc));
     }
     if ((c == 2)) {
-        throw SSLWantWriteError(_errstr(rc));
+        throw SSLWantWriteError(::tpystd::ssl::_errstr(rc));
     }
     if ((c == 3)) {
-        throw SSLZeroReturnError(_errstr(rc));
+        throw SSLZeroReturnError(::tpystd::ssl::_errstr(rc));
     }
-    throw SSLError(_errstr(rc));
+    throw SSLError(::tpystd::ssl::_errstr(rc));
 }
 
 // def create_default_context() -> Own[SSLContext]:
@@ -131,7 +131,7 @@ int32_t _bundled_ca_count() {
         return ::tpy::Bytes{};
     }
     if ((rc < 0)) {
-        _raise_io_error(rc);
+        ::tpystd::ssl::_raise_io_error(rc);
     }
     return ::tpy::bytes_from_buf(buf.ptr(), ::tpy::int_cast_check<uint64_t>(rc));
 }
@@ -194,13 +194,13 @@ SSLSocket SSLContext::wrap_socket(::tpystd::socket::socket&& sock, std::string_v
         this->_config_client(s);
     }
     if ((::tpy_tls_setup(s) != 0)) {
-        _fail(s, "TLS setup failed");
+        ::tpystd::ssl::_fail(s, "TLS setup failed");
     }
     ::tpy_tls_set_fd(s, sock.fileno());
     if (((!(server_side)) && (::tpy::__len__(server_hostname) > 0))) {
         std::string_view host = server_hostname;
         if ((::tpy_tls_set_hostname(s, reinterpret_cast<const uint8_t*>(host.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(host))) != 0)) {
-            _fail(s, "could not set TLS hostname");
+            ::tpystd::ssl::_fail(s, "could not set TLS hostname");
         }
     }
     SSLSocket wrapped = SSLSocket(Rc<_SslSession>::new_<_SslSession>(_SslSession(s, std::move(sock))));
@@ -235,11 +235,11 @@ void SSLContext::_config_client(::tpy_tls_session* s) const {
     std::string_view ca = this->_cafile;
     int32_t rc = ::tpy_tls_config_client(s, reinterpret_cast<const uint8_t*>(ca.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(ca)), verify);
     if ((rc != 0)) {
-        _fail(s, _errstr(rc));
+        ::tpystd::ssl::_fail(s, ::tpystd::ssl::_errstr(rc));
     }
     if (this->_use_bundled_ca) {
         if ((::tpy_tls_add_bundled_ca(s) != 0)) {
-            _fail(s, "could not load bundled CA store");
+            ::tpystd::ssl::_fail(s, "could not load bundled CA store");
         }
     }
     if ((::tpy::__len__(this->_system_cafile) > 0)) {
@@ -276,7 +276,7 @@ bool SSLSocket::do_handshake() {
     if ((c == 4)) {
         throw SSLCertVerificationError("certificate verify failed");
     }
-    throw SSLError((::tpy::str_concat("handshake failed: ", _errstr(rc))));
+    throw SSLError((::tpy::str_concat("handshake failed: ", ::tpystd::ssl::_errstr(rc))));
 }
 
 // def sendall(self, data: bytes) -> None:
@@ -298,7 +298,7 @@ void SSLSocket::sendall(::tpy::BytesView data) {
     while ((sent < total)) {
         int32_t rc = ::tpy_tls_write(this->_session.get().raw(), (data_ptr + static_cast<int64_t>(sent)), (::tpy::sub_check<uint64_t>(total, sent)));
         if ((rc < 0)) {
-            _raise_io_error(rc);
+            ::tpystd::ssl::_raise_io_error(rc);
         }
         sent = (::tpy::add_check<uint64_t>(sent, ::tpy::int_cast_check<uint64_t>(rc)));
     }

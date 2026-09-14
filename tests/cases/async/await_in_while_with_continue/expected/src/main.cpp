@@ -83,7 +83,7 @@ __coro_go go(::tpy::BigInt n) {
 // def main() -> None:
 //     print(asyncio.run(go(10)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(go(::tpy::BigInt(10)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::go(::tpy::BigInt(10)))) << "\n";
 }
 
 // # `await` inside a `while` body with `continue` from inside an if-then.
@@ -96,7 +96,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

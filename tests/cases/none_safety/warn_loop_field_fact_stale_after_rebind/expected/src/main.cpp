@@ -32,7 +32,7 @@ void __tpy_init() {
 
     Box __tmp_1 = Box(5);
     Box __tmp_2 = Box(3);
-    std::cout << stale_after_rebind(__tmp_1, __tmp_2) << "\n";
+    std::cout << ::tpyapp::main::stale_after_rebind(__tmp_1, __tmp_2) << "\n";
 }
 
 } // namespace tpyapp::main

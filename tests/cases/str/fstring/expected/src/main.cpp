@@ -153,16 +153,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_basic();
-    test_types();
-    test_expressions();
-    test_format_spec();
-    test_braces();
-    test_multiple();
-    test_adjacent();
-    test_fstring_var();
-    test_str_conversion();
-    test_bool_format();
+    ::tpyapp::main::test_basic();
+    ::tpyapp::main::test_types();
+    ::tpyapp::main::test_expressions();
+    ::tpyapp::main::test_format_spec();
+    ::tpyapp::main::test_braces();
+    ::tpyapp::main::test_multiple();
+    ::tpyapp::main::test_adjacent();
+    ::tpyapp::main::test_fstring_var();
+    ::tpyapp::main::test_str_conversion();
+    ::tpyapp::main::test_bool_format();
 }
 
 } // namespace tpyapp::main

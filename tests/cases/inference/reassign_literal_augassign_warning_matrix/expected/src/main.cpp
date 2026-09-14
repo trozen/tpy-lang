@@ -31,7 +31,7 @@ void main() {
     x = ::tpy::add_check<int32_t>(x, 5);
     std::cout << x << "\n";
     int32_t y = 0;
-    y = ::tpy::add_check<int32_t>(y, ret_i32());
+    y = ::tpy::add_check<int32_t>(y, ::tpyapp::main::ret_i32());
     std::cout << y << "\n";
     ::tpy::BigInt z = ::tpy::BigInt(0);
     z = (z) + (::tpy::BigInt(5));
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

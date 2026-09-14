@@ -22,7 +22,7 @@ Counter make_c() {
 //     print(Counter.instances)
 void main() {
     Counter::instances = 0;
-    static_cast<void>(make_c());
+    static_cast<void>(::tpyapp::main::make_c());
     Counter::instances = 5;
     std::cout << Counter::instances << "\n";
     std::vector<Counter> cs = {Counter(), Counter()};
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

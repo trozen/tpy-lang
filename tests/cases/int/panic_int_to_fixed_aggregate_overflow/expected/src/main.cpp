@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     xs: list[int32] = [too_big()]
 //     print(len(xs))
 void main() {
-    std::vector<int32_t> xs = {(too_big()).to_fixed_check<int32_t>()};
+    std::vector<int32_t> xs = {(::tpyapp::main::too_big()).to_fixed_check<int32_t>()};
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

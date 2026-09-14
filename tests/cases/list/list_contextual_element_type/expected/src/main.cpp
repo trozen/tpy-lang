@@ -66,7 +66,7 @@ void main() {
     d.push_back(42);
     d.push_back(std::nullopt);
     std::cout << ::tpy::__len__(d) << "\n";
-    std::vector<std::optional<int32_t>> e = make_optional_list();
+    std::vector<std::optional<int32_t>> e = ::tpyapp::main::make_optional_list();
     std::cout << ::tpy::__len__(e) << "\n";
     a.push_back(std::nullopt);
     std::cout << ::tpy::__len__(a) << "\n";
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

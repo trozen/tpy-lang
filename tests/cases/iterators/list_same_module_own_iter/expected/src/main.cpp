@@ -46,7 +46,7 @@ __gen_points points() {
 //     for p in out:
 //         print(p.x)
 void main() {
-    std::vector<Point> out = ::tpy::construct<std::vector<Point>>(points());
+    std::vector<Point> out = ::tpy::construct<std::vector<Point>>(::tpyapp::main::points());
     auto& __obj_0 = out;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -16,7 +16,7 @@ int32_t take(const Pinned* p) {
 //     return flag and take(Pinned(7)) > 0  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 bool and_rhs(bool flag) {
     Pinned __tmp_1 = Pinned(7);
-    return (flag && (take(&(__tmp_1)) > 0));
+    return (flag && (::tpyapp::main::take(&(__tmp_1)) > 0));
 }
 
 // def and_rhs_hatch(flag: bool) -> bool:
@@ -25,14 +25,14 @@ bool and_rhs(bool flag) {
 //     return flag and take(p) > 0  # tpyc: ok
 bool and_rhs_hatch(bool flag) {
     Pinned p = Pinned(7);
-    return (flag && (take(&(p)) > 0));
+    return (flag && (::tpyapp::main::take(&(p)) > 0));
 }
 
 // def or_rhs(flag: bool) -> bool:
 //     return flag or take(Pinned(8)) > 0  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 bool or_rhs(bool flag) {
     Pinned __tmp_2 = Pinned(8);
-    return (flag || (take(&(__tmp_2)) > 0));
+    return (flag || (::tpyapp::main::take(&(__tmp_2)) > 0));
 }
 
 // def or_rhs_hatch(flag: bool) -> bool:
@@ -40,14 +40,14 @@ bool or_rhs(bool flag) {
 //     return flag or take(p) > 0  # tpyc: ok
 bool or_rhs_hatch(bool flag) {
     Pinned p = Pinned(8);
-    return (flag || (take(&(p)) > 0));
+    return (flag || (::tpyapp::main::take(&(p)) > 0));
 }
 
 // def ternary_arm(flag: bool) -> int32:
 //     return take(Pinned(9)) if flag else -1  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 int32_t ternary_arm(bool flag) {
     Pinned __tmp_3 = Pinned(9);
-    return ((flag) ? (take(&(__tmp_3))) : (-1));
+    return ((flag) ? (::tpyapp::main::take(&(__tmp_3))) : (-1));
 }
 
 // def ternary_arm_hatch(flag: bool) -> int32:
@@ -55,7 +55,7 @@ int32_t ternary_arm(bool flag) {
 //     return take(p) if flag else -1  # tpyc: ok
 int32_t ternary_arm_hatch(bool flag) {
     Pinned p = Pinned(9);
-    return ((flag) ? (take(&(p))) : (-1));
+    return ((flag) ? (::tpyapp::main::take(&(p))) : (-1));
 }
 
 // def chained(a: int32, b: int32) -> bool:
@@ -63,7 +63,7 @@ int32_t ternary_arm_hatch(bool flag) {
 //     return a < b < take(Pinned(10))  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 bool chained(int32_t a, int32_t b) {
     Pinned __tmp_4 = Pinned(10);
-    return ((a < b) && (b < take(&(__tmp_4))));
+    return ((a < b) && (b < ::tpyapp::main::take(&(__tmp_4))));
 }
 
 // def chained_hatch(a: int32, b: int32) -> bool:
@@ -71,7 +71,7 @@ bool chained(int32_t a, int32_t b) {
 //     return a < b < take(p)  # tpyc: ok
 bool chained_hatch(int32_t a, int32_t b) {
     Pinned p = Pinned(10);
-    return ((a < b) && (b < take(&(p))));
+    return ((a < b) && (b < ::tpyapp::main::take(&(p))));
 }
 
 // def take_ref(p: Pinned) -> int32:
@@ -85,7 +85,7 @@ int32_t take_ref(const Pinned& p) {
 //     return flag or take_ref(Pinned(12)) > 0  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 bool ref_param(bool flag) {
     Pinned __tmp_5 = Pinned(12);
-    return (flag || (take_ref(__tmp_5) > 0));
+    return (flag || (::tpyapp::main::take_ref(__tmp_5) > 0));
 }
 
 // def ref_param_hatch(flag: bool) -> bool:
@@ -93,7 +93,7 @@ bool ref_param(bool flag) {
 //     return flag or take_ref(p) > 0  # tpyc: ok
 bool ref_param_hatch(bool flag) {
     Pinned p = Pinned(12);
-    return (flag || (take_ref(p) > 0));
+    return (flag || (::tpyapp::main::take_ref(p) > 0));
 }
 
 // def take_own(p: Own[Pinned]) -> int32:  # tpyc: warning(/never consumed/)
@@ -110,7 +110,7 @@ int32_t take_own(Pinned&& p) {
 //     # be a false positive.
 //     return flag or take_own(Pinned(13)) > 0  # tpyc: ok
 bool own_param(bool flag) {
-    return (flag || (take_own(Pinned(13)) > 0));
+    return (flag || (::tpyapp::main::take_own(Pinned(13)) > 0));
 }
 
 // def use(p: Noisy) -> int32:
@@ -133,7 +133,7 @@ bool comp_rhs(bool flag) {
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             Noisy __tmp_6 = Noisy(i);
-            __result.push_back(use(__tmp_6));
+            __result.push_back(::tpyapp::main::use(__tmp_6));
         }
         std::move(__result);
     })) > 0));
@@ -145,7 +145,7 @@ bool comp_rhs(bool flag) {
 //     return take(Pinned(11)) > 0 and flag  # tpyc: ok
 bool left_operand(bool flag) {
     Pinned __tmp_7 = Pinned(11);
-    return ((take(&(__tmp_7)) > 0) && flag);
+    return ((::tpyapp::main::take(&(__tmp_7)) > 0) && flag);
 }
 
 // def main() -> None:
@@ -169,22 +169,22 @@ bool left_operand(bool flag) {
 //     print("comp_taken", comp_taken)
 //     print("left", left_operand(True), left_operand(False))
 void main() {
-    std::cout << "and" << " " << ::tpy::print_bool(and_rhs(false)) << " " << ::tpy::print_bool(and_rhs(true)) << "\n";
-    std::cout << "and_hatch" << " " << ::tpy::print_bool(and_rhs_hatch(false)) << " " << ::tpy::print_bool(and_rhs_hatch(true)) << "\n";
-    std::cout << "or" << " " << ::tpy::print_bool(or_rhs(true)) << " " << ::tpy::print_bool(or_rhs(false)) << "\n";
-    std::cout << "or_hatch" << " " << ::tpy::print_bool(or_rhs_hatch(true)) << " " << ::tpy::print_bool(or_rhs_hatch(false)) << "\n";
-    std::cout << "ternary" << " " << ternary_arm(false) << " " << ternary_arm(true) << "\n";
-    std::cout << "ternary_hatch" << " " << ternary_arm_hatch(false) << " " << ternary_arm_hatch(true) << "\n";
-    std::cout << "chained" << " " << ::tpy::print_bool(chained(5, 1)) << " " << ::tpy::print_bool(chained(0, 5)) << "\n";
-    std::cout << "chained_hatch" << " " << ::tpy::print_bool(chained_hatch(5, 1)) << " " << ::tpy::print_bool(chained_hatch(0, 5)) << "\n";
-    std::cout << "refparam" << " " << ::tpy::print_bool(ref_param(true)) << " " << ::tpy::print_bool(ref_param(false)) << "\n";
-    std::cout << "refparam_hatch" << " " << ::tpy::print_bool(ref_param_hatch(true)) << " " << ::tpy::print_bool(ref_param_hatch(false)) << "\n";
-    std::cout << "own" << " " << ::tpy::print_bool(own_param(true)) << " " << ::tpy::print_bool(own_param(false)) << "\n";
-    bool comp_skipped = comp_rhs(true);
+    std::cout << "and" << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(false)) << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(true)) << "\n";
+    std::cout << "and_hatch" << " " << ::tpy::print_bool(::tpyapp::main::and_rhs_hatch(false)) << " " << ::tpy::print_bool(::tpyapp::main::and_rhs_hatch(true)) << "\n";
+    std::cout << "or" << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(true)) << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(false)) << "\n";
+    std::cout << "or_hatch" << " " << ::tpy::print_bool(::tpyapp::main::or_rhs_hatch(true)) << " " << ::tpy::print_bool(::tpyapp::main::or_rhs_hatch(false)) << "\n";
+    std::cout << "ternary" << " " << ::tpyapp::main::ternary_arm(false) << " " << ::tpyapp::main::ternary_arm(true) << "\n";
+    std::cout << "ternary_hatch" << " " << ::tpyapp::main::ternary_arm_hatch(false) << " " << ::tpyapp::main::ternary_arm_hatch(true) << "\n";
+    std::cout << "chained" << " " << ::tpy::print_bool(::tpyapp::main::chained(5, 1)) << " " << ::tpy::print_bool(::tpyapp::main::chained(0, 5)) << "\n";
+    std::cout << "chained_hatch" << " " << ::tpy::print_bool(::tpyapp::main::chained_hatch(5, 1)) << " " << ::tpy::print_bool(::tpyapp::main::chained_hatch(0, 5)) << "\n";
+    std::cout << "refparam" << " " << ::tpy::print_bool(::tpyapp::main::ref_param(true)) << " " << ::tpy::print_bool(::tpyapp::main::ref_param(false)) << "\n";
+    std::cout << "refparam_hatch" << " " << ::tpy::print_bool(::tpyapp::main::ref_param_hatch(true)) << " " << ::tpy::print_bool(::tpyapp::main::ref_param_hatch(false)) << "\n";
+    std::cout << "own" << " " << ::tpy::print_bool(::tpyapp::main::own_param(true)) << " " << ::tpy::print_bool(::tpyapp::main::own_param(false)) << "\n";
+    bool comp_skipped = ::tpyapp::main::comp_rhs(true);
     std::cout << "comp_skipped" << " " << ::tpy::print_bool(comp_skipped) << "\n";
-    bool comp_taken = comp_rhs(false);
+    bool comp_taken = ::tpyapp::main::comp_rhs(false);
     std::cout << "comp_taken" << " " << ::tpy::print_bool(comp_taken) << "\n";
-    std::cout << "left" << " " << ::tpy::print_bool(left_operand(true)) << " " << ::tpy::print_bool(left_operand(false)) << "\n";
+    std::cout << "left" << " " << ::tpy::print_bool(::tpyapp::main::left_operand(true)) << " " << ::tpy::print_bool(::tpyapp::main::left_operand(false)) << "\n";
 }
 
 // main()
@@ -193,7 +193,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

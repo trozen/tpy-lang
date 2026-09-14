@@ -13,7 +13,7 @@ bool eq(std::optional<char> o) {
 // def main() -> None:
 //     print(eq(char("a")), eq(char("b")), eq(None))
 void main() {
-    std::cout << ::tpy::print_bool(eq(::tpy::char_from_str("a"))) << " " << ::tpy::print_bool(eq(::tpy::char_from_str("b"))) << " " << ::tpy::print_bool(eq(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq(::tpy::char_from_str("a"))) << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::char_from_str("b"))) << " " << ::tpy::print_bool(::tpyapp::main::eq(std::nullopt)) << "\n";
 }
 
 // main()
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

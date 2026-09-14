@@ -236,9 +236,9 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    test_roundtrip();
-    test_nested();
-    test_optional();
+    ::tpyapp::main::test_roundtrip();
+    ::tpyapp::main::test_nested();
+    ::tpyapp::main::test_optional();
 }
 
 } // namespace tpyapp::main

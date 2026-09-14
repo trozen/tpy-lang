@@ -191,7 +191,7 @@ __gen_make_nodes make_nodes(int32_t n) {
 void main() {
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_0 = two_then(3);
+        auto __obj_0 = ::tpyapp::main::two_then(3);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -202,7 +202,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_1 = two_then(4);
+        auto __obj_1 = ::tpyapp::main::two_then(4);
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
@@ -216,7 +216,7 @@ void main() {
     std::vector<int32_t> nums = {10, 20, 30, 40};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_2 = head<int32_t>(nums, 2);
+        auto __obj_2 = ::tpyapp::main::head<int32_t>(nums, 2);
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
@@ -227,7 +227,7 @@ void main() {
     })) << "\n";
     ::tpy::ordered_set<int32_t> s = ({
         ::tpy::ordered_set<int32_t> __result;
-        auto __obj_3 = two_then(2);
+        auto __obj_3 = ::tpyapp::main::two_then(2);
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
@@ -239,7 +239,7 @@ void main() {
     std::cout << ::tpy::__len__(s) << "\n";
     ::tpy::ordered_map<int32_t, int32_t> d = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
-        auto __obj_4 = two_then(2);
+        auto __obj_4 = ::tpyapp::main::two_then(2);
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
@@ -251,7 +251,7 @@ void main() {
     std::cout << ::tpy::__getitem__(d, 2) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_5 = simple(3);
+        auto __obj_5 = ::tpyapp::main::simple(3);
         auto __beg_5 = __obj_5.begin();
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
@@ -274,7 +274,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_7 = pairs(3);
+        auto __obj_7 = ::tpyapp::main::pairs(3);
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
@@ -287,7 +287,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_8 = head<int32_t>(nums, 0);
+        auto __obj_8 = ::tpyapp::main::head<int32_t>(nums, 0);
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
@@ -298,7 +298,7 @@ void main() {
     })) << "\n";
     std::vector<Node> xs = ({
         std::vector<Node> __result;
-        auto __obj_9 = make_nodes(3);
+        auto __obj_9 = ::tpyapp::main::make_nodes(3);
         auto __beg_9 = __obj_9.begin();
         auto __end_9 = __obj_9.end();
         for (; __beg_9 != __end_9; ++__beg_9) {
@@ -344,7 +344,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

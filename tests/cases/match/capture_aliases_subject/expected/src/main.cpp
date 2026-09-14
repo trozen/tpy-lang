@@ -50,7 +50,7 @@ void main() {
     }
     std::cout << b2.v << "\n";
     std::optional<Box> s;
-    auto __match_subject_3 = make();
+    auto __match_subject_3 = ::tpyapp::main::make();
     {
         s = std::move(__match_subject_3);
         s->v = ::tpy::BigInt(11);
@@ -74,7 +74,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

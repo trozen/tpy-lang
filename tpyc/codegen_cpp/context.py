@@ -364,8 +364,8 @@ def imported_free_callee_cpp(module_attributes, func_name: str,
                              mangled: str | None = None) -> str | None:
     """The cross-module free-callee spelling, or None when `func_name` is
     not bound as an imported FUNCTION in the calling module's attribute
-    table (local definitions spell bare). The ONE qualification decision
-    behind every cross-module free call. `mangled` overrides the canonical
+    table (local definitions spell bare). The cross-module half of
+    `free_callee_cpp`. `mangled` overrides the canonical
     name for literal-specialized overload stubs (`_free_callee_kind`
     threads that spelling here)."""
     qual = lookup_imported(module_attributes, func_name, SymbolKind.FUNCTION)
@@ -374,6 +374,39 @@ def imported_free_callee_cpp(module_attributes, func_name: str,
     source_module, qual_name = qual
     return qualified_cpp_name(source_module,
                               mangled if mangled is not None else qual_name)
+
+
+def free_callee_cpp(module_attributes, module_name: str, cpp_module_name: str,
+                    func_name: str, fi,
+                    mangled: str | None = None) -> str | None:
+    """The absolute-qualified spelling of a free function that some namespace
+    can name -- an imported one (`::tpyapp::other::f`) or one defined at module
+    scope in the module being emitted (`::tpyapp::main::f`) -- and None for a
+    callee no namespace can name (a `Callable`/`Fn` value, a nested def's frame
+    lambda). The ONE qualification decision behind every free CALL. A
+    function REFERENCE bound as a value (`fn = double`) is not a call, so ADL
+    never applies to it and it stays a plain id-expression.
+
+    A bare `f(args)` inside `namespace tpyapp::main` is an unqualified call, so
+    ADL adds every argument type's namespace to the lookup and a `std::` or
+    `::tpy::` TEMPLATE of the same name can out-rank the user's function (a
+    forwarding-reference `std::invoke`/`std::apply` beats a `const T&`
+    parameter). A qualified-id disables ADL, which is why the spelling -- not a
+    reserved-name denylist -- is the fix.
+
+    The imported binding is consulted first; it is absent exactly when the name
+    is not bound as an imported FUNCTION here (a local `def` shadowing an
+    import overwrites that binding). The same-module test is then the
+    registration fact: a module-scope `def` is registered as
+    `<module_name>.<name>`. `cpp_module_name` (the file-derived name codegen
+    namespaces by, which differs from `module_name` for the entry point)
+    supplies the namespace, so a `# tpy: cpp_namespace` override is honored."""
+    icc = imported_free_callee_cpp(module_attributes, func_name, mangled)
+    if icc is not None:
+        return icc
+    if fi is None or fi.qualified_name != f"{module_name}.{func_name}":
+        return None
+    return qualified_cpp_name(cpp_module_name, mangled or func_name)
 
 
 def module_qualified_callee_cpp(registry, module_attributes, module_name: str,

@@ -27,11 +27,11 @@ void main() {
     Dog d = Dog("Rex", "Lab");
     Animal a = Dog("Buddy", "Poodle");
     std::cout << a.name << "\n";
-    greet(d);
+    ::tpyapp::main::greet(d);
     Dog __tmp_1 = Dog("Max", "Beagle");
-    greet(__tmp_1);
+    ::tpyapp::main::greet(__tmp_1);
     Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
-    greet(p);
+    ::tpyapp::main::greet(p);
     Animal a2 = std::move(p);
     std::cout << a2.name << "\n";
 }
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

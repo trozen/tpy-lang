@@ -128,14 +128,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_element_borrow_append();
-    test_element_borrow_subscript_assign();
-    test_alias_no_warn();
-    test_value_type_no_borrow();
-    test_reassign_clears_borrows();
-    test_reassign_borrower_clears();
-    test_element_borrow_del();
-    test_field_borrow_write();
+    ::tpyapp::main::test_element_borrow_append();
+    ::tpyapp::main::test_element_borrow_subscript_assign();
+    ::tpyapp::main::test_alias_no_warn();
+    ::tpyapp::main::test_value_type_no_borrow();
+    ::tpyapp::main::test_reassign_clears_borrows();
+    ::tpyapp::main::test_reassign_borrower_clears();
+    ::tpyapp::main::test_element_borrow_del();
+    ::tpyapp::main::test_field_borrow_write();
 }
 
 } // namespace tpyapp::main

@@ -79,14 +79,14 @@ int32_t probe(bool flag) {
 void main() {
     {
         try {
-            probe(true);
+            ::tpyapp::main::probe(true);
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught 1" << "\n";
         }
     }
     {
         try {
-            probe(false);
+            ::tpyapp::main::probe(false);
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught 2" << "\n";
         }
@@ -99,7 +99,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -19,7 +19,7 @@ std::string label() {
 //         case _:
 //             return "other"
 std::string chain_call_subject() {
-    auto __match_subject_1 = label();
+    auto __match_subject_1 = ::tpyapp::main::label();
     if (__match_subject_1 == "a") {
         return "a";
     } else {
@@ -37,7 +37,7 @@ std::string chain_call_subject() {
 //         case _:
 //             return "other"
 std::string guarded_call_subject(bool flag) {
-    auto __match_subject_1 = label();
+    auto __match_subject_1 = ::tpyapp::main::label();
     if (__match_subject_1 == "a") {
         if (flag) {
             return "a-flag";
@@ -100,7 +100,7 @@ int32_t switch_call_subject(Counter& c) {
 //             return 0
 //     return -1
 int32_t str_switch_call_subject() {
-    auto __match_subject_1 = label();
+    auto __match_subject_1 = ::tpyapp::main::label();
     if (__match_subject_1.size() >= 1) {
         switch (static_cast<unsigned char>(__match_subject_1[0])) {
         case 'a': {
@@ -355,28 +355,28 @@ int32_t poly_as_capture(Pet& p) {
 //     # 4: both captures aliased `cat` rather than copying it.
 //     print(cat.hits)
 void main() {
-    std::cout << chain_call_subject() << "\n";
-    std::cout << guarded_call_subject(true) << "\n";
-    std::cout << guarded_call_subject(false) << "\n";
+    std::cout << ::tpyapp::main::chain_call_subject() << "\n";
+    std::cout << ::tpyapp::main::guarded_call_subject(true) << "\n";
+    std::cout << ::tpyapp::main::guarded_call_subject(false) << "\n";
     Counter c = Counter();
-    std::cout << switch_call_subject(c) << "\n";
-    std::cout << switch_call_subject(c) << "\n";
+    std::cout << ::tpyapp::main::switch_call_subject(c) << "\n";
+    std::cout << ::tpyapp::main::switch_call_subject(c) << "\n";
     std::cout << c.hits << "\n";
-    std::cout << str_switch_call_subject() << "\n";
-    std::cout << or_wildcard_switch(1) << "\n";
-    std::cout << or_wildcard_switch(7) << "\n";
-    std::cout << or_wildcard_chain("a") << "\n";
-    std::cout << or_wildcard_chain("b") << "\n";
-    std::cout << or_wildcard_chain("z") << "\n";
-    std::cout << as_capture(3) << "\n";
-    std::cout << optional_inner_as_capture(3) << "\n";
-    std::cout << optional_inner_as_capture(std::nullopt) << "\n";
-    std::cout << str_switch_as_capture("c") << "\n";
-    std::cout << str_switch_as_capture("zz") << "\n";
+    std::cout << ::tpyapp::main::str_switch_call_subject() << "\n";
+    std::cout << ::tpyapp::main::or_wildcard_switch(1) << "\n";
+    std::cout << ::tpyapp::main::or_wildcard_switch(7) << "\n";
+    std::cout << ::tpyapp::main::or_wildcard_chain("a") << "\n";
+    std::cout << ::tpyapp::main::or_wildcard_chain("b") << "\n";
+    std::cout << ::tpyapp::main::or_wildcard_chain("z") << "\n";
+    std::cout << ::tpyapp::main::as_capture(3) << "\n";
+    std::cout << ::tpyapp::main::optional_inner_as_capture(3) << "\n";
+    std::cout << ::tpyapp::main::optional_inner_as_capture(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::str_switch_as_capture("c") << "\n";
+    std::cout << ::tpyapp::main::str_switch_as_capture("zz") << "\n";
     Dog __tmp_1{Dog()};
-    std::cout << poly_as_capture(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::poly_as_capture(__tmp_1) << "\n";
     Cat cat = Cat();
-    std::cout << poly_as_capture(cat) << "\n";
+    std::cout << ::tpyapp::main::poly_as_capture(cat) << "\n";
     std::cout << cat.hits << "\n";
 }
 
@@ -386,7 +386,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

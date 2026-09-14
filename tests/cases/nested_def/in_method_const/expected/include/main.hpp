@@ -57,7 +57,7 @@ inline int32_t C::peek(int32_t k) const {
 // def scaled(self, k: int32) -> int32:
 //     return apply(lambda x: x * self.n, k)
 inline int32_t C::scaled(int32_t k) const {
-    return apply([this](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, this->n)); }, k);
+    return ::tpyapp::main::apply([this](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, this->n)); }, k);
 }
 void __tpy_init();
 } // namespace tpyapp::main

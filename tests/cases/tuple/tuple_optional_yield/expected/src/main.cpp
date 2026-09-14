@@ -128,7 +128,7 @@ __gen_gen_while gen_while(std::vector<P>& items, int32_t n) {
 void main() {
     std::vector<P> items = {P(1), P(2), P(3)};
     {
-        auto __src_0 = gen_for(items);
+        auto __src_0 = ::tpyapp::main::gen_for(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -143,7 +143,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = gen_range(items);
+        auto __src_2 = ::tpyapp::main::gen_range(items);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -158,7 +158,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = gen_while(items, 2);
+        auto __src_4 = ::tpyapp::main::gen_while(items, 2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -180,7 +180,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

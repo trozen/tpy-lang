@@ -17,7 +17,7 @@ namespace tpyapp::main {
 //     print("max:", lk, ln)
 void main() {
     std::vector<std::tuple<std::string, int32_t>> ps = {std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1}, std::tuple<std::string, int32_t>{"c", 2}};
-    auto __obj_0 = ranked<std::string>(ps);
+    auto __obj_0 = ::tpyapp::main::ranked<std::string>(ps);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -28,7 +28,7 @@ void main() {
         std::cout << k << " " << n << "\n";
     }
     std::vector<std::tuple<int32_t, std::string>> ns = {std::tuple<int32_t, std::string>{1, "c"}, std::tuple<int32_t, std::string>{2, "a"}, std::tuple<int32_t, std::string>{3, "b"}};
-    auto __obj_1 = by_name<int32_t>(ns);
+    auto __obj_1 = ::tpyapp::main::by_name<int32_t>(ns);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -38,11 +38,11 @@ void main() {
         std::string_view s = std::get<1>(__tup_2);
         std::cout << nm << " " << s << "\n";
     }
-    auto __tup_3 = smaller<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
+    auto __tup_3 = ::tpyapp::main::smaller<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
     std::string_view sk = std::get<0>(__tup_3);
     int32_t sn = std::get<1>(__tup_3);
     std::cout << "min:" << " " << sk << " " << sn << "\n";
-    auto __tup_4 = larger<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
+    auto __tup_4 = ::tpyapp::main::larger<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
     std::string_view lk = std::get<0>(__tup_4);
     int32_t ln = std::get<1>(__tup_4);
     std::cout << "max:" << " " << lk << " " << ln << "\n";
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

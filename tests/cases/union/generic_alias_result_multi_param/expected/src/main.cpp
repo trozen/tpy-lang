@@ -27,7 +27,7 @@ namespace tpyapp::main {
 //     else:
 //         print(r2)
 void main() {
-    ::tpy::Union<int32_t, std::string> r = parse_int("42");
+    ::tpy::Union<int32_t, std::string> r = ::tpyapp::main::parse_int("42");
     if (std::holds_alternative<int32_t>(r)) {
         auto& __r = std::get<int32_t>(r);
         std::cout << ::tpy::__str__(__r) << "\n";
@@ -35,7 +35,7 @@ void main() {
         auto& __r = std::get<std::string>(r);
         std::cout << ::tpy::__str__(__r) << "\n";
     }
-    ::tpy::Union<int32_t, std::string> r2 = parse_int("oops");
+    ::tpy::Union<int32_t, std::string> r2 = ::tpyapp::main::parse_int("oops");
     if (std::holds_alternative<int32_t>(r2)) {
         auto& __r2 = std::get<int32_t>(r2);
         std::cout << ::tpy::__str__(__r2) << "\n";
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

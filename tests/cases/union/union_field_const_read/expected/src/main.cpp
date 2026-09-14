@@ -85,7 +85,7 @@ std::string show_dog(const Dog& d) {
 std::string forward_pet(::tpy::Union<const Cat*, const Dog*> pet) {
     if (std::holds_alternative<const Dog*>(pet)) {
         auto& __pet = *std::get<const Dog*>(pet);
-        return show_dog(__pet);
+        return ::tpyapp::main::show_dog(__pet);
     }
     auto& __pet = *std::get<const Cat*>(pet);
     return "";
@@ -119,17 +119,17 @@ void main() {
     Dog d = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
     Zoo z = Zoo(pet.as_const(), "test");
-    std::cout << get_pet_name(z) << "\n";
+    std::cout << ::tpyapp::main::get_pet_name(z) << "\n";
     Cat c = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     Zoo z2 = Zoo(pet2.as_const(), "cats");
-    std::cout << get_pet_name(z2) << "\n";
-    std::cout << get_pet_name_ro(z) << "\n";
-    std::cout << greet_pet(pet.as_const()) << "\n";
-    std::cout << "forward_pet:" << " " << forward_pet(pet.as_const()) << "\n";
+    std::cout << ::tpyapp::main::get_pet_name(z2) << "\n";
+    std::cout << ::tpyapp::main::get_pet_name_ro(z) << "\n";
+    std::cout << ::tpyapp::main::greet_pet(pet.as_const()) << "\n";
+    std::cout << "forward_pet:" << " " << ::tpyapp::main::forward_pet(pet.as_const()) << "\n";
     d.name = "Buddy";
-    std::cout << "forward_pet:" << " " << forward_pet(pet.as_const()) << "\n";
-    std::cout << "forward_pet:" << " " << forward_pet(pet2.as_const()) << "\n";
+    std::cout << "forward_pet:" << " " << ::tpyapp::main::forward_pet(pet.as_const()) << "\n";
+    std::cout << "forward_pet:" << " " << ::tpyapp::main::forward_pet(pet2.as_const()) << "\n";
 }
 
 // main()
@@ -138,7 +138,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

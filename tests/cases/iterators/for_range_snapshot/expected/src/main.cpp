@@ -87,7 +87,7 @@ void __tpy_init() {
     initialized = true;
 
     count = 0;
-    int32_t __stop_0 = get_stop(3);
+    int32_t __stop_0 = ::tpyapp::main::get_stop(3);
     for (int32_t i = 0; i < __stop_0; ++i) {
         count = ::tpy::add_check<int32_t>(count, 1);
     }
@@ -100,8 +100,8 @@ void __tpy_init() {
         count2 = ::tpy::add_check<int32_t>(count2, 1);
     }
     std::cout << count2 << "\n";
-    test_stop_snapshot();
-    test_all_args_snapshot();
+    ::tpyapp::main::test_stop_snapshot();
+    ::tpyapp::main::test_all_args_snapshot();
 }
 
 } // namespace tpyapp::main

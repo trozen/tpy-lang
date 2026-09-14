@@ -239,7 +239,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_framegen::__next__() {
     case S_RESUME_1: {  // after: yield sum(a + b for a, b in zip(xs, xs))  # tpyc: ok
         __state = S_RESUME_2;
         return ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-    return [__st = ::tpy::genexpr_state{gen()}]() mutable -> std::optional<int32_t> {
+    return [__st = ::tpy::genexpr_state{::tpyapp::main::gen()}]() mutable -> std::optional<int32_t> {
         if (!__st.beg) __st.beg = __st.src.begin();
         else if (*__st.beg != __st.src.end()) ++(*__st.beg);
         while (*__st.beg != __st.src.end()) {
@@ -601,7 +601,7 @@ void main() {
         };
     }))) << "\n";
     std::cout << "gen" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{gen()}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpyapp::main::gen()}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -612,7 +612,7 @@ void main() {
         };
     })) << "\n";
     std::cout << "ranged" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{ranged()}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpyapp::main::ranged()}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -623,7 +623,7 @@ void main() {
         };
     })) << "\n";
     std::cout << "zip_gens" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{::tpy::builtin_zip<int32_t, int32_t>(gen(), four())}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::gen(), ::tpyapp::main::four())}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -636,7 +636,7 @@ void main() {
         };
     })) << "\n";
     std::cout << "zip_gens_long" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{::tpy::builtin_zip<int32_t, int32_t>(four(), gen())}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::four(), ::tpyapp::main::gen())}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -649,7 +649,7 @@ void main() {
         };
     })) << "\n";
     std::cout << "enumerate_gen" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{::tpy::builtin_enumerate<int32_t>(gen())}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpy::builtin_enumerate<int32_t>(::tpyapp::main::gen())}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -687,7 +687,7 @@ void main() {
     })) << "\n";
     std::cout << "zip_genexpr_gen" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, [&xs]() {
         return [__st = ::tpy::genexpr_state{::tpy::builtin_zip<int32_t, int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{gen()}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpyapp::main::gen()}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -709,7 +709,7 @@ void main() {
         };
     })) << "\n";
     std::cout << "filter_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{::tpy::builtin_filter<int32_t>(big, gen())}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpy::builtin_filter<int32_t>(big, ::tpyapp::main::gen())}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -720,7 +720,7 @@ void main() {
         };
     }))) << "\n";
     std::cout << "own_call" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{make_list()}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpyapp::main::make_list()}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -731,7 +731,7 @@ void main() {
         };
     })) << "\n";
     std::cout << "borrow_call" << " " << ::tpy::builtin_sum<int32_t>([&xs]() {
-        auto& __src = borrow_list(xs);
+        auto& __src = ::tpyapp::main::borrow_list(xs);
         return ::tpy::make_generator<int32_t>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
                 while (__beg != __end) {
@@ -808,7 +808,7 @@ void main() {
         };
     })) << "\n";
     std::cout << "gen_filter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{gen()}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpyapp::main::gen()}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -822,7 +822,7 @@ void main() {
         };
     }))) << "\n";
     std::cout << "filter_tail_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{ranged()}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpyapp::main::ranged()}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -864,7 +864,7 @@ void main() {
         };
     }))) << "\n";
     auto __tmp_1 = ::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{gen()}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpyapp::main::gen()}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -874,9 +874,9 @@ void main() {
             return std::nullopt;
         };
     });
-    std::cout << "drain" << " " << drain(__tmp_1) << "\n";
-    std::cout << "byte_sum" << " " << byte_sum(::tpy::bytes_literal("abc", 3)) << "\n";
-    std::cout << "closure" << " " << closure_pos(d, 10) << "\n";
+    std::cout << "drain" << " " << ::tpyapp::main::drain(__tmp_1) << "\n";
+    std::cout << "byte_sum" << " " << ::tpyapp::main::byte_sum(::tpy::bytes_literal("abc", 3)) << "\n";
+    std::cout << "closure" << " " << ::tpyapp::main::closure_pos(d, 10) << "\n";
     std::cout << "any" << " " << ::tpy::print_bool(::tpy::builtin_any(::tpy::make_generator<bool>(std::in_place, [&d]() {
         return [__st = ::tpy::genexpr_state{::tpy::dict_values(d)}]() mutable -> std::optional<bool> {
             if (!__st.beg) __st.beg = __st.src.begin();
@@ -971,7 +971,7 @@ void main() {
     })) << "\n";
     {
         auto __src_3 = ::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{noisy()}]() mutable -> std::optional<int32_t> {
+        return [__st = ::tpy::genexpr_state{::tpyapp::main::noisy()}]() mutable -> std::optional<int32_t> {
             if (!__st.beg) __st.beg = __st.src.begin();
             else if (*__st.beg != __st.src.end()) ++(*__st.beg);
             while (*__st.beg != __st.src.end()) {
@@ -989,13 +989,13 @@ void main() {
         std::cout << "noisy: got" << " " << v << "\n";
         }
     }
-    std::cout << "ro_values" << " " << ro_values(d) << "\n";
-    std::cout << "ro_items" << " " << ro_items(d) << "\n";
+    std::cout << "ro_values" << " " << ::tpyapp::main::ro_values(d) << "\n";
+    std::cout << "ro_items" << " " << ::tpyapp::main::ro_items(d) << "\n";
     Tally t = Tally(::tpy::ordered_map<int32_t, int32_t>({{1, 2}, {3, 4}}));
     std::cout << "ctor" << " " << t.total << "\n";
     std::cout << "method" << " " << t.keys_sum() << "\n";
-    std::cout << "frame" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(framegen(xs))) << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(aio(xs))) << "\n";
+    std::cout << "frame" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::framegen(xs))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::aio(xs))) << "\n";
     auto __ctx_1 = Guard();
     auto g = __ctx_1.__enter__();
     try {
@@ -1060,14 +1060,14 @@ void main() {
         })) << "\n";
     }
     {
-        std::cout << "error_return" << " " << ({ auto __er_2 = fallible(d); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::fallible(d); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except Err:
         __except_1:;
         std::cout << "error_return: raised" << "\n";
         __after_try_1:;
     }
-    std::cout << "match" << " " << by_match(1, xs) << "\n";
+    std::cout << "match" << " " << ::tpyapp::main::by_match(1, xs) << "\n";
 }
 
 // import asyncio
@@ -1108,7 +1108,7 @@ void __tpy_init() {
             return std::nullopt;
         };
     })) << "\n";
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

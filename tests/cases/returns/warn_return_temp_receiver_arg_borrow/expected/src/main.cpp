@@ -22,7 +22,7 @@ Row take_copy(std::vector<Row>& rows) {
 //     print(take(rows).v, take_copy(rows).v, rows[0].v)
 void main() {
     std::vector<Row> rows = {Row(1)};
-    std::cout << take(rows).v << " " << take_copy(rows).v << " " << ::tpy::__getitem__(rows, 0).v << "\n";
+    std::cout << ::tpyapp::main::take(rows).v << " " << ::tpyapp::main::take_copy(rows).v << " " << ::tpy::__getitem__(rows, 0).v << "\n";
 }
 
 // main()
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

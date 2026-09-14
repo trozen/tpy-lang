@@ -35,7 +35,7 @@ int32_t handler_declares(std::string_view s) {
     int32_t n;
     {
         {
-            auto __try_tmp_2 = parse_digit(s);
+            auto __try_tmp_2 = ::tpyapp::main::parse_digit(s);
             if (!__try_tmp_2.has_value()) goto __except_1;
             d = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -68,7 +68,7 @@ int32_t handler_binding_declares(std::string_view s) {
     {
         std::optional<ParseError> __err_opt_3;
         {
-            auto __try_tmp_4 = parse_digit(s);
+            auto __try_tmp_4 = ::tpyapp::main::parse_digit(s);
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             d = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -101,7 +101,7 @@ int32_t try_body_declares(std::string_view s) {
     int32_t v;
     {
         {
-            auto __try_tmp_6 = parse_digit(s);
+            auto __try_tmp_6 = ::tpyapp::main::parse_digit(s);
             if (!__try_tmp_6.has_value()) goto __except_5;
             v = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
@@ -123,12 +123,12 @@ int32_t try_body_declares(std::string_view s) {
 //     print(try_body_declares("1"))
 //     print(try_body_declares("x"))
 void main() {
-    std::cout << handler_declares("1") << "\n";
-    std::cout << handler_declares("x") << "\n";
-    std::cout << handler_binding_declares("0") << "\n";
-    std::cout << handler_binding_declares("x") << "\n";
-    std::cout << try_body_declares("1") << "\n";
-    std::cout << try_body_declares("x") << "\n";
+    std::cout << ::tpyapp::main::handler_declares("1") << "\n";
+    std::cout << ::tpyapp::main::handler_declares("x") << "\n";
+    std::cout << ::tpyapp::main::handler_binding_declares("0") << "\n";
+    std::cout << ::tpyapp::main::handler_binding_declares("x") << "\n";
+    std::cout << ::tpyapp::main::try_body_declares("1") << "\n";
+    std::cout << ::tpyapp::main::try_body_declares("x") << "\n";
 }
 
 // main()
@@ -137,7 +137,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

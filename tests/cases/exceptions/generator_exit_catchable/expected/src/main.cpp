@@ -29,7 +29,7 @@ void boom() {
 void main() {
     {
         try {
-            boom();
+            ::tpyapp::main::boom();
         } catch (const ::tpy::GeneratorExit& e) {
             std::cout << "caught:" << " " << e << "\n";
         }
@@ -38,7 +38,7 @@ void main() {
         try {
             {
                 try {
-                    boom();
+                    ::tpyapp::main::boom();
                 } catch (const ::tpy::Exception&) {
                     std::cout << "wrong: Exception caught GeneratorExit" << "\n";
                 }
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

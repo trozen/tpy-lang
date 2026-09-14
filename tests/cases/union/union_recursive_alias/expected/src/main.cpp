@@ -27,7 +27,7 @@ namespace tpyapp::main {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            ::tpy::BigInt d = depth(child);
+            ::tpy::BigInt d = ::tpyapp::main::depth(child);
             if ((d > result)) {
                 result = d;
             }
@@ -49,10 +49,10 @@ void main() {
     Tree branch = std::vector<Tree>{1, 2};
     std::vector<Tree> inner = {3, 4};
     std::vector<Tree> nested = ::tpy::make_vector<Tree>(1, std::move(inner));
-    std::cout << depth(leaf) << "\n";
-    std::cout << depth(branch) << "\n";
+    std::cout << ::tpyapp::main::depth(leaf) << "\n";
+    std::cout << ::tpyapp::main::depth(branch) << "\n";
     Tree __tmp_1 = std::move(nested);
-    std::cout << depth(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::depth(__tmp_1) << "\n";
 }
 
 // main()
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

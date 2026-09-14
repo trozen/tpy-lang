@@ -16,11 +16,11 @@ namespace tpyapp::main {
 //     for v in nums:
 //         print(v)
 void main() {
-    int32_t x = create_default<int32_t>();
+    int32_t x = ::tpyapp::main::create_default<int32_t>();
     std::cout << x << "\n";
-    std::string s = create_default<std::string>();
+    std::string s = ::tpyapp::main::create_default<std::string>();
     std::cout << ::tpy::__len__(s) << "\n";
-    std::vector<int32_t> nums = fill<int32_t>(3);
+    std::vector<int32_t> nums = ::tpyapp::main::fill<int32_t>(3);
     std::cout << ::tpy::__len__(nums) << "\n";
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

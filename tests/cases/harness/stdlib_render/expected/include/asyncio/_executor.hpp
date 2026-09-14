@@ -754,7 +754,7 @@ inline void EpollReactor::close() {
 //     self.reactor = None
 //     self.shutdown_armed = False
 inline Executor::Executor() {
-    if ((_get_current_executor() != nullptr)) {
+    if ((::tpystd::asyncio::_executor::_get_current_executor() != nullptr)) {
         throw ::tpy::RuntimeError("Executor: another executor is already running (nested asyncio.run or leaked _ExecutorScope)");
     }
     this->slots = std::vector<Slot>{};
@@ -808,7 +808,7 @@ inline void Executor::unregister_fd(int32_t fd) {
 // def make_waker_for_slot(self, slot_id: int32, generation: int32) -> Waker:
 //     return _make_waker(self, slot_id, generation)
 inline ::tpystd::coro::Waker Executor::make_waker_for_slot(int32_t slot_id, int32_t generation) {
-    return _make_waker((*this), slot_id, generation);
+    return ::tpystd::asyncio::_executor::_make_waker((*this), slot_id, generation);
 }
 
 // def spawn(self, box: Own[Box[AnyTask]]) -> int32:
@@ -948,7 +948,7 @@ inline bool Executor::_check_shutdown_signal(int32_t main_id, bool already) {
 // def __init__(self, executor: Executor) -> None:
 //     _set_current_executor(executor)
 inline _ExecutorScope::_ExecutorScope(Executor& executor) {
-    _set_current_executor(&executor);
+    ::tpystd::asyncio::_executor::_set_current_executor(&executor);
 }
 
 inline _ExecutorScope::_ExecutorScope(_ExecutorScope&& other) noexcept {
@@ -966,7 +966,7 @@ inline _ExecutorScope& _ExecutorScope::operator=(_ExecutorScope&& other) noexcep
 //     _clear_current_executor()
 inline _ExecutorScope::~_ExecutorScope() {
     if (!this->__tpy_owned_) return;
-    _clear_current_executor();
+    ::tpystd::asyncio::_executor::_clear_current_executor();
 }
 // def task_from_coro[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
 //     """Box an awaitable into a heap-allocated Task[T] without
@@ -975,7 +975,7 @@ inline _ExecutorScope::~_ExecutorScope() {
 //     return _build_task[T](coro, False)
 template<typename T>
 Task<T> task_from_coro(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro) {
-    return _build_task<T>(std::move(coro), false);
+    return ::tpystd::asyncio::_executor::_build_task<T>(std::move(coro), false);
 }
 // def make_executor_owned_task[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
 //     """Build a Task[T] flagged `executor_owned=True` (ready to be
@@ -983,7 +983,7 @@ Task<T> task_from_coro(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro) {
 //     return _build_task[T](coro, True)
 template<typename T>
 Task<T> make_executor_owned_task(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro) {
-    return _build_task<T>(std::move(coro), true);
+    return ::tpystd::asyncio::_executor::_build_task<T>(std::move(coro), true);
 }
 // def _build_task[T](coro: Own[Cancellable[T]], executor_owned: bool) -> Own[Task[T]]:
 //     frame = Box[Cancellable[T]](coro)
@@ -1012,8 +1012,8 @@ template<typename T>
 //     return task_to_any_box[T](task)
 template<typename T>
 ::tpystd::tplib::box::Box<AnyTask> _make_any_task_for_test(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro) {
-    Task<T> task = make_executor_owned_task<T>(std::move(coro));
-    return task_to_any_box<T>(task);
+    Task<T> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
+    return ::tpystd::asyncio::_executor::task_to_any_box<T>(task);
 }
 
 void __tpy_init();

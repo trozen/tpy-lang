@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //         return y
 //     return -1
 int32_t via_ternary(std::vector<int32_t>& xs, bool c) {
-    int32_t* y = ((c) ? (first<int32_t>(xs)) : (nullptr));
+    int32_t* y = ((c) ? (::tpyapp::main::first<int32_t>(xs)) : (nullptr));
     if ((y != nullptr)) {
         return std::move((*y));
     }
@@ -28,7 +28,7 @@ int32_t via_ternary(std::vector<int32_t>& xs, bool c) {
 int32_t via_branches(std::vector<int32_t>& xs, bool c) {
     int32_t* z;
     if (c) {
-        z = first<int32_t>(xs);
+        z = ::tpyapp::main::first<int32_t>(xs);
     } else {
         z = nullptr;
     }
@@ -46,10 +46,10 @@ int32_t via_branches(std::vector<int32_t>& xs, bool c) {
 //     print(via_branches(xs, False))
 void main() {
     std::vector<int32_t> xs = {10, 20, 30};
-    std::cout << via_ternary(xs, true) << "\n";
-    std::cout << via_ternary(xs, false) << "\n";
-    std::cout << via_branches(xs, true) << "\n";
-    std::cout << via_branches(xs, false) << "\n";
+    std::cout << ::tpyapp::main::via_ternary(xs, true) << "\n";
+    std::cout << ::tpyapp::main::via_ternary(xs, false) << "\n";
+    std::cout << ::tpyapp::main::via_branches(xs, true) << "\n";
+    std::cout << ::tpyapp::main::via_branches(xs, false) << "\n";
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

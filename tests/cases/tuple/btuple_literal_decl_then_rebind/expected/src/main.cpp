@@ -25,7 +25,7 @@ int32_t use(Holder& h, Box& b) {
 void main() {
     Holder h = Holder(Box(5));
     Box __tmp_1 = Box(3);
-    int32_t first = use(h, __tmp_1);
+    int32_t first = ::tpyapp::main::use(h, __tmp_1);
     std::cout << first << " " << std::get<1>(h.pair).val << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

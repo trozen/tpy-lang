@@ -15,7 +15,7 @@ std::tuple<int32_t, int32_t> make_pair() {
 //     print(pair[0])
 //     print(pair[1])
 void main() {
-    std::tuple<int32_t, int32_t> pair = make_pair();
+    std::tuple<int32_t, int32_t> pair = ::tpyapp::main::make_pair();
     std::cout << std::get<0>(pair) << "\n";
     std::cout << std::get<1>(pair) << "\n";
 }
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

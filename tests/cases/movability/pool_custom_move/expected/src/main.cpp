@@ -24,7 +24,7 @@ Pool<Item, 4> make() {
 //     moved = tag               # forced last-use move -> runs Tagged.__move__
 //     print("move_raise_guarded", moved.n)
 void main() {
-    Pool<Item, 4> pool = make();
+    Pool<Item, 4> pool = ::tpyapp::main::make();
     Pool<Item, 4> relocated = std::move(pool);
     std::cout << relocated.get(0).name << " " << relocated.get(1).name << "\n";
     Tagged tag = Tagged(7);
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

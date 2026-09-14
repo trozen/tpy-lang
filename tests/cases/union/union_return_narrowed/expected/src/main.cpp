@@ -54,13 +54,13 @@ void main() {
     Dog d = Dog("Rex");
     Cat c = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
-    ::tpy::Union<Cat*, Dog*> result = ensure_dog(pet);
+    ::tpy::Union<Cat*, Dog*> result = ::tpyapp::main::ensure_dog(pet);
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
         std::cout << __result.name << "\n";
     }
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
-    ::tpy::Union<Cat*, Dog*> result2 = pick_first_dog(pet2, pet);
+    ::tpy::Union<Cat*, Dog*> result2 = ::tpyapp::main::pick_first_dog(pet2, pet);
     if (std::holds_alternative<Dog*>(result2)) {
         auto& __result2 = *std::get<Dog*>(result2);
         std::cout << __result2.name << "\n";
@@ -73,7 +73,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

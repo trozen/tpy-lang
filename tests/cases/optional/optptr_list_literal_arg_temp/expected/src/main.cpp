@@ -20,7 +20,7 @@ void fill(Sink& s) {
 //     print(s.n)
 void main() {
     Sink s = Sink();
-    fill(s);
+    ::tpyapp::main::fill(s);
     std::cout << s.n << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

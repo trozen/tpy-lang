@@ -266,7 +266,7 @@ struct MutexGuard {
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_ref_t<T> __deref__() {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -274,7 +274,7 @@ struct MutexGuard {
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_cref_t<T> __deref__() const {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -282,7 +282,7 @@ struct MutexGuard {
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -293,7 +293,7 @@ struct MutexGuard {
     //     _require_locked(self._locked)
     //     unsafe_store(self._payload, uint32(0), value)
     void set(::tpy::own_param_t<T> value) const {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         this->_payload[0] = std::move(value);
     }
 
@@ -310,7 +310,7 @@ struct MutexGuard {
     //     _require_locked(self._locked)
     //     return self._raw_mu
     ::tpy::MovableMutex* _raw_mutex() const {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return this->_raw_mu;
     }
 
@@ -446,7 +446,7 @@ struct ReadGuard {
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_cref_t<T> __deref__() const {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -455,7 +455,7 @@ struct ReadGuard {
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_cref_t<T> get() const {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -516,7 +516,7 @@ struct WriteGuard {
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_ref_t<T> __deref__() {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -524,7 +524,7 @@ struct WriteGuard {
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_cref_t<T> __deref__() const {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -532,7 +532,7 @@ struct WriteGuard {
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -543,7 +543,7 @@ struct WriteGuard {
     //     _require_locked(self._locked)
     //     unsafe_store(self._payload, uint32(0), value)
     void set(::tpy::own_param_t<T> value) const {
-        _require_locked(this->_locked);
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
         this->_payload[0] = std::move(value);
     }
 

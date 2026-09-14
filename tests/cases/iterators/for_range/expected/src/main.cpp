@@ -46,8 +46,8 @@ void __tpy_init() {
     for (int32_t i = 0; i < 5; ++i) {
         std::cout << i << "\n";
     }
-    print_range(10, 15);
-    std::cout << sum_range(10) << "\n";
+    ::tpyapp::main::print_range(10, 15);
+    std::cout << ::tpyapp::main::sum_range(10) << "\n";
 }
 
 } // namespace tpyapp::main

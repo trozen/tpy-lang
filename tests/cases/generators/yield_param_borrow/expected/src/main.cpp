@@ -230,7 +230,7 @@ __coro_amain amain() {
 void main() {
     std::vector<int32_t> xs = {1, 2};
     {
-        auto __src_0 = each(xs);
+        auto __src_0 = ::tpyapp::main::each(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -242,7 +242,7 @@ void main() {
     }
     P p = P(1);
     {
-        auto __src_2 = rep(p);
+        auto __src_2 = ::tpyapp::main::rep(p);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -254,7 +254,7 @@ void main() {
     }
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     {
-        auto __src_4 = pairs(d);
+        auto __src_4 = ::tpyapp::main::pairs(d);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -265,7 +265,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = late_gen();
+        auto __src_6 = ::tpyapp::main::late_gen();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -274,7 +274,7 @@ void main() {
         std::cout << got_n << "\n";
         }
     }
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 
 // # Yielding a PARAM at a container / record yield slot, and an annotation-only
@@ -289,7 +289,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -56,7 +56,7 @@ __gen_twice twice(std::vector<Box>& xs) {
 void main() {
     std::vector<Box> data = {Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2))};
     {
-        auto __src_0 = twice(data);
+        auto __src_0 = ::tpyapp::main::twice(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -80,7 +80,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

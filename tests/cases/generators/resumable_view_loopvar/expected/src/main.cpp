@@ -192,7 +192,7 @@ void main() {
     ws.push_back("bb");
     int32_t seen = 0;
     {
-        auto __src_0 = words_gen(ws);
+        auto __src_0 = ::tpyapp::main::words_gen(ws);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -208,7 +208,7 @@ void main() {
     bs.push_back(::tpy::bytes_literal_owned("xyz", 3));
     seen = 0;
     {
-        auto __src_2 = blobs_gen(bs);
+        auto __src_2 = ::tpyapp::main::blobs_gen(bs);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -224,7 +224,7 @@ void main() {
     ps.push_back(std::tuple<std::string, int32_t>{"k", 9});
     seen = 0;
     {
-        auto __src_4 = pairs_gen(ps);
+        auto __src_4 = ::tpyapp::main::pairs_gen(ps);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -244,7 +244,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

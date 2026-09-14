@@ -122,9 +122,9 @@ void test_malformed_with_describe() {
 //     test_invalid_enum()
 //     test_malformed_with_describe()
 void main() {
-    test_missing_field();
-    test_invalid_enum();
-    test_malformed_with_describe();
+    ::tpyapp::main::test_missing_field();
+    ::tpyapp::main::test_invalid_enum();
+    ::tpyapp::main::test_malformed_with_describe();
 }
 
 
@@ -195,7 +195,7 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -26,14 +26,14 @@ namespace tpyapp::main {
 // def f(*items: int) -> int:
 //     return g(*items[1:])
 ::tpy::BigInt f(::tpy::varargs<const ::tpy::BigInt> items) {
-    return g(::tpy::varargs<const ::tpy::BigInt>(::tpy::list_slice(items, ::tpy::BasicSlice{1, std::nullopt})));
+    return ::tpyapp::main::g(::tpy::varargs<const ::tpy::BigInt>(::tpy::list_slice(items, ::tpy::BasicSlice{1, std::nullopt})));
 }
 
 // def main() -> None:
 //     print(f(10, 1, 2, 3))
 void main() {
     std::array<const ::tpy::BigInt, 4> __tmp_1{10, 1, 2, 3};
-    std::cout << f(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::f(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)) << "\n";
 }
 
 // main()
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

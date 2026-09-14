@@ -17,14 +17,14 @@ void connect(const Options& kwargs) {
 //     connect(**kwargs)
 void wrapper(const Options& kwargs) {
     std::cout << "forwarding..." << "\n";
-    connect(kwargs);
+    ::tpyapp::main::connect(kwargs);
 }
 
 // def main() -> None:
 //     wrapper(host="example.com", port=int32(443))
 void main() {
     Options __tmp_1 = Options("example.com", 443);
-    wrapper(__tmp_1);
+    ::tpyapp::main::wrapper(__tmp_1);
 }
 
 // main()
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

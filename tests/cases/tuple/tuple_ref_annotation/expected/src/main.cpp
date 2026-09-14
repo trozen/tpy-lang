@@ -20,7 +20,7 @@ std::tuple<int32_t, Point*> make(Point& p) {
 //     print(t[1])
 void main() {
     Point p = Point(10, 20);
-    auto t = make(p);
+    auto t = ::tpyapp::main::make(p);
     std::cout << std::get<0>(t) << "\n";
     std::cout << (*std::get<1>(t)) << "\n";
     p.x = 99;
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

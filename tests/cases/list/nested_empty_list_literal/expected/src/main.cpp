@@ -17,7 +17,7 @@ int32_t rows() {
 // def main() -> None:
 //     print(rows())
 void main() {
-    std::cout << rows() << "\n";
+    std::cout << ::tpyapp::main::rows() << "\n";
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

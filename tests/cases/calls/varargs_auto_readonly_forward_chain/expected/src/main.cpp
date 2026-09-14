@@ -20,13 +20,13 @@ void leaf(::tpy::varargs<Box> items) {
 // def mid(*items: Box) -> None:
 //     leaf(*items)
 void mid(::tpy::varargs<Box> items) {
-    leaf(::tpy::varargs<Box>(items));
+    ::tpyapp::main::leaf(::tpy::varargs<Box>(items));
 }
 
 // def top(*items: Box) -> None:  # tpyc: ok
 //     mid(*items)
 void top(::tpy::varargs<Box> items) {
-    mid(::tpy::varargs<Box>(items));
+    ::tpyapp::main::mid(::tpy::varargs<Box>(items));
 }
 
 // def main() -> None:
@@ -39,7 +39,7 @@ void main() {
     Box a = Box(3);
     Box b = Box(5);
     std::array<Box*, 2> __tmp_1{&a, &b};
-    top(::tpy::varargs<Box>(__tmp_1));
+    ::tpyapp::main::top(::tpy::varargs<Box>(__tmp_1));
     std::cout << a.val << "\n";
     std::cout << b.val << "\n";
 }
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

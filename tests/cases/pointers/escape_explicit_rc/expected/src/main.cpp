@@ -67,8 +67,8 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    rc_is_shared();
-    rc_outlives_the_loop();
+    ::tpyapp::main::rc_is_shared();
+    ::tpyapp::main::rc_outlives_the_loop();
 }
 
 } // namespace tpyapp::main

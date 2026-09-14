@@ -72,15 +72,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_straight();
+    ::tpyapp::main::test_straight();
     std::cout << "---" << "\n";
-    test_loop();
+    ::tpyapp::main::test_loop();
     std::cout << "---" << "\n";
-    test_conditional(1);
+    ::tpyapp::main::test_conditional(1);
     std::cout << "---" << "\n";
-    test_conditional(0);
+    ::tpyapp::main::test_conditional(0);
     std::cout << "---" << "\n";
-    test_inherit();
+    ::tpyapp::main::test_inherit();
 }
 
 } // namespace tpyapp::main

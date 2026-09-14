@@ -55,7 +55,7 @@ __gen_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
 void main() {
     std::vector<std::tuple<int32_t, Item>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{1, Item(0)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{2, Item(0)})};
     {
-        auto __src_0 = process(rows);
+        auto __src_0 = ::tpyapp::main::process(rows);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -73,7 +73,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

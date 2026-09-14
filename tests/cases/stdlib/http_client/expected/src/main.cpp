@@ -93,19 +93,19 @@ void main() {
     }
     conn.close();
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "application/json"}});
-    show_request("POST", "/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), __tmp_1);
+    ::tpyapp::main::show_request("POST", "/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), __tmp_1);
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>();
-    show_request("POST", "/x", std::nullopt, __tmp_2);
+    ::tpyapp::main::show_request("POST", "/x", std::nullopt, __tmp_2);
     ::tpy::ordered_map<std::string, std::string> __tmp_3 = ::tpy::ordered_map<std::string, std::string>();
-    show_request("PUT", "/x", std::nullopt, __tmp_3);
+    ::tpyapp::main::show_request("PUT", "/x", std::nullopt, __tmp_3);
     ::tpy::ordered_map<std::string, std::string> __tmp_4 = ::tpy::ordered_map<std::string, std::string>();
-    show_request("PATCH", "/x", std::nullopt, __tmp_4);
+    ::tpyapp::main::show_request("PATCH", "/x", std::nullopt, __tmp_4);
     ::tpy::ordered_map<std::string, std::string> __tmp_5 = ::tpy::ordered_map<std::string, std::string>();
-    show_request("GET", "/x", std::nullopt, __tmp_5);
+    ::tpyapp::main::show_request("GET", "/x", std::nullopt, __tmp_5);
     ::tpy::ordered_map<std::string, std::string> __tmp_6 = ::tpy::ordered_map<std::string, std::string>({{"Host", "override:9000"}});
-    show_request("GET", "/x", std::nullopt, __tmp_6);
+    ::tpyapp::main::show_request("GET", "/x", std::nullopt, __tmp_6);
     ::tpy::ordered_map<std::string, std::string> __tmp_7 = ::tpy::ordered_map<std::string, std::string>({{"Transfer-Encoding", "chunked"}});
-    show_request("POST", "/x", ::tpy::bytes_literal_owned("data", 4), __tmp_7);
+    ::tpyapp::main::show_request("POST", "/x", ::tpy::bytes_literal_owned("data", 4), __tmp_7);
 }
 
 // # http.client request/response over a socketpair (conn.sock injection -- no
@@ -129,7 +129,7 @@ void __tpy_init() {
     ::tpystd::socket::__tpy_init();
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

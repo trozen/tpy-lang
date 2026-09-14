@@ -120,7 +120,7 @@ void __tpy_init() {
     ::tpystd::tplib::arc::__tpy_init();
     ::tpystd::tpy::thread::__tpy_init();
     ::tpystd::tpy::sync::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

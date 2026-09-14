@@ -23,7 +23,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::pkg::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

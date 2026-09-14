@@ -14,7 +14,7 @@ int32_t super() {
 //     x = super()
 //     print(x)
 void main() {
-    int32_t x = super();
+    int32_t x = ::tpyapp::main::super();
     std::cout << x << "\n";
 }
 
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

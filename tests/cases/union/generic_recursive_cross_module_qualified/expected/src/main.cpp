@@ -26,7 +26,7 @@ namespace tpyapp::main {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            ::tpy::BigInt d = depth(child);
+            ::tpy::BigInt d = ::tpyapp::main::depth(child);
             if ((d > best)) {
                 best = d;
             }
@@ -49,7 +49,7 @@ namespace tpyapp::main {
 void main() {
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n";
-    std::cout << depth(t) << "\n";
+    std::cout << ::tpyapp::main::depth(t) << "\n";
 }
 
 // # Qualified cross-module use of a generic recursive alias: `import treelib`
@@ -67,7 +67,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::treelib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

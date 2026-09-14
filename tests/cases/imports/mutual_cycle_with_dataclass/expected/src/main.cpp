@@ -33,7 +33,7 @@ void __tpy_init() {
 
     ::tpyapp::a::__tpy_init();
     ::tpyapp::b::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

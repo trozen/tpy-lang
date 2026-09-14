@@ -41,9 +41,9 @@ void literal_view() {
 //     augassign(b"world")
 //     literal_view()
 void main() {
-    process(::tpy::bytes_literal("hello", 5));
-    augassign(::tpy::bytes_literal("world", 5));
-    literal_view();
+    ::tpyapp::main::process(::tpy::bytes_literal("hello", 5));
+    ::tpyapp::main::augassign(::tpy::bytes_literal("world", 5));
+    ::tpyapp::main::literal_view();
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

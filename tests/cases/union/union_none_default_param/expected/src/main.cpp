@@ -47,9 +47,9 @@ void main() {
     std::cout << h.describe(__tmp_4) << "\n";
     std::cout << h.opt() << "\n";
     std::cout << h.opt(Fixed(5)) << "\n";
-    std::cout << pointer_arm() << "\n";
+    std::cout << ::tpyapp::main::pointer_arm() << "\n";
     Dog d = Dog(::tpy::BigInt(1));
-    std::cout << pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*>{&(d)}) << " " << d.barks << "\n";
+    std::cout << ::tpyapp::main::pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*>{&(d)}) << " " << d.barks << "\n";
 }
 
 // # A `= None` default on a None-including union param must default-construct
@@ -66,7 +66,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

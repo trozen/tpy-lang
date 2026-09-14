@@ -63,7 +63,7 @@ void main() {
     {
         std::vector<int32_t> __tmp_1 = {1, 2};
         std::vector<int32_t> __tmp_2 = {3, 4, 5};
-        auto __src_0 = matrix(__tmp_1, __tmp_2);
+        auto __src_0 = ::tpyapp::main::matrix(__tmp_1, __tmp_2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -80,7 +80,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

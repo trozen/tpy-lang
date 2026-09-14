@@ -60,7 +60,7 @@ void main() {
     }
     Counter c2 = Counter(5);
     auto __tmp_1 = ::tpy::__iter__(c2);
-    consume_two(__tmp_1);
+    ::tpyapp::main::consume_two(__tmp_1);
 }
 
 // main()
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ void __tpy_init() {
     static Timer __global_slot_1 = Timer();
     time = &__global_slot_1;
     time->x = 99;
-    f();
+    ::tpyapp::main::f();
 }
 
 } // namespace tpyapp::main

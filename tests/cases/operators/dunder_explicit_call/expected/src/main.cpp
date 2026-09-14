@@ -22,7 +22,7 @@ void main() {
     std::string_view three = "abc";
     std::string_view two = "xy";
     std::cout << ::tpy::print_bool((t) == (three)) << " " << ::tpy::print_bool((t) == (two)) << "\n";
-    std::cout << ::tpy::print_bool((t) != (three)) << " " << ::tpy::print_bool(probe(t, two)) << "\n";
+    std::cout << ::tpy::print_bool((t) != (three)) << " " << ::tpy::print_bool(::tpyapp::main::probe(t, two)) << "\n";
 }
 
 // main()
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

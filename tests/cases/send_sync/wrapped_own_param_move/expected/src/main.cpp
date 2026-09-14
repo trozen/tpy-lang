@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     kept = dispatch[Token](Token(42))
 //     print("kept:", kept.value())
 void main() {
-    Token kept = dispatch<Token>(Token(42));
+    Token kept = ::tpyapp::main::dispatch<Token>(Token(42));
     std::cout << "kept:" << " " << kept.value() << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

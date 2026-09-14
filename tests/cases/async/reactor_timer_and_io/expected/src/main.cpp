@@ -61,7 +61,7 @@ __coro_delayed_send delayed_send(::tpystd::socket::socket& sock) {
         b.emplace(std::move(std::get<1>(__tup_1)));
         (*a).setblocking(false);
         (*b).setblocking(false);
-        sender.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(delayed_send((*a)))));
+        sender.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::delayed_send((*a)))));
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __sub_0.emplace(std::move((*loop).sock_recv((*b), 1024)));
         __state = S_RESUME_0;
@@ -99,7 +99,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # asyncio epoll reactor (v2): timer + I/O interleaved on one executor.
@@ -117,7 +117,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

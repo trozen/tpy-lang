@@ -45,14 +45,14 @@ Point& identity(Point& p) {
 void main() {
     Point pt = Point(1, 2);
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
-    Point& q = identity(pt);
+    Point& q = ::tpyapp::main::identity(pt);
     std::cout << q.x << "\n";
     Holder h = Holder(pt);
-    h.p = identity(pt);
-    ::tpy::__setitem__(pts, 0, identity(::tpy::__getitem__(pts, 1)));
-    Point& r = identity(pt);
+    h.p = ::tpyapp::main::identity(pt);
+    ::tpy::__setitem__(pts, 0, ::tpyapp::main::identity(::tpy::__getitem__(pts, 1)));
+    Point& r = ::tpyapp::main::identity(pt);
     h.p = r;
-    Point& s = identity(::tpy::__getitem__(pts, 0));
+    Point& s = ::tpyapp::main::identity(::tpy::__getitem__(pts, 0));
     ::tpy::__setitem__(pts, 1, s);
     Holder h2 = Holder(pt);
     h.p = h2.p;
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

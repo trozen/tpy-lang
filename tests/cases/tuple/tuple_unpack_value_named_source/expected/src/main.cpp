@@ -15,7 +15,7 @@ std::tuple<int32_t, int32_t> make() {
 //     a, b = t
 //     print(a + b)
 void main() {
-    std::tuple<int32_t, int32_t> t = make();
+    std::tuple<int32_t, int32_t> t = ::tpyapp::main::make();
     const auto& __tup_1 = t;
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

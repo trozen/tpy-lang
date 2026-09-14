@@ -425,7 +425,7 @@ struct _WaitForFuture {
             this->_inner.get().cancel();
         }
         if ((!(this->_registered))) {
-            _register_timer_at(this->_deadline, waker);
+            ::tpystd::asyncio::_register_timer_at(this->_deadline, waker);
             this->_registered = true;
         }
         if (((!(this->_cleanup)) && (::tpy::stdlib::time::monotonic() >= this->_deadline))) {
@@ -1373,7 +1373,7 @@ struct Queue {
         }
         this->_items.push_back(std::move(item));
         this->_unfinished = ::tpy::add_check<int32_t>(this->_unfinished, 1);
-        _wake_one(this->_getters);
+        ::tpystd::asyncio::_wake_one(this->_getters);
     }
 
     // def get_nowait(self) -> Own[T]:
@@ -1387,7 +1387,7 @@ struct Queue {
         if (this->empty()) {
             throw QueueEmpty("Queue empty");
         }
-        _wake_one(this->_putters);
+        ::tpystd::asyncio::_wake_one(this->_putters);
         return ::tpy::list_pop_at(this->_items, 0);
     }
 
@@ -1407,7 +1407,7 @@ struct Queue {
         }
         this->_unfinished = ::tpy::sub_check<int32_t>(this->_unfinished, 1);
         if ((this->_unfinished == 0)) {
-            _wake_all(this->_joiners);
+            ::tpystd::asyncio::_wake_all(this->_joiners);
         }
     }
 
@@ -2745,7 +2745,7 @@ inline _SignalScope& _SignalScope::operator=(_SignalScope&& other) noexcept {
 inline _SignalScope::~_SignalScope() {
     if (!this->__tpy_owned_) return;
     if (this->_armed) {
-        _reactor_unregister_fd(this->_fd);
+        ::tpystd::asyncio::_reactor_unregister_fd(this->_fd);
         ::tpy_signal_restore();
     }
 }
@@ -2900,7 +2900,7 @@ inline void Lock::release() {
         throw ::tpy::RuntimeError("Lock is not acquired.");
     }
     this->_locked = false;
-    _wake_one(this->_waiters);
+    ::tpystd::asyncio::_wake_one(this->_waiters);
 }
 
 // # Called by `_LockAcquire.__poll__` through a `Ptr[Lock]`: grab the
@@ -2977,7 +2977,7 @@ inline void Semaphore::release() {
         throw ::tpy::ValueError("BoundedSemaphore released too many times");
     }
     this->_value = ::tpy::add_check<int32_t>(this->_value, 1);
-    _wake_one(this->_waiters);
+    ::tpystd::asyncio::_wake_one(this->_waiters);
 }
 
 // # See `Lock._try_acquire`: take a permit if available, else park.
@@ -3192,7 +3192,7 @@ template<typename T>
     }
     ::tpystd::asyncio::_executor::Task<T> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
     ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::task_to_any_box<T>(task);
-    bool interrupted = _run_drain_main_task(std::move(box));
+    bool interrupted = ::tpystd::asyncio::_run_drain_main_task(std::move(box));
     {
         try {
             return task.__poll__(::tpystd::coro::Waker()).value();

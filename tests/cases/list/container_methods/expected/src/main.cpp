@@ -70,7 +70,7 @@ void __tpy_init() {
     std::cout << ::tpy::__getitem__((*arr), 2) << "\n";
     ::tpy::__setitem__((*arr), 1, 250);
     std::cout << ::tpy::__getitem__((*arr), 1) << "\n";
-    span_ops(::tpy::as_mut_span((*arr)));
+    ::tpyapp::main::span_ops(::tpy::as_mut_span((*arr)));
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     nums = &__global_slot_3;
     nums->push_back(4);

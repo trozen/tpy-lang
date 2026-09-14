@@ -15,7 +15,7 @@ std::vector<int32_t> make() {
 ::tpy::ordered_set<int32_t> uniq() {
     return ({
         ::tpy::ordered_set<int32_t> __result;
-        auto __obj_0 = make();
+        auto __obj_0 = ::tpyapp::main::make();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -29,7 +29,7 @@ std::vector<int32_t> make() {
 // def main() -> None:
 //     print(len(uniq()))
 void main() {
-    std::cout << ::tpy::__len__(uniq()) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::uniq()) << "\n";
 }
 
 // main()
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

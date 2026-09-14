@@ -43,7 +43,7 @@ void main() {
     int32_t idx;
     {
         {
-            auto __try_tmp_2 = find_index(items, 30);
+            auto __try_tmp_2 = ::tpyapp::main::find_index(items, 30);
             if (!__try_tmp_2.has_value()) goto __except_1;
             idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -58,7 +58,7 @@ void main() {
     int32_t idx2;
     {
         {
-            auto __try_tmp_4 = find_index(items, 99);
+            auto __try_tmp_4 = ::tpyapp::main::find_index(items, 99);
             if (!__try_tmp_4.has_value()) goto __except_3;
             idx2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

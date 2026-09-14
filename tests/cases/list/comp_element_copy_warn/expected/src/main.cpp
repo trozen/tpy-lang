@@ -123,12 +123,12 @@ void exempt_value(int32_t n) {
 void main() {
     std::vector<Cell> cells = {Cell(1), Cell(2)};
     std::vector<std::tuple<int32_t, Cell>> src = {::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>(std::tuple<int32_t, Cell>{1, Cell(5)})};
-    list_scalar(cells);
-    list_tuple_member(src);
-    dict_value(cells);
-    exempt_fresh(2);
-    exempt_copy(cells);
-    exempt_value(3);
+    ::tpyapp::main::list_scalar(cells);
+    ::tpyapp::main::list_tuple_member(src);
+    ::tpyapp::main::dict_value(cells);
+    ::tpyapp::main::exempt_fresh(2);
+    ::tpyapp::main::exempt_copy(cells);
+    ::tpyapp::main::exempt_value(3);
 }
 
 // main()
@@ -137,7 +137,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

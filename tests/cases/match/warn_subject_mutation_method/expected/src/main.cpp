@@ -61,9 +61,9 @@ void readonly_ok(const Holder& h) {
 //     readonly_ok(Holder())
 void main() {
     Holder __tmp_1 = Holder();
-    mutating(__tmp_1);
+    ::tpyapp::main::mutating(__tmp_1);
     Holder __tmp_2 = Holder();
-    readonly_ok(__tmp_2);
+    ::tpyapp::main::readonly_ok(__tmp_2);
 }
 
 // main()
@@ -72,7 +72,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

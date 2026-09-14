@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(maybe_total(None))    # -1
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
-    std::cout << maybe_total(&(nums)) << "\n";
-    std::cout << maybe_total(static_cast<std::nullptr_t*>(nullptr)) << "\n";
+    std::cout << ::tpyapp::main::maybe_total(&(nums)) << "\n";
+    std::cout << ::tpyapp::main::maybe_total(static_cast<std::nullptr_t*>(nullptr)) << "\n";
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

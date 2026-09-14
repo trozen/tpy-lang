@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     identity[None](None)
 //     print("ran")
 void main() {
-    identity<std::monostate>(std::monostate{});
+    ::tpyapp::main::identity<std::monostate>(std::monostate{});
     std::cout << "ran" << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

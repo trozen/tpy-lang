@@ -15,7 +15,7 @@ int32_t consume(Container&& c) {
 //     print(consume(c))  # tpyc: ok
 void main() {
     Container c = Container(Handle(42));
-    std::cout << consume(std::move(c)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(c)) << "\n";
 }
 
 // main()
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

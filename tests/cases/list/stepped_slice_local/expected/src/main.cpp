@@ -27,7 +27,7 @@ void test_stepped() {
 // def main() -> None:
 //     test_stepped()
 void main() {
-    test_stepped();
+    ::tpyapp::main::test_stepped();
 }
 
 // main()
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

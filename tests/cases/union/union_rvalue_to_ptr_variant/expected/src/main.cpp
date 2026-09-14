@@ -39,9 +39,9 @@ void greet(::tpy::Union<const Cat*, const Dog*> pet) {
 //         print(r2.name)
 void main() {
     Dog __tmp_1 = Dog("Rex");
-    greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
+    ::tpyapp::main::greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     Cat __tmp_2 = Cat("Whiskers");
-    greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
+    ::tpyapp::main::greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
     Dog __tmp_3 = Dog("Buddy");
     Pen p = Pen(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
     ::tpy::Union<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

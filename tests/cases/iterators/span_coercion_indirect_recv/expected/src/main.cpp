@@ -27,7 +27,7 @@ int32_t total(std::span<const int32_t> sp) {
 //     return -1
 int32_t opt_total(const Buf* b) {
     if ((b != nullptr)) {
-        return total((*b).__span__());
+        return ::tpyapp::main::total((*b).__span__());
     }
     return -1;
 }
@@ -35,7 +35,7 @@ int32_t opt_total(const Buf* b) {
 // def plain_total(b: Buf) -> int32:
 //     return total(b)             # tpyc: ok -- a record name calls directly
 int32_t plain_total(const Buf& b) {
-    return total(b.__span__());
+    return ::tpyapp::main::total(b.__span__());
 }
 
 // def main() -> None:
@@ -43,7 +43,7 @@ int32_t plain_total(const Buf& b) {
 //     print(b.own_total(), opt_total(b), plain_total(b), opt_total(None))
 void main() {
     Buf b = Buf();
-    std::cout << b.own_total() << " " << opt_total(&(b)) << " " << plain_total(b) << " " << opt_total(nullptr) << "\n";
+    std::cout << b.own_total() << " " << ::tpyapp::main::opt_total(&(b)) << " " << ::tpyapp::main::plain_total(b) << " " << ::tpyapp::main::opt_total(nullptr) << "\n";
 }
 
 // main()
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

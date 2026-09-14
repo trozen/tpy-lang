@@ -89,14 +89,14 @@ std::string bucket(double x) {
 //     print(bucket(1.0))
 //     print(bucket(2.0))
 void main() {
-    std::cout << greet("hello", true) << "\n";
-    std::cout << greet("hello", false) << "\n";
-    std::cout << greet("bye", true) << "\n";
-    std::cout << greet("bye", false) << "\n";
-    std::cout << greet("ok", false) << "\n";
-    std::cout << bucket(0.0) << "\n";
-    std::cout << bucket(1.0) << "\n";
-    std::cout << bucket(2.0) << "\n";
+    std::cout << ::tpyapp::main::greet("hello", true) << "\n";
+    std::cout << ::tpyapp::main::greet("hello", false) << "\n";
+    std::cout << ::tpyapp::main::greet("bye", true) << "\n";
+    std::cout << ::tpyapp::main::greet("bye", false) << "\n";
+    std::cout << ::tpyapp::main::greet("ok", false) << "\n";
+    std::cout << ::tpyapp::main::bucket(0.0) << "\n";
+    std::cout << ::tpyapp::main::bucket(1.0) << "\n";
+    std::cout << ::tpyapp::main::bucket(2.0) << "\n";
 }
 
 // main()
@@ -105,7 +105,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

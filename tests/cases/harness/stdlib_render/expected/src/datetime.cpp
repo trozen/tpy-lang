@@ -146,13 +146,13 @@ void _check_zone_key(std::string_view key) {
 //         return max(u1, u2)
 //     return min(u1, u2)
 ::tpy::BigInt _local_mktime_s(const ::tpy::BigInt& t, const ::tpy::BigInt& fold) {
-    ::tpy::BigInt a = ((_local_epoch_s(t)) - (t));
+    ::tpy::BigInt a = ((::tpystd::datetime::_local_epoch_s(t)) - (t));
     ::tpy::BigInt u1 = ((t) - (a));
-    ::tpy::BigInt t1 = _local_epoch_s(u1);
+    ::tpy::BigInt t1 = ::tpystd::datetime::_local_epoch_s(u1);
     ::tpy::BigInt b = a;
     if ((t1 == t)) {
         ::tpy::BigInt u2 = ((u1) + (::tpy::BigInt((((fold == 0)) ? (-86400) : (86400)))));
-        b = ((_local_epoch_s(u2)) - (u2));
+        b = ((::tpystd::datetime::_local_epoch_s(u2)) - (u2));
         if ((a == b)) {
             return u1;
         }
@@ -160,7 +160,7 @@ void _check_zone_key(std::string_view key) {
         b = ((t1) - (u1));
     }
     ::tpy::BigInt u2 = ((t) - (b));
-    ::tpy::BigInt t2 = _local_epoch_s(u2);
+    ::tpy::BigInt t2 = ::tpystd::datetime::_local_epoch_s(u2);
     if ((t2 == t)) {
         return u2;
     }
@@ -383,8 +383,8 @@ time time::fromisoformat(std::string_view time_string) {
 //     self._tz_off_us = tz_off
 //     self._tz_name_id = tz_id
 datetime::datetime(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day, const ::tpy::BigInt& hour, const ::tpy::BigInt& minute, const ::tpy::BigInt& second, const ::tpy::BigInt& microsecond, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo, const ::tpy::BigInt& fold) {
-    _check_date_fields(year, month, day);
-    _check_time_fields(hour, minute, second, microsecond);
+    ::tpystd::datetime::_check_date_fields(year, month, day);
+    ::tpystd::datetime::_check_time_fields(hour, minute, second, microsecond);
     if (((fold != 0) && (fold != 1))) {
         throw ::tpy::ValueError("fold must be either 0 or 1");
     }
@@ -775,7 +775,7 @@ std::optional<std::string> datetime::tzname() const {
             fold = 1;
         }
     } else if (((std::holds_alternative<std::monostate>(tz)) && use_local)) {
-        if ((_local_mktime_s(wall_s, ::tpy::BigInt(0)) != epoch_s)) {
+        if ((::tpystd::datetime::_local_mktime_s(wall_s, ::tpy::BigInt(0)) != epoch_s)) {
             fold = 1;
         }
     }

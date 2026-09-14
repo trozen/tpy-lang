@@ -102,12 +102,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_extend_copy_iter_no_warn();
-    test_extend_copy_iter_value_type();
-    test_iadd_copy_iter_no_warn();
-    test_list_ctor_copy_iter_no_warn();
-    test_extend_no_copy_iter_warns();
-    test_for_loop_copy_iter();
+    ::tpyapp::main::test_extend_copy_iter_no_warn();
+    ::tpyapp::main::test_extend_copy_iter_value_type();
+    ::tpyapp::main::test_iadd_copy_iter_no_warn();
+    ::tpyapp::main::test_list_ctor_copy_iter_no_warn();
+    ::tpyapp::main::test_extend_no_copy_iter_warns();
+    ::tpyapp::main::test_for_loop_copy_iter();
 }
 
 } // namespace tpyapp::main

@@ -76,7 +76,7 @@ void mutate_point(Point& p, int32_t val) {
 void test_non_mutating_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    sum_points(items);
+    ::tpyapp::main::sum_points(items);
     std::cout << v.x << "\n";
 }
 
@@ -89,7 +89,7 @@ void test_non_mutating_no_warn() {
 void test_non_mutating_subscript_read() {
     std::vector<Point> items = {Point(3, 4)};
     Point& v = ::tpy::__getitem__(items, 0);
-    first_x(items);
+    ::tpyapp::main::first_x(items);
     std::cout << v.x << "\n";
 }
 
@@ -104,7 +104,7 @@ void test_mutating_append_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_1 = Point(9, 9);
-    add_point(items, __tmp_1);
+    ::tpyapp::main::add_point(items, __tmp_1);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -119,7 +119,7 @@ void test_mutating_subscript_write_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_2 = Point(9, 9);
-    replace_first(items, __tmp_2);
+    ::tpyapp::main::replace_first(items, __tmp_2);
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
@@ -132,7 +132,7 @@ void test_mutating_subscript_write_no_warn() {
 void test_mutating_del_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point& v = ::tpy::__getitem__(items, 0);
-    remove_first(items);
+    ::tpyapp::main::remove_first(items);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -148,7 +148,7 @@ void test_second_param_not_mutated() {
     std::vector<Point> items = {Point(1, 2)};
     std::vector<Point> others = {Point(5, 6)};
     Point& v = ::tpy::__getitem__(others, 0);
-    add_point(items, v);
+    ::tpyapp::main::add_point(items, v);
     std::cout << v.x << "\n";
 }
 
@@ -161,7 +161,7 @@ void test_second_param_not_mutated() {
 void test_no_borrow_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point __tmp_3 = Point(9, 9);
-    add_point(items, __tmp_3);
+    ::tpyapp::main::add_point(items, __tmp_3);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -180,7 +180,7 @@ void test_loop_var_non_mutating_callee() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         std::vector<Point> __tmp_4 = std::vector<Point>{};
-        sum_points(__tmp_4);
+        ::tpyapp::main::sum_points(__tmp_4);
         std::cout << x << "\n";
     }
 }
@@ -199,7 +199,7 @@ void test_loop_var_mutating_callee() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
         Point __tmp_5 = Point(9, 9);
-        add_point(items, __tmp_5);
+        ::tpyapp::main::add_point(items, __tmp_5);
         break;
     }
 }
@@ -209,14 +209,14 @@ void test_loop_var_mutating_callee() {
 //     """Transitively mutates via add_point -- mutated_params = {0} after Phase 2."""
 //     add_point(items, p)
 void add_point_wrapper(std::vector<Point>& items, const Point& p) {
-    add_point(items, p);
+    ::tpyapp::main::add_point(items, p);
 }
 
 // def read_wrapper(items: list[Point]) -> int32:
 //     """Transitively reads via sum_points -- mutated_params = {} after Phase 2."""
 //     return sum_points(items)
 int32_t read_wrapper(const std::vector<Point>& items) {
-    return sum_points(items);
+    return ::tpyapp::main::sum_points(items);
 }
 
 // def test_transitive_mutation_warns() -> None:
@@ -229,7 +229,7 @@ void test_transitive_mutation_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_6 = Point(9, 9);
-    add_point_wrapper(items, __tmp_6);
+    ::tpyapp::main::add_point_wrapper(items, __tmp_6);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -242,7 +242,7 @@ void test_transitive_mutation_warns() {
 void test_transitive_read_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    read_wrapper(items);
+    ::tpyapp::main::read_wrapper(items);
     std::cout << v.x << "\n";
 }
 
@@ -256,7 +256,7 @@ void test_transitive_read_no_warn() {
 void test_forward_mutation_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    forward_mutator(items);
+    ::tpyapp::main::forward_mutator(items);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -276,7 +276,7 @@ void forward_mutator(std::vector<Point>& items) {
 void test_forward_read_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    forward_reader(items);
+    ::tpyapp::main::forward_reader(items);
     std::cout << v.x << "\n";
 }
 
@@ -284,7 +284,7 @@ void test_forward_read_no_warn() {
 //     """Defined after caller -- non-mutation detected by Phase 2."""
 //     return sum_points(items)
 int32_t forward_reader(const std::vector<Point>& items) {
-    return sum_points(items);
+    return ::tpyapp::main::sum_points(items);
 }
 
 // # --- Test: mutual recursion (cycle fixpoint) ---
@@ -296,7 +296,7 @@ int32_t forward_reader(const std::vector<Point>& items) {
 void cycle_a(std::vector<Point>& items, const Point& p) {
     if ((::tpy::__len__(items) < 5)) {
         items.push_back(p);
-        cycle_b(items, p);
+        ::tpyapp::main::cycle_b(items, p);
     }
 }
 
@@ -304,7 +304,7 @@ void cycle_a(std::vector<Point>& items, const Point& p) {
 //     """Transitively mutates via cycle_a (mutual recursion)."""
 //     cycle_a(items, p)
 void cycle_b(std::vector<Point>& items, const Point& p) {
-    cycle_a(items, p);
+    ::tpyapp::main::cycle_a(items, p);
 }
 
 // def test_cycle_mutation_warns() -> None:
@@ -317,7 +317,7 @@ void test_cycle_mutation_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_7 = Point(9, 9);
-    cycle_b(items, __tmp_7);
+    ::tpyapp::main::cycle_b(items, __tmp_7);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -326,7 +326,7 @@ void test_cycle_mutation_warns() {
 //     """Calls add_point_wrapper which calls add_point -- two hops."""
 //     add_point_wrapper(items, p)
 void deep_wrapper(std::vector<Point>& items, const Point& p) {
-    add_point_wrapper(items, p);
+    ::tpyapp::main::add_point_wrapper(items, p);
 }
 
 // def test_multi_hop_mutation_warns() -> None:
@@ -339,7 +339,7 @@ void test_multi_hop_mutation_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_8 = Point(9, 9);
-    deep_wrapper(items, __tmp_8);
+    ::tpyapp::main::deep_wrapper(items, __tmp_8);
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
@@ -363,21 +363,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_non_mutating_no_warn();
-    test_non_mutating_subscript_read();
-    test_mutating_append_warns();
-    test_mutating_subscript_write_no_warn();
-    test_mutating_del_warns();
-    test_second_param_not_mutated();
-    test_no_borrow_no_warn();
-    test_loop_var_non_mutating_callee();
-    test_loop_var_mutating_callee();
-    test_transitive_mutation_warns();
-    test_transitive_read_no_warn();
-    test_forward_mutation_warns();
-    test_forward_read_no_warn();
-    test_cycle_mutation_warns();
-    test_multi_hop_mutation_warns();
+    ::tpyapp::main::test_non_mutating_no_warn();
+    ::tpyapp::main::test_non_mutating_subscript_read();
+    ::tpyapp::main::test_mutating_append_warns();
+    ::tpyapp::main::test_mutating_subscript_write_no_warn();
+    ::tpyapp::main::test_mutating_del_warns();
+    ::tpyapp::main::test_second_param_not_mutated();
+    ::tpyapp::main::test_no_borrow_no_warn();
+    ::tpyapp::main::test_loop_var_non_mutating_callee();
+    ::tpyapp::main::test_loop_var_mutating_callee();
+    ::tpyapp::main::test_transitive_mutation_warns();
+    ::tpyapp::main::test_transitive_read_no_warn();
+    ::tpyapp::main::test_forward_mutation_warns();
+    ::tpyapp::main::test_forward_read_no_warn();
+    ::tpyapp::main::test_cycle_mutation_warns();
+    ::tpyapp::main::test_multi_hop_mutation_warns();
 }
 
 } // namespace tpyapp::main

@@ -29,7 +29,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    main(3);
+    ::tpyapp::main::main(3);
 }
 
 } // namespace tpyapp::main

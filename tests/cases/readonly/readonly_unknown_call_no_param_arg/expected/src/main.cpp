@@ -17,7 +17,7 @@ void mutate(Box& b) {
 //     return local.value
 int32_t ok(const Box& b) {
     Box local = Box(b.value);
-    mutate(local);
+    ::tpyapp::main::mutate(local);
     return local.value;
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     initialized = true;
 
     Box __tmp_1 = Box(5);
-    std::cout << ok(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::ok(__tmp_1) << "\n";
 }
 
 } // namespace tpyapp::main

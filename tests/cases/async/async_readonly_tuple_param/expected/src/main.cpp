@@ -114,7 +114,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         std::cout << "after:" << " " << __await_lift_1 << "\n";
         total = 0;
         {
-            auto __src_0 = gsum(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))});
+            auto __src_0 = ::tpyapp::main::gsum(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))});
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
@@ -124,7 +124,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
             }
         }
         std::cout << "gsum:" << " " << total << "\n";
-        std::cout << "pick:" << " " << pick(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))}, std::tuple<const Tag*, const Tag*>{&((*b)), &((*a))}, true) << "\n";
+        std::cout << "pick:" << " " << ::tpyapp::main::pick(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))}, std::tuple<const Tag*, const Tag*>{&((*b)), &((*a))}, true) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -142,7 +142,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # readonly[tuple[Record,...]] params on async / generators keep their readonly:
@@ -157,7 +157,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

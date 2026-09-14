@@ -22,8 +22,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << f(3) << "\n";
-    std::cout << f(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::f(3) << "\n";
+    std::cout << ::tpyapp::main::f(std::nullopt) << "\n";
 }
 
 } // namespace tpyapp::main

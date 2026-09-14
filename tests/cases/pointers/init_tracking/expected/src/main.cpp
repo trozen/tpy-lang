@@ -159,21 +159,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    direct_assign();
+    ::tpyapp::main::direct_assign();
     Point __tmp_1 = Point(11, 12);
-    param_use(__tmp_1);
-    value_init();
-    assign_before_if(true);
-    assign_before_if(false);
-    then_returns(true);
-    then_returns(false);
-    std::cout << both_return(true) << "\n";
-    std::cout << both_return(false) << "\n";
-    both_branches_assign(true);
-    both_branches_assign(false);
-    else_returns(true);
-    else_returns(false);
-    decl_then_assign();
+    ::tpyapp::main::param_use(__tmp_1);
+    ::tpyapp::main::value_init();
+    ::tpyapp::main::assign_before_if(true);
+    ::tpyapp::main::assign_before_if(false);
+    ::tpyapp::main::then_returns(true);
+    ::tpyapp::main::then_returns(false);
+    std::cout << ::tpyapp::main::both_return(true) << "\n";
+    std::cout << ::tpyapp::main::both_return(false) << "\n";
+    ::tpyapp::main::both_branches_assign(true);
+    ::tpyapp::main::both_branches_assign(false);
+    ::tpyapp::main::else_returns(true);
+    ::tpyapp::main::else_returns(false);
+    ::tpyapp::main::decl_then_assign();
 }
 
 } // namespace tpyapp::main

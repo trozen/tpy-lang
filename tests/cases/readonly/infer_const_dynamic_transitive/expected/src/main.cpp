@@ -15,9 +15,9 @@ void show(HasValue& v) {
 //     show(Child(7))
 void main() {
     Parent __tmp_1{Parent(7)};
-    show(__tmp_1);
+    ::tpyapp::main::show(__tmp_1);
     ::tpy::Adapter<HasValue, Child> __tmp_2{Child(7)};
-    show(__tmp_2);
+    ::tpyapp::main::show(__tmp_2);
 }
 
 // main()
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -58,7 +58,7 @@ void main() {
     {
         Cat __tmp_1 = Cat(::tpy::BigInt(1));
         Cat __tmp_2 = Cat(::tpy::BigInt(2));
-        auto __src_0 = counts(__tmp_1, __tmp_2);
+        auto __src_0 = ::tpyapp::main::counts(__tmp_1, __tmp_2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

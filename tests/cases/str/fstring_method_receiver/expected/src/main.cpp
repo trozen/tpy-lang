@@ -43,7 +43,7 @@ void main() {
     std::cout << ::tpy::str_upper(std::format("a-{}-b", n)) << "\n";
     std::cout << ::tpy::__len__(::tpy::str_split(std::format("a-{}-b", n), "-")) << "\n";
     std::cout << ::tpy::print_bool(::tpy::str_startswith(std::format("key={}", n), "key")) << "\n";
-    std::cout << take(render(::tpy::BigInt(n))) << "\n";
+    std::cout << ::tpyapp::main::take(::tpyapp::main::render(::tpy::BigInt(n))) << "\n";
     Page p = Page();
     p.body = ::tpy::bytes_from_str(std::format("<h1>{}</h1>", n));
     std::cout << p.size() << "\n";
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

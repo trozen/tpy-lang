@@ -212,20 +212,20 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    test_strip();
-    test_replace();
-    test_find();
-    test_index();
-    test_startswith_endswith();
-    test_upper_lower();
-    test_count();
-    test_is_methods();
-    test_isupper_islower();
-    test_capitalize_title_swapcase();
-    test_removeprefix_removesuffix();
-    test_rindex();
-    test_splitlines();
-    test_chaining();
+    ::tpyapp::main::test_strip();
+    ::tpyapp::main::test_replace();
+    ::tpyapp::main::test_find();
+    ::tpyapp::main::test_index();
+    ::tpyapp::main::test_startswith_endswith();
+    ::tpyapp::main::test_upper_lower();
+    ::tpyapp::main::test_count();
+    ::tpyapp::main::test_is_methods();
+    ::tpyapp::main::test_isupper_islower();
+    ::tpyapp::main::test_capitalize_title_swapcase();
+    ::tpyapp::main::test_removeprefix_removesuffix();
+    ::tpyapp::main::test_rindex();
+    ::tpyapp::main::test_splitlines();
+    ::tpyapp::main::test_chaining();
 }
 
 } // namespace tpyapp::main

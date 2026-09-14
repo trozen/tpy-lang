@@ -26,12 +26,12 @@ std::tuple<bool, int32_t, std::string> get_triple() {
 //     print(y)
 //     print(z)
 void main() {
-    auto __tup_1 = get_pair();
+    auto __tup_1 = ::tpyapp::main::get_pair();
     int32_t a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
     std::cout << a << "\n";
     std::cout << b << "\n";
-    auto __tup_2 = get_triple();
+    auto __tup_2 = ::tpyapp::main::get_triple();
     bool x = std::get<0>(__tup_2);
     int32_t y = std::get<1>(__tup_2);
     std::string_view z = std::get<2>(__tup_2);
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -47,9 +47,9 @@ void main() {
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    std::cout << describe(d.as_const()) << "\n";
-    std::cout << describe(c.as_const()) << "\n";
-    std::cout << describe(b.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(d.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(b.as_const()) << "\n";
 }
 
 // main()
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -37,8 +37,8 @@ void main() {
     std::vector<Box> boxes = std::vector<Box>{};
     boxes.push_back(Box(::tpy::BigInt(10)));
     boxes.push_back(Box(::tpy::BigInt(20)));
-    std::cout << first(::tpy::as_span(boxes)) << "\n";
-    std::cout << total(::tpy::as_span(boxes)) << "\n";
+    std::cout << ::tpyapp::main::first(::tpy::as_span(boxes)) << "\n";
+    std::cout << ::tpyapp::main::total(::tpy::as_span(boxes)) << "\n";
 }
 
 // main()
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

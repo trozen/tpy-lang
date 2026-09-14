@@ -25,7 +25,7 @@ std::vector<std::string> make_words() {
 //         print(i, s)
 void main() {
     {
-        auto __src_0 = ::tpy::builtin_enumerate<std::string>(make_words());
+        auto __src_0 = ::tpy::builtin_enumerate<std::string>(::tpyapp::main::make_words());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -38,7 +38,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = ::tpy::builtin_enumerate_start<std::string>(make_words(), 10);
+        auto __src_2 = ::tpy::builtin_enumerate_start<std::string>(::tpyapp::main::make_words(), 10);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -83,7 +83,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

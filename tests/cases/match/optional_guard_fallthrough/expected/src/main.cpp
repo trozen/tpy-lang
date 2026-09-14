@@ -64,14 +64,14 @@ std::string with_capture(std::optional<int32_t> x, bool flag) {
 //     print(with_capture(int32(5), True))
 //     print(with_capture(int32(5), False))
 void main() {
-    std::cout << with_wildcard(std::nullopt, true) << "\n";
-    std::cout << with_wildcard(std::nullopt, false) << "\n";
-    std::cout << with_wildcard(5, true) << "\n";
-    std::cout << with_wildcard(5, false) << "\n";
-    std::cout << with_capture(std::nullopt, true) << "\n";
-    std::cout << with_capture(std::nullopt, false) << "\n";
-    std::cout << with_capture(5, true) << "\n";
-    std::cout << with_capture(5, false) << "\n";
+    std::cout << ::tpyapp::main::with_wildcard(std::nullopt, true) << "\n";
+    std::cout << ::tpyapp::main::with_wildcard(std::nullopt, false) << "\n";
+    std::cout << ::tpyapp::main::with_wildcard(5, true) << "\n";
+    std::cout << ::tpyapp::main::with_wildcard(5, false) << "\n";
+    std::cout << ::tpyapp::main::with_capture(std::nullopt, true) << "\n";
+    std::cout << ::tpyapp::main::with_capture(std::nullopt, false) << "\n";
+    std::cout << ::tpyapp::main::with_capture(5, true) << "\n";
+    std::cout << ::tpyapp::main::with_capture(5, false) << "\n";
 }
 
 // main()
@@ -80,7 +80,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

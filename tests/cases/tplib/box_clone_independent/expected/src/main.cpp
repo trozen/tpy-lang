@@ -50,7 +50,7 @@ void sec_ptr_field() {
     ::tpystd::tplib::box::Box<PtrHolder> b = ::tpystd::tplib::box::Box<PtrHolder>(PtrHolder(&target));
     ::tpystd::tplib::box::Box<PtrHolder> c = b.clone();
     PtrHolder& live = b.get();
-    bump(live.p);
+    ::tpyapp::main::bump(live.p);
     PtrHolder& cloned = c.get();
     std::cout << "ptr-field:" << " " << ::tpy::deref_check(live.p).n << " " << ::tpy::deref_check(cloned.p).n << "\n";
 }
@@ -60,9 +60,9 @@ void sec_ptr_field() {
 //     sec_reference()
 //     sec_ptr_field()
 void main() {
-    sec_value();
-    sec_reference();
-    sec_ptr_field();
+    ::tpyapp::main::sec_value();
+    ::tpyapp::main::sec_reference();
+    ::tpyapp::main::sec_ptr_field();
 }
 
 // from tplib import Box
@@ -74,7 +74,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

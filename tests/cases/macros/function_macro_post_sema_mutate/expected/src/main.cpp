@@ -23,8 +23,8 @@ int32_t poke(Counter& c) {
 //     print(poke(c))
 void main() {
     Counter c = Counter();
-    std::cout << poke(c) << "\n";
-    std::cout << poke(c) << "\n";
+    std::cout << ::tpyapp::main::poke(c) << "\n";
+    std::cout << ::tpyapp::main::poke(c) << "\n";
 }
 
 // # A post-sema deferred macro rewrites sentinel(c) -> c.bump() (a MUTATING call
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

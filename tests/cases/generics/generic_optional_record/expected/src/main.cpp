@@ -41,7 +41,7 @@ void main() {
         std::cout << p->sum() << "\n";
     }
     Point* p2 = c.get();
-    accept_opt(p2);
+    ::tpyapp::main::accept_opt(p2);
     Container<::tpy::BigInt> c2 = Container<::tpy::BigInt>(42);
     ::tpy::BigInt* v = c2.get();
     if ((v != nullptr)) {
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

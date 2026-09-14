@@ -71,19 +71,19 @@ std::optional<std::string> normalize(std::optional<std::string_view> __param_s) 
 //     print(normalize("hello"))
 //     print(normalize(None))
 void main() {
-    std::cout << ::tpy::print_optional_val(pass_through("hello")) << "\n";
-    std::cout << ::tpy::print_optional_val(pass_through(std::nullopt)) << "\n";
-    assign_local("world");
-    assign_local(std::nullopt);
-    std::cout << unwrap("value") << "\n";
-    std::cout << unwrap(std::nullopt) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through("hello")) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(std::nullopt)) << "\n";
+    ::tpyapp::main::assign_local("world");
+    ::tpyapp::main::assign_local(std::nullopt);
+    std::cout << ::tpyapp::main::unwrap("value") << "\n";
+    std::cout << ::tpyapp::main::unwrap(std::nullopt) << "\n";
     std::vector<std::optional<std::string>> items = std::vector<std::optional<std::string>>{};
-    append_to_list(items, "a");
-    append_to_list(items, std::nullopt);
-    append_to_list(items, "b");
+    ::tpyapp::main::append_to_list(items, "a");
+    ::tpyapp::main::append_to_list(items, std::nullopt);
+    ::tpyapp::main::append_to_list(items, "b");
     std::cout << ::tpy::__len__(items) << "\n";
-    std::cout << ::tpy::print_optional_val(normalize("hello")) << "\n";
-    std::cout << ::tpy::print_optional_val(normalize(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::normalize("hello")) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::normalize(std::nullopt)) << "\n";
 }
 
 // main()
@@ -92,7 +92,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -367,7 +367,7 @@ std::string narrow_in_with_body(const Pet& p) {
 std::string safe_raise(const Pet& p) {
     {
         try {
-            return bare_raise(p);
+            return ::tpyapp::main::bare_raise(p);
         } catch (const ::tpy::ValueError& e) {
             return (::tpy::str_concat("caught: ", std::string(::tpy::__str__(e))));
         }
@@ -438,41 +438,41 @@ void main() {
     Dog d = Dog("rex");
     Cat c = Cat("whiskers");
     WatchDog w = WatchDog("rex-watch");
-    std::cout << bare_negative(d) << "\n";
-    std::cout << bare_const(d) << "\n";
-    std::cout << positive_then_more(d) << "\n";
-    std::cout << bare_negative(c) << "\n";
-    std::cout << bare_const(c) << "\n";
-    std::cout << positive_then_more(c) << "\n";
-    std::cout << safe_raise(d) << "\n";
-    std::cout << safe_raise(c) << "\n";
-    std::cout << sequential_negative(c) << "\n";
-    std::cout << sequential_negative(d) << "\n";
-    std::cout << sequential_negative(w) << "\n";
+    std::cout << ::tpyapp::main::bare_negative(d) << "\n";
+    std::cout << ::tpyapp::main::bare_const(d) << "\n";
+    std::cout << ::tpyapp::main::positive_then_more(d) << "\n";
+    std::cout << ::tpyapp::main::bare_negative(c) << "\n";
+    std::cout << ::tpyapp::main::bare_const(c) << "\n";
+    std::cout << ::tpyapp::main::positive_then_more(c) << "\n";
+    std::cout << ::tpyapp::main::safe_raise(d) << "\n";
+    std::cout << ::tpyapp::main::safe_raise(c) << "\n";
+    std::cout << ::tpyapp::main::sequential_negative(c) << "\n";
+    std::cout << ::tpyapp::main::sequential_negative(d) << "\n";
+    std::cout << ::tpyapp::main::sequential_negative(w) << "\n";
     GuardDog g = GuardDog("guard-rex");
-    std::cout << triple_chain(c) << "\n";
-    std::cout << triple_chain(d) << "\n";
-    std::cout << triple_chain(w) << "\n";
-    std::cout << triple_chain(g) << "\n";
-    std::cout << assert_then_assert(w) << "\n";
-    std::cout << assert_then_early_return(d) << "\n";
-    std::cout << assert_then_early_return(w) << "\n";
-    std::cout << optional_negative(nullptr) << "\n";
-    std::cout << sibling_vars(c, d) << "\n";
-    std::cout << sibling_vars(d, c) << "\n";
-    std::cout << sibling_vars(w, c) << "\n";
-    std::cout << sibling_vars(w, d) << "\n";
-    std::cout << narrow_in_for_body(d, ::tpy::BigInt(2)) << "\n";
-    std::cout << narrow_in_for_body(c, ::tpy::BigInt(2)) << "\n";
-    std::cout << narrow_in_while_body(d) << "\n";
-    std::cout << narrow_in_while_body(c) << "\n";
-    std::cout << narrow_in_try_body(d) << "\n";
-    std::cout << narrow_in_try_body(c) << "\n";
-    std::cout << narrow_in_match_case(d, ::tpy::BigInt(1)) << "\n";
-    std::cout << narrow_in_match_case(c, ::tpy::BigInt(1)) << "\n";
-    std::cout << narrow_in_match_case(d, ::tpy::BigInt(2)) << "\n";
-    std::cout << narrow_in_match_case(c, ::tpy::BigInt(99)) << "\n";
-    std::cout << narrow_in_with_body(d) << "\n";
+    std::cout << ::tpyapp::main::triple_chain(c) << "\n";
+    std::cout << ::tpyapp::main::triple_chain(d) << "\n";
+    std::cout << ::tpyapp::main::triple_chain(w) << "\n";
+    std::cout << ::tpyapp::main::triple_chain(g) << "\n";
+    std::cout << ::tpyapp::main::assert_then_assert(w) << "\n";
+    std::cout << ::tpyapp::main::assert_then_early_return(d) << "\n";
+    std::cout << ::tpyapp::main::assert_then_early_return(w) << "\n";
+    std::cout << ::tpyapp::main::optional_negative(nullptr) << "\n";
+    std::cout << ::tpyapp::main::sibling_vars(c, d) << "\n";
+    std::cout << ::tpyapp::main::sibling_vars(d, c) << "\n";
+    std::cout << ::tpyapp::main::sibling_vars(w, c) << "\n";
+    std::cout << ::tpyapp::main::sibling_vars(w, d) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_for_body(d, ::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_for_body(c, ::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_while_body(d) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_while_body(c) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_try_body(d) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_try_body(c) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_match_case(d, ::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_match_case(c, ::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_match_case(d, ::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_match_case(c, ::tpy::BigInt(99)) << "\n";
+    std::cout << ::tpyapp::main::narrow_in_with_body(d) << "\n";
 }
 
 // main()
@@ -481,7 +481,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

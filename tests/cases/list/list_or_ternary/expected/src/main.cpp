@@ -168,41 +168,41 @@ void __tpy_init() {
 
     std::vector<int32_t> __tmp_7 = {1, 2};
     std::vector<int32_t> __tmp_8 = {3, 4};
-    test_or(__tmp_7, __tmp_8);
+    ::tpyapp::main::test_or(__tmp_7, __tmp_8);
     std::vector<int32_t> __tmp_9 = {1, 2};
     std::vector<int32_t> __tmp_10 = {3, 4};
-    test_and(__tmp_9, __tmp_10);
+    ::tpyapp::main::test_and(__tmp_9, __tmp_10);
     std::vector<int32_t> __tmp_11 = {1, 2};
     std::vector<int32_t> __tmp_12 = {3, 4};
-    test_ternary(__tmp_11, __tmp_12, true);
-    test_literal_or();
-    test_literal_ternary(true);
+    ::tpyapp::main::test_ternary(__tmp_11, __tmp_12, true);
+    ::tpyapp::main::test_literal_or();
+    ::tpyapp::main::test_literal_ternary(true);
     std::vector<int32_t> __tmp_13 = {1};
     std::vector<int32_t> __tmp_14 = {2};
     std::vector<int32_t> __tmp_15 = {3};
-    test_or_chain(__tmp_13, __tmp_14, __tmp_15);
-    test_local_vars_or();
-    test_int_literal_elements_or();
-    test_int_literal_elements_ternary(true);
+    ::tpyapp::main::test_or_chain(__tmp_13, __tmp_14, __tmp_15);
+    ::tpyapp::main::test_local_vars_or();
+    ::tpyapp::main::test_int_literal_elements_or();
+    ::tpyapp::main::test_int_literal_elements_ternary(true);
     std::vector<int32_t> __tmp_16 = {1};
     std::vector<int32_t> __tmp_17 = {2};
-    test_or_alias_first(__tmp_16, __tmp_17);
+    ::tpyapp::main::test_or_alias_first(__tmp_16, __tmp_17);
     std::vector<int32_t> __tmp_18 = std::vector<int32_t>{};
     std::vector<int32_t> __tmp_19 = {2};
-    test_or_alias_second(__tmp_18, __tmp_19);
+    ::tpyapp::main::test_or_alias_second(__tmp_18, __tmp_19);
     std::vector<int32_t> __tmp_20 = {1};
     std::vector<int32_t> __tmp_21 = {2};
-    test_and_alias(__tmp_20, __tmp_21);
+    ::tpyapp::main::test_and_alias(__tmp_20, __tmp_21);
     std::vector<int32_t> __tmp_22 = std::vector<int32_t>{};
     std::vector<int32_t> __tmp_23 = {2};
     std::vector<int32_t> __tmp_24 = {3};
-    test_or_chain_alias(__tmp_22, __tmp_23, __tmp_24);
+    ::tpyapp::main::test_or_chain_alias(__tmp_22, __tmp_23, __tmp_24);
     std::vector<int32_t> __tmp_25 = {1};
     std::vector<int32_t> __tmp_26 = {2};
-    test_ternary_alias(__tmp_25, __tmp_26, true);
+    ::tpyapp::main::test_ternary_alias(__tmp_25, __tmp_26, true);
     std::vector<int32_t> __tmp_27 = {1};
     std::vector<int32_t> __tmp_28 = {2};
-    test_ternary_alias(__tmp_27, __tmp_28, false);
+    ::tpyapp::main::test_ternary_alias(__tmp_27, __tmp_28, false);
 }
 
 } // namespace tpyapp::main

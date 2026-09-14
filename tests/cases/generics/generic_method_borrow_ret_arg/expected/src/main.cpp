@@ -63,10 +63,10 @@ void in_try_finally() {
 //     in_loop()
 //     in_try_finally()
 void main() {
-    in_free_function();
+    ::tpyapp::main::in_free_function();
     Owner().run();
-    in_loop();
-    in_try_finally();
+    ::tpyapp::main::in_loop();
+    ::tpyapp::main::in_try_finally();
 }
 
 // main()
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

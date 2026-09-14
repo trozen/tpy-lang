@@ -37,9 +37,9 @@ int32_t sum_list(const std::vector<int32_t>& items) {
 //     print(b.get_value())
 void main() {
     Box b = Box(10);
-    std::cout << read_box(b, 5) << "\n";
+    std::cout << ::tpyapp::main::read_box(b, 5) << "\n";
     std::vector<int32_t> nums = {1, 2, 3};
-    std::cout << sum_list(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_list(nums) << "\n";
     std::cout << b.get_value() << "\n";
 }
 
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -142,7 +142,7 @@ double degrees(double x) {
         if ((result == 1)) {
             return ::tpy::BigInt(1);
         }
-        result = _gcd2(result, x);
+        result = ::tpystd::math::_gcd2(result, x);
     }
     return result;
 }
@@ -178,7 +178,7 @@ double degrees(double x) {
         if (((result == 0) || (x == 0))) {
             return ::tpy::BigInt(0);
         }
-        result = ((((result) / (_gcd2(result, x)))) * (x));
+        result = ((((result) / (::tpystd::math::_gcd2(result, x)))) * (x));
         if ((result < 0)) {
             result = -(result);
         }
@@ -246,7 +246,7 @@ double degrees(double x) {
 // def perm(n: int) -> int:
 //     return factorial(n)
 ::tpy::BigInt perm(const ::tpy::BigInt& n) {
-    return factorial(n);
+    return ::tpystd::math::factorial(n);
 }
 
 // @dispatch

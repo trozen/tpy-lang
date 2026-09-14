@@ -70,9 +70,9 @@ void throw_tier(bool trigger) {
 //     throw_tier(False)
 //     throw_tier(True)
 void main() {
-    finally_only();
-    throw_tier(false);
-    throw_tier(true);
+    ::tpyapp::main::finally_only();
+    ::tpyapp::main::throw_tier(false);
+    ::tpyapp::main::throw_tier(true);
 }
 
 // main()
@@ -81,7 +81,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

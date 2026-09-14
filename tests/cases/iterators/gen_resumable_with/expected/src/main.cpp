@@ -90,7 +90,7 @@ __gen_gen_with_yield gen_with_yield(std::vector<::tpy::BigInt>& xs) {
 void main() {
     {
         std::vector<::tpy::BigInt> __tmp_1 = {10, 20, 30};
-        auto __src_0 = gen_with_yield(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen_with_yield(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -107,7 +107,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -36,7 +36,7 @@ int32_t read_first(const std::tuple<const T*, const T*>& p) {
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
     if ((a != nullptr)) {
-        return peek((*a));
+        return ::tpyapp::main::peek((*a));
     }
     return 0;
 }
@@ -52,9 +52,9 @@ void apply(const std::tuple<T*, T*>& p) {
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
     if ((a != nullptr)) {
-        bump((*a));
+        ::tpyapp::main::bump((*a));
     }
-    bump_opt(b);
+    ::tpyapp::main::bump_opt(b);
 }
 
 // def main() -> None:
@@ -72,13 +72,13 @@ void apply(const std::tuple<T*, T*>& p) {
 void main() {
     T first = T(1);
     T second = T(2);
-    std::cout << read_first(std::tuple<T*, T*>{&(first), &(second)}) << "\n";
-    apply(std::tuple<T*, T*>{&(first), &(second)});
+    std::cout << ::tpyapp::main::read_first(std::tuple<T*, T*>{&(first), &(second)}) << "\n";
+    ::tpyapp::main::apply(std::tuple<T*, T*>{&(first), &(second)});
     std::cout << first.x << "\n";
     std::cout << second.x << "\n";
-    apply(std::tuple<T*, T*>{&(first), nullptr});
+    ::tpyapp::main::apply(std::tuple<T*, T*>{&(first), nullptr});
     std::cout << first.x << "\n";
-    std::cout << read_first(std::tuple<T*, T*>{nullptr, &(second)}) << "\n";
+    std::cout << ::tpyapp::main::read_first(std::tuple<T*, T*>{nullptr, &(second)}) << "\n";
 }
 
 // main()
@@ -87,7 +87,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

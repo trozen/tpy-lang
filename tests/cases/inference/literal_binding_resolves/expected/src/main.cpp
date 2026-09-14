@@ -84,7 +84,7 @@ void __tpy_init() {
 
     a = 1;
     b = 2;
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

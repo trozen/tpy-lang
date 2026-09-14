@@ -17,9 +17,9 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 //     p[1].val = 22
 //     return p[0].val
 int32_t rebind(Box& b, Box& c) {
-    std::tuple<Box, Box*> p = make_mixed(b);
+    std::tuple<Box, Box*> p = ::tpyapp::main::make_mixed(b);
     std::get<1>(p)->val = 11;
-    p = make_mixed(c);
+    p = ::tpyapp::main::make_mixed(c);
     std::get<1>(p)->val = 22;
     return std::get<0>(p).val;
 }
@@ -34,9 +34,9 @@ int32_t rebind(Box& b, Box& c) {
 int32_t branch_hoisted(Box& b, Box& c, bool pick) {
     std::tuple<Box, Box*> p;
     if (pick) {
-        p = make_mixed(b);
+        p = ::tpyapp::main::make_mixed(b);
     } else {
-        p = make_mixed(c);
+        p = ::tpyapp::main::make_mixed(c);
     }
     std::get<1>(p)->val = 33;
     return std::get<0>(p).val;
@@ -57,9 +57,9 @@ int32_t loop_carried(Box& b, Box& c) {
     for (int32_t i = 0; i < 2; ++i) {
         std::tuple<Box, Box*> p;
         if ((i == 0)) {
-            p = make_mixed(b);
+            p = ::tpyapp::main::make_mixed(b);
         } else {
-            p = make_mixed(c);
+            p = ::tpyapp::main::make_mixed(c);
         }
         std::get<1>(p)->val = (::tpy::add_check<int32_t>(44, i));
         total = (::tpy::add_check<int32_t>(total, std::get<0>(p).val));
@@ -78,9 +78,9 @@ int32_t try_hoisted(Box& b) {
     std::tuple<Box, Box*> p;
     {
         try {
-            p = make_mixed(b);
+            p = ::tpyapp::main::make_mixed(b);
         } catch (const ::tpy::ValueError&) {
-            p = make_mixed(b);
+            p = ::tpyapp::main::make_mixed(b);
         }
     }
     std::get<1>(p)->val = 66;
@@ -93,7 +93,7 @@ int32_t try_hoisted(Box& b) {
 //     return p[0].val
 int32_t walrus(Box& b) {
     std::tuple<Box, Box*> p;
-    if ((std::get<0>((p = make_mixed(b))).val > 0)) {
+    if ((std::get<0>((p = ::tpyapp::main::make_mixed(b))).val > 0)) {
         std::get<1>(p)->val = 77;
     }
     return std::get<0>(p).val;
@@ -111,11 +111,11 @@ int32_t walrus(Box& b) {
 void main() {
     Box b = Box(7);
     Box c = Box(8);
-    std::cout << "rebind:" << " " << rebind(b, c) << " " << b.val << " " << c.val << "\n";
-    std::cout << "branch:" << " " << branch_hoisted(b, c, true) << " " << b.val << " " << c.val << "\n";
-    std::cout << "loop:" << " " << loop_carried(b, c) << " " << b.val << " " << c.val << "\n";
-    std::cout << "try:" << " " << try_hoisted(b) << " " << b.val << "\n";
-    std::cout << "walrus:" << " " << walrus(b) << " " << b.val << "\n";
+    std::cout << "rebind:" << " " << ::tpyapp::main::rebind(b, c) << " " << b.val << " " << c.val << "\n";
+    std::cout << "branch:" << " " << ::tpyapp::main::branch_hoisted(b, c, true) << " " << b.val << " " << c.val << "\n";
+    std::cout << "loop:" << " " << ::tpyapp::main::loop_carried(b, c) << " " << b.val << " " << c.val << "\n";
+    std::cout << "try:" << " " << ::tpyapp::main::try_hoisted(b) << " " << b.val << "\n";
+    std::cout << "walrus:" << " " << ::tpyapp::main::walrus(b) << " " << b.val << "\n";
 }
 
 // main()
@@ -124,7 +124,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

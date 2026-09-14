@@ -68,9 +68,9 @@ int32_t from_empty(int32_t n) {
 //     print(fixed())
 //     print(from_empty(5))
 void main() {
-    std::cout << grown() << "\n";
-    std::cout << fixed() << "\n";
-    std::cout << from_empty(5) << "\n";
+    std::cout << ::tpyapp::main::grown() << "\n";
+    std::cout << ::tpyapp::main::fixed() << "\n";
+    std::cout << ::tpyapp::main::from_empty(5) << "\n";
 }
 
 // main()
@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

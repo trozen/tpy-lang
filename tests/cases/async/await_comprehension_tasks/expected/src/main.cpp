@@ -36,7 +36,7 @@ __coro_work work(int32_t n) {
     case S_INITIAL: {  // entry
         tasks.emplace(::tpy::array_from_index<::tpystd::asyncio::_executor::Task<int32_t>, 4>([&](std::size_t __i_0) -> ::tpystd::asyncio::_executor::Task<int32_t> {
             int32_t i = int32_t(__i_0);
-            return ::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(work(i)));
+            return ::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::work(i)));
         }));
         total = 0;
         __for_it_0.emplace(((*tasks)).begin());
@@ -78,7 +78,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     asyncio.run(main_coro())
 void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 
 // # A comprehension building Task[T] handles (Own, @nocopy) resolves to a stack
@@ -93,7 +93,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

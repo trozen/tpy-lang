@@ -190,10 +190,10 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    test_roundtrip();
-    test_pretty();
-    test_try_load();
-    test_try_load_bad();
+    ::tpyapp::main::test_roundtrip();
+    ::tpyapp::main::test_pretty();
+    ::tpyapp::main::test_try_load();
+    ::tpyapp::main::test_try_load_bad();
 }
 
 } // namespace tpyapp::main

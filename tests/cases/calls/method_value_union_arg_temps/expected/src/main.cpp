@@ -39,10 +39,10 @@ int32_t use_lit(A& a) {
 //     print(a.outer())
 void main() {
     A a = A(10);
-    std::cout << use(a, 2, 0.5) << "\n";
+    std::cout << ::tpyapp::main::use(a, 2, 0.5) << "\n";
     Child __tmp_4 = Child(3);
-    std::cout << use_inherited(__tmp_4, 4) << "\n";
-    std::cout << use_lit(a) << "\n";
+    std::cout << ::tpyapp::main::use_inherited(__tmp_4, 4) << "\n";
+    std::cout << ::tpyapp::main::use_lit(a) << "\n";
     std::cout << a.outer() << "\n";
 }
 
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

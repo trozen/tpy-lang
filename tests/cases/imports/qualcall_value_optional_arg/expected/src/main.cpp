@@ -31,7 +31,7 @@ std::tuple<std::string, std::string> split_user(std::string_view raw) {
     std::optional<std::tuple<std::string, std::string>> auth = std::nullopt;
     std::optional<double> timeout = std::nullopt;
     if ((user != "")) {
-        auth = split_user(user);
+        auth = ::tpyapp::main::split_user(user);
     }
     if ((secs > 0.0)) {
         timeout = secs;
@@ -42,7 +42,7 @@ std::tuple<std::string, std::string> split_user(std::string_view raw) {
 // def main():
 //     print(call("user:pw", 2.5), call("", 0.0))
 void main() {
-    std::cout << call("user:pw", 2.5) << " " << call("", 0.0) << "\n";
+    std::cout << ::tpyapp::main::call("user:pw", 2.5) << " " << ::tpyapp::main::call("", 0.0) << "\n";
 }
 
 // # A whole value-repr Optional local passed to a MODULE-QUALIFIED call: the
@@ -56,7 +56,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::net::__tpy_init();
-    main();
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main
