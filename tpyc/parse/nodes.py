@@ -1460,17 +1460,6 @@ class TpyFunction:
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
     builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_global")
     is_generator: bool = False  # Set by parser: body contains yield
-    # Set by the codegen pre-scan when another resumable frame in the same
-    # module embeds this generator's struct by value (a `__for_src` field):
-    # the simple-lambda peephole has no nameable C++ type, so the generator
-    # must emit as a named struct even when its shape qualifies as simple.
-    force_resumable: bool = False
-    # Set by sema when a yield hands out a borrow of a frame-resident local (the
-    # frame-local borrow-yield exemption fired): such a yield needs the local in
-    # a `tpy::frame_slot`, which only the resumable path provides -- the simple
-    # lambda peephole keeps body locals on the lambda stack, so the borrow would
-    # dangle. Disqualifies the generator from the peephole.
-    requires_resumable_frame: bool = False
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
     forwarded_locals: 'dict[str, str] | None' = None  # Set by sema: hoisted local -> backing static-protocol param it forwards to

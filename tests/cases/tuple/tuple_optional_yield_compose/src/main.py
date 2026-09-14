@@ -1,4 +1,4 @@
-# Outer simple-generator iterates an inner generator yielding
+# Outer single-yield generator iterates an inner generator yielding
 # tuple[T | None, ...]. Exercises the direct-iterator branch (the inner
 # generator IS the iterator passed to `for`) and confirms borrow form
 # survives composition: the loop var `auto&&` binds to the inner's

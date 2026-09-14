@@ -1008,20 +1008,6 @@ class TempState:
         self._render(out, indent, [], self._pending[pending_n:])
         del self._pending[pending_n:]
 
-    def flush_named_since(self, out: TextIO, checkpoint: tuple[int, int],
-                          indent: str) -> None:
-        """Emit (and remove) only the named pre-declarations registered after
-        `checkpoint`.
-
-        For emission contexts whose enclosing scope is not the statement
-        flush's scope (the simple-generator lambda): a walrus target bound in
-        the condition must be declared inside the lambda body, not left for a
-        flush the lambda never runs.
-        """
-        named_n = checkpoint[1]
-        self._render(out, indent, self._pending_named[named_n:], [])
-        del self._pending_named[named_n:]
-
     @staticmethod
     def _render(out: TextIO, indent: str,
                 named: list[tuple[str, str, str | None, bool]],
@@ -1357,13 +1343,6 @@ class CodeGenContext:
     # machine; every seam site (leaf stmts, Branch conds, emplace args, the
     # async-return value) consults it. None outside a frame emission.
     thir_resumable_leaf: "ResumableLeafEmitter | None" = None
-    # A peephole generator's leaves (init block, while cond, pre-/post-yield
-    # blocks, yield value, iterable / range args) emit from its
-    # THIRSimpleGenBody inside the skeleton's
-    # lambda. Keyed by the source TpyFunction; populated in
-    # the same seeding loop as `thir_functions` (no live-ctx dependency,
-    # unlike resumables); consumed in gen_simple_generator_inline.
-    thir_simple_gens: IdentityMap = field(default_factory=IdentityMap)
     # Peer modules in the same import-graph SCC. When a `<peer>.hpp`
     # would be included from this module's header (vs cpp file), the
     # codegen swaps it for `<peer>_fwd.hpp` to break the cyclic
@@ -1426,8 +1405,8 @@ class CodeGenContext:
     # emission must read the SAME fact, or the body builds a mutable-pointer
     # value against a const-pointer slot.
     current_return_const: bool = False
-    # Generator yield type. Set at generator-body entry points (state-machine
-    # __next__, simple-for/simple-while inline lambdas) and read by all yield
+    # Generator yield type. Set at the generator-body entry point (state-machine
+    # __next__) and read by all yield
     # emission sites so they share one source of truth instead of threading
     # the type through call signatures.
     current_yield_type: TpyType | None = None
@@ -1689,11 +1668,6 @@ class CodeGenContext:
 
     # --- Generator function codegen ---
     in_generator_body: bool = False
-    # Builder for the frame-local placement plan (wired by AsyncCoroCodegen;
-    # `setup_resumable_frame_locals` calls it for bodies whose plan is not
-    # yet cached -- the simple-peephole path, which never emits a frame
-    # struct).
-    frame_layout_builder: 'Callable[[TpyFunction], object] | None' = None
     generator_field_names: set[str] = field(default_factory=set)
     # write stmt -> frame-field slot name for rvalue writes into
     # pointer-form frame locals (seeded per body from the resumable
@@ -1737,7 +1711,7 @@ class CodeGenContext:
     generator_self_ref: str | None = None
     # Params whose str/bytes view was copied into OWNED storage on the way into
     # this generator/coroutine body (`is_owned_in_coro_frame` -- the resumable
-    # frame's OWNED_COPY field, the simple-generator lambda's init-capture).
+    # frame's OWNED_COPY field).
     # A read of one is owned storage even though the enclosing function's
     # SIGNATURE takes a view; the yield sink consults this so its view->owned
     # copy does not fire on an already-owned source.
@@ -1994,11 +1968,11 @@ class CodeGenContext:
         """The rebind slot for `name`, emitting its held-back declaration.
 
         The declaration drains into the hoist scope that RESERVED the slot. A
-        rebind reached from a different scope -- a lambda-rendered body
-        consuming a slot reserved outside it -- has no sound placement: inside
-        the lambda the slot dies each invocation while the pointer aliasing it
-        is captured and outlives it, and outside it the lambda cannot name it.
-        Reject rather than emit either.
+        rebind reached from a different scope -- a nested def consuming a slot
+        reserved outside it -- has no sound placement: inside the nested body
+        the slot dies each invocation while the pointer aliasing it is
+        captured and outlives it, and outside it the nested body cannot name
+        it. Reject rather than emit either.
         """
         slot = self.rebind_slots.get(name)
         if slot is None:
@@ -2453,13 +2427,10 @@ class CodeGenContext:
 
     def self_captures_this(self) -> bool:
         """True when a lambda / nested-def capture list must spell a
-        captured `self` as `this`. Covers every receiver render form: the
-        plain method body (`this`), the simple-generator wrapper lambda
-        (self renders `(*this)` through the wrapper's captured this), and
-        the resumable frame member (`__self` is a frame field reached
-        through the member's own this)."""
-        return (self.generator_self_ref == "(*this)"
-                or self.self_renders_as_this())
+        captured `self` as `this`. Covers both receiver render forms: the
+        plain method body (`this`) and the resumable frame member (`__self`
+        is a frame field reached through the member's own this)."""
+        return self.self_renders_as_this()
 
     def is_global_name(self, expr: TpyExpr) -> bool:
         """Check if expression is a reference to a global variable.
@@ -2881,9 +2852,8 @@ class CodeGenContext:
         Polymorphic isinstance/dynamic_cast needs a pointer input; the right
         prefix depends on the variable's C++ binding shape:
           - `self` inside a generator/async body -> `&{generator_self_ref}`
-            (the body sees self via `__self: T&` for async/multi-yield or
-            `(*this)` for simple generators -- both yield `T*` when address-
-            of'd; the `&(*this)` form is folded by the optimizer)
+            (the body sees self via `__self: T&`, which yields `T*` when
+            address-of'd)
           - `self` in a regular method -> `this` (already a pointer)
           - pointer-globals, pointer-locals, imported pointers
             (`is_indirect_name`) -> the bare name (already a pointer)
@@ -2894,11 +2864,7 @@ class CodeGenContext:
         """
         name_expr = TpyName(var_name)
         if var_name == "self" and self.generator_self_ref is not None:
-            # In simple-generator bodies generator_self_ref is `(*this)`;
-            # &(*this) == this. In async/multi-yield bodies it's `__self`
-            # (a T& field on the frame struct); &__self gives T*.
-            if self.generator_self_ref == "(*this)":
-                return "this"
+            # `__self` is a T& field on the frame struct; &__self gives T*.
             return f"&{self.generator_self_ref}"
         if var_name == "self" and self.is_indirect_name(name_expr):
             return "this"
@@ -3162,8 +3128,7 @@ class CodeGenContext:
         self.one_shot_lift_locals = set(
             _rcfg.resumable_state(func).one_shot_lift_names)
         # Per-write-site frame homes for rvalue writes into pointer-form
-        # frame locals (see _prescan_resumable_ptr_slots); empty for the
-        # simple-peephole path, whose locals live on the lambda stack.
+        # frame locals (see _prescan_resumable_ptr_slots).
         self.resumable_ptr_slot_map = (
             _rcfg.resumable_state(func).ptr_slot_map.copy())
 
@@ -3171,14 +3136,10 @@ class CodeGenContext:
             return
 
         # One placement verdict per hoisted local, shared with the struct
-        # field-decl emit (gen_async._frame_layout). The resumable path has
-        # the plan cached by struct-emit time; the simple-peephole path (no
-        # frame struct, locals on the lambda stack) builds it here -- its
-        # prescan sets are empty by construction, which is what keeps the
-        # peephole verdicts alias-free.
+        # field-decl emit (gen_async._frame_layout), which cached the plan
+        # by struct-emit time.
         plan = _rcfg.resumable_state(func).frame_layout
-        if plan is None:
-            plan = self.frame_layout_builder(func)
+        assert plan is not None, func.name
         for lname, verdict in plan.bindings.items():
             kind = verdict.kind
             if kind is _rcfg.FrameLocalKind.PTR_ALIAS:
@@ -3230,9 +3191,8 @@ class CodeGenContext:
                 # `tpy::frame_slot<T>`: writes route through `.emplace(...)`,
                 # reads use the `(*name)` access. PROTOCOL locals seed the
                 # same sets: the resumable struct emit raises its user-facing
-                # error before any read renders, and the peephole never
-                # renders fields at all, so the membership is inert but keeps
-                # the dispatch total.
+                # error before any read renders, so the membership is inert
+                # but keeps the dispatch total.
                 self.generator_optional_fields.add(lname)
                 self.generator_frame_slot_locals.add(lname)
             # VALUE / OWNED_STR: no context seeding -- value-typed access

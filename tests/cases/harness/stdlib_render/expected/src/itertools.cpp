@@ -4,6 +4,43 @@
 namespace tpystd::itertools {
 
 
+// def count(start: int = 0, step: int = 1) -> Iterator[int]:
+//     n = start
+//     while True:
+//         yield n                                             # -> S_RESUME_0
+//         n = n + step
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_count::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        n = start;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield n
+        n = ((n) + (step));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (true) {
+            __state = S_RESUME_0;
+            return n;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def count(start: int = 0, step: int = 1) -> Iterator[int]:
+__gen_count count(::tpy::BigInt start, ::tpy::BigInt step) {
+    return __gen_count(start, step);
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

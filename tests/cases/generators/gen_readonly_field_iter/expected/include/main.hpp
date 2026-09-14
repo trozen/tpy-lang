@@ -16,7 +16,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_alias_param;
 struct __gen_Holder_direct;
 struct __gen_Holder_via_alias;
+struct __gen_Holder_simple_alias;
 struct __gen_Holder_live_alias;
+struct __gen_Bumper_bump;
 
 // def alias_param(h: Holder) -> Iterator[int32]:
 __gen_alias_param alias_param(Holder& h);
@@ -37,29 +39,7 @@ struct Holder {
 
     __gen_Holder_via_alias via_alias() const;
 
-    // def simple_alias(self) -> Iterator[int32]:
-    //     # Single yield, so this one takes the simple-gen lambda, which
-    //     # captures `a` by value (the documented escaping-closure snapshot):
-    //     # field mutations after creation are NOT observed here
-    //     # (BUGS.md#sgen-proto-param-alias-copy). `live_alias` below is the
-    //     # frame twin, where the alias is live.
-    //     a = self.plain
-    //     for x in a:
-    //         yield x
-    auto simple_alias() const {
-        const std::vector<int32_t>& a = (*this).plain;
-        return ::tpy::make_generator<int32_t>(
-            [this, a, __beg = decltype((a).begin())(), __end = decltype((a).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-                if (!__init) { __beg = (a).begin(); __end = (a).end(); __init = true; }
-                if (__beg != __end) {
-                    int32_t x = *__beg++;
-                    auto __val = x;
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Holder_simple_alias simple_alias() const;
 
     __gen_Holder_live_alias live_alias();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -94,24 +74,7 @@ struct Bumper {
     // def __init__(self):
     Bumper();
 
-    // def bump(self) -> Iterator[int32]:
-    //     for c in self.cells:
-    //         c.v += 1
-    //         yield c.v
-    auto bump() {
-        return ::tpy::make_generator<int32_t>(
-            [this, __beg = decltype(((*this).cells).begin())(), __end = decltype(((*this).cells).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-                if (!__init) { __beg = ((*this).cells).begin(); __end = ((*this).cells).end(); __init = true; }
-                if (__beg != __end) {
-                    auto&& c = *__beg++;
-                    c.v = ::tpy::add_check<int32_t>(c.v, 1);
-                    auto __val = c.v;
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Bumper_bump bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bumper";
 };
 
@@ -207,6 +170,37 @@ inline __gen_Holder_via_alias Holder::via_alias() const {
     return __gen_Holder_via_alias(*this);
 }
 
+// def simple_alias(self) -> Iterator[int32]:
+struct __gen_Holder_simple_alias : public ::tpy::next_iter_mixin<__gen_Holder_simple_alias, int32_t> {
+    int32_t __state;
+    const Holder& __self;
+    const std::vector<int32_t>* a = nullptr;
+    int32_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Holder_simple_alias(const Holder& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Holder_simple_alias& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Holder_simple_alias&) {
+        return os << "<generator Holder.simple_alias>";
+    }
+};
+
+inline __gen_Holder_simple_alias Holder::simple_alias() const {
+    return __gen_Holder_simple_alias(*this);
+}
+
 // def live_alias(self) -> Iterator[int32]:
 struct __gen_Holder_live_alias : public ::tpy::next_iter_mixin<__gen_Holder_live_alias, int32_t> {
     int32_t __state;
@@ -233,6 +227,36 @@ struct __gen_Holder_live_alias : public ::tpy::next_iter_mixin<__gen_Holder_live
 
 inline __gen_Holder_live_alias Holder::live_alias() {
     return __gen_Holder_live_alias(*this);
+}
+
+// def bump(self) -> Iterator[int32]:
+struct __gen_Bumper_bump : public ::tpy::next_iter_mixin<__gen_Bumper_bump, int32_t> {
+    int32_t __state;
+    Bumper& __self;
+    Counter* c = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Counter>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Counter>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Bumper_bump(Bumper& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Bumper_bump& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Bumper_bump&) {
+        return os << "<generator Bumper.bump>";
+    }
+};
+
+inline __gen_Bumper_bump Bumper::bump() {
+    return __gen_Bumper_bump(*this);
 }
 
 

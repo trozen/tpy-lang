@@ -1,6 +1,6 @@
-# Range-loop simple generator preserves references for non-value tuple
-# elements -- complements gen_ref (NativeIterable peephole) and
-# gen_ref_while (simple-while). The iterator slot is borrow form, so
+# Range-loop generator preserves references for non-value tuple
+# elements -- complements gen_ref (for over a container) and
+# gen_ref_while (while loop). The iterator slot is borrow form, so
 # `p.x = ...` on the yielded tuple flows back to the iterable.
 from tpy import int32
 from typing import Iterator

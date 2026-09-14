@@ -68,6 +68,44 @@ void dict_elem() {
     std::cout << "dict_elem" << " " << ::tpy::print_float(b.x) << " " << ::tpy::print_float(::tpy::__getitem__(d, "a").x) << "\n";
 }
 
+// # Generator body.
+// def gen(things: list[Thing]) -> Iterator[float]:
+//     for i in range(len(things)):
+//         b = Bump(things[i])  # tpyc: ok
+//         yield b.x                                 # -> S_RESUME_0
+std::expected<double, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(::tpy::__len__(things)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield b.x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        b.emplace(Bump(things[static_cast<std::size_t>(i)]));
+        __state = S_RESUME_0;
+        return (*b).x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen(things: list[Thing]) -> Iterator[float]:
+__gen_gen gen(std::vector<Thing>& things) {
+    return __gen_gen(things);
+}
+
 // def main() -> None:
 //     m = Map(2)
 //     print("ctor_field_write", m.player.x, m.bumped.x, m.things[0].x)

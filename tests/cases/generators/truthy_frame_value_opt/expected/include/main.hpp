@@ -15,6 +15,7 @@ struct __gen_branch_suspends;
 struct __gen_branch_no_suspend;
 struct __gen_not_form;
 struct __gen_while_suspends;
+struct __gen_peephole_while;
 struct __gen_frame_local;
 
 // def branch_suspends(v: int32 | None) -> Iterator[int32]:
@@ -25,6 +26,8 @@ __gen_branch_no_suspend branch_no_suspend(std::optional<int32_t> v);
 __gen_not_form not_form(std::optional<int32_t> v);
 // def while_suspends(v: int32 | None) -> Iterator[int32]:
 __gen_while_suspends while_suspends(std::optional<int32_t> v);
+// def peephole_while(v: int32 | None) -> Iterator[int32]:
+__gen_peephole_while peephole_while(std::optional<int32_t> v);
 // def frame_local(b: Box) -> Iterator[int32]:
 __gen_frame_local frame_local(Box& b);
 // def drive(label: str, v: int32 | None) -> None:
@@ -143,6 +146,29 @@ struct __gen_while_suspends : public ::tpy::next_iter_mixin<__gen_while_suspends
     }
 };
 
+// def peephole_while(v: int32 | None) -> Iterator[int32]:
+struct __gen_peephole_while : public ::tpy::next_iter_mixin<__gen_peephole_while, int32_t> {
+    int32_t __state;
+    std::optional<int32_t> v;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_peephole_while(std::optional<int32_t> v_)
+        : __state(S_INITIAL), v(std::move(v_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_peephole_while& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_peephole_while&) {
+        return os << "<generator peephole_while>";
+    }
+};
+
 // def frame_local(b: Box) -> Iterator[int32]:
 struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int32_t> {
     int32_t __state;
@@ -172,25 +198,5 @@ struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int3
 // def __init__(self, v: int32 | None) -> None:
 //     self.f = v
 inline Box::Box(std::optional<int32_t> v) : f(v) {}
-// def peephole_while(v: int32 | None) -> Iterator[int32]:
-//     # The while IS the last statement -> simple-generator lambda peephole,
-//     # a separate condition renderer from the CFG one above.
-//     while v:  # tpyc: warning(/Truthiness check on optional value/)
-//         yield 1
-//         v = None
-inline auto peephole_while(std::optional<int32_t> v) {
-    return ::tpy::make_generator<int32_t>(
-        [v]() mutable -> std::optional<int32_t> {
-            while (::tpy::is_truthy(v)) {
-                auto __val = 1;
-                v = std::nullopt;
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

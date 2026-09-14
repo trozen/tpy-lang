@@ -4,6 +4,78 @@
 namespace tpyapp::main {
 
 
+// def toks_while(n: int32) -> Iterator[Own[Tok]]:
+//     i: int32 = 0
+//     while i < n:
+//         yield Tok(i * 2)                         # -> S_RESUME_0
+//         i += 1
+std::expected<Tok, ::tpy::StopIteration> __gen_toks_while::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield Tok(i * 2)
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            __state = S_RESUME_0;
+            return Tok((::tpy::mul_check<int32_t>(i, 2)));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def toks_while(n: int32) -> Iterator[Own[Tok]]:
+__gen_toks_while toks_while(int32_t n) {
+    return __gen_toks_while(n);
+}
+
+// def toks_for(n: int32) -> Iterator[Own[Tok]]:
+//     for i in range(n):
+//         yield Tok(i * 2)                       # -> S_RESUME_0
+std::expected<Tok, ::tpy::StopIteration> __gen_toks_for::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield Tok(i * 2)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        __state = S_RESUME_0;
+        return Tok((::tpy::mul_check<int32_t>(i, 2)));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def toks_for(n: int32) -> Iterator[Own[Tok]]:
+__gen_toks_for toks_for(int32_t n) {
+    return __gen_toks_for(n);
+}
+
 // def main() -> None:
 //     for t in toks_while(3):
 //         print(t.v)

@@ -4,6 +4,41 @@
 namespace tpyapp::main {
 
 
+// def handles(items: list[Handle]) -> Iterator[Handle]:  # tpyc: ok
+//     for h in items:
+//         yield h                                                    # -> S_RESUME_0
+std::expected<::tpy::val_or_ref<Handle>, ::tpy::StopIteration> __gen_handles::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield h
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        h = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*h);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def handles(items: list[Handle]) -> Iterator[Handle]:  # tpyc: ok
+__gen_handles handles(std::vector<Handle>& items) {
+    return __gen_handles(items);
+}
+
 // def main() -> None:
 //     data = [Handle(1), Handle(2)]
 //     for h in handles(data):

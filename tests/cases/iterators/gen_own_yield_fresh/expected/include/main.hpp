@@ -12,10 +12,13 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_boxes;
 struct __gen_fresh_records;
 struct __gen_fresh_rows;
 struct __gen_Bag_drain;
 
+// def boxes(n: int) -> Iterator[Own[Node]]:
+__gen_boxes boxes(::tpy::BigInt n);
 // def mk(v: int32) -> Own[Node]:
 Node mk(int32_t v);
 // def mk_row(v: int32) -> Own[list[int32]]:
@@ -59,6 +62,32 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     ::tpy::print_object_default(os, "Bag", obj);
     return os;
 }
+
+// def boxes(n: int) -> Iterator[Own[Node]]:
+struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, Node> {
+    int32_t __state;
+    ::tpy::BigInt n;
+    ::tpy::BigInt i;
+    ::tpy::frame_slot<::tpy::BigInt> __for_i_0;
+    ::tpy::frame_slot<::tpy::BigInt> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_boxes(::tpy::BigInt n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<Node, ::tpy::StopIteration> __next__();
+    __gen_boxes& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_boxes&) {
+        return os << "<generator boxes>";
+    }
+};
 
 // def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
 struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, Node> {
@@ -153,22 +182,5 @@ inline Node::Node(const ::tpy::BigInt& v) : val(v) {}
 // def __init__(self) -> None:
 //     self.items = [Node(7)]
 inline Bag::Bag() : items(std::vector<Node>{Node(::tpy::BigInt(7))}) {}
-// def boxes(n: int) -> Iterator[Own[Node]]:
-//     for i in range(n):
-//         yield Node(i)
-inline auto boxes(const ::tpy::BigInt& n) {
-    return ::tpy::make_generator<Node>(
-        [n, __i = ::tpy::BigInt(0), __stop = static_cast<::tpy::BigInt>(n)]() mutable -> std::optional<Node> {
-            while (__i < __stop) {
-                ::tpy::BigInt i = __i++;
-                auto __val = Node(i);
-                return std::optional<Node>(std::move(__val));
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

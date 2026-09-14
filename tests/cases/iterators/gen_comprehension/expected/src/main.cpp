@@ -46,6 +46,44 @@ __gen_two_then two_then(int32_t n) {
     return __gen_two_then(n);
 }
 
+// # Single-yield tail-loop generator: the same frame, at the plainest shape.
+// def simple(n: int32) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < n:
+//         yield i                           # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_simple::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            __state = S_RESUME_0;
+            return i;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def simple(n: int32) -> Iterator[int32]:
+__gen_simple simple(int32_t n) {
+    return __gen_simple(n);
+}
+
 // def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
 //     yield (0, 0)                                       # -> S_RESUME_0
 //     i: int32 = 1

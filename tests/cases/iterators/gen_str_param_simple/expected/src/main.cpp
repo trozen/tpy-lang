@@ -4,6 +4,43 @@
 namespace tpyapp::main {
 
 
+// def echo_n(s: str, n: int) -> Iterator[str]:
+//     i = 0
+//     while i < n:
+//         yield s                               # -> S_RESUME_0
+//         i += 1
+std::expected<std::string, ::tpy::StopIteration> __gen_echo_n::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield s
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::BigInt(i) < n)) {
+            __state = S_RESUME_0;
+            return s;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def echo_n(s: str, n: int) -> Iterator[str]:
+__gen_echo_n echo_n(std::string_view s, ::tpy::BigInt n) {
+    return __gen_echo_n(s, n);
+}
+
 // def make() -> str:
 //     return "x" + "y"
 std::string make() {

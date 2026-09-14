@@ -1,5 +1,5 @@
-# Simple-while generator preserves references for non-value tuple elements,
-# matching the simple-for-NativeIterable peephole. Mutation through the
+# While-loop generator preserves references for non-value tuple elements,
+# matching the for-over-container twin (gen_ref). Mutation through the
 # yielded tuple flows back to the iterable.
 from tpy import int32
 from typing import Iterator

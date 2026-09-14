@@ -1,8 +1,8 @@
-"""The structural validator over the two SEAM body shapes -- the resumable
-frame and the simple-generator peephole, whose leaves the skeleton holds in
-seam tables rather than one linear function body.
+"""The structural validator over the SEAM body shape -- the resumable
+frame, whose leaves the skeleton holds in seam tables rather than one linear
+function body.
 
-Pins that lowering actually runs the gate on both (a body reaching the seam
+Pins that lowering actually runs the gate (a body reaching the seam
 unvalidated is the hole these units exist for), that a planted form lie in a
 seam position is caught, and that the two rules narrowed for shapes only
 these bodies carry still reject their adjacent form."""
@@ -21,16 +21,15 @@ from .nodes import (
     THIRFieldAccess, THIRFormConvert, THIRFunction, THIRFunctionLayout,
     THIRLiteral,
     THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
-    THIRSimpleGenBody, THIRUnionArgLift,
+    THIRUnionArgLift,
 )
 from . import validate as _validate
 from .lower import iter_module_constructors, lower_constructor
 from .lower import resumable as _lower_resumable_mod
-from .lower import simple_gen as _lower_simple_gen_mod
 from .testutil import _compile, _entry, _lower_fn
 from .validate import (
     THIRValidationError, validate_constructor, validate_function,
-    validate_resumable_body, validate_simple_gen_body,
+    validate_resumable_body,
 )
 
 # The whole-function / constructor validator rules: no compiling program can
@@ -59,16 +58,6 @@ _ASYNC_SRC = (_PRE
               + "        n = await step(n)\n"
               + "    return n\n\n"
               + "def main() -> None:\n    pass\nmain()\n")
-
-_SIMPLE_GEN_SRC = (_PRE
-                   + "def gen(n: int32) -> Iterator[int32]:\n"
-                   + "    i = 0\n"
-                   + "    while i < n:\n"
-                   + "        yield i\n"
-                   + "        i = i + 1\n\n"
-                   + "def main() -> None:\n"
-                   + "    for x in gen(3):\n        print(x)\nmain()\n")
-
 
 def _emit_thir(src: str) -> None:
     compiler, modules = _compile(src)
@@ -105,14 +94,6 @@ class TestSeamBodiesAreValidated:
         _emit_thir(_ASYNC_SRC)
         assert seen, "no resumable body was validated"
         assert any(b.leaves for _owner, b in seen)
-
-    def test_simple_gen_body_reaches_the_validator(self, monkeypatch):
-        seen = self._record(monkeypatch, _lower_simple_gen_mod,
-                            "validate_simple_gen_body",
-                            validate_simple_gen_body)
-        _emit_thir(_SIMPLE_GEN_SRC)
-        assert seen, "no simple-generator body was validated"
-        assert any(b.pre_yield or b.post_yield or b.init for _o, b in seen)
 
     def test_frame_nested_def_body_reaches_the_validator(self, monkeypatch):
         seen = []
@@ -156,20 +137,6 @@ class TestSeamPositionsRaise:
             yield_values={1: _form_lie()})
         with pytest.raises(THIRValidationError, match="coerce form"):
             validate_resumable_body("f", body)
-
-    def test_simple_gen_init_form_lie_raises(self):
-        body = THIRSimpleGenBody(
-            init=(THIRExprStmt(expr=_form_lie()),), pre_yield=(),
-            post_yield=(),
-            yield_value=THIRLiteral(result_type=INT32, value=0))
-        with pytest.raises(THIRValidationError, match="coerce form"):
-            validate_simple_gen_body("g", body)
-
-    def test_simple_gen_yield_value_form_lie_raises(self):
-        body = THIRSimpleGenBody(init=(), pre_yield=(), post_yield=(),
-                                 yield_value=_form_lie())
-        with pytest.raises(THIRValidationError, match="coerce form"):
-            validate_simple_gen_body("g", body)
 
 
 class TestNarrowedRules:

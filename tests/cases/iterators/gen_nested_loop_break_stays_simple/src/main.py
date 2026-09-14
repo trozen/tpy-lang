@@ -1,5 +1,5 @@
-# A break inside a NESTED loop binds to that inner loop, not the generator's,
-# so a single-yield generator with one stays on the simple peephole.
+# A break inside a NESTED loop binds to that inner loop, not the generator's
+# outer one, so the outer loop keeps yielding after it.
 from tpy import int32
 from typing import Iterator
 

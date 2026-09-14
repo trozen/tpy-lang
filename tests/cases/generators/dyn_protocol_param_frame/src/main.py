@@ -1,6 +1,6 @@
-# A @dynamic protocol param on a RESUMABLE generator frame (two yields, so the
-# simple-generator peephole does not apply): the frame field is a `Src&` borrow,
-# so a mutation through the param between the yields is visible to the caller.
+# A @dynamic protocol param on a resumable generator frame: the frame field is
+# a `Src&` borrow, so a mutation through the param between the yields is
+# visible to the caller.
 from tpy import int32, Own, dynamic, readonly
 from typing import Iterator, Protocol
 

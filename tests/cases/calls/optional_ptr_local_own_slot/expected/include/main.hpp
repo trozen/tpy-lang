@@ -4,6 +4,9 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
@@ -11,6 +14,9 @@ struct Pic;
 struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen;
+struct __coro_async_body;
 
 // def bump_all(patches: list[Pic | None]) -> None:
 void bump_all(std::vector<std::optional<Pic>>& patches);
@@ -30,6 +36,10 @@ void append_none_declared();
 void other_slots(bool c);
 // def setdefault_slot(c: bool) -> None:
 void setdefault_slot(bool c);
+// def gen(k: int32) -> Iterator[int32]:
+__gen_gen gen(int32_t k);
+// async def async_body(c: bool) -> None:
+__coro_async_body async_body(bool c);
 // def main() -> None:
 void main();
 
@@ -71,6 +81,68 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
+// async def async_body(c: bool) -> None:
+struct __coro_async_body {
+    int32_t __state;
+    bool __cancel_pending;
+    bool c;
+    ::tpy::frame_slot<std::vector<std::optional<Pic>>> patches;
+    Pic* patch = nullptr;
+    Pic* other = nullptr;
+    Pic* third = nullptr;
+    ::tpy::frame_slot<Bag> b;
+    std::optional<Pic> __ptr_slot_f0;
+    std::optional<Pic> __ptr_slot_f1;
+    std::optional<Pic> __ptr_slot_f2;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_async_body(bool c_)
+        : __state(S_INITIAL), __cancel_pending(false), c(std::move(c_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_async_body&) {
+        return os << "<coroutine async_body>";
+    }
+};
+
+// def gen(k: int32) -> Iterator[int32]:
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
+    int32_t __state;
+    int32_t k;
+    ::tpy::frame_slot<std::vector<std::optional<Pic>>> patches;
+    int32_t j;
+    Pic* patch = nullptr;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+    std::optional<Pic> __ptr_slot_f0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen(int32_t k_)
+        : __state(S_INITIAL), k(std::move(k_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -92,35 +164,5 @@ inline void Bag::add(std::optional<Pic>&& p) {
 inline void Bag::put(std::optional<Pic>&& p, std::vector<std::optional<Pic>>& sink) {
     sink.push_back(p ? std::optional<Pic>(std::move(*p)) : std::nullopt);
 }
-// # Generator body.
-// def gen(k: int32) -> Iterator[int32]:
-//     patches: list[Pic | None] = []
-//     for j in range(k):
-//         patch: Pic | None = None
-//         if j != 1:
-//             patch = Pic(j)
-//         patches.append(patch)  # tpyc: ok
-//         yield len(patches)
-inline auto gen(int32_t k) {
-    std::vector<std::optional<Pic>> patches = std::vector<std::optional<Pic>>{};
-    return ::tpy::make_generator<int32_t>(
-        [k, patches, __i = int32_t(0), __stop = static_cast<int32_t>(k)]() mutable -> std::optional<int32_t> {
-            std::optional<Pic> __slot_1;
-            while (__i < __stop) {
-                int32_t j = __i++;
-                Pic* patch = nullptr;
-                if ((j != 1)) {
-                    patch = &*(__slot_1 = Pic(j));
-                }
-                patches.push_back(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt);
-                auto __val = ::tpy::__len__(patches);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

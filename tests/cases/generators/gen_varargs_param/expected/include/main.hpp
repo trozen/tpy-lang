@@ -37,8 +37,10 @@ struct __gen_bump_generic;
 struct __gen_points;
 template <::tpystd::typing::Iterator<Point> T_it>
 struct __gen_readonly_next;
+struct __gen_each_pack;
 struct __gen_Collector_sizes;
 struct __gen_Album_each;
+struct __gen_Grower_each_pack;
 
 // def scalars(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 __gen_scalars scalars(::tpy::varargs<const int32_t> xs);
@@ -71,6 +73,8 @@ __gen_points points(const std::vector<Point>& ps);
 // def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[int32]:  # tpyc: ok
 template <::tpystd::typing::Iterator<Point> T_it>
 __gen_readonly_next<T_it> readonly_next(T_it&& it);
+// def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
+__gen_each_pack each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs);
 // def grow_both(p: list[list[int32]], q: list[list[int32]]) -> None:  # tpyc: ok
 void grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int32_t>>& q);
 // def main() -> None:
@@ -156,22 +160,7 @@ struct Grower {
     Grower() = default;
     explicit Grower(int32_t tag);
 
-    // def each_pack(self, *xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
-    //     for s in xs:
-    //         yield s
-    auto each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) const {
-        return ::tpy::make_generator<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>>(
-            [this, xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>> {
-                if (!__init) { __beg = (xs).begin(); __end = (xs).end(); __init = true; }
-                if (__beg != __end) {
-                    auto&& s = *__beg++;
-                    auto&& __val = s;
-                    return std::optional<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Grower_each_pack each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) const;
 
     // def grow_both(self, p: list[list[int32]], q: list[list[int32]]) -> None:  # tpyc: ok
     void grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int32_t>>& q) const;
@@ -729,6 +718,32 @@ __gen_readonly_next<T_it> readonly_next(T_it&& it) {
     return __gen_readonly_next<T_it>(std::forward<T_it>(it));
 }
 
+// def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
+struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::val_or_ref<std::vector<std::vector<int32_t>>>> {
+    int32_t __state;
+    ::tpy::varargs<std::vector<std::vector<int32_t>>> xs;
+    std::vector<std::vector<int32_t>>* s = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs_)
+        : __state(S_INITIAL), xs(std::move(xs_)) {}
+
+    std::expected<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>, ::tpy::StopIteration> __next__();
+    __gen_each_pack& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_each_pack&) {
+        return os << "<generator each_pack>";
+    }
+};
+
 // def sizes(self, *xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_sizes, int32_t> {
     int32_t __state;
@@ -792,6 +807,37 @@ inline __gen_Album_each Album::each() const {
     return __gen_Album_each(*this);
 }
 
+// def each_pack(self, *xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
+struct __gen_Grower_each_pack : public ::tpy::next_iter_mixin<__gen_Grower_each_pack, ::tpy::val_or_ref<std::vector<std::vector<int32_t>>>> {
+    int32_t __state;
+    const Grower& __self;
+    ::tpy::varargs<std::vector<std::vector<int32_t>>> xs;
+    std::vector<std::vector<int32_t>>* s = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Grower_each_pack(const Grower& __self, ::tpy::varargs<std::vector<std::vector<int32_t>>> xs_)
+        : __state(S_INITIAL), __self(__self), xs(std::move(xs_)) {}
+
+    std::expected<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>, ::tpy::StopIteration> __next__();
+    __gen_Grower_each_pack& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Grower_each_pack&) {
+        return os << "<generator Grower.each_pack>";
+    }
+};
+
+inline __gen_Grower_each_pack Grower::each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) const {
+    return __gen_Grower_each_pack(*this, xs);
+}
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
@@ -847,25 +893,5 @@ inline void Grower::grow_both(std::vector<std::vector<int32_t>>& p, std::vector<
         }
     }
 }
-// # Producer for the multi-root section: the pack element is yielded straight
-// # out, so the consumer's loop var borrows EVERY operand of the one pack slot.
-// def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
-//     for s in xs:
-//         yield s
-inline auto each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) {
-    return ::tpy::make_generator<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>>(
-        [xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>> {
-            if (!__init) { __beg = (xs).begin(); __end = (xs).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& s = *__beg++;
-                auto&& __val = s;
-                return std::optional<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

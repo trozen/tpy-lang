@@ -40,14 +40,21 @@ inline constexpr int32_t DEFAULT_STOP = 4;
 // WIDTH: Final[int32] = 7
 inline constexpr int32_t WIDTH = 7;
 
+struct __gen_upto;
+struct __gen_upto_final;
 struct __gen_bounded;
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_head;
+struct __gen_Box_upto_m;
 struct __gen_Box_bounded_m;
 struct __gen_Box_shapes;
 template <typename T>
 struct __gen_Box2_take;
 
+// def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
+__gen_upto upto(int32_t stop = 3, int32_t step = 1);
+// def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
+__gen_upto_final upto_final(int32_t stop = DEFAULT_STOP);
 // def bounded(limit: int32 = 2) -> Iterator[int32]:
 __gen_bounded bounded(int32_t limit = 2);
 // def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
@@ -80,25 +87,7 @@ struct Box {
     // def __init__(self) -> None:
     Box();
 
-    // # Simple generator METHOD with a default (the record_name peephole path).
-    // def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
-    //     i: int32 = 0
-    //     while i < stop:
-    //         yield i
-    //         i += 1
-    auto upto_m(int32_t stop = 2) const {
-        int32_t i = 0;
-        return ::tpy::make_generator<int32_t>(
-            [this, stop, i]() mutable -> std::optional<int32_t> {
-                while ((i < stop)) {
-                    auto __val = i;
-                    i = ::tpy::add_check<int32_t>(i, 1);
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Box_upto_m upto_m(int32_t stop = 2) const;
 
     __gen_Box_bounded_m bounded_m(int32_t limit = 2) const;
 
@@ -131,6 +120,55 @@ inline std::ostream& operator<<(std::ostream& os, const Box2<T>& obj) {
     ::tpy::print_object_default(os, "Box2", obj);
     return os;
 }
+
+// def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
+struct __gen_upto : public ::tpy::next_iter_mixin<__gen_upto, int32_t> {
+    int32_t __state;
+    int32_t stop;
+    int32_t step;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_upto(int32_t stop_ = 3, int32_t step_ = 1)
+        : __state(S_INITIAL), stop(std::move(stop_)), step(std::move(step_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_upto& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_upto&) {
+        return os << "<generator upto>";
+    }
+};
+
+// def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
+struct __gen_upto_final : public ::tpy::next_iter_mixin<__gen_upto_final, int32_t> {
+    int32_t __state;
+    int32_t stop;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_upto_final(int32_t stop_ = DEFAULT_STOP)
+        : __state(S_INITIAL), stop(std::move(stop_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_upto_final& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_upto_final&) {
+        return os << "<generator upto_final>";
+    }
+};
 
 // def bounded(limit: int32 = 2) -> Iterator[int32]:
 struct __gen_bounded : public ::tpy::next_iter_mixin<__gen_bounded, int32_t> {
@@ -187,7 +225,7 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
     }
 };
 // # Generic generator (protocol param) with a default -- the proto-param
-// # default-threading path, resumable via the break.
+// # default-threading path.
 // def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
 //     c: int32 = 0
 //     for x in it:
@@ -238,6 +276,35 @@ std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_head<T, T_it> head(T_it&& it, int32_t n) {
     return __gen_head<T, T_it>(std::forward<T_it>(it), n);
+}
+
+// def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
+struct __gen_Box_upto_m : public ::tpy::next_iter_mixin<__gen_Box_upto_m, int32_t> {
+    int32_t __state;
+    const Box& __self;
+    int32_t stop;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Box_upto_m(const Box& __self, int32_t stop_ = 2)
+        : __state(S_INITIAL), __self(__self), stop(std::move(stop_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Box_upto_m& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Box_upto_m&) {
+        return os << "<generator Box.upto_m>";
+    }
+};
+
+inline __gen_Box_upto_m Box::upto_m(int32_t stop) const {
+    return __gen_Box_upto_m(*this, stop);
 }
 
 // def bounded_m(self, limit: int32 = 2) -> Iterator[int32]:
@@ -403,46 +470,5 @@ inline Rec::Rec(int32_t v) : v(v) {}
 // def __init__(self) -> None:
 //     self.base = 0
 inline Box::Box() : base(0) {}
-// # Simple generator (single yield in a tail while-loop), two literal defaults.
-// def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
-//     i: int32 = 0
-//     while i < stop:
-//         yield i
-//         i += step
-inline auto upto(int32_t stop = 3, int32_t step = 1) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [stop, step, i]() mutable -> std::optional<int32_t> {
-            while ((i < stop)) {
-                auto __val = i;
-                i = ::tpy::add_check<int32_t>(i, step);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// # Default referencing a module-level Final constant.
-// def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
-//     i: int32 = 0
-//     while i < stop:
-//         yield i
-//         i += 1
-inline auto upto_final(int32_t stop = DEFAULT_STOP) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [stop, i]() mutable -> std::optional<int32_t> {
-            while ((i < stop)) {
-                auto __val = i;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

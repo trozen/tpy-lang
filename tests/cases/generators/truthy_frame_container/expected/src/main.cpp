@@ -76,6 +76,113 @@ std::optional<::tpyapp::main::Level> EnumUtil<::tpyapp::main::Level>::try_parse(
 namespace tpyapp::main {
 
 
+// def drain_list(xs: list[int32]) -> Iterator[int32]:
+//     # The reproducer BUGS.md carried: the loop mutates the frame-resident
+//     # list, so an empty one must stop it.
+//     while xs:
+//         yield xs.pop()                                                     # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_drain_list::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield xs.pop()
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::__len__(xs) != 0)) {
+            __state = S_RESUME_0;
+            return ::tpy::pop_back(xs);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def drain_list(xs: list[int32]) -> Iterator[int32]:
+__gen_drain_list drain_list(std::vector<int32_t>& xs) {
+    return __gen_drain_list(xs);
+}
+
+// def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
+//     # `order` keeps the drain deterministic across dict implementations;
+//     # the point under test is the `while d:` head.
+//     i = 0
+//     while d:
+//         yield d.pop(order[i])                                                  # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_drain_dict::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield d.pop(order[i])
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::__len__(d) != 0)) {
+            __state = S_RESUME_0;
+            return ::tpy::dict_pop(d, ::tpy::__getitem__(order, i));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
+__gen_drain_dict drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int32_t>& order) {
+    return __gen_drain_dict(d, order);
+}
+
+// def drain_set(s: set[int32]) -> Iterator[int32]:
+//     while s:
+//         yield s.pop()                             # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_drain_set::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield s.pop()
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::__len__(s) != 0)) {
+            __state = S_RESUME_0;
+            return ::tpy::set_pop(s);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def drain_set(s: set[int32]) -> Iterator[int32]:
+__gen_drain_set drain_set(::tpy::ordered_set<int32_t>& s) {
+    return __gen_drain_set(s);
+}
+
 // def str_branch(t: str) -> Iterator[int32]:
 //     if t:
 //         yield 1                             # -> S_RESUME_0
@@ -421,6 +528,48 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
 // def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
 __gen_and_branch and_branch(std::vector<int32_t>& xs, std::string_view t) {
     return __gen_and_branch(xs, t);
+}
+
+// def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
+//     # The same recursion, in a single-yield `while` head. `rest` is
+//     # a local because a str param cannot be rebound; clearing the borrowed
+//     # list plus emptying `rest` ends the loop after one pass.
+//     rest = t
+//     while xs or rest:
+//         yield 1                                                             # -> S_RESUME_0
+//         xs.clear()
+//         rest = ""
+std::expected<int32_t, ::tpy::StopIteration> __gen_peephole_or::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        rest = t;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 1
+        xs.clear();
+        rest = "";
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (((::tpy::__len__(xs) != 0) || (!rest.empty()))) {
+            __state = S_RESUME_0;
+            return 1;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
+__gen_peephole_or peephole_or(std::vector<int32_t>& xs, std::string_view t) {
+    return __gen_peephole_or(xs, t);
 }
 
 // def main() -> None:

@@ -11,6 +11,13 @@ struct Tok;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_toks_while;
+struct __gen_toks_for;
+
+// def toks_while(n: int32) -> Iterator[Own[Tok]]:
+__gen_toks_while toks_while(int32_t n);
+// def toks_for(n: int32) -> Iterator[Own[Tok]]:
+__gen_toks_for toks_for(int32_t n);
 // def main() -> None:
 void main();
 
@@ -36,45 +43,59 @@ inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
     return os;
 }
 
+// def toks_while(n: int32) -> Iterator[Own[Tok]]:
+struct __gen_toks_while : public ::tpy::next_iter_mixin<__gen_toks_while, Tok> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_toks_while(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<Tok, ::tpy::StopIteration> __next__();
+    __gen_toks_while& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_toks_while&) {
+        return os << "<generator toks_while>";
+    }
+};
+
+// def toks_for(n: int32) -> Iterator[Own[Tok]]:
+struct __gen_toks_for : public ::tpy::next_iter_mixin<__gen_toks_for, Tok> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_toks_for(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<Tok, ::tpy::StopIteration> __next__();
+    __gen_toks_for& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_toks_for&) {
+        return os << "<generator toks_for>";
+    }
+};
+
 
 // def __init__(self, v: int32) -> None:
 //     self.v = v
 inline Tok::Tok(int32_t v) : v(v) {}
-// def toks_while(n: int32) -> Iterator[Own[Tok]]:
-//     i: int32 = 0
-//     while i < n:
-//         yield Tok(i * 2)
-//         i += 1
-inline auto toks_while(int32_t n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<Tok>(
-        [n, i]() mutable -> std::optional<Tok> {
-            while ((i < n)) {
-                auto __val = Tok((::tpy::mul_check<int32_t>(i, 2)));
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<Tok>(std::move(__val));
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def toks_for(n: int32) -> Iterator[Own[Tok]]:
-//     for i in range(n):
-//         yield Tok(i * 2)
-inline auto toks_for(int32_t n) {
-    return ::tpy::make_generator<Tok>(
-        [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<Tok> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                auto __val = Tok((::tpy::mul_check<int32_t>(i, 2)));
-                return std::optional<Tok>(std::move(__val));
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

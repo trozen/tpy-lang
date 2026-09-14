@@ -1,2 +1,0 @@
-main.py:19: warning: copies C into field (tuple element 1); use copy() to make this explicit
-main.py:21: error: in function 'relay': this construct is not yet supported by C++ code generation (sgen.tuple_yield_source)

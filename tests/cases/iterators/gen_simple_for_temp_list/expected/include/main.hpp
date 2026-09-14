@@ -9,28 +9,40 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_g;
+
 // def make() -> Own[list[int32]]:
 std::vector<int32_t> make();
+// def g() -> Iterator[int32]:
+__gen_g g();
 // def main() -> None:
 void main();
 
 // def g() -> Iterator[int32]:
-//     for x in make():  # tpyc: ok
-//         yield x
-inline auto g() {
-    return ::tpy::make_generator<int32_t>(
-        [__src = std::optional<std::decay_t<decltype(make())>>(), __beg = decltype((make()).begin())(), __end = decltype((make()).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            if (!__init) { __src.emplace(make()); __beg = (*__src).begin(); __end = (*__src).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t x = *__beg++;
-                auto __val = x;
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
+    int32_t __state;
+    int32_t x;
+    ::tpy::frame_slot<std::vector<int32_t>> __for_src_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_g()
+        : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_g& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_g&) {
+        return os << "<generator g>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

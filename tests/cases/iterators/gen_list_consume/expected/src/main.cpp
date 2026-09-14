@@ -4,6 +4,43 @@
 namespace tpyapp::main {
 
 
+// def squares(n: int32) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < n:
+//         yield i * i                        # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_squares::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i * i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            __state = S_RESUME_0;
+            return (::tpy::mul_check<int32_t>(i, i));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def squares(n: int32) -> Iterator[int32]:
+__gen_squares squares(int32_t n) {
+    return __gen_squares(n);
+}
+
 // def main():
 //     result = list(squares(5))
 //     print(result)

@@ -212,6 +212,132 @@ void setdefault_slot(bool c) {
     std::cout << "setdefault_slot" << " " << ::tpy::__len__(d) << " " << (((again == nullptr)) ? (0) : (again->n)) << "\n";
 }
 
+// # Generator body on the resumable frame (two yields): the local is a frame
+// # field pointing at frame-owned storage, moved out at its last use.
+// def gen(k: int32) -> Iterator[int32]:
+//     patches: list[Pic | None] = []
+//     for j in range(k):
+//         patch: Pic | None = None
+//         if j != 1:
+//             patch = Pic(j)
+//         patches.append(patch)  # tpyc: ok
+//         yield len(patches)                 # -> S_RESUME_0
+//     bump_all(patches)
+//     show("generator", patches)
+//     yield -1                               # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        patches.emplace(std::vector<std::optional<Pic>>{});
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(k));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield len(patches)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: yield -1
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            bump_all((*patches));
+            show("generator", (*patches));
+            __state = S_RESUME_1;
+            return -1;
+        }
+        j = ((*__for_i_0))++;
+        patch = nullptr;
+        if ((j != 1)) {
+            patch = &*(__ptr_slot_f0 = Pic(j));
+        }
+        (*patches).push_back(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt);
+        __state = S_RESUME_0;
+        return ::tpy::__len__((*patches));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen(k: int32) -> Iterator[int32]:
+__gen_gen gen(int32_t k) {
+    return __gen_gen(k);
+}
+
+// # Async body: the same frame-field local at the element, free-function and
+// # constructor slots.
+// async def async_body(c: bool) -> None:
+//     patches: list[Pic | None] = []
+//     patch: Pic | None = None
+//     if c:
+//         patch = Pic(20)
+//     patches.append(patch)  # tpyc: ok
+//     other: Pic | None = None
+//     if c:
+//         other = Pic(21)
+//     take_own_opt(other, patches)  # tpyc: ok
+//     await asyncio.sleep(0)                    # -> S_RESUME_0
+//     third: Pic | None = None
+//     if c:
+//         third = Pic(22)
+//     b = Bag()
+//     b.add(third)  # tpyc: ok
+//     bump_all(patches)
+//     bump_all(b.items)
+//     show("async_body", patches)
+//     show("async_method", b.items)
+::tpystd::tpy::Poll<::std::monostate> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        patches.emplace(std::vector<std::optional<Pic>>{});
+        patch = nullptr;
+        if (c) {
+            patch = &*(__ptr_slot_f0 = Pic(20));
+        }
+        (*patches).push_back(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt);
+        other = nullptr;
+        if (c) {
+            other = &*(__ptr_slot_f1 = Pic(21));
+        }
+        take_own_opt(other ? std::optional<Pic>(std::move(*other)) : std::nullopt, (*patches));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        third = nullptr;
+        if (c) {
+            third = &*(__ptr_slot_f2 = Pic(22));
+        }
+        b.emplace(Bag());
+        (*b).add(third ? std::optional<Pic>(std::move(*third)) : std::nullopt);
+        bump_all((*patches));
+        bump_all((*b).items);
+        show("async_body", (*patches));
+        show("async_method", (*b).items);
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def async_body(c: bool) -> None:
+__coro_async_body async_body(bool c) {
+    return __coro_async_body(c);
+}
+
 // def main() -> None:
 //     append_try_reassigned({b"a": 1})
 //     append_branch_reassigned(True)
@@ -222,6 +348,8 @@ void setdefault_slot(bool c) {
 //     setdefault_slot(True)
 //     for v in gen(3):
 //         print("generator", v)
+//     asyncio.run(async_body(True))
+//     asyncio.run(async_body(False))
 void main() {
     ::tpy::ordered_map<::tpy::Bytes, int32_t> __tmp_1 = ::tpy::ordered_map<::tpy::Bytes, int32_t>({{::tpy::bytes_literal_owned("a", 1), 1}});
     append_try_reassigned(__tmp_1);
@@ -241,14 +369,36 @@ void main() {
         std::cout << "generator" << " " << v << "\n";
         }
     }
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_body(true)));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_body(false)));
 }
 
+// # A pointer-repr `Optional[record]` LOCAL that may still be None (declared
+// # None and reassigned only on some path, or never) passed at an
+// # `Own[record | None]` slot: the owning optional is rebuilt null-safely and
+// # moved in at the local's last use, at a builtin stub's element slot
+// # (`append`, `setdefault`), a free function, a user method and the
+// # `Own[record] | None` spelling -- the render the constructor slot already
+// # had. A plain `@staticmethod` stands in for every marker-qualified call kind
+// # (module-qualified, generic static, super): one sink, one render. Every stored element is mutated afterwards through an index read so a
+// # silent copy would show. A non-last-use occurrence keeps rejecting
+// # (error_optional_ptr_local_copy_into_own_slot). Not here: iterating the list
+// # of optionals (BUGS.md#optional-container-element-read-unlowered); a nested
+// # def, which has no movable locals (BUGS.md#rebind-slot-missing-module-nested-def);
+// # a comprehension body, where an outer name is read per iteration and so never
+// # at a last use (the copy path, with its warning); module level, whose init
+// # carrier has no movable set. A resumable body (a generator past the
+// # single-yield peephole, an async def) holds the local as a frame field whose
+// # pointee storage the frame owns, so it moves the same way.
+// import asyncio
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    ::tpystd::asyncio::__tpy_init();
     main();
 }
 

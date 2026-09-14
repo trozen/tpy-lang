@@ -18,6 +18,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // SCALE: Final[int32] = 2
 inline constexpr int32_t SCALE = 2;
 
+struct __gen_upto;
 struct __gen_pair;
 struct __coro_doubled;
 
@@ -25,6 +26,8 @@ struct __coro_doubled;
 int32_t shaped(int32_t a, int32_t b);
 // def quoted() -> str:
 std::string quoted();
+// def upto(n: int32) -> Iterator[int32]:
+__gen_upto upto(int32_t n);
 // def pair(n: int32) -> Iterator[int32]:
 __gen_pair pair(int32_t n);
 // async def doubled(n: int32) -> int32:
@@ -96,6 +99,32 @@ struct __coro_doubled {
     }
 };
 
+// def upto(n: int32) -> Iterator[int32]:
+struct __gen_upto : public ::tpy::next_iter_mixin<__gen_upto, int32_t> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_upto(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_upto& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_upto&) {
+        return os << "<generator upto>";
+    }
+};
+
 // def pair(n: int32) -> Iterator[int32]:
 struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair, int32_t> {
     int32_t __state;
@@ -146,23 +175,5 @@ inline Reader::Reader() : n(2) {}
 inline int32_t Reader::peek() const {
     return (::tpy::add_check<int32_t>(this->n, 1));
 }
-// # simple generator: the block sits above the lambda-backed definition
-// def upto(n: int32) -> Iterator[int32]:
-//     for i in range(n):
-//         yield i
-inline auto upto(int32_t n) {
-    return ::tpy::make_generator<int32_t>(
-        [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<int32_t> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                auto __val = i;
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

@@ -47,8 +47,8 @@ class Flag:
 
 
 def drain_list(xs: list[int32]) -> Iterator[int32]:
-    # The peephole shape, and the reproducer BUGS.md carried: the loop
-    # mutates the frame-resident list, so an empty one must stop it.
+    # The reproducer BUGS.md carried: the loop mutates the frame-resident
+    # list, so an empty one must stop it.
     while xs:
         yield xs.pop()
 
@@ -127,7 +127,7 @@ def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
 
 
 def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
-    # The same recursion, in the simple-generator while peephole. `rest` is
+    # The same recursion, in a single-yield `while` head. `rest` is
     # a local because a str param cannot be rebound; clearing the borrowed
     # list plus emptying `rest` ends the loop after one pass.
     rest = t

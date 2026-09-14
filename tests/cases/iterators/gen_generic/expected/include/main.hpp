@@ -29,6 +29,32 @@ struct Bin;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template <typename T>
+struct __gen_bump_each;
+template <typename T>
+struct __gen_size_each;
+template <typename T>
+struct __gen_len_each;
+template <typename T>
+struct __gen_repeat;
+template <typename T, ::tpystd::typing::Iterable<T> T_iterable>
+struct __gen_enumerate;
+
+// def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
+template <typename T>
+__gen_bump_each<T> bump_each(::tpy::param_val_or_ref_t<T> obj, int32_t count);
+// def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
+template <typename T>
+__gen_size_each<T> size_each(const T& obj, int32_t count);
+// def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
+template <typename T>
+__gen_len_each<T> len_each(const T& obj, int32_t count);
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+template <typename T>
+__gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count);
+// def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:
+template <typename T, ::tpystd::typing::Iterable<T> T_iterable>
+__gen_enumerate<T, T_iterable> enumerate(T_iterable&& iterable);
 // def main() -> None:
 void main();
 
@@ -54,6 +80,339 @@ inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
     return os;
 }
 
+// def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
+template <typename T>
+struct __gen_bump_each : public ::tpy::next_iter_mixin<__gen_bump_each<T>, int32_t> {
+    int32_t __state;
+    ::tpy::val_or_ref_t<T> obj;
+    int32_t count;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_bump_each(::tpy::param_val_or_ref_t<T> obj_, int32_t count_)
+        : __state(S_INITIAL), obj(obj_), count(std::move(count_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_bump_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_bump_each<T>&) {
+        return os << "<generator bump_each>";
+    }
+};
+// def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
+//     # the bare-`T` slot, MUTATED through its bound's method
+//     obj.append(1)
+//     i: int32 = 0
+//     while i < count:
+//         yield i                                                         # -> S_RESUME_0
+//         i += 1
+template <typename T>
+std::expected<int32_t, ::tpy::StopIteration> __gen_bump_each<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        obj.append(1);
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < count)) {
+            __state = S_RESUME_0;
+            return i;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
+template <typename T>
+__gen_bump_each<T> bump_each(::tpy::param_val_or_ref_t<T> obj, int32_t count) {
+    return __gen_bump_each<T>(obj, count);
+}
+
+// def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
+template <typename T>
+struct __gen_size_each : public ::tpy::next_iter_mixin<__gen_size_each<T>, int32_t> {
+    int32_t __state;
+    const T& obj;
+    int32_t count;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_size_each(const T& obj, int32_t count_)
+        : __state(S_INITIAL), obj(obj), count(std::move(count_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_size_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_size_each<T>&) {
+        return os << "<generator size_each>";
+    }
+};
+// def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
+//     # the `readonly[T]` slot: `const T&` at every instantiation -- still a
+//     # reference (the capture rule), but const, so only a @readonly method is
+//     # callable through it and `obj.append(1)` here would not compile
+//     i: int32 = 0
+//     while i < count:
+//         yield obj.size() + i                                                    # -> S_RESUME_0
+//         i += 1
+template <typename T>
+std::expected<int32_t, ::tpy::StopIteration> __gen_size_each<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield obj.size() + i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < count)) {
+            __state = S_RESUME_0;
+            return (::tpy::add_check<int32_t>(obj.size(), i));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
+template <typename T>
+__gen_size_each<T> size_each(const T& obj, int32_t count) {
+    return __gen_size_each<T>(obj, count);
+}
+
+// def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
+template <typename T>
+struct __gen_len_each : public ::tpy::next_iter_mixin<__gen_len_each<T>, int32_t> {
+    int32_t __state;
+    const T& obj;
+    int32_t count;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_len_each(const T& obj, int32_t count_)
+        : __state(S_INITIAL), obj(obj), count(std::move(count_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_len_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_len_each<T>&) {
+        return os << "<generator len_each>";
+    }
+};
+// def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
+//     # the same slot at a VALUE instantiation (str): the frame copies the
+//     # argument into its own member, so the factory's slot form is not
+//     # observable here; fed a NAMED local.
+//     i: int32 = 0
+//     while i < count:
+//         yield len(obj) + i                                                  # -> S_RESUME_0
+//         i += 1
+template <typename T>
+std::expected<int32_t, ::tpy::StopIteration> __gen_len_each<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield len(obj) + i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < count)) {
+            __state = S_RESUME_0;
+            return (::tpy::add_check<int32_t>(::tpy::__len__(obj), i));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
+template <typename T>
+__gen_len_each<T> len_each(const T& obj, int32_t count) {
+    return __gen_len_each<T>(obj, count);
+}
+
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+template <typename T>
+struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
+    int32_t __state;
+    ::tpy::val_or_ref_t<T> value;
+    int32_t count;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_repeat(::tpy::param_val_or_ref_t<T> value_, int32_t count_)
+        : __state(S_INITIAL), value(value_), count(std::move(count_)) {}
+
+    std::expected<T, ::tpy::StopIteration> __next__();
+    __gen_repeat& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_repeat<T>&) {
+        return os << "<generator repeat>";
+    }
+};
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+//     i: int32 = 0
+//     while i < count:
+//         yield value                                    # -> S_RESUME_0
+//         i += 1
+template <typename T>
+std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield value
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < count)) {
+            __state = S_RESUME_0;
+            return value;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+template <typename T>
+__gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count) {
+    return __gen_repeat<T>(value, count);
+}
+
+// def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:
+template <typename T, ::tpystd::typing::Iterable<T> T_iterable>
+struct __gen_enumerate : public ::tpy::next_iter_mixin<__gen_enumerate<T, T_iterable>, std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
+    int32_t __state;
+    T_iterable iterable;
+    int32_t i;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<T_iterable>> item;
+    ::tpy::frame_slot<::tpy::iter_type_t<T_iterable>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<T_iterable>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_enumerate(T_iterable&& iterable_)
+        : __state(S_INITIAL), iterable(std::forward<T_iterable>(iterable_)) {}
+
+    std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __next__();
+    __gen_enumerate& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_enumerate<T, T_iterable>&) {
+        return os << "<generator enumerate>";
+    }
+};
+// def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:
+//     i: int32 = 0
+//     for item in iterable:
+//         yield (i, item)                                                # -> S_RESUME_0
+//         i += 1
+template <typename T, ::tpystd::typing::Iterable<T> T_iterable>
+std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_enumerate<T, T_iterable>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        ::tpy::resumable_iter_init(__for_itr_0, iterable);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (i, item)
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, iterable));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        item.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
+        __state = S_RESUME_0;
+        return std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>((*item))};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:
+template <typename T, ::tpystd::typing::Iterable<T> T_iterable>
+__gen_enumerate<T, T_iterable> enumerate(T_iterable&& iterable) {
+    return __gen_enumerate<T, T_iterable>(std::forward<T_iterable>(iterable));
+}
+
 
 // def __init__(self) -> None:
 //     self.total = 0
@@ -71,120 +430,5 @@ inline void Bin::append(int32_t v) {
 inline int32_t Bin::size() const {
     return this->total;
 }
-// def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
-//     # the bare-`T` slot, MUTATED through its bound's method
-//     obj.append(1)
-//     i: int32 = 0
-//     while i < count:
-//         yield i
-//         i += 1
-template<Appendable T>
-inline auto bump_each(::tpy::borrow_frame_param_t<T> obj, int32_t count) {
-    obj.append(1);
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [&obj, count, i]() mutable -> std::optional<int32_t> {
-            while ((i < count)) {
-                auto __val = i;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
-//     # the `readonly[T]` slot: `const T&` at every instantiation -- still a
-//     # reference (the capture rule), but const, so only a @readonly method is
-//     # callable through it and `obj.append(1)` here would not compile
-//     i: int32 = 0
-//     while i < count:
-//         yield obj.size() + i
-//         i += 1
-template<Readable T>
-inline auto size_each(const T& obj, int32_t count) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [&obj, count, i]() mutable -> std::optional<int32_t> {
-            while ((i < count)) {
-                auto __val = (::tpy::add_check<int32_t>(obj.size(), i));
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
-//     # the same slot at a VALUE instantiation: `const T&` is a reference at str
-//     # too, never the view -- which is what makes the peephole's `[&obj]`
-//     # capture bind the caller's object rather than a parameter that dies with
-//     # the factory. Fed a NAMED local, because an rvalue here is not hoisted
-//     # into a caller temp (BUGS.md#readonly-tparam-slot-skips-arg-temp).
-//     i: int32 = 0
-//     while i < count:
-//         yield len(obj) + i
-//         i += 1
-template<Sized T>
-inline auto len_each(const T& obj, int32_t count) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [&obj, count, i]() mutable -> std::optional<int32_t> {
-            while ((i < count)) {
-                auto __val = (::tpy::add_check<int32_t>(::tpy::__len__(obj), i));
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def repeat[T](value: T, count: int32) -> Iterator[T]:
-//     i: int32 = 0
-//     while i < count:
-//         yield value
-//         i += 1
-template<typename T>
-inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
-    int32_t i = 0;
-    return ::tpy::make_generator<T>(
-        [&value, count, i]() mutable -> std::optional<T> {
-            while ((i < count)) {
-                auto __val = value;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<T>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:
-//     i: int32 = 0
-//     for item in iterable:
-//         yield (i, item)
-//         i += 1
-template<typename T, ::tpystd::typing::Iterable<T> T_iterable>
-inline auto enumerate(T_iterable& iterable) {
-    int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
-        [&iterable, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(iterable))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
-            if (!__iter) { __iter.emplace(::tpy::__iter__(iterable)); }
-            auto __r = (*__iter).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                auto&& item = ::tpy::unwrap_ref(*__r);
-                auto __val = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(item)};
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(__val);
-            }
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

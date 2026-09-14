@@ -17,6 +17,42 @@ namespace tpyapp::main {
     return ::tpy::BigInt(n);
 }
 
+// def fresh_each_pull() -> Iterator[int]:
+//     # A fresh [1, 2] per condition evaluation keeps eat() returning 2
+//     # forever; the caller's guard bounds the pulls.
+//     while eat([1, 2]) > 1:
+//         yield 1                                                        # -> S_RESUME_0
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 1
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
+        if ((eat(__tmp_1) > 1)) {
+            __state = S_RESUME_0;
+            return ::tpy::BigInt(1);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def fresh_each_pull() -> Iterator[int]:
+__gen_fresh_each_pull fresh_each_pull() {
+    return __gen_fresh_each_pull();
+}
+
 // # free generator, TWO yields (frame): the while-head temp is rebuilt on every
 // # re-entry, so eat() keeps seeing a fresh [1, 2].
 // def fresh_each_pull_framed() -> Iterator[int]:
@@ -109,6 +145,43 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__(
 // def if_cond_temp(n: int) -> Iterator[int]:
 __gen_if_cond_temp if_cond_temp(::tpy::BigInt n) {
     return __gen_if_cond_temp(n);
+}
+
+// def walrus_gen(limit: int) -> Iterator[int]:
+//     n = limit
+//     while (m := n) > 0:
+//         yield m                               # -> S_RESUME_0
+//         n -= 1
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_walrus_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        n = limit;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield m
+        n = (n) - (::tpy::BigInt(1));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (((m = n) > 0)) {
+            __state = S_RESUME_0;
+            return m;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def walrus_gen(limit: int) -> Iterator[int]:
+__gen_walrus_gen walrus_gen(::tpy::BigInt limit) {
+    return __gen_walrus_gen(limit);
 }
 
 // def main():

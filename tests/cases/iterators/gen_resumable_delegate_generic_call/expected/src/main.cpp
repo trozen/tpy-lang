@@ -15,9 +15,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        int32_t __tmp_1 = 7;
-        int32_t __tmp_2 = 8;
-        __for_src_0.emplace(pair<int32_t>(__tmp_1, __tmp_2));
+        __for_src_0.emplace(pair<int32_t>(7, 8));
         __state = S_JOIN_0;
         continue;
     }

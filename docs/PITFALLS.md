@@ -146,7 +146,7 @@ is TPy's default, so the declaration is the only place the contract can be state
 the twin -- see `docs/LANGUAGE_FEATURES.md`, "the copy contract of a generic body".
 (open: `BUGS.md#generic-own-slot-borrow-call-unwarned`,
 `BUGS.md#generic-optional-return-committed-to-pointer`,
-`BUGS.md#simple-generator-captures-open-t-param-by-reference`)
+`BUGS.md#generic-generator-yields-open-t-by-value`)
 
 **Check.** For a changed rule that a generic body can reach, write the monomorphic twin at the
 instantiation the case uses and diff the emitted C++ for the subject and the diagnostics; a
@@ -216,8 +216,8 @@ compiles by copying the element every iteration where every other path aliases -
 corner.
 
 **Example.** `def walk(xs: readonly[list[Node]]) -> Iterator[int32]: for n in xs: yield n.v;
-yield n.v` -- two yields, so the body is a resumable frame rather than the simple-generator
-peephole. Wrong: the frame field `Node* n` against an advance that yields `const Node*` (g++
+yield n.v` -- a resumable frame, like every generator. Wrong: the frame field `Node* n`
+against an advance that yields `const Node*` (g++
 `invalid conversion from 'const Node*' to 'Node*'`); equally wrong, `::tpy::frame_slot<Node> n`,
 which compiles and copies. Right: `const Node* n = nullptr;`. Same cell from the other two roots:
 `def each(self) -> Iterator[int32]: for p in self.items:` with a const-inferred receiver, and

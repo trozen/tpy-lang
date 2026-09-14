@@ -41,6 +41,41 @@ __gen_gen gen() {
     return __gen_gen();
 }
 
+// def relay() -> Iterator[tuple[int32, Box]]:
+//     for p in gen():
+//         yield p                              # -> S_RESUME_0
+std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(gen());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield p
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        p = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return p;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def relay() -> Iterator[tuple[int32, Box]]:
+__gen_relay relay() {
+    return __gen_relay();
+}
+
 // # free generator, TWO yields (frame): the whole borrow-tuple loop var is
 // # relayed twice per inner pull, still aliasing the inner generator's element.
 // def relay_twice() -> Iterator[tuple[int32, Box]]:

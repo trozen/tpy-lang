@@ -33,7 +33,7 @@ def storage_relay(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
         yield pair  # tpyc: ok
 
 
-# Free function, two yields -- the resumable frame rather than the peephole.
+# Free function, two yields.
 def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
     for pair in items:
         yield pair  # tpyc: ok

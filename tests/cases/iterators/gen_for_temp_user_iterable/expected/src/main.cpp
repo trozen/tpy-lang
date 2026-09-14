@@ -10,6 +10,42 @@ Holder make() {
     return Holder();
 }
 
+// def g_simple() -> Iterator[int32]:
+//     for x in make():  # tpyc: ok
+//         yield x                     # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_g_simple::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(make());
+        ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def g_simple() -> Iterator[int32]:
+__gen_g_simple g_simple() {
+    return __gen_g_simple();
+}
+
 // def g_resumable() -> Iterator[int32]:
 //     yield 0                            # -> S_RESUME_0
 //     for x in make():  # tpyc: ok
@@ -78,6 +114,36 @@ void main() {
         }
     }
 }
+
+// def __iter__(self) -> Iterator[int32]:
+//     for x in self.items:
+//         yield x                         # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_Holder___iter__::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((__self.items).begin());
+        __for_end_0.emplace((__self.items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 // main()
 void __tpy_init() {

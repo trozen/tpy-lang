@@ -1,5 +1,4 @@
-# A borrowed REFERENCE element yielded from a resumable generator frame (two
-# yields per generator, so the simple-generator peephole cannot take the body).
+# A borrowed REFERENCE element yielded from a resumable generator frame.
 # One admission ladder covers the whole reference axis, so every source shape
 # with a borrow lvalue at the yield slot lands at BOTH halves -- records and
 # containers. Every section mutates through the yielded element and prints the

@@ -11,12 +11,18 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template <::tpystd::typing::Iterable<Point> T_items>
+struct __gen_gen_double_x;
+
 // def mutate_via_iterable(items: Iterable[Point]) -> None:
 template<::tpystd::typing::Iterable<Point> T_items>
 void mutate_via_iterable(T_items& items);
 // def mutate_via_iterator(it: Iterator[Point]) -> None:
 template<::tpystd::typing::Iterator<Point> T_it>
 void mutate_via_iterator(T_it& it);
+// def gen_double_x(items: Iterable[Point]) -> Iterator[int]:
+template <::tpystd::typing::Iterable<Point> T_items>
+__gen_gen_double_x<T_items> gen_double_x(T_items&& items);
 // def main() -> None:
 void main();
 
@@ -36,6 +42,71 @@ struct Point {
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     ::tpy::print_object_default(os, "Point", obj);
     return os;
+}
+
+// def gen_double_x(items: Iterable[Point]) -> Iterator[int]:
+template <::tpystd::typing::Iterable<Point> T_items>
+struct __gen_gen_double_x : public ::tpy::next_iter_mixin<__gen_gen_double_x<T_items>, ::tpy::BigInt> {
+    int32_t __state;
+    T_items items;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<T_items>> p;
+    ::tpy::frame_slot<::tpy::iter_type_t<T_items>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<T_items>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_double_x(T_items&& items_)
+        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_double_x& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_double_x<T_items>&) {
+        return os << "<generator gen_double_x>";
+    }
+};
+// def gen_double_x(items: Iterable[Point]) -> Iterator[int]:
+//     for p in items:
+//         p.x *= 2
+//         yield p.x                                           # -> S_RESUME_0
+template <::tpystd::typing::Iterable<Point> T_items>
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_double_x<T_items>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        ::tpy::resumable_iter_init(__for_itr_0, items);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield p.x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, items));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        p.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
+        (*p).x = ((*p).x) * (::tpy::BigInt(2));
+        __state = S_RESUME_0;
+        return (*p).x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_double_x(items: Iterable[Point]) -> Iterator[int]:
+template <::tpystd::typing::Iterable<Point> T_items>
+__gen_gen_double_x<T_items> gen_double_x(T_items&& items) {
+    return __gen_gen_double_x<T_items>(std::forward<T_items>(items));
 }
 
 
@@ -71,27 +142,6 @@ void mutate_via_iterator(T_it& it) {
         p.y = (p.y) + (::tpy::BigInt(200));
     }
 }
-// def gen_double_x(items: Iterable[Point]) -> Iterator[int]:
-//     for p in items:
-//         p.x *= 2
-//         yield p.x
-template<::tpystd::typing::Iterable<Point> T_items>
-inline auto gen_double_x(T_items& items) {
-    return ::tpy::make_generator<::tpy::BigInt>(
-        [&items, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(items))>>()]() mutable -> std::optional<::tpy::BigInt> {
-            if (!__iter) { __iter.emplace(::tpy::__iter__(items)); }
-            auto __r = (*__iter).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                auto&& p = ::tpy::unwrap_ref(*__r);
-                p.x = (p.x) * (::tpy::BigInt(2));
-                auto __val = p.x;
-                return std::optional<::tpy::BigInt>(__val);
-            }
-        }
-    );
-}
-
 
 void __tpy_init();
 } // namespace tpyapp::main

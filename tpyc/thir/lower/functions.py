@@ -95,7 +95,6 @@ from ...codegen_cpp.functions import (
     overload_stubs_are_literal_only,
 )
 from ...codegen_cpp.forms import LocalBinding
-from ...codegen_cpp.gen_generators import GeneratorCodegen
 from ...type_def_registry import (
     is_array,
     view_to_owned_conv,
@@ -436,9 +435,9 @@ def _check_callable_structure(func: TpyFunction, analyzer,
                               self_type: 'TpyType | None' = None,
                               *, allow_resumable: bool = False,
                               stub: 'TpyFunction | None' = None) -> None:
-    # `allow_resumable` is passed by `lower_resumable` and
-    # `lower_simple_generator`: the async/generator arms below are those
-    # entries' whole point, but every other signature check (overloads,
+    # `allow_resumable` is passed by `lower_resumable`: the async/generator
+    # arms below are that entry's whole point, but every other signature
+    # check (overloads,
     # linkage, shadowing) applies to their bodies exactly like a sync one.
     # A record-owned callable is admitted when its owning record is an
     # F1-record (`self_type` passed by the caller). All method kinds funnel
@@ -562,12 +561,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         if func.is_async:
             raise ThirUnsupported("sig.async")
         if func.is_generator:
-            # Sub-tagged by the peephole predicate: the two populations
-            # are different emitters, so each rejects under its own tag.
-            raise ThirUnsupported(
-                "sig.generator_simple"
-                if GeneratorCodegen.is_simple_generator(func)
-                else "sig.generator_resumable")
+            raise ThirUnsupported("sig.generator_resumable")
     if func.error_return is not None and (func.is_async or func.is_generator):
         # The sync @error_return body routes (the return-tier renders live on
         # THIRReturn/THIRRaise + the bind/discard/unwrap nodes); the resumable
@@ -599,9 +593,9 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # ASYNC resumables need no gate: the frame member respells owned at the
     # SKELETON (`std::string t;` -- gen_async owns the member spelling), no
     # prologue arises, and the body reads ride the frame-field arms.
-    # GENERATOR bodies KEEP the reject: the simple-gen peephole respells the
-    # reassigned param in its lambda capture, a render the leaves do not
-    # produce.
+    # GENERATOR bodies KEEP the reject: nothing produces the owned respell
+    # of a reassigned param in a generator frame
+    # (BUGS.md#generator-frame-param-reassign-copy-rejects).
     if allow_resumable and func.is_generator:
         scan = analyzer.function_scan_results.get(func)
         if scan is not None and scan.reassigned:
@@ -825,8 +819,8 @@ def _seed_int_kind_tparams(func: TpyFunction, record_name: 'str | None',
 def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
                        params_set: dict[str, TpyType],
                        native_globals: 'Mapping[str, str]') -> None:
-    """Seed module-global names into the walk scope + prescan (shared by the
-    sync and simple-generator entries; resumables use frame fields instead).
+    """Seed module-global names into the walk scope + prescan (the sync
+    entry; resumables use frame fields instead).
 
     `global`-declared names seed the scope like params: their writes then
     lower as reassignments (`g = v;`) and
@@ -2959,9 +2953,8 @@ def _needs_held_back_slot(node) -> bool:
     Such a declaration is drained at the prologue of the body being emitted. A
     body rendered into a C++ lambda needs that drain INSIDE the lambda (the
     enclosing prologue is outside its capture list): the nested-def emitter
-    buffers and prepends, and the SGEN leaf routes into the ctx's nested
-    hoist scope (its hoist_sink); what remains guarded here is the
-    cross-scope `nonlocal` hazard (`_rejects_lambda_hoist`). Mirrors
+    buffers and prepends; what remains guarded here is the cross-scope
+    `nonlocal` hazard (`_rejects_lambda_hoist`). Mirrors
     `_rejects_global_slot`: every emit site calling `_declare_rebind_slot`
     must be represented here."""
     if isinstance(node, THIRPtrLocalDecl):
@@ -3004,18 +2997,8 @@ def cross_scope_rebind_site(
     holds it.
 
     A rebind whose name the lambda body itself reserves a slot for is a SHADOW,
-    not a cross-scope consume, but the reason differs per caller and only one of
-    the two is the local-vs-`nonlocal` dichotomy. For a NESTED DEF the two
-    operands are two Python scopes, and within one of them a name is either local
-    or `nonlocal`, never both. For the SIMPLE-GENERATOR peephole they are ONE scope
-    -- the lambda is a render, not a Python scope -- and what carries `rb in own`
-    there is that a local is DECLARED once per scope: a name whose slot is
-    reserved inside the loop reserved none in the prologue, so the drain is
-    inside the lambda either way.
-
-    EVERY lambda-rendered body must be checked, not just nested defs: the
-    simple-generator peephole renders its loop into a lambda too, with the
-    pre-loop statements left in the enclosing function.
+    not a cross-scope consume: the two operands are two Python scopes, and
+    within one of them a name is either local or `nonlocal`, never both.
     """
     outer_slot_names = {n for n in (_slot_owning_name(x) for x in _iter_thir(outer))
                         if n is not None}

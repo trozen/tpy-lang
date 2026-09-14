@@ -865,6 +865,38 @@ Response delete_(std::string_view url, const ::tpy::ordered_map<std::string, std
 }
 
 // def __iter__(self) -> Iterator[str]:
+//     # Yields the original-cased header names (last-set casing wins). A
+//     # generator method, so `for k in headers` needs no separate iterator.
+//     for lk in self._store:
+//         yield self._store[lk][0]                                           # -> S_RESUME_0
+std::expected<std::string, ::tpy::StopIteration> __gen_CaseInsensitiveDict___iter__::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((__self._store).begin());
+        __for_end_0.emplace((__self._store).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield self._store[lk][0]
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        lk = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return std::get<0>(::tpy::__getitem__(__self._store, lk));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def __iter__(self) -> Iterator[str]:
 //     # Deleted markers are tombstones, invisible through every accessor
 //     # (get / in / keys / items) -- iteration must hide them too.
 //     for name in self._store:

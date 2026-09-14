@@ -45,6 +45,44 @@ __gen_bump bump(::tpy::ordered_map<int32_t, C>& d) {
     return __gen_bump(d);
 }
 
+// def pairs(d: dict[int32, C]) -> Iterator[int32]:
+//     for kv in d.items():
+//         kv[1].v = kv[1].v + 10
+//         yield kv[0]                               # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_pairs::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(::tpy::dict_items(d));
+        __for_it_0.emplace(((*__for_src_0)).begin());
+        __for_end_0.emplace(((*__for_src_0)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield kv[0]
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        kv = ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>(*((*__for_it_0))++);
+        std::get<1>(kv)->v = (::tpy::add_check<int32_t>(std::get<1>(kv)->v, 10));
+        __state = S_RESUME_0;
+        return std::get<0>(kv);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def pairs(d: dict[int32, C]) -> Iterator[int32]:
+__gen_pairs pairs(::tpy::ordered_map<int32_t, C>& d) {
+    return __gen_pairs(d);
+}
+
 // def main():
 //     d = {1: C(10), 2: C(20)}
 //     for k in bump(d):

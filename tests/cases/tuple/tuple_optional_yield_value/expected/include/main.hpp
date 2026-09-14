@@ -9,26 +9,38 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen_value_pairs;
+
+// def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
+__gen_gen_value_pairs gen_value_pairs(std::vector<int32_t>& items);
 // def main() -> None:
 void main();
 
 // def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
-//     for it in items:
-//         yield (it, None)
-inline auto gen_value_pairs(std::vector<int32_t>& items) {
-    return ::tpy::make_generator<std::tuple<std::optional<int32_t>, std::optional<int32_t>>>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<std::optional<int32_t>, std::optional<int32_t>>> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t it = *__beg++;
-                auto __val = std::tuple<std::optional<int32_t>, std::optional<int32_t>>{it, std::nullopt};
-                return std::optional<std::tuple<std::optional<int32_t>, std::optional<int32_t>>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_gen_value_pairs : public ::tpy::next_iter_mixin<__gen_gen_value_pairs, std::tuple<std::optional<int32_t>, std::optional<int32_t>>> {
+    int32_t __state;
+    std::vector<int32_t>& items;
+    int32_t it;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_value_pairs(std::vector<int32_t>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<std::tuple<std::optional<int32_t>, std::optional<int32_t>>, ::tpy::StopIteration> __next__();
+    __gen_gen_value_pairs& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_value_pairs&) {
+        return os << "<generator gen_value_pairs>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

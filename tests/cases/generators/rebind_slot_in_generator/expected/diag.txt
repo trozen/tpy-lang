@@ -1,1 +1,0 @@
-main.py:47: warning: 'alias' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'alias' with copy(p), or bind the new value to a name of its own

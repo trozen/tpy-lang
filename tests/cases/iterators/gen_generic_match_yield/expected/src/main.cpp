@@ -12,9 +12,7 @@ namespace tpyapp::main {
 //         print(v)
 void main() {
     {
-        int32_t __tmp_1 = 1;
-        int32_t __tmp_2 = 2;
-        auto __src_0 = gen<int32_t>(__tmp_1, __tmp_2, ::tpy::BigInt(0));
+        auto __src_0 = gen<int32_t>(1, 2, ::tpy::BigInt(0));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -25,9 +23,7 @@ void main() {
     }
     std::cout << "--" << "\n";
     {
-        int32_t __tmp_3 = 8;
-        int32_t __tmp_4 = 9;
-        auto __src_2 = gen<int32_t>(__tmp_3, __tmp_4, ::tpy::BigInt(1));
+        auto __src_2 = gen<int32_t>(8, 9, ::tpy::BigInt(1));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

@@ -4,6 +4,172 @@
 namespace tpyapp::main {
 
 
+// def decl_inside_while(n: int32) -> Iterator[int32]:
+//     i = 0
+//     while i < n:
+//         p = Point(0)
+//         p = Point(i)
+//         yield p.x                                    # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_decl_inside_while::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield p.x
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            p.emplace(Point(0));
+            p.emplace(Point(i));
+            __state = S_RESUME_0;
+            return (*p).x;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def decl_inside_while(n: int32) -> Iterator[int32]:
+__gen_decl_inside_while decl_inside_while(int32_t n) {
+    return __gen_decl_inside_while(n);
+}
+
+// def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
+//     for v in xs:
+//         p = Point(0)
+//         p = Point(v)
+//         yield p.x                                         # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_decl_inside_for::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((xs).begin());
+        __for_end_0.emplace((xs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield p.x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = *((*__for_it_0))++;
+        p.emplace(Point(0));
+        p.emplace(Point(v));
+        __state = S_RESUME_0;
+        return (*p).x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
+__gen_decl_inside_for decl_inside_for(std::vector<int32_t>& xs) {
+    return __gen_decl_inside_for(xs);
+}
+
+// # declared BEFORE the loop, rebound inside it
+// def before_while(n: int32) -> Iterator[int32]:
+//     p = Point(11)
+//     i = 0
+//     while i < n:
+//         p = Point(i)  # tpyc: ok
+//         yield p.x                               # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_before_while::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        p.emplace(Point(11));
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield p.x
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            p.emplace(Point(i));
+            __state = S_RESUME_0;
+            return (*p).x;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def before_while(n: int32) -> Iterator[int32]:
+__gen_before_while before_while(int32_t n) {
+    return __gen_before_while(n);
+}
+
+// # ... with an earlier same-scope rebind that already drained the declaration
+// def before_while_after_drain(n: int32) -> Iterator[int32]:
+//     p = Point(11)
+//     p = Point(12)
+//     i = 0
+//     while i < n:
+//         p = Point(i)  # tpyc: ok
+//         yield p.x                                           # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_before_while_after_drain::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        p.emplace(Point(11));
+        p.emplace(Point(12));
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield p.x
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            p.emplace(Point(i));
+            __state = S_RESUME_0;
+            return (*p).x;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def before_while_after_drain(n: int32) -> Iterator[int32]:
+__gen_before_while_after_drain before_while_after_drain(int32_t n) {
+    return __gen_before_while_after_drain(n);
+}
+
 // def main() -> None:
 //     for got in decl_inside_while(3):
 //         print("while:", got)
@@ -11,8 +177,11 @@ namespace tpyapp::main {
 //     for got in decl_inside_for([1, 2, 3]):
 //         print("for:", got)
 //
-//     for got in alias_holds_across_rebind(2):
-//         print("alias:", got)
+//     for got in before_while(2):
+//         print("before_while:", got)
+//
+//     for got in before_while_after_drain(2):
+//         print("after_drain:", got)
 void main() {
     {
         auto __src_0 = decl_inside_while(3);
@@ -36,13 +205,23 @@ void main() {
         }
     }
     {
-        auto __src_4 = alias_holds_across_rebind(2);
+        auto __src_4 = before_while(2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "alias:" << " " << got << "\n";
+        std::cout << "before_while:" << " " << got << "\n";
+        }
+    }
+    {
+        auto __src_6 = before_while_after_drain(2);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t got = ::tpy::unwrap_ref(*__r_7);
+        std::cout << "after_drain:" << " " << got << "\n";
         }
     }
 }

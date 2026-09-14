@@ -165,6 +165,48 @@ __gen_with_view_target with_view_target(Holder& h) {
     return __gen_with_view_target(h);
 }
 
+// # A single yield inside the trailing loop: the same frame render as the
+// # two-yield generators above, kept so the copy at this loop shape stays pinned
+// # at exec level.
+// def peephole_view(n: int32) -> Iterator[str]:
+//     lit = "peephole"
+//     i = 0
+//     while i < n:
+//         yield lit  # tpyc: ok                  # -> S_RESUME_0
+//         i += 1
+std::expected<std::string, ::tpy::StopIteration> __gen_peephole_view::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        lit = "peephole";
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield lit  # tpyc: ok
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            __state = S_RESUME_0;
+            return std::string(lit);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def peephole_view(n: int32) -> Iterator[str]:
+__gen_peephole_view peephole_view(int32_t n) {
+    return __gen_peephole_view(n);
+}
+
 // def owned_param_stays_bare(s: str) -> Iterator[str]:
 //     yield s  # tpyc: ok                               # -> S_RESUME_0
 //     yield s                                           # -> S_RESUME_1

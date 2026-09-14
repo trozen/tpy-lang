@@ -1,5 +1,5 @@
 # A generator factory with default arg values is callable with the arg omitted
-# -- across the simple-peephole, resumable, generic, method, and Final paths.
+# -- across single-yield, multi-yield, generic, method, and Final shapes.
 # The resumable METHOD sections are the reproducer: a resumable method's
 # canonical declaration is its in-class one, and the frame ctor is a second
 # C++ callee, so both must carry the default.
@@ -24,7 +24,7 @@ class Rec:
         self.v = v
 
 
-# Simple generator (single yield in a tail while-loop), two literal defaults.
+# Single yield in a tail while-loop, two literal defaults.
 def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
     i: int32 = 0
     while i < stop:
@@ -50,7 +50,7 @@ def bounded(limit: int32 = 2) -> Iterator[int32]:
 
 
 # Generic generator (protocol param) with a default -- the proto-param
-# default-threading path, resumable via the break.
+# default-threading path.
 def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
     c: int32 = 0
     for x in it:
@@ -66,7 +66,7 @@ class Box:
     def __init__(self) -> None:
         self.base = 0
 
-    # Simple generator METHOD with a default (the record_name peephole path).
+    # Single-yield generator METHOD with a default.
     def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
         i: int32 = 0
         while i < stop:

@@ -114,12 +114,12 @@ __gen_not_form not_form(std::optional<int32_t> v) {
 }
 
 // def while_suspends(v: int32 | None) -> Iterator[int32]:
-//     # A trailing statement keeps the simple-generator peephole from
-//     # applying, so the loop head goes through the CFG.
+//     # The loop body suspends, so the loop head goes through the CFG; a
+//     # trailing statement follows the loop.
 //     while v:  # tpyc: warning(/Truthiness check on optional value/)
-//         yield 1                                                      # -> S_RESUME_0
+//         yield 1                                                         # -> S_RESUME_0
 //         v = None
-//     yield 2                                                          # -> S_RESUME_1
+//     yield 2                                                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -153,6 +153,43 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
 // def while_suspends(v: int32 | None) -> Iterator[int32]:
 __gen_while_suspends while_suspends(std::optional<int32_t> v) {
     return __gen_while_suspends(v);
+}
+
+// def peephole_while(v: int32 | None) -> Iterator[int32]:
+//     # The while IS the last statement: the same frame and CFG loop-head
+//     # render as `while_suspends`, pinned at the single-yield tail-loop shape.
+//     while v:  # tpyc: warning(/Truthiness check on optional value/)
+//         yield 1                                                                # -> S_RESUME_0
+//         v = None
+std::expected<int32_t, ::tpy::StopIteration> __gen_peephole_while::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 1
+        v = std::nullopt;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (::tpy::is_truthy(v)) {
+            __state = S_RESUME_0;
+            return 1;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def peephole_while(v: int32 | None) -> Iterator[int32]:
+__gen_peephole_while peephole_while(std::optional<int32_t> v) {
+    return __gen_peephole_while(v);
 }
 
 // def frame_local(b: Box) -> Iterator[int32]:

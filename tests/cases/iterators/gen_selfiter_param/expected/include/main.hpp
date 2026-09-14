@@ -16,6 +16,7 @@ struct __gen_take;
 struct __gen_wrap;
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
 struct __gen_take_iter;
+struct __gen_doubled;
 
 // def repeat_n[T](obj: T, times: int32) -> Iterator[T]:
 template <typename T>
@@ -28,6 +29,8 @@ __gen_wrap wrap(int32_t n);
 // def take_iter[T](it: Iterator[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
 __gen_take_iter<T, T_it> take_iter(T_it&& it, int32_t n);
+// def doubled(xs: list[int32]) -> Iterator[int32]:
+__gen_doubled doubled(std::vector<int32_t>& xs);
 // def main() -> None:
 void main();
 
@@ -286,24 +289,31 @@ __gen_take_iter<T, T_it> take_iter(T_it&& it, int32_t n) {
     return __gen_take_iter<T, T_it>(std::forward<T_it>(it), n);
 }
 
-// # inverse 2: a plain list source in a generator (begin_end strategy, unchanged)
 // def doubled(xs: list[int32]) -> Iterator[int32]:
-//     for x in xs:
-//         yield x * 2
-inline auto doubled(std::vector<int32_t>& xs) {
-    return ::tpy::make_generator<int32_t>(
-        [&xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            if (!__init) { __beg = (xs).begin(); __end = (xs).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t x = *__beg++;
-                auto __val = (::tpy::mul_check<int32_t>(x, 2));
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
+    int32_t __state;
+    std::vector<int32_t>& xs;
+    int32_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_doubled(std::vector<int32_t>& xs)
+        : __state(S_INITIAL), xs(xs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_doubled& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_doubled&) {
+        return os << "<generator doubled>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

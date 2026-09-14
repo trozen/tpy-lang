@@ -9,28 +9,39 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_bump;
+
+// def bump(d: dict[str, list[int32]]) -> Iterator[int32]:
+__gen_bump bump(::tpy::ordered_map<std::string, std::vector<int32_t>>& d);
 // def main():
 void main();
 
 // def bump(d: dict[str, list[int32]]) -> Iterator[int32]:
-//     for v in d.values():
-//         v.append(9)
-//         yield len(v)
-inline auto bump(::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
-    return ::tpy::make_generator<int32_t>(
-        [&d, __src = std::optional<std::decay_t<decltype(::tpy::dict_values(d))>>(), __beg = decltype((::tpy::dict_values(d)).begin())(), __end = decltype((::tpy::dict_values(d)).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            if (!__init) { __src.emplace(::tpy::dict_values(d)); __beg = (*__src).begin(); __end = (*__src).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& v = *__beg++;
-                v.push_back(9);
-                auto __val = ::tpy::__len__(v);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
+    int32_t __state;
+    ::tpy::ordered_map<std::string, std::vector<int32_t>>& d;
+    std::vector<int32_t>* v = nullptr;
+    ::tpy::frame_slot<::tpy::dict_values_view<std::string, std::vector<int32_t>>> __for_src_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_values_view<std::string, std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_values_view<std::string, std::vector<int32_t>>>> __for_end_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_bump(::tpy::ordered_map<std::string, std::vector<int32_t>>& d)
+        : __state(S_INITIAL), d(d) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_bump& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_bump&) {
+        return os << "<generator bump>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

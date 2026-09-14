@@ -9,26 +9,38 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_doubled;
+
+// def doubled(items: list[int32]) -> Iterator[int32]:
+__gen_doubled doubled(std::vector<int32_t>& items);
 // def main():
 void main();
 
 // def doubled(items: list[int32]) -> Iterator[int32]:
-//     for x in items:
-//         yield x * 2
-inline auto doubled(std::vector<int32_t>& items) {
-    return ::tpy::make_generator<int32_t>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t x = *__beg++;
-                auto __val = (::tpy::mul_check<int32_t>(x, 2));
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
+    int32_t __state;
+    std::vector<int32_t>& items;
+    int32_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_doubled(std::vector<int32_t>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_doubled& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_doubled&) {
+        return os << "<generator doubled>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

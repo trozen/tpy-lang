@@ -11,6 +11,10 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_pairs;
+
+// def pairs(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+__gen_pairs pairs(std::vector<P>& items);
 // def main() -> None:
 void main();
 
@@ -30,27 +34,35 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
+// def pairs(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<P*, P*>> {
+    int32_t __state;
+    std::vector<P>& items;
+    P* it = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_pairs(std::vector<P>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
+    __gen_pairs& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_pairs&) {
+        return os << "<generator pairs>";
+    }
+};
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline P::P(int32_t x) : x(x) {}
-// def pairs(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
-//     for it in items:
-//         yield (it, None)
-inline auto pairs(std::vector<P>& items) {
-    return ::tpy::make_generator<std::tuple<P*, P*>>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& it = *__beg++;
-                auto __val = std::tuple<P*, P*>{&(it), nullptr};
-                return std::optional<std::tuple<P*, P*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

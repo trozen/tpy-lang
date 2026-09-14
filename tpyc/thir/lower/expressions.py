@@ -145,7 +145,7 @@ from ...symbol_binding import SymbolKind, lookup_imported
 from ...coercions import wrap_into_any, CoercionContext
 from ...compilation_context import get_current_compiler
 from ...value_category import (
-    borrowing_frame_callee, call_returns_cpp_ref, is_rvalue_source,
+    frame_factory_callee, call_returns_cpp_ref, is_rvalue_source,
     materializing_temp_source,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, expr_kind_tag,
@@ -4858,12 +4858,11 @@ def _poly_cast_context(var: str, lc: '_LowerCtx',
     const = (_const_borrow_name(var, lc)
              or _poly_subject_readonly(var_raw))
     if var == lc.self_receiver:
-        # `self` is already pointer-shaped in a plain method (`this`) and in
-        # a simple generator (`(*this)`, whose address folds back to `this`);
-        # a resumable coro's `__self` is a `Record&` field, so it takes the
+        # `self` is already pointer-shaped in a plain method (`this`); a
+        # resumable coro's `__self` is a `Record&` field, so it takes the
         # address. Mirrors polymorphic_cast_arg's self arms. A readonly
         # method's `this` is const, so the cast targets `const Sub*`.
-        cast_arg = ("this" if lc.self_cpp in ("this", "(*this)")
+        cast_arg = ("this" if lc.self_cpp == "this"
                     else f"&{lc.self_cpp}")
         const = const or "self" in lc.const_locals
     else:
@@ -5300,35 +5299,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # sync Own param movable, so its last-use read renders `std::move(p)`.
         # A frame body has no such binding -- the payload was moved into the
         # frame at construction and every body read is a bare member read.
-        # The SGEN lambda's Own param is the same shape one seam over: the
-        # capture list copied it by value (`[items, ...]`), so every body
-        # read is the bare captured name. Own[PROTOCOL] payloads only: an
-        # Own[container] param flips the skeleton's iterable-strategy
-        # classification (ctx.var_types, which the leaf path does not seed).
-        _sgen_own_ok = False
-        if (unrouted == "name.own_read" and not lc.resumable_leaf_mode
-                and lc.func.is_generator
-                and e.name in lc.prescan.param_names
-                and binding_type is not None):
-            _sob = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                binding_type)))
-            if isinstance(_sob, OwnType):
-                _sow = unwrap_readonly(_sob.wrapped)
-                _sgen_own_ok = (isinstance(_sow, NominalType)
-                                and _sow.is_protocol
-                                and not is_dyn_protocol(_sow))
         _frame_own_read = (unrouted == "name.own_read"
-                           and ((lc.resumable_leaf_mode
-                                 and (e.name in lc.plain_frame_fields
-                                      # ... and the frame SLOT sibling (a
-                                      # loop var over an Own[container]
-                                      # source): the payload lives in the
-                                      # frame's optional slot, so every
-                                      # body read is the bare `(*row)`
-                                      # peel and nothing is ever moved out
-                                      # of it.
-                                      or e.name in lc.frame_slots))
-                                or _sgen_own_ok))
+                           and lc.resumable_leaf_mode
+                           and (e.name in lc.plain_frame_fields
+                                # ... and the frame SLOT sibling (a loop var
+                                # over an Own[container] source): the payload
+                                # lives in the frame's optional slot, so every
+                                # body read is the bare `(*row)` peel and
+                                # nothing is ever moved out of it.
+                                or e.name in lc.frame_slots))
         if (unrouted is not None and not allow_unrouted_name
                 and not _frame_own_read
                 # A REGISTERED owned-optional record local has a routed read
@@ -5343,8 +5322,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and e.name not in lc.optional_borrow_tuple_locals):
             raise ThirUnsupported(unrouted, detail=True)
         if _frame_own_read:
-            _witness("name.frame_own_field" if lc.resumable_leaf_mode
-                     else "name.sgen_own_param")
+            _witness("name.frame_own_field")
         # A view-INNER value-opt LOCAL (`StrView`/`BytesView | None` ->
         # `optional<string_view>`) admits only its WHOLE-optional read: the
         # narrowed read is a whole-optional-wrap quirk this arm does not
@@ -5721,9 +5699,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         and _f1_record(rtype, analyzer))
                     # A CONTAINER field in a for-head that reaches the generic
                     # iterable position -- the RESUMABLE frame's
-                    # (`(__self.nodes).begin()`). The sync for-head and the
-                    # simple-generator peephole have their own arms and never
-                    # land here. The bare member read is what begin()/end()
+                    # (`(__self.nodes).begin()`). The sync for-head has its
+                    # own arms and never lands here. The bare member read is
+                    # what begin()/end()
                     # are taken off, so the read itself is the whole render.
                     # ITERABLE only -- at the generic VALUE position a
                     # container field read is a copy-vs-alias decision its own
@@ -7250,11 +7228,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # The pointer/slot/viewfam rungs are SYNC-only: a resumable body's
         # locals are frame fields (`(*b)` source reads, no named-row drain
         # for the predecls), a different render model -- only the
-        # value-scalar tail below stays available there (sgen cond flush).
+        # value-scalar tail below stays available there.
         resumable = lc.func.is_generator or lc.func.is_async
         if e.target in lc.frame_local_types:
-            # A RESUMABLE frame local (the map is empty for sync and for the
-            # sgen peephole): the target is a struct FIELD, so every rung
+            # A RESUMABLE frame local (the map is empty for sync bodies):
+            # the target is a struct FIELD, so every rung
             # below is wrong for it -- their pre-declaration would put a
             # case-block local in front of the field and the write would die
             # at the next suspension.
@@ -9903,8 +9881,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 tt = _tparam_slot_temp_arg(
                     a, ptype, index, raw_method_fi, lc.analyzer,
                     locals_=declared,
-                    param_names=lc.prescan.param_names,
-                    borrowing_frame=borrowing_frame_callee(fi))
+                    param_names=lc.prescan.param_names)
                 if tt is not None:
                     _witness("argtemp.generic_ref_slot")
                     t_init = _lower_expr(a, lc, declared,
@@ -9942,21 +9919,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         init=minit,
                         addr_of=True, form=Form.BORROW,
                         loc=getattr(a, "loc", None))
-            nf = _tparam_slot_temp_arg(
-                a, ptype, index, raw_method_fi, lc.analyzer,
-                locals_=declared, param_names=lc.prescan.param_names,
-                borrowing_frame=borrowing_frame_callee(fi))
-            if nf is not None:
-                # The temp this seam still owes is needed RENDER, not an
-                # optimization, and with no flush position it cannot be
-                # hoisted -- so reject honestly (the `call.own_str_no_flush`
-                # precedent) rather than fall through to a pass-through arm.
-                if borrowing_frame_callee(fi):
-                    # A borrowing frame would capture a prvalue that dies at
-                    # the end of the statement.
-                    note_detail("method.generic_frame_slot_no_flush")
-                    raise ThirUnsupported(
-                        call_reject_reason("expr.method_call"))
             # A generator/coro factory METHOD borrows its ref args in the
             # frame past the statement, so a temporary at a ref /
             # readonly-ref slot materializes as a named scope-local
@@ -10819,15 +10781,15 @@ def _borrow_tuple_bare_names(lc: '_LowerCtx',
 
 def _self_capture_cpp(lc: '_LowerCtx') -> 'str | None':
     """The capture-list entry that hands a LAMBDA the enclosing receiver, or
-    None when this body holds none it can reach. A plain method (`this`) and
-    the simple-generator wrapper (`(*this)`) hold the receiver POINTER, so
+    None when this body holds none it can reach. A plain method (`this`)
+    holds the receiver POINTER, so
     the lambda copies that pointer; a resumable frame holds the receiver as
     its `__self` reference member, so the lambda binds the same referent --
     a copy of the HANDLE, never of the frame that stores it. The body read
     spelling comes from `lc.self_cpp` and matches the entry's name."""
     if lc.self_receiver != "self":
         return None
-    if lc.self_cpp in ("this", "(*this)"):
+    if lc.self_cpp == "this":
         return "this"
     if lc.self_cpp == "__self":
         return "&__self = __self"
@@ -12268,8 +12230,8 @@ def _lower_yield_tuple_literal(yv_src: TpyTupleLiteral, yt_bare: 'TupleType',
                                declared: dict[str, TpyType], *,
                                generic_face: str, reject: str,
                                target_readonly: bool = False) -> THIRExpr:
-    """The literal-vs-builder selection shared by the resumable and sgen tuple
-    YIELD slots: the borrow builder for a pointer-repr slot, the generic
+    """The literal-vs-builder selection of the resumable tuple YIELD slot
+    (and the return slot): the borrow builder for a pointer-repr slot, the generic
     val_or_ptr builder, else the spelled value literal -- widened by the
     Own-record storage elements the RETURN slot admits (`yield (i, Box(i*10))`
     -> `std::tuple<::tpy::BigInt, Box>{i, Box(..)}`; Own elements are held
@@ -12550,9 +12512,6 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     analyzer = lc.analyzer
     root, subst = _generic_root_subst(e, analyzer)
     dcbp = root.const_borrow_params
-    # A callee whose FRAME borrows the slot past the statement keeps the
-    # named temp whatever the instantiation resolves to.
-    borrowing_frame = borrowing_frame_callee(root)
     args = []
     for i, (a, p) in enumerate(zip(e.args, root.params)):
         ptype = unwrap_ref_type(p.type)
@@ -12588,8 +12547,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
         # GATE and the method / ctor seams take: whether a bare-T slot's
         # instantiation owes a temp.
         gslot = _generic_arg_slot(a, ptype, resolved, declared,
-                                  lc.prescan.param_names, analyzer,
-                                  borrowing_frame=borrowing_frame)
+                                  lc.prescan.param_names, analyzer)
 
         def _ref_slot_temp(init: THIRExpr,
                            slot: 'TpyType | None' = None) -> None:
@@ -12792,7 +12750,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
     # fi carries is_generator=False).
     _callee_fi = e.resolved_function_info
     frame_capturing = (_callee_fi is not None
-                       and (borrowing_frame_callee(_callee_fi)
+                       and (frame_factory_callee(_callee_fi)
                             or _callee_fi.is_async))
     if isinstance(a, TpyVarargPack):
         # Kind-blind: the pack renders (`std::array` temp +
@@ -16126,8 +16084,8 @@ def _cond_mixed_walrus_temps(cond: THIRExpr, *,
     """True when a lowered condition carries BOTH a walrus binding and a
     hoisted arg temp -- the shape both restructured-head renders exclude (an
     in-head temp could run before the walrus assignment it reads; that
-    shape needs the legacy single-eval flush, and sgen raises
-    CodeGenError), so lowering rejects it. Every node kind that
+    shape needs the legacy single-eval flush), so lowering rejects it.
+    Every node kind that
     registers a pending temp at EMIT time counts: THIRArgTemp, a
     temp-bearing THIRUnionArgLift, and THIRVarargPack (its per-arg hoist).
 
@@ -16183,8 +16141,8 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                   unary_operand: bool = False,
                   temps_ok: bool = False) -> THIRExpr:
     """Lower one Python-truthiness position. `temps_ok` marks the cond
-    positions whose emit places condition temps (the restructured while /
-    sgen loop head, the pre-`if` flush, the nested-elif block); logical-op
+    positions whose emit places condition temps (the restructured while
+    head, the pre-`if` flush, the nested-elif block); logical-op
     OPERANDS never thread it (a short-circuit RHS temp would hoist
     eagerly)."""
     if isinstance(e, (TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):

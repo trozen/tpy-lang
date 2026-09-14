@@ -1,25 +1,21 @@
 """Code generation for generator functions (yield -> state machine structs)."""
 from __future__ import annotations
 
-import io
-from contextlib import contextmanager
 
 from dataclasses import dataclass
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from ..parse.nodes import (
-    TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
-    TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
-    TpyBreak, TpyContinue,
+    TpyFunction, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_uses_borrow_slot
+from ..typesys import IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
 from ..compilation_context import get_current_compiler
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
-                                  is_owned_in_coro_frame, view_owned_copy_init)
+                                  is_owned_in_coro_frame)
 from . import emit_prims
-from .context import INDENT, CodeGenError, escape_cpp_name, contains_named_expr
+from .context import CodeGenError
 from .resumable_cfg import (ResumableShape, _stmts_have_any_suspension,
                             frame_struct_qualname, recursive_delegation_error,
                             same_module_dep_unit)
@@ -101,7 +97,7 @@ class GeneratorForInfo:
     # `iter_next` spells its iterator / result / loop-var fields as
     # `iter_type_t<S>` & friends, which need `S::__iter__`'s RETURN TYPE
     # complete -- another frame struct when that `__iter__` is itself a
-    # non-simple generator. Recorded here because this is where the source
+    # generator. Recorded here because this is where the source
     # type is resolved; consumed as an emit-ordering edge.
     dep_units: tuple[tuple[str, str | None], ...] = ()
 
@@ -111,10 +107,9 @@ def owned_view_frame_params(
     """Param names whose view is copied into OWNED storage entering a
     generator/coroutine body.
 
-    The resumable frame (`_CoroParamKind.OWNED_COPY`) and the simple-generator
-    lambda (owned init-capture) both key the copy on
-    `is_owned_in_coro_frame`, so one derivation serves both shapes and they
-    cannot drift on which params a body reads as owned.
+    The resumable frame (`_CoroParamKind.OWNED_COPY`) keys the copy on
+    `is_owned_in_coro_frame`; one derivation, so the frame layout and the
+    body cannot drift on which params a body reads as owned.
     """
     return {pname for pname, ptype in params if is_owned_in_coro_frame(ptype)}
 
@@ -199,76 +194,10 @@ def elem_is_known_value(elem_type: 'TpyType | None') -> bool:
     return elem.is_value_type()
 
 
-def _collect_yield_stmts(stmts: list[TpyStmt]) -> list[TpyYield]:
-    """Collect all TpyYield statements from a body (recursive, no nested defs)."""
-    result: list[TpyYield] = []
-    for stmt in stmts:
-        if isinstance(stmt, TpyYield):
-            result.append(stmt)
-        for body in stmt.sub_bodies():
-            result.extend(_collect_yield_stmts(body))
-    return result
-
-
-def _contains_return(stmts: list[TpyStmt]) -> bool:
-    """Check if any TpyReturn exists in the statement list (recursive)."""
-    for stmt in stmts:
-        if isinstance(stmt, TpyReturn):
-            return True
-        for body in stmt.sub_bodies():
-            if _contains_return(body):
-                return True
-    return False
-
-
-def for_range_uses_counter_loop(for_stmt: TpyForEach) -> bool:
-    """A `for x in range(...)` the simple-generator peephole emits as a real
-    counter `while` loop -- which only happens for range with <= 2 args. A
-    3-arg `range(a, b, step)` falls to the iterator-pull branch (no real C++
-    loop), so break/continue can't bind there. The eligibility predicate and
-    the emit path must agree on this, hence one shared helper.
-    """
-    it = for_stmt.iterable
-    return (isinstance(it, TpyCall) and it.func_name == "range"
-            and len(it.args) <= 2)
-
-
-def split_at_yield(body: list[TpyStmt]) -> tuple[TpyYield, list[TpyStmt], list[TpyStmt]]:
-    """Split a loop body at the yield statement. Returns (yield, pre, post).
-
-    Shared by the peephole emitters and the THIR simple-generator lowering,
-    so both sides split the routed body identically."""
-    for i, stmt in enumerate(body):
-        if isinstance(stmt, TpyYield):
-            return stmt, body[:i], body[i + 1:]
-    raise AssertionError("no yield found in body")
-
-
-def _contains_loop_control(stmts: list[TpyStmt]) -> bool:
-    """Whether `stmts` (a loop body) contains a break/continue targeting that
-    enclosing loop -- reachable without descending into a nested for/while
-    (whose own break/continue bind to the inner loop; a nested loop's `orelse`
-    runs in the enclosing scope, so it is still checked).
-    """
-    for stmt in stmts:
-        if isinstance(stmt, (TpyBreak, TpyContinue)):
-            return True
-        if isinstance(stmt, (TpyForEach, TpyWhile)):
-            if _contains_loop_control(stmt.orelse):
-                return True
-            continue
-        for body in stmt.sub_bodies():
-            if _contains_loop_control(body):
-                return True
-    return False
-
-
 if TYPE_CHECKING:
-    from io import TextIO
     from .context import CodeGenContext
     from .types import TypeMapper
     from .functions import FunctionGenerator
-    from ..thir.emit import SimpleGenLeafEmitter
 
 
 class GeneratorCodegen:
@@ -285,560 +214,14 @@ class GeneratorCodegen:
         self.functions = functions
         # Generators defined in the module being emitted, keyed
         # (name, owner_record). Filled by the per-module pre-scan before any
-        # emit pass; its entries carry that scan's `force_resumable` marks,
-        # which is why a same-module callee is looked up here rather than
+        # emit pass, so a same-module callee is looked up here rather than
         # re-resolved through the binding table.
         self.same_module_generators: dict[
             tuple[str, str | None], TpyFunction] = {}
 
-    def _gen_template_header(self, func: TpyFunction, indent: str = "") -> str:
-        """Generate template header for a generic generator function.
-
-        Returns empty string if the function is not generic and has no protocol params.
-        """
-        proto_params = self.functions.protocols.get_all_protocol_params(func.params)
-        return self.functions._gen_template_header_with_fn(func, proto_params, indent=indent)
-
-    def _gen_params(self, func: TpyFunction, *, emit_defaults: bool = False) -> str:
-        """Generate parameter list for a generator function, handling protocol params."""
-        proto_params = self.functions.protocols.get_all_protocol_params(func.params)
-        has_dynamic = self.functions._has_dynamic_protocol_params(func.params)
-        dfl = func.defaults if func.defaults else None
-        if proto_params or has_dynamic:
-            return self.functions.gen_params_with_protocols(
-                func.params, func.type_params, emit_defaults=emit_defaults,
-                defaults=dfl, func=func)
-        return self.functions.gen_params(func.params, func.type_params,
-                                         emit_defaults=emit_defaults, func=func,
-                                         defaults=dfl)
-
-    @staticmethod
-    def is_simple_generator(func: TpyFunction) -> bool:
-        """Check if a generator can use the lightweight lambda/wrapper path.
-
-        Simple generators have exactly one yield inside a single while-loop or
-        for-loop, with no early returns or nested control flow around the yield.
-
-        Static: the sole routing fact is the function itself, and the THIR
-        gate shares this predicate, so peephole vs resumable is decided in
-        exactly one place.
-        """
-        if func.force_resumable:
-            return False
-        # A yield handing out a borrow of a frame-resident local needs the local
-        # in a `tpy::frame_slot` (resumable path only); the peephole would keep
-        # it on the lambda stack and dangle (set by sema's yield-root drain).
-        if func.requires_resumable_frame:
-            return False
-        yields = _collect_yield_stmts(func.body)
-        if len(yields) != 1:
-            return False
-        if _contains_return(func.body):
-            return False
-        if not func.body:
-            return False
-        last = func.body[-1]
-        if isinstance(last, TpyWhile) and not last.orelse:
-            loop_body = last.body
-        elif isinstance(last, TpyForEach) and not last.orelse and not last.is_tuple_unpack:
-            loop_body = last.body
-        else:
-            return False
-        # The single yield must be a direct child of the loop body.
-        yield_idx = next((i for i, s in enumerate(loop_body)
-                          if isinstance(s, TpyYield)), None)
-        if yield_idx is None:
-            return False
-        # break/continue targeting the generator's own loop is only emittable by
-        # the peephole branches that wrap the body in a real C++ loop (while,
-        # for-range), and only BEFORE the yield -- the peephole runs post-yield
-        # code before the return, so a post-yield break/continue preempts the
-        # value. The for-over-iterable branches pull one element per call with no
-        # loop at all. Route the cases the peephole can't express to the
-        # resumable lowering, which models loops via a real CFG.
-        has_real_loop = (isinstance(last, TpyWhile)
-                         or (isinstance(last, TpyForEach)
-                             and for_range_uses_counter_loop(last)))
-        if not has_real_loop:
-            if _contains_loop_control(loop_body):
-                return False
-        elif _contains_loop_control(loop_body[yield_idx + 1:]):
-            return False
-        return True
-
-    def gen_simple_generator_inline(self, out: TextIO, func: TpyFunction,
-                                    record_name: str | None = None) -> None:
-        """Generate a simple generator as an inline function using make_generator + lambda."""
-        leaf = self._thir_simple_gen_leaf(func)
-        last = func.body[-1]
-        old_owned_view_params = self.ctx.owned_view_frame_params
-        self.ctx.owned_view_frame_params = owned_view_frame_params(func.params)
-        try:
-            if isinstance(last, TpyForEach):
-                self._gen_simple_for_generator(out, func, leaf,
-                                               record_name=record_name)
-            else:
-                self._gen_simple_while_generator(out, func, leaf,
-                                                 record_name=record_name)
-        finally:
-            self.ctx.owned_view_frame_params = old_owned_view_params
-
-    # -- THIR simple-generator seam -----------------------------------------
-    # The lambda peephole skeleton (signature, captures, make_generator
-    # scaffolding, iterator-slot types, loop-var decl, the per-pull optional
-    # return) is SHARED machinery, like the resumable frame; only the
-    # user-source LEAVES route through THIR. A routed body swaps every
-    # leaf-delegation site (the init block, while cond, pre/post-yield stmts,
-    # yield value, iterable / range args) to the leaf emitter below; per-body
-    # routing stays all-or-nothing.
-
-    def _thir_simple_gen_leaf(self, func: TpyFunction) -> "SimpleGenLeafEmitter":
-        """The body's leaf renderer bound to the live ctx sinks. Lowering
-        already ran in the module seeding loop (unlike resumables, it needs no
-        live codegen ctx)."""
-        sg = self.ctx.thir_simple_gens.get(func)
-        if sg is None:
-            raise CodeGenError(
-                f"internal error: no lowered simple-generator body for "
-                f"'{func.name}'", func.loc)
-        from ..thir.emit import (ModuleCounter, TempSink,
-                                 SimpleGenLeafEmitter)
-        return SimpleGenLeafEmitter(
-            sg,
-            temps=TempSink(self.ctx),
-            with_counter=ModuleCounter(self.ctx, "with_counter"),
-            try_counter=ModuleCounter(self.ctx, "try_except_counter"),
-            finally_guard_counter=ModuleCounter(
-                self.ctx, "finally_guard_counter"),
-            # Held-back rebind-slot decls drain into the ctx's nested hoist
-            # scope; _lambda_body_sink flushes them at the lambda prologue.
-            hoist_sink=lambda line: self.ctx.pending_hoist_decls.append(
-                line + "\n"))
-
-    @contextmanager
-    def _lambda_body_sink(self, out: 'TextIO', indent: str):
-        """Buffer a generator lambda's body, draining its held-back decls first.
-
-        A rebind-slot declaration held back by `use_rebind_slot` targets the
-        enclosing FUNCTION prologue, which sits outside this lambda -- so it
-        must be drained at the lambda's own prologue instead, ahead of the
-        buffered body.
-        """
-        lam = io.StringIO()
-        with self.ctx.nested_hoist_scope() as hoist_decls:
-            yield lam
-        for decl in hoist_decls:
-            out.write(f"{indent}{decl}")
-        out.write(lam.getvalue())
-
-
-    def _gen_simple_while_generator(self, out: TextIO, func: TpyFunction,
-                                    leaf: "SimpleGenLeafEmitter",
-                                    record_name: str | None = None) -> None:
-        """Lambda codegen for: [init] while(cond): ... yield expr ..."""
-        elem_type = func.generator_yield_type
-        assert elem_type is not None
-        cpp_elem = self.types.type_to_cpp(elem_type)
-        cpp_iter_slot = self._iter_slot_for_yield(elem_type, cpp_elem)
-
-        while_stmt = func.body[-1]
-        assert isinstance(while_stmt, TpyWhile)
-        init_stmts = func.body[:-1]
-        _, _, post_yield = split_at_yield(while_stmt.body)
-        ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
-        val_binding = "auto&&" if ref_yield else "auto"
-        # The owned yield local dies as the lambda returns; move it into the
-        # result optional. Required for move-only Own[T] yields (deleted copy
-        # ctor, e.g. a Match owning a @nocopy handle); a no-op for borrow-form
-        # (auto&&) yields, which must not be moved.
-        yld = self._yield_optional_arg(elem_type, val_binding)
-
-        ind1 = INDENT
-        ind2 = INDENT * 2
-        ind3 = INDENT * 3
-        ind4 = INDENT * 4
-
-        extra = 1 if record_name else 0
-
-        if record_name:
-            const_suffix = " const" if func.is_readonly else ""
-            out.write(f"\n")
-            self.ctx.emit_definition_echo(out, func.loc, INDENT)
-            tpl_header = self._gen_template_header(func, indent=INDENT)
-            if tpl_header:
-                out.write(tpl_header)
-            params = self._gen_params(func, emit_defaults=True)
-            out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
-        else:
-            self.ctx.emit_definition_echo(out, func.loc)
-            tpl_header = self._gen_template_header(func)
-            if tpl_header:
-                out.write(tpl_header)
-            params = self._gen_params(func, emit_defaults=True)
-            out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
-
-        # Generate init stmts and set up codegen scope
-        old_self_ref = self.ctx.generator_self_ref
-        saved_ns = self.ctx.current_ns
-        if record_name:
-            self.ctx.generator_self_ref = "(*this)"
-        self._setup_body_scope(out, func, init_stmts, leaf,
-                               indent_level=1 + extra,
-                               record_name=record_name)
-
-        captures = self._build_capture_list(func.params, init_stmts)
-        if record_name:
-            self_capture = "this"
-            captures = f"{self_capture}, {captures}" if captures else self_capture
-        out.write(f"{INDENT * (1 + extra)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
-        out.write(f"{INDENT * (2 + extra)}[{captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-
-        with self._lambda_body_sink(out, INDENT * (3 + extra)) as lam:
-
-            old_indent = self.ctx.indent_level
-            self.ctx.indent_level = 3 + extra
-            cond_checkpoint = self.ctx.temps.checkpoint()
-            cond_code = leaf.render_cond()
-            # Condition-registered decls have no statement flush inside the
-            # lambda: walrus pre-decls go at lambda scope, and anonymous temps
-            # (re-evaluated per iteration, like a restructured while head)
-            # go inside the loop head. Mixed walrus + temps is rejected: the
-            # in-head temp could run before the walrus assignment it reads,
-            # and this shape never
-            # compiled before, so a loud reject regresses nothing (BUGS.md).
-            if (self.ctx.temps.has_pending_since(cond_checkpoint)
-                    and contains_named_expr(while_stmt.condition)):
-                raise CodeGenError(
-                    "A generator 'while' condition combining a walrus binding "
-                    "with an argument that needs a temporary is not supported; "
-                    "bind the value in the loop body ('while True:' with an "
-                    "explicit break) instead.",
-                    loc=while_stmt.condition.loc)
-            self.ctx.temps.flush_named_since(lam, cond_checkpoint,
-                                             INDENT * (3 + extra))
-            if self.ctx.temps.has_pending_since(cond_checkpoint):
-                lam.write(f"{INDENT * (3 + extra)}while (true) {{\n")
-                self.ctx.temps.flush_since(lam, cond_checkpoint,
-                                           INDENT * (4 + extra))
-                lam.write(f"{INDENT * (4 + extra)}if (!({cond_code})) break;\n")
-            else:
-                lam.write(f"{INDENT * (3 + extra)}while ({cond_code}) {{\n")
-            self.ctx.indent_level = 4 + extra
-
-            leaf.emit_pre_yield(lam, 4 + extra)
-            yield_expr = leaf.render_yield_value()
-            lam.write(f"{INDENT * (4 + extra)}{val_binding} __val = {yield_expr};\n")
-            leaf.emit_post_yield(lam, 4 + extra)
-
-            self._emit_iter_slot_return(lam, INDENT * (4 + extra), cpp_iter_slot, yld)
-            lam.write(f"{INDENT * (3 + extra)}}}\n")
-            lam.write(f"{INDENT * (3 + extra)}return std::nullopt;\n")
-        out.write(f"{INDENT * (2 + extra)}}}\n")
-        out.write(f"{INDENT * (1 + extra)});\n")
-        out.write(f"{INDENT if record_name else ''}}}\n")
-        self.ctx.indent_level = old_indent
-        self.ctx.generator_self_ref = old_self_ref
-        self.ctx.current_ns = saved_ns
-
-    def _gen_simple_for_generator(self, out: TextIO, func: TpyFunction,
-                                   leaf: "SimpleGenLeafEmitter",
-                                   record_name: str | None = None) -> None:
-        """Lambda codegen for: [init] for x in iterable: ... yield expr ..."""
-        from .context import is_lvalue_iterable
-
-        elem_type = func.generator_yield_type
-        assert elem_type is not None
-        cpp_elem = self.types.type_to_cpp(elem_type)
-        cpp_iter_slot = self._iter_slot_for_yield(elem_type, cpp_elem)
-
-        for_stmt = func.body[-1]
-        assert isinstance(for_stmt, TpyForEach)
-        init_stmts = func.body[:-1]
-        _, _, post_yield = split_at_yield(for_stmt.body)
-
-        ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
-        val_binding = "auto&&" if ref_yield else "auto"
-        yld = self._yield_optional_arg(elem_type, val_binding)
-
-        ind1 = INDENT
-        ind2 = INDENT * 2
-        ind3 = INDENT * 3
-        ind4 = INDENT * 4
-
-        extra = 1 if record_name else 0
-        if record_name:
-            const_suffix = " const" if func.is_readonly else ""
-            out.write(f"\n")
-            self.ctx.emit_definition_echo(out, func.loc, INDENT)
-            tpl_header = self._gen_template_header(func, indent=INDENT)
-            if tpl_header:
-                out.write(tpl_header)
-            params = self._gen_params(func, emit_defaults=True)
-            out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
-        else:
-            self.ctx.emit_definition_echo(out, func.loc)
-            tpl_header = self._gen_template_header(func)
-            if tpl_header:
-                out.write(tpl_header)
-            params = self._gen_params(func, emit_defaults=True)
-            out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
-
-        old_self_ref = self.ctx.generator_self_ref
-        saved_ns = self.ctx.current_ns
-        if record_name:
-            self.ctx.generator_self_ref = "(*this)"
-        self._setup_body_scope(out, func, init_stmts, leaf,
-                               indent_level=1 + extra,
-                               record_name=record_name)
-
-        old_indent = self.ctx.indent_level
-        self.ctx.indent_level = 2 + extra
-
-        # Determine iteration strategy
-        is_range = for_range_uses_counter_loop(for_stmt)
-        iter_elem = for_stmt.elem_type
-        if iter_elem and isinstance(iter_elem, IntLiteralType):
-            iter_elem = self.ctx.analyzer.ctx.default_int_type
-        cpp_iter_elem = self.types.type_to_cpp(iter_elem) if iter_elem else "auto"
-        cpp_var = escape_cpp_name(for_stmt.var)
-
-        # Helper: prepend self capture for method generators
-        def _add_self_capture(captures: str) -> str:
-            if record_name:
-                return f"this, {captures}" if captures else "this"
-            return captures
-
-        # A temporary iterable must be evaluated exactly once into a `__src`
-        # slot: re-emitting the expression restarts a generator on every
-        # pull, and begin()/end() taken from two separate temporaries point
-        # into dead storage. The slot is an EMPTY optional capture emplaced
-        # lazily on the first pull -- CPython runs the source expression
-        # when the body first reaches the for statement, not at generator
-        # construction. A stable lvalue stays re-evaluable so the generator
-        # borrows it (CPython aliasing semantics).
-        src_is_temp = self.ctx.is_temporary_expr(for_stmt.iterable)
-
-        def _src_and_captures(iterable_code: str,
-                              base_captures: str) -> tuple[str, str]:
-            if src_is_temp:
-                cap = (f"__src = std::optional<std::decay_t<"
-                       f"decltype({iterable_code})>>()")
-                return "*__src", (f"{base_captures}, {cap}"
-                                  if base_captures else cap)
-            return iterable_code, base_captures
-
-        # Indentation helpers adjusted for method nesting
-        I = lambda n: INDENT * (n + extra)
-
-        def _range_arg(i: int) -> str:
-            return leaf.render_range_arg(i)
-
-        def _iterable_code() -> str:
-            return leaf.render_iterable()
-
-        if is_range:
-            # range(n) or range(start, stop): counter in lambda captures
-            range_call = for_stmt.iterable
-            nargs = len(range_call.args)
-            if nargs == 1:
-                stop_code = _range_arg(0)
-                extra_captures = f"__i = {cpp_iter_elem}(0), __stop = static_cast<{cpp_iter_elem}>({stop_code})"
-            else:
-                start_code = _range_arg(0)
-                stop_code = _range_arg(1)
-                extra_captures = f"__i = static_cast<{cpp_iter_elem}>({start_code}), __stop = static_cast<{cpp_iter_elem}>({stop_code})"
-
-            base_captures = self._build_capture_list(func.params, init_stmts)
-            all_captures = f"{base_captures}, {extra_captures}" if base_captures else extra_captures
-            all_captures = _add_self_capture(all_captures)
-
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            with self._lambda_body_sink(out, I(3)) as lam:
-                lam.write(f"{I(3)}while (__i < __stop) {{\n")
-
-                self.ctx.indent_level = 4 + extra
-                lam.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = __i++;\n")
-                leaf.emit_pre_yield(lam, 4 + extra)
-                yield_expr = leaf.render_yield_value()
-                lam.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-                leaf.emit_post_yield(lam, 4 + extra)
-                self._emit_iter_slot_return(lam, I(4), cpp_iter_slot, yld)
-                lam.write(f"{I(3)}}}\n")
-                lam.write(f"{I(3)}return std::nullopt;\n")
-            out.write(f"{I(2)}}}\n")
-            out.write(f"{I(1)});\n")
-            out.write(f"{I(0)}}}\n")
-        elif self._is_direct_iterator(for_stmt):
-            # Iterator[T] protocol: the source IS the iterator, call __next__() directly.
-            # No __iter__() call needed -- avoids copying move-only iterators.
-            iterable_code = _iterable_code()
-            base_captures = self._build_capture_list(func.params, init_stmts)
-            src_code, base_captures = _src_and_captures(
-                iterable_code, base_captures)
-            all_captures = _add_self_capture(base_captures)
-
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            if src_is_temp:
-                out.write(f"{I(3)}if (!__src) {{ __src.emplace({iterable_code}); }}\n")
-            out.write(f"{I(3)}auto __r = ({src_code}).__next__();\n")
-            out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
-
-            with self._lambda_body_sink(out, I(3)) as lam:
-                self._gen_simple_for_yield_body(
-                    lam, iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot,
-                    val_binding, yld, I, extra, leaf)
-        elif self._is_builtin_native_iterable(for_stmt):
-            # Built-in NativeIterable (list, dict, set, Span, etc.):
-            # begin/end peephole for efficiency.
-            iterable_code = _iterable_code()
-
-            base_captures = self._build_capture_list(func.params, init_stmts)
-            src_code, base_captures = _src_and_captures(
-                iterable_code, base_captures)
-            if src_code == "__src":
-                # Spell begin()'s type against a mutable lvalue of the stored
-                # copy -- the rvalue expression itself may overload-resolve to
-                # a different (const) begin() than `__src.begin()`.
-                iter_type = (f"decltype(std::declval<std::decay_t<"
-                             f"decltype({iterable_code})>&>().begin())")
-            else:
-                iter_type = f"decltype(({iterable_code}).begin())"
-            beg_capture = f"__beg = {iter_type}()"
-            end_capture = f"__end = {iter_type}()"
-            init_flag = "__init = false"
-            parts = [p for p in [base_captures, beg_capture, end_capture, init_flag] if p]
-            all_captures = ", ".join(parts)
-            all_captures = _add_self_capture(all_captures)
-
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            with self._lambda_body_sink(out, I(3)) as lam:
-                emplace_src = (f"__src.emplace({iterable_code}); "
-                               if src_is_temp else "")
-                lam.write(f"{I(3)}if (!__init) {{ {emplace_src}__beg = ({src_code}).begin(); __end = ({src_code}).end(); __init = true; }}\n")
-                lam.write(f"{I(3)}if (__beg != __end) {{\n")
-
-                self.ctx.indent_level = 4 + extra
-                if iter_elem and iter_elem.is_value_type():
-                    lam.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
-                else:
-                    lam.write(f"{I(4)}auto&& {cpp_var} = *__beg++;\n")
-                if (isinstance(iter_elem, TupleType)
-                        and iter_elem.has_pointer_repr_element()):
-                    self.ctx.storage_form_tuple_locals.add(for_stmt.var)
-
-                leaf.emit_pre_yield(lam, 4 + extra)
-                yield_expr = leaf.render_yield_value()
-                lam.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-                leaf.emit_post_yield(lam, 4 + extra)
-                self._emit_iter_slot_return(lam, I(4), cpp_iter_slot, yld)
-                lam.write(f"{I(3)}}}\n")
-                lam.write(f"{I(3)}return std::nullopt;\n")
-            out.write(f"{I(2)}}}\n")
-            out.write(f"{I(1)});\n")
-            out.write(f"{I(0)}}}\n")
-        else:
-            # Universal default: ::tpy::__iter__() + __next__() loop.
-            # Handles Iterable[T] protocol, NativeIterable[T] protocol,
-            # user types with __iter__(), error_return __next__ iterators.
-            iterable_code = _iterable_code()
-            base_captures = self._build_capture_list(func.params, init_stmts)
-            src_code, base_captures = _src_and_captures(
-                iterable_code, base_captures)
-            if src_code == "__src":
-                # `tpy::__iter__` borrows its argument, so it must run on the
-                # stored copy, and its type must be spelled against a mutable
-                # lvalue (the rvalue expression would pick a const overload).
-                iter_type = (f"std::decay_t<decltype(::tpy::__iter__("
-                             f"std::declval<std::decay_t<"
-                             f"decltype({iterable_code})>&>()))>")
-            else:
-                iter_type = f"std::decay_t<decltype(::tpy::__iter__({iterable_code}))>"
-            iter_capture = f"__iter = std::optional<{iter_type}>()"
-            parts = [p for p in [base_captures, iter_capture] if p]
-            all_captures = ", ".join(parts)
-            all_captures = _add_self_capture(all_captures)
-
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            emplace_src = (f"__src.emplace({iterable_code}); "
-                           if src_is_temp else "")
-            out.write(f"{I(3)}if (!__iter) {{ {emplace_src}__iter.emplace(::tpy::__iter__({src_code})); }}\n")
-            out.write(f"{I(3)}auto __r = (*__iter).__next__();\n")
-            out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
-
-            with self._lambda_body_sink(out, I(3)) as lam:
-                self._gen_simple_for_yield_body(
-                    lam, iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot,
-                    val_binding, yld, I, extra, leaf)
-
-        self.ctx.indent_level = old_indent
-        self.ctx.generator_self_ref = old_self_ref
-        self.ctx.current_ns = saved_ns
-
-    def _resolve_iterable_type(self, for_stmt: TpyForEach):
-        """Resolve the iterable's type, following TypeParamRef bounds."""
-        resolved = self.types.get_resolved_type(for_stmt.iterable)
-        if isinstance(resolved, TypeParamRef):
-            bound = self.ctx.current_type_param_bounds.get(resolved.name)
-            if bound is not None and is_protocol_type(bound):
-                return bound
-        return resolved
-
-    def _is_direct_iterator(self, for_stmt: TpyForEach) -> bool:
-        """Check if the iterable IS an iterator (has __next__() directly).
-
-        True for Iterator[T] protocol params. These should not go through
-        __iter__() to avoid copying move-only iterators.
-        """
-        resolved = self._resolve_iterable_type(for_stmt)
-        return (is_protocol_type(resolved)
-                and resolved.qualified_name() == "typing.Iterator")
-
-    def _is_builtin_native_iterable(self, for_stmt: TpyForEach) -> bool:
-        """Check if the iterable is a built-in NativeIterable (list, dict, etc.)."""
-        resolved = self._resolve_iterable_type(for_stmt)
-        record = self.ctx.analyzer.registry.get_record_for_type(resolved)
-        return (record is not None and record.is_native
-                and builtin_modules.is_native_iterable(resolved, registry=self.ctx.analyzer.registry))
-
-    def _gen_simple_for_yield_body(
-        self, out: 'TextIO',
-        iter_elem: 'TpyType | None', cpp_iter_elem: str, cpp_var: str,
-        cpp_iter_slot: str, val_binding: str, yld: str, I: 'Callable[[int], str]', extra: int,
-        leaf: "SimpleGenLeafEmitter",
-    ) -> None:
-        """Emit the shared yield body for __iter__+__next__ simple generator branches."""
-        self.ctx.indent_level = 3 + extra
-        out.write(f"{I(3)}{{\n")
-        self.ctx.indent_level = 4 + extra
-        # tuple[T | None, ...] has two distinct C++ shapes (storage vs borrow);
-        # the inner iterator's __next__() returns borrow form for generators and
-        # storage form for NativeIterables. `auto&&` binds to either without the
-        # codegen having to know which.
-        iter_elem_unwrapped = unwrap_ref_type(iter_elem) if iter_elem else None
-        is_pointer_repr_tuple = (isinstance(iter_elem_unwrapped, TupleType)
-                                 and iter_elem_unwrapped.has_pointer_repr_element())
-        if iter_elem and iter_elem.is_value_type() and not is_pointer_repr_tuple:
-            out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
-        else:
-            out.write(f"{I(4)}auto&& {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
-
-        leaf.emit_pre_yield(out, 4 + extra)
-        yield_expr = leaf.render_yield_value()
-        out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-        leaf.emit_post_yield(out, 4 + extra)
-        self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
-        out.write(f"{I(3)}}}\n")
-        out.write(f"{I(2)}}}\n")
-        out.write(f"{I(1)});\n")
-        out.write(f"{I(0)}}}\n")
-
     @staticmethod
     def _iter_slot_for_yield(elem_type: 'TpyType', cpp_elem: str) -> str:
-        """Pick the make_generator iterator slot type for a simple-generator yield.
+        """Pick the iterator slot type for a generator yield.
 
         Iterator yields hand out references like function returns (CPython
         semantics), so borrow form is the default for tuple yields:
@@ -872,22 +255,6 @@ class GeneratorCodegen:
         if yield_uses_borrow_slot(elem_type):
             return yield_borrow_slot_cpp(elem_type, cpp_elem)
         return cpp_elem
-
-    @staticmethod
-    def _yield_binds_by_ref(elem_type: 'TpyType', post_yield: list[TpyStmt]) -> bool:
-        """Whether a simple-generator yield binds its value as `auto&&` (borrow).
-
-        A concrete borrow yield must bind by reference unconditionally: its slot
-        is `val_or_ref<T>` (stores a pointer), so a copied local would dangle. A
-        generic (TypeParamRef) yield keeps the prior post_yield-guarded binding --
-        its slot is the already-substituted `val_or_ref<ConcreteT>` / value, a
-        cheap wrapper safe to copy, so auto&& is only used when no post-yield code
-        could mutate the referenced source.
-        """
-        unwrapped = unwrap_ref_type(unwrap_readonly(elem_type))
-        if isinstance(unwrapped, TypeParamRef):
-            return not post_yield
-        return yield_uses_borrow_slot(elem_type)
 
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int,
                               proto_param_names: frozenset[str] = frozenset(),
@@ -1145,11 +512,6 @@ class GeneratorCodegen:
         source, or empty when the source has no same-module generator
         `__iter__`.
 
-        Recorded whether or not that `__iter__` is currently a non-simple
-        generator: a SIMPLE one has no struct to order (its body is inline
-        `auto __iter__()`, complete where the field is spelled), so the
-        consumer's unit lookup drops the edge on its own -- and if the
-        force-resumable pre-pass later promotes it, the edge is already here.
         A protocol-typed source resolves to no record and yields nothing; its
         field renders against a deduced template arg, so completeness is
         settled at instantiation rather than at the field declaration.
@@ -1200,10 +562,9 @@ class GeneratorCodegen:
         through a variable).
 
         The same-module map is consulted first because it is the pre-scan's
-        own view of this module (its `force_resumable` marks live on those
-        `TpyFunction`s); anything else is resolved through the binding that
-        named the callee, which is what makes the callee's defining module
-        -- and so its C++ namespace -- known.
+        own view of this module; anything else is resolved through the
+        binding that named the callee, which is what makes the callee's
+        defining module -- and so its C++ namespace -- known.
         """
         e = expr
         while isinstance(e, TpyCoerce):
@@ -1259,13 +620,10 @@ class GeneratorCodegen:
         spelled through its own namespace (its header is included here, and
         its struct is complete at the field declaration).
 
-        Three shapes still reject, each because the field would be
-        ill-formed rather than merely unhandled: a callee that is a SIMPLE
-        generator in another module (its factory returns an unnameable
-        lambda wrapper, and unlike a same-module one the pre-scan cannot
-        promote it to a named struct); a callee in a module that imports
-        this one back (mutually infinite-size); and a source that is not a
-        resolvable direct generator call at all.
+        Two shapes still reject, each because the field would be
+        ill-formed rather than merely unhandled: a callee in a module that
+        imports this one back (mutually infinite-size); and a source that
+        is not a resolvable direct generator call at all.
         """
         resolved = self._resolve_generator_call(stmt.iterable)
         if resolved is None:
@@ -1289,14 +647,6 @@ class GeneratorCodegen:
         if (resolved.defining_module != self.ctx.analyzer.ctx.module_name
                 and resolved.defining_module in self.ctx.cycle_peers):
             raise recursive_delegation_error(callee.name, loc=stmt.loc)
-        if (resolved.defining_module != self.ctx.analyzer.ctx.module_name
-                and self.is_simple_generator(callee)):
-            raise CodeGenError(
-                f"cannot iterate '{callee.name}(...)' here: the imported "
-                "generator has a single yield in a loop and cannot yet be "
-                "embedded in this frame; bind the elements first "
-                "(e.g. `xs = list(...)`) and iterate those, or give it a "
-                "second yield", loc=stmt.loc)
         inferred: tuple | None = None
         if callee.type_params:
             args = getattr(call_node, "inferred_type_args", None)
@@ -1316,7 +666,7 @@ class GeneratorCodegen:
         """(name, owner_record) of same-module generator callees whose struct
         `func`'s resumable frame embeds by value via a `__for_src` field --
         emit-ordering dependencies (the embedded struct must be complete
-        first) and force-off-peephole inputs for simple callees."""
+        first)."""
         targets: list[tuple[str, str | None]] = []
 
         def walk(stmts: list[TpyStmt]) -> None:
@@ -1332,8 +682,7 @@ class GeneratorCodegen:
                         # Same-module only: the keys are bare `(name, owner)`
                         # pairs, so a cross-module callee would match a
                         # same-named local unit and fabricate an edge -- and
-                        # it needs neither ordering (its header is complete)
-                        # nor a peephole demotion (its module already emitted).
+                        # it needs no ordering (its header is complete).
                         if (r is not None and r.defining_module ==
                                 self.ctx.analyzer.ctx.module_name):
                             owner = r.owner.name if r.owner is not None \
@@ -1344,100 +693,3 @@ class GeneratorCodegen:
 
         walk(func.body)
         return targets
-
-    def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt],
-                          leaf: "SimpleGenLeafEmitter",
-                          indent_level: int = 1,
-                          record_name: str | None = None) -> "Namespace":
-        """Generate init stmts and set up codegen scope.
-
-        Returns the function's local namespace with `current_ns` left pointing
-        at it: `gen_body` clears `current_ns` on exit, but the simple-generator
-        peephole still emits the loop condition + body afterward, and
-        binding-based field-access dispatch (module-constant /
-        enum-member / nested-type access) is gated on `current_ns`. The caller
-        restores the prior namespace.
-
-        The init statements are emitted by the leaf renderer; the namespace
-        setup stays, since skeleton classification still runs.
-        """
-        from ..namespace import Namespace
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        for pname, ptype in func.params:
-            local_ns.bind_variable(pname, ptype)
-        # The generator's own const sets (mirrors sync method emission):
-        # init-stmt and loop renders spell borrow locals of a readonly
-        # receiver `const T&`. gen_body installs them via setup_body_scope;
-        # they stay installed for the lambda-body renders that follow.
-        crp, dcbp = self.functions.compute_body_const_sets(func, record_name)
-        self.ctx.const_ref_params = crp
-        self.ctx.deep_const_borrow_params = dcbp
-        leaf.emit_init(out, indent_level)
-        self.ctx.current_ns = local_ns
-        return local_ns
-
-    @staticmethod
-    def _yield_optional_arg(elem_type, val_binding: str) -> str:
-        """The `__val` expression to wrap in the result `std::optional`.
-
-        Moves an owned (`auto`-bound) `Own[T]` yield local out -- required for
-        move-only types whose copy ctor is deleted, harmless for copyable
-        owned values. Borrow-form (`auto&&`) yields are returned as-is.
-        """
-        if val_binding == "auto" and isinstance(unwrap_readonly(elem_type), OwnType):
-            return "std::move(__val)"
-        return "__val"
-
-    @staticmethod
-    def _emit_iter_slot_return(out: TextIO, indent: str,
-                               cpp_iter_slot: str, yld: str) -> None:
-        """Emit a simple generator's per-pull `return std::optional<slot>(...)`.
-
-        Single emit site for all peephole paths (while / for-range /
-        for-iter / shared body) so the move-vs-copy choice (`yld`) can't
-        drift between them -- a missed site here previously shipped a copy
-        where a move was required, breaking move-only yields."""
-        out.write(f"{indent}return std::optional<{cpp_iter_slot}>({yld});\n")
-
-    @staticmethod
-    def _build_capture_list(params: list, init_stmts: list[TpyStmt],
-                            exclude: set[str] | None = None) -> str:
-        """Build lambda capture list from params + init-stmt locals.
-
-        Non-value types are captured by reference (&name) to preserve
-        Python's reference semantics. Names in `exclude` are skipped
-        (e.g. the iterable param when it's copied into __src).
-
-        Lifetime invariant: a varargs pack captured by value copies the
-        fat-pointer struct, whose `indirect_` member still points into the
-        caller's `__tmp_N` array (`std::array<T*, N>` -- the primary
-        `varargs<T>` template's indirect form, not the direct-only value
-        specialization). `__tmp_N` lives at the caller's frame scope, so
-        the generator is safe to use across statements within that frame;
-        the hazard is the generator ESCAPING the frame -- returned, or
-        stored in a container that outlives the call -- which leaves the
-        captured pack dangling. Unenforced today (see BUGS.md).
-        """
-        captures = []
-        for pname, ptype in params:
-            if exclude and pname in exclude:
-                continue
-            cpp_name = escape_cpp_name(pname)
-            if is_owned_in_coro_frame(ptype):
-                # str/bytes (incl. str|None / bytes|None): own a copy via an
-                # init-capture so it outlives a temporary argument across
-                # iterations -- a plain by-value capture would copy only the
-                # string_view/BytesView (still a borrow into the caller's
-                # temporary), and a by-ref capture would dangle on the
-                # function-local view param. Parallel to gen_async's OWNED_COPY;
-                # same predicate + conversion.
-                captures.append(
-                    f"{cpp_name} = {view_owned_copy_init(ptype, cpp_name)}")
-            elif not ptype.is_value_type():
-                captures.append(f"&{cpp_name}")
-            else:
-                captures.append(cpp_name)
-        for stmt in init_stmts:
-            if isinstance(stmt, TpyVarDecl):
-                captures.append(escape_cpp_name(stmt.name))
-        return ", ".join(captures)

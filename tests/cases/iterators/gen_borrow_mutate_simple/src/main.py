@@ -1,4 +1,4 @@
-# Warning: mutation during simple generator iteration (single yield, lambda path)
+# Warning: mutation during generator iteration (single yield in a for loop)
 from tpy import int32
 from typing import Iterator
 

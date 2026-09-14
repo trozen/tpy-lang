@@ -4,6 +4,45 @@
 namespace tpyapp::main {
 
 
+// def g(boxes: list[Box]) -> Iterator[tuple[int, Box]]:
+//     i = 0
+//     for b in boxes:
+//         yield (i, b)                                   # -> S_RESUME_0
+//         i += 1
+std::expected<std::tuple<::tpy::BigInt, Box*>, ::tpy::StopIteration> __gen_g::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __for_it_0.emplace((boxes).begin());
+        __for_end_0.emplace((boxes).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (i, b)
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        b = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return std::tuple<::tpy::BigInt, Box*>{i, b};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def g(boxes: list[Box]) -> Iterator[tuple[int, Box]]:
+__gen_g g(std::vector<Box>& boxes) {
+    return __gen_g(boxes);
+}
+
 // def main() -> None:
 //     data = [Box(1), Box(2), Box(3)]
 //     for i, b in g(data):

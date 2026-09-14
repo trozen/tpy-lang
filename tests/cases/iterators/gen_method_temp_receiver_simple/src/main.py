@@ -1,6 +1,6 @@
-# Regression: a SIMPLE (lambda-peephole) generator method on a temporary
-# receiver. The peephole captures `[this]`, so the temporary must be lifted
-# the same way the resumable frame's `const Box&` capture requires.
+# Regression: a single-yield generator method on a temporary receiver. The
+# frame captures the receiver by reference, so the temporary must be lifted to
+# outlive the handle.
 from typing import Iterator
 
 

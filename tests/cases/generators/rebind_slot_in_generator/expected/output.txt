@@ -4,5 +4,7 @@ while: 2
 for: 1
 for: 2
 for: 3
-alias: 1
-alias: 2
+before_while: 0
+before_while: 1
+after_drain: 0
+after_drain: 1

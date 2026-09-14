@@ -25,6 +25,43 @@ __coro_scaled scaled(int64_t a, int64_t b, int64_t c) {
     return __coro_scaled(a, b, c);
 }
 
+// def counted(n: int64 = 2, *, step: int64) -> Iterator[int64]:
+//     # A generator factory shares the async factory's params emitter, so it
+//     # needs the same gate.
+//     for i in range(n):
+//         yield i * step                                                      # -> S_RESUME_0
+std::expected<int64_t, ::tpy::StopIteration> __gen_counted::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int64_t(0));
+        __for_stop_0.emplace(static_cast<int64_t>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i * step
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        __state = S_RESUME_0;
+        return (::tpy::mul_check<int64_t>(i, step));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def counted(n: int64 = 2, *, step: int64) -> Iterator[int64]:
+__gen_counted counted(int64_t n, int64_t step) {
+    return __gen_counted(n, step);
+}
+
 // async def drive() -> None:
 //     print(await scaled(1, c=3))     # -> S_RESUME_0
 //     print(await scaled(1, 2, c=3))  # -> S_RESUME_1

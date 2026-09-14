@@ -2153,10 +2153,11 @@ generators (single yield point); struct-based with `__next__()` for multiple yie
 
 **Current state**: Done. Generator functions with `yield` are fully supported. Codegen
 transforms the function body into a state-machine struct with `__next__()` method.
-Simple generators (single yield in a loop) use an optimized inline path. See
-`tpyc/codegen_cpp/gen_generators.py`. Known limitation: generic generators with multiple
-yield points are guarded with a sema error (template struct + out-of-line `__next__()`
-linkage issue).
+Every generator, single-yield included, lowers on the shared resumable frame
+(the single-yield inline lambda path was deleted 2026-09-12). See
+`tpyc/codegen_cpp/gen_generators.py` and `gen_async.py`. Known limitation: generic
+generators with multiple yield points are guarded with a sema error (template struct +
+out-of-line `__next__()` linkage issue).
 
 **Dependencies**: Iterator protocol (done). Tuple unpacking (done).
 
@@ -3414,7 +3415,7 @@ aborts the module. Activating multi-error reporting requires converting the bulk
 
 Full design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md). Summary:
 
-- **Lowering**: state-machine struct with `poll(waker) -> Poll[T]` (Rust-shaped). Shared "resumable-frame" abstraction in codegen, not C++20 coroutines (preserves a future LLVM backend). The frame is shape-neutral: non-simple generators (`yield`) now share it with `await` (the simple-generator lambda peephole stays separate), so `yield` and `await` lowering are unified.
+- **Lowering**: state-machine struct with `poll(waker) -> Poll[T]` (Rust-shaped). Shared "resumable-frame" abstraction in codegen, not C++20 coroutines (preserves a future LLVM backend). The frame is shape-neutral: generators (`yield`) share it with `await` -- it is the single generator emitter -- so `yield` and `await` lowering are unified.
 - **Awaitable protocol**: structural, like `Iterator[T]` -- type is awaitable iff it has `poll(self, waker: Waker) -> Poll[T]`.
 - **Cancellation**: exception-based via `cancel_pending` flag + `CancelledError` thrown at the next suspension; per-case try/except/finally re-establishment in codegen.
 - **Executor**: single-threaded for v1; multi-threaded executor and `Send`/`Sync` constraints are v3+.

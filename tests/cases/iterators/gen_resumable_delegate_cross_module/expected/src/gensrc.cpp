@@ -32,6 +32,41 @@ __gen_walk walk() {
     return __gen_walk();
 }
 
+// def walk_once() -> Iterator[int32]:
+//     for i in range(2):
+//         yield i + 1                  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_walk_once::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(2));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i + 1
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        __state = S_RESUME_0;
+        return (::tpy::add_check<int32_t>(i, 1));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def walk_once() -> Iterator[int32]:
+__gen_walk_once walk_once() {
+    return __gen_walk_once();
+}
+
 // def chatty() -> Iterator[int32]:
 //     print("  callee: before 1")
 //     yield 1                       # -> S_RESUME_0

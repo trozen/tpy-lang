@@ -11,6 +11,9 @@ template<typename K, typename V> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template <typename K, typename V>
+struct __gen_Pair_stream;
+
 // def main() -> None:
 void main();
 
@@ -28,24 +31,7 @@ struct Pair {
     Pair() = default;
     explicit Pair(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : k(k), v(v) {}
 
-    // def stream(self, n: int) -> Iterator[V]:  # tpyc: ok
-    //     i = 0
-    //     while i < n:
-    //         yield self.v
-    //         i += 1
-    auto stream(const ::tpy::BigInt& n) {
-        int32_t i = 0;
-        return ::tpy::make_generator<V>(
-            [this, n, i]() mutable -> std::optional<V> {
-                while ((::tpy::BigInt(i) < n)) {
-                    auto __val = (*this).v;
-                    i = ::tpy::add_check<int32_t>(i, 1);
-                    return std::optional<V>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Pair_stream<K, V> stream(::tpy::BigInt n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -53,6 +39,70 @@ template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const Pair<K, V>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
+}
+
+// def stream(self, n: int) -> Iterator[V]:  # tpyc: ok
+template <typename K, typename V>
+struct __gen_Pair_stream : public ::tpy::next_iter_mixin<__gen_Pair_stream<K, V>, V> {
+    int32_t __state;
+    Pair<K, V>& __self;
+    ::tpy::BigInt n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Pair_stream(Pair<K, V>& __self, ::tpy::BigInt n_)
+        : __state(S_INITIAL), __self(__self), n(std::move(n_)) {}
+
+    std::expected<V, ::tpy::StopIteration> __next__();
+    __gen_Pair_stream& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Pair_stream<K, V>&) {
+        return os << "<generator Pair.stream>";
+    }
+};
+
+// def stream(self, n: int) -> Iterator[V]:  # tpyc: ok
+//     i = 0
+//     while i < n:
+//         yield self.v                                  # -> S_RESUME_0
+//         i += 1
+template <typename K, typename V>
+std::expected<V, ::tpy::StopIteration> __gen_Pair_stream<K, V>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield self.v
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::BigInt(i) < n)) {
+            __state = S_RESUME_0;
+            return __self.v;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+template <typename K, typename V>
+inline __gen_Pair_stream<K, V> Pair<K, V>::stream(::tpy::BigInt n) {
+    return __gen_Pair_stream<K, V>(*this, n);
 }
 
 void __tpy_init();

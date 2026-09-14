@@ -11,6 +11,19 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_decl_inside_while;
+struct __gen_decl_inside_for;
+struct __gen_before_while;
+struct __gen_before_while_after_drain;
+
+// def decl_inside_while(n: int32) -> Iterator[int32]:
+__gen_decl_inside_while decl_inside_while(int32_t n);
+// def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
+__gen_decl_inside_for decl_inside_for(std::vector<int32_t>& xs);
+// def before_while(n: int32) -> Iterator[int32]:
+__gen_before_while before_while(int32_t n);
+// def before_while_after_drain(n: int32) -> Iterator[int32]:
+__gen_before_while_after_drain before_while_after_drain(int32_t n);
 // def main() -> None:
 void main();
 
@@ -33,6 +46,108 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+// def decl_inside_while(n: int32) -> Iterator[int32]:
+struct __gen_decl_inside_while : public ::tpy::next_iter_mixin<__gen_decl_inside_while, int32_t> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<Point> p;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_decl_inside_while(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_decl_inside_while& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_decl_inside_while&) {
+        return os << "<generator decl_inside_while>";
+    }
+};
+
+// def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
+struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_for, int32_t> {
+    int32_t __state;
+    std::vector<int32_t>& xs;
+    int32_t v;
+    ::tpy::frame_slot<Point> p;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_decl_inside_for(std::vector<int32_t>& xs)
+        : __state(S_INITIAL), xs(xs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_decl_inside_for& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_decl_inside_for&) {
+        return os << "<generator decl_inside_for>";
+    }
+};
+
+// def before_while(n: int32) -> Iterator[int32]:
+struct __gen_before_while : public ::tpy::next_iter_mixin<__gen_before_while, int32_t> {
+    int32_t __state;
+    int32_t n;
+    ::tpy::frame_slot<Point> p;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_before_while(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_before_while& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_before_while&) {
+        return os << "<generator before_while>";
+    }
+};
+
+// def before_while_after_drain(n: int32) -> Iterator[int32]:
+struct __gen_before_while_after_drain : public ::tpy::next_iter_mixin<__gen_before_while_after_drain, int32_t> {
+    int32_t __state;
+    int32_t n;
+    ::tpy::frame_slot<Point> p;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_before_while_after_drain(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_before_while_after_drain& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_before_while_after_drain&) {
+        return os << "<generator before_while_after_drain>";
+    }
+};
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
@@ -43,89 +158,5 @@ inline Point::Point(int32_t x) : x(x) {}
 inline void Point::bump() {
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
 }
-// def decl_inside_while(n: int32) -> Iterator[int32]:
-//     i = 0
-//     while i < n:
-//         p = Point(0)
-//         p = Point(i)
-//         yield p.x
-//         i += 1
-inline auto decl_inside_while(int32_t n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [n, i]() mutable -> std::optional<int32_t> {
-            std::optional<Point> __slot_2;
-            while ((i < n)) {
-                Point __slot_1 = Point(0);
-                Point* p = &__slot_1;
-                p = &*(__slot_2 = Point(i));
-                auto __val = p->x;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
-//     for v in xs:
-//         p = Point(0)
-//         p = Point(v)
-//         yield p.x
-inline auto decl_inside_for(std::vector<int32_t>& xs) {
-    return ::tpy::make_generator<int32_t>(
-        [&xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            std::optional<Point> __slot_2;
-            if (!__init) { __beg = (xs).begin(); __end = (xs).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t v = *__beg++;
-                Point __slot_1 = Point(0);
-                Point* p = &__slot_1;
-                p = &*(__slot_2 = Point(v));
-                auto __val = p->x;
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// # The alias-rebind clobber warning fires here because the rule reads
-// # `is_generator`, not the simple-generator peephole (a codegen fact sema cannot
-// # consult -- it depends on `requires_resumable_frame`, which sema is still
-// # setting). The pinned output below is the PEEPHOLE's, which is correct today;
-// # deleting the peephole makes it the wrong value the warning already announces
-// # (TODO.md's peephole entry, bin (e)).
-// def alias_holds_across_rebind(n: int32) -> Iterator[int32]:
-//     i = 0
-//     while i < n:
-//         p = Point(i)
-//         alias = p
-//         p = Point(100)  # tpyc: warning(/will not keep the object it was given/)
-//         alias.bump()
-//         yield alias.x
-//         i += 1
-inline auto alias_holds_across_rebind(int32_t n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [n, i]() mutable -> std::optional<int32_t> {
-            std::optional<Point> __slot_2;
-            while ((i < n)) {
-                Point __slot_1 = Point(i);
-                Point* p = &__slot_1;
-                Point& alias = (*p);
-                p = &*(__slot_2 = Point(100));
-                alias.bump();
-                auto __val = alias.x;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

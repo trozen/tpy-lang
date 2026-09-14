@@ -1003,3 +1003,9 @@ Fresh branch off master: `migrate-generators-resumable`.
 - "Generic multi-yield free" -> its own deliberate phase (section 6).
 - Re-sequenced: parameterize-in-place + migrate-smallest-first, extract
   LAST, instead of broad extract-first.
+
+---
+
+**Terminal note (2026-09-12).** The simple-generator lambda peephole this plan
+kept separate was deleted (commit `06ded87f5d`): every generator, single-yield
+included, now lowers on the resumable frame. The body above is history.

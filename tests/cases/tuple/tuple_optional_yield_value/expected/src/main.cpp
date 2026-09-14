@@ -4,6 +4,41 @@
 namespace tpyapp::main {
 
 
+// def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
+//     for it in items:
+//         yield (it, None)                                                                 # -> S_RESUME_0
+std::expected<std::tuple<std::optional<int32_t>, std::optional<int32_t>>, ::tpy::StopIteration> __gen_gen_value_pairs::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (it, None)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        it = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return std::tuple<std::optional<int32_t>, std::optional<int32_t>>{it, std::nullopt};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
+__gen_gen_value_pairs gen_value_pairs(std::vector<int32_t>& items) {
+    return __gen_gen_value_pairs(items);
+}
+
 // def main() -> None:
 //     items = [int32(1), int32(2), int32(3)]
 //     for a, b in gen_value_pairs(items):

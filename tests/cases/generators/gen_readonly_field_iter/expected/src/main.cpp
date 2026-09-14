@@ -146,6 +146,39 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() 
 }
 
 
+// def simple_alias(self) -> Iterator[int32]:
+//     # single yield: the same frame alias as `live_alias` below
+//     a = self.plain
+//     for x in a:
+//         yield x                                                 # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_simple_alias::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        a = &(__self.plain);
+        __for_it_0.emplace(((*a)).begin());
+        __for_end_0.emplace(((*a)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
 // # generator METHOD, TWO yields (frame): the alias binds the field's
 // # ADDRESS (`a = &(__self.plain);`), so a write to the field after the
 // # bind is observed through it -- CPython's name binding.
@@ -169,6 +202,38 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__next__()
     case S_RESUME_1: {  // after: yield a[0]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def bump(self) -> Iterator[int32]:
+//     for c in self.cells:
+//         c.v += 1
+//         yield c.v                   # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_Bumper_bump::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((__self.cells).begin());
+        __for_end_0.emplace((__self.cells).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield c.v
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = &(*((*__for_it_0))++);
+        c->v = ::tpy::add_check<int32_t>(c->v, 1);
+        __state = S_RESUME_0;
+        return c->v;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

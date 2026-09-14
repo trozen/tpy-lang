@@ -42,8 +42,7 @@ namespace tpyapp::main {
 //         print("len", t)
 void main() {
     {
-        int32_t __tmp_1 = 42;
-        auto __src_0 = repeat<int32_t>(__tmp_1, 3);
+        auto __src_0 = repeat<int32_t>(42, 3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -53,8 +52,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_2 = "hi";
-        auto __src_2 = repeat<std::string>(__tmp_2, 2);
+        auto __src_2 = repeat<std::string>("hi", 2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -92,9 +90,8 @@ void main() {
         }
     }
     {
-        std::string __tmp_3 = "x";
-        auto __tmp_4 = repeat<std::string>(__tmp_3, 3);
-        auto __src_8 = enumerate<std::string>(__tmp_4);
+        auto __tmp_1 = repeat<std::string>("x", 3);
+        auto __src_8 = enumerate<std::string>(__tmp_1);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();

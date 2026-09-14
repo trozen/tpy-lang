@@ -4,6 +4,80 @@
 namespace tpyapp::main {
 
 
+// def widgets(n: int) -> Iterator[Own[Widget]]:
+//     i = 0
+//     while i < n:
+//         yield Widget(i)                        # -> S_RESUME_0
+//         i += 1
+std::expected<Widget, ::tpy::StopIteration> __gen_widgets::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield Widget(i)
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::BigInt(i) < n)) {
+            __state = S_RESUME_0;
+            return Widget(::tpy::BigInt(i));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def widgets(n: int) -> Iterator[Own[Widget]]:
+__gen_widgets widgets(::tpy::BigInt n) {
+    return __gen_widgets(n);
+}
+
+// def nodes(n: int) -> Iterator[Own[Node]]:
+//     i = 0
+//     while i < n:
+//         yield Node(i)                      # -> S_RESUME_0
+//         i += 1
+std::expected<Node, ::tpy::StopIteration> __gen_nodes::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield Node(i)
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::BigInt(i) < n)) {
+            __state = S_RESUME_0;
+            return Node(::tpy::BigInt(i));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def nodes(n: int) -> Iterator[Own[Node]]:
+__gen_nodes nodes(::tpy::BigInt n) {
+    return __gen_nodes(n);
+}
+
 // def collect_list_nocopy() -> int:
 //     # Only compiles because the element moves -- a copy of @nocopy Widget is
 //     # a hard error.

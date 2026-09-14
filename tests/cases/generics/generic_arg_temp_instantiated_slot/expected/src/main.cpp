@@ -193,12 +193,11 @@ void with_body() {
 }
 
 // def gen_body() -> Iterator[int32]:
-//     # GENERATOR body (resumable -- the yield is not a direct loop child), where
-//     # the call renders inline inside the frame's switch.
+//     # GENERATOR body, where the call renders inline inside the frame's switch.
 //     n = 0
 //     while n < 2:
 //         if anyslot("genbody", n) and anyslot_i32("genbody", n):  # tpyc: ok
-//             yield n                                                              # -> S_RESUME_0
+//             yield n                                                             # -> S_RESUME_0
 //         n += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
@@ -309,8 +308,7 @@ void generator_body() {
 void generator_factory() {
     int32_t out = 0;
     {
-        int32_t __tmp_2 = 42;
-        auto __src_0 = repeat<int32_t>(__tmp_2, 2);
+        auto __src_0 = repeat<int32_t>(42, 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

@@ -18,6 +18,8 @@ extern bool top_flag;
 inline constexpr std::string_view __name__ = "__main__";
 
 template <typename T>
+struct __gen_repeat;
+template <typename T>
 struct __coro_echo;
 struct __gen_gen_body;
 struct __coro_async_main;
@@ -32,6 +34,9 @@ template<typename T>
 ::tpy::val_or_ref_t<T> pass_through(::tpy::param_val_or_ref_t<T> v);
 // def mk_cell() -> Own[Cell]:
 Cell mk_cell();
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+template <typename T>
+__gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count);
 // async def echo[T](value: T) -> T:
 template <typename T>
 __coro_echo<T> echo(::tpy::param_val_or_ref_t<T> value);
@@ -228,6 +233,73 @@ struct __coro_async_main {
     }
 };
 
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+template <typename T>
+struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
+    int32_t __state;
+    ::tpy::val_or_ref_t<T> value;
+    int32_t count;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_repeat(::tpy::param_val_or_ref_t<T> value_, int32_t count_)
+        : __state(S_INITIAL), value(value_), count(std::move(count_)) {}
+
+    std::expected<T, ::tpy::StopIteration> __next__();
+    __gen_repeat& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_repeat<T>&) {
+        return os << "<generator repeat>";
+    }
+};
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+//     # A generator: its frame copies a value-typed instantiation into its own
+//     # member inside the full expression, so only a reference-typed
+//     # instantiation keeps the temp.
+//     i = 0
+//     while i < count:
+//         yield value                                                           # -> S_RESUME_0
+//         i += 1
+template <typename T>
+std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield value
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < count)) {
+            __state = S_RESUME_0;
+            return value;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+template <typename T>
+__gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count) {
+    return __gen_repeat<T>(value, count);
+}
+
 // def gen_body() -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     int32_t __state;
@@ -284,28 +356,6 @@ template<typename T>
 ::tpy::val_or_ref_t<T> pass_through(::tpy::param_val_or_ref_t<T> v) {
     return ::tpy::param_to_return<T>(v);
 }
-// def repeat[T](value: T, count: int32) -> Iterator[T]:
-//     # A SIMPLE generator: the peephole's lambda captures the slot by reference,
-//     # so its argument keeps the temp at every instantiation.
-//     i = 0
-//     while i < count:
-//         yield value
-//         i += 1
-template<typename T>
-inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
-    int32_t i = 0;
-    return ::tpy::make_generator<T>(
-        [&value, count, i]() mutable -> std::optional<T> {
-            while ((i < count)) {
-                auto __val = value;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<T>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
 
 void __tpy_init();
 } // namespace tpyapp::main

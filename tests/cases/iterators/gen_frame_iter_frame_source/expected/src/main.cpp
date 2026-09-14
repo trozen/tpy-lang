@@ -68,7 +68,7 @@ void main() {
     std::cout << "mutations reached the bag:" << " " << ::tpy::__getitem__(bag.items, 0).x << " " << ::tpy::__getitem__(bag.items, 1).x << "\n";
 }
 
-// # Two yields -> a resumable frame, not the lambda peephole.
+// # The frame struct the consumer's iterator field embeds.
 // def __iter__(self) -> Iterator[Point]:
 //     for p in self.items:
 //         yield p                         # -> S_RESUME_0

@@ -17,6 +17,8 @@ template <typename F_pred>
 struct __gen_takewhile;
 template <typename F_pred>
 struct __gen_tag;
+template <typename F_fn>
+struct __gen_transform;
 template <typename F_pred>
 struct __gen_Capped_keep;
 
@@ -33,6 +35,9 @@ __gen_takewhile<F_pred> takewhile(F_pred&& pred, std::vector<int32_t>& it);
 // def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 __gen_tag<F_pred> tag(F_pred&& pred, std::vector<int32_t>& it);
+// def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
+template <typename F_fn>
+__gen_transform<F_fn> transform(F_fn&& fn, std::vector<int32_t>& it);
 // def main() -> None:
 void main();
 
@@ -143,6 +148,34 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag<F_pred>, int32_t> {
     }
 };
 
+// def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
+template <typename F_fn>
+struct __gen_transform : public ::tpy::next_iter_mixin<__gen_transform<F_fn>, int32_t> {
+    int32_t __state;
+    F_fn fn;
+    std::vector<int32_t>& it;
+    int32_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_transform(F_fn&& fn_, std::vector<int32_t>& it)
+        : __state(S_INITIAL), fn(std::forward<F_fn>(fn_)), it(it) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_transform& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_transform<F_fn>&) {
+        return os << "<generator transform>";
+    }
+};
+
 // def keep(self, pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 struct __gen_Capped_keep : public ::tpy::next_iter_mixin<__gen_Capped_keep<F_pred>, int32_t> {
@@ -184,29 +217,5 @@ inline __gen_Capped_keep<F_pred> Capped::keep(F_pred&& pred, std::vector<int32_t
 // def __init__(self, cap: int32) -> None:
 //     self.cap = cap
 inline Capped::Capped(int32_t cap) : cap(cap) {}
-// # Simple-peephole Fn generator (yield is a direct child) -- the inverse:
-// # this path already worked and must keep working.
-// def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
-//     for x in it:
-//         yield fn(x)
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  }
-inline auto transform(__F0&& fn, std::vector<int32_t>& it) {
-    return ::tpy::make_generator<int32_t>(
-        [fn, &it, __beg = decltype((it).begin())(), __end = decltype((it).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            if (!__init) { __beg = (it).begin(); __end = (it).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t x = *__beg++;
-                auto __val = fn(x);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1,0 +1,2 @@
+main.py:19: warning: copies Pic | None into owned storage; use copy() to make this explicit
+main.py:19: error: in function 'gen': this construct is not yet supported by C++ code generation (expr.method_call:method.arg_shape)

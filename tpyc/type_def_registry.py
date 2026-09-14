@@ -783,7 +783,7 @@ def has_view_param_form(t: "TpyType") -> bool:
 
 def view_owned_copy_init(t: "TpyType", arg: str) -> str:
     """Full C++ expression copying a borrow-form view param `arg` into its owned
-    storage form, for a coro-frame ctor-init / simple-generator init-capture.
+    storage form, for a coro-frame ctor-init.
     Optional-aware: `str | None` / `bytes | None` copy the inner only when
     present (the nullable borrow `optional<view>` -> owned `optional<owned>`),
     since `span -> vector` / `string_view -> string` is not implicit through

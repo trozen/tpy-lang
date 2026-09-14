@@ -9,17 +9,45 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_fresh_each_pull;
 struct __gen_fresh_each_pull_framed;
 struct __gen_if_cond_temp;
+struct __gen_walrus_gen;
 
 // def eat(xs: list[int]) -> int:
 ::tpy::BigInt eat(std::vector<::tpy::BigInt>& xs);
+// def fresh_each_pull() -> Iterator[int]:
+__gen_fresh_each_pull fresh_each_pull();
 // def fresh_each_pull_framed() -> Iterator[int]:
 __gen_fresh_each_pull_framed fresh_each_pull_framed();
 // def if_cond_temp(n: int) -> Iterator[int]:
 __gen_if_cond_temp if_cond_temp(::tpy::BigInt n);
+// def walrus_gen(limit: int) -> Iterator[int]:
+__gen_walrus_gen walrus_gen(::tpy::BigInt limit);
 // def main():
 void main();
+
+// def fresh_each_pull() -> Iterator[int]:
+struct __gen_fresh_each_pull : public ::tpy::next_iter_mixin<__gen_fresh_each_pull, ::tpy::BigInt> {
+    int32_t __state;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_fresh_each_pull()
+        : __state(S_INITIAL) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_fresh_each_pull& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_fresh_each_pull&) {
+        return os << "<generator fresh_each_pull>";
+    }
+};
 
 // def fresh_each_pull_framed() -> Iterator[int]:
 struct __gen_fresh_each_pull_framed : public ::tpy::next_iter_mixin<__gen_fresh_each_pull_framed, ::tpy::BigInt> {
@@ -72,45 +100,30 @@ struct __gen_if_cond_temp : public ::tpy::next_iter_mixin<__gen_if_cond_temp, ::
     }
 };
 
-// def fresh_each_pull() -> Iterator[int]:
-//     # A fresh [1, 2] per condition evaluation keeps eat() returning 2
-//     # forever; the caller's guard bounds the pulls.
-//     while eat([1, 2]) > 1:
-//         yield 1
-inline auto fresh_each_pull() {
-    return ::tpy::make_generator<::tpy::BigInt>(
-        []() mutable -> std::optional<::tpy::BigInt> {
-            while (true) {
-                std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
-                if (!((eat(__tmp_1) > 1))) break;
-                auto __val = ::tpy::BigInt(1);
-                return std::optional<::tpy::BigInt>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
 // def walrus_gen(limit: int) -> Iterator[int]:
-//     n = limit
-//     while (m := n) > 0:
-//         yield m
-//         n -= 1
-inline auto walrus_gen(const ::tpy::BigInt& limit) {
-    ::tpy::BigInt n = limit;
-    return ::tpy::make_generator<::tpy::BigInt>(
-        [limit, n]() mutable -> std::optional<::tpy::BigInt> {
-            ::tpy::BigInt m;
-            while (((m = n) > 0)) {
-                auto __val = m;
-                n = (n) - (::tpy::BigInt(1));
-                return std::optional<::tpy::BigInt>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_walrus_gen : public ::tpy::next_iter_mixin<__gen_walrus_gen, ::tpy::BigInt> {
+    int32_t __state;
+    ::tpy::BigInt limit;
+    ::tpy::BigInt n;
+    ::tpy::BigInt m;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_walrus_gen(::tpy::BigInt limit_)
+        : __state(S_INITIAL), limit(std::move(limit_)) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_walrus_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_walrus_gen&) {
+        return os << "<generator walrus_gen>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

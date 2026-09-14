@@ -131,7 +131,7 @@ in the current model.
     `varargs<std::string>`) -- unifying these is the bulk of the consumer-side dispatch;
     (4) the lifetime half -- generator/coro frame capture must OWN a copy (captured views
     dangle past the call statement for non-literal args; async `*args` is unsupported today,
-    so only the simple-peephole lambda and resumable-struct frames apply). Read-only uses
+    so only the resumable-struct frame applies). Read-only uses
     (len, print, concat, element-into-str-param, statement-`for` iteration) are already
     correct. Probed + Codex-co-validated all-paths-or-nothing 2026-06.
   Several smaller cases in this class *were* closed pre-IR by extending consumer-side
@@ -204,26 +204,11 @@ in the current model.
   that doc defers to "Phase 3+". Natural on MIR's unification-variable model; awkward to
   bolt onto the directional AST matcher. Workaround: annotate the local
   (`heap: list[Entry[T]] = []`). Surfaced reviewing the owned-storage-form inference fix.
-- **Simple-generator peephole eager-body divergence (BUGS.md "runs post-yield code BEFORE
-  delivering" / "runs the body prologue eagerly").** **[MED, silent ordering divergence]**
-  The single-yield lambda peephole runs a prologue at construction and post-yield code one
-  pull early instead of suspending. The fix -- route such generators to the resumable path --
-  is correct but IR-entangled, so it rides the migration: (1) rerouting some shapes hits the
-  resumable path's own gaps, so a broad reroute regresses previously-building cases. The two
-  gaps this bullet used to name are gone -- a borrow-form `tuple<int,Box*>` yield aliases
-  correctly and default args on a resumable factory work -- and what remains is `yield t` of a
-  whole tuple slot the frame OWNS (rejected: the sema dangle check for a fresh literal
-  element, `res.btuple_yield_source` for the `Own[]`-spelled and owning-call forms) and the
-  alias clobber (BUGS.md `resumable-alias-identity`: a rebind emplaces into the same frame
-  slot, so an alias taken earlier observes the new object -- silent wrong value where the
-  peephole's lambda-stack locals are correct today); (2) the only pre-IR alternative -- a
-  *syntactic* "observable
-  prologue/post-yield" predicate to reroute selectively -- is a semantic-purity problem that
-  leaks (a denylist keeping local bindings mis-times `x = f()`/`x = xs[i]`/`x = global`; an
-  allowlist of pure-arith counters reroutes `i = int32(0)` back into the tuple bug). Once MIR
-  makes representation selection late and the resumable path's borrow-form gaps dissolve, the
-  reroute becomes unconditional and complete. (Investigated + abandoned pre-IR 2026-06-22,
-  Codex-validated.)
+- **Simple-generator peephole eager-body divergence.** RESOLVED 2026-09-12 without MIR:
+  the single-yield lambda peephole was deleted outright, so every generator lowers on the
+  resumable frame and no prologue or post-yield code runs eagerly. What this bullet used to
+  park behind the reroute stays filed on its own: the alias clobber (BUGS.md
+  `resumable-alias-identity`) and the owning whole-tuple-slot `yield t` rejects.
 
 ---
 
@@ -1366,14 +1351,11 @@ prove still apply to the committed-snapshot oracle that replaced them.
   signatures and structural emission -- justified by MIR OQ6 and the dual-maintenance cost of
   a 4.1k-line evolving emitter. Only the user-source **leaves** route through THIR, via a seam
   at the skeleton's ~25 delegation sites; per-body all-or-nothing, and a routed body's missing
-  leaf is a hard error. The simple-generator lambda peephole takes the same leaf-seam shape
-  (`lower_simple_generator` -> `THIRSimpleGenBody` -> `SimpleGenLeafEmitter`): the lambda
-  skeleton (signature, captures, `make_generator` scaffolding, iterator-slot types, per-pull
-  optional return) stays AST while the init/cond/pre-post-yield/yield-value/iterable leaves
-  route; its seam sites are static (one loop, one yield), so the node carries direct fields,
-  not id()-keyed tables. Foreach CALLERS over generator factories / user-iterator names route
-  via `THIRForIterProto` (the universal `::tpy::__iter__` loop), with generator callees
-  admitted by the call classifiers only in iterable position.
+  leaf is a hard error. `lower_resumable` is the only seam lowering: the single-yield lambda
+  peephole that once took the same leaf-seam shape (`lower_simple_generator` ->
+  `THIRSimpleGenBody` -> `SimpleGenLeafEmitter`) was deleted on 2026-09-12. Foreach CALLERS
+  over generator factories / user-iterator names route via `THIRForIterProto` (the universal
+  `::tpy::__iter__` loop), with generator callees admitted by the call classifiers only in iterable position.
 - **End state (post-AST-deletion):** the leaf seam is the byte-diff-safe transition, not the
   destination. Once the AST body emitters are deleted, the resumable skeleton + seams fold
   into the IR: the resumable CFG becomes IR proper, async lowering an IR-to-IR transform, and

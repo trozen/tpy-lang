@@ -1,5 +1,5 @@
-# A simple generator (single yield, lambda peephole) iterating a temporary
-# rvalue list: the source is evaluated exactly once -- and lazily, on the
+# A single-yield generator iterating a temporary rvalue list: the source is
+# evaluated exactly once -- and lazily, on the
 # first pull, not at generator construction (CPython body-deferral timing).
 from typing import Iterator
 from tpy import int32, Own

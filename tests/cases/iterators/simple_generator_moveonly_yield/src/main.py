@@ -1,7 +1,7 @@
-# Regression: a simple (single-yield) generator yielding a move-only Own[T]
-# (T is @nocopy). The peephole wrapped the yield value as
+# Regression: a single-yield generator yielding a move-only Own[T] (T is
+# @nocopy). The generator emit once wrapped the yield value as
 # std::optional<T>(__val) -- a copy -- so a move-only yield type (deleted
-# copy ctor) failed the C++ build; it now moves the owned yield local out.
+# copy ctor) failed the C++ build; the yield has to move the owned value out.
 # Using @nocopy is deliberate: a silent copy at the yield boundary would be
 # a compile error, not a parity-blind pass.
 from typing import Iterator

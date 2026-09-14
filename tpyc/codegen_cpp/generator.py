@@ -154,10 +154,7 @@ class CodeGenerator:
         module.functions = [
             f for f in module.functions if not f.builtin_decorator_key
         ]
-        # Force simple generators consumed by a resumable frame's `__for_src`
-        # field into named structs. Must run before any pass consults
-        # `is_simple_generator` (forward decls, struct emit, factory emit).
-        self._prescan_for_src_embedding(module)
+        self._collect_module_generators(module)
         # Populate native C++ name mappings for this module's codegen.
         # Must include both own records and imported records so NominalType.to_cpp()
         # resolves correctly in all type positions (Ptr[Rect] -> SDL_Rect*, etc.)
@@ -468,7 +465,6 @@ class CodeGenerator:
             iter_module_constructors as _thir_ctors,
             lower_constructor as _thir_lower_ctor,
             lower_function as _thir_lower,
-            lower_simple_generator as _thir_lower_sgen,
             module_native_globals as _thir_native_globals,
         )
         from ..thir.reject import (begin_attempt, commit_attempt,
@@ -499,34 +495,18 @@ class CodeGenerator:
         self.ctx.thir_functions = IdentityMap()
         self.ctx.thir_overload_functions = IdentityMap()
         self.ctx.thir_resumables = IdentityMap()
-        self.ctx.thir_simple_gens = IdentityMap()
         for f, self_type in _thir_callables(module, self.analyzer):
             # A bodyless binding has no emit at all. A bodied `@dispatch`
             # variant does have one -- the function driver emits it standalone
             # -- so it is lowered like any other body.
             if is_bodyless_binding(f):
                 continue
-            if f.is_async or (f.is_generator and
-                              not self.gen_generators.is_simple_generator(f)):
+            if f.is_async or f.is_generator:
                 # Resumable-frame bodies attempt at first frame emission
                 # (lowering walks the CFG, which needs live codegen ctx);
                 # they reject under the "resumable" component there.
                 continue
             begin_attempt()
-            if f.is_generator:
-                # Simple-peephole generator: leaf-seam lowering (the lambda
-                # skeleton comes from gen_generators, like the resumable frame).
-                with _shadow_ctx(self_type):
-                    sg = _thir_lower_sgen(
-                        f, self.analyzer, self.types.type_to_cpp,
-                        self_type=self_type, native_globals=_ng,
-                        render_type_stored=self.types.type_to_cpp_stored,
-                        render_resolve=self.types.resolve_type)
-                if sg is None:
-                    reject_attempt("body", f)
-                self.ctx.thir_simple_gens[f] = sg
-                commit_attempt()
-                continue
             stubs = self.analyzer.overload_groups.get(f)
             if stubs:
                 # Per-stub seeding: an @overload impl body is emitted
@@ -696,7 +676,6 @@ class CodeGenerator:
                             cpp.write("\n")
                             self.gen_async.gen_factory(cpp, func)
                             cpp.write("\n")
-                # Simple generators are defined inline in the header
                 continue
             if func.is_async:
                 # Templates are emitted inline in the header (same rule as
@@ -722,9 +701,9 @@ class CodeGenerator:
         # Method generator __next__() / async __poll__() definitions
         for record in module.all_records():
             for method in record.methods:
-                if method.is_generator and not self.gen_generators.is_simple_generator(method):
-                    # Eligibility is True-or-raises for a non-simple generator
-                    # method; the call also builds + caches the CFG. Non-template
+                if method.is_generator:
+                    # Eligibility is True-or-raises for a generator method;
+                    # the call also builds + caches the CFG. Non-template
                     # methods emit the __next__ body + finally-top in the .cpp
                     # (templated ones emit inline next to the struct in the
                     # .hpp, see below).
@@ -800,11 +779,10 @@ class CodeGenerator:
         return hpp.getvalue(), cpp.getvalue()
 
     def _resumable_generator_eligible(self, func: "TpyFunction") -> bool:
-        """Gate for routing a non-simple generator (free function OR method)
-        through the resumable state-machine emitter (`gen_async`). Returns
-        False only for the simple-peephole shape (which is emitted inline);
-        for any other generator it returns True or raises a clean diagnostic
-        -- there is no other emitter to fall back to.
+        """Gate for routing a generator (free function OR method) through
+        the resumable state-machine emitter (`gen_async`). For a generator
+        it returns True or raises a clean diagnostic -- there is no other
+        emitter to fall back to.
         Protocol-typed params are rejected (the for-loop frame field would be
         typed against the abstract concept, not the deduced template param);
         generic generators (`[T]`) are eligible (templated struct + `__next__`
@@ -829,18 +807,12 @@ class CodeGenerator:
         # Generic generators (explicit `[T]` type params) are eligible: the
         # resumable emitter is template-aware (struct + __next__ + factory
         # emitted inline in the header for templated coros, exactly like
-        # generic async defs). For a non-simple generator this returns True
-        # or raises a clean diagnostic -- it never returns False (there is
-        # no other emitter to fall back to).
+        # generic async defs). For a generator this returns True or raises
+        # a clean diagnostic -- it never returns False (there is no other
+        # emitter to fall back to, and every caller falls through on False).
         if not func.is_generator:
             return False
-        # Simple single-yield generators use the lightweight lambda peephole
-        # (`gen_simple_generator_inline`); everything else is a resumable
-        # frame.
-        if self.gen_generators.is_simple_generator(func):
-            return False
-        if func.generator_yield_type is None:
-            return False
+        assert func.generator_yield_type is not None, func.name
         # Static-protocol params (`def gen(it: Iterable[T])`) make the struct
         # a template and are captured as a deduced template arg `T_<pname>`;
         # a direct for-loop over such a param types its iterator frame field
@@ -872,13 +844,9 @@ class CodeGenerator:
                                 owner.name if owner is not None else None))
         return targets
 
-    def _prescan_for_src_embedding(self, module: TpyModule) -> None:
-        """Populate the same-module generator map, then force-mark simple
-        generators whose struct another resumable frame embeds by value via
-        a `__for_src` field -- the simple-lambda wrapper's type is
-        unnameable, so such a callee must emit as a named struct. Worklist
-        to a fixpoint: forcing a callee makes it resumable, which may
-        surface its own embeddings."""
+    def _collect_module_generators(self, module: TpyModule) -> None:
+        """Populate the same-module generator map the `__for_src` embedding
+        resolves callees through, keyed (name, owner_record)."""
         gens: dict[tuple[str, str | None], TpyFunction] = {}
         for record in module.all_records():
             for m in record.methods:
@@ -887,49 +855,11 @@ class CodeGenerator:
         for f in module.functions:
             if f.is_generator and not f.skip_codegen:
                 gens[(f.name, None)] = f
-        # Re-derive from scratch so a re-emit of the same AST (e.g. a future
-        # caching layer) can't inherit stale marks. Only force_resumable is
-        # codegen-derived (the self-delegation cycle pass below); requires_
-        # resumable_frame is a sema fact and must survive -- do not reset it.
-        for f in gens.values():
-            f.force_resumable = False
         self.gen_generators.same_module_generators = gens
-
-        # A simple generator delegating to ITSELF never enters the worklist
-        # below (simple consumers use the lambda `__src` capture, not a frame
-        # field) -- force it resumable so the cycle lands in the emit-order
-        # check and gets the clean recursive-delegation diagnostic. A mutual
-        # cycle of two *simple* generators is not caught here (neither side
-        # enters the worklist) and recurses at runtime instead.
-        for key, f in gens.items():
-            if self.gen_generators.is_simple_generator(f) and key in \
-                    self.gen_generators._for_src_generator_targets(f):
-                f.force_resumable = True
-
-        work: list[TpyFunction] = []
-        for record in module.all_records():
-            for m in record.methods:
-                if m.is_async or (m.is_generator and
-                                  not self.gen_generators.is_simple_generator(m)):
-                    work.append(m)
-        for f in module.functions:
-            if f.skip_codegen:
-                continue
-            if f.is_async or (f.is_generator and
-                              not self.gen_generators.is_simple_generator(f)):
-                work.append(f)
-        while work:
-            f = work.pop()
-            for name, owner in self.gen_generators._for_src_generator_targets(f):
-                callee = gens.get((name, owner))
-                if (callee is not None and not callee.force_resumable
-                        and self.gen_generators.is_simple_generator(callee)):
-                    callee.force_resumable = True
-                    work.append(callee)
 
     def _emit_resumable_structs(self, hpp: TextIO, module: TpyModule) -> None:
         """Emit every resumable-frame struct definition -- async coros AND
-        non-simple generators, free functions + methods -- topologically
+        generators, free functions + methods -- topologically
         ordered so each by-value-embedded callee precedes its consumer.
         Five embedding shapes: an inline-awaited coro
         (`std::optional<__coro_callee>`), an `async with` manager's
@@ -959,14 +889,12 @@ class CodeGenerator:
             if func.is_async and not func.skip_codegen:
                 units.append((func, None, True))
         for func in module.functions:
-            if (func.skip_codegen or not func.is_generator
-                    or self.gen_generators.is_simple_generator(func)):
+            if func.skip_codegen or not func.is_generator:
                 continue
             units.append((func, None, False))
         for record in module.all_records():
             for method in record.methods:
-                if (method.is_generator
-                        and not self.gen_generators.is_simple_generator(method)):
+                if method.is_generator:
                     units.append((method, record.name, False))
         n = len(units)
         if n == 0:
@@ -1036,7 +964,7 @@ class CodeGenerator:
 
     def _emit_generator_unit(self, hpp: TextIO, func: TpyFunction,
                              record_name: str | None) -> None:
-        """Emit one non-simple generator's struct plus the inline definitions
+        """Emit one generator's struct plus the inline definitions
         its shape requires (templated __next__/finally-top/factory; the
         inline out-of-class factory for methods). Non-templated bodies are
         emitted later in the .cpp pass."""
@@ -1629,7 +1557,7 @@ class CodeGenerator:
         for func in module.functions:
             if func.skip_codegen:
                 continue
-            if func.is_generator and not self.gen_generators.is_simple_generator(func):
+            if func.is_generator:
                 if self._resumable_generator_eligible(func):
                     with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                         self.gen_async.gen_coro_forward_decl(hpp, func)
@@ -1640,7 +1568,7 @@ class CodeGenerator:
         # Method generator/async struct forward declarations (before records)
         for record in module.all_records():
             for method in record.methods:
-                if method.is_generator and not self.gen_generators.is_simple_generator(method):
+                if method.is_generator:
                     if self._resumable_generator_eligible(method):
                         with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                             self.gen_async.gen_coro_forward_decl(
@@ -1662,8 +1590,6 @@ class CodeGenerator:
         for func in module.functions:
             if func.skip_codegen:
                 continue
-            if func.is_generator and self.gen_generators.is_simple_generator(func):
-                continue  # Simple generators are inline -- no forward decl
             if _func_uses_nested_type(func):
                 deferred_fwd_funcs.append(func)
             elif self._gen_function_forward_decl(hpp, func):
@@ -1741,7 +1667,7 @@ class CodeGenerator:
                 self._gen_enum_operator_ostream(hpp, enum)
 
 
-        # Resumable struct definitions (async coros + non-simple generators;
+        # Resumable struct definitions (async coros + generators;
         # after records, so struct fields and inline bodies can use
         # fully-defined user types), topologically ordered by by-value frame
         # embedding: an inline `await callee()` stores `__coro_callee` and a
@@ -1815,12 +1741,7 @@ class CodeGenerator:
             if func.skip_codegen:
                 continue
             if func.is_generator:
-                if self.gen_generators.is_simple_generator(func):
-                    # Simple generators: emit inline function definition in header
-                    self.gen_generators.gen_simple_generator_inline(hpp, func)
-                    hpp.write("\n")
-                    emitted_func_decl = True
-                continue  # Complex generators: factory emitted in source file
+                continue  # The factory is emitted in the source file
             if func.is_async:
                 # Async defs go through AsyncCoroCodegen.gen_factory_forward_decl
                 # earlier in the pipeline; gen_function_decl would otherwise

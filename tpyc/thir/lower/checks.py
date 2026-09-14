@@ -123,7 +123,7 @@ from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
 from ...value_category import (
-    borrowing_frame_callee, call_returns_cpp_ref, is_rvalue_source,
+    call_returns_cpp_ref, is_rvalue_source,
 )
 from ...codegen_cpp.context import (
     escape_cpp_name,
@@ -3817,8 +3817,8 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
 
     `generator_ok` admits a free GENERATOR callee (set only by the iterable
     position): its factory call spells exactly like a plain/imported call
-    (both the lambda peephole's `inline auto f(...)` and the resumable
-    frame's factory), so only the callee-kind reject differs. A GENERIC
+    (the resumable frame's factory), so only the callee-kind reject
+    differs. A GENERIC
     generator callee rides the generic arm's explicit-targ spelling under
     the same flag.
 
@@ -4718,7 +4718,7 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
         return False
     # A captured `self` needs a receiver HANDLE the closure can copy --
     # admitted only where the caller confirmed the enclosing body holds one
-    # (a plain method, the simple-generator wrapper, or a frame's `__self`).
+    # (a plain method or a frame's `__self`).
     if "self" in a.captured_names and not self_capturable:
         return False
     rt = a.inferred_return_type
@@ -7730,8 +7730,7 @@ class _GenericArgSlot(NamedTuple):
 def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
                       resolved: 'TpyType | None',
                       locals_: 'dict[str, TpyType] | None',
-                      param_names: 'AbstractSet[str]', analyzer, *,
-                      borrowing_frame: bool = False
+                      param_names: 'AbstractSet[str]', analyzer
                       ) -> '_GenericArgSlot | None':
     """The ONE verdict the three generic seams take -- the free call, the
     record method and the record ctor -- so a shape cannot owe a temp at one
@@ -7745,12 +7744,9 @@ def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
     prvalue for the full expression exactly as the monomorphic twin's slot
     does, and the mutable `T&` for a reference-typed one, which binds no
     rvalue at all. Deciding on the OPEN T instead makes every instantiation
-    pay the reference-typed one's temp.
-
-    ONE thing still owes a temp at a value-typed instantiation: a callee whose
-    frame BORROWS the slot (`borrowing_frame_callee`), where the temp is what
-    keeps the borrowed object alive -- the same rule
-    `_container_call_temp_arg` applies at concrete readonly-ref slots. A
+    pay the reference-typed one's temp. A generator or coroutine frame copies
+    a value-typed instantiation into its `val_or_ref_t<T>` member inside the
+    full expression, so a frame factory owes nothing more here either. A
     view-form source owes nothing at ANY `T` slot: each of the four str/bytes
     types has its own C++ type, so `param_val_or_ref_t<T>` resolves to the same
     view the monomorphic twin's slot spells, and a const slot spells
@@ -7769,8 +7765,7 @@ def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
     slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
     if contains_type_param(slot):
         return None
-    return _GenericArgSlot(
-        slot, borrowing_frame or not slot.is_value_type())
+    return _GenericArgSlot(slot, not slot.is_value_type())
 
 
 def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
@@ -11630,8 +11625,7 @@ def _r_record_rvalue_temp_factory(req: _ArgReq) -> bool:
 
 def _r_tparam_slot_temp(req: _ArgReq) -> bool:
     return _tparam_slot_temp_arg(
-        req.a, req.ptype, req.index, req.overload, req.analyzer,
-        borrowing_frame=borrowing_frame_callee(req.overload)) is not None
+        req.a, req.ptype, req.index, req.overload, req.analyzer) is not None
 
 
 def _r_struct_proto_union(req: _ArgReq) -> bool:
@@ -11911,8 +11905,7 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
             return True
         return note_detail("call.generic_arg_slot")
     gslot = _generic_arg_slot(
-        a, ptype, resolved, locals_, req.param_names, analyzer,
-        borrowing_frame=borrowing_frame_callee(req.overload))
+        a, ptype, resolved, locals_, req.param_names, analyzer)
     if isinstance(ptype, TypeParamRef):
         # A row hoisting a temp is flush-gated; one whose INSTANTIATED slot
         # binds the rvalue outright renders inline, so it needs no flush
@@ -14350,8 +14343,7 @@ def _raw_record_ctor_fi(rtype: 'TpyType | None',
 def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
                           method_fi, analyzer, *,
                           locals_: 'dict[str, TpyType] | None' = None,
-                          param_names: 'AbstractSet[str]' = frozenset(),
-                          borrowing_frame: bool = False
+                          param_names: 'AbstractSet[str]' = frozenset()
                           ) -> 'TpyType | None':
     """A temporary arg into a generic-record method's T slot, resolved
     non-value at the call site (`printer.get_str(Point(10, 20))`,
@@ -14368,8 +14360,7 @@ def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
     if method_fi is None or idx >= len(method_fi.params):
         return None
     g = _generic_arg_slot(a, method_fi.params[idx].type, ptype, locals_,
-                          param_names, analyzer,
-                          borrowing_frame=borrowing_frame)
+                          param_names, analyzer)
     if g is None:
         return None
     if g.slot.is_value_type():

@@ -9,30 +9,42 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_triple_gen;
+
 // def double(x: int32) -> int32:
 int32_t double_(int32_t x);
 // def is_positive(x: int32) -> bool:
 bool is_positive(int32_t x);
+// def triple_gen(items: Span[int32]) -> Iterator[int32]:
+__gen_triple_gen triple_gen(std::span<int32_t> items);
 // def main() -> None:
 void main();
 
 // def triple_gen(items: Span[int32]) -> Iterator[int32]:
-//     for item in items:
-//         yield item * 3
-inline auto triple_gen(std::span<int32_t> items) {
-    return ::tpy::make_generator<int32_t>(
-        [items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t item = *__beg++;
-                auto __val = (::tpy::mul_check<int32_t>(item, 3));
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_triple_gen : public ::tpy::next_iter_mixin<__gen_triple_gen, int32_t> {
+    int32_t __state;
+    std::span<int32_t> items;
+    int32_t item;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::span<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::span<int32_t>>> __for_end_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_triple_gen(std::span<int32_t> items_)
+        : __state(S_INITIAL), items(std::move(items_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_triple_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_triple_gen&) {
+        return os << "<generator triple_gen>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

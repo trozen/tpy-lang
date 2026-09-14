@@ -37,8 +37,8 @@ def not_form(v: int32 | None) -> Iterator[int32]:
 
 
 def while_suspends(v: int32 | None) -> Iterator[int32]:
-    # A trailing statement keeps the simple-generator peephole from
-    # applying, so the loop head goes through the CFG.
+    # The loop body suspends, so the loop head goes through the CFG; a
+    # trailing statement follows the loop.
     while v:  # tpyc: warning(/Truthiness check on optional value/)
         yield 1
         v = None
@@ -46,8 +46,8 @@ def while_suspends(v: int32 | None) -> Iterator[int32]:
 
 
 def peephole_while(v: int32 | None) -> Iterator[int32]:
-    # The while IS the last statement -> simple-generator lambda peephole,
-    # a separate condition renderer from the CFG one above.
+    # The while IS the last statement: the same frame and CFG loop-head
+    # render as `while_suspends`, pinned at the single-yield tail-loop shape.
     while v:  # tpyc: warning(/Truthiness check on optional value/)
         yield 1
         v = None

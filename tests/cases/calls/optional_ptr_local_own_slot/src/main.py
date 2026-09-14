@@ -12,9 +12,10 @@
 # def, which has no movable locals (BUGS.md#rebind-slot-missing-module-nested-def);
 # a comprehension body, where an outer name is read per iteration and so never
 # at a last use (the copy path, with its warning); module level, whose init
-# carrier has no movable set; and a resumable body -- async, or a generator
-# past the single-yield peephole -- where the local is a frame field
-# (BUGS.md#opt-ptr-local-own-slot-resumable-body).
+# carrier has no movable set. A resumable body (a generator past the
+# single-yield peephole, an async def) holds the local as a frame field whose
+# pointee storage the frame owns, so it moves the same way.
+import asyncio
 from typing import Iterator, Optional
 from tpy import int32, Own
 
@@ -142,7 +143,8 @@ def setdefault_slot(c: bool) -> None:
     print("setdefault_slot", len(d), 0 if again is None else again.n)
 
 
-# Generator body.
+# Generator body on the resumable frame (two yields): the local is a frame
+# field pointing at frame-owned storage, moved out at its last use.
 def gen(k: int32) -> Iterator[int32]:
     patches: list[Pic | None] = []
     for j in range(k):
@@ -151,6 +153,33 @@ def gen(k: int32) -> Iterator[int32]:
             patch = Pic(j)
         patches.append(patch)  # tpyc: ok
         yield len(patches)
+    bump_all(patches)
+    show("generator", patches)
+    yield -1
+
+
+# Async body: the same frame-field local at the element, free-function and
+# constructor slots.
+async def async_body(c: bool) -> None:
+    patches: list[Pic | None] = []
+    patch: Pic | None = None
+    if c:
+        patch = Pic(20)
+    patches.append(patch)  # tpyc: ok
+    other: Pic | None = None
+    if c:
+        other = Pic(21)
+    take_own_opt(other, patches)  # tpyc: ok
+    await asyncio.sleep(0)
+    third: Pic | None = None
+    if c:
+        third = Pic(22)
+    b = Bag()
+    b.add(third)  # tpyc: ok
+    bump_all(patches)
+    bump_all(b.items)
+    show("async_body", patches)
+    show("async_method", b.items)
 
 
 def main() -> None:
@@ -163,6 +192,8 @@ def main() -> None:
     setdefault_slot(True)
     for v in gen(3):
         print("generator", v)
+    asyncio.run(async_body(True))
+    asyncio.run(async_body(False))
 
 
 main()

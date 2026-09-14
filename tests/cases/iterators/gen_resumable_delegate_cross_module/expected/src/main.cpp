@@ -45,6 +45,48 @@ __gen_free_import free_import() {
     return __gen_free_import();
 }
 
+// # single-yield callee in the other module: its frame struct is complete in
+// # its header like any other generator's
+// def single_yield_import() -> Iterator[int32]:
+//     yield 5                                    # -> S_RESUME_0
+//     for x in walk_once():  # tpyc: ok
+//         yield x                                # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_single_yield_import::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_RESUME_0;
+        return 5;
+    }
+    case S_RESUME_0: {  // after: yield 5
+        __for_src_0.emplace(::tpyapp::gensrc::walk_once());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_1;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def single_yield_import() -> Iterator[int32]:
+__gen_single_yield_import single_yield_import() {
+    return __gen_single_yield_import();
+}
+
 // # free function reached through the module object, `import m; m.g()`
 // def module_call() -> Iterator[int32]:
 //     yield 10                             # -> S_RESUME_0
@@ -139,9 +181,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next__() {
         return 30;
     }
     case S_RESUME_0: {  // after: yield 30
-        int32_t __tmp_1 = 1;
-        int32_t __tmp_2 = 2;
-        __for_src_0.emplace(::tpyapp::gensrc::pair<int32_t>(__tmp_1, __tmp_2));
+        __for_src_0.emplace(::tpyapp::gensrc::pair<int32_t>(1, 2));
         __state = S_JOIN_0;
         continue;
     }
@@ -431,6 +471,8 @@ __coro_async_position async_position() {
 // def main() -> None:
 //     for v in free_import():
 //         print("free:", v)
+//     for v in single_yield_import():
+//         print("single:", v)
 //     for v in module_call():
 //         print("modcall:", v)
 //     for v in imported_method(Src(7)):
@@ -466,88 +508,98 @@ void main() {
         }
     }
     {
-        auto __src_2 = module_call();
+        auto __src_2 = single_yield_import();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "modcall:" << " " << v << "\n";
+        std::cout << "single:" << " " << v << "\n";
         }
     }
     {
-        ::tpyapp::gensrc::Src __tmp_3 = ::tpyapp::gensrc::Src(7);
-        auto __src_4 = imported_method(__tmp_3);
+        auto __src_4 = module_call();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "method:" << " " << v << "\n";
+        std::cout << "modcall:" << " " << v << "\n";
         }
     }
     {
-        auto __src_6 = generic_callee();
+        ::tpyapp::gensrc::Src __tmp_1 = ::tpyapp::gensrc::Src(7);
+        auto __src_6 = imported_method(__tmp_1);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "generic:" << " " << v << "\n";
+        std::cout << "method:" << " " << v << "\n";
         }
     }
     {
-        ::tpyapp::gensrc::Box<int32_t> __tmp_4 = ::tpyapp::gensrc::Box<int32_t>({5, 6});
-        auto __src_8 = generic_owner_imported(__tmp_4);
+        auto __src_8 = generic_callee();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "genowner-imported:" << " " << v << "\n";
+        std::cout << "generic:" << " " << v << "\n";
         }
     }
     {
-        LocalBox<int32_t> __tmp_5 = LocalBox<int32_t>({8, 9});
-        auto __src_10 = generic_owner_local(__tmp_5);
+        ::tpyapp::gensrc::Box<int32_t> __tmp_2 = ::tpyapp::gensrc::Box<int32_t>({5, 6});
+        auto __src_10 = generic_owner_imported(__tmp_2);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "genowner-local:" << " " << v << "\n";
+        std::cout << "genowner-imported:" << " " << v << "\n";
         }
     }
-    ::tpyapp::gensrc::Bag bag = ::tpyapp::gensrc::Bag();
     {
-        auto __src_12 = mutate_receiver(bag);
+        LocalBox<int32_t> __tmp_3 = LocalBox<int32_t>({8, 9});
+        auto __src_12 = generic_owner_local(__tmp_3);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "mutate:" << " " << v << "\n";
+        std::cout << "genowner-local:" << " " << v << "\n";
         }
     }
-    std::cout << "mutate: after" << " " << bag.n << "\n";
+    ::tpyapp::gensrc::Bag bag = ::tpyapp::gensrc::Bag();
     {
-        auto __src_14 = lazy_interleave();
+        auto __src_14 = mutate_receiver(bag);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "lazy:" << " " << v << "\n";
-        std::cout << "lazy: consumer pulled" << "\n";
+        std::cout << "mutate:" << " " << v << "\n";
         }
     }
+    std::cout << "mutate: after" << " " << bag.n << "\n";
     {
-        auto __src_16 = abandoned();
+        auto __src_16 = lazy_interleave();
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
+        std::cout << "lazy:" << " " << v << "\n";
+        std::cout << "lazy: consumer pulled" << "\n";
+        }
+    }
+    {
+        auto __src_18 = abandoned();
+        auto&& __itr_18 = ::tpy::__iter__(__src_18);
+        for (;;) {
+            auto __r_19 = __itr_18.__next__();
+            if (!__r_19.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_19);
         std::cout << "abandon:" << " " << v << "\n";
         if ((v == 1)) {
             break;

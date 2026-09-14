@@ -4,6 +4,113 @@
 namespace tpyapp::main {
 
 
+// def gen_for(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+//     for it in items:
+//         yield (it, None)                                             # -> S_RESUME_0
+std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_for::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (it, None)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        it = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return std::tuple<P*, P*>{it, nullptr};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_for(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+__gen_gen_for gen_for(std::vector<P>& items) {
+    return __gen_gen_for(items);
+}
+
+// def gen_range(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+//     for i in range(len(items)):
+//         yield (items[i], None)                                         # -> S_RESUME_0
+std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_range::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(::tpy::__len__(items)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (items[i], None)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        __state = S_RESUME_0;
+        return std::tuple<P*, P*>{&(items[static_cast<std::size_t>(i)]), nullptr};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_range(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+__gen_gen_range gen_range(std::vector<P>& items) {
+    return __gen_gen_range(items);
+}
+
+// def gen_while(items: list[P], n: int32) -> Iterator[tuple[P | None, P | None]]:
+//     i = int32(0)
+//     while i < n:
+//         yield (items[i], None)                                                   # -> S_RESUME_0
+//         i = i + 1
+std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_while::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (items[i], None)
+        i = (::tpy::add_check<int32_t>(i, 1));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            __state = S_RESUME_0;
+            return std::tuple<P*, P*>{&(::tpy::__getitem__(items, i)), nullptr};
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_while(items: list[P], n: int32) -> Iterator[tuple[P | None, P | None]]:
+__gen_gen_while gen_while(std::vector<P>& items, int32_t n) {
+    return __gen_gen_while(items, n);
+}
+
 // def main() -> None:
 //     items = [P(1), P(2), P(3)]
 //

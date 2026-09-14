@@ -17,3 +17,13 @@ setdefault_slot 1 13
 generator 1
 generator 2
 generator 3
+generator 10
+generator none
+generator 12
+generator -1
+async_body 30
+async_body 31
+async_method 32
+async_body none
+async_body none
+async_method none

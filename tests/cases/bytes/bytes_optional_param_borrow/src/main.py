@@ -44,7 +44,7 @@ class Holder:
 
 
 def gen(b: bytes | None) -> Iterator[int]:
-    # simple generator (no await) owning the bytes|None param across yields
+    # sync generator (no await) owning the bytes|None param across yields
     yield 1
     if b is not None:
         yield int(b[0])           # reads buffer after a yield -> needs owned capture

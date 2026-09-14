@@ -11,6 +11,9 @@ template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template <typename T>
+struct __gen_Holder_walk;
+
 // def main() -> None:
 void main();
 
@@ -25,22 +28,7 @@ struct Holder {
     Holder() = default;
     explicit Holder(const std::vector<T>& items) : items(items) {}
 
-    // def walk(self) -> Iterator[T]:
-    //     for x in self.items:
-    //         yield x
-    auto walk() {
-        return ::tpy::make_generator<T>(
-            [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<T> {
-                if (!__init) { __beg = ((*this).items).begin(); __end = ((*this).items).end(); __init = true; }
-                if (__beg != __end) {
-                    auto&& x = *__beg++;
-                    auto&& __val = x;
-                    return std::optional<T>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Holder_walk<T> walk();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -48,6 +36,69 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
+}
+
+// def walk(self) -> Iterator[T]:
+template <typename T>
+struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, T> {
+    int32_t __state;
+    Holder<T>& __self;
+    T* x = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Holder_walk(Holder<T>& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<T, ::tpy::StopIteration> __next__();
+    __gen_Holder_walk& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Holder_walk<T>&) {
+        return os << "<generator Holder.walk>";
+    }
+};
+
+// def walk(self) -> Iterator[T]:
+//     for x in self.items:
+//         yield x                 # -> S_RESUME_0
+template <typename T>
+std::expected<T, ::tpy::StopIteration> __gen_Holder_walk<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((__self.items).begin());
+        __for_end_0.emplace((__self.items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*x);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+template <typename T>
+inline __gen_Holder_walk<T> Holder<T>::walk() {
+    return __gen_Holder_walk<T>(*this);
 }
 
 void __tpy_init();

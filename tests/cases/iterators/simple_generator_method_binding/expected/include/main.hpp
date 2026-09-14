@@ -35,6 +35,8 @@ struct Source;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_Source_gen;
+
 // def main() -> None:
 void main();
 
@@ -42,40 +44,43 @@ void main();
 struct Source {
 
 
-    // def gen(self, n: int32) -> Iterator[int32]:
-    //     i: int32 = 0
-    //     while i < n:
-    //         if i == caps.CAP:           # module-constant access in a method generator
-    //             break
-    //         if i == Color.GREEN.value:  # enum-member access in a generator body
-    //             print("green")
-    //         yield i
-    //         i += 1
-    auto gen(int32_t n) const {
-        int32_t i = 0;
-        return ::tpy::make_generator<int32_t>(
-            [this, n, i]() mutable -> std::optional<int32_t> {
-                while ((i < n)) {
-                    if ((i == ::tpyapp::caps::CAP)) {
-                        break;
-                    }
-                    if ((i == static_cast<int32_t>(Color::GREEN))) {
-                        std::cout << "green" << "\n";
-                    }
-                    auto __val = i;
-                    i = ::tpy::add_check<int32_t>(i, 1);
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Source_gen gen(int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Source";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     ::tpy::print_object_default(os, "Source", obj);
     return os;
+}
+
+// def gen(self, n: int32) -> Iterator[int32]:
+struct __gen_Source_gen : public ::tpy::next_iter_mixin<__gen_Source_gen, int32_t> {
+    int32_t __state;
+    const Source& __self;
+    int32_t n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_Source_gen(const Source& __self, int32_t n_)
+        : __state(S_INITIAL), __self(__self), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Source_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Source_gen&) {
+        return os << "<generator Source.gen>";
+    }
+};
+
+inline __gen_Source_gen Source::gen(int32_t n) const {
+    return __gen_Source_gen(*this, n);
 }
 
 void __tpy_init();

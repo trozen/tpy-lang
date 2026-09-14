@@ -1,6 +1,6 @@
-# A str parameter of a simple single-yield generator (the make_generator +
-# lambda path, vs gen_str_param's multi-yield resumable path) is captured owned
-# via the lambda init-capture, so a temporary argument is safe across iteration.
+# A str parameter of a single-yield generator is copied into owned frame
+# storage on the way in (as in gen_str_param's multi-yield twin), so a
+# temporary argument is safe across iteration.
 from typing import Iterator
 
 

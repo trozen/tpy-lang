@@ -47,9 +47,6 @@ def storage_generations(ctx: 'SemanticContext', name: str) -> int:
     func = ctx.func.current_function
     if ctx.is_top_level or not isinstance(func, TpyFunction):
         return 1
-    # `is_simple_generator` is deliberately NOT consulted: it is a codegen
-    # fact that depends on `requires_resumable_frame`, which sema sets DURING
-    # the body analysis this check runs in.
     if func.is_async or func.is_generator:
         return 1
     return 2 if name in ctx.func.rebind_slot_names else 1

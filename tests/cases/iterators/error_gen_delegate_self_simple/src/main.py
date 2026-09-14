@@ -1,6 +1,5 @@
-# Self-delegation in a SIMPLE-shaped generator is force-promoted to the
-# resumable path so it hits the same clean recursive-delegation diagnostic
-# (the lambda capture would otherwise recurse at construction time).
+# Self-delegation in a single-yield generator: the frame would embed itself,
+# so the emit-order check raises the recursive-delegation diagnostic.
 from typing import Iterator
 from tpy import int32
 

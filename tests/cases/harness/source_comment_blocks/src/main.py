@@ -39,7 +39,7 @@ class Counter:
         return self.n
 
 
-# simple generator: the block sits above the lambda-backed definition
+# single-yield generator: the block sits above the frame's __next__ implementation too
 def upto(n: int32) -> Iterator[int32]:
     for i in range(n):
         yield i

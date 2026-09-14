@@ -10,28 +10,37 @@ namespace tpyapp::main {
 extern ::tpy::BigInt seen;
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_counter;
+
+// def counter() -> Iterator[int]:
+__gen_counter counter();
 // def main() -> None:
 void main();
 
 // def counter() -> Iterator[int]:
-//     global seen
-//     for i in range(3):
-//         seen = i
-//         yield i
-inline auto counter() {
-    return ::tpy::make_generator<::tpy::BigInt>(
-        [__i = int32_t(0), __stop = static_cast<int32_t>(3)]() mutable -> std::optional<::tpy::BigInt> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                seen = ::tpy::BigInt(i);
-                auto __val = ::tpy::BigInt(i);
-                return std::optional<::tpy::BigInt>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_counter : public ::tpy::next_iter_mixin<__gen_counter, ::tpy::BigInt> {
+    int32_t __state;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_counter()
+        : __state(S_INITIAL) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_counter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_counter&) {
+        return os << "<generator counter>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

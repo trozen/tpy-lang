@@ -12,10 +12,13 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_scaled;
+struct __gen_counted;
 struct __coro_drive;
 
 // async def scaled(a: int64, b: int64 = 10, *, c: int64) -> int64:
 __coro_scaled scaled(int64_t a, int64_t b, int64_t c);
+// def counted(n: int64 = 2, *, step: int64) -> Iterator[int64]:
+__gen_counted counted(int64_t n, int64_t step);
 // async def drive() -> None:
 __coro_drive drive();
 // def main() -> None:
@@ -73,23 +76,31 @@ struct __coro_drive {
 };
 
 // def counted(n: int64 = 2, *, step: int64) -> Iterator[int64]:
-//     # A generator factory shares the async factory's params emitter, so it
-//     # needs the same gate.
-//     for i in range(n):
-//         yield i * step
-inline auto counted(int64_t n, int64_t step) {
-    return ::tpy::make_generator<int64_t>(
-        [n, step, __i = int64_t(0), __stop = static_cast<int64_t>(n)]() mutable -> std::optional<int64_t> {
-            while (__i < __stop) {
-                int64_t i = __i++;
-                auto __val = (::tpy::mul_check<int64_t>(i, step));
-                return std::optional<int64_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, int64_t> {
+    int32_t __state;
+    int64_t n;
+    int64_t step;
+    int64_t i;
+    ::tpy::frame_slot<int64_t> __for_i_0;
+    ::tpy::frame_slot<int64_t> __for_stop_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_counted(int64_t n_, int64_t step_)
+        : __state(S_INITIAL), n(std::move(n_)), step(std::move(step_)) {}
+
+    std::expected<int64_t, ::tpy::StopIteration> __next__();
+    __gen_counted& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_counted&) {
+        return os << "<generator counted>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

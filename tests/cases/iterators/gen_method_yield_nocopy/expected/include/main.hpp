@@ -12,6 +12,8 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_Box_each;
+
 // def main() -> None:
 void main();
 
@@ -50,28 +52,43 @@ struct Box {
     Box(Box&&) = default;
     Box& operator=(Box&&) = default;
 
-    // def each(self) -> Iterator[Handle]:  # tpyc: ok
-    //     for h in self.items:
-    //         yield h
-    auto each() {
-        return ::tpy::make_generator<::tpy::val_or_ref<Handle>>(
-            [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Handle>> {
-                if (!__init) { __beg = ((*this).items).begin(); __end = ((*this).items).end(); __init = true; }
-                if (__beg != __end) {
-                    auto&& h = *__beg++;
-                    auto&& __val = h;
-                    return std::optional<::tpy::val_or_ref<Handle>>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Box_each each();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
+}
+
+// def each(self) -> Iterator[Handle]:  # tpyc: ok
+struct __gen_Box_each : public ::tpy::next_iter_mixin<__gen_Box_each, ::tpy::val_or_ref<Handle>> {
+    int32_t __state;
+    Box& __self;
+    Handle* h = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Box_each(Box& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<::tpy::val_or_ref<Handle>, ::tpy::StopIteration> __next__();
+    __gen_Box_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Box_each&) {
+        return os << "<generator Box.each>";
+    }
+};
+
+inline __gen_Box_each Box::each() {
+    return __gen_Box_each(*this);
 }
 
 

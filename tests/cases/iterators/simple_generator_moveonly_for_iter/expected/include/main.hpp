@@ -11,6 +11,15 @@ struct Tok;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_ints;
+template <::tpystd::typing::Iterator<int32_t> T_src>
+struct __gen_make_toks;
+
+// def ints(n: int32) -> Iterator[int32]:
+__gen_ints ints(int32_t n);
+// def make_toks(src: Iterator[int32]) -> Iterator[Own[Tok]]:
+template <::tpystd::typing::Iterator<int32_t> T_src>
+__gen_make_toks<T_src> make_toks(T_src&& src);
 // def main() -> None:
 void main();
 
@@ -36,47 +45,94 @@ inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
     return os;
 }
 
+// def ints(n: int32) -> Iterator[int32]:
+struct __gen_ints : public ::tpy::next_iter_mixin<__gen_ints, int32_t> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_ints(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_ints& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_ints&) {
+        return os << "<generator ints>";
+    }
+};
+
+// def make_toks(src: Iterator[int32]) -> Iterator[Own[Tok]]:
+template <::tpystd::typing::Iterator<int32_t> T_src>
+struct __gen_make_toks : public ::tpy::next_iter_mixin<__gen_make_toks<T_src>, Tok> {
+    int32_t __state;
+    T_src src;
+    int32_t n;
+    ::tpy::frame_slot<std::expected<int32_t, ::tpy::StopIteration>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_make_toks(T_src&& src_)
+        : __state(S_INITIAL), src(std::forward<T_src>(src_)) {}
+
+    std::expected<Tok, ::tpy::StopIteration> __next__();
+    __gen_make_toks& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_make_toks<T_src>&) {
+        return os << "<generator make_toks>";
+    }
+};
+// def make_toks(src: Iterator[int32]) -> Iterator[Own[Tok]]:
+//     for n in src:
+//         yield Tok(n * 10)                                   # -> S_RESUME_0
+template <::tpystd::typing::Iterator<int32_t> T_src>
+std::expected<Tok, ::tpy::StopIteration> __gen_make_toks<T_src>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield Tok(n * 10)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(src.__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        n = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return Tok((::tpy::mul_check<int32_t>(n, 10)));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def make_toks(src: Iterator[int32]) -> Iterator[Own[Tok]]:
+template <::tpystd::typing::Iterator<int32_t> T_src>
+__gen_make_toks<T_src> make_toks(T_src&& src) {
+    return __gen_make_toks<T_src>(std::forward<T_src>(src));
+}
+
 
 // def __init__(self, v: int32) -> None:
 //     self.v = v
 inline Tok::Tok(int32_t v) : v(v) {}
-// def ints(n: int32) -> Iterator[int32]:
-//     i: int32 = 0
-//     while i < n:
-//         yield i
-//         i += 1
-inline auto ints(int32_t n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [n, i]() mutable -> std::optional<int32_t> {
-            while ((i < n)) {
-                auto __val = i;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def make_toks(src: Iterator[int32]) -> Iterator[Own[Tok]]:
-//     for n in src:
-//         yield Tok(n * 10)
-template<::tpystd::typing::Iterator<int32_t> T_src>
-inline auto make_toks(T_src& src) {
-    return ::tpy::make_generator<Tok>(
-        [&src]() mutable -> std::optional<Tok> {
-            auto __r = (src).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                int32_t n = ::tpy::unwrap_ref(*__r);
-                auto __val = Tok((::tpy::mul_check<int32_t>(n, 10)));
-                return std::optional<Tok>(std::move(__val));
-            }
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

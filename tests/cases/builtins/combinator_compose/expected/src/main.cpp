@@ -16,6 +16,41 @@ bool is_positive(int32_t x) {
     return (x > 0);
 }
 
+// def triple_gen(items: Span[int32]) -> Iterator[int32]:
+//     for item in items:
+//         yield item * 3                                  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_triple_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield item * 3
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        item = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return (::tpy::mul_check<int32_t>(item, 3));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def triple_gen(items: Span[int32]) -> Iterator[int32]:
+__gen_triple_gen triple_gen(std::span<int32_t> items) {
+    return __gen_triple_gen(items);
+}
+
 // def main() -> None:
 //     xs = [1, 2, 3, 4, 5]
 //

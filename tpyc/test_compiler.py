@@ -502,8 +502,8 @@ class TestThirRouting:
         for m in modules:
             plain = [fn.name for fn, _self
                      in iter_module_callables(m.ast, m.analyzer)
-                     # Resumable and simple-generator bodies lower at their
-                     # frame seams and key their own caches, so they are not
+                     # Resumable bodies lower at their frame seam and key
+                     # their own cache, so they are not
                      # in this map; a bodyless binding has nothing to lower.
                      if not (is_bodyless_binding(fn) or fn.is_async
                              or fn.is_generator)]
@@ -1311,8 +1311,7 @@ class TestCallMacroModuleData:
 # identity-keyed table: a `@property` read reaches the synthesized-getter
 # seam (`expr_types`), an async try/finally the resumable seam maps
 # (`THIRResumableBody`, `thir_resumables`, `resumable_region_guards`), and a
-# generator the simple-generator ones (`thir_simple_gens`,
-# `generator_for_loop_info`).
+# generator the frame's loop tables (`generator_for_loop_info`).
 _CASES_DIR = Path(__file__).resolve().parent.parent / "tests" / "cases"
 _REPEAT_CASES = {
     "property": _CASES_DIR / "records/member_name_shadows_type/src/main.py",

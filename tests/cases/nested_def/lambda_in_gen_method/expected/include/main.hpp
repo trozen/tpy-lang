@@ -19,6 +19,7 @@ struct __gen_store;
 struct __gen_cell;
 struct __gen_ref_capture;
 struct __gen_own_capture;
+struct __gen_C_emit;
 struct __gen_D_emit;
 
 // def apply(f: Callable[[int32], int32], v: int32) -> int32:
@@ -92,24 +93,7 @@ struct C {
     // def __init__(self) -> None:
     C();
 
-    // # generator METHOD, single yield (simple-generator peephole): the wrapper
-    // # lambda holds the receiver as `this`, and the inner capture spells `this`
-    // # too (self renders `(*this)` in that context).
-    // def emit(self, k: int32) -> Iterator[int32]:
-    //     for i in range(k):
-    //         yield apply(lambda x: x + self.n, i)  # tpyc: ok
-    auto emit(int32_t k) const {
-        return ::tpy::make_generator<int32_t>(
-            [this, k, __i = int32_t(0), __stop = static_cast<int32_t>(k)]() mutable -> std::optional<int32_t> {
-                while (__i < __stop) {
-                    int32_t i = __i++;
-                    auto __val = apply([this](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, (*this).n)); }, i);
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_C_emit emit(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -251,6 +235,37 @@ struct __gen_own_capture : public ::tpy::next_iter_mixin<__gen_own_capture, int3
         return os << "<generator own_capture>";
     }
 };
+
+// def emit(self, k: int32) -> Iterator[int32]:
+struct __gen_C_emit : public ::tpy::next_iter_mixin<__gen_C_emit, int32_t> {
+    int32_t __state;
+    const C& __self;
+    int32_t k;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_C_emit(const C& __self, int32_t k_)
+        : __state(S_INITIAL), __self(__self), k(std::move(k_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_C_emit& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_C_emit&) {
+        return os << "<generator C.emit>";
+    }
+};
+
+inline __gen_C_emit C::emit(int32_t k) const {
+    return __gen_C_emit(*this, k);
+}
 
 // def emit(self) -> Iterator[int32]:
 struct __gen_D_emit : public ::tpy::next_iter_mixin<__gen_D_emit, int32_t> {

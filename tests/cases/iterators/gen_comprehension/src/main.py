@@ -1,5 +1,5 @@
-# A resumable generator (poll-based frame, not the simple-yield peephole) is
-# iterable in list/set/dict comprehensions, not just for-loops.
+# A resumable generator frame is iterable in list/set/dict comprehensions, not
+# just for-loops.
 # The Own[Node] case collects into list[Node] by moving each owned element
 # (the consuming-for-append move, applied to comprehension element sinks).
 from typing import Iterator, Iterable
@@ -30,7 +30,7 @@ def two_then(n: int32) -> Iterator[int32]:
         i += 1
 
 
-# Iterating an Iterable[T] param forces the frame and makes the struct templated.
+# Iterating an Iterable[T] param makes the frame struct templated.
 def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
     c: int32 = 0
     for x in it:
@@ -40,7 +40,7 @@ def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
         c += 1
 
 
-# Inverse guard: simple generators (peephole path) must keep working.
+# Single-yield tail-loop generator: the same frame, at the plainest shape.
 def simple(n: int32) -> Iterator[int32]:
     i: int32 = 0
     while i < n:

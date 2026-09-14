@@ -1274,7 +1274,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # The yielded element type gates a generator (its `return_type` is
         # `Iterator[T]`, not a value slot). Value scalars, a bare `T`, and
         # str/bytes route (the owned return slot's ctor absorbs the bare
-        # source render -- the `_sgen_yield_ok` families' reasoning; the
+        # source render; the
         # slot-literal retype in the Yield arm threads the yield type into
         # the render). Records are interlocked with the non-value
         # loop-var rung (`(*b)` deref) and tuples need the tuple_to_pointer
@@ -1802,15 +1802,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.storage_tuple_locals |= ptr_storage_tuple_loop_vars
     # A frame-promoted STORAGE slot is movable with no value-type filter --
     # a last-use read moves out of the slot rather than copying it, which is
-    # how a BigInt frame local moves at an async return. Its pointer-form
-    # sibling is never promoted, hence the `_frame_ptr_locals` subtraction.
+    # how a BigInt frame local moves at an async return. A pointer-form
+    # local is promoted only when the frame owns its pointee: the
+    # Optional-ptr local's `__ptr_slot_fN` storage is the frame's, so it
+    # joins exactly as the plain body's OPT_PTR_SLOT decl arm promotes it
+    # (the Own-slot rows rebuild and move out of the pointee at a last
+    # use); loop-var, alias and unpack pointers borrow, so they stay out.
     # Promoted here rather than per-decl because the frame classification is
     # an up-front pass, not a decl-time one.
     # Restricted to names an actual `TpyVarDecl` binds: a for-loop variable
     # that happens to be frame-promoted is bound by the loop arm instead,
     # whose own promotion is gated on a CONSUMING iterable -- promoting it
     # here would move a yielded loop element that must be copied.
-    _frame_ptr_locals = (ptr_frame_locals | opt_ptr_locals | alias_ptr_locals
+    _frame_ptr_locals = (ptr_frame_locals | alias_ptr_locals
                          | unpack_ptr_targets)
     _frame_decl_names = _var_decl_names(list(func.body))
     for _lname, _ in (func.generator_locals or []):
@@ -2414,9 +2418,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     unwrap_ref_type(unwrap_send_sync(yt)), ReadonlyType)
                 yv_src = ys.value
                 if isinstance(yv_src, TpyTupleLiteral):
-                    # The literal-vs-builder selection shared with the sgen
-                    # tuple-yield ladder (borrow / generic / spelled value
-                    # literal incl. Own-record storage elements).
+                    # The literal-vs-builder selection of the tuple-yield
+                    # ladder (borrow / generic / spelled value literal incl.
+                    # Own-record storage elements).
                     yield_values[ys] = _lower_yield_tuple_literal(
                         yv_src, yt_bare, lc, declared,
                         generic_face="res.btuple_yield_generic",
@@ -2439,7 +2443,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # An owning frame_slot already holds the STORAGE tuple the
                     # slot spells (`yield t` off `t = (i, Box(...))` at an
                     # `Own[Box]` element), so the deref'd read IS the handed-out
-                    # value -- the sgen storage-name arm's resumable twin. A
+                    # value. A
                     # dead-after-yield slot MOVES out rather than copying its
                     # reference elements; `frame_slot::emplace` destroys before
                     # it reconstructs, so the next bind is safe on a moved-from
@@ -2493,9 +2497,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # A container-ELEMENT source (`yield items[0]`): the
                     # storage element lifts to the slot's borrow form --
                     # `return tuple_to_pointer<std::tuple<int32_t, Box*>>(
-                    # ::tpy::__getitem__((*items), 0));` -- the sgen
-                    # elem-lift arm's resumable twin (the frame-slot deref
-                    # rides the name read).
+                    # ::tpy::__getitem__((*items), 0));` (the frame-slot
+                    # deref rides the name read).
                     yield_values[ys] = THIRFormConvert(
                         result_type=yt_bare,
                         value=_lower_expr(yv_src, lc, declared,

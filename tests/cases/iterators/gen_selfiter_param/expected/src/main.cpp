@@ -16,8 +16,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_wrap::__next__() {
         return -1;
     }
     case S_RESUME_0: {  // after: yield -1
-        int32_t __tmp_1 = 5;
-        __for_src_0.emplace(repeat_n<int32_t>(__tmp_1, n));
+        __for_src_0.emplace(repeat_n<int32_t>(5, n));
         __state = S_JOIN_0;
         continue;
     }
@@ -46,6 +45,42 @@ __gen_wrap wrap(int32_t n) {
     return __gen_wrap(n);
 }
 
+// # inverse 2: a plain list source in a generator (begin_end strategy, unchanged)
+// def doubled(xs: list[int32]) -> Iterator[int32]:
+//     for x in xs:
+//         yield x * 2                               # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((xs).begin());
+        __for_end_0.emplace((xs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x * 2
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return (::tpy::mul_check<int32_t>(x, 2));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def doubled(xs: list[int32]) -> Iterator[int32]:
+__gen_doubled doubled(std::vector<int32_t>& xs) {
+    return __gen_doubled(xs);
+}
+
 // def main() -> None:
 //     # Iterable[T] param consuming a move-only generator: for-loop and comprehension
 //     out: list[int32] = []
@@ -62,9 +97,8 @@ __gen_wrap wrap(int32_t n) {
 void main() {
     std::vector<int32_t> out = std::vector<int32_t>{};
     {
-        int32_t __tmp_2 = 7;
-        auto __tmp_3 = repeat_n<int32_t>(__tmp_2, 5);
-        auto __src_0 = take<int32_t>(__tmp_3, 3);
+        auto __tmp_1 = repeat_n<int32_t>(7, 5);
+        auto __src_0 = take<int32_t>(__tmp_1, 3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -74,11 +108,10 @@ void main() {
         }
     }
     std::cout << ::tpy::ListPrinter(out) << "\n";
-    int32_t __tmp_4 = 8;
-    auto __tmp_5 = repeat_n<int32_t>(__tmp_4, 5);
+    auto __tmp_2 = repeat_n<int32_t>(8, 5);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_2 = take<int32_t>(__tmp_5, 2);
+        auto __obj_2 = take<int32_t>(__tmp_2, 2);
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
@@ -98,11 +131,10 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    int32_t __tmp_6 = 9;
-    auto __tmp_7 = repeat_n<int32_t>(__tmp_6, 4);
+    auto __tmp_3 = repeat_n<int32_t>(9, 4);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_4 = take_iter<int32_t>(__tmp_7, 2);
+        auto __obj_4 = take_iter<int32_t>(__tmp_3, 2);
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
@@ -111,10 +143,10 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    std::vector<int32_t> __tmp_8 = {1, 2, 3};
+    std::vector<int32_t> __tmp_4 = {1, 2, 3};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_5 = doubled(__tmp_8);
+        auto __obj_5 = doubled(__tmp_4);
         auto __beg_5 = __obj_5.begin();
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {

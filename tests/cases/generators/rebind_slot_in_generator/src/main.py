@@ -1,8 +1,9 @@
-# A rebind slot reserved while emitting a generator's lambda body must be
-# declared INSIDE that lambda -- the enclosing function prologue is out of scope
-# there. Covers the while and for lambda shapes. The cross-scope shape (declared
-# before the loop, rebound inside) has no sound home and is rejected instead --
-# see error_gen_rebind_slot_crosses_lambda.
+# A rebind slot (a record local reassigned to a fresh rvalue) inside a
+# generator body: the slot is a frame field, so it has the same home whether
+# the local is declared inside the loop (while / for) or BEFORE the loop and
+# rebound inside it, and whether an earlier same-scope rebind already drained
+# its declaration. The alias-clobber shape (an alias taken before the rebind)
+# is pinned by records/warn_alias_rebind_clobber.
 from tpy import int32
 from typing import Iterator
 
@@ -33,20 +34,24 @@ def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
         yield p.x
 
 
-# The alias-rebind clobber warning fires here because the rule reads
-# `is_generator`, not the simple-generator peephole (a codegen fact sema cannot
-# consult -- it depends on `requires_resumable_frame`, which sema is still
-# setting). The pinned output below is the PEEPHOLE's, which is correct today;
-# deleting the peephole makes it the wrong value the warning already announces
-# (TODO.md's peephole entry, bin (e)).
-def alias_holds_across_rebind(n: int32) -> Iterator[int32]:
+# declared BEFORE the loop, rebound inside it
+def before_while(n: int32) -> Iterator[int32]:
+    p = Point(11)
     i = 0
     while i < n:
-        p = Point(i)
-        alias = p
-        p = Point(100)  # tpyc: warning(/will not keep the object it was given/)
-        alias.bump()
-        yield alias.x
+        p = Point(i)  # tpyc: ok
+        yield p.x
+        i += 1
+
+
+# ... with an earlier same-scope rebind that already drained the declaration
+def before_while_after_drain(n: int32) -> Iterator[int32]:
+    p = Point(11)
+    p = Point(12)
+    i = 0
+    while i < n:
+        p = Point(i)  # tpyc: ok
+        yield p.x
         i += 1
 
 
@@ -57,8 +62,11 @@ def main() -> None:
     for got in decl_inside_for([1, 2, 3]):
         print("for:", got)
 
-    for got in alias_holds_across_rebind(2):
-        print("alias:", got)
+    for got in before_while(2):
+        print("before_while:", got)
+
+    for got in before_while_after_drain(2):
+        print("after_drain:", got)
 
 
 main()

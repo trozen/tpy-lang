@@ -175,7 +175,7 @@ def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
 
 
 # Producer for the `next`-strategy section: a `readonly` element yielded from a
-# frame (two yields keep it off the simple-generator peephole).
+# frame.
 def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
     for p in ps:
         yield p

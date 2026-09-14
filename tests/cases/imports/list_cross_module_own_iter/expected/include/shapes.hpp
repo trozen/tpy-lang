@@ -11,6 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "shapes";
 
+struct __gen_points;
+
+// def points() -> Iterator[Own[Point]]:
+__gen_points points();
+
 // class Point:
 struct Point {
     // x: int32
@@ -27,29 +32,35 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+// def points() -> Iterator[Own[Point]]:
+struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, Point> {
+    int32_t __state;
+    ::tpy::frame_slot<std::vector<Point>> src;
+    Point* p = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_points()
+        : __state(S_INITIAL) {}
+
+    std::expected<Point, ::tpy::StopIteration> __next__();
+    __gen_points& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_points&) {
+        return os << "<generator points>";
+    }
+};
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
-// def points() -> Iterator[Own[Point]]:
-//     src: list[Point] = [Point(3), Point(1), Point(2)]
-//     for p in src:
-//         yield copy(p)
-inline auto points() {
-    std::vector<Point> src = {Point(3), Point(1), Point(2)};
-    return ::tpy::make_generator<Point>(
-        [src, __beg = decltype((src).begin())(), __end = decltype((src).begin())(), __init = false]() mutable -> std::optional<Point> {
-            if (!__init) { __beg = (src).begin(); __end = (src).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& p = *__beg++;
-                auto __val = Point(p);
-                return std::optional<Point>(std::move(__val));
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::shapes

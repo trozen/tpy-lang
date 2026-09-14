@@ -55,6 +55,9 @@ struct Flag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_drain_list;
+struct __gen_drain_dict;
+struct __gen_drain_set;
 struct __gen_str_branch;
 struct __gen_bytes_branch;
 struct __gen_record_len_branch;
@@ -64,7 +67,14 @@ struct __gen_int_enum_branch;
 struct __gen_plain_record_branch;
 struct __gen_any_branch;
 struct __gen_and_branch;
+struct __gen_peephole_or;
 
+// def drain_list(xs: list[int32]) -> Iterator[int32]:
+__gen_drain_list drain_list(std::vector<int32_t>& xs);
+// def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
+__gen_drain_dict drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int32_t>& order);
+// def drain_set(s: set[int32]) -> Iterator[int32]:
+__gen_drain_set drain_set(::tpy::ordered_set<int32_t>& s);
 // def str_branch(t: str) -> Iterator[int32]:
 __gen_str_branch str_branch(std::string_view t);
 // def bytes_branch(b: bytes) -> Iterator[int32]:
@@ -83,6 +93,8 @@ __gen_plain_record_branch plain_record_branch(Plain& p);
 __gen_any_branch any_branch(::tpy::Any v);
 // def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
 __gen_and_branch and_branch(std::vector<int32_t>& xs, std::string_view t);
+// def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
+__gen_peephole_or peephole_or(std::vector<int32_t>& xs, std::string_view t);
 // def main() -> None:
 void main();
 
@@ -145,6 +157,77 @@ inline std::ostream& operator<<(std::ostream& os, const Flag& obj) {
     ::tpy::print_object_default(os, "Flag", obj);
     return os;
 }
+
+// def drain_list(xs: list[int32]) -> Iterator[int32]:
+struct __gen_drain_list : public ::tpy::next_iter_mixin<__gen_drain_list, int32_t> {
+    int32_t __state;
+    std::vector<int32_t>& xs;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_drain_list(std::vector<int32_t>& xs)
+        : __state(S_INITIAL), xs(xs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_drain_list& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_drain_list&) {
+        return os << "<generator drain_list>";
+    }
+};
+
+// def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
+struct __gen_drain_dict : public ::tpy::next_iter_mixin<__gen_drain_dict, int32_t> {
+    int32_t __state;
+    ::tpy::ordered_map<int32_t, int32_t>& d;
+    std::vector<int32_t>& order;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int32_t>& order)
+        : __state(S_INITIAL), d(d), order(order) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_drain_dict& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_drain_dict&) {
+        return os << "<generator drain_dict>";
+    }
+};
+
+// def drain_set(s: set[int32]) -> Iterator[int32]:
+struct __gen_drain_set : public ::tpy::next_iter_mixin<__gen_drain_set, int32_t> {
+    int32_t __state;
+    ::tpy::ordered_set<int32_t>& s;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_drain_set(::tpy::ordered_set<int32_t>& s)
+        : __state(S_INITIAL), s(s) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_drain_set& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_drain_set&) {
+        return os << "<generator drain_set>";
+    }
+};
 
 // def str_branch(t: str) -> Iterator[int32]:
 struct __gen_str_branch : public ::tpy::next_iter_mixin<__gen_str_branch, int32_t> {
@@ -363,6 +446,31 @@ struct __gen_and_branch : public ::tpy::next_iter_mixin<__gen_and_branch, int32_
     }
 };
 
+// def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
+struct __gen_peephole_or : public ::tpy::next_iter_mixin<__gen_peephole_or, int32_t> {
+    int32_t __state;
+    std::vector<int32_t>& xs;
+    std::string t;
+    std::string rest;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_peephole_or(std::vector<int32_t>& xs, std::string_view t_)
+        : __state(S_INITIAL), xs(xs), t(std::string(t_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_peephole_or& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_peephole_or&) {
+        return os << "<generator peephole_or>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -387,83 +495,5 @@ inline Flag::Flag(bool on) : on(on) {}
 inline bool Flag::__bool__() const {
     return this->on;
 }
-// def drain_list(xs: list[int32]) -> Iterator[int32]:
-//     # The peephole shape, and the reproducer BUGS.md carried: the loop
-//     # mutates the frame-resident list, so an empty one must stop it.
-//     while xs:
-//         yield xs.pop()
-inline auto drain_list(std::vector<int32_t>& xs) {
-    return ::tpy::make_generator<int32_t>(
-        [&xs]() mutable -> std::optional<int32_t> {
-            while ((::tpy::__len__(xs) != 0)) {
-                auto __val = ::tpy::pop_back(xs);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
-//     # `order` keeps the drain deterministic across dict implementations;
-//     # the point under test is the `while d:` head.
-//     i = 0
-//     while d:
-//         yield d.pop(order[i])
-//         i += 1
-inline auto drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int32_t>& order) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [&d, &order, i]() mutable -> std::optional<int32_t> {
-            while ((::tpy::__len__(d) != 0)) {
-                auto __val = ::tpy::dict_pop(d, ::tpy::__getitem__(order, i));
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def drain_set(s: set[int32]) -> Iterator[int32]:
-//     while s:
-//         yield s.pop()
-inline auto drain_set(::tpy::ordered_set<int32_t>& s) {
-    return ::tpy::make_generator<int32_t>(
-        [&s]() mutable -> std::optional<int32_t> {
-            while ((::tpy::__len__(s) != 0)) {
-                auto __val = ::tpy::set_pop(s);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
-//     # The same recursion, in the simple-generator while peephole. `rest` is
-//     # a local because a str param cannot be rebound; clearing the borrowed
-//     # list plus emptying `rest` ends the loop after one pass.
-//     rest = t
-//     while xs or rest:
-//         yield 1
-//         xs.clear()
-//         rest = ""
-inline auto peephole_or(std::vector<int32_t>& xs, std::string_view t) {
-    std::string rest = std::string(t);
-    return ::tpy::make_generator<int32_t>(
-        [&xs, t = std::string(t), rest]() mutable -> std::optional<int32_t> {
-            while (((::tpy::__len__(xs) != 0) || (!rest.empty()))) {
-                auto __val = 1;
-                xs.clear();
-                rest = "";
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

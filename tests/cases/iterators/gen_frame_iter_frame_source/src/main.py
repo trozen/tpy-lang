@@ -1,9 +1,7 @@
 # A resumable frame iterating a user iterable whose __iter__ is ITSELF a frame.
 # The consumer's iterator field is `frame_slot<iter_type_t<Bag>>`, which embeds
 # Bag::__iter__'s return type by value -- so that generator's struct has to be
-# emitted first. Bag.__iter__ has two yields, which is what keeps it off the
-# simple-generator lambda (whose in-class `auto __iter__()` hid the ordering
-# requirement).
+# emitted first.
 from tpy import int32, Own
 from typing import Iterator
 
@@ -21,7 +19,7 @@ class Bag:
     def __init__(self, items: Own[list[Point]]) -> None:
         self.items = items
 
-    # Two yields -> a resumable frame, not the lambda peephole.
+    # The frame struct the consumer's iterator field embeds.
     def __iter__(self) -> Iterator[Point]:
         for p in self.items:
             yield p

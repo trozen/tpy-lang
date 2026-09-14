@@ -9,25 +9,34 @@ namespace tpyapp::itersrc {
 
 inline constexpr std::string_view __name__ = "itersrc";
 
-// def counts(n: int32) -> Iterator[int32]:
-//     i = 0
-//     while i < n:
-//         yield i
-//         i = i + 1
-inline auto counts(int32_t n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [n, i]() mutable -> std::optional<int32_t> {
-            while ((i < n)) {
-                auto __val = i;
-                i = (::tpy::add_check<int32_t>(i, 1));
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_counts;
 
+// def counts(n: int32) -> Iterator[int32]:
+__gen_counts counts(int32_t n);
+
+// def counts(n: int32) -> Iterator[int32]:
+struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, int32_t> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_counts(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_counts& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_counts&) {
+        return os << "<generator counts>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::itersrc

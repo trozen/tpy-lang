@@ -15,6 +15,7 @@ struct __gen_static_source_view;
 struct __gen_static_bytes_view;
 struct __gen_explicit_view_local;
 struct __gen_with_view_target;
+struct __gen_peephole_view;
 struct __gen_owned_param_stays_bare;
 
 // def static_source_view() -> Iterator[str]:
@@ -25,6 +26,8 @@ __gen_static_bytes_view static_bytes_view();
 __gen_explicit_view_local explicit_view_local(std::string_view s);
 // def with_view_target(h: Holder) -> Iterator[str]:
 __gen_with_view_target with_view_target(Holder& h);
+// def peephole_view(n: int32) -> Iterator[str]:
+__gen_peephole_view peephole_view(int32_t n);
 // def owned_param_stays_bare(s: str) -> Iterator[str]:
 __gen_owned_param_stays_bare owned_param_stays_bare(std::string_view s);
 // def main() -> None:
@@ -165,6 +168,31 @@ struct __gen_with_view_target : public ::tpy::next_iter_mixin<__gen_with_view_ta
     }
 };
 
+// def peephole_view(n: int32) -> Iterator[str]:
+struct __gen_peephole_view : public ::tpy::next_iter_mixin<__gen_peephole_view, std::string> {
+    int32_t __state;
+    int32_t n;
+    std::string_view lit;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_peephole_view(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_peephole_view& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_peephole_view&) {
+        return os << "<generator peephole_view>";
+    }
+};
+
 // def owned_param_stays_bare(s: str) -> Iterator[str]:
 struct __gen_owned_param_stays_bare : public ::tpy::next_iter_mixin<__gen_owned_param_stays_bare, std::string> {
     int32_t __state;
@@ -203,30 +231,5 @@ inline std::string_view Holder::__enter__() const {
 //     pass
 inline void Holder::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
 }
-// # A single yield inside the trailing loop stays on the make_generator lambda,
-// # which reaches the sink through its own emitter -- covered here so the copy is
-// # pinned on both paths at exec level, not only in the THIR unit pins.
-// def peephole_view(n: int32) -> Iterator[str]:
-//     lit = "peephole"
-//     i = 0
-//     while i < n:
-//         yield lit  # tpyc: ok
-//         i += 1
-inline auto peephole_view(int32_t n) {
-    std::string_view lit = "peephole";
-    int32_t i = 0;
-    return ::tpy::make_generator<std::string>(
-        [n, lit, i]() mutable -> std::optional<std::string> {
-            while ((i < n)) {
-                auto __val = std::string(lit);
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::string>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

@@ -2016,8 +2016,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # An Own param that became a plain resumable frame FIELD: body reads are
     # bare member reads, not the sync param's movable last-use render.
     "name.frame_own_field",
-    "name.sgen_own_param",          # Own param read inside the sgen lambda:
-                                    # the by-value capture reads bare
     # Escape-hoist PLAIN-record pointer-local, name-reassigned with a record
     # rvalue init: `T __slot_N = init;` + `T* x = &__slot_N;` (the
     # REBIND_SLOT render minus the rebind slot).
@@ -3000,15 +2998,15 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # val_or_ptr_t brace-init + to_val_or_ptr
     "res.btuple_yield_elem_lift",   # container-element source at the btuple
                                     # yield slot: tuple_to_pointer over the
-                                    # checked element read (sgen twin)
+                                    # checked element read
     "res.btuple_yield_storage_name",  # owning frame_slot tuple NAME at its
                                     # own STORAGE slot: the deref'd read,
-                                    # still live after the yield (sgen twin)
+                                    # still live after the yield
     "res.btuple_yield_storage_name_move",  # ... dead after the yield: the
                                     # slot moves out instead of copying
     "res.btuple_yield_storage_name_lift",  # ptr-to-storage tuple loop var at
                                     # a POINTER-REPR slot: tuple_to_pointer
-                                    # over the deref'd read (sgen twin)
+                                    # over the deref'd read
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_union_elem",        # value-tuple call source with a value-
                                     # union element at the frame unpack
@@ -3066,30 +3064,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.sync_loop",                # body routed with a sync for-loop (R3)
     "res.async_loop",               # body routed with an async for-loop (R3)
     "res.async_with",               # body routed with an async with (R5)
-    # Simple-generator (lambda peephole) leaf routing -- the gen_generators
-    # seam. One face per leaf-render kind the skeleton delegates, plus the
-    # routed-body tally.
-    "sgen.body",                    # one routed simple-generator body
-    "sgen.while_cond",              # while-branch condition render
-    "sgen.yield_value",             # yield-value render
-    "sgen.tuple_yield",             # tuple yield slot: the resumable tuple
-                                    # arm's mirror (borrow/value builders)
-    "sgen.tuple_yield_generic",     # generic tuple yield: the to_val_or_ptr
-                                    # brace-init (the resumable builder)
-    "sgen.tuple_yield_name",        # borrow-form tuple NAME relayed whole
-    "sgen.tuple_yield_storage_name",  # storage-form Own-elem tuple NAME:
-                                    # bare `auto __val = t;`
-    "sgen.tuple_yield_storage_name_lift",  # ... at a POINTER-REPR slot:
-                                    # tuple_to_pointer over the name
-    "sgen.tuple_yield_elem_lift",   # container-elem source lifts borrow:
-                                    # tuple_to_pointer(__getitem__(c, i))
-                                    # (`yield pair` -- bare value copy)
-    "sgen.yield_copy_record",       # `yield copy(p)`: the shared
-                                    # copy-construct row at the __val slot
-    "sgen.yield_own_tparam",        # Own[T]-open yield slot: the skeleton's
-                                    # optional<T> + move-out, leaf type-neutral
-    "sgen.iterable",                # for-branch iterable render
-    "sgen.range_arg",               # for-range bound renders
     # The universal __iter__/__next__ protocol foreach (generator-call /
     # iterator-returning-call / user-iterator-name iterables -- the
     # direct-next loop over an explicit iterator).
@@ -3303,7 +3277,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # whole-corpus zero-witness census lists it until one lands.
     "res.yield_record_walrus",
     "yield.own_tuple_literal",      # Own-record-element tuple literal at
-                                    # the sgen/resumable tuple yield slot:
+                                    # the resumable tuple yield slot:
                                     # the spelled storage brace-init
     "decl.type_param_slot",         # bare open type-param decl slot
                                     # (`T newitem = ...;`): plain spelled copy

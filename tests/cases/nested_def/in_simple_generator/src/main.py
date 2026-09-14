@@ -1,5 +1,5 @@
-# A would-be-simple generator containing a nested def routes to the
-# resumable path (the peephole's yielding lambda cannot see the closure).
+# A single-yield generator containing a nested def that its loop body calls:
+# the closure has to be visible from inside the frame.
 from typing import Iterator
 from tpy import int32
 

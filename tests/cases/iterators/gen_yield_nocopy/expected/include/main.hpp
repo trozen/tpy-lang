@@ -11,6 +11,10 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_handles;
+
+// def handles(items: list[Handle]) -> Iterator[Handle]:  # tpyc: ok
+__gen_handles handles(std::vector<Handle>& items);
 // def main() -> None:
 void main();
 
@@ -36,27 +40,35 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
+// def handles(items: list[Handle]) -> Iterator[Handle]:  # tpyc: ok
+struct __gen_handles : public ::tpy::next_iter_mixin<__gen_handles, ::tpy::val_or_ref<Handle>> {
+    int32_t __state;
+    std::vector<Handle>& items;
+    Handle* h = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_handles(std::vector<Handle>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<::tpy::val_or_ref<Handle>, ::tpy::StopIteration> __next__();
+    __gen_handles& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_handles&) {
+        return os << "<generator handles>";
+    }
+};
+
 
 // def __init__(self, fd: int32) -> None:
 //     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
-// def handles(items: list[Handle]) -> Iterator[Handle]:  # tpyc: ok
-//     for h in items:
-//         yield h
-inline auto handles(std::vector<Handle>& items) {
-    return ::tpy::make_generator<::tpy::val_or_ref<Handle>>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Handle>> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& h = *__beg++;
-                auto&& __val = h;
-                return std::optional<::tpy::val_or_ref<Handle>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

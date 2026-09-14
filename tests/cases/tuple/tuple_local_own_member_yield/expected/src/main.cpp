@@ -18,6 +18,45 @@ std::tuple<int32_t, Box> mk(int32_t v) {
     return std::tuple<int32_t, Box>{v, Box((::tpy::mul_check<int32_t>(v, 10)))};
 }
 
+// def gen(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+//     i = int32(0)
+//     while i < n:
+//         t = (i, Box(i * 10))
+//         yield t  # tpyc: ok                             # -> S_RESUME_0
+//         i += 1
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield t  # tpyc: ok
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            t.emplace(std::tuple<int32_t, Box>{i, Box((::tpy::mul_check<int32_t>(i, 10)))});
+            __state = S_RESUME_0;
+            return std::move((*t));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+__gen_gen gen(int32_t n) {
+    return __gen_gen(n);
+}
+
 // # Free function, two yields -- the resumable frame; each slot is dead after its
 // # own yield, so both move out.
 // def gen_twice(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
@@ -113,6 +152,47 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
 // def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_call_init gen_call_init(int32_t n) {
     return __gen_gen_call_init(n);
+}
+
+// # The owning-CALL init at a SINGLE yield -- the same arm as the two-yield
+// # sibling above, at the single-yield loop shape.
+// def gen_call_init_once(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+//     i = int32(0)
+//     while i < n:
+//         t = mk(i)
+//         yield t  # tpyc: ok                                            # -> S_RESUME_0
+//         i += 1
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_once::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield t  # tpyc: ok
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            t.emplace(mk(i));
+            __state = S_RESUME_0;
+            return std::move((*t));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_call_init_once(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+__gen_gen_call_init_once gen_call_init_once(int32_t n) {
+    return __gen_gen_call_init_once(n);
 }
 
 // # The owning-CALL init under a HIDDEN borrow: `saved` borrows into the slot and

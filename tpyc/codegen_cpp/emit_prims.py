@@ -798,7 +798,7 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
                      return_cpp: str | None = None) -> 'ScanResult | None':
     """Reset per-scope ctx state and repopulate it for the given function.
 
-    Shared by gen_body (sync + simple-gen + multi-yield-gen) and async
+    Shared by gen_body (sync + generator) and async
     body emission (`_resumable_frame_ctx`). Returns the scan result so
     callers can use it for body-emission-specific work
     (reassigned-param copies, etc.).

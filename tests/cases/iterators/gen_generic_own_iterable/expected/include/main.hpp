@@ -9,32 +9,82 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template <typename T, ::tpystd::typing::Iterable<T> T_items>
+struct __gen_indexed;
+
+// def indexed[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
+template <typename T, ::tpystd::typing::Iterable<T> T_items>
+__gen_indexed<T, T_items> indexed(T_items&& items);
 // def main() -> None:
 void main();
 
 // def indexed[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
+template <typename T, ::tpystd::typing::Iterable<T> T_items>
+struct __gen_indexed : public ::tpy::next_iter_mixin<__gen_indexed<T, T_items>, std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
+    int32_t __state;
+    T_items items;
+    int32_t i;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<T_items>> item;
+    ::tpy::frame_slot<::tpy::iter_type_t<T_items>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<T_items>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_indexed(T_items&& items_)
+        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+
+    std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __next__();
+    __gen_indexed& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_indexed<T, T_items>&) {
+        return os << "<generator indexed>";
+    }
+};
+// def indexed[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 //     i: int32 = 0
 //     for item in items:
-//         yield (i, item)
+//         yield (i, item)                                                                                   # -> S_RESUME_0
 //         i += 1
-template<typename T, ::tpystd::typing::Iterable<T> T_items>
-inline auto indexed(T_items&& items) {
-    int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
-        [items, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(items))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
-            if (!__iter) { __iter.emplace(::tpy::__iter__(items)); }
-            auto __r = (*__iter).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                auto&& item = ::tpy::unwrap_ref(*__r);
-                auto __val = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(item)};
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(__val);
-            }
+template <typename T, ::tpystd::typing::Iterable<T> T_items>
+std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_indexed<T, T_items>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        ::tpy::resumable_iter_init(__for_itr_0, items);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (i, item)
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, items));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-    );
+        item.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
+        __state = S_RESUME_0;
+        return std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>((*item))};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+
+// def indexed[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
+template <typename T, ::tpystd::typing::Iterable<T> T_items>
+__gen_indexed<T, T_items> indexed(T_items&& items) {
+    return __gen_indexed<T, T_items>(std::forward<T_items>(items));
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

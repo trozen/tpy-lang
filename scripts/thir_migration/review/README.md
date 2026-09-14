@@ -299,3 +299,5 @@ Data:
   Selection rule since batch 3: a failing named program outranks any tag
   count; probe them first.
 - `BRIEF_*.md` -- the briefs the review agents worked from.
+- The `sgen.*` lane (the simple-generator lambda peephole's faces) and its
+  probes are history: the peephole was deleted 2026-09-12.

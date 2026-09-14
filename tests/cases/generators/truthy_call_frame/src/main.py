@@ -1,5 +1,5 @@
-# The generator `while` peephole and the resumable-CFG branch route through the
-# same truthiness render, so an always-truthy record-returning call must be
+# A generator `while` head and an `if` branch in the resumable CFG route through
+# the same truthiness render, so an always-truthy record-returning call must be
 # evaluated there too rather than folded to `true`.
 from typing import Iterator
 
@@ -34,8 +34,8 @@ def gen_while(n: int) -> Iterator[int]:
 def gen_branch(n: int) -> Iterator[int]:
     i = 0
     while i < n:
-        # The suspend inside the branch forces the resumable CFG, not the
-        # simple-generator peephole.
+        # The suspend inside the branch routes the condition through the
+        # resumable CFG's branch.
         if make():
             yield i
         i += 1

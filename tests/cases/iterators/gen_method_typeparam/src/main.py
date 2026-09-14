@@ -1,4 +1,4 @@
-# Non-simple generator method with its own type param `[U]` on a
+# Two-yield generator method with its own type param `[U]` on a
 # non-generic class. Two instantiations exercise template monomorphization.
 from typing import Iterator
 
