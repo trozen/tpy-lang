@@ -9,36 +9,39 @@ namespace tpyapp::main {
 //     print(all(x > 0 for x in [1, 2, 3]))
 //     print(any(x > 5 for x in [1, 2, 3]))
 void main() {
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
-        [__src = std::array<int32_t, 4>({1, 2, 3, 4}), __started = false, __beg = std::array<int32_t, 4>::iterator(), __end = std::array<int32_t, 4>::iterator()]() mutable -> std::optional<int32_t> {
-            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
-            while (__beg != __end) {
-                int32_t x = *__beg++;
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
+        return [__st = ::tpy::genexpr_state{std::array<int32_t, 4>{1, 2, 3, 4}}]() mutable -> std::optional<int32_t> {
+            if (!__st.beg) __st.beg = __st.src.begin();
+            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
+            while (*__st.beg != __st.src.end()) {
+                int32_t x = *(*__st.beg);
                 return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, x)));
             }
             return std::nullopt;
-        }
-    )) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpy::make_generator<bool>(
-        [__src = std::array<int32_t, 3>({1, 2, 3}), __started = false, __beg = std::array<int32_t, 3>::iterator(), __end = std::array<int32_t, 3>::iterator()]() mutable -> std::optional<bool> {
-            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
-            while (__beg != __end) {
-                int32_t x = *__beg++;
+        };
+    })) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpy::make_generator<bool>(std::in_place, []() {
+        return [__st = ::tpy::genexpr_state{std::array<int32_t, 3>{1, 2, 3}}]() mutable -> std::optional<bool> {
+            if (!__st.beg) __st.beg = __st.src.begin();
+            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
+            while (*__st.beg != __st.src.end()) {
+                int32_t x = *(*__st.beg);
                 return std::optional<bool>((x > 0));
             }
             return std::nullopt;
-        }
-    ))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpy::make_generator<bool>(
-        [__src = std::array<int32_t, 3>({1, 2, 3}), __started = false, __beg = std::array<int32_t, 3>::iterator(), __end = std::array<int32_t, 3>::iterator()]() mutable -> std::optional<bool> {
-            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
-            while (__beg != __end) {
-                int32_t x = *__beg++;
+        };
+    }))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpy::make_generator<bool>(std::in_place, []() {
+        return [__st = ::tpy::genexpr_state{std::array<int32_t, 3>{1, 2, 3}}]() mutable -> std::optional<bool> {
+            if (!__st.beg) __st.beg = __st.src.begin();
+            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
+            while (*__st.beg != __st.src.end()) {
+                int32_t x = *(*__st.beg);
                 return std::optional<bool>((x > 5));
             }
             return std::nullopt;
-        }
-    ))) << "\n";
+        };
+    }))) << "\n";
 }
 
 // main()

@@ -8841,18 +8841,27 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # position-blind).
             callee_cpp = f"{escape_cpp_name(e.func_name)}.value()"
             _witness("call.opt_callable_unwrap")
+        # Late import: comprehensions imports this module.
+        from .comprehensions import reject_nonmovable_genexpr_arg
+
+        def _free_arg(i: int, a: TpyExpr) -> THIRExpr:
+            lowered = _lower_free_call_arg(
+                e, a, params[i].type if params else None, k, lc, declared,
+                temp_args=temp_args,
+                arg_index=i,
+                readonly_target=(params is not None
+                                 and dcbp is not None
+                                 and i in dcbp))
+            # A lazy combinator callee moves a genexpr argument's closure
+            # into its own storage; a non-movable closure rejects here
+            # rather than in the C++ build.
+            reject_nonmovable_genexpr_arg(e, a, lowered, analyzer)
+            return lowered
+
         return _er_wrap(THIRCall(
             result_type=rtype,
             callee=e.func_name,
-            args=tuple(
-                _lower_free_call_arg(
-                    e, a, params[i].type if params else None, k, lc, declared,
-                    temp_args=temp_args,
-                    arg_index=i,
-                    readonly_target=(params is not None
-                                     and dcbp is not None
-                                     and i in dcbp))
-                for i, a in enumerate(e.args)),
+            args=tuple(_free_arg(i, a) for i, a in enumerate(e.args)),
             native_name=native_name,
             cpp_template=cpp_template,
             callee_cpp=callee_cpp,

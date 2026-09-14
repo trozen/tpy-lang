@@ -38,16 +38,17 @@ void main() {
     std::vector<int32_t> empty = std::vector<int32_t>{};
     std::cout << ::tpy::builtin_sum<int32_t>(empty) << "\n";
     std::cout << ::tpy::builtin_sum_start<int32_t>(empty, 42) << "\n";
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
-        [__src = std::array<int32_t, 4>({1, 2, 3, 4}), __started = false, __beg = std::array<int32_t, 4>::iterator(), __end = std::array<int32_t, 4>::iterator()]() mutable -> std::optional<int32_t> {
-            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
-            while (__beg != __end) {
-                int32_t x = *__beg++;
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
+        return [__st = ::tpy::genexpr_state{std::array<int32_t, 4>{1, 2, 3, 4}}]() mutable -> std::optional<int32_t> {
+            if (!__st.beg) __st.beg = __st.src.begin();
+            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
+            while (*__st.beg != __st.src.end()) {
+                int32_t x = *(*__st.beg);
                 return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, x)));
             }
             return std::nullopt;
-        }
-    )) << "\n";
+        };
+    })) << "\n";
 }
 
 // main()

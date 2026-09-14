@@ -29,6 +29,7 @@ from ...typesys import (
     ReadonlyType,
     TpyType,
     TupleType,
+    peel_value_readonly,
     resolve_int_literals,
     unwrap_readonly,
     unwrap_ref_type,
@@ -89,6 +90,7 @@ from .context import (
     SinkPos,
 )
 from .expressions import (
+    _capture_entry_cpp,
     _is_move_source,
     _lower_checked_container_elem,
     _lower_container_elem,
@@ -119,6 +121,25 @@ class _CompRoute:
     sized_reserve: bool
     unpack_types: 'tuple | None'
     owns_elements: bool = False      # source yields Own[T]: sinks move
+    gen_factory: bool = False        # value-yielding generator-call source
+    native_combinator: bool = False  # zip/map/filter/... rvalue source
+
+
+@dataclass(frozen=True)
+class _SourceRoute:
+    """The SOURCE verdict a comprehension and a generator expression share:
+    what the iterable is, how it is driven, whether the driver borrows it
+    (`iterable_lvalue`) or owns the rvalue, and the element type the loop
+    var binds. The two forms differ only past this point -- the comp adds
+    its result-slot / unpack-target gates and the reserve fact, the genexpr
+    its yield-slot / binding gates -- so the classification lives once and a
+    source the comp iterates, the genexpr iterates too."""
+    loop: str                        # "range" | "begin_end"
+    counter_type: 'TpyType | None'   # range counter type
+    it_type: 'TpyType | None'        # begin_end iterable type
+    et: 'TpyType | None'             # element type (int literals resolved)
+    iterable_lvalue: bool
+    owns_elements: bool = False      # source yields Own[T]
     gen_factory: bool = False        # value-yielding generator-call source
     native_combinator: bool = False  # zip/map/filter/... rvalue source
 
@@ -261,6 +282,27 @@ def _combinator_copies(it, analyzer) -> bool:
                    for a in it.args)
     return True
 
+def _combinator_owning_flavor(it, analyzer) -> bool:
+    """Whether the combinator source `it` selects the runtime's OWNING
+    flavor: one source argument that is not a C++ lvalue (a call result, a
+    literal, a genexpr, another combinator) binds the factory's `&&`
+    overload, which moves the argument into an `owning_*_iter`. Every owning
+    flavor deletes its move ctor (it aliases its own slot), so a holder built
+    over it -- a genexpr's `genexpr_state` -- cannot be moved either, not
+    even before the first pull. Mirrors overload selection one node at a
+    time, like `_combinator_copies`; a non-source argument (`map`/`filter`'s
+    callable, `enumerate`'s start) never selects it."""
+    for a in it.args:
+        at = analyzer.get_expr_type(a)
+        if at is None:
+            return True
+        if get_iterable_element_type(at, registry=analyzer.registry) is None:
+            continue
+        if not is_lvalue_iterable(a, analyzer.registry.get_record,
+                                  analyzer.get_expr_type):
+            return True
+    return False
+
 def _iter_rvalue_source(it, analyzer) -> bool:
     """`iter(<rvalue>)`: `::tpy::__iter__` has no owning overload, so the
     `auto __obj_N = ::tpy::__iter__(mk());` capture iterates a destroyed
@@ -280,19 +322,26 @@ def _comp_sized_iterable(t: TpyType) -> bool:
     return (is_array(t) or is_list(t) or is_dict(t) or is_set(t)
             or is_dict_view(t))
 
-def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
-                analyzer) -> '_CompRoute | None':
-    """Classify a comprehension init into the C1+C2(+C3 range3) slice, or
-    None. Slice: range1/range2 counter loops (eligible-scalar counter), 3-arg
-    range as a begin/end loop over the Range object, bare-name container
-    iterables the container classifiers admit, and `d.values()`/`d.keys()` dict
-    views (`d.items()` for the tuple-unpack form). Owned-move element sources
-    (`owns_elements`), field/subscript/call iterables, and narrowed-Optional
+def _peel_value_readonly(t: 'TpyType | None') -> 'TpyType | None':
+    """A `readonly[V]` VALUE element (`d.values()` / `d.items()` on a
+    `readonly[dict]` receiver: the view spells `auto_readonly[V]`) binds a
+    copy, so the readonly says nothing about the loop var -- the for-statement
+    binds `int32_t v = *__beg;` there too. The same peel a parameter gets
+    (`peel_value_readonly`), None-tolerant for the unpack targets."""
+    return None if t is None else peel_value_readonly(t)
+
+
+def _source_route(gen, declared: dict[str, TpyType], narrowed: 'set[str]',
+                  analyzer) -> '_SourceRoute | None':
+    """Classify a comprehension / genexpr SOURCE (`gen` is the
+    TpyComprehensionGenerator), or None. Slice: range1/range2 counter loops
+    (eligible-scalar counter), 3-arg range as a begin/end loop over the Range
+    object, bare-name / field container iterables the container classifiers
+    admit, `d.values()`/`d.keys()` dict views (`d.items()` for the
+    tuple-unpack form), native iterator combinators, container-returning and
+    generator-factory calls, container literals, and Own[T]-yielding
+    generator calls (`owns_elements`). Subscript and narrowed-Optional
     iterables are outside the slice: None, and the caller rejects."""
-    kind = _COMP_KINDS.get(type(init))
-    if kind is None:
-        return None
-    gen = init.generator
     owns = gen.owns_elements
     it = gen.iterable
     genfac = False
@@ -309,13 +358,11 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # rvalue capture, never sized). Bounds render against the
             # counter slot like the 1/2-arg
             # arms, so they classify the same way.
-            return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
-                              it_type=analyzer.get_expr_type(it), et=counter,
-                              iterable_lvalue=False, sized_reserve=False,
-                              unpack_types=None)
-        return _CompRoute(kind=kind, loop="range", counter_type=counter,
-                          it_type=None, et=counter, iterable_lvalue=True,
-                          sized_reserve=False, unpack_types=None)
+            return _SourceRoute(loop="begin_end", counter_type=None,
+                                it_type=analyzer.get_expr_type(it),
+                                et=counter, iterable_lvalue=False)
+        return _SourceRoute(loop="range", counter_type=counter,
+                            it_type=None, et=counter, iterable_lvalue=True)
     combinator = False
     combinator_copies = False
     if not owns and _native_iter_combinator(it, analyzer):
@@ -419,13 +466,14 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         # A name is an lvalue; a field chain off one inherits it
         # (is_lvalue_iterable recurses to the Name arm).
         lvalue = True
-    elif (isinstance(it, TpyArrayLiteral) and not owns
-          and gen.unpack_vars is None and it.elements):
+    elif isinstance(it, TpyArrayLiteral) and not owns and it.elements:
         # A LIST-LITERAL iterable (`[len(x) for x in ["a", "bb"]]`): the
         # capture is the BRACED init-list itself
         # (`auto __obj_N = {"a", "bb"};` -- no container spelling, so the
         # element type comes from sema) and iterates begin/end; the
-        # init-list is sized, so the reserve fires like a container's.
+        # init-list is sized, so the reserve fires like a container's. An
+        # unpack head destructures the (const) init-list element like any
+        # other tuple element.
         it_type = analyzer.get_expr_type(it)
         it_type = resolve_pending_container(it_type, analyzer) or it_type
         if it_type is None:
@@ -509,8 +557,36 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
                 or (isinstance(et_b, TupleType)
                     and et_b.has_pointer_repr_element())):
             return None
-    et = resolve_int_literals(unwrap_ref_type(et),
-                              analyzer.ctx.default_int_for_literal)
+    et = _peel_value_readonly(resolve_int_literals(
+        unwrap_ref_type(et), analyzer.ctx.default_int_for_literal))
+    return _SourceRoute(loop="begin_end", counter_type=None, it_type=it_type,
+                        et=et, iterable_lvalue=lvalue, owns_elements=owns,
+                        gen_factory=genfac, native_combinator=combinator)
+
+
+def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
+                analyzer) -> '_CompRoute | None':
+    """Classify a comprehension init: the shared `_source_route` verdict plus
+    the comp's own result-slot / unpack-target gates and the reserve fact, or
+    None (the caller rejects)."""
+    kind = _COMP_KINDS.get(type(init))
+    if kind is None:
+        return None
+    gen = init.generator
+    src = _source_route(gen, declared, narrowed, analyzer)
+    if src is None:
+        return None
+    if _is_range_call(gen.iterable):
+        return _CompRoute(kind=kind, loop=src.loop,
+                          counter_type=src.counter_type, it_type=src.it_type,
+                          et=src.et, iterable_lvalue=src.iterable_lvalue,
+                          sized_reserve=False, unpack_types=None)
+    it_type = src.it_type
+    et = src.et
+    lvalue = src.iterable_lvalue
+    owns = src.owns_elements
+    genfac = src.gen_factory
+    combinator = src.native_combinator
     sized = kind == "list" and _comp_sized_iterable(it_type)
     if gen.unpack_vars is not None:
         elem = unwrap_readonly(et)
@@ -520,7 +596,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             return None  # defensive: sema errors on arity mismatch
         types: list = []
         for name, ett in zip(gen.unpack_vars, elem.element_types):
-            tt = unwrap_ref_type(ett)
+            tt = _peel_value_readonly(unwrap_ref_type(ett))
             if name is None:
                 types.append(None)
                 continue
@@ -679,6 +755,9 @@ def _comp_lowering_route(
     args = getattr(t, "type_args", None)
     if not args:
         return None
+    # A `readonly[V]` VALUE slot (the readonly-receiver dict view's element,
+    # copied into the result) gates as the plain value it renders as.
+    args = tuple(_peel_value_readonly(a) for a in args)
     if route.kind == "list" and not (is_list(t)
                                      and (_comp_elem_slot_ok(
                                               args[0], analyzer,
@@ -1342,14 +1421,19 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
 
 
 def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
-                      self_receiver, module_globals=frozenset()) -> str:
+                      self_receiver, module_globals=frozenset(),
+                      frame_lc: '_LowerCtx | None' = None) -> str:
     """The `&local, ` capture prefix for the outer names a genexpr lambda
     reads. Refs come from the element
     (+ filter conditions, + `extra_refs` for the IIFE's iterable refs); keep only
     function locals not shadowed by the comprehension scope; `self` maps to the
     captured `this`. Module globals are seeded into `declared` alongside the
     locals but have static storage duration, so capturing one is ill-formed
-    C++ -- `module_globals` takes them back out."""
+    C++ -- `module_globals` takes them back out. `frame_lc` marks the OUTER
+    IIFE's list: inside a resumable frame a captured name may be a frame
+    member, which `_capture_entry_cpp` names in an init-capture (`&xs = xs`)
+    the way a lambda does; the inner lambda captures the IIFE's own
+    references and needs no such entry."""
     refs = collect_name_refs(element)
     for c in conditions:
         refs |= collect_name_refs(c)
@@ -1360,9 +1444,16 @@ def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
     parts: list[str] = []
     if needs_this:
         parts.append("this")
-    parts.extend(f"&{escape_cpp_name(n)}"
-                 for n in sorted((refs & set(declared))
-                                 - comp_vars - set(module_globals)))
+    names = sorted((refs & set(declared)) - comp_vars - set(module_globals))
+    if frame_lc is None:
+        parts.extend(f"&{escape_cpp_name(n)}" for n in names)
+    else:
+        for n in names:
+            try:
+                parts.append(_capture_entry_cpp(n, frame_lc, declared,
+                                                by_value=False))
+            except ThirUnsupported:
+                raise ThirUnsupported("genexpr.frame_capture")
     if not parts:
         return ""
     return ", ".join(parts) + ", "
@@ -1384,69 +1475,62 @@ def _module_global_names(lc: '_LowerCtx') -> frozenset:
 
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                    declared: dict[str, TpyType]) -> THIRGenExpr:
-    """Lower a generator expression to the make_generator render.
-    Slice: scalar/char/str loop-var bindings
-    (or the tuple-unpack head) over an LVALUE bare-name container / a
-    NON-LVALUE container literal / a range() source (delegated to
-    `_lower_genexpr_range`'s counter lambda), with optional &&-joined
-    filter conditions. Everything else raises ThirUnsupported, rejecting
-    the enclosing body."""
+    """Lower a generator expression to the make_generator render: the
+    `_source_route` verdict the comprehension shares (which source, borrowed
+    lvalue vs owned rvalue, element type), then the genexpr's own gates --
+    scalar/char/str/F1-record/value-Optional loop-var bindings or the
+    tuple-unpack head, the yield slot, optional &&-joined filters. A range()
+    source takes `_lower_genexpr_range`'s counter lambda. Everything else
+    raises ThirUnsupported, rejecting the enclosing body."""
     analyzer = lc.analyzer
     gen = expr.generator
     loc = getattr(expr, "loc", None)
     it = gen.iterable
     if isinstance(it, TpyCall) and it.func_name == "range":
         return _lower_genexpr_range(expr, it, lc, declared)
-    if isinstance(it, TpyName):
-        if it.name not in declared or it.name in lc.narrow.narrowed:
-            raise ThirUnsupported("genexpr.iterable_shape")
-        it_type = declared[it.name]
-        moved = False
-    elif isinstance(it, TpyArrayLiteral):
-        # A container literal is a prvalue: it moves into the lambda's storage.
-        it_type = analyzer.get_expr_type(it)
-        moved = True
-    else:
+    route = _source_route(gen, declared, lc.narrow.narrowed.keys(), analyzer)
+    if route is None:
         raise ThirUnsupported("genexpr.iterable_shape")
-    it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it_type)))
-    # A dict joins them: `ordered_map::begin()` is the KEY iterator, so
-    # `*__beg` binds the loop var exactly as a list element does. The dict
-    # VIEWS stay out -- they have no nested `iterator` typedef for the
-    # lambda's init-capture to name, so the render is ill-formed C++
-    # (BUGS.md#genexpr-dict-view-iterator-typedef).
-    if not (is_list(it_type) or is_set(it_type) or is_dict(it_type)
-            or is_array(it_type) or is_span(it_type)
-            # A str source iterates its chars off the same begin/end pair
-            # (`char x = *__beg++;` -- the char loop-var binding below).
-            or _resolved_str_value(it_type, analyzer) is not None):
-        raise ThirUnsupported("genexpr.iterable_shape")
-    if not is_native_iterable(it_type, analyzer.registry):
-        raise ThirUnsupported("genexpr.iterable_shape")
-    et = get_iterable_element_type(it_type, registry=analyzer.registry)
-    if et is None:
-        raise ThirUnsupported("genexpr.elem_type")
-    sema_elem = resolve_int_literals(unwrap_ref_type(et),
-                                     analyzer.ctx.default_int_for_literal)
+    if route.owns_elements:
+        # An `Iterator[Own[T]]` source hands each element over by value into
+        # the source iterator's own slot, which the next advance overwrites;
+        # a genexpr yields a reference element through the `val_or_ref<T>`
+        # slot, so the consumer would hold a borrow of that slot. The
+        # comprehension's owned-move sinks have no yield twin yet.
+        raise ThirUnsupported("genexpr.owned_source", loc=loc)
+    owned = not route.iterable_lvalue
+    # Decided here, off the route: the owning boundary that would move the
+    # closure (a lazy combinator taking this genexpr as its rvalue argument)
+    # only reads the verdict.
+    nonmovable = (owned and route.native_combinator
+                  and _combinator_owning_flavor(it, analyzer))
+    it_type = route.it_type
+    sema_elem = route.et
+    # The owned form binds off the holder's seeded optional and advances on
+    # the next pull; the borrowed form keeps the begin/end pair (see
+    # THIRGenExpr).
+    deref = "*(*__st.beg)" if owned else "*__beg++"
     unpack_targets: tuple = ()
     unpack_cpps: tuple = ()
     genexpr_opt_vars: list[str] = []
     body_declared = dict(declared)
     if gen.unpack_vars is not None:
         # Tuple-unpack head (`n for p, n in items`): per-target binds off
-        # `auto& __tup_N = *__beg++;`, mirroring the comp unpack. A MOVED
-        # container-literal source rides the same rungs -- the tuple is
-        # destructured off the lambda's own `__src` capture, so the source's
-        # lifetime is the same either way -- but only for an all-VALUE element
-        # tuple: a pointer-repr element would run the literal through the
-        # storage lift, and the capture spelling for that has no witness.
+        # `auto& __tup_N = <deref>;`, mirroring the comp unpack. A container
+        # LITERAL source rides the same rungs -- the tuple is destructured
+        # off the lambda's own `__src` capture -- but only for an all-VALUE
+        # element tuple: a pointer-repr element would run the literal
+        # through the storage lift, and the capture spelling for that has
+        # no witness.
         elem_tup = unwrap_readonly(sema_elem)
         if (not isinstance(elem_tup, TupleType)
                 or len(elem_tup.element_types) != len(gen.unpack_vars)
-                or (moved and elem_tup.has_pointer_repr_element())):
+                or (isinstance(it, TpyArrayLiteral)
+                    and elem_tup.has_pointer_repr_element())):
             raise ThirUnsupported("genexpr.unpack")
         types: list = []
         for uname, ett in zip(gen.unpack_vars, elem_tup.element_types):
-            tt = unwrap_ref_type(ett)
+            tt = _peel_value_readonly(unwrap_ref_type(ett))
             if uname is None:
                 types.append(None)
                 continue
@@ -1497,7 +1581,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                 or _foreach_value_opt_elem(sema_elem) is not None):
             raise ThirUnsupported("genexpr.binding_shape")
         binding_cpp = loop_var_binding(sema_elem, escape_cpp_name(gen.var),
-                                       "*__beg++", gen.const_loop_var)
+                                       deref, gen.const_loop_var)
         body_declared[gen.var] = sema_elem
         comp_vars = {gen.var}
     elem_type = _comp_result_type(expr.result_elem_type, analyzer)
@@ -1532,46 +1616,61 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
             lc.storage_opt_locals.discard(uname)
     if gen.conditions:
         _witness("genexpr.filter")
+    # The source renders inside the IIFE, so it has no statement-level flush
+    # point: a source whose arg render would hoist a `__tmp_N` (a generic
+    # factory's ref-slot literal) rejects rather than reference a temp the
+    # IIFE never captured.
+    if isinstance(it, TpyFieldAccess):
+        iterable = _lower_field_source(it, lc, declared)
+    else:
+        iterable = _lower_expr(
+            it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE))
+    if owned and isinstance(iterable, THIRContainerLiteral):
+        # The holder's `src` must own the literal's elements: a bare
+        # brace-init would deduce a std::initializer_list, a view of a
+        # backing array that dies with the IIFE. Self-describe it with the
+        # resolved container type (`std::array<int32_t, 4>{1, 2, 3, 4}`).
+        iterable = replace(iterable, typed_brace_cpp=lc.render_type(it_type))
     mod_globals = _module_global_names(lc)
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
                                        lc.self_receiver, mod_globals)
-    _witness("genexpr.native_iterable")
-    if moved:
-        elements = tuple(_lower_container_elem(el, sema_elem, lc, declared)
-                         for el in it.elements)
-        return THIRGenExpr(
-            result_type=analyzer.get_expr_type(expr),
-            element=element,
-            conditions=conditions,
-            slot_cpp=slot_cpp,
-            binding_cpp=binding_cpp,
-            inner_captures=inner_captures,
-            moved_source=True,
-            cpp_iterable=lc.render_type(it_type),
-            iterable_elements=elements,
-            unpack_targets=unpack_targets,
-            unpack_target_cpps=unpack_cpps,
-            const_loop_var=gen.const_loop_var,
-            loc=loc,
-        )
     iife_captures = _genexpr_captures(expr.element_expr, gen.conditions,
-                                      {it.name}, declared, comp_vars,
-                                      lc.self_receiver, mod_globals)
+                                      collect_name_refs(it), declared,
+                                      comp_vars, lc.self_receiver,
+                                      mod_globals, frame_lc=lc)
+    _witness("genexpr.native_iterable")
     return THIRGenExpr(
         result_type=analyzer.get_expr_type(expr),
-        iterable=_lower_expr(it, lc, declared),
+        iterable=iterable,
         element=element,
         conditions=conditions,
         slot_cpp=slot_cpp,
         binding_cpp=binding_cpp,
         iife_captures=iife_captures,
         inner_captures=inner_captures,
+        owned_source=owned,
+        nonmovable_source=nonmovable,
         unpack_targets=unpack_targets,
         unpack_target_cpps=unpack_cpps,
         const_loop_var=gen.const_loop_var,
         loc=loc,
     )
+
+
+def reject_nonmovable_genexpr_arg(call, arg, lowered, analyzer) -> None:
+    """The owning boundary: a lazy native combinator (`enumerate` / `zip` /
+    `filter` / `map` / `reversed` -- the `_native_iter_combinator` verdict)
+    stores a non-lvalue argument by moving it into the iterator it returns
+    (`builtin_enumerate(Iterable&&)`), so a genexpr argument's closure is
+    moved before its first pull. A movable closure survives that; one over
+    a non-movable source has no move ctor, and the C++ build fails deep in
+    the runtime -- so it is a located reject here instead, until producers
+    are movable while unstarted (TODO.md)."""
+    if (isinstance(lowered, THIRGenExpr) and lowered.nonmovable_source
+            and _native_iter_combinator(call, analyzer)):
+        raise ThirUnsupported("genexpr.nonmovable_into_owning",
+                              loc=getattr(arg, "loc", None))
 
 
 def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',

@@ -20,16 +20,17 @@ namespace tpyapp::main {
 //     print(all(list(iter(bools))))
 void main() {
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
-        [__src = std::array<int32_t, 3>({1, 2, 3}), __started = false, __beg = std::array<int32_t, 3>::iterator(), __end = std::array<int32_t, 3>::iterator()]() mutable -> std::optional<int32_t> {
-            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
-            while (__beg != __end) {
-                int32_t x = *__beg++;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(std::in_place, []() {
+        return [__st = ::tpy::genexpr_state{std::array<int32_t, 3>{1, 2, 3}}]() mutable -> std::optional<int32_t> {
+            if (!__st.beg) __st.beg = __st.src.begin();
+            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
+            while (*__st.beg != __st.src.end()) {
+                int32_t x = *(*__st.beg);
                 return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, 2)));
             }
             return std::nullopt;
-        }
-    ))) << "\n";
+        };
+    }))) << "\n";
     std::array<std::string, 2> words = {"hello", "world"};
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::__iter__(words))) << "\n";
     std::array<int32_t, 5> nums = {5, 3, 1, 4, 2};

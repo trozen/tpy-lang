@@ -3287,6 +3287,10 @@ class ExpressionAnalyzer:
     def _analyze_generator_expression(self, expr: TpyGeneratorExpression) -> TpyType:
         gen = expr.generator
         elem_type = self._resolve_comp_iterable(gen, expr)
+        # Stamped where the comprehensions stamp it: lowering reads the fact
+        # off the head (an `Iterator[Own[T]]` source has no genexpr lowering
+        # yet) and `_enter_comp_scope` keeps the loop var non-const.
+        gen.owns_elements = isinstance(elem_type, OwnType)
 
         if self.scopes is None:
             raise RuntimeError("generator expression requires ScopeTracker")

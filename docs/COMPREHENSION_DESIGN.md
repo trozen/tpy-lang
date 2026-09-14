@@ -548,8 +548,34 @@ Key properties:
 | Source | Strategy | State |
 |--------|----------|-------|
 | `range(N)`, `range(start, stop)` | Counter lambda | `__i`, `__stop` init-captures |
-| `range(start, stop, step)` | IIFE + Range iterator | `tpy::Range<T>` begin/end captures |
-| Containers (list, dict, etc.) | IIFE + begin/end captures | Iterator init-captures |
+| `range(start, stop, step)` | Counter lambda with step checks | `__i`, `__stop`, `__step` init-captures |
+| Lvalue source (name, field, borrow-returning call) | IIFE aliases it (`auto& __src`) + begin/end captures | Iterator init-captures |
+| Rvalue source (literal, dict view, combinator, generator call, `Own[container]` call) | The IIFE is the wrapper's in-place factory (`make_generator<T>(std::in_place, [caps]() { return <lambda>; })`); the lambda's init-capture builds the source once inside a `::tpy::genexpr_state` holder (`__st = ::tpy::genexpr_state{<src>}`), whose `beg` (an `optional<begin_iter_t<S>>`) is seeded on the first pull and advanced on the next | Owned source + lazily seeded iterator, in one holder |
+
+The source classification (`_source_route` in `tpyc/thir/lower/comprehensions.py`)
+is shared with the list/set/dict comprehensions: a source one form iterates, the
+other does too. The rvalue form never moves its source at construction: the
+holder is aggregate-initialized from the source prvalue, the IIFE returns the
+closure as a prvalue and `generator_wrapper` constructs it in place -- all
+guaranteed elision -- so a non-movable source (the runtime's owning `zip` /
+`enumerate` / `filter` iterators over a non-lvalue argument delete their move
+ctor) works at an eager consumer (`sum`, `list`, a for-head, a structural
+protocol slot: all bind the prvalue by forwarding reference or `auto`). The
+closure's movability is the holder's. A MOVABLE closure (a literal, a dict
+view, an `Own[container]` call, an unstarted generator frame, a combinator over
+lvalue arguments) may be moved by an owning consumer -- another lazy combinator
+taking the genexpr as its rvalue argument, `enumerate(x * 2 for x in xs)` --
+before its first pull; the seed is lazy, so nothing points into the holder yet,
+and after the first pull nothing moves it. A NON-movable closure at such a
+boundary is a located reject, `genexpr.nonmovable_into_owning` (`THIRGenExpr.
+nonmovable_source`, decided by the source route, read by the combinator-call
+lowering), until the runtime's producers become movable while unstarted (the
+TODO.md item `Producers are movable only while unstarted`). A local binding of
+a genexpr is not lowered. One asymmetry with the comprehension
+route: the genexpr source is lowered without arg temps (`allow_temps=False`)
+because its render sits inside the IIFE, which has no statement-level flush
+point for a hoisted `__tmp_N`, so a source call whose argument needs one
+rejects (BUGS.md#genexpr-source-needs-arg-temp).
 
 ### Rvalue binding
 

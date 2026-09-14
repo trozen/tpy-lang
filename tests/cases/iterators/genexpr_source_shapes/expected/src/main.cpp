@@ -35,30 +35,32 @@ void main() {
             }
         );
     }()) << "\n";
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
-        [__src = std::array<std::tuple<int32_t, int32_t>, 2>({std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}), __started = false, __beg = std::array<std::tuple<int32_t, int32_t>, 2>::iterator(), __end = std::array<std::tuple<int32_t, int32_t>, 2>::iterator()]() mutable -> std::optional<int32_t> {
-            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
-            while (__beg != __end) {
-                auto& __tup_1 = *__beg++;
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
+        return [__st = ::tpy::genexpr_state{std::array<std::tuple<int32_t, int32_t>, 2>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}}]() mutable -> std::optional<int32_t> {
+            if (!__st.beg) __st.beg = __st.src.begin();
+            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
+            while (*__st.beg != __st.src.end()) {
+                auto&& __tup_1 = *(*__st.beg);
                 int32_t a = std::get<0>(__tup_1);
                 int32_t b = std::get<1>(__tup_1);
                 return std::optional<int32_t>(a);
             }
             return std::nullopt;
-        }
-    )) << "\n";
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
-        [__src = std::array<std::tuple<int32_t, int32_t>, 2>({std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}), __started = false, __beg = std::array<std::tuple<int32_t, int32_t>, 2>::iterator(), __end = std::array<std::tuple<int32_t, int32_t>, 2>::iterator()]() mutable -> std::optional<int32_t> {
-            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
-            while (__beg != __end) {
-                auto& __tup_2 = *__beg++;
+        };
+    })) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
+        return [__st = ::tpy::genexpr_state{std::array<std::tuple<int32_t, int32_t>, 2>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}}]() mutable -> std::optional<int32_t> {
+            if (!__st.beg) __st.beg = __st.src.begin();
+            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
+            while (*__st.beg != __st.src.end()) {
+                auto&& __tup_2 = *(*__st.beg);
                 int32_t a = std::get<0>(__tup_2);
                 int32_t b = std::get<1>(__tup_2);
                 return std::optional<int32_t>(b);
             }
             return std::nullopt;
-        }
-    )) << "\n";
+        };
+    })) << "\n";
     std::array<std::tuple<P, int32_t>, 2> items = {::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(1), 2}), ::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(3), 4})};
     std::cout << ::tpy::builtin_sum<int32_t>([&items]() {
         auto& __src = items;

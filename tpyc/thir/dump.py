@@ -349,8 +349,9 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRGenExpr):
         src = "" if e.iterable is None else _expr(e.iterable)
         elem = "" if e.element is None else _expr(e.element)
-        moved = " [moved_source]" if e.moved_source else ""
-        return f"genexpr({elem} for %_ in {src}){moved}"
+        owned = (" [owned_source, nonmovable]" if e.nonmovable_source
+                 else " [owned_source]" if e.owned_source else "")
+        return f"genexpr({elem} for %_ in {src}){owned}"
     if isinstance(e, THIRLambda):
         params = ", ".join(e.params_cpp)
         ret = f" -> {e.ret_cpp}" if e.ret_cpp is not None else ""

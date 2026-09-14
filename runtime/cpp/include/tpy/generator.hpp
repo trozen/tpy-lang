@@ -17,8 +17,24 @@
 #include <expected>
 #include <optional>
 #include <type_traits>
+#include <utility>
 
 namespace tpy {
+
+// A generator expression's OWNED source together with the iterator the closure
+// seeds on its first pull. Held as one aggregate so the closure never has to
+// move it: the runtime's owning combinators (`owning_zip_iter`,
+// `owning_enumerate_iter`, `owning_filter_iter`, ...) alias their own slot and
+// delete their move ctor, so `src` must be built straight from the source
+// prvalue (aggregate init, guaranteed elision) and stay put. The closure that
+// holds a `genexpr_state` is itself non-movable whenever the source is, which
+// is why `make_generator(std::in_place, factory)` below builds it in place.
+template<typename S>
+struct genexpr_state {
+    S src;
+    std::optional<begin_iter_t<S>> beg;
+};
+template<typename S> genexpr_state(S) -> genexpr_state<S>;
 
 // Generator expression wrapper: stores a mutable callable returning optional<T>,
 // provides __next__() and __iter__() so it integrates with direct __next__() loops.
@@ -28,6 +44,10 @@ class generator_wrapper : public next_iter_mixin<generator_wrapper<T, F>, T> {
     F fn_;
 public:
     explicit generator_wrapper(F&& fn) : fn_(std::move(fn)) {}
+    // In-place form: `make()` returns the closure as a prvalue, so `fn_` is
+    // initialized without a move -- the only way to hold a non-movable closure.
+    template<typename Factory>
+    explicit generator_wrapper(std::in_place_t, Factory&& make) : fn_(make()) {}
 
     std::expected<T, StopIteration> __next__() {
         auto opt = fn_();
@@ -45,6 +65,16 @@ public:
 template<typename T, typename F>
 generator_wrapper<T, F> make_generator(F&& fn) {
     return generator_wrapper<T, F>(std::forward<F>(fn));
+}
+
+// The genexpr rvalue-source render: `make` is the IIFE that evaluates the
+// source and returns the closure holding its `genexpr_state`; the wrapper is
+// built in place from that prvalue, never moving the closure (see above).
+template<typename T, typename Factory>
+generator_wrapper<T, std::invoke_result_t<Factory&>>
+make_generator(std::in_place_t, Factory&& make) {
+    return generator_wrapper<T, std::invoke_result_t<Factory&>>(
+        std::in_place, std::forward<Factory>(make));
 }
 
 // Resumable-frame `for x in <Iterable>` iterator handling. The source `src` is

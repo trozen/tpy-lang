@@ -1,0 +1,55 @@
+module 6
+module_lit 15
+values 6
+keys 4
+items 14
+zip 66
+enumerate 8
+reversed [3, 2, 1]
+filter [2, 3]
+map [3, 6, 9]
+gen 6
+ranged 6
+zip_gens 9
+zip_gens_long 9
+enumerate_gen 8
+enumerate_genexpr 16
+zip_genexpr_gen 14
+filter_gen [2, 3]
+own_call 15
+borrow_call 6
+ctor_call_list 6
+ctor_call_sorted [20, 30]
+literal 30
+literal_unpack 4
+zip_filter 5
+gen_filter [1, 3]
+filter_tail_gen [0, 1]
+filter_tail_map [3]
+filter_mid_view [2]
+drain 12
+byte_sum 6
+closure 26
+any True
+all False
+bytes 6
+bytes_dict 3
+join AB, CD
+ref_mutate [101, 102]
+noisy: pull 0
+noisy: got 0
+noisy: pull 1
+noisy: got 10
+noisy: pull 2
+noisy: got 20
+ro_values 6
+ro_items 10
+ctor 6
+method 4
+frame [6, 12, 6]
+async 8
+with 8
+try 18
+finally 4
+error_return 6
+match 6

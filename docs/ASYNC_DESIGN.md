@@ -420,7 +420,7 @@ Naive expansion duplicates each `finally` body at every site that may throw or f
 
 ### Move/pin rules
 
-- A coroutine frame must not move once it's the target of a sub-future field assignment or a Task heap-allocation. Single-use sema enforces this implicitly: by the time it's stashed, it's been consumed (and the storage is its final home).
+- A coroutine frame must not move once it has STARTED (a sub-future field assignment or a borrowed-await pointer targets it from then on); a Task heap-allocation is its final home. Sema enforces only part of this: `await` and `create_task` consume the handle, so a consumed coroutine cannot be moved again -- but `__poll__` is a plain method call that does not consume, so `c = leaf(); c.__poll__(w); create_task(c)` moves a started frame (BUGS.md#started-coroutine-moved-into-task). The rule's full form -- producers are movable only while unstarted, with a debug assert in the frame's move ctor -- is the TODO.md item `Producers are movable only while unstarted`.
 - Sub-future fields live at stable sub-addresses inside the parent's frame. As long as the parent's allocation doesn't move, sub-futures are pinned automatically.
 
 ---

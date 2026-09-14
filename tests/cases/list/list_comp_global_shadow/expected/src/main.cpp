@@ -100,16 +100,17 @@ void __tpy_init() {
         std::move(__result);
     });
     r3 = &__global_slot_4;
-    static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
-        [__src = std::vector<std::string>({"a", "bb", "ccc"}), __started = false, __beg = std::vector<std::string>::iterator(), __end = std::vector<std::string>::iterator()]() mutable -> std::optional<int32_t> {
-            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
-            while (__beg != __end) {
-                const std::string& x = *__beg++;
+    static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(std::in_place, []() {
+        return [__st = ::tpy::genexpr_state{std::vector<std::string>{"a", "bb", "ccc"}}]() mutable -> std::optional<int32_t> {
+            if (!__st.beg) __st.beg = __st.src.begin();
+            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
+            while (*__st.beg != __st.src.end()) {
+                const std::string& x = *(*__st.beg);
                 return std::optional<int32_t>(::tpy::__len__(x));
             }
             return std::nullopt;
-        }
-    ));
+        };
+    }));
     r4 = &__global_slot_5;
     static std::vector<int32_t> __global_slot_6 = ({
         std::vector<int32_t> __result;

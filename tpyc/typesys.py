@@ -1819,6 +1819,23 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def peel_value_readonly(typ: 'TpyType') -> 'TpyType':
+    """Strip `readonly` off a VALUE type at a position that binds a copy (a
+    parameter, a loop var, a comprehension element): the copy is the
+    receiver's own, so the marker says nothing about it. A non-value type
+    keeps the marker (the binding borrows, and the marker is what makes it
+    const), and so does a value tuple with borrow-form elements: the tuple
+    copies but its elements alias the source objects, so its readonly is the
+    const protecting them. `has_ref_elements` covers every borrowed element
+    kind (records, pointer-variant unions, recursive-union wrappers)."""
+    if isinstance(typ, ReadonlyType) and typ.wrapped.is_value_type():
+        inner = typ.wrapped
+        if isinstance(inner, TupleType) and inner.has_ref_elements():
+            return typ
+        return inner
+    return typ
+
+
 def is_readonly_ref_param(typ: 'TpyType | None') -> bool:
     """An explicit readonly[T] param whose underlying T passes by C++
     reference (const T&). The wrapper defeats is_ref_param() by design (a

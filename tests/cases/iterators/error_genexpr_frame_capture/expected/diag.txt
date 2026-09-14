@@ -1,0 +1,1 @@
+main.py:8: error: in function 'walk': this construct is not yet supported by C++ code generation (genexpr.frame_capture)

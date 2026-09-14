@@ -10,7 +10,7 @@ from typing import Optional
 
 from ..typesys import (
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
-    NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
+    NoneType, INT32, ReadonlyType, unwrap_readonly, peel_value_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
     RecursiveUnionInfo, RecursiveAliasInstanceType,
     FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
@@ -1348,21 +1348,13 @@ class SemanticAnalyzer:
     def _normalize_param_type(self, ptype: TpyType, is_readonly_ctx: bool) -> TpyType:
         """Normalize a parameter type for readonly context.
 
-        Strips ReadonlyType from value types (copies are always safe).
+        Strips ReadonlyType from value types (copies are always safe; the
+        same peel a comprehension loop var gets).
         Wraps non-value types with ReadonlyType in @readonly contexts.
         """
-        if isinstance(ptype, ReadonlyType) and ptype.wrapped.is_value_type():
-            inner = ptype.wrapped
-            # A tuple with borrow-form (reference) elements aliases the
-            # caller's objects rather than copying them, so its readonly must
-            # survive -- it is the const protecting those aliased elements.
-            # has_ref_elements covers every borrowed element kind (records,
-            # pointer-variant unions, recursive-union wrappers), not just
-            # bare-pointer-repr ones. Other value types are genuinely copied,
-            # where stripping readonly is a safe no-op.
-            if isinstance(inner, TupleType) and inner.has_ref_elements():
-                return ptype
-            return inner
+        peeled = peel_value_readonly(ptype)
+        if peeled is not ptype:
+            return peeled
         if is_readonly_ctx and not isinstance(ptype, ReadonlyType):
             if not ptype.is_value_type():
                 return ReadonlyType(ptype)

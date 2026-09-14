@@ -913,13 +913,17 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
 
 
 def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
-    """The make_generator render of a generator expression: an inner mutable
-    lambda binds each element and yields `optional<slot>`. An LVALUE source
-    aliases through an outer `[caps]()` IIFE; a NON-LVALUE source moves into the
-    lambda's init-captures under an `if (!__started)` seed. Indents relative to
-    the enclosing statement (stmt_indent_level)."""
+    """The make_generator render of a generator expression: an outer
+    `[caps]()` IIFE binds the source and returns `make_generator` over an
+    inner mutable lambda that binds each element and yields
+    `optional<slot>`. A BORROWED source is aliased (`auto& __src`) and the
+    lambda seeds begin/end in its init-captures; an OWNED source is built
+    in place inside the lambda's `genexpr_state` holder, seeded on the first
+    pull and advanced on the next (see THIRGenExpr). Indents relative to the
+    enclosing statement (stmt_indent_level)."""
     stmt_ind = INDENT * state.stmt_indent_level
     ind1 = stmt_ind + INDENT
+    deref = "*(*__st.beg)" if e.owned_source else "*__beg++"
 
     def binding_lines(ind: str) -> str:
         # An unpack head draws its `__tup_N` off the shared per-function
@@ -928,8 +932,12 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
         if not e.unpack_targets:
             return f"{ind}{e.binding_cpp}\n"
         tmp = f"__tup_{state.next_unpack()}"
-        ref = "const auto&" if e.const_loop_var else "auto&"
-        out = f"{ind}{ref} {tmp} = *__beg++;\n"
+        # The owned form's source may hand out a PRVALUE proxy tuple (a
+        # dict view's `tuple<const K&, V&>`, a combinator's tuple), which
+        # only a forwarding reference binds non-const.
+        ref = ("const auto&" if e.const_loop_var
+               else "auto&&" if e.owned_source else "auto&")
+        out = f"{ind}{ref} {tmp} = {deref};\n"
         for i, name in enumerate(e.unpack_targets):
             if name is None:
                 continue
@@ -997,42 +1005,48 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
         buf.write(f"{stmt_ind})")
         return buf.getvalue()
 
-    if e.moved_source:
-        lambda_ind = ind1
-        ind2i = lambda_ind + INDENT
-        ind3i = ind2i + INDENT
-        elems = ", ".join(_emit_expr(el, state) for el in e.iterable_elements)
-        buf = io.StringIO()
-        buf.write(f"::tpy::make_generator<{e.slot_cpp}>(\n")
-        buf.write(f"{lambda_ind}[{e.inner_captures}__src = {e.cpp_iterable}"
-                  f"({{{elems}}}), __started = false, "
-                  f"__beg = {e.cpp_iterable}::iterator(), "
-                  f"__end = {e.cpp_iterable}::iterator()]() mutable -> "
-                  f"std::optional<{e.slot_cpp}> {{\n")
-        buf.write(f"{ind2i}if (!__started) {{ __beg = __src.begin(); "
-                  f"__end = __src.end(); __started = true; }}\n")
-        buf.write(f"{ind2i}while (__beg != __end) {{\n")
-        buf.write(binding_lines(ind3i))
-        yield_lines(buf, ind3i, ind3i + INDENT)
-        buf.write(f"{ind2i}}}\n")
-        buf.write(f"{ind2i}return std::nullopt;\n")
-        buf.write(f"{lambda_ind}}}\n")
-        buf.write(f"{stmt_ind})")
-        return buf.getvalue()
     lambda_ind = ind1 + INDENT
     ind2i = lambda_ind + INDENT
     ind3i = ind2i + INDENT
     iife = e.iife_captures.removesuffix(", ")
     src = _emit_expr(e.iterable, state)
     buf = io.StringIO()
-    buf.write(f"[{iife}]() {{\n")
-    buf.write(f"{ind1}auto& __src = {src};\n")
-    buf.write(f"{ind1}return ::tpy::make_generator<{e.slot_cpp}>(\n")
-    buf.write(f"{lambda_ind}[{e.inner_captures}__beg = __src.begin(), "
-              f"__end = __src.end()]() mutable -> std::optional<{e.slot_cpp}> {{\n")
-    buf.write(f"{ind2i}while (__beg != __end) {{\n")
-    buf.write(binding_lines(ind3i))
-    yield_lines(buf, ind3i, ind3i + INDENT)
+    if e.owned_source:
+        # The IIFE is the wrapper's in-place FACTORY: it returns the closure
+        # as a prvalue, so neither the source (aggregate-initialized inside
+        # the `genexpr_state` holder) nor the closure is ever moved -- the
+        # owning combinators delete their move ctor.
+        ind2 = ind1 + INDENT
+        ind3 = ind2 + INDENT
+        buf.write(f"::tpy::make_generator<{e.slot_cpp}>(std::in_place, "
+                  f"[{iife}]() {{\n")
+        buf.write(f"{ind1}return [{e.inner_captures}"
+                  f"__st = ::tpy::genexpr_state{{{src}}}]() mutable -> "
+                  f"std::optional<{e.slot_cpp}> {{\n")
+        buf.write(f"{ind2}if (!__st.beg) __st.beg = __st.src.begin();\n")
+        buf.write(f"{ind2}else if (*__st.beg != __st.src.end()) "
+                  f"++(*__st.beg);\n")
+        buf.write(f"{ind2}while (*__st.beg != __st.src.end()) {{\n")
+        buf.write(binding_lines(ind3))
+        yield_lines(buf, ind3, ind3 + INDENT)
+        # A filtered-out element advances here; a yielded one advances on
+        # the next pull, so its binding stays valid through the yield.
+        if e.conditions:
+            buf.write(f"{ind3}++(*__st.beg);\n")
+        buf.write(f"{ind2}}}\n")
+        buf.write(f"{ind2}return std::nullopt;\n")
+        buf.write(f"{ind1}}};\n")
+        buf.write(f"{stmt_ind}}})")
+        return buf.getvalue()
+    else:
+        buf.write(f"[{iife}]() {{\n")
+        buf.write(f"{ind1}auto& __src = {src};\n")
+        buf.write(f"{ind1}return ::tpy::make_generator<{e.slot_cpp}>(\n")
+        buf.write(f"{lambda_ind}[{e.inner_captures}__beg = __src.begin(), "
+                  f"__end = __src.end()]() mutable -> std::optional<{e.slot_cpp}> {{\n")
+        buf.write(f"{ind2i}while (__beg != __end) {{\n")
+        buf.write(binding_lines(ind3i))
+        yield_lines(buf, ind3i, ind3i + INDENT)
     buf.write(f"{ind2i}}}\n")
     buf.write(f"{ind2i}return std::nullopt;\n")
     buf.write(f"{lambda_ind}}}\n")
