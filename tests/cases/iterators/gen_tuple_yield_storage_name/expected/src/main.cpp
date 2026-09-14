@@ -4,7 +4,42 @@
 namespace tpyapp::main {
 
 
-// # Free function, two yields -- the resumable frame rather than the peephole.
+// def storage_relay(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
+//     for pair in items:
+//         yield pair  # tpyc: ok                                                 # -> S_RESUME_0
+std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_storage_relay::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield pair  # tpyc: ok
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        pair = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def storage_relay(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
+__gen_storage_relay storage_relay(std::vector<std::tuple<int32_t, C>>& items) {
+    return __gen_storage_relay(items);
+}
+
+// # Free function, two yields.
 // def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 //     for pair in items:
 //         yield pair  # tpyc: ok                                               # -> S_RESUME_0

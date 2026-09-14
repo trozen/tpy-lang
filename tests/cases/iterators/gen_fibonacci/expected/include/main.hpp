@@ -9,38 +9,39 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_fibonacci;
+
+// def fibonacci(n: int32) -> Iterator[int32]:
+__gen_fibonacci fibonacci(int32_t n);
 // def main():
 void main();
 
 // def fibonacci(n: int32) -> Iterator[int32]:
-//     a: int32 = 0
-//     b: int32 = 1
-//     count: int32 = 0
-//     while count < n:
-//         yield a
-//         temp: int32 = a
-//         a = b
-//         b = temp + b
-//         count += 1
-inline auto fibonacci(int32_t n) {
-    int32_t a = 0;
-    int32_t b = 1;
-    int32_t count = 0;
-    return ::tpy::make_generator<int32_t>(
-        [n, a, b, count]() mutable -> std::optional<int32_t> {
-            while ((count < n)) {
-                auto __val = a;
-                int32_t temp = a;
-                a = b;
-                b = (::tpy::add_check<int32_t>(temp, b));
-                count = ::tpy::add_check<int32_t>(count, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_fibonacci : public ::tpy::next_iter_mixin<__gen_fibonacci, int32_t> {
+    int32_t __state;
+    int32_t n;
+    int32_t a;
+    int32_t b;
+    int32_t count;
+    int32_t temp;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_fibonacci(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_fibonacci& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_fibonacci&) {
+        return os << "<generator fibonacci>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

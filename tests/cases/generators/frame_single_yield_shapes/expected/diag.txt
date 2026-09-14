@@ -1,0 +1,2 @@
+main.py:15: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:23: warning: Own[list[int32]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

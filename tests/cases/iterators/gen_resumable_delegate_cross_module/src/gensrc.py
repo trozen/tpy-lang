@@ -9,6 +9,11 @@ def walk() -> Iterator[int32]:
     yield 2
 
 
+def walk_once() -> Iterator[int32]:
+    for i in range(2):
+        yield i + 1
+
+
 def pair[T](a: T, b: T) -> Iterator[T]:
     yield a
     yield b

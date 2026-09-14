@@ -45,8 +45,9 @@ def mk_cell() -> Own[Cell]:
 
 
 def repeat[T](value: T, count: int32) -> Iterator[T]:
-    # A SIMPLE generator: the peephole's lambda captures the slot by reference,
-    # so its argument keeps the temp at every instantiation.
+    # A generator: its frame copies a value-typed instantiation into its own
+    # member inside the full expression, so only a reference-typed
+    # instantiation keeps the temp.
     i = 0
     while i < count:
         yield value
@@ -162,8 +163,7 @@ def with_body() -> None:
 
 
 def gen_body() -> Iterator[int32]:
-    # GENERATOR body (resumable -- the yield is not a direct loop child), where
-    # the call renders inline inside the frame's switch.
+    # GENERATOR body, where the call renders inline inside the frame's switch.
     n = 0
     while n < 2:
         if anyslot("genbody", n) and anyslot_i32("genbody", n):  # tpyc: ok

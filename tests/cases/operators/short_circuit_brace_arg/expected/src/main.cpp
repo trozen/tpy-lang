@@ -85,6 +85,41 @@ int64_t take_set(::tpy::ordered_set<int64_t>& o) {
     return static_cast<int64_t>(::tpy::__len__(o));
 }
 
+// def gen(o: list[int64]) -> Iterator[int64]:
+//     for x in o:
+//         yield x                              # -> S_RESUME_0
+std::expected<int64_t, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((o).begin());
+        __for_end_0.emplace((o).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen(o: list[int64]) -> Iterator[int64]:
+__gen_gen gen(std::vector<int64_t>& o) {
+    return __gen_gen(o);
+}
+
 // # --- the literal's element type differs from the container's ---------------
 // def free_call(flag: bool) -> int64:
 //     return take_i64([1, 2, 3]) if flag else 0  # tpyc: ok
@@ -365,6 +400,36 @@ void main() {
     std::cout << "side_effect_skipped" << " " << side_effect(t, false) << " " << t.n << "\n";
     std::cout << "side_effect_taken" << " " << side_effect(t, true) << " " << t.n << "\n";
 }
+
+// def gen(self, o: list[int64]) -> Iterator[int64]:
+//     for x in o:
+//         yield x                                    # -> S_RESUME_0
+std::expected<int64_t, ::tpy::StopIteration> __gen_Bx_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((o).begin());
+        __for_end_0.emplace((o).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 // # A container literal deferred into a conditional operand's std::optional slot
 // # needs a typed initializer: a bare brace-init deduces its own element type.

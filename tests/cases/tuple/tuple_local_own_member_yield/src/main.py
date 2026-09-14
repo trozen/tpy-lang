@@ -66,8 +66,8 @@ def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
         i += 1
 
 
-# The owning-CALL init at a SINGLE yield -- the peephole ladder's half of the
-# same arm (the two-yield sibling above takes the resumable frame).
+# The owning-CALL init at a SINGLE yield -- the same arm as the two-yield
+# sibling above, at the single-yield loop shape.
 def gen_call_init_once(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
     i = int32(0)
     while i < n:

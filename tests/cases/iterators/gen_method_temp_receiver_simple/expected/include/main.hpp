@@ -11,6 +11,8 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_Counter_each;
+
 // def main() -> None:
 void main();
 
@@ -23,27 +25,43 @@ struct Counter {
     Counter() = default;
     explicit Counter(const ::tpy::BigInt& n);
 
-    // def each(self) -> Iterator[int]:
-    //     for i in range(self.n):
-    //         yield i * 10
-    auto each() const {
-        return ::tpy::make_generator<::tpy::BigInt>(
-            [this, __i = ::tpy::BigInt(0), __stop = static_cast<::tpy::BigInt>((*this).n)]() mutable -> std::optional<::tpy::BigInt> {
-                while (__i < __stop) {
-                    ::tpy::BigInt i = __i++;
-                    auto __val = ((i) * (::tpy::BigInt(10)));
-                    return std::optional<::tpy::BigInt>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Counter_each each() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     ::tpy::print_object_default(os, "Counter", obj);
     return os;
+}
+
+// def each(self) -> Iterator[int]:
+struct __gen_Counter_each : public ::tpy::next_iter_mixin<__gen_Counter_each, ::tpy::BigInt> {
+    int32_t __state;
+    const Counter& __self;
+    ::tpy::BigInt i;
+    ::tpy::frame_slot<::tpy::BigInt> __for_i_0;
+    ::tpy::frame_slot<::tpy::BigInt> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Counter_each(const Counter& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_Counter_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Counter_each&) {
+        return os << "<generator Counter.each>";
+    }
+};
+
+inline __gen_Counter_each Counter::each() const {
+    return __gen_Counter_each(*this);
 }
 
 

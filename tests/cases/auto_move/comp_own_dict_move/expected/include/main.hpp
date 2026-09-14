@@ -12,6 +12,13 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_widgets;
+struct __gen_nodes;
+
+// def widgets(n: int) -> Iterator[Own[Widget]]:
+__gen_widgets widgets(::tpy::BigInt n);
+// def nodes(n: int) -> Iterator[Own[Node]]:
+__gen_nodes nodes(::tpy::BigInt n);
 // def value_moves_key_field() -> int:
 ::tpy::BigInt value_moves_key_field();
 // def value_only() -> int:
@@ -85,6 +92,54 @@ template<> struct std::hash<::tpyapp::main::Node> {
 namespace tpyapp::main {
 
 
+// def widgets(n: int) -> Iterator[Own[Widget]]:
+struct __gen_widgets : public ::tpy::next_iter_mixin<__gen_widgets, Widget> {
+    int32_t __state;
+    ::tpy::BigInt n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_widgets(::tpy::BigInt n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<Widget, ::tpy::StopIteration> __next__();
+    __gen_widgets& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_widgets&) {
+        return os << "<generator widgets>";
+    }
+};
+
+// def nodes(n: int) -> Iterator[Own[Node]]:
+struct __gen_nodes : public ::tpy::next_iter_mixin<__gen_nodes, Node> {
+    int32_t __state;
+    ::tpy::BigInt n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_nodes(::tpy::BigInt n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<Node, ::tpy::StopIteration> __next__();
+    __gen_nodes& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_nodes&) {
+        return os << "<generator nodes>";
+    }
+};
+
 
 // def __init__(self, i: int) -> None:
 //     self.id = i
@@ -106,44 +161,5 @@ inline ::tpy::BigInt Node::__hash__() const {
 inline bool Node::__eq__(const Node& o) const {
     return (this->id == o.id);
 }
-// def widgets(n: int) -> Iterator[Own[Widget]]:
-//     i = 0
-//     while i < n:
-//         yield Widget(i)
-//         i += 1
-inline auto widgets(const ::tpy::BigInt& n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<Widget>(
-        [n, i]() mutable -> std::optional<Widget> {
-            while ((::tpy::BigInt(i) < n)) {
-                auto __val = Widget(::tpy::BigInt(i));
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<Widget>(std::move(__val));
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def nodes(n: int) -> Iterator[Own[Node]]:
-//     i = 0
-//     while i < n:
-//         yield Node(i)
-//         i += 1
-inline auto nodes(const ::tpy::BigInt& n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<Node>(
-        [n, i]() mutable -> std::optional<Node> {
-            while ((::tpy::BigInt(i) < n)) {
-                auto __val = Node(::tpy::BigInt(i));
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<Node>(std::move(__val));
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

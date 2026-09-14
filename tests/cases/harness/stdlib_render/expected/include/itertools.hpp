@@ -15,6 +15,7 @@ namespace tpystd::itertools {
 
 inline constexpr std::string_view __name__ = "itertools";
 
+struct __gen_count;
 template <typename T>
 struct __gen_repeat;
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
@@ -28,6 +29,8 @@ struct __gen_dropwhile;
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_filterfalse;
 
+// def count(start: int = 0, step: int = 1) -> Iterator[int]:
+__gen_count count(::tpy::BigInt start = ::tpy::BigInt(0), ::tpy::BigInt step = ::tpy::BigInt(1));
 // def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
 template <typename T>
 __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> object, std::optional<int32_t> times = std::nullopt);
@@ -46,6 +49,31 @@ __gen_dropwhile<T, T_it, F_pred> dropwhile(F_pred&& pred, T_it&& it);
 // def filterfalse[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 __gen_filterfalse<T, T_it, F_pred> filterfalse(F_pred&& pred, T_it&& it);
+
+// def count(start: int = 0, step: int = 1) -> Iterator[int]:
+struct __gen_count : public ::tpy::next_iter_mixin<__gen_count, ::tpy::BigInt> {
+    int32_t __state;
+    ::tpy::BigInt start;
+    ::tpy::BigInt step;
+    ::tpy::BigInt n;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_count(::tpy::BigInt start_ = ::tpy::BigInt(0), ::tpy::BigInt step_ = ::tpy::BigInt(1))
+        : __state(S_INITIAL), start(std::move(start_)), step(std::move(step_)) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_count& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_count&) {
+        return os << "<generator count>";
+    }
+};
 
 // def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
 template <typename T>
@@ -561,26 +589,6 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 __gen_filterfalse<T, T_it, F_pred> filterfalse(F_pred&& pred, T_it&& it) {
     return __gen_filterfalse<T, T_it, F_pred>(std::forward<F_pred>(pred), std::forward<T_it>(it));
 }
-
-// def count(start: int = 0, step: int = 1) -> Iterator[int]:
-//     n = start
-//     while True:
-//         yield n
-//         n = n + step
-inline auto count(const ::tpy::BigInt& start = ::tpy::BigInt(0), const ::tpy::BigInt& step = ::tpy::BigInt(1)) {
-    ::tpy::BigInt n = start;
-    return ::tpy::make_generator<::tpy::BigInt>(
-        [start, step, n]() mutable -> std::optional<::tpy::BigInt> {
-            while (true) {
-                auto __val = n;
-                n = ((n) + (step));
-                return std::optional<::tpy::BigInt>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
 
 void __tpy_init();
 } // namespace tpystd::itertools

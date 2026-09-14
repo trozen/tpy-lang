@@ -60,6 +60,54 @@ void main() {
     }
 }
 
+// def gen(self, n: int32) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < n:
+//         if i == caps.CAP:           # module-constant access in a method generator
+//             break
+//         if i == Color.GREEN.value:  # enum-member access in a generator body
+//             print("green")
+//         yield i                                                                     # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_Source_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            if ((i == ::tpyapp::caps::CAP)) {
+                __state = S_JOIN_1;
+                continue;
+            } else {
+                if ((i == static_cast<int32_t>(Color::GREEN))) {
+                    std::cout << "green" << "\n";
+                }
+                __state = S_RESUME_0;
+                return i;
+            }
+        } else {
+            __state = S_JOIN_1;
+            continue;
+        }
+    }
+    case S_JOIN_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
 // from enum import Enum
 //
 // import caps

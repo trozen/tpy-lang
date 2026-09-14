@@ -177,8 +177,7 @@ void body_positions() {
         }
     }
     {
-        int32_t __tmp_1 = 4;
-        auto __src_2 = gen_slot<int32_t>(__tmp_1);
+        auto __src_2 = gen_slot<int32_t>(4);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -239,8 +238,8 @@ void body_positions() {
 void other_positions() {
     Cell c = Cell(5);
     std::cout << "forward" << " " << outer_fwd<Cell>(c) << " " << outer_fwd<int32_t>(6) << "\n";
-    Tag __tmp_2 = Tag(1);
-    std::cout << "two_instantiations" << " " << two_instantiations<Cell>(c) << " " << two_instantiations<Tag>(__tmp_2) << " " << two_instantiations<int32_t>(7) << "\n";
+    Tag __tmp_1 = Tag(1);
+    std::cout << "two_instantiations" << " " << two_instantiations<Cell>(c) << " " << two_instantiations<Tag>(__tmp_1) << " " << two_instantiations<int32_t>(7) << "\n";
     std::cout << "cross_module" << " " << ::tpyapp::gencontainer::cross_slot<Cell>(c) << " " << ::tpyapp::gencontainer::cross_slot<int32_t>(8) << "\n";
     OptHolder<Cell> oh = OptHolder<Cell>();
     oh.store(&(c));

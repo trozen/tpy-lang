@@ -80,7 +80,7 @@ from .alias_rebind import check_alias_rebind_clobber
 from .context import BorrowKind, ITER_BORROWER, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, _borrow_storage_roots, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
-    async_return_form, AsyncReturnForm, borrowing_frame_callee,
+    async_return_form, AsyncReturnForm, frame_factory_callee,
     frame_temp_arg_source,
 )
 from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
@@ -151,7 +151,7 @@ def _frame_temp_arg_hoisted(fi, idx: int, arg: TpyExpr, ctx) -> bool:
     Asks the lowering row's own shape predicate rather than a second copy of
     it: a warning that disagreed with the hoist would either fire on code the
     compiler already made safe, or go quiet on a shape it never hoisted."""
-    if not borrowing_frame_callee(fi) or idx < 0 or idx >= len(fi.params):
+    if not frame_factory_callee(fi) or idx < 0 or idx >= len(fi.params):
         return False
     return frame_temp_arg_source(arg, fi.params[idx].type, ctx) is not None
 
@@ -3266,13 +3266,6 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 "Nested functions cannot contain further nested functions",
                 stmt)
-
-        # A nested def is emitted as a member function of the resumable
-        # frame; the simple-generator lambda peephole has no equivalent, so
-        # a generator containing one must take the resumable path.
-        outer = self.ctx.func.current_function
-        if isinstance(outer, TpyFunction) and outer.is_generator:
-            outer.requires_resumable_frame = True
 
         # Collect outer locals available for capture
         outer_locals = self.ctx.func.definitely_assigned.copy()

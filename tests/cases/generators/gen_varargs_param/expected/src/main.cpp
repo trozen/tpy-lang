@@ -482,7 +482,7 @@ __gen_readonly_param readonly_param(const std::vector<Point>& ps) {
 }
 
 // # Producer for the `next`-strategy section: a `readonly` element yielded from a
-// # frame (two yields keep it off the simple-generator peephole).
+// # frame.
 // def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 //     for p in ps:
 //         yield p                                                                  # -> S_RESUME_0
@@ -533,6 +533,43 @@ std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration> __gen_points
 // def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 __gen_points points(const std::vector<Point>& ps) {
     return __gen_points(ps);
+}
+
+// # Producer for the multi-root section: the pack element is yielded straight
+// # out, so the consumer's loop var borrows EVERY operand of the one pack slot.
+// def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
+//     for s in xs:
+//         yield s                                                                    # -> S_RESUME_0
+std::expected<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>, ::tpy::StopIteration> __gen_each_pack::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((xs).begin());
+        __for_end_0.emplace((xs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield s
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        s = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*s);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
+__gen_each_pack each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) {
+    return __gen_each_pack(xs);
 }
 
 // # Consumer whose two params are the pack's operands: a structural mutation
@@ -932,6 +969,36 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Album_each::__next__() {
         p = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
         return p->x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def each_pack(self, *xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
+//     for s in xs:
+//         yield s                                                                          # -> S_RESUME_0
+std::expected<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>, ::tpy::StopIteration> __gen_Grower_each_pack::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((xs).begin());
+        __for_end_0.emplace((xs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield s
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        s = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*s);
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

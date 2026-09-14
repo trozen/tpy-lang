@@ -289,6 +289,38 @@ void main() {
     }
 }
 
+// # generator METHOD, single yield: the same frame receiver capture as the
+// # two-yield `D.emit` below, pinned at the single-yield loop shape.
+// def emit(self, k: int32) -> Iterator[int32]:
+//     for i in range(k):
+//         yield apply(lambda x: x + self.n, i)  # tpyc: ok  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_C_emit::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(k));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield apply(lambda x: x + self.n, i)  # tpyc: ok
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        __state = S_RESUME_0;
+        return apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, i);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
 // # generator METHOD, two yields (resumable frame): the receiver is the
 // # frame's `__self` reference member, and the lambda copies that HANDLE --
 // # so a field written between the two yields is visible to the second

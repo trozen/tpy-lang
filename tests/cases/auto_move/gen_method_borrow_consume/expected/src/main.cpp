@@ -37,6 +37,36 @@ void main() {
     }
 }
 
+// def walk(self, xs: list[int32]) -> Iterator[int32]:
+//     for x in xs:
+//         yield x                                      # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_Walker_walk::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((xs).begin());
+        __for_end_0.emplace((xs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
 // main()
 void __tpy_init() {
     static bool initialized = false;

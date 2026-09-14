@@ -74,8 +74,8 @@ def each(xs: list[Box]) -> Iterator[Box]:
 #   TPy today:                 writes a discarded copy -- mutation lost
 ```
 
-Root cause: the iterator slot (`std::expected<T, StopIteration>` on the resumable path,
-`std::optional<T>` on the peephole path) is **value form** for a bare non-tuple element, so
+Root cause: the iterator slot (`std::expected<T, StopIteration>` on the resumable frame) is
+**value form** for a bare non-tuple element, so
 `__next__()` materializes a copy. `std::optional<T&>` / `std::expected<T&>` is ill-formed pre-C++26,
 which is *why* the naive slot fell back to value form (`gen_generators._iter_slot_for_yield`).
 
@@ -235,7 +235,7 @@ a plain copy for copyable types (mirrors the `Own`-return guidance).
 > predicate directly.
 
 Do not scatter the borrow-vs-owned decision across `get_iterable_element_type`,
-`_iter_slot_for_yield`, resumable emission, peephole emission, and for-loop binding -- each
+`_iter_slot_for_yield`, resumable emission, and for-loop binding -- each
 re-deriving ownership is exactly the consumer-side-dispatch anti-pattern CLAUDE.md forbids. Instead:
 
 - One classifier `yield_abi(declared_elem_type, yield_expr) -> {VALUE, BORROW_REF, OWNED}`:
@@ -314,8 +314,6 @@ re-deriving ownership is exactly the consumer-side-dispatch anti-pattern CLAUDE.
   the *generator* shape only; the async `Poll<T>` return (the function's declared owned `T`) must be
   byte-identical after the change. Async generators (`async def` + `yield`) are rejected wholesale
   upstream, so there is no async-yield slot to consider.
-- **Peephole path** (`gen_generators.py` simple-generator lambdas): the `std::optional<cpp_iter_slot>`
-  return + `__val` binding use `val_or_ref<T>` for the slot.
 - **Consumer binding** (`statements.py` for-loop-over-generator, `context.py::loop_var_binding`):
   the borrow slot yields `val_or_ref<T>` / `T*`; the consumer binds the loop var as a borrow and
   derefs for member access. The tuple-borrow consumer path already does this; the scalar pointer-slot
@@ -381,7 +379,7 @@ ABI exception) and fixes the common syntax in the same release.
 - generic: `Iterator[U]` (borrow fn) vs `Iterator[Own[U]]` (fresh fn).
 - `@nocopy` element under `Iterator[T]` now **accepted** (was rejected) -- flip the existing
   `error_gen_yield_nocopy` cases.
-- Both codegen paths (single-yield peephole + multi-yield resumable).
+- The resumable frame, the single generator emitter (the single-yield lambda peephole was deleted 2026-09-12).
 - **Consumer-escape rejections (scalar + tuple):** `error_gen_borrow_escape_store` (stash a borrow-yield
   loop var into a list/field), `_return` (return it from the consumer), `_capture` (close over it),
   `_yield_onward` (re-yield without `clone()`); the `clone()` / `Own` conversion forms accepted. A

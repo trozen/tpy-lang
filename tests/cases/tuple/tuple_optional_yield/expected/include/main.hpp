@@ -11,6 +11,16 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen_for;
+struct __gen_gen_range;
+struct __gen_gen_while;
+
+// def gen_for(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+__gen_gen_for gen_for(std::vector<P>& items);
+// def gen_range(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+__gen_gen_range gen_range(std::vector<P>& items);
+// def gen_while(items: list[P], n: int32) -> Iterator[tuple[P | None, P | None]]:
+__gen_gen_while gen_while(std::vector<P>& items, int32_t n);
 // def main() -> None:
 void main();
 
@@ -30,62 +40,86 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
+// def gen_for(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+struct __gen_gen_for : public ::tpy::next_iter_mixin<__gen_gen_for, std::tuple<P*, P*>> {
+    int32_t __state;
+    std::vector<P>& items;
+    P* it = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_for(std::vector<P>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
+    __gen_gen_for& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_for&) {
+        return os << "<generator gen_for>";
+    }
+};
+
+// def gen_range(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, std::tuple<P*, P*>> {
+    int32_t __state;
+    std::vector<P>& items;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_range(std::vector<P>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
+    __gen_gen_range& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_range&) {
+        return os << "<generator gen_range>";
+    }
+};
+
+// def gen_while(items: list[P], n: int32) -> Iterator[tuple[P | None, P | None]]:
+struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, std::tuple<P*, P*>> {
+    int32_t __state;
+    std::vector<P>& items;
+    int32_t n;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_while(std::vector<P>& items, int32_t n_)
+        : __state(S_INITIAL), items(items), n(std::move(n_)) {}
+
+    std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
+    __gen_gen_while& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_while&) {
+        return os << "<generator gen_while>";
+    }
+};
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline P::P(int32_t x) : x(x) {}
-// def gen_for(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
-//     for it in items:
-//         yield (it, None)
-inline auto gen_for(std::vector<P>& items) {
-    return ::tpy::make_generator<std::tuple<P*, P*>>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& it = *__beg++;
-                auto __val = std::tuple<P*, P*>{&(it), nullptr};
-                return std::optional<std::tuple<P*, P*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def gen_range(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
-//     for i in range(len(items)):
-//         yield (items[i], None)
-inline auto gen_range(std::vector<P>& items) {
-    return ::tpy::make_generator<std::tuple<P*, P*>>(
-        [&items, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(items))]() mutable -> std::optional<std::tuple<P*, P*>> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                auto __val = std::tuple<P*, P*>{&(items[static_cast<std::size_t>(i)]), nullptr};
-                return std::optional<std::tuple<P*, P*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def gen_while(items: list[P], n: int32) -> Iterator[tuple[P | None, P | None]]:
-//     i = int32(0)
-//     while i < n:
-//         yield (items[i], None)
-//         i = i + 1
-inline auto gen_while(std::vector<P>& items, int32_t n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<P*, P*>>(
-        [&items, n, i]() mutable -> std::optional<std::tuple<P*, P*>> {
-            while ((i < n)) {
-                auto __val = std::tuple<P*, P*>{&(::tpy::__getitem__(items, i)), nullptr};
-                i = (::tpy::add_check<int32_t>(i, 1));
-                return std::optional<std::tuple<P*, P*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

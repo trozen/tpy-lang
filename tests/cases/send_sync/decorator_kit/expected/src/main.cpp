@@ -27,6 +27,45 @@ __coro_forced forced(std::vector<int32_t>& xs) {
     return __coro_forced(xs);
 }
 
+// @nosync
+// def gen_forced(n: int32) -> Iterator[int32]:    # tpyc: frame_send(yes) frame_sync(no)
+//     i = 0
+//     while i < n:
+//         yield i                                                                         # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_forced::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            __state = S_RESUME_0;
+            return i;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// @nosync
+// def gen_forced(n: int32) -> Iterator[int32]:    # tpyc: frame_send(yes) frame_sync(no)
+__gen_gen_forced gen_forced(int32_t n) {
+    return __gen_gen_forced(n);
+}
+
 // def main() -> None:
 //     t = Trade(1, 2)         # tpyc: is_send(yes) is_sync(yes)
 //     h = NativeHandle(take_ptr(t.sym))  # tpyc: is_send(yes)

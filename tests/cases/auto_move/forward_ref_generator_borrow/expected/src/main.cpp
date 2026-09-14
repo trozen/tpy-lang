@@ -25,6 +25,41 @@ void main() {
     }
 }
 
+// def gen(xs: list[int32]) -> Iterator[int32]:
+//     for x in xs:
+//         yield x                               # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((xs).begin());
+        __for_end_0.emplace((xs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen(xs: list[int32]) -> Iterator[int32]:
+__gen_gen gen(std::vector<int32_t>& xs) {
+    return __gen_gen(xs);
+}
+
 // def drop(xs: Own[list[int32]]) -> int32:
 //     store: list[list[int32]] = []
 //     store.append(xs)

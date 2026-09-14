@@ -44,6 +44,8 @@ struct Ref;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_Counter_items;
+
 // def sized(tag: str, xs: list[int32]) -> bool:
 bool sized(std::string_view tag, const std::vector<int32_t>& xs);
 // def shaped(tag: str, b: Box[Shape]) -> bool:
@@ -210,24 +212,7 @@ struct Counter {
     Counter() = default;
     explicit Counter(int32_t n);
 
-    // def items(self) -> Iterator[int32]:
-    //     i = 0
-    //     while i < self.n:
-    //         yield i
-    //         i += 1
-    auto items() const {
-        int32_t i = 0;
-        return ::tpy::make_generator<int32_t>(
-            [this, i]() mutable -> std::optional<int32_t> {
-                while ((i < (*this).n)) {
-                    auto __val = i;
-                    i = ::tpy::add_check<int32_t>(i, 1);
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Counter_items items() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -302,6 +287,34 @@ struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
 };
 
 namespace tpyapp::main {
+
+// def items(self) -> Iterator[int32]:
+struct __gen_Counter_items : public ::tpy::next_iter_mixin<__gen_Counter_items, int32_t> {
+    int32_t __state;
+    const Counter& __self;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Counter_items(const Counter& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Counter_items& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Counter_items&) {
+        return os << "<generator Counter.items>";
+    }
+};
+
+inline __gen_Counter_items Counter::items() const {
+    return __gen_Counter_items(*this);
+}
 
 
 // def __init__(self, r: float) -> None:

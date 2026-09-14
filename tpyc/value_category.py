@@ -284,27 +284,9 @@ def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
     return False
 
 
-def borrowing_frame_callee(fi: 'FunctionInfo | None') -> bool:
-    """Does this callee's FRAME borrow an argument slot past the statement,
-    so a prvalue bound only for the full expression dangles on resume?
-
-    The simple-generator peephole does: its lambda captures a generic `T`
-    parameter by reference, a capture form decided on the OPEN `T`
-    (`BUGS.md#simple-generator-captures-open-t-param-by-reference`). A
-    RESUMABLE generator frame and a coroutine frame do not -- both copy the
-    argument into a `val_or_ref_t<T>` member in the frame constructor,
-    inside the full expression (verified for the coroutine by ASAN with the
-    temp elided). A BORROWING-VIEW slot is the exception to that copy: the
-    copied value IS a borrow, so `frame_temp_arg_source` answers for it
-    on top of this one.
-
-    Which of the two a generator lowers to is `is_simple_generator`, a
-    predicate over the callee's `TpyFunction` that this seam cannot reach:
-    a call site holds a `FunctionInfo`, and the peephole verdict is
-    finalized during codegen (`_prescan_for_src_embedding` may force a
-    simple generator resumable). So every generator factory is treated as
-    borrowing, which costs a resumable one a temp it does not need --
-    TODO.md carries that residue and the two ways to remove it.
+def frame_factory_callee(fi: 'FunctionInfo | None') -> bool:
+    """Is this callee a generator factory -- a call that builds a frame
+    holding its reference-typed arguments past the statement?
 
     The fact is the CALLEE's, so it must not depend on how the call was
     resolved. `is_generator` answers for a plain or generic callee; an

@@ -45,6 +45,8 @@ inline constexpr int32_t X = VERBOSE;
 // A: Final[int32] = ASCII
 inline constexpr int32_t A = ASCII;
 
+struct __gen_Pattern_finditer;
+
 // def _pcre2_error_msg(errcode: int32) -> str:
 std::string _pcre2_error_msg(int32_t errcode);
 // def _utf8_advance(data: Ptr[readonly[uint8]], offset: uint64,
@@ -252,71 +254,7 @@ struct Pattern {
     // def fullmatch(self, subject: str) -> Optional[Own[Match]]:
     std::optional<Match> fullmatch(std::string_view subject) const;
 
-    // def finditer(self, subject: str) -> Iterator[Own[Match]]:
-    //     """All non-overlapping matches, yielded lazily (like CPython).
-    //
-    //     Yields `Own[Match]` -- a Match owns its PCRE2 match-data, so it
-    //     moves out of the generator by value rather than borrowing a frame
-    //     local."""
-    //     offset: uint64 = 0
-    //     sub_len = uint64(len(subject))
-    //     s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
-    //     while offset <= sub_len:
-    //         md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
-    //         if md_raw is None:
-    //             raise error("out of memory allocating match data")
-    //         md = _OwnedMatchData(md_raw)
-    //         rc = pcre2.match(self._code.get(), s_data, sub_len, offset,
-    //                          0, md.get(), self._mctx.get())
-    //         if rc < 0:
-    //             if rc == pcre2.PCRE2_ERROR_NOMATCH:
-    //                 break          # md drops at end of iteration
-    //             raise error(_pcre2_error_msg(rc))   # md drops
-    //         ovec = pcre2.get_ovector_pointer(md.get())
-    //         mstart = unsafe_load(ovec, 0)
-    //         mend = unsafe_load(ovec, 1)
-    //         # mstart/mend are read before the yield moves `md` into the
-    //         # Match, so the post-resume bump-along still has the offsets.
-    //         yield Match(md, subject, rc)
-    //         # Bump-along on zero-width match to avoid an infinite loop.
-    //         if mend == mstart:
-    //             offset = _utf8_advance(s_data, mend, sub_len)
-    //         else:
-    //             offset = mend
-    auto finditer(std::string_view subject) const {
-        uint64_t offset = 0;
-        uint64_t sub_len = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject));
-        const uint8_t* s_data = reinterpret_cast<const uint8_t*>(subject.data());
-        return ::tpy::make_generator<Match>(
-            [this, subject = std::string(subject), offset, sub_len, s_data]() mutable -> std::optional<Match> {
-                while ((offset <= sub_len)) {
-                    ::pcre2_match_data_8* md_raw = ::pcre2_match_data_create_from_pattern_8((*this)._code.get(), nullptr);
-                    if ((md_raw == nullptr)) {
-                        throw error("out of memory allocating match data");
-                    }
-                    _OwnedMatchData md = _OwnedMatchData(md_raw);
-                    int32_t rc = ::pcre2_match_8((*this)._code.get(), s_data, sub_len, offset, 0, md.get(), (*this)._mctx.get());
-                    if ((rc < 0)) {
-                        if ((rc == ::tpystd::_bindings::pcre2::PCRE2_ERROR_NOMATCH)) {
-                            break;
-                        }
-                        throw error(_pcre2_error_msg(rc));
-                    }
-                    const uint64_t* ovec = ::pcre2_get_ovector_pointer_8(md.get());
-                    uint64_t mstart = ovec[0];
-                    uint64_t mend = ovec[1];
-                    auto __val = Match(std::move(md), subject, rc);
-                    if ((mend == mstart)) {
-                        offset = _utf8_advance(s_data, mend, sub_len);
-                    } else {
-                        offset = mend;
-                    }
-                    return std::optional<Match>(std::move(__val));
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Pattern_finditer finditer(std::string_view subject) const;
 
     // def findall(self, subject: str) -> Own[list[str]]:
     std::vector<std::string> findall(std::string_view subject) const;
@@ -336,6 +274,44 @@ struct Pattern {
 inline std::ostream& operator<<(std::ostream& os, const Pattern& obj) {
     ::tpy::print_object_default(os, "Pattern", obj);
     return os;
+}
+
+// def finditer(self, subject: str) -> Iterator[Own[Match]]:
+struct __gen_Pattern_finditer : public ::tpy::next_iter_mixin<__gen_Pattern_finditer, Match> {
+    int32_t __state;
+    const Pattern& __self;
+    std::string subject;
+    uint64_t offset;
+    uint64_t sub_len;
+    const uint8_t* s_data;
+    ::pcre2_match_data_8* md_raw;
+    ::tpy::frame_slot<_OwnedMatchData> md;
+    int32_t rc;
+    const uint64_t* ovec;
+    uint64_t mstart;
+    uint64_t mend;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_Pattern_finditer(const Pattern& __self, std::string_view subject_)
+        : __state(S_INITIAL), __self(__self), subject(std::string(subject_)) {}
+
+    std::expected<Match, ::tpy::StopIteration> __next__();
+    __gen_Pattern_finditer& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Pattern_finditer&) {
+        return os << "<generator Pattern.finditer>";
+    }
+};
+
+inline __gen_Pattern_finditer Pattern::finditer(std::string_view subject) const {
+    return __gen_Pattern_finditer(*this, subject);
 }
 
 

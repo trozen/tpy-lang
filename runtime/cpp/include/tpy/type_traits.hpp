@@ -205,24 +205,6 @@ template<typename T> using val_or_ref_t       = typename detail::val_or_ref_impl
 template<typename T> using val_or_cref_t      = typename detail::val_or_cref_impl<T>::type;
 template<typename T> using param_val_or_ref_t = typename detail::param_val_or_ref_impl<T>::type;
 
-// The parameter form for a generic `T` slot whose callee's FRAME borrows it
-// past the statement -- a generator factory, whose simple-generator peephole
-// captures the slot by reference (`[&value]`, a capture form decided on the
-// open `T`, BUGS.md#simple-generator-captures-open-t-param-by-reference). It
-// must be a REFERENCE at every instantiation, so the capture binds the call
-// site's object: a by-value view parameter's capture binds the parameter
-// object, which dies when the factory returns. That rules out the view rows
-// `param_val_or_ref_t` carries for the two types whose own parameter form is a
-// view, and nothing else -- so this is that trait's PRIMARY formula with the
-// specializations bypassed, mutable for a reference type (a body that mutates
-// the slot writes through to the caller, as it does at a monomorphic one) and
-// const for a value type.
-namespace detail {
-    template<typename T> struct borrow_frame_param_impl { using type = std::conditional_t<is_value_type<T>::value, const T&, T&>; };
-    template<> struct borrow_frame_param_impl<void> { using type = void; };
-}
-template<typename T> using borrow_frame_param_t = typename detail::borrow_frame_param_impl<T>::type;
-
 // Tuple-element borrow form for a generic T -- the pointer sibling of
 // val_or_ref_t. A reference can't be a std::tuple member and the concrete
 // tuple borrow form is std::tuple<..., T*>, so generic tuple slots use a bare

@@ -4,9 +4,8 @@
 # the bare name "Bag" instead resolves it to the LOCAL Bag.__iter__ -- a
 # self-edge -- and the program is rejected as a recursive delegation.
 #
-# The local __iter__ must have TWO yields: a single-yield one takes the
-# simple-generator lambda and is never an emit unit, so the collision could not
-# fire and the case would pass vacuously.
+# The local __iter__ is a frame emit unit of its own, which is what lets the
+# name-keyed edge collide at all.
 from typing import Iterator
 import bags
 from tpy import int32

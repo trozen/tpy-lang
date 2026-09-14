@@ -63,7 +63,7 @@ _FRESH_COLLECTION_NODES = (
 )
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, is_dyn_protocol
 from ..value_category import (async_return_form, AsyncReturnForm,
-                              borrowing_frame_callee,
+                              frame_factory_callee,
                               materializing_temp_source, peel_coerce)
 from .gen_generators import (GeneratorCodegen, GeneratorForInfo,
                              owned_view_frame_params)
@@ -306,10 +306,6 @@ class AsyncCoroCodegen:
         self.ctx = ctx
         self.types = types
         self.functions = functions
-        # The body-context seeding (`setup_resumable_frame_locals`) consumes
-        # the frame-layout plan but runs on the ctx, which has no emitter
-        # back-reference -- hand it the builder.
-        ctx.frame_layout_builder = self._frame_layout
         # Set by CodeGenerator after init; the resumable for-loop emit reuses
         # the legacy strategy analysis (`_analyze_for_strategy`).
         self.gen_generators: GeneratorCodegen
@@ -476,8 +472,8 @@ class AsyncCoroCodegen:
                 else:
                     # Non-value union: the pointer-variant borrow form
                     # (`::tpy::Union<A*, B*>`) is the shape every other param
-                    # boundary uses -- ordinary functions, simple generators,
-                    # plain locals. Storing it by value in the frame keeps the
+                    # boundary uses -- ordinary functions, plain locals.
+                    # Storing it by value in the frame keeps the
                     # factory's signature in step with what the call site (and
                     # the emplace path) already build; a value-variant-by-ref
                     # field would be the lone divergence. Deep-const when the
@@ -1272,7 +1268,7 @@ class AsyncCoroCodegen:
         different reason: the handle LEAVES this frame, so seating its argument
         here would pin the argument to a frame that dies first.
 
-        The callee test is the one the lowering row uses (`borrowing_frame_
+        The callee test is the one the lowering row uses (`frame_factory_
         callee`, plus an async def), so the hoist and the row cannot disagree
         about which callee keeps an argument past the statement.
 
@@ -1326,7 +1322,7 @@ class AsyncCoroCodegen:
             if not isinstance(e, (TpyCall, TpyMethodCall)):
                 return
             fi = e.resolved_function_info
-            if fi is not None and (borrowing_frame_callee(fi) or fi.is_async):
+            if fi is not None and (frame_factory_callee(fi) or fi.is_async):
                 found.append((e, escapes))
             if isinstance(e, TpyMethodCall):
                 visit(e.obj, escapes)
@@ -1625,13 +1621,9 @@ class AsyncCoroCodegen:
         # alias-vs-own is not decidable here either.
         source_form_fields.update(state.with_target_payloads)
         # Statement-level borrow aliases (single-assign / tuple-unpack)
-        # also get a `T*` field rather than an owning frame_slot<T>. The
-        # alias model belongs to the resumable FRAME (a `T*` field kept
-        # live across suspensions); a simple-peephole generator keeps its
-        # locals on the lambda stack, so its plan must classify with the
-        # empty set -- running the prescan here would change its verdicts.
-        if not GeneratorCodegen.is_simple_generator(func):
-            pointer_form_names.update(self._classify_pointer_alias_locals(func))
+        # also get a `T*` field rather than an owning frame_slot<T>: a `T*`
+        # field kept live across suspensions.
+        pointer_form_names.update(self._classify_pointer_alias_locals(func))
         const_aliases = state.const_pointer_alias_locals | const_loop_vars
 
         bindings: dict[str, rcfg.FrameLocalLayout] = {}
@@ -5249,8 +5241,7 @@ class AsyncCoroCodegen:
                                     stmt: 'rcfg.AsyncForIterSetup',
                                     func: TpyFunction) -> None:
         """Initialize for-loop iteration state into the frame, per strategy
-        (mirrors the simple-generator peephole init so range / begin_end
-        generators keep their fast shape):
+        (range / begin_end generators keep their fast shape):
           async_for: `__for_itr.emplace((it).__aiter__())`
           range:     `__for_i`/`__for_stop`[/`__for_step`] counters
           begin_end: `[__for_src.emplace(...);] __for_it.emplace(src.begin()); __for_end.emplace(...end())`

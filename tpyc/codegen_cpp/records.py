@@ -593,29 +593,24 @@ class RecordGenerator:
         for method in record.methods:
             if self._skip_method_emission(method):
                 continue
-            # Generator methods: emit inline (simple) or declaration-only (complex)
             if method.is_generator:
-                if self.gen_generators.is_simple_generator(method):
-                    self.gen_generators.gen_simple_generator_inline(
-                        out, method, record_name=record.name)
-                else:
-                    # Declaration only -- body defined after generator struct.
-                    # Use the resumable emitter's templated struct name so a
-                    # method on a generic class spells the return type as
-                    # `__gen_Box_items<T>`, not the bare name.
-                    with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
-                        struct_name = self.gen_async._struct_name_templated(
-                            method, record.name)
-                    params = self.gen_async._emit_method_params_decl(
-                        method, record.name, emit_defaults=True)
-                    const_suffix = " const" if method.is_readonly else ""
-                    out.write("\n")
-                    # In-class method declaration: do NOT pass record_name --
-                    # the enclosing class template's `[T1, ...]` are already
-                    # in scope here, so emit only the method's own type
-                    # params / proto-typed-param template args (or nothing).
-                    self.gen_async._emit_template_header(out, method, indent=INDENT)
-                    out.write(f"{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
+                # Declaration only -- body defined after generator struct.
+                # Use the resumable emitter's templated struct name so a
+                # method on a generic class spells the return type as
+                # `__gen_Box_items<T>`, not the bare name.
+                with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                    struct_name = self.gen_async._struct_name_templated(
+                        method, record.name)
+                params = self.gen_async._emit_method_params_decl(
+                    method, record.name, emit_defaults=True)
+                const_suffix = " const" if method.is_readonly else ""
+                out.write("\n")
+                # In-class method declaration: do NOT pass record_name --
+                # the enclosing class template's `[T1, ...]` are already
+                # in scope here, so emit only the method's own type
+                # params / proto-typed-param template args (or nothing).
+                self.gen_async._emit_template_header(out, method, indent=INDENT)
+                out.write(f"{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
                 continue
             # Async methods: declaration-only inside the struct; the factory
             # body and the coro struct land in `generator.py`'s post-struct

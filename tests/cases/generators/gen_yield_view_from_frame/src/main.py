@@ -8,8 +8,8 @@
 # promoted to owned during view deduction -- so what this case pins is the
 # sources that are still views there: a literal source (static storage, so
 # deduction leaves it a view), an annotated StrView (promotion must not touch a
-# user's declared view contract), and the same two on the bytes side and on the
-# make_generator lambda, which owns a second copy of the sink.
+# user's declared view contract), and the same two on the bytes side and at a
+# single yield inside a trailing loop.
 #
 # The inverse is `owned_param_stays_bare`: a str param is copied into owned
 # frame storage on the way in, so the sink must leave it alone rather than copy
@@ -62,9 +62,9 @@ def with_view_target(h: Holder) -> Iterator[str]:
         yield label
 
 
-# A single yield inside the trailing loop stays on the make_generator lambda,
-# which reaches the sink through its own emitter -- covered here so the copy is
-# pinned on both paths at exec level, not only in the THIR unit pins.
+# A single yield inside the trailing loop: the same frame render as the
+# two-yield generators above, kept so the copy at this loop shape stays pinned
+# at exec level.
 def peephole_view(n: int32) -> Iterator[str]:
     lit = "peephole"
     i = 0

@@ -11,6 +11,8 @@ struct Walker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_Walker_walk;
+
 // def drop(xs: Own[list[int32]]) -> int32:
 int32_t drop(std::vector<int32_t>&& xs);
 // def main():
@@ -20,28 +22,44 @@ void main();
 struct Walker {
 
 
-    // def walk(self, xs: list[int32]) -> Iterator[int32]:
-    //     for x in xs:
-    //         yield x
-    auto walk(std::vector<int32_t>& xs) const {
-        return ::tpy::make_generator<int32_t>(
-            [this, &xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-                if (!__init) { __beg = (xs).begin(); __end = (xs).end(); __init = true; }
-                if (__beg != __end) {
-                    int32_t x = *__beg++;
-                    auto __val = x;
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Walker_walk walk(std::vector<int32_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Walker";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
     ::tpy::print_object_default(os, "Walker", obj);
     return os;
+}
+
+// def walk(self, xs: list[int32]) -> Iterator[int32]:
+struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int32_t> {
+    int32_t __state;
+    const Walker& __self;
+    std::vector<int32_t>& xs;
+    int32_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Walker_walk(const Walker& __self, std::vector<int32_t>& xs)
+        : __state(S_INITIAL), __self(__self), xs(xs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Walker_walk& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Walker_walk&) {
+        return os << "<generator Walker.walk>";
+    }
+};
+
+inline __gen_Walker_walk Walker::walk(std::vector<int32_t>& xs) const {
+    return __gen_Walker_walk(*this, xs);
 }
 
 void __tpy_init();

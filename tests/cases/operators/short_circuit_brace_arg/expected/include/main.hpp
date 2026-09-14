@@ -17,6 +17,9 @@ struct Bx;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen;
+struct __gen_Bx_gen;
+
 // def bump(t: Tally) -> int64:
 int64_t bump(Tally& t);
 // def take_i64(o: list[int64]) -> int64:
@@ -40,6 +43,8 @@ int64_t take_set(::tpy::ordered_set<int64_t>& o);
 // def take_any[T](o: T) -> int64:
 template<typename T>
 int64_t take_any(::tpy::param_val_or_ref_t<T> o);
+// def gen(o: list[int64]) -> Iterator[int64]:
+__gen_gen gen(std::vector<int64_t>& o);
 // def free_call(flag: bool) -> int64:
 int64_t free_call(bool flag);
 // def user_ctor() -> int64:
@@ -153,28 +158,70 @@ struct Bx {
     // def __init__(self) -> None:
     Bx();
 
-    // def gen(self, o: list[int64]) -> Iterator[int64]:
-    //     for x in o:
-    //         yield x
-    auto gen(std::vector<int64_t>& o) const {
-        return ::tpy::make_generator<int64_t>(
-            [this, &o, __beg = decltype((o).begin())(), __end = decltype((o).begin())(), __init = false]() mutable -> std::optional<int64_t> {
-                if (!__init) { __beg = (o).begin(); __end = (o).end(); __init = true; }
-                if (__beg != __end) {
-                    int64_t x = *__beg++;
-                    auto __val = x;
-                    return std::optional<int64_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Bx_gen gen(std::vector<int64_t>& o) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bx";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bx& obj) {
     ::tpy::print_object_default(os, "Bx", obj);
     return os;
+}
+
+// def gen(o: list[int64]) -> Iterator[int64]:
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int64_t> {
+    int32_t __state;
+    std::vector<int64_t>& o;
+    int64_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int64_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int64_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen(std::vector<int64_t>& o)
+        : __state(S_INITIAL), o(o) {}
+
+    std::expected<int64_t, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
+// def gen(self, o: list[int64]) -> Iterator[int64]:
+struct __gen_Bx_gen : public ::tpy::next_iter_mixin<__gen_Bx_gen, int64_t> {
+    int32_t __state;
+    const Bx& __self;
+    std::vector<int64_t>& o;
+    int64_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int64_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int64_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Bx_gen(const Bx& __self, std::vector<int64_t>& o)
+        : __state(S_INITIAL), __self(__self), o(o) {}
+
+    std::expected<int64_t, ::tpy::StopIteration> __next__();
+    __gen_Bx_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Bx_gen&) {
+        return os << "<generator Bx.gen>";
+    }
+};
+
+inline __gen_Bx_gen Bx::gen(std::vector<int64_t>& o) const {
+    return __gen_Bx_gen(*this, o);
 }
 
 
@@ -199,23 +246,6 @@ template<typename T>
 int64_t take_any(::tpy::param_val_or_ref_t<T> o) {
     return 1;
 }
-// def gen(o: list[int64]) -> Iterator[int64]:
-//     for x in o:
-//         yield x
-inline auto gen(std::vector<int64_t>& o) {
-    return ::tpy::make_generator<int64_t>(
-        [&o, __beg = decltype((o).begin())(), __end = decltype((o).begin())(), __init = false]() mutable -> std::optional<int64_t> {
-            if (!__init) { __beg = (o).begin(); __end = (o).end(); __init = true; }
-            if (__beg != __end) {
-                int64_t x = *__beg++;
-                auto __val = x;
-                return std::optional<int64_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
 
 void __tpy_init();
 } // namespace tpyapp::main

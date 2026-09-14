@@ -1,7 +1,6 @@
 # Generator conditions carrying an anonymous argument temp: the temp
-# re-evaluates per pull. In the peephole it lands in the lambda's loop head
-# (a walrus pre-decl goes to lambda scope); in the RESUMABLE FRAME it lands
-# inside the `case` block, so it is rebuilt on every re-entry.
+# re-evaluates per pull. In the resumable frame it lands inside the `case`
+# block, so it is rebuilt on every re-entry.
 from typing import Iterator
 
 

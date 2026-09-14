@@ -33,8 +33,7 @@ std::string mk() {
 void main() {
     int32_t count = 0;
     {
-        std::string __tmp_1 = "hi";
-        auto __src_0 = rep<std::string>(__tmp_1);
+        auto __src_0 = rep<std::string>("hi");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -48,8 +47,7 @@ void main() {
         }
     }
     {
-        int32_t __tmp_2 = 9;
-        auto __src_2 = rep<int32_t>(__tmp_2, 3);
+        auto __src_2 = rep<int32_t>(9, 3);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -59,8 +57,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_3 = mk();
-        auto __src_4 = rep<std::string>(__tmp_3, 2);
+        auto __src_4 = rep<std::string>(mk(), 2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

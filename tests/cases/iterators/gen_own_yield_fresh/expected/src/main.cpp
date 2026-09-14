@@ -4,6 +4,41 @@
 namespace tpyapp::main {
 
 
+// def boxes(n: int) -> Iterator[Own[Node]]:
+//     for i in range(n):
+//         yield Node(i)                      # -> S_RESUME_0
+std::expected<Node, ::tpy::StopIteration> __gen_boxes::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(::tpy::BigInt(0));
+        __for_stop_0.emplace(static_cast<::tpy::BigInt>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield Node(i)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        __state = S_RESUME_0;
+        return Node(i);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def boxes(n: int) -> Iterator[Own[Node]]:
+__gen_boxes boxes(::tpy::BigInt n) {
+    return __gen_boxes(n);
+}
+
 // def mk(v: int32) -> Own[Node]:
 //     return Node(v)
 Node mk(int32_t v) {

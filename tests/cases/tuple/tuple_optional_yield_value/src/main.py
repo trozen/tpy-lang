@@ -2,7 +2,7 @@
 # (int32 | None). uses_pointer_repr() is False, so has_pointer_repr_optional_element()
 # returns False and the storage-form lift does NOT fire -- value-type Optionals
 # already live in std::optional<int32_t> regardless of context. Documents the
-# negative case of the gating predicate added in the NativeIterable peephole fix.
+# negative case of the gating predicate on the tuple yield's storage-form lift.
 from typing import Iterator
 from tpy import int32
 

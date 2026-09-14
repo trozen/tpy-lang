@@ -744,8 +744,9 @@ each on a distinct compiler gap: `chain` / `product` / `permutations` /
 `combinations` (variadic tuples), `compress` (zip /
 cross-module-iterator-in-generator), `accumulate` (generic accumulator across
 the resumable frame), `pairwise` (`Optional[T]`-across-yield tuple miscompile),
-`starmap` (simple-peephole `Iterable`-param dangling capture for the 2-arg
-form; variadic form also needs variadic tuples), `tee` / `groupby`
+`starmap` (2-arg form unblocked since the single-yield generator peephole
+went, 2026-09-12, but not yet implemented; variadic form also needs variadic
+tuples), `tee` / `groupby`
 (buffering). Each deferred gap is filed in BUGS.md / TODO.md. The
 `islice(start, stop[, step])` form -- now unblocked by the overloaded-generator
 fix -- is a future addition (new functionality, via `/tpy-add-feature`).
@@ -764,7 +765,7 @@ case, are unaffected). `islice(it, negative)` yields `[]` rather than raising
 | `count`, `cycle`, `repeat` | Done | Pure TPy; `repeat` exposes CPython's `repeat(object)` / `repeat(object, times)` via `@overload` (private `Optional` sentinel impl; `repeat(object, None)` rejected) |
 | `takewhile`, `dropwhile`, `filterfalse` | Done | Pure TPy; `Fn` predicate param |
 | `islice` | Partial | `islice(it, stop)` only; the `(start, stop[, step])` form is future work (overloaded generators now unblocked; needs `/tpy-add-feature`) |
-| `starmap` | Missing | 2-arg form blocked on the simple-peephole `Iterable`-param dangling-capture bug (BUGS.md); variadic form also needs variadic tuples |
+| `starmap` | Missing | 2-arg form unblocked (its blocker, the single-yield generator peephole's `Iterable`-param dangling capture, went with the peephole on 2026-09-12) but not yet implemented; variadic form also needs variadic tuples |
 | `chain`, `chain.from_iterable` | Missing | Blocked on variadic tuples |
 | `compress` | Missing | Blocked on zip / cross-module-iterator-in-generator |
 | `tee` | Missing | Needs buffering |

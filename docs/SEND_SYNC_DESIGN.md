@@ -249,7 +249,6 @@ This collapses OQ2 and OQ3 into the same machinery: OQ2's `Send[T]` wrapper and 
 | Hoisted non-value locals across await/yield | `tpy::frame_slot<T>` | `gen_async.py:664`, `gen_generators.py:702` |
 | Borrowed async awaitables | raw pointer | `gen_async.py:679` |
 | Value-type params (`int32`, `bool`, `float`, `char`, ...) | `T` by value | -- |
-| Simple-generator lambda captures of non-value params | reference | `gen_generators.py:614` |
 
 The Send rule walks whatever slot shape is actually emitted:
 

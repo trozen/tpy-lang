@@ -151,6 +151,92 @@ std::vector<std::string> split(std::string_view pattern, std::string_view subjec
     return Pattern(pattern, flags).split(subject, maxsplit);
 }
 
+// def finditer(self, subject: str) -> Iterator[Own[Match]]:
+//     """All non-overlapping matches, yielded lazily (like CPython).
+//
+//     Yields `Own[Match]` -- a Match owns its PCRE2 match-data, so it
+//     moves out of the generator by value rather than borrowing a frame
+//     local."""
+//     offset: uint64 = 0
+//     sub_len = uint64(len(subject))
+//     s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
+//     while offset <= sub_len:
+//         md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
+//         if md_raw is None:
+//             raise error("out of memory allocating match data")
+//         md = _OwnedMatchData(md_raw)
+//         rc = pcre2.match(self._code.get(), s_data, sub_len, offset,
+//                          0, md.get(), self._mctx.get())
+//         if rc < 0:
+//             if rc == pcre2.PCRE2_ERROR_NOMATCH:
+//                 break          # md drops at end of iteration
+//             raise error(_pcre2_error_msg(rc))   # md drops
+//         ovec = pcre2.get_ovector_pointer(md.get())
+//         mstart = unsafe_load(ovec, 0)
+//         mend = unsafe_load(ovec, 1)
+//         # mstart/mend are read before the yield moves `md` into the
+//         # Match, so the post-resume bump-along still has the offsets.
+//         yield Match(md, subject, rc)                                           # -> S_RESUME_0
+//         # Bump-along on zero-width match to avoid an infinite loop.
+//         if mend == mstart:
+//             offset = _utf8_advance(s_data, mend, sub_len)
+//         else:
+//             offset = mend
+std::expected<Match, ::tpy::StopIteration> __gen_Pattern_finditer::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        offset = 0;
+        sub_len = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject));
+        s_data = reinterpret_cast<const uint8_t*>(subject.data());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield Match(md, subject, rc)
+        if ((mend == mstart)) {
+            offset = _utf8_advance(s_data, mend, sub_len);
+        } else {
+            offset = mend;
+        }
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((offset <= sub_len)) {
+            md_raw = ::pcre2_match_data_create_from_pattern_8(__self._code.get(), nullptr);
+            if ((md_raw == nullptr)) {
+                throw error("out of memory allocating match data");
+            }
+            md.emplace(_OwnedMatchData(md_raw));
+            rc = ::pcre2_match_8(__self._code.get(), s_data, sub_len, offset, 0, (*md).get(), __self._mctx.get());
+            if ((rc < 0)) {
+                if ((rc == ::tpystd::_bindings::pcre2::PCRE2_ERROR_NOMATCH)) {
+                    __state = S_JOIN_1;
+                    continue;
+                } else {
+                    throw error(_pcre2_error_msg(rc));
+                }
+            } else {
+                ovec = ::pcre2_get_ovector_pointer_8((*md).get());
+                mstart = ovec[0];
+                mend = ovec[1];
+                __state = S_RESUME_0;
+                return Match(std::move((*md)), subject, rc);
+            }
+        } else {
+            __state = S_JOIN_1;
+            continue;
+        }
+    }
+    case S_JOIN_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
 
 // @staticmethod
 // def _compile(pattern: str, flags: int32) -> Ptr[pcre2.Code]:

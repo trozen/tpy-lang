@@ -1,8 +1,8 @@
-# Regression: a module-level constant access (mod.CONST) inside a simple
-# (single-yield) generator's loop body. The simple-generator peephole emitted
-# the loop condition + body with current_ns cleared, so mod.CONST fell out of
-# the binding-based field-access dispatch and crashed codegen. Both the while
-# and for peephole forms are covered.
+# Regression: a module-level constant access (mod.CONST) inside a single-yield
+# generator's loop body. The generator emit once rendered the loop condition +
+# body with current_ns cleared, so mod.CONST fell out of the binding-based
+# field-access dispatch and crashed codegen. Both the while and for loop forms
+# are covered.
 from typing import Iterator
 from tpy import int32
 import caps

@@ -66,6 +66,36 @@ void main() {
     std::cout << "mutations reached the bag:" << " " << ::tpy::__getitem__(bag.items, 0).x << " " << ::tpy::__getitem__(bag.items, 1).x << "\n";
 }
 
+// def __iter__(self) -> Iterator[Point]:
+//     for p in self.items:
+//         yield p                         # -> S_RESUME_0
+std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((__self.items).begin());
+        __for_end_0.emplace((__self.items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield p
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        p = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*p);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
 // main()
 void __tpy_init() {
     static bool initialized = false;

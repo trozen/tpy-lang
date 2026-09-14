@@ -1,7 +1,5 @@
-# A SIMPLE generator delegating to a cross-module generator call: the lambda
-# __src init-capture deduces the callee's type, so no struct name is spelled.
-# The resumable path spells one, and rejects only a SIMPLE callee -- see
-# error_gen_delegate_cross_module_simple.
+# A single-yield generator delegating to a cross-module generator call; the
+# two-yield twin is gen_resumable_delegate_cross_module.
 from typing import Iterator
 from tpy import int32
 from itersrc import walk

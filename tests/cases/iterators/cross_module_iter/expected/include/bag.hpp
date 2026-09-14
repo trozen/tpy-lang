@@ -11,6 +11,9 @@ template<typename T> struct Bag;
 
 inline constexpr std::string_view __name__ = "bag";
 
+template <typename T>
+struct __gen_Bag___iter__;
+
 // def make_bag[T](items: Own[list[T]]) -> Own[Bag[T]]:
 template<typename T>
 Bag<T> make_bag(std::vector<T>&& items);
@@ -32,22 +35,7 @@ struct Bag {
     Bag(Bag&&) = default;
     Bag& operator=(Bag&&) = default;
 
-    // def __iter__(self) -> Iterator[T]:
-    //     for x in self._items:
-    //         yield x
-    auto __iter__() {
-        return ::tpy::make_generator<T>(
-            [this, __beg = decltype(((*this)._items).begin())(), __end = decltype(((*this)._items).begin())(), __init = false]() mutable -> std::optional<T> {
-                if (!__init) { __beg = ((*this)._items).begin(); __end = ((*this)._items).end(); __init = true; }
-                if (__beg != __end) {
-                    auto&& x = *__beg++;
-                    auto&& __val = x;
-                    return std::optional<T>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Bag___iter__<T> __iter__();
     static constexpr std::string_view __tpy_class_name__ = "bag.Bag";
 };
 
@@ -55,6 +43,69 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
     ::tpy::print_object_default(os, "Bag", obj);
     return os;
+}
+
+// def __iter__(self) -> Iterator[T]:
+template <typename T>
+struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__<T>, T> {
+    int32_t __state;
+    Bag<T>& __self;
+    T* x = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Bag___iter__(Bag<T>& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<T, ::tpy::StopIteration> __next__();
+    __gen_Bag___iter__& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Bag___iter__<T>&) {
+        return os << "<generator Bag.__iter__>";
+    }
+};
+
+// def __iter__(self) -> Iterator[T]:
+//     for x in self._items:
+//         yield x                     # -> S_RESUME_0
+template <typename T>
+std::expected<T, ::tpy::StopIteration> __gen_Bag___iter__<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((__self._items).begin());
+        __for_end_0.emplace((__self._items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*x);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+template <typename T>
+inline __gen_Bag___iter__<T> Bag<T>::__iter__() {
+    return __gen_Bag___iter__<T>(*this);
 }
 
 // def make_bag[T](items: Own[list[T]]) -> Own[Bag[T]]:

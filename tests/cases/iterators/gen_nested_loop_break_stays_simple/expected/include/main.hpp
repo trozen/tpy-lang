@@ -9,39 +9,40 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_sums;
+
+// def sums(items: list[int32]) -> Iterator[int32]:
+__gen_sums sums(std::vector<int32_t>& items);
 // def main() -> None:
 void main();
 
 // def sums(items: list[int32]) -> Iterator[int32]:
-//     for x in items:
-//         acc: int32 = 0
-//         for j in range(x):
-//             if j >= 2:
-//                 break
-//             acc += j
-//         yield acc
-inline auto sums(std::vector<int32_t>& items) {
-    return ::tpy::make_generator<int32_t>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t x = *__beg++;
-                int32_t acc = 0;
-                int32_t __stop_0 = x;
-                for (int32_t j = 0; j < __stop_0; ++j) {
-                    if ((j >= 2)) {
-                        break;
-                    }
-                    acc = ::tpy::add_check<int32_t>(acc, j);
-                }
-                auto __val = acc;
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
+    int32_t __state;
+    std::vector<int32_t>& items;
+    int32_t j;
+    int32_t x;
+    int32_t acc;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_sums(std::vector<int32_t>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_sums& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_sums&) {
+        return os << "<generator sums>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

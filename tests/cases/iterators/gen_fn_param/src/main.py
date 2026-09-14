@@ -12,14 +12,14 @@ def double(n: int32) -> int32:
     return n * 2
 
 
-# Resumable (yield nested in if), concrete element type, Fn predicate.
+# Yield nested in an if, concrete element type, Fn predicate.
 def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
     for x in it:
         if not pred(x):
             yield x
 
 
-# Resumable (Fn + break).
+# Fn + break.
 def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
     for x in it:
         if not pred(x):
@@ -27,7 +27,7 @@ def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
         yield x
 
 
-# Multi-yield Fn generator (forces resumable distinctly from break/if).
+# Multi-yield Fn generator.
 def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
     for x in it:
         yield x
@@ -35,8 +35,8 @@ def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
             yield x * 10
 
 
-# Simple-peephole Fn generator (yield is a direct child) -- the inverse:
-# this path already worked and must keep working.
+# Fn generator whose yield is a direct loop child -- the same frame at the
+# plainest shape.
 def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
     for x in it:
         yield fn(x)

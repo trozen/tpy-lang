@@ -65,10 +65,10 @@ __gen_gen_while gen_while(::tpy::BigInt n) {
 // def gen_branch(n: int) -> Iterator[int]:
 //     i = 0
 //     while i < n:
-//         # The suspend inside the branch forces the resumable CFG, not the
-//         # simple-generator peephole.
+//         # The suspend inside the branch routes the condition through the
+//         # resumable CFG's branch.
 //         if make():
-//             yield i                                                        # -> S_RESUME_0
+//             yield i                                                       # -> S_RESUME_0
 //         i += 1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_branch::__next__() {
     while (true) switch (__state) {

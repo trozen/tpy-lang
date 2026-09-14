@@ -1,6 +1,9 @@
 free: 0
 free: 1
 free: 2
+single: 5
+single: 1
+single: 2
 modcall: 10
 modcall: 1
 modcall: 2

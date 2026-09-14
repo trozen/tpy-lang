@@ -4,7 +4,7 @@ import asyncio
 from typing import Iterator
 from tpy import int32, Own
 import gensrc
-from gensrc import Bag, Box, Src, chatty, guarded, pair, walk
+from gensrc import Bag, Box, Src, chatty, guarded, pair, walk, walk_once
 
 
 class LocalBox[T]:
@@ -22,6 +22,14 @@ class LocalBox[T]:
 def free_import() -> Iterator[int32]:
     yield 0
     for x in walk():  # tpyc: ok
+        yield x
+
+
+# single-yield callee in the other module: its frame struct is complete in
+# its header like any other generator's
+def single_yield_import() -> Iterator[int32]:
+    yield 5
+    for x in walk_once():  # tpyc: ok
         yield x
 
 
@@ -98,6 +106,8 @@ async def async_position() -> int32:
 def main() -> None:
     for v in free_import():
         print("free:", v)
+    for v in single_yield_import():
+        print("single:", v)
     for v in module_call():
         print("modcall:", v)
     for v in imported_method(Src(7)):

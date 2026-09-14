@@ -11,6 +11,10 @@ struct Res;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen;
+
+// def gen(items: list[Res]) -> Iterator[Res]:  # tpyc: ok
+__gen_gen gen(std::vector<Res>& items);
 // def main() -> None:
 void main();
 
@@ -37,6 +41,32 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
     return os;
 }
 
+// def gen(items: list[Res]) -> Iterator[Res]:  # tpyc: ok
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<Res>> {
+    int32_t __state;
+    std::vector<Res>& items;
+    Res* r = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Res>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Res>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen(std::vector<Res>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<::tpy::val_or_ref<Res>, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
 
 // def __init__(self, fd: int32) -> None:
 //     self.fd = fd
@@ -60,23 +90,5 @@ inline Res& Res::operator=(Res&& other) noexcept {
 inline Res::~Res() {
     if (!this->__tpy_owned_) return;
 }
-// def gen(items: list[Res]) -> Iterator[Res]:  # tpyc: ok
-//     for r in items:
-//         yield r
-inline auto gen(std::vector<Res>& items) {
-    return ::tpy::make_generator<::tpy::val_or_ref<Res>>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Res>> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& r = *__beg++;
-                auto&& __val = r;
-                return std::optional<::tpy::val_or_ref<Res>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

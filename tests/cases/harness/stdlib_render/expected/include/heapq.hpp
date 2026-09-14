@@ -15,6 +15,9 @@ namespace tpystd::heapq {
 
 inline constexpr std::string_view __name__ = "heapq";
 
+template <typename T>
+struct __gen_merge;
+
 // def _siftdown[T: Comparable](heap: list[T], startpos: int32, pos: int32) -> None:
 template<::tpystd::tpy::Comparable T>
 void _siftdown(std::vector<T>& heap, int32_t startpos, int32_t pos);
@@ -42,6 +45,132 @@ std::vector<T> nsmallest(int32_t n, const std::vector<T>& a);
 // def nlargest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
 template<::tpystd::tpy::Comparable T>
 std::vector<T> nlargest(int32_t n, const std::vector<T>& a);
+// def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
+template <typename T>
+__gen_merge<T> merge(::tpy::varargs<const std::vector<T>> iterables);
+
+// def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
+template <typename T>
+struct __gen_merge : public ::tpy::next_iter_mixin<__gen_merge<T>, T> {
+    int32_t __state;
+    ::tpy::varargs<const std::vector<T>> iterables;
+    ::tpy::frame_slot<std::vector<int32_t>> cursors;
+    int32_t best;
+    int32_t i;
+    ::tpy::frame_slot<std::vector<T>> src;
+    int32_t c;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_merge(::tpy::varargs<const std::vector<T>> iterables_)
+        : __state(S_INITIAL), iterables(std::move(iterables_)) {}
+
+    std::expected<T, ::tpy::StopIteration> __next__();
+    __gen_merge& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_merge<T>&) {
+        return os << "<generator merge>";
+    }
+};
+// # One cursor per input; each step scans the live heads and emits the smallest,
+// # advancing only that input's cursor. O(inputs) per element vs CPython's
+// # O(log inputs) heap -- merging many streams is rare, so the linear scan is the
+// # simpler tradeoff (and a value-ordered heap can't help here: its comparator
+// # can't reach back into the source lists, so it would have to store a copy or
+// # an unsafe pointer per entry). Strict `<` makes the lowest-indexed input win
+// # ties, so equal elements emit in input order -- stable, like CPython.
+// #
+// # Inputs are compared in place by index, never copied into merge state. The
+// # yield is an explicit `copy()` into an owned `Own[T]` slot, so the consumer
+// # owns each element (it can store it without an implicit-copy warning) -- which
+// # is why merge yields copies, not the source objects, for reference-type T (the
+// # copy-not-alias divergence in the header). `iterables[best]` is re-indexed
+// # inline rather than bound to a local: a non-const local alias of the const
+// # vararg element won't compile.
+// def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
+//     cursors: list[int32] = []
+//     for src in iterables:
+//         cursors.append(0)
+//     while True:
+//         best: int32 = -1
+//         i: int32 = 0
+//         for src in iterables:
+//             c: int32 = cursors[i]
+//             if c < len(src) and (best < 0 or src[c] < iterables[best][cursors[best]]):
+//                 best = i
+//             i += 1
+//         if best < 0:
+//             break
+//         yield copy(iterables[best][cursors[best]])                                      # -> S_RESUME_0
+//         cursors[best] = cursors[best] + 1
+template <typename T>
+std::expected<T, ::tpy::StopIteration> __gen_merge<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        cursors.emplace(std::vector<int32_t>{});
+        auto& __obj_0 = iterables;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& src = *__beg_0;
+            (*cursors).push_back(0);
+        }
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield copy(iterables[best][cursors[best]])
+        ::tpy::__setitem__((*cursors), best, (::tpy::add_check<int32_t>(::tpy::__getitem__((*cursors), best), 1)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (true) {
+            best = -1;
+            i = 0;
+            auto& __obj_1 = iterables;
+            auto __beg_1 = __obj_1.begin();
+            auto __end_1 = __obj_1.end();
+            for (; __beg_1 != __end_1; ++__beg_1) {
+                const auto& src = *__beg_1;
+                c = ::tpy::__getitem__((*cursors), i);
+                if (((c < ::tpy::__len__(src)) && ((best < 0) || (::tpy::__getitem__(src, c) < ::tpy::__getitem__(::tpy::__getitem__(iterables, best), ::tpy::__getitem__((*cursors), best)))))) {
+                    best = i;
+                }
+                i = ::tpy::add_check<int32_t>(i, 1);
+            }
+            if ((best < 0)) {
+                __state = S_JOIN_1;
+                continue;
+            } else {
+                __state = S_RESUME_0;
+                return T(::tpy::__getitem__(::tpy::__getitem__(iterables, best), ::tpy::__getitem__((*cursors), best)));
+            }
+        } else {
+            __state = S_JOIN_1;
+            continue;
+        }
+    }
+    case S_JOIN_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
+template <typename T>
+__gen_merge<T> merge(::tpy::varargs<const std::vector<T>> iterables) {
+    return __gen_merge<T>(iterables);
+}
 
 // def _siftdown[T: Comparable](heap: list[T], startpos: int32, pos: int32) -> None:
 //     newitem: T = copy(heap[pos])
@@ -223,75 +352,6 @@ std::vector<T> nlargest(int32_t n, const std::vector<T>& a) {
     }
     return result;
 }
-// # One cursor per input; each step scans the live heads and emits the smallest,
-// # advancing only that input's cursor. O(inputs) per element vs CPython's
-// # O(log inputs) heap -- merging many streams is rare, so the linear scan is the
-// # simpler tradeoff (and a value-ordered heap can't help here: its comparator
-// # can't reach back into the source lists, so it would have to store a copy or
-// # an unsafe pointer per entry). Strict `<` makes the lowest-indexed input win
-// # ties, so equal elements emit in input order -- stable, like CPython.
-// #
-// # Inputs are compared in place by index, never copied into merge state. The
-// # yield is an explicit `copy()` into an owned `Own[T]` slot, so the consumer
-// # owns each element (it can store it without an implicit-copy warning) -- which
-// # is why merge yields copies, not the source objects, for reference-type T (the
-// # copy-not-alias divergence in the header). `iterables[best]` is re-indexed
-// # inline rather than bound to a local: a non-const local alias of the const
-// # vararg element won't compile.
-// def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
-//     cursors: list[int32] = []
-//     for src in iterables:
-//         cursors.append(0)
-//     while True:
-//         best: int32 = -1
-//         i: int32 = 0
-//         for src in iterables:
-//             c: int32 = cursors[i]
-//             if c < len(src) and (best < 0 or src[c] < iterables[best][cursors[best]]):
-//                 best = i
-//             i += 1
-//         if best < 0:
-//             break
-//         yield copy(iterables[best][cursors[best]])
-//         cursors[best] = cursors[best] + 1
-template<::tpystd::tpy::Comparable T>
-inline auto merge(::tpy::varargs<const std::vector<T>> iterables) {
-    std::vector<int32_t> cursors = std::vector<int32_t>{};
-    auto& __obj_0 = iterables;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        const auto& src = *__beg_0;
-        cursors.push_back(0);
-    }
-    return ::tpy::make_generator<T>(
-        [iterables, cursors]() mutable -> std::optional<T> {
-            while (true) {
-                int32_t best = -1;
-                int32_t i = 0;
-                auto& __obj_1 = iterables;
-                auto __beg_1 = __obj_1.begin();
-                auto __end_1 = __obj_1.end();
-                for (; __beg_1 != __end_1; ++__beg_1) {
-                    const auto& src = *__beg_1;
-                    int32_t c = ::tpy::__getitem__(cursors, i);
-                    if (((c < ::tpy::__len__(src)) && ((best < 0) || (::tpy::__getitem__(src, c) < ::tpy::__getitem__(::tpy::__getitem__(iterables, best), ::tpy::__getitem__(cursors, best)))))) {
-                        best = i;
-                    }
-                    i = ::tpy::add_check<int32_t>(i, 1);
-                }
-                if ((best < 0)) {
-                    break;
-                }
-                auto __val = T(::tpy::__getitem__(::tpy::__getitem__(iterables, best), ::tpy::__getitem__(cursors, best)));
-                ::tpy::__setitem__(cursors, best, (::tpy::add_check<int32_t>(::tpy::__getitem__(cursors, best), 1)));
-                return std::optional<T>(std::move(__val));
-            }
-            return std::nullopt;
-        }
-    );
-}
-
 
 void __tpy_init();
 } // namespace tpystd::heapq

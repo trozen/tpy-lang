@@ -4,6 +4,41 @@
 namespace tpyapp::main {
 
 
+// def my_enumerate(items: list[Point]) -> Iterator[tuple[int32, Point]]:
+//     for i in range(len(items)):
+//         yield (int32(i), items[i])                                      # -> S_RESUME_0
+std::expected<std::tuple<int32_t, Point*>, ::tpy::StopIteration> __gen_my_enumerate::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(::tpy::__len__(items)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (int32(i), items[i])
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        __state = S_RESUME_0;
+        return std::tuple<int32_t, Point*>{i, &(items[static_cast<std::size_t>(i)])};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def my_enumerate(items: list[Point]) -> Iterator[tuple[int32, Point]]:
+__gen_my_enumerate my_enumerate(std::vector<Point>& items) {
+    return __gen_my_enumerate(items);
+}
+
 // def main() -> None:
 //     points = [Point(1, 2), Point(3, 4)]
 //     for i, p in my_enumerate(points):

@@ -23,7 +23,7 @@
 | `iter()` builtin | **Done** | `iter(obj)` calls `__iter__()`; two-arg form (sentinel) TODO |
 | `__reversed__` / `reversed()` user types | **Todo** | `reversed()` builtin works on built-in containers; user `__reversed__` is a roadmap item |
 | `__contains__` / `in` for user types | **Todo** | `in` falls back to `__iter__`+`__next__` for non-builtins; user `__contains__` dispatch is a roadmap item |
-| Generator functions (`yield`) | **Done** | State-machine struct or lambda wrapper implementing `Iterator[T]` |
+| Generator functions (`yield`) | **Done** | Resumable-frame state-machine struct implementing `Iterator[T]` |
 | `yield from` | **Todo** | Delegation to sub-generators |
 | Generator `send()`/`throw()`/`close()` | **Todo** | Coroutine protocol |
 | `StopIteration` with value | **Todo** | Generator return values via `raise StopIteration(value)` |
@@ -293,7 +293,7 @@ Iterator yields hand out references like function returns -- mutations through t
 | `tuple[int32, int32]` | `std::tuple<int32_t, int32_t>` (value form -- borrow=value for primitives) |
 | `T` (bare) | `T` (value form -- `T&` directly would make `std::optional<T&>` ill-formed pre-C++26) |
 
-The single decision point is `_iter_slot_for_yield(elem_type, cpp_elem)` in `tpyc/codegen_cpp/gen_generators.py`. All four simple-for branches (NativeIterable peephole, range, direct-iterator, universal-default), the simple-while branch, and state-machine generators (`__next__()`'s return type) route through it.
+The single decision point is `_iter_slot_for_yield(elem_type, cpp_elem)` in `tpyc/codegen_cpp/gen_generators.py`. The generator frame's `__next__()` return type routes through it.
 
 When the yielded expression's natural form doesn't match the slot (e.g. `yield self.field` where the field is stored in storage form), `gen_yield_value` in `codegen_cpp/statements.py` bridges via `tuple_to_pointer`. Pointer-form sources (rvalue tuple literals, pointer-form locals) pass through unchanged.
 

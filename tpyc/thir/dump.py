@@ -116,7 +116,6 @@ from .nodes import (
     THIRResumableBody,
     THIRResumableReturn,
     THIRSetItem,
-    THIRSimpleGenBody,
     THIRSliceAssign,
     THIRStmtSeq,
     THIRStrMembership,
@@ -718,27 +717,6 @@ def _resumable_lines(name: str, body: 'THIRResumableBody') -> list[str]:
     return lines
 
 
-def _simple_gen_lines(name: str, body: 'THIRSimpleGenBody') -> list[str]:
-    """The lambda-peephole generator: a fixed set of seams (init / cond /
-    pre- and post-yield / the yield value), not a statement list."""
-    lines = [f"simple_gen {name}:"]
-    for label, stmts in (("init", body.init), ("pre_yield", body.pre_yield),
-                         ("post_yield", body.post_yield)):
-        if not stmts:
-            continue
-        lines.append(f"  {label}:")
-        for s in stmts:
-            lines.extend(_stmt_lines(s, 2))
-    if body.cond is not None:
-        lines.append(f"  cond: {_expr(body.cond)}")
-    if body.iterable is not None:
-        lines.append(f"  iterable: {_expr(body.iterable)}")
-    if body.range_args:
-        lines.append(f"  range_args: {_exprs(body.range_args)}")
-    lines.append(f"  yield: {_expr(body.yield_value)}")
-    return lines
-
-
 def _constructor_lines(name: str, ctor: 'THIRConstructor') -> list[str]:
     lines = [f"ctor {name}:"]
     for base in ctor.base_inits:
@@ -755,8 +733,8 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
                       reasons: 'IdentityMap | None' = None) -> str:
     """Dump the bodies CODEGEN lowered, read off its per-module THIR caches.
 
-    Every body kind is shown -- sync, resumable, simple-generator,
-    constructor -- and the ones with no THIR are named, since "what did NOT
+    Every body kind is shown -- sync, resumable, constructor -- and the
+    ones with no THIR are named, since "what did NOT
     lower" is usually the question being asked. `reasons` (the compiler's
     per-body first-reject map) names WHY a body rejected.
 
@@ -805,9 +783,6 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
             lines.pop()
         elif ctx.thir_resumables.get(func) is not None:
             lines.extend(_resumable_lines(func.name, ctx.thir_resumables[func]))
-        elif func in ctx.thir_simple_gens:
-            lines.extend(_simple_gen_lines(func.name,
-                                           ctx.thir_simple_gens[func]))
         else:
             lines.append(_not_routed("fn", func.name, func))
         lines.append("")

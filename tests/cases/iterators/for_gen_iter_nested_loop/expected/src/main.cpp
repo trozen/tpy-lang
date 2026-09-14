@@ -14,6 +14,36 @@ void main() {
     std::cout << c.total() << "\n";
 }
 
+// def __iter__(self) -> Iterator[int32]:
+//     while self._n > 0:
+//         self._n -= 1
+//         yield self._n                   # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_Source___iter__::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield self._n
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((__self._n > 0)) {
+            __self._n = ::tpy::sub_check<int32_t>(__self._n, 1);
+            __state = S_RESUME_0;
+            return __self._n;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
 // main()
 void __tpy_init() {
     static bool initialized = false;

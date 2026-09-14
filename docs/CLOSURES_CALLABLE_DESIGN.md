@@ -1103,3 +1103,10 @@ in CPython. No `no_cpython.txt` should be needed for generator tests.
 8. **`Fn | None` is an error**: `Fn` is always a template parameter and cannot
    represent optionality. Use `Callable | None` for optional callbacks. Error
    message: "Fn cannot be optional -- use Callable | None instead."
+
+---
+
+**Terminal note (2026-09-12).** The lambda-based simple-generator path of Phase
+5a was deleted (commit `06ded87f5d`): every generator, single-yield included, now
+lowers on the resumable frame. Generator *expressions* still render via
+`make_generator`. The body above is history.

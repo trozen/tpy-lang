@@ -4745,7 +4745,7 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                 # Own[Iterable[T]]`): the monomorphized `T_items&&` slot is
                 # a plain C++ lvalue inside the body, so name reads render
                 # bare (the for-head's `auto& __src_N = items;` capture) --
-                # the sync twin of the sgen/frame Own-protocol admission.
+                # the sync twin of the frame's Own-protocol admission.
                 or (is_param and isinstance(inner, NominalType)
                     and inner.is_protocol
                     and not is_dyn_protocol(inner))
@@ -4764,10 +4764,6 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                 # container by value): both join the movable working set, so
                 # reads render bare and the last one moves at an owning
                 # sink -- which the move-source rows key off that same set.
-                # The one position where a PARAM differs is the
-                # SIMPLE-GENERATOR for-head, whose skeleton picks its
-                # iteration strategy off the un-unwrapped binding; that seam
-                # declines the name itself.
                 or ((movable_local or is_param)
                     and _f1_container_ref(inner))
                 # An Own[str]/Own[bytes] PARAM: the signature spells the

@@ -4,6 +4,41 @@
 namespace tpyapp::main {
 
 
+// def doubled(items: list[int32]) -> Iterator[int32]:
+//     for x in items:
+//         yield x * 2                                  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x * 2
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return (::tpy::mul_check<int32_t>(x, 2));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def doubled(items: list[int32]) -> Iterator[int32]:
+__gen_doubled doubled(std::vector<int32_t>& items) {
+    return __gen_doubled(items);
+}
+
 // def main():
 //     for x in doubled([1, 2, 3, 4, 5]):
 //         print(x)

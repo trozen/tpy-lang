@@ -210,8 +210,8 @@ taken whether or not anything actually aliases the init value, which keeps a
 superseded value alive to scope end; see BUGS.md.)
 
 The declaration is drained at the prologue of the body being emitted -- which
-for a body rendered into a C++ lambda (a nested `def`, a simple generator's
-`make_generator` closure) is the LAMBDA's own prologue, not the enclosing
+for a body rendered into a C++ lambda (a nested `def`) is the LAMBDA's own
+prologue, not the enclosing
 function's. The enclosing prologue is unreachable from there: an emitter that
 never drains would drop the declaration, and a lambda's explicit capture list
 cannot see a local declared outside it. `nested_hoist_scope` gives such a body

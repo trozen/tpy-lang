@@ -11,6 +11,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_my_enumerate;
+
+// def my_enumerate(items: list[Point]) -> Iterator[tuple[int32, Point]]:
+__gen_my_enumerate my_enumerate(std::vector<Point>& items);
 // def main() -> None:
 void main();
 
@@ -32,32 +36,37 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+// def my_enumerate(items: list[Point]) -> Iterator[tuple[int32, Point]]:
+struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate, std::tuple<int32_t, Point*>> {
+    int32_t __state;
+    std::vector<Point>& items;
+    int32_t i;
+    Point* item = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_my_enumerate(std::vector<Point>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<std::tuple<int32_t, Point*>, ::tpy::StopIteration> __next__();
+    __gen_my_enumerate& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_my_enumerate&) {
+        return os << "<generator my_enumerate>";
+    }
+};
+
 
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
-// def my_enumerate(items: list[Point]) -> Iterator[tuple[int32, Point]]:
-//     i: int32 = 0
-//     for item in items:
-//         yield (i, item)
-//         i += 1
-inline auto my_enumerate(std::vector<Point>& items) {
-    int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<int32_t, Point*>>(
-        [&items, i, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<int32_t, Point*>> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& item = *__beg++;
-                auto __val = std::tuple<int32_t, Point*>{i, &(item)};
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<int32_t, Point*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

@@ -108,7 +108,7 @@ __gen_walk walk() {
     return __gen_walk();
 }
 
-// # Same hazard on the for-range peephole branch (sibling of the while branch).
+// # Same hazard with a `for range` loop instead of a `while`.
 // def gen_range() -> Iterator[list[int32]]:
 //     for _ in range(2):
 //         buf: list[int32] = []
@@ -150,8 +150,8 @@ __gen_gen_range gen_range() {
     return __gen_gen_range();
 }
 
-// # The borrow root can hide behind a ternary or walrus; both must still route to
-// # the resumable path (the peephole would dangle the loop-body local).
+// # The borrow root can hide behind a ternary or walrus; both must still keep the
+// # loop-body local alive on the frame across the yield.
 // def gen_ternary(flag: bool) -> Iterator[list[int32]]:
 //     i = 0
 //     while i < 2:

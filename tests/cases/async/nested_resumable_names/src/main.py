@@ -44,7 +44,7 @@ class Outer:
             yield self.value  # tpyc: ok
 
         def simple(self) -> Iterator[int]:
-            # The simple generator route is the unnamed sibling.
+            # A single-yield loop generator lowers on the same named frame.
             for n in range(2):
                 yield self.value + n  # tpyc: ok
 
@@ -190,7 +190,7 @@ def main() -> None:
     except StopIteration:
         print("generator: unexpected stop")
 
-    # Simple generator: the receiver must alias through its capture as well.
+    # Single-yield generator: the receiver must alias through its frame capture as well.
     for value in inner.simple():  # tpyc: ok
         print("simple:", value)
         inner.value += 1

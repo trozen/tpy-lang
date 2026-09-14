@@ -66,6 +66,7 @@ inline constexpr int32_t _ITER_LINES_CHUNK = 512;
 
 using ::tpystd::json::JsonValue;
 
+struct __gen_CaseInsensitiveDict___iter__;
 struct __gen_CookieJar___iter__;
 struct __gen_Response_iter_content;
 struct __gen_Response_iter_lines;
@@ -275,24 +276,7 @@ struct CaseInsensitiveDict {
     // def items(self) -> Own[list[tuple[str, str]]]:
     std::vector<std::tuple<std::string, std::string>> items() const;
 
-    // def __iter__(self) -> Iterator[str]:
-    //     # Yields the original-cased header names (last-set casing wins). A
-    //     # generator method, so `for k in headers` needs no separate iterator.
-    //     for lk in self._store:
-    //         yield self._store[lk][0]
-    auto __iter__() const {
-        return ::tpy::make_generator<std::string>(
-            [this, __beg = decltype(((*this)._store).begin())(), __end = decltype(((*this)._store).begin())(), __init = false]() mutable -> std::optional<std::string> {
-                if (!__init) { __beg = ((*this)._store).begin(); __end = ((*this)._store).end(); __init = true; }
-                if (__beg != __end) {
-                    std::string lk = *__beg++;
-                    auto __val = std::get<0>(::tpy::__getitem__((*this)._store, lk));
-                    return std::optional<std::string>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_CaseInsensitiveDict___iter__ __iter__() const;
 
     // def update(self, other: CaseInsensitiveDict) -> None:
     void update(const CaseInsensitiveDict& other);
@@ -706,6 +690,36 @@ struct SSLError : ConnectionError {
 inline std::ostream& operator<<(std::ostream& os, const SSLError& obj) {
     ::tpy::print_object_default(os, "SSLError", obj);
     return os;
+}
+
+// def __iter__(self) -> Iterator[str]:
+struct __gen_CaseInsensitiveDict___iter__ : public ::tpy::next_iter_mixin<__gen_CaseInsensitiveDict___iter__, std::string> {
+    int32_t __state;
+    const CaseInsensitiveDict& __self;
+    std::string lk;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, std::tuple<std::string, std::string>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, std::tuple<std::string, std::string>>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_CaseInsensitiveDict___iter__(const CaseInsensitiveDict& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_CaseInsensitiveDict___iter__& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_CaseInsensitiveDict___iter__&) {
+        return os << "<generator CaseInsensitiveDict.__iter__>";
+    }
+};
+
+inline __gen_CaseInsensitiveDict___iter__ CaseInsensitiveDict::__iter__() const {
+    return __gen_CaseInsensitiveDict___iter__(*this);
 }
 
 // def __iter__(self) -> Iterator[str]:

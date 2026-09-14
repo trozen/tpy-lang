@@ -9,28 +9,40 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen;
+
+// def gen(s: Span[int32]) -> Iterator[int32]:
+__gen_gen gen(std::span<int32_t> s);
 // def drop(xs: Own[list[int32]]) -> int32:
 int32_t drop(std::vector<int32_t>&& xs);
 // def main():
 void main();
 
 // def gen(s: Span[int32]) -> Iterator[int32]:
-//     for x in s:
-//         yield x
-inline auto gen(std::span<int32_t> s) {
-    return ::tpy::make_generator<int32_t>(
-        [s, __beg = decltype((s).begin())(), __end = decltype((s).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-            if (!__init) { __beg = (s).begin(); __end = (s).end(); __init = true; }
-            if (__beg != __end) {
-                int32_t x = *__beg++;
-                auto __val = x;
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
+    int32_t __state;
+    std::span<int32_t> s;
+    int32_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::span<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::span<int32_t>>> __for_end_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen(std::span<int32_t> s_)
+        : __state(S_INITIAL), s(std::move(s_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

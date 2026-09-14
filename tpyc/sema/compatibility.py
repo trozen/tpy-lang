@@ -2775,40 +2775,6 @@ class TypeCompatibility:
         t = self.ctx.get_expr_type(expr)
         return t is not None and not unwrap_readonly(t).is_value_type()
 
-    def yield_rescued_by_frame_local(self, value: TpyExpr, elem_type: TpyType,
-                                     *, fresh_roots: set[str]) -> bool:
-        """True if this yield is unsound on the simple-generator lambda peephole
-        because it hands out a borrow rooted in a loop-body-declared local. Such
-        a root is rescued by the frame-local exemption (dangles without it) AND
-        is in `fresh_roots` (the loop-body locals the peephole materializes fresh
-        each call, so the borrow would dangle). A param/self root, a pre-loop
-        local (captured into the lambda), or the for-over-iterable loop var (a
-        reference into the captured iterable) is not in `fresh_roots`, so it
-        stays peephole-eligible.
-        """
-        def leaf_unsafe(e: TpyExpr) -> bool:
-            inner = e.expr if isinstance(e, TpyCoerce) else e
-            # Mirror is_dangling_return's wrapper recursion: a walrus hands out
-            # its value, a ternary either arm. Without this the borrow root hides
-            # behind the wrapper and the unsound yield stays peephole-eligible.
-            if isinstance(inner, TpyNamedExpr):
-                return leaf_unsafe(inner.value)
-            if isinstance(inner, TpyIfExpr):
-                return leaf_unsafe(inner.then_expr) or leaf_unsafe(inner.else_expr)
-            root = inner
-            while isinstance(root, (TpyFieldAccess, TpySubscript)):
-                root = root.obj
-            if not (isinstance(root, TpyName) and root.name in fresh_roots):
-                return False
-            return (self.is_dangling_return(inner, gen_yield=False)
-                    and not self.is_dangling_return(inner, gen_yield=True))
-
-        inner = value.expr if isinstance(value, TpyCoerce) else value
-        if (isinstance(unwrap_readonly(elem_type), TupleType)
-                and isinstance(inner, TpyTupleLiteral)):
-            return any(leaf_unsafe(e) for e in inner.elements)
-        return leaf_unsafe(value)
-
     def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False,
                            gen_yield: bool = False) -> bool:
         """Check if returning this expression would create a dangling reference.

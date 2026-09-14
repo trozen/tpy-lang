@@ -97,12 +97,11 @@ __gen_evens evens(std::vector<int32_t>& items) {
 }
 
 // def stride() -> Iterator[int32]:
-//     # 3-arg range falls to the iterator branch (no counter loop), so even a
-//     # pre-yield break must route to resumable.
+//     # 3-arg range (no counter loop), with a pre-yield break.
 //     for i in range(0, 10, 2):
 //         if i >= 4:
 //             break
-//         yield i                                                              # -> S_RESUME_0
+//         yield i                                               # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_stride::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -288,10 +287,10 @@ __gen_iter_post_break iter_post_break(std::vector<int32_t>& items) {
 }
 
 // def post_continue(items: list[int32]) -> Iterator[int32]:
-//     # Post-yield continue with observable post-continue code: the resumable
-//     # path runs it after the consumer resumes (CPython order).
+//     # Post-yield continue with observable post-continue code: the frame runs
+//     # it after the consumer resumes (CPython order).
 //     for x in items:
-//         yield x                                                              # -> S_RESUME_0
+//         yield x                                                               # -> S_RESUME_0
 //         if x < 0:
 //             continue
 //         print(x + 100)
@@ -441,9 +440,9 @@ void main() {
     }
 }
 
-// # Generator method break/continue through the method resumable emit path.
-// # Iterates a parameter, not a self field -- iterating a self field in a
-// # resumable method hits a separate const-iterator gap.
+// # Generator method break/continue. Iterates a parameter, not a self field
+// # -- iterating a self field in a generator method hits a separate
+// # const-iterator gap.
 // def first_positives(self, items: list[int32]) -> Iterator[int32]:
 //     c: int32 = 0
 //     for x in items:

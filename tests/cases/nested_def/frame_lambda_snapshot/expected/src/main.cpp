@@ -10,7 +10,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
     return f(v);
 }
 
-// # Two yields, so the body renders as a frame and `step` is a frame member.
+// # The body renders as a frame and `step` is a frame member.
 // def cell() -> Iterator[int32]:
 //     step = 1
 //     f: Callable[[int32], int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
@@ -50,8 +50,8 @@ __gen_cell cell() {
 // # two yields is invisible to the closure -- TPy reads 1 twice, CPython 1 then
 // # 99. No warning fires: the stale-capture warning covers rebinds, not in-place
 // # mutation (BUGS.md#escaping-capture-mutation-snapshot). The sync free function
-// # and the single-yield peephole copy identically, so this is the frame position
-// # of one divergence, not a frame-only one.
+// # copies identically, so this is the frame position of one divergence, not a
+// # frame-only one.
 // def copied(xs: list[int32]) -> Iterator[int32]:
 //     f: Callable[[int32], int32] = lambda i: xs[i]
 //     yield apply(f, 0)                              # -> S_RESUME_0

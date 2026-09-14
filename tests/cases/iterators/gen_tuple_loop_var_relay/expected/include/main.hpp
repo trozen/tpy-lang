@@ -13,11 +13,14 @@ struct Hub;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
+struct __gen_relay;
 struct __gen_relay_twice;
 struct __gen_Hub_relay;
 
 // def gen() -> Iterator[tuple[int32, Box]]:
 __gen_gen gen();
+// def relay() -> Iterator[tuple[int32, Box]]:
+__gen_relay relay();
 // def relay_twice() -> Iterator[tuple[int32, Box]]:
 __gen_relay_twice relay_twice();
 // def main() -> None:
@@ -75,6 +78,31 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
         return os << "<generator gen>";
+    }
+};
+
+// def relay() -> Iterator[tuple[int32, Box]]:
+struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay, std::tuple<int32_t, Box*>> {
+    int32_t __state;
+    std::tuple<int32_t, Box*> p;
+    ::tpy::frame_slot<__gen_gen> __for_src_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_relay()
+        : __state(S_INITIAL) {}
+
+    std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
+    __gen_relay& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_relay&) {
+        return os << "<generator relay>";
     }
 };
 
@@ -139,24 +167,5 @@ inline __gen_Hub_relay Hub::relay() const {
 // def __init__(self, v: int32) -> None:
 //     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
-// def relay() -> Iterator[tuple[int32, Box]]:
-//     for p in gen():
-//         yield p
-inline auto relay() {
-    return ::tpy::make_generator<std::tuple<int32_t, Box*>>(
-        [__src = std::optional<std::decay_t<decltype(gen())>>()]() mutable -> std::optional<std::tuple<int32_t, Box*>> {
-            if (!__src) { __src.emplace(gen()); }
-            auto __r = (*__src).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                auto&& p = ::tpy::unwrap_ref(*__r);
-                auto __val = p;
-                return std::optional<std::tuple<int32_t, Box*>>(__val);
-            }
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

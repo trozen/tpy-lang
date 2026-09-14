@@ -36,11 +36,15 @@ extern int32_t uint16;
 extern double float64;
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_bytes_of;
+
 // def widths(a: int8, b: int64, c: uint32, d: uint64) -> int64:
 int64_t widths(int8_t a, int64_t b, uint32_t c, uint64_t d);
 // def same[T: AnyFixedInt](v: T) -> T:
 template<::tpy::AnyFixedInt T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> v);
+// def bytes_of(n: int32) -> Iterator[uint8]:
+__gen_bytes_of bytes_of(int32_t n);
 // def shadowed(uint8: uint8) -> uint8:  # tpyc: warning(/'uint8' shadows the tpy type 'uint8'/)
 uint8_t shadowed(uint8_t uint8);
 // def shadowed_local(s: str) -> str:
@@ -83,6 +87,32 @@ inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
     return os;
 }
 
+// def bytes_of(n: int32) -> Iterator[uint8]:
+struct __gen_bytes_of : public ::tpy::next_iter_mixin<__gen_bytes_of, uint8_t> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_bytes_of(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<uint8_t, ::tpy::StopIteration> __next__();
+    __gen_bytes_of& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_bytes_of&) {
+        return os << "<generator bytes_of>";
+    }
+};
+
 
 // def __enter__(self) -> int32:
 //     return 3
@@ -101,23 +131,6 @@ template<::tpy::AnyFixedInt T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> v) {
     return ::tpy::param_to_return<T>(v);
 }
-// # generator: a scalar name at the yield slot
-// def bytes_of(n: int32) -> Iterator[uint8]:
-//     for i in range(n):
-//         yield uint8(i)
-inline auto bytes_of(int32_t n) {
-    return ::tpy::make_generator<uint8_t>(
-        [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<uint8_t> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                auto __val = ::tpy::int_cast_check<uint8_t>(i);
-                return std::optional<uint8_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
 
 void __tpy_init();
 } // namespace tpyapp::main

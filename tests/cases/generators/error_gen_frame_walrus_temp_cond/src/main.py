@@ -1,6 +1,6 @@
-# The resumable-frame twin of error_gen_while_walrus_temp_cond: a two-yield
-# generator lands on the frame, whose Branch condition flushes argument temps
-# BEFORE the walrus store they may read, so the mix rejects there too.
+# A generator `while` head mixing a walrus with an argument temp: the frame's
+# Branch condition flushes argument temps BEFORE the walrus store they may
+# read, so the mix is rejected.
 from typing import Iterator
 
 
@@ -11,7 +11,7 @@ def total(*xs: int) -> int:
     return n
 
 
-# Two yields, so the peephole declines and the body renders as a frame.
+# Two yields; the body renders as a resumable frame like every generator.
 def counted(limit: int) -> Iterator[int]:  # tpyc: error(/res\.cond:cond\.mixed_walrus_temps/)
     i = 0
     yield 0

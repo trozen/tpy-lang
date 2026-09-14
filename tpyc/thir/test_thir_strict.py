@@ -133,35 +133,6 @@ def main() -> None:
 main()
 '''
 
-# An Optional yield slot in a lambda-peephole generator: the simple-generator
-# fold, which is a separate lowering entry from the resumable frame above.
-SIMPLE_GEN_SRC = '''from typing import Iterator
-from tpy import int32
-
-
-class P:
-    x: int32
-
-    def __init__(self, x: int32) -> None:
-        self.x = x
-
-
-def opts(n: int32) -> Iterator[P | None]:
-    i = 0
-    while i < n:
-        yield P(i)
-        i += 1
-
-
-def main() -> None:
-    for v in opts(2):
-        if v is not None:
-            print(v.x)
-
-
-main()
-'''
-
 # A union-element tuple constant, in each of the two non-body positions.
 FINAL_GLOBAL_SRC = '''from typing import Final
 from tpy import int32
@@ -270,11 +241,6 @@ _FRAME_PINS = [
         "in function 'pairs': this construct is not yet supported by C++ code "
         "generation (expr.walrus)",
         9, "resumable:expr.walrus", id="resumable"),
-    pytest.param(
-        SIMPLE_GEN_SRC,
-        "in function 'opts': this construct is not yet supported by C++ code "
-        "generation (sgen.yield_type)",
-        12, "body:sgen.yield_type", id="simple_generator"),
 ]
 
 
@@ -291,11 +257,10 @@ def test_strict_reject_names_the_unit_the_reason_and_the_line(
 @pytest.mark.parametrize("source,message,line,landmark", _FRAME_PINS)
 def test_strict_frame_reject_names_the_callable(
         source: str, message: str, line: int, landmark: str) -> None:
-    """The two generator/async folds. The resumable's yield / return / await
-    seams and the simple generator's yield-slot gate both decide outside the
-    sync statement chokepoint, so the position is the callable's own `def`
-    line -- coarser than the statement pins above, but still the enclosing
-    unit rather than an unrelated line."""
+    """The generator/async fold. The resumable's yield / return / await
+    seams decide outside the sync statement chokepoint, so the position is
+    the callable's own `def` line -- coarser than the statement pins above,
+    but still the enclosing unit rather than an unrelated line."""
     err, fallback = _strict_reject(source)
     assert err.message == message
     assert err.loc is not None and err.loc.line == line, err.format("main.py")

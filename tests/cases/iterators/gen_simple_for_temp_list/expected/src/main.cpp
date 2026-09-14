@@ -12,6 +12,42 @@ std::vector<int32_t> make() {
     return {10, 20, 30};
 }
 
+// def g() -> Iterator[int32]:
+//     for x in make():  # tpyc: ok
+//         yield x                   # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(make());
+        __for_it_0.emplace(((*__for_src_0)).begin());
+        __for_end_0.emplace(((*__for_src_0)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield x
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def g() -> Iterator[int32]:
+__gen_g g() {
+    return __gen_g();
+}
+
 // def main() -> None:
 //     it = g()
 //     print("created")

@@ -16,7 +16,7 @@ int32_t double_(int32_t n) {
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 
-// # Resumable (yield nested in if), concrete element type, Fn predicate.
+// # Yield nested in an if, concrete element type, Fn predicate.
 // def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 //     for x in it:
 //         if not pred(x):
@@ -64,7 +64,7 @@ __gen_filterfalse<F_pred> filterfalse(F_pred&& pred, std::vector<int32_t>& it) {
     return __gen_filterfalse<F_pred>(std::forward<F_pred>(pred), it);
 }
 
-// # Resumable (Fn + break).
+// # Fn + break.
 // def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 //     for x in it:
 //         if not pred(x):
@@ -113,7 +113,7 @@ __gen_takewhile<F_pred> takewhile(F_pred&& pred, std::vector<int32_t>& it) {
     return __gen_takewhile<F_pred>(std::forward<F_pred>(pred), it);
 }
 
-// # Multi-yield Fn generator (forces resumable distinctly from break/if).
+// # Multi-yield Fn generator.
 // def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 //     for x in it:
 //         yield x                                                        # -> S_RESUME_0
@@ -164,6 +164,45 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
 template <typename F_pred>
 __gen_tag<F_pred> tag(F_pred&& pred, std::vector<int32_t>& it) {
     return __gen_tag<F_pred>(std::forward<F_pred>(pred), it);
+}
+
+// # Fn generator whose yield is a direct loop child -- the same frame at the
+// # plainest shape.
+// def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
+//     for x in it:
+//         yield fn(x)                                                         # -> S_RESUME_0
+template <typename F_fn>
+std::expected<int32_t, ::tpy::StopIteration> __gen_transform<F_fn>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((it).begin());
+        __for_end_0.emplace((it).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield fn(x)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return fn(x);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
+template <typename F_fn>
+__gen_transform<F_fn> transform(F_fn&& fn, std::vector<int32_t>& it) {
+    return __gen_transform<F_fn>(std::forward<F_fn>(fn), it);
 }
 
 // def main() -> None:

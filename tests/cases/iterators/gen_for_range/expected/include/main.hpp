@@ -9,25 +9,38 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_squares;
+
+// def squares(n: int32) -> Iterator[int32]:
+__gen_squares squares(int32_t n);
 // def main():
 void main();
 
 // def squares(n: int32) -> Iterator[int32]:
-//     for i in range(n):
-//         yield i * i
-inline auto squares(int32_t n) {
-    return ::tpy::make_generator<int32_t>(
-        [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<int32_t> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                auto __val = (::tpy::mul_check<int32_t>(i, i));
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_squares : public ::tpy::next_iter_mixin<__gen_squares, int32_t> {
+    int32_t __state;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_squares(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_squares& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_squares&) {
+        return os << "<generator squares>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

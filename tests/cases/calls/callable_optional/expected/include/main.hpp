@@ -11,6 +11,8 @@ struct Emitter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_scan;
+
 // def run(n: int32, hook: Callable[[int32], None] | None = None) -> None:
 void run(int32_t n, std::optional<std::function<void(int32_t)>> hook = std::nullopt);
 // def apply(n: int32, f: Callable[[int32], int32] | None = None) -> int32:
@@ -19,6 +21,8 @@ int32_t apply(int32_t n, std::optional<std::function<int32_t(int32_t)>> f = std:
 void report(int32_t code);
 // def triple(x: int32) -> int32:
 int32_t triple(int32_t x);
+// def scan(n: int32, onerror: Callable[[int32], None] | None = None) -> Iterator[int32]:
+__gen_scan scan(int32_t n, std::optional<std::function<void(int32_t)>> onerror = std::nullopt);
 // def main() -> None:
 void main();
 
@@ -46,6 +50,31 @@ inline std::ostream& operator<<(std::ostream& os, const Emitter& obj) {
     return os;
 }
 
+// def scan(n: int32, onerror: Callable[[int32], None] | None = None) -> Iterator[int32]:
+struct __gen_scan : public ::tpy::next_iter_mixin<__gen_scan, int32_t> {
+    int32_t __state;
+    int32_t n;
+    std::optional<std::function<void(int32_t)>> onerror;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_scan(int32_t n_, std::optional<std::function<void(int32_t)>> onerror_ = std::nullopt)
+        : __state(S_INITIAL), n(std::move(n_)), onerror(std::move(onerror_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_scan& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_scan&) {
+        return os << "<generator scan>";
+    }
+};
+
 
 // def __init__(self) -> None:
 //     self.on_event = None
@@ -71,30 +100,5 @@ inline void Emitter::emit(std::string_view msg) const {
 inline std::string Emitter::__str__() const {
     return "Emitter(...)";
 }
-// def scan(n: int32, onerror: Callable[[int32], None] | None = None) -> Iterator[int32]:
-//     i = 0
-//     while i < n:
-//         if i == 1 and onerror is not None:
-//             onerror(i)
-//         yield i
-//         i += 1
-inline auto scan(int32_t n, std::optional<std::function<void(int32_t)>> onerror = std::nullopt) {
-    int32_t i = 0;
-    return ::tpy::make_generator<int32_t>(
-        [n, onerror, i]() mutable -> std::optional<int32_t> {
-            while ((i < n)) {
-                if (((i == 1) && (onerror.has_value()))) {
-                    onerror.value()(i);
-                }
-                auto __val = i;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<int32_t>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

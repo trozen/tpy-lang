@@ -13,6 +13,7 @@ struct Bag;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_bump;
+struct __gen_Bag___iter__;
 
 // def bump(bag: Bag) -> Iterator[int32]:
 __gen_bump bump(Bag& bag);
@@ -44,28 +45,43 @@ struct Bag {
     Bag() = default;
     explicit Bag(std::vector<Point>&& items);
 
-    // def __iter__(self) -> Iterator[Point]:
-    //     for p in self.items:
-    //         yield p
-    auto __iter__() {
-        return ::tpy::make_generator<::tpy::val_or_ref<Point>>(
-            [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Point>> {
-                if (!__init) { __beg = ((*this).items).begin(); __end = ((*this).items).end(); __init = true; }
-                if (__beg != __end) {
-                    auto&& p = *__beg++;
-                    auto&& __val = p;
-                    return std::optional<::tpy::val_or_ref<Point>>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Bag___iter__ __iter__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     ::tpy::print_object_default(os, "Bag", obj);
     return os;
+}
+
+// def __iter__(self) -> Iterator[Point]:
+struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, ::tpy::val_or_ref<Point>> {
+    int32_t __state;
+    Bag& __self;
+    Point* p = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Bag___iter__(Bag& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __next__();
+    __gen_Bag___iter__& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Bag___iter__&) {
+        return os << "<generator Bag.__iter__>";
+    }
+};
+
+inline __gen_Bag___iter__ Bag::__iter__() {
+    return __gen_Bag___iter__(*this);
 }
 
 // def bump(bag: Bag) -> Iterator[int32]:

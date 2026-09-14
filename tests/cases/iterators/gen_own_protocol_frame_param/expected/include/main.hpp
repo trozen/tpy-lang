@@ -145,9 +145,7 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, std::t
         return os << "<generator each>";
     }
 };
-// # free generic generator: the admitted `Own[static P]` frame param. Two yields
-// # per element keep every generator here off the simple-generator lambda
-// # peephole, so the frame is the thing under test.
+// # free generic generator: the admitted `Own[static P]` frame param.
 // def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 //     i: int32 = 0
 //     for item in items:

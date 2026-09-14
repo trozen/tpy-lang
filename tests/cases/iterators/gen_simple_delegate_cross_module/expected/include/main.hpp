@@ -12,27 +12,37 @@ using ::tpyapp::itersrc::walk;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_g;
+
+// def g() -> Iterator[int32]:
+__gen_g g();
 // def main() -> None:
 void main();
 
 // def g() -> Iterator[int32]:
-//     for x in walk():  # tpyc: ok
-//         yield x
-inline auto g() {
-    return ::tpy::make_generator<int32_t>(
-        [__src = std::optional<std::decay_t<decltype(::tpyapp::itersrc::walk())>>()]() mutable -> std::optional<int32_t> {
-            if (!__src) { __src.emplace(::tpyapp::itersrc::walk()); }
-            auto __r = (*__src).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                int32_t x = ::tpy::unwrap_ref(*__r);
-                auto __val = x;
-                return std::optional<int32_t>(__val);
-            }
-        }
-    );
-}
+struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
+    int32_t __state;
+    int32_t x;
+    ::tpy::frame_slot<::tpyapp::itersrc::__gen_walk> __for_src_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::itersrc::__gen_walk>> __for_r_0;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_g()
+        : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_g& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_g&) {
+        return os << "<generator g>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

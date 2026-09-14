@@ -9,28 +9,36 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_byte_vals;
+
+// def byte_vals(data: bytes) -> Iterator[int]:
+__gen_byte_vals byte_vals(::tpy::BytesView data);
 // def main() -> None:
 void main();
 
 // def byte_vals(data: bytes) -> Iterator[int]:
-//     i = 0
-//     while i < len(data):
-//         yield data[i]
-//         i += 1
-inline auto byte_vals(::tpy::BytesView data) {
-    int32_t i = 0;
-    return ::tpy::make_generator<::tpy::BigInt>(
-        [data = ::tpy::Bytes(data), i]() mutable -> std::optional<::tpy::BigInt> {
-            while ((i < ::tpy::__len__(data))) {
-                auto __val = ::tpy::BigInt(data[static_cast<std::size_t>(i)]);
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<::tpy::BigInt>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_byte_vals : public ::tpy::next_iter_mixin<__gen_byte_vals, ::tpy::BigInt> {
+    int32_t __state;
+    ::tpy::Bytes data;
+    int32_t i;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_byte_vals(::tpy::BytesView data_)
+        : __state(S_INITIAL), data(::tpy::Bytes(data_)) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_byte_vals& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_byte_vals&) {
+        return os << "<generator byte_vals>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

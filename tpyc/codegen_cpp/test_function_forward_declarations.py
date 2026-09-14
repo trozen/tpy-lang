@@ -118,10 +118,11 @@ def early_sync(n: int) -> int:
     for spelling in ("__coro_early early(", "__gen_early_gen early_gen(",
                      "::tpy::BigInt early_sync("):
         assert hpp.index(spelling) < outer
-    # The lambda generator has a definition but no named frame or factory forward.
-    assert "__gen_simple" not in hpp + cpp
-    assert re.search(r"^inline auto simple\(.*\) \{", hpp, re.M)
-    assert not re.search(r"^[^\n]* simple\([^\n]*\);$", hpp, re.M)
+    # A single-yield generator is a frame like any other: a named struct
+    # forward and one factory forward after the nested owner completes.
+    assert hpp.index("struct __gen_simple;") < outer
+    simple_decls = list(re.finditer(r"^__gen_simple simple\(.*\);$", hpp, re.M))
+    assert len(simple_decls) == 1 and simple_decls[0].start() > complete
     # Once per declaration a TPy call can land on: the factory forward
     # decl AND the frame ctor for `coro` and `gen` (an inline await or a
     # synthetic suspension constructs the frame directly), plus `sync`.

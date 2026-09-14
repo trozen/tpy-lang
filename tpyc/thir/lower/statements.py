@@ -5053,7 +5053,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     # (`self_captures_this`: the body renders the receiver through `this`, so
     # the capture is the pointer -- alias semantics in every capture mode).
     # Only the PLAIN method receiver is admitted; the resumable `__self` frame
-    # member and the simple-generator `(*this)` wrapper spell their own forms.
+    # member spells its own form.
     self_capture_this = (lc.self_receiver == "self" and lc.self_cpp == "this"
                          and lc.self_is_pointer)
     if "self" in stmt.captured_names and not self_capture_this:
@@ -8909,9 +8909,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # matching the first-decl choice. An already-erased protocol-typed
                 # source (a pointer copy `pet = &q`) is a later rung.
                 # The hoisted slot needs a drain point. `emit_thir_body` /
-                # `emit_thir_constructor_tail` drain `hoist_lines`; the generator
-                # LEAF emitters (ResumableLeafEmitter, SimpleGenLeafEmitter) do
-                # NOT, so a reseat there would drop the `std::optional<slot>` decl
+                # `emit_thir_constructor_tail` drain `hoist_lines`; the resumable
+                # LEAF emitter (ResumableLeafEmitter) does NOT, so a reseat
+                # there would drop the `std::optional<slot>` decl
                 # (undeclared `__slot_N`) -- a generator/async body rejects.
                 if lc.func.is_generator or lc.func.is_async:
                     note_detail("reseat.dyn_protocol")
@@ -14527,9 +14527,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # protocol loop is one leaf statement, rendering the same
             # universal `::tpy::__iter__` shape inside the case block
             # (`auto& __src_N = items;` -- the param frame field reads
-            # bare). Slot/pointer-backed names, FIELD iterables (receiver
-            # respell), and the simple-generator lambda mode keep the
-            # fence.
+            # bare). Slot/pointer-backed names and FIELD iterables (receiver
+            # respell) keep the fence.
             protocol_param_ok=(
                 not (lc.resumable_leaf_mode or lc.frame_slots)
                 or (lc.resumable_leaf_mode
@@ -15225,9 +15224,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                               # would leak past its branch in the flat CFG
                               # (`__str__(__a)` in the else arm), while the
                               # BB snapshot restores it. Keyed on
-                              # the flat-CFG lane flag, not is_generator:
-                              # a SIMPLE (peephole) generator keeps normal
-                              # scoping and routes. is_async is
+                              # the flat-CFG lane flag. is_async is
                               # belt-and-braces (always resumable).
                               and not (_wpf_arg is PrintForm.STR
                                        and (lc.resumable_leaf_mode

@@ -9,30 +9,39 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_echo_n;
+
+// def echo_n(s: str, n: int) -> Iterator[str]:
+__gen_echo_n echo_n(std::string_view s, ::tpy::BigInt n);
 // def make() -> str:
 std::string make();
 // def main() -> None:
 void main();
 
 // def echo_n(s: str, n: int) -> Iterator[str]:
-//     i = 0
-//     while i < n:
-//         yield s
-//         i += 1
-inline auto echo_n(std::string_view s, const ::tpy::BigInt& n) {
-    int32_t i = 0;
-    return ::tpy::make_generator<std::string>(
-        [s = std::string(s), n, i]() mutable -> std::optional<std::string> {
-            while ((::tpy::BigInt(i) < n)) {
-                auto __val = s;
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::string>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
+struct __gen_echo_n : public ::tpy::next_iter_mixin<__gen_echo_n, std::string> {
+    int32_t __state;
+    std::string s;
+    ::tpy::BigInt n;
+    int32_t i;
 
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_echo_n(std::string_view s_, ::tpy::BigInt n_)
+        : __state(S_INITIAL), s(std::string(s_)), n(std::move(n_)) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_echo_n& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_echo_n&) {
+        return os << "<generator echo_n>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

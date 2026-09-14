@@ -15,6 +15,7 @@ template<typename T> struct Box;
 inline constexpr std::string_view __name__ = "gensrc";
 
 struct __gen_walk;
+struct __gen_walk_once;
 template <typename T>
 struct __gen_pair;
 struct __gen_chatty;
@@ -26,6 +27,8 @@ struct __gen_Box_two;
 
 // def walk() -> Iterator[int32]:
 __gen_walk walk();
+// def walk_once() -> Iterator[int32]:
+__gen_walk_once walk_once();
 // def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
@@ -112,6 +115,31 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_walk&) {
         return os << "<generator walk>";
+    }
+};
+
+// def walk_once() -> Iterator[int32]:
+struct __gen_walk_once : public ::tpy::next_iter_mixin<__gen_walk_once, int32_t> {
+    int32_t __state;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_walk_once()
+        : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_walk_once& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_walk_once&) {
+        return os << "<generator walk_once>";
     }
 };
 

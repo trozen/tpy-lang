@@ -12,6 +12,8 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_Holder_pairs;
+
 // def main() -> None:
 void main();
 
@@ -40,28 +42,44 @@ struct Holder {
     Holder() = default;
     explicit Holder(int32_t n);
 
-    // def pairs(self, items: list[P]) -> Iterator[tuple[P | None, P | None]]:
-    //     for it in items:
-    //         yield (it, None)
-    auto pairs(std::vector<P>& items) const {
-        return ::tpy::make_generator<std::tuple<P*, P*>>(
-            [this, &items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {
-                if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-                if (__beg != __end) {
-                    auto&& it = *__beg++;
-                    auto __val = std::tuple<P*, P*>{&(it), nullptr};
-                    return std::optional<std::tuple<P*, P*>>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Holder_pairs pairs(std::vector<P>& items) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
+}
+
+// def pairs(self, items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+struct __gen_Holder_pairs : public ::tpy::next_iter_mixin<__gen_Holder_pairs, std::tuple<P*, P*>> {
+    int32_t __state;
+    const Holder& __self;
+    std::vector<P>& items;
+    P* it = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Holder_pairs(const Holder& __self, std::vector<P>& items)
+        : __state(S_INITIAL), __self(__self), items(items) {}
+
+    std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
+    __gen_Holder_pairs& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Holder_pairs&) {
+        return os << "<generator Holder.pairs>";
+    }
+};
+
+inline __gen_Holder_pairs Holder::pairs(std::vector<P>& items) const {
+    return __gen_Holder_pairs(*this, items);
 }
 
 

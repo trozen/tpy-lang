@@ -43,9 +43,8 @@ class C:
     def __init__(self) -> None:
         self.n = 10
 
-    # generator METHOD, single yield (simple-generator peephole): the wrapper
-    # lambda holds the receiver as `this`, and the inner capture spells `this`
-    # too (self renders `(*this)` in that context).
+    # generator METHOD, single yield: the same frame receiver capture as the
+    # two-yield `D.emit` below, pinned at the single-yield loop shape.
     def emit(self, k: int32) -> Iterator[int32]:
         for i in range(k):
             yield apply(lambda x: x + self.n, i)  # tpyc: ok

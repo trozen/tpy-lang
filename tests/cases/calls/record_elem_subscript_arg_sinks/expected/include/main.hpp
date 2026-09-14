@@ -18,6 +18,8 @@ extern std::vector<Thing>* top;
 extern Bump* tb;
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen;
+
 // def ctor_slots() -> None:
 void ctor_slots();
 // def method_slots() -> None:
@@ -26,6 +28,8 @@ void method_slots();
 void stub_slots();
 // def dict_elem() -> None:
 void dict_elem();
+// def gen(things: list[Thing]) -> Iterator[float]:
+__gen_gen gen(std::vector<Thing>& things);
 // def main() -> None:
 void main();
 
@@ -148,6 +152,33 @@ inline std::ostream& operator<<(std::ostream& os, const Map& obj) {
     return os;
 }
 
+// def gen(things: list[Thing]) -> Iterator[float]:
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, double> {
+    int32_t __state;
+    std::vector<Thing>& things;
+    int32_t i;
+    ::tpy::frame_slot<Bump> b;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen(std::vector<Thing>& things)
+        : __state(S_INITIAL), things(things) {}
+
+    std::expected<double, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = float(x)
@@ -225,25 +256,5 @@ inline void Map::fill(int32_t n) {
 inline void Map::reseat() {
     this->bumped = Bump(::tpy::__getitem__(this->things, 1));
 }
-// # Generator body.
-// def gen(things: list[Thing]) -> Iterator[float]:
-//     for i in range(len(things)):
-//         b = Bump(things[i])  # tpyc: ok
-//         yield b.x
-inline auto gen(std::vector<Thing>& things) {
-    return ::tpy::make_generator<double>(
-        [&things, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(things))]() mutable -> std::optional<double> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                Bump b = Bump(things[static_cast<std::size_t>(i)]);
-                auto __val = b.x;
-                return std::optional<double>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

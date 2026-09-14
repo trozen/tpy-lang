@@ -363,17 +363,11 @@ class _EmitState:
     # name whose every assignment is a fresh declaration in its own scope has
     # no consumer, and emitting it there leaves a dead `std::optional<T>`.
     deferred_rebind_hoists: dict[int, str] = field(default_factory=dict)
-    # False in the generator LEAF emitters (Resumable/SimpleGen), which have no
-    # drain point: a producer of `hoist_lines` asserts on it so a future
+    # False in the resumable LEAF emitter, which has no drain point: a
+    # producer of `hoist_lines` asserts on it so a future
     # hoisting construct that slips past lowering's defer fails LOUD at the
     # produce site rather than emitting an undeclared `__slot_N`.
     hoist_drainable: bool = True
-    # The sgen leaf's drain: a callable routing a held-back rebind-slot decl
-    # into the live ctx's nested hoist scope, which the skeleton's
-    # _lambda_body_sink flushes at the lambda prologue (its own drain
-    # point). Only the rebind-slot producer consults it; the other
-    # hoist_lines producers keep the drainable assert.
-    hoist_sink: 'Callable[[str], None] | None' = None
     rebind_slots: dict[str, int] = field(default_factory=dict)
     # Plain block slots allocated by a slotless local's first INLINE_RVALUE
     # reseat (function-top only). A SEPARATE registry from `rebind_slots`:
@@ -1411,13 +1405,10 @@ def _use_rebind_slot(state: '_EmitState', name: str) -> int | None:
     if slot is not None:
         line = state.deferred_rebind_hoists.pop(slot, None)
         if line is not None:
-            if state.hoist_sink is not None:
-                state.hoist_sink(line)
-            else:
-                assert state.hoist_drainable, (
-                    "a deferred rebind-slot hoist reached a non-draining leaf "
-                    "emitter")
-                state.hoist_lines.append(line)
+            assert state.hoist_drainable, (
+                "a deferred rebind-slot hoist reached a non-draining leaf "
+                "emitter")
+            state.hoist_lines.append(line)
     return slot
 
 
@@ -2003,11 +1994,6 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     # rebind-slot one lowering knows about.
     saved_hoists = state.hoist_lines
     state.hoist_lines = []
-    # ... and must not leak through an active sgen hoist_sink either: a
-    # rebind slot inside THIS lambda drains at THIS prologue, not the
-    # enclosing generator lambda's.
-    saved_sink = state.hoist_sink
-    state.hoist_sink = None
     body_buf = io.StringIO()
     try:
         # No trailing-comment emission for a lambda body, so a comment after
@@ -2019,7 +2005,6 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
             out.write(f"{INDENT * (indent_level + 1)}{content}\n")
     finally:
         state.hoist_lines = saved_hoists
-        state.hoist_sink = saved_sink
         (state.finally_frames, state.return_cpp, state.loop_depth,
          state.switch_depth, state.loop_break_labels,
          state.loop_else_labels, state.rebind_slots,
@@ -4800,56 +4785,3 @@ class ResumableLeafEmitter:
             _emit_match(out, node, indent_level, self._state)
         finally:
             self._state.match_arm_hook = prev
-
-
-class SimpleGenLeafEmitter:
-    """Per-routed-body leaf renderer driven by the simple-generator lambda
-    peephole skeleton (`gen_generators.gen_simple_generator_inline`). One
-    instance per routed body holds one `_EmitState` -- the same contract as
-    `ResumableLeafEmitter`, but the seam sites are static (one loop, one
-    yield), so the body's blocks and expressions are direct fields, not
-    identity-keyed tables."""
-
-    def __init__(self, body, *, temps: 'TempSink',
-                 with_counter: 'ModuleCounter',
-                 try_counter: 'ModuleCounter',
-                 finally_guard_counter: 'ModuleCounter',
-                 hoist_sink: 'Callable[[str], None] | None' = None) -> None:
-        self._body = body
-        self._state = _EmitState(temps=temps,
-                                 with_counter=with_counter,
-                                 try_counter=try_counter,
-                                 finally_guard_counter=finally_guard_counter,
-                                 hoist_drainable=False,
-                                 hoist_sink=hoist_sink)
-
-    def emit_init(self, out: TextIO, indent_level: int) -> None:
-        """Emit the pre-loop init block -- the seam the skeleton calls for
-        it."""
-        _emit_stmts(out, self._body.init, indent_level, self._state)
-
-    def emit_pre_yield(self, out: TextIO, indent_level: int) -> None:
-        _emit_stmts(out, self._body.pre_yield, indent_level, self._state)
-
-    def emit_post_yield(self, out: TextIO, indent_level: int) -> None:
-        _emit_stmts(out, self._body.post_yield, indent_level, self._state)
-
-    def render_cond(self) -> str:
-        """Render the while-branch condition."""
-        return _emit_expr(self._body.cond, self._state)
-
-    def render_yield_value(self) -> str:
-        """Render the yield value -- the seam the skeleton calls at the
-        yield site."""
-        return _emit_expr(self._body.yield_value, self._state)
-
-    def render_iterable(self) -> str:
-        """Render the for-branch source expression (the skeleton reuses the
-        returned string across its capture / decltype / emplace scaffolding,
-        so the iterable renders exactly once)."""
-        return _emit_expr(self._body.iterable, self._state)
-
-    def render_range_arg(self, i: int) -> str:
-        """Render the i-th for-range bound (the skeleton wraps it in its
-        `static_cast` scaffolding)."""
-        return _emit_expr(self._body.range_args[i], self._state)

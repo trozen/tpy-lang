@@ -4,6 +4,41 @@
 namespace tpyapp::main {
 
 
+// def gen(items: list[Res]) -> Iterator[Res]:  # tpyc: ok
+//     for r in items:
+//         yield r                                          # -> S_RESUME_0
+std::expected<::tpy::val_or_ref<Res>, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield r
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        r = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*r);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen(items: list[Res]) -> Iterator[Res]:  # tpyc: ok
+__gen_gen gen(std::vector<Res>& items) {
+    return __gen_gen(items);
+}
+
 // def main() -> None:
 //     data = [Res(1), Res(2)]
 //     for r in gen(data):

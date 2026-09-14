@@ -12,6 +12,8 @@ struct Consumer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_Source___iter__;
+
 // def main():
 void main();
 
@@ -24,24 +26,7 @@ struct Source {
     Source() = default;
     explicit Source(int32_t n);
 
-    // def __iter__(self) -> Iterator[int32]:
-    //     i: int32 = 0
-    //     while i < self._n:
-    //         yield i
-    //         i += 1
-    auto __iter__() const {
-        int32_t i = 0;
-        return ::tpy::make_generator<int32_t>(
-            [this, i]() mutable -> std::optional<int32_t> {
-                while ((i < (*this)._n)) {
-                    auto __val = i;
-                    i = ::tpy::add_check<int32_t>(i, 1);
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Source___iter__ __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Source";
 };
 
@@ -67,6 +52,34 @@ struct Consumer {
 inline std::ostream& operator<<(std::ostream& os, const Consumer& obj) {
     ::tpy::print_object_default(os, "Consumer", obj);
     return os;
+}
+
+// def __iter__(self) -> Iterator[int32]:
+struct __gen_Source___iter__ : public ::tpy::next_iter_mixin<__gen_Source___iter__, int32_t> {
+    int32_t __state;
+    const Source& __self;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Source___iter__(const Source& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Source___iter__& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Source___iter__&) {
+        return os << "<generator Source.__iter__>";
+    }
+};
+
+inline __gen_Source___iter__ Source::__iter__() const {
+    return __gen_Source___iter__(*this);
 }
 
 

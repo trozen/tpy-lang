@@ -4,6 +4,41 @@
 namespace tpyapp::main {
 
 
+// def pairs(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+//     for it in items:
+//         yield (it, None)                                           # -> S_RESUME_0
+std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_pairs::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (it, None)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        it = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return std::tuple<P*, P*>{it, nullptr};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def pairs(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+__gen_pairs pairs(std::vector<P>& items) {
+    return __gen_pairs(items);
+}
+
 // def main() -> None:
 //     points = [P(1), P(2), P(3)]
 //     for a, b in pairs(points):

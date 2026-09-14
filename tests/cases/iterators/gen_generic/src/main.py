@@ -1,14 +1,12 @@
 # Generic generator functions: type-parameterized generators over Iterable[T].
-# A generator's bare-`T` parameter renders `::tpy::borrow_frame_param_t<T>` --
-# a reference at EVERY instantiation, because the peephole captures it by
-# reference and that capture has to bind the call site's object. The `bump_each`
-# section is what makes the REFERENCE half of that trait observable: the write
-# the body makes through the slot reaches the caller's object, exactly as it
-# does at the monomorphic twin. (What the consumer does to the YIELDED value
-# does not come back -- BUGS.md#generic-generator-yields-open-t-by-value -- so
-# no section here mutates one.) A `readonly[T]` slot keeps the reference and
-# adds the const -- `const T&`, not the `readonly_form_t<T>` the sibling
-# positions spell, which would be the VIEW at str and dangle.
+# A generator's bare-`T` parameter takes the ordinary generic slot
+# (`param_val_or_ref_t<T>`) and the frame holds `val_or_ref_t<T>`: a
+# reference for a reference-typed instantiation, a copy for a value-typed one.
+# The `bump_each` section is what makes the REFERENCE half observable: the
+# write the body makes through the slot reaches the caller's object, exactly
+# as it does at the monomorphic twin. (What the consumer does to the YIELDED
+# value does not come back -- BUGS.md#generic-generator-yields-open-t-by-value
+# -- so no section here mutates one.)
 from tpy import int32, readonly
 from typing import Iterable, Iterator, Protocol
 
@@ -61,11 +59,9 @@ class Sized(Protocol):
 
 
 def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
-    # the same slot at a VALUE instantiation: `const T&` is a reference at str
-    # too, never the view -- which is what makes the peephole's `[&obj]`
-    # capture bind the caller's object rather than a parameter that dies with
-    # the factory. Fed a NAMED local, because an rvalue here is not hoisted
-    # into a caller temp (BUGS.md#readonly-tparam-slot-skips-arg-temp).
+    # the same slot at a VALUE instantiation (str): the frame copies the
+    # argument into its own member, so the factory's slot form is not
+    # observable here; fed a NAMED local.
     i: int32 = 0
     while i < count:
         yield len(obj) + i

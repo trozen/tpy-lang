@@ -32,6 +32,7 @@ template <typename T>
 struct __coro_2_5_Outer_5_Inner_4_echo;
 struct __coro_2_5_Outer_5_Inner_7_cleanup;
 struct __gen_2_5_Outer_5_Inner_6_values;
+struct __gen_2_5_Outer_5_Inner_6_simple;
 struct __coro_2_5_Outer_4_Gate_10___aenter__;
 struct __coro_2_5_Outer_4_Gate_9___aexit__;
 struct __coro_3_5_Outer_5_Layer_4_Deep_7_compute;
@@ -82,22 +83,7 @@ struct Outer {
 
         __gen_2_5_Outer_5_Inner_6_values values() const;
 
-        // def simple(self) -> Iterator[int]:
-        //     # The simple generator route is the unnamed sibling.
-        //     for n in range(2):
-        //         yield self.value + n  # tpyc: ok
-        auto simple() const {
-            return ::tpy::make_generator<::tpy::BigInt>(
-                [this, __i = int32_t(0), __stop = static_cast<int32_t>(2)]() mutable -> std::optional<::tpy::BigInt> {
-                    while (__i < __stop) {
-                        int32_t n = __i++;
-                        auto __val = (((*this).value) + (::tpy::BigInt(n)));
-                        return std::optional<::tpy::BigInt>(__val);
-                    }
-                    return std::nullopt;
-                }
-            );
-        }
+        __gen_2_5_Outer_5_Inner_6_simple simple() const;
         static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Inner";
     };
 
@@ -839,6 +825,36 @@ struct __gen_delegated : public ::tpy::next_iter_mixin<__gen_delegated, ::tpy::B
         return os << "<generator delegated>";
     }
 };
+
+// def simple(self) -> Iterator[int]:
+struct __gen_2_5_Outer_5_Inner_6_simple : public ::tpy::next_iter_mixin<__gen_2_5_Outer_5_Inner_6_simple, ::tpy::BigInt> {
+    int32_t __state;
+    const Outer::Inner& __self;
+    int32_t n;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_2_5_Outer_5_Inner_6_simple(const Outer::Inner& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_2_5_Outer_5_Inner_6_simple& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_2_5_Outer_5_Inner_6_simple&) {
+        return os << "<generator Outer.Inner.simple>";
+    }
+};
+
+inline __gen_2_5_Outer_5_Inner_6_simple Outer::Inner::simple() const {
+    return __gen_2_5_Outer_5_Inner_6_simple(*this);
+}
 
 
 // def __init__(self, value: int) -> None:

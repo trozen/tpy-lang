@@ -1207,8 +1207,8 @@ class LocalTypeDeduction:
         pending = self.ctx.view_pending_resolutions(family)
         vars_reg = self.ctx.view_vars(family)
 
-        # A generator/async body hoists every local into the resumable frame
-        # (or the peephole lambda's captures), which outlives the case-block
+        # A generator/async body hoists every local into the resumable frame,
+        # which outlives the case-block
         # temps and suspensions the sync view-safety judgment assumes the
         # binding shares scope with -- so a non-static source forces owned
         # storage. Locals side of the param doctrine in

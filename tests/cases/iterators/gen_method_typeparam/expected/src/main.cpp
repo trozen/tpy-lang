@@ -13,8 +13,7 @@ namespace tpyapp::main {
 void main() {
     Foo f = Foo();
     {
-        int32_t __tmp_1 = 42;
-        auto __src_0 = f.items<int32_t>(__tmp_1);
+        auto __src_0 = f.items<int32_t>(42);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -24,8 +23,8 @@ void main() {
         }
     }
     {
-        std::string __tmp_2 = "hi";
-        auto __src_2 = f.items<std::string>(__tmp_2);
+        std::string __tmp_1 = "hi";
+        auto __src_2 = f.items<std::string>(__tmp_1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

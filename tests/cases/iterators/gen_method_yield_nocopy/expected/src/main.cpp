@@ -31,6 +31,36 @@ void main() {
     }
 }
 
+// def each(self) -> Iterator[Handle]:  # tpyc: ok
+//     for h in self.items:
+//         yield h                                  # -> S_RESUME_0
+std::expected<::tpy::val_or_ref<Handle>, ::tpy::StopIteration> __gen_Box_each::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((__self.items).begin());
+        __for_end_0.emplace((__self.items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield h
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        h = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*h);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
 // main()
 void __tpy_init() {
     static bool initialized = false;

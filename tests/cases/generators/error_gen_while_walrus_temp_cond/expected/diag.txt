@@ -1,1 +1,0 @@
-main.py:18: error: A generator 'while' condition combining a walrus binding with an argument that needs a temporary is not supported; bind the value in the loop body ('while True:' with an explicit break) instead.

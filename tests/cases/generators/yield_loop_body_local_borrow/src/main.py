@@ -1,7 +1,7 @@
-# A simple-shape generator (single yield in a tail loop) that yields a borrow of
-# a local declared INSIDE the loop body must route to the resumable path: the
-# lambda peephole would keep that local on the lambda stack and the yielded
-# borrow would dangle. Consumer mutation must be visible to the generator on
+# A generator (single yield in a tail loop) that yields a borrow of a local
+# declared INSIDE the loop body: the borrow must survive the suspension, so the
+# local has to live on the resumable frame rather than on the `__next__` stack,
+# where it would dangle. Consumer mutation must be visible to the generator on
 # resume (aliasing), matching CPython.
 from typing import Iterator
 from tpy import int32
@@ -34,7 +34,7 @@ def walk() -> Iterator[tuple[int32, list[int32]]]:
             stack.append(k)
 
 
-# Same hazard on the for-range peephole branch (sibling of the while branch).
+# Same hazard with a `for range` loop instead of a `while`.
 def gen_range() -> Iterator[list[int32]]:
     for _ in range(2):
         buf: list[int32] = []
@@ -43,8 +43,8 @@ def gen_range() -> Iterator[list[int32]]:
         print("range resume len", len(buf))
 
 
-# The borrow root can hide behind a ternary or walrus; both must still route to
-# the resumable path (the peephole would dangle the loop-body local).
+# The borrow root can hide behind a ternary or walrus; both must still keep the
+# loop-body local alive on the frame across the yield.
 def gen_ternary(flag: bool) -> Iterator[list[int32]]:
     i = 0
     while i < 2:

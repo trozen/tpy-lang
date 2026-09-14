@@ -37,9 +37,8 @@ expression.
 
 Every lowered body is validated, whatever its shape: ordinary functions and
 constructors through `validate_function` / `validate_constructor`, and the
-resumable-frame and simple-generator bodies -- whose leaves the skeleton
-holds apart in seam tables rather than one linear body -- through
-`validate_resumable_body` / `validate_simple_gen_body`.
+resumable-frame bodies -- whose leaves the skeleton holds apart in seam
+tables rather than one linear body -- through `validate_resumable_body`.
 """
 
 from __future__ import annotations
@@ -69,7 +68,7 @@ from .nodes import (
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRSubscript,
     THIRFrameSlotWrite,
-    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, THIRSimpleGenBody,
+    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
 )
 
@@ -644,23 +643,3 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
         _walk(owner, expr, argtemp_ok=True)
     for expr in body.region_exprs.values():
         _walk(owner, expr, argtemp_ok=True)
-
-
-def validate_simple_gen_body(owner: str, body: THIRSimpleGenBody) -> None:
-    """The structural gate for a simple-generator peephole's leaf blocks.
-
-    No `return_type`: the peephole shape has no return statement (the
-    per-pull optional return is skeleton). The while condition is a flush
-    position (the peephole restructures its loop head like the sync while);
-    the for-head iterable and range bounds are not -- the skeleton renders
-    them into the lambda's capture/header, which has no flush point."""
-    validate_stmts(owner, body.init)
-    validate_stmts(owner, body.pre_yield)
-    validate_stmts(owner, body.post_yield)
-    _walk(owner, body.yield_value)
-    if body.cond is not None:
-        _walk(owner, body.cond, argtemp_ok=True)
-    if body.iterable is not None:
-        _walk(owner, body.iterable)
-    for a in body.range_args:
-        _walk(owner, a)

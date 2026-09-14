@@ -11,10 +11,14 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_g_simple;
 struct __gen_g_resumable;
+struct __gen_Holder___iter__;
 
 // def make() -> Own[Holder]:
 Holder make();
+// def g_simple() -> Iterator[int32]:
+__gen_g_simple g_simple();
 // def g_resumable() -> Iterator[int32]:
 __gen_g_resumable g_resumable();
 // def main() -> None:
@@ -28,22 +32,7 @@ struct Holder {
     // def __init__(self) -> None:
     Holder();
 
-    // def __iter__(self) -> Iterator[int32]:
-    //     for x in self.items:
-    //         yield x
-    auto __iter__() const {
-        return ::tpy::make_generator<int32_t>(
-            [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<int32_t> {
-                if (!__init) { __beg = ((*this).items).begin(); __end = ((*this).items).end(); __init = true; }
-                if (__beg != __end) {
-                    int32_t x = *__beg++;
-                    auto __val = x;
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Holder___iter__ __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -51,6 +40,62 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
+
+// def __iter__(self) -> Iterator[int32]:
+struct __gen_Holder___iter__ : public ::tpy::next_iter_mixin<__gen_Holder___iter__, int32_t> {
+    int32_t __state;
+    const Holder& __self;
+    int32_t x;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Holder___iter__(const Holder& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Holder___iter__& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Holder___iter__&) {
+        return os << "<generator Holder.__iter__>";
+    }
+};
+
+inline __gen_Holder___iter__ Holder::__iter__() const {
+    return __gen_Holder___iter__(*this);
+}
+
+// def g_simple() -> Iterator[int32]:
+struct __gen_g_simple : public ::tpy::next_iter_mixin<__gen_g_simple, int32_t> {
+    int32_t __state;
+    int32_t x;
+    ::tpy::frame_slot<Holder> __for_src_0;
+    ::tpy::frame_slot<::tpy::iter_type_t<Holder>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<Holder>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_g_simple()
+        : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_g_simple& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_g_simple&) {
+        return os << "<generator g_simple>";
+    }
+};
 
 // def g_resumable() -> Iterator[int32]:
 struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int32_t> {
@@ -83,24 +128,5 @@ struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int3
 // def __init__(self) -> None:
 //     self.items = [5, 6, 7]
 inline Holder::Holder() : items(std::vector<int32_t>{5, 6, 7}) {}
-// def g_simple() -> Iterator[int32]:
-//     for x in make():  # tpyc: ok
-//         yield x
-inline auto g_simple() {
-    return ::tpy::make_generator<int32_t>(
-        [__src = std::optional<std::decay_t<decltype(make())>>(), __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(make()))>>()]() mutable -> std::optional<int32_t> {
-            if (!__iter) { __src.emplace(make()); __iter.emplace(::tpy::__iter__(*__src)); }
-            auto __r = (*__iter).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                int32_t x = ::tpy::unwrap_ref(*__r);
-                auto __val = x;
-                return std::optional<int32_t>(__val);
-            }
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

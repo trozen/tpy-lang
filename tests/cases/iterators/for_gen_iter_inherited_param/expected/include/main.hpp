@@ -12,6 +12,8 @@ struct Source;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_BaseSource___iter__;
+
 // def drain_sum(src: Source) -> int32:
 int32_t drain_sum(Source& src);
 // def main():
@@ -26,22 +28,7 @@ struct BaseSource {
     BaseSource() = default;
     explicit BaseSource(int32_t n);
 
-    // def __iter__(self) -> Iterator[int32]:
-    //     while self._n > 0:
-    //         self._n -= 1
-    //         yield self._n
-    auto __iter__() {
-        return ::tpy::make_generator<int32_t>(
-            [this]() mutable -> std::optional<int32_t> {
-                while (((*this)._n > 0)) {
-                    (*this)._n = ::tpy::sub_check<int32_t>((*this)._n, 1);
-                    auto __val = (*this)._n;
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_BaseSource___iter__ __iter__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.BaseSource";
 };
 
@@ -64,6 +51,33 @@ struct Source : BaseSource {
 inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     ::tpy::print_object_default(os, "Source", obj);
     return os;
+}
+
+// def __iter__(self) -> Iterator[int32]:
+struct __gen_BaseSource___iter__ : public ::tpy::next_iter_mixin<__gen_BaseSource___iter__, int32_t> {
+    int32_t __state;
+    BaseSource& __self;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_BaseSource___iter__(BaseSource& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_BaseSource___iter__& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_BaseSource___iter__&) {
+        return os << "<generator BaseSource.__iter__>";
+    }
+};
+
+inline __gen_BaseSource___iter__ BaseSource::__iter__() {
+    return __gen_BaseSource___iter__(*this);
 }
 
 

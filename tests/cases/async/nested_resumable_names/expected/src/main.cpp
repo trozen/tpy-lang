@@ -467,7 +467,7 @@ __coro_async_sections async_sections() {
 //     except StopIteration:
 //         print("generator: unexpected stop")
 //
-//     # Simple generator: the receiver must alias through its capture as well.
+//     # Single-yield generator: the receiver must alias through its frame capture as well.
 //     for value in inner.simple():  # tpyc: ok
 //         print("simple:", value)
 //         inner.value += 1
@@ -618,6 +618,37 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_val
     case S_RESUME_1: {  // after: yield self.value  # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def simple(self) -> Iterator[int]:
+//     # A single-yield loop generator lowers on the same named frame.
+//     for n in range(2):
+//         yield self.value + n  # tpyc: ok                             # -> S_RESUME_0
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_simple::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(2));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield self.value + n  # tpyc: ok
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        n = ((*__for_i_0))++;
+        __state = S_RESUME_0;
+        return ((__self.value) + (::tpy::BigInt(n)));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

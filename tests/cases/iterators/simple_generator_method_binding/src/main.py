@@ -1,6 +1,5 @@
-# Regression: current_ns must stay set across a simple-generator METHOD body
-# (the record_name peephole path) and for enum-member access -- not only the
-# free-function / module-constant cases.
+# Regression: current_ns must stay set across a generator METHOD body and for
+# enum-member access -- not only the free-function / module-constant cases.
 from typing import Iterator
 from enum import Enum
 from tpy import int32

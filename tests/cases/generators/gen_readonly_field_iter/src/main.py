@@ -1,7 +1,6 @@
 # Iteration over self fields inside generator methods with a readonly (const)
 # receiver: direct narrowed-Optional field, borrow-alias local of it, and a
-# plain-field alias -- through the simple-generator lambda and, in the
-# two-yield sections, through the resumable frame, where the alias is LIVE.
+# plain-field alias, through the resumable frame, where the alias is LIVE.
 # The frames must spell const iterator/alias slots and const borrow locals.
 # Bumper checks the non-readonly side: loop-var mutation reaches the field's
 # elements (aliasing, no copy).
@@ -30,11 +29,7 @@ class Holder:
                 yield x
 
     def simple_alias(self) -> Iterator[int32]:
-        # Single yield, so this one takes the simple-gen lambda, which
-        # captures `a` by value (the documented escaping-closure snapshot):
-        # field mutations after creation are NOT observed here
-        # (BUGS.md#sgen-proto-param-alias-copy). `live_alias` below is the
-        # frame twin, where the alias is live.
+        # single yield: the same frame alias as `live_alias` below
         a = self.plain
         for x in a:
             yield x

@@ -12,8 +12,13 @@ struct Item;
 inline constexpr std::string_view __name__ = "__main__";
 
 template <typename T>
+struct __gen_each;
+template <typename T>
 struct __gen_each_twice;
 
+// def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+template <typename T>
+__gen_each<T> each(std::vector<T>& xs);
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
 __gen_each_twice<T> each_twice(std::vector<T>& xs);
@@ -55,6 +60,69 @@ struct Item {
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     ::tpy::print_object_default(os, "Item", obj);
     return os;
+}
+
+// def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+template <typename T>
+struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, T> {
+    int32_t __state;
+    std::vector<T>& xs;
+    T* x = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_each(std::vector<T>& xs)
+        : __state(S_INITIAL), xs(xs) {}
+
+    std::expected<T, ::tpy::StopIteration> __next__();
+    __gen_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_each<T>&) {
+        return os << "<generator each>";
+    }
+};
+// def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+//     for x in xs:
+//         yield copy(x)                                      # -> S_RESUME_0
+template <typename T>
+std::expected<T, ::tpy::StopIteration> __gen_each<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((xs).begin());
+        __for_end_0.emplace((xs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield copy(x)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return T((*x));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+template <typename T>
+__gen_each<T> each(std::vector<T>& xs) {
+    return __gen_each<T>(xs);
 }
 
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
@@ -138,24 +206,6 @@ inline Item::Item(int32_t key) : key(key) {}
 inline bool Item::__lt__(const Item& other) const {
     return (this->key < other.key);
 }
-// def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
-//     for x in xs:
-//         yield copy(x)
-template<::tpystd::tpy::Comparable T>
-inline auto each(std::vector<T>& xs) {
-    return ::tpy::make_generator<T>(
-        [&xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<T> {
-            if (!__init) { __beg = (xs).begin(); __end = (xs).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& x = *__beg++;
-                auto __val = T(x);
-                return std::optional<T>(std::move(__val));
-            }
-            return std::nullopt;
-        }
-    );
-}
-
 // @overload
 // def total(xs: Iterable[Own[int32]]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>

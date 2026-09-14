@@ -11,6 +11,15 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_first_only;
+template <::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
+struct __gen_relay;
+
+// def first_only(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+__gen_first_only first_only(std::vector<P>& items);
+// def relay(src: Iterator[tuple[P | None, P | None]]) -> Iterator[tuple[P | None, P | None]]:
+template <::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
+__gen_relay<T_src> relay(T_src&& src);
 // def main() -> None:
 void main();
 
@@ -30,45 +39,96 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
+// def first_only(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+struct __gen_first_only : public ::tpy::next_iter_mixin<__gen_first_only, std::tuple<P*, P*>> {
+    int32_t __state;
+    std::vector<P>& items;
+    P* it = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_first_only(std::vector<P>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
+    __gen_first_only& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_first_only&) {
+        return os << "<generator first_only>";
+    }
+};
+
+// def relay(src: Iterator[tuple[P | None, P | None]]) -> Iterator[tuple[P | None, P | None]]:
+template <::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
+struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_src>, std::tuple<P*, P*>> {
+    int32_t __state;
+    T_src src;
+    std::tuple<P*, P*> pair;
+    ::tpy::frame_slot<std::expected<std::tuple<P*, P*>, ::tpy::StopIteration>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_relay(T_src&& src_)
+        : __state(S_INITIAL), src(std::forward<T_src>(src_)) {}
+
+    std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
+    __gen_relay& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_relay<T_src>&) {
+        return os << "<generator relay>";
+    }
+};
+// def relay(src: Iterator[tuple[P | None, P | None]]) -> Iterator[tuple[P | None, P | None]]:
+//     for pair in src:
+//         yield pair                                                                           # -> S_RESUME_0
+template <::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
+std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_relay<T_src>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield pair
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(src.__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        pair = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return pair;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def relay(src: Iterator[tuple[P | None, P | None]]) -> Iterator[tuple[P | None, P | None]]:
+template <::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
+__gen_relay<T_src> relay(T_src&& src) {
+    return __gen_relay<T_src>(std::forward<T_src>(src));
+}
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline P::P(int32_t x) : x(x) {}
-// def first_only(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
-//     for it in items:
-//         yield (it, None)
-inline auto first_only(std::vector<P>& items) {
-    return ::tpy::make_generator<std::tuple<P*, P*>>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& it = *__beg++;
-                auto __val = std::tuple<P*, P*>{&(it), nullptr};
-                return std::optional<std::tuple<P*, P*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-// def relay(src: Iterator[tuple[P | None, P | None]]) -> Iterator[tuple[P | None, P | None]]:
-//     for pair in src:
-//         yield pair
-template<::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
-inline auto relay(T_src& src) {
-    return ::tpy::make_generator<std::tuple<P*, P*>>(
-        [&src]() mutable -> std::optional<std::tuple<P*, P*>> {
-            auto __r = (src).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                auto&& pair = ::tpy::unwrap_ref(*__r);
-                auto __val = pair;
-                return std::optional<std::tuple<P*, P*>>(__val);
-            }
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

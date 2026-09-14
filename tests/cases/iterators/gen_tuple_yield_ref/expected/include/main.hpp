@@ -11,6 +11,10 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_g;
+
+// def g(boxes: list[Box]) -> Iterator[tuple[int, Box]]:
+__gen_g g(std::vector<Box>& boxes);
 // def main() -> None:
 void main();
 
@@ -30,31 +34,36 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+// def g(boxes: list[Box]) -> Iterator[tuple[int, Box]]:
+struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, std::tuple<::tpy::BigInt, Box*>> {
+    int32_t __state;
+    std::vector<Box>& boxes;
+    int32_t i;
+    Box* b = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_g(std::vector<Box>& boxes)
+        : __state(S_INITIAL), boxes(boxes) {}
+
+    std::expected<std::tuple<::tpy::BigInt, Box*>, ::tpy::StopIteration> __next__();
+    __gen_g& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_g&) {
+        return os << "<generator g>";
+    }
+};
+
 
 // def __init__(self, v: int):
 //     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
-// def g(boxes: list[Box]) -> Iterator[tuple[int, Box]]:
-//     i = 0
-//     for b in boxes:
-//         yield (i, b)
-//         i += 1
-inline auto g(std::vector<Box>& boxes) {
-    int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<::tpy::BigInt, Box*>>(
-        [&boxes, i, __beg = decltype((boxes).begin())(), __end = decltype((boxes).begin())(), __init = false]() mutable -> std::optional<std::tuple<::tpy::BigInt, Box*>> {
-            if (!__init) { __beg = (boxes).begin(); __end = (boxes).end(); __init = true; }
-            if (__beg != __end) {
-                auto&& b = *__beg++;
-                auto __val = std::tuple<::tpy::BigInt, Box*>{i, &(b)};
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<::tpy::BigInt, Box*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

@@ -42,6 +42,82 @@ std::optional<::tpyapp::main::Mode> EnumUtil<::tpyapp::main::Mode>::try_parse(st
 namespace tpyapp::main {
 
 
+// # Single yield in a tail while-loop, two literal defaults.
+// def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < stop:
+//         yield i                                                 # -> S_RESUME_0
+//         i += step
+std::expected<int32_t, ::tpy::StopIteration> __gen_upto::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i
+        i = ::tpy::add_check<int32_t>(i, step);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < stop)) {
+            __state = S_RESUME_0;
+            return i;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
+__gen_upto upto(int32_t stop, int32_t step) {
+    return __gen_upto(stop, step);
+}
+
+// # Default referencing a module-level Final constant.
+// def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < stop:
+//         yield i                                                 # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_upto_final::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < stop)) {
+            __state = S_RESUME_0;
+            return i;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
+__gen_upto_final upto_final(int32_t stop) {
+    return __gen_upto_final(stop);
+}
+
 // # Resumable generator (two yields), one default.
 // def bounded(limit: int32 = 2) -> Iterator[int32]:
 //     yield 0                                        # -> S_RESUME_0
@@ -409,6 +485,39 @@ void main() {
         }
     }
 }
+
+// # Single-yield generator METHOD with a default.
+// def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < stop:
+//         yield i                                        # -> S_RESUME_0
+//         i += 1
+std::expected<int32_t, ::tpy::StopIteration> __gen_Box_upto_m::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < stop)) {
+            __state = S_RESUME_0;
+            return i;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 // # Resumable generator METHOD (two yields) -- the reproducer.
 // def bounded_m(self, limit: int32 = 2) -> Iterator[int32]:

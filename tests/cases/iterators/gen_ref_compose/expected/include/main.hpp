@@ -11,6 +11,17 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
+struct __gen_my_map;
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+struct __gen_my_enumerate;
+
+// def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
+template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
+__gen_my_map<T, U, T_it, F_fn> my_map(F_fn&& fn, T_it&& it);
+// def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+__gen_my_enumerate<T, T_it> my_enumerate(T_it&& it);
 // def identity(p: Point) -> Point:
 Point& identity(Point& p);
 // def double(v: int32) -> int32:
@@ -39,6 +50,138 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+// def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
+template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
+struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_fn>, U> {
+    int32_t __state;
+    F_fn fn;
+    T_it it;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
+    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_my_map(F_fn&& fn_, T_it&& it_)
+        : __state(S_INITIAL), fn(std::forward<F_fn>(fn_)), it(std::forward<T_it>(it_)) {}
+
+    std::expected<U, ::tpy::StopIteration> __next__();
+    __gen_my_map& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_my_map<T, U, T_it, F_fn>&) {
+        return os << "<generator my_map>";
+    }
+};
+// def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
+//     for x in it:
+//         yield fn(x)                                                # -> S_RESUME_0
+template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
+std::expected<U, ::tpy::StopIteration> __gen_my_map<T, U, T_it, F_fn>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        ::tpy::resumable_iter_init(__for_itr_0, it);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield fn(x)
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
+        __state = S_RESUME_0;
+        return fn((*x));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
+template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
+__gen_my_map<T, U, T_it, F_fn> my_map(F_fn&& fn, T_it&& it) {
+    return __gen_my_map<T, U, T_it, F_fn>(std::forward<F_fn>(fn), std::forward<T_it>(it));
+}
+
+// def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate<T, T_it>, std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
+    int32_t __state;
+    T_it it;
+    int32_t i;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
+    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_my_enumerate(T_it&& it_)
+        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+
+    std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __next__();
+    __gen_my_enumerate& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_my_enumerate<T, T_it>&) {
+        return os << "<generator my_enumerate>";
+    }
+};
+// def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
+//     i: int32 = 0
+//     for x in it:
+//         yield (i, x)                                                # -> S_RESUME_0
+//         i += 1
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_my_enumerate<T, T_it>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        ::tpy::resumable_iter_init(__for_itr_0, it);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (i, x)
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
+        __state = S_RESUME_0;
+        return std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>((*x))};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+__gen_my_enumerate<T, T_it> my_enumerate(T_it&& it) {
+    return __gen_my_enumerate<T, T_it>(std::forward<T_it>(it));
+}
+
 
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
@@ -50,51 +193,5 @@ inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 inline std::string Point::__str__() const {
     return std::format("({}, {})", this->x, this->y);
 }
-// def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
-//     for x in it:
-//         yield fn(x)
-template<typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
-  }
-inline auto my_map(__F0&& fn, T_it& it) {
-    return ::tpy::make_generator<U>(
-        [fn, &it, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(it))>>()]() mutable -> std::optional<U> {
-            if (!__iter) { __iter.emplace(::tpy::__iter__(it)); }
-            auto __r = (*__iter).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                auto&& x = ::tpy::unwrap_ref(*__r);
-                auto&& __val = fn(x);
-                return std::optional<U>(__val);
-            }
-        }
-    );
-}
-
-// def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
-//     i: int32 = 0
-//     for x in it:
-//         yield (i, x)
-//         i += 1
-template<typename T, ::tpystd::typing::Iterable<T> T_it>
-inline auto my_enumerate(T_it& it) {
-    int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
-        [&it, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(it))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
-            if (!__iter) { __iter.emplace(::tpy::__iter__(it)); }
-            auto __r = (*__iter).__next__();
-            if (!__r.has_value()) return std::nullopt;
-            {
-                auto&& x = ::tpy::unwrap_ref(*__r);
-                auto __val = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
-                i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(__val);
-            }
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

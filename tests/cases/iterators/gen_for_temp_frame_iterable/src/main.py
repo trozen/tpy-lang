@@ -1,7 +1,7 @@
 # The temporary-source sibling of gen_frame_iter_frame_source: the frame stores
 # the temp in `__for_src` and then borrows it through `__iter__`, so BOTH the
 # source type and its frame-emitted __iter__ struct must be complete at the
-# field declaration. Holder.__iter__ has two yields to keep it off the peephole.
+# field declaration.
 from typing import Iterator
 from tpy import int32, Own
 

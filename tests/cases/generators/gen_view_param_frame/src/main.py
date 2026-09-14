@@ -23,8 +23,7 @@ class P:
         self.n = n
 
 
-# free two-yield generator (off the simple-generator peephole): the frame field
-# is the same view the sync signature spells, so writes through it land in the
+# free two-yield generator: the frame field is the same view the sync signature spells, so writes through it land in the
 # caller's storage instead of in a buffer copied into the frame.
 def bump_scalars(s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
     s[0] += 10
@@ -170,9 +169,9 @@ async def run_bump() -> int32:
 
 # -- a container (`T&`) slot, fed by a comprehension -------------------------
 # The frame field is a `std::vector<int32_t>&`, so the comprehension's fresh
-# vector still has to be named. Two yields keep both off the simple-generator
-# peephole, and each reads a slot AFTER a suspension, so a buffer freed at the
-# end of the calling statement is a wrong answer rather than a stale length.
+# vector still has to be named. Each reads a slot AFTER a suspension, so a
+# buffer freed at the end of the calling statement is a wrong answer rather
+# than a stale length.
 
 
 def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok

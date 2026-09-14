@@ -11,6 +11,8 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_Counter___iter__;
+
 // def main() -> None:
 void main();
 
@@ -23,30 +25,41 @@ struct Counter {
     Counter() = default;
     explicit Counter(int32_t limit);
 
-    // def __iter__(self) -> Iterator[int32]:
-    //     i: int32 = 0
-    //     while i < self.limit:
-    //         yield i
-    //         i += 1
-    auto __iter__() const {
-        int32_t i = 0;
-        return ::tpy::make_generator<int32_t>(
-            [this, i]() mutable -> std::optional<int32_t> {
-                while ((i < (*this).limit)) {
-                    auto __val = i;
-                    i = ::tpy::add_check<int32_t>(i, 1);
-                    return std::optional<int32_t>(__val);
-                }
-                return std::nullopt;
-            }
-        );
-    }
+    __gen_Counter___iter__ __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     ::tpy::print_object_default(os, "Counter", obj);
     return os;
+}
+
+// def __iter__(self) -> Iterator[int32]:
+struct __gen_Counter___iter__ : public ::tpy::next_iter_mixin<__gen_Counter___iter__, int32_t> {
+    int32_t __state;
+    const Counter& __self;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Counter___iter__(const Counter& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Counter___iter__& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Counter___iter__&) {
+        return os << "<generator Counter.__iter__>";
+    }
+};
+
+inline __gen_Counter___iter__ Counter::__iter__() const {
+    return __gen_Counter___iter__(*this);
 }
 
 

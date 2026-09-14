@@ -185,8 +185,7 @@ class THIRWalrus(THIRExpr):
     through the temp sink's named row on FIRST binding (`cpp_type` set)
     and assigns in place on a rebind (`cpp_type` None). The named pre-decl
     flushes at the statement flush point -- for a while condition that is
-    BEFORE the loop (the binding stays visible after it), for a
-    simple-generator condition at lambda scope (`flush_named_since`).
+    BEFORE the loop (the binding stays visible after it).
 
     Per-class shape: the value-scalar slice renders `(n = v)` (no init, no
     tail); a pointer-repr Optional target pre-declares `T* n = nullptr;`
@@ -3394,30 +3393,3 @@ class THIRResumableBody:
     # when the recipe table does not cover the shape -- so the seam never
     # decides anything at emit and a missing entry is a disagreement.
     deferred_returns: 'IdentityMap' = field(default_factory=IdentityMap)
-
-
-@dataclass(frozen=True)
-class THIRSimpleGenBody:
-    """A routed simple-generator (lambda peephole) body's lowered LEAF content.
-
-    The peephole skeleton (`gen_generators.gen_simple_generator_inline`) owns
-    the signature, capture list, `make_generator` scaffolding, iterator-slot
-    types, loop-var decl and the per-pull optional return -- structural
-    emission, like the resumable frame skeleton. The user-source leaves
-    render from these fields instead. Unlike `THIRResumableBody`, the seam
-    sites are static (one loop, one yield), so the blocks are direct fields,
-    not identity-keyed tables.
-
-    `init` is the pre-loop statement block (`func.body[:-1]`); `pre_yield` /
-    `post_yield` the loop-body statements around the single yield; `cond` the
-    while-branch condition (None for a for-loop peephole); `iterable` the
-    for-branch source expression (None for while / for-range); `range_args`
-    the for-range bound expressions (position-blind renders -- the skeleton
-    wraps them in its `static_cast` scaffolding)."""
-    init: tuple[THIRStmt, ...]
-    pre_yield: tuple[THIRStmt, ...]
-    post_yield: tuple[THIRStmt, ...]
-    yield_value: THIRExpr
-    cond: 'THIRExpr | None' = None
-    iterable: 'THIRExpr | None' = None
-    range_args: tuple[THIRExpr, ...] = ()

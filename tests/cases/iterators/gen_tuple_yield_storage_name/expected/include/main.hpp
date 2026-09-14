@@ -12,9 +12,12 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_storage_relay;
 struct __gen_relay_twice;
 struct __gen_Holder_relay;
 
+// def storage_relay(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
+__gen_storage_relay storage_relay(std::vector<std::tuple<int32_t, C>>& items);
 // def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 __gen_relay_twice relay_twice(std::vector<std::tuple<int32_t, C>>& items);
 // def main() -> None:
@@ -53,6 +56,32 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
+
+// def storage_relay(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
+struct __gen_storage_relay : public ::tpy::next_iter_mixin<__gen_storage_relay, std::tuple<int32_t, C*>> {
+    int32_t __state;
+    std::vector<std::tuple<int32_t, C>>& items;
+    std::tuple<int32_t, C>* pair = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_storage_relay(std::vector<std::tuple<int32_t, C>>& items)
+        : __state(S_INITIAL), items(items) {}
+
+    std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __next__();
+    __gen_storage_relay& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_storage_relay&) {
+        return os << "<generator storage_relay>";
+    }
+};
 
 // def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std::tuple<int32_t, C*>> {
@@ -120,23 +149,5 @@ inline C::C(int32_t v) : v(v) {}
 // def __init__(self, items: Own[list[tuple[int32, C]]]) -> None:
 //     self.items = items
 inline Holder::Holder(std::vector<std::tuple<int32_t, C>>&& items) : items(std::move(items)) {}
-// def storage_relay(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
-//     for pair in items:
-//         yield pair  # tpyc: ok
-inline auto storage_relay(std::vector<std::tuple<int32_t, C>>& items) {
-    return ::tpy::make_generator<std::tuple<int32_t, C*>>(
-        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<int32_t, C*>> {
-            if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
-            if (__beg != __end) {
-                std::tuple<int32_t, C&> pair = *__beg++;
-                auto __val = ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>(pair);
-                return std::optional<std::tuple<int32_t, C*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
-
 void __tpy_init();
 } // namespace tpyapp::main

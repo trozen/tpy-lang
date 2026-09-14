@@ -15,6 +15,7 @@ using ::tpyapp::gensrc::chatty;
 using ::tpyapp::gensrc::guarded;
 using ::tpyapp::gensrc::pair;
 using ::tpyapp::gensrc::walk;
+using ::tpyapp::gensrc::walk_once;
 
 using ::tpyapp::gensrc::Bag;
 using ::tpyapp::gensrc::Box;
@@ -25,6 +26,7 @@ template<typename T> struct LocalBox;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_free_import;
+struct __gen_single_yield_import;
 struct __gen_module_call;
 struct __gen_imported_method;
 struct __gen_generic_callee;
@@ -39,6 +41,8 @@ struct __gen_LocalBox_two;
 
 // def free_import() -> Iterator[int32]:
 __gen_free_import free_import();
+// def single_yield_import() -> Iterator[int32]:
+__gen_single_yield_import single_yield_import();
 // def module_call() -> Iterator[int32]:
 __gen_module_call module_call();
 // def imported_method(s: Src) -> Iterator[int32]:
@@ -132,6 +136,32 @@ struct __gen_free_import : public ::tpy::next_iter_mixin<__gen_free_import, int3
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_free_import&) {
         return os << "<generator free_import>";
+    }
+};
+
+// def single_yield_import() -> Iterator[int32]:
+struct __gen_single_yield_import : public ::tpy::next_iter_mixin<__gen_single_yield_import, int32_t> {
+    int32_t __state;
+    int32_t x;
+    ::tpy::frame_slot<::tpyapp::gensrc::__gen_walk_once> __for_src_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk_once>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_single_yield_import()
+        : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_single_yield_import& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_single_yield_import&) {
+        return os << "<generator single_yield_import>";
     }
 };
 
