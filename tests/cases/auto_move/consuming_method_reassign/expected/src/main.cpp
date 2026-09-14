@@ -12,11 +12,10 @@ namespace tpyapp::main {
 //     print(r1)
 //     print(r2)
 void main() {
-    std::optional<Wrapper> __slot_2;
     Wrapper __slot_1 = Wrapper(::tpy::BigInt(42));
     Wrapper* w = &__slot_1;
     ::tpy::BigInt r1 = std::move(*w).take();
-    w = &*(__slot_2 = Wrapper(::tpy::BigInt(99)));
+    (*w) = Wrapper(::tpy::BigInt(99));
     ::tpy::BigInt r2 = std::move(*w).take();
     std::cout << r1 << "\n";
     std::cout << r2 << "\n";

@@ -15,9 +15,9 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         if ((n > 2)) {
-            xs.emplace(std::vector<int32_t>{1, 2});
+            xs = &*(__ptr_slot_f0 = {1, 2});
         } else {
-            xs.emplace(std::vector<int32_t>{3});
+            xs = &*(__ptr_slot_f1 = {3});
         }
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;

@@ -37,12 +37,11 @@ void test_raise_variable() {
 //     except AppError as caught:
 //         print(caught.code)
 void test_raise_reassigned() {
-    std::optional<AppError> __slot_2;
     {
         try {
             AppError __slot_1 = AppError(1);
             AppError* e = &__slot_1;
-            e = &*(__slot_2 = AppError(2));
+            (*e) = AppError(2);
             (*e).__raise__();
         } catch (const AppError& caught) {
             std::cout << caught.code << "\n";

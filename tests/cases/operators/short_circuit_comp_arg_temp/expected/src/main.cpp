@@ -63,18 +63,17 @@ bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs) {
 //     c = Counter()
 //     print("and_taken", comp_in_and(c, True, [1, 2]), c.n)             # True 2
 void main() {
-    std::optional<Counter> __slot_2;
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
     std::vector<int32_t> __tmp_3 = {1, 2};
     std::cout << "ternary_skipped" << " " << comp_in_ternary((*c), false, __tmp_3) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::vector<int32_t> __tmp_4 = {1, 2};
     std::cout << "ternary_taken" << " " << comp_in_ternary((*c), true, __tmp_4) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::vector<int32_t> __tmp_5 = {1, 2};
     std::cout << "and_skipped" << " " << ::tpy::print_bool(comp_in_and((*c), false, __tmp_5)) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::vector<int32_t> __tmp_6 = {1, 2};
     std::cout << "and_taken" << " " << ::tpy::print_bool(comp_in_and((*c), true, __tmp_6)) << " " << c->n << "\n";
 }

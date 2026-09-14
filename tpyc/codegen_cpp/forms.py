@@ -47,16 +47,15 @@ class LocalBinding(Enum):
                              reassignments. The reassigned counterpart of
                              REF_ALIAS; only the lvalue-reseat (slot-free) subset.
       * `REBIND_SLOT`     -- `T*` pointer-local of a plain non-value *rvalue*
-                             source (a ctor / by-value call), reseatable via the
-                             two-slot `__slot_N` machinery (a direct init slot +
-                             an `std::optional<T>` rebind slot). The rvalue
+                             source (a ctor / by-value call): a direct init
+                             slot the pointer aims at, and each rvalue reseat
+                             writes in place or into a slot of its own
+                             (sema's `rebind_storage`). The rvalue
                              counterpart of POINTER.
       * `OPT_PTR_SLOT`    -- `T*` pointer-local of a pointer-repr `Optional[T]`
                              whose init is a None literal (`T* x = nullptr;`) or
-                             an rvalue (`T __slot_N = ...; T* x = &__slot_N;`),
-                             with the `std::optional<T>` rebind-slot pre-decl
-                             when the name is rvalue-reassigned. The Optional
-                             sibling of REBIND_SLOT.
+                             an rvalue (`T __slot_N = ...; T* x = &__slot_N;`).
+                             The Optional sibling of REBIND_SLOT.
       * `STORAGE_TUPLE_ALIAS` -- `auto&& name = <lvalue storage tuple>` aliasing a
                              pointer-repr tuple's storage; single-assignment.
                              Decided by `is_storage_tuple_alias_decl`.
@@ -207,8 +206,7 @@ def classify_local_binding(
     is_reassigned = name in reassigned
     if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
         # None-literal and rvalue inits take the slot-hoist pointer-local
-        # machinery (reassigned or not: the rebind-slot pre-decl is keyed on
-        # rvalue_reassigned at the consumer). THIR lowering sub-gates the
+        # machinery (reassigned or not). THIR lowering sub-gates the
         # admitted init/reseat shapes.
         if isinstance(init, TpyNoneLiteral) or is_rvalue_source(analyzer, init):
             return LocalBinding.OPT_PTR_SLOT
@@ -222,8 +220,8 @@ def classify_local_binding(
     if is_plain_nonvalue(target_type):
         if is_rvalue_source(analyzer, init):
             # An rvalue source (a ctor / by-value call). A name reassigned with an
-            # rvalue is a rebind-slot pointer-local (the two-slot `__slot_N`
-            # machinery); a single-assignment rvalue local needs no indirection
+            # rvalue is a rebind-slot pointer-local; a single-assignment
+            # rvalue local needs no indirection
             # (a plain value local) and is left to the caller's path.
             return (LocalBinding.REBIND_SLOT if name in rvalue_reassigned
                     else LocalBinding.OTHER)

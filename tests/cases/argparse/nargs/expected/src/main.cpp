@@ -112,12 +112,11 @@ void __tpy_builder_argparse_help_2() {
 
 // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
 __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<std::string>& argv) {
-    std::optional<std::vector<::tpy::BigInt>> __slot_3;
-    std::optional<std::vector<::tpy::BigInt>> __slot_1;
-    std::optional<std::vector<std::string>> __slot_4;
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
+    std::optional<std::vector<std::string>> __slot_3;
     std::vector<::tpy::BigInt>* coord = nullptr;
-    std::vector<::tpy::BigInt> __slot_2 = std::vector<::tpy::BigInt>{};
-    std::vector<::tpy::BigInt>* __tpy_argparse_acc_coord = &__slot_2;
+    std::vector<::tpy::BigInt> __slot_1 = std::vector<::tpy::BigInt>{};
+    std::vector<::tpy::BigInt>* __tpy_argparse_acc_coord = &__slot_1;
     bool __tpy_argparse_seen_coord = false;
     std::vector<std::string>* tag = nullptr;
     std::vector<std::string> __tpy_argparse_acc_tag = std::vector<std::string>{};
@@ -134,7 +133,7 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--coord")) {
-            __tpy_argparse_acc_coord = &*(__slot_3 = std::vector<::tpy::BigInt>{});
+            (*__tpy_argparse_acc_coord) = std::vector<::tpy::BigInt>{};
             int32_t __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             while (((__tpy_argparse_j < ::tpy::__len__(argv)) && (!(::tpy::str_startswith(::tpy::__getitem__(argv, __tpy_argparse_j), "-"))))) {
                 __tpy_argparse_acc_coord->push_back(::tpy::BigInt::from_str(::tpy::__getitem__(argv, __tpy_argparse_j)));
@@ -164,10 +163,10 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
         }
     }
     if (__tpy_argparse_seen_coord) {
-        coord = &*(__slot_1 = std::vector<::tpy::BigInt>((*__tpy_argparse_acc_coord)));
+        coord = &*(__slot_2 = std::vector<::tpy::BigInt>((*__tpy_argparse_acc_coord)));
     }
     if (__tpy_argparse_seen_tag) {
-        tag = &*(__slot_4 = std::vector<std::string>(__tpy_argparse_acc_tag));
+        tag = &*(__slot_3 = std::vector<std::string>(__tpy_argparse_acc_tag));
     }
     return __tpy_builder_argparse_args_2(std::move(coord ? std::optional<std::vector<::tpy::BigInt>>(std::move(*coord)) : std::nullopt), std::move(tag ? std::optional<std::vector<std::string>>(std::move(*tag)) : std::nullopt));
 }

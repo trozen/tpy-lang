@@ -1194,11 +1194,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "stmt.del_var_sink",
     "stmt.del_item_multi",          # multi-target del: one __delitem__ line per target
     "stmt.del_attr_multi",          # multi-target del: one __delattr__ line per target
-    # Rebound container-literal local (lowering; the F2d two-slot machinery
-    # with a container-literal init/reseat -- `std::vector<T>* xs = &__slot_1;
-    # ... xs = &*(__slot_2 = {...});`).
+    # Rebound container-literal local (lowering; the F2d rebind-slot
+    # pointer-local with a container-literal init --
+    # `std::vector<T>* xs = &__slot_1;`).
     "decl.container_rebind_slot",
-    # ... and the comprehension init of the same two-slot machinery
+    # ... and the comprehension init of the same pointer-local
     # (`std::vector<T> __slot_1 = ({...});`).
     "decl.comp_rebind_slot",
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the
@@ -1999,11 +1999,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # `a: V = None` at a recursive-union WRAPPER slot: the monostate member
     # absorbed by the wrapper's forwarding ctor (`V a = std::monostate{};`).
     "decl.wrapper_none",
-    # Slot-hoist pointer-repr Optional local, None init: `T* x = nullptr;`
-    # plus the `std::optional<T>` rebind-slot pre-decl when rvalue-reassigned.
+    # Slot-hoist pointer-repr Optional local, None init: `T* x = nullptr;`.
     "decl.opt_slot_none",
     # Slot-hoist Optional local, F1-record rvalue init: `T __slot_N = ...;
-    # T* x = &__slot_N;` (+ the rebind-slot pre-decl).
+    # T* x = &__slot_N;`.
     "decl.opt_slot_rvalue",
     # Slot-hoist Optional local, container-LITERAL init:
     # `std::vector<T> __slot_N = std::vector<T>{1, 2}; std::vector<T>* x =
@@ -2062,8 +2061,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.opt_none",
     "reseat.opt_inline_rvalue",  # slotless local: in-place plain block slot + later reuse
     "reseat.opt_ptr_copy",       # same-Optional borrow-name source: bare pointer copy
-    # Rvalue reseat through the pre-declared rebind slot:
-    # `x = &*(__slot_N = <rvalue>);` (THIRAssign's rebind-slot arm).
+    # Rvalue reseat by sema's storage verdict: `(*x) = <rvalue>;` or
+    # `x = &*(__slot_N = <rvalue>);` (THIRAssign's rebind arm).
     "reseat.opt_rvalue",
     # ... with an Own-returning user dunder operator as the rvalue
     # (`v = v + inc` -> `v = &*(__slot_N = (((*v)) + (inc)));`).
@@ -2075,12 +2074,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # optional_to_ptr lift, not a ptr copy
     "reseat.opt_field_lift",        # slotless opt local = optional_to_ptr(field)
     # Ptr-variant union local from a concrete-member rvalue: value-variant
-    # `__slot_N` + `to_ptr_variant(__slot_N)` (+ the rebind-slot pre-decl).
+    # `__slot_N` + `to_ptr_variant(__slot_N)`.
     "decl.union_slot_rvalue",
     # Ptr-variant union local from a concrete-member lvalue name:
     # `variant<A*, B*> v{&(name)};`.
     "decl.union_addr",
-    # Union rvalue reseat through the pre-declared rebind slot:
+    # Union rvalue reseat through a slot of the site's own:
     # `__slot_N.emplace(...); v = ::tpy::to_ptr_variant(*__slot_N);`.
     "reseat.union_rvalue",
     # A read of a read-only-seeded same-module value global (lowering; the
@@ -2731,6 +2730,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.array_value_ret",         # ... and the free-call twin
     "reseat.opt_frame_slot",        # resumable rvalue reseat via the
                                     # prescanned frame-field slot (&*(f=..))
+    "reseat.opt_frame_in_place",   # resumable Optional-ptr rvalue reseat
+                                    # assigning through the pointer (IN_PLACE)
     "reseat.opt_frame_storage_call",  # ... and the Own-opt-call sibling:
                                     # field fill + optional_to_ptr re-lift
     "genexpr.range",                # the range-source counter lambda
@@ -3061,6 +3062,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.yield_record_param",       # record yield of a PARAM name, bare
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
+    "res.rebind_ptr_own",           # REBIND_PTR frame local write into its
+                                    # site field (OWN / first write)
+    "res.rebind_ptr_in_place",      # REBIND_PTR frame local write through
+                                    # the pointer (IN_PLACE)
     "res.frame_comp_write",         # a comp init emplaces its stmt-expr:
                                     # rows.emplace(({ ... }))
     "res.coro_handle_write",        # concrete-coro handle factory-call bind

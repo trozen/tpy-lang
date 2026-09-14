@@ -19,14 +19,14 @@ namespace tpyapp::main {
 //     return saved.x * 100 + p.x
 ::tpy::BigInt escaped_alias() {
     std::optional<Point> __slot_2;
-    std::optional<Point> __slot_4;
+    std::optional<Point> __slot_3;
     Point __slot_1 = Point(::tpy::BigInt(0));
     Point* saved = &__slot_1;
     for (int32_t i = 0; i < 3; ++i) {
         Point* p = &*(__slot_2 = Point(::tpy::BigInt(i)));
         saved = p;
     }
-    Point* p = &*(__slot_4 = Point(::tpy::BigInt(9)));
+    Point* p = &*(__slot_3 = Point(::tpy::BigInt(9)));
     return ((((saved->x) * (::tpy::BigInt(100)))) + (p->x));
 }
 
@@ -44,8 +44,8 @@ namespace tpyapp::main {
         Point __slot_1 = Point(::tpy::BigInt(i));
         Point* p = &__slot_1;
     }
-    Point __slot_3 = Point(::tpy::BigInt(9));
-    Point* p = &__slot_3;
+    Point __slot_2 = Point(::tpy::BigInt(9));
+    Point* p = &__slot_2;
     Point& q = (*p);
     q.x = ::tpy::BigInt(55);
     return p->x;
@@ -68,8 +68,8 @@ namespace tpyapp::main {
         std::cout << p->x << "\n";
     } else {
     }
-    Point __slot_3 = Point(::tpy::BigInt(9));
-    Point* p = &__slot_3;
+    Point __slot_2 = Point(::tpy::BigInt(9));
+    Point* p = &__slot_2;
     return p->x;
 }
 
@@ -90,8 +90,8 @@ namespace tpyapp::main {
         } catch (const ::tpy::ValueError&) {
         }
     }
-    Point __slot_3 = Point(::tpy::BigInt(9));
-    Point* p = &__slot_3;
+    Point __slot_2 = Point(::tpy::BigInt(9));
+    Point* p = &__slot_2;
     return p->x;
 }
 

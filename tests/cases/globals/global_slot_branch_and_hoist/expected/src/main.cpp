@@ -76,12 +76,13 @@ void __tpy_init() {
     initialized = true;
 
     static std::optional<Node> __global_slot_3;
+    static std::optional<Node> __global_slot_4;
     flag = true;
     g = nullptr;
     if (flag) {
         static Node __global_slot_1 = Node(1);
         g = &__global_slot_1;
-        g = &(__global_slot_1 = Node(2));
+        (*g) = Node(2);
     } else {
         static Node __global_slot_2 = Node(3);
         g = &__global_slot_2;
@@ -94,14 +95,14 @@ void __tpy_init() {
     V = &*(__global_slot_3 = Node(3));
     S = V;
     std::cout << S->x << "\n";
-    V = &*(__global_slot_3 = Node(4));
+    V = &*(__global_slot_4 = Node(4));
     std::cout << V->x << "\n";
-    static std::vector<Node> __global_slot_4 = {Node(5), Node(6)};
-    pool = &__global_slot_4;
+    static std::vector<Node> __global_slot_5 = {Node(5), Node(6)};
+    pool = &__global_slot_5;
     q = nullptr;
     if (flag) {
-        static Node __global_slot_5 = Node(7);
-        q = &__global_slot_5;
+        static Node __global_slot_6 = Node(7);
+        q = &__global_slot_6;
         q = find((*pool), 5);
     }
     if ((q != nullptr)) {

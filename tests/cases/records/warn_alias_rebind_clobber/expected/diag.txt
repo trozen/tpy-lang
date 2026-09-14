@@ -1,13 +1,2 @@
-main.py:201: warning: 'galias' will not keep the object it was given -- 'g' is rebound here and both names share its storage; bind 'galias' with copy(g), or bind the new value to a name of its own
-main.py:35: warning: 'alias' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'alias' with copy(p), or bind the new value to a name of its own
-main.py:45: warning: 'alias' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'alias' with copy(p), or bind the new value to a name of its own
-main.py:55: warning: 'alias' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'alias' with copy(p), or bind the new value to a name of its own
-main.py:65: warning: 'inner' will not keep the object it was given -- 'h' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:80: warning: 'e' will not keep the object it was given -- 'xs' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:92: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:103: warning: 'nalias' will not keep the object it was given -- 'n' is rebound here and both names share its storage; bind 'nalias' with copy(n), or bind the new value to a name of its own
-main.py:117: warning: 'alias' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'alias' with copy(p), or bind the new value to a name of its own
-main.py:130: warning: 'saved' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'saved' with copy(p), or bind the new value to a name of its own
-main.py:144: warning: 'loan' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:158: warning: 'saved' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'saved' with copy(p), or bind the new value to a name of its own
-main.py:173: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:25: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:37: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own

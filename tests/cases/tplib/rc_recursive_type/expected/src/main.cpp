@@ -21,7 +21,6 @@ namespace tpyapp::main {
 //             break
 //         cur = nxt.clone()
 void main() {
-    std::optional<::tpystd::tplib::rc::Rc<Node>> __slot_2;
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(1));
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(2));
     ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_<Node>(Node(3));
@@ -35,7 +34,7 @@ void main() {
         if ((nxt == nullptr)) {
             break;
         }
-        cur = &*(__slot_2 = nxt->clone());
+        (*cur) = nxt->clone();
     }
 }
 

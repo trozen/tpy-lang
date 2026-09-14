@@ -65,7 +65,7 @@ void branch_arms_section(bool c) {
     Point __slot_1 = Point(15);
     Point* p = &__slot_1;
     if (c) {
-        p = &*(__slot_2 = Point(16));
+        (*p) = Point(16);
         std::cout << "branch_arms_then:" << " " << p->x << "\n";
     } else {
         Point& alias = (*p);
@@ -87,7 +87,7 @@ void dead_alias_section() {
     std::optional<Point> __slot_2;
     Point __slot_1 = Point(3);
     Point* p = &__slot_1;
-    p = &*(__slot_2 = Point(4));
+    (*p) = Point(4);
     Point& alias = (*p);
     std::cout << "dead_alias_pre:" << " " << alias.x << "\n";
     p = &*(__slot_2 = Point(50));
@@ -103,10 +103,9 @@ void dead_alias_section() {
 //     alias.bump()
 //     print("none_rebind:", alias.x, p is None)
 void none_rebind_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(5);
     Point* p = &__slot_1;
-    p = &*(__slot_2 = Point(6));
+    (*p) = Point(6);
     Point& alias = (*p);
     p = nullptr;
     alias.bump();
@@ -123,13 +122,12 @@ void none_rebind_section() {
 //     p = Point(50)  # tpyc: ok
 //     print("container_insert:", xs[0].x, p.x)
 void container_insert_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(7);
     Point* p = &__slot_1;
     std::vector<Point> xs = std::vector<Point>{};
     xs.push_back(Point((*p)));
     p->bump();
-    p = &*(__slot_2 = Point(50));
+    (*p) = Point(50);
     std::cout << "container_insert:" << " " << ::tpy::__getitem__(xs, 0).x << " " << p->x << "\n";
 }
 
@@ -159,12 +157,11 @@ void rebound_ptr_section() {
 //     held.bump()
 //     print("hatch_copy:", held.x, p.x)
 void hatch_copy_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(10);
     Point* p = &__slot_1;
-    p = &*(__slot_2 = Point(11));
+    (*p) = Point(11);
     Point held = Point((*p));
-    p = &*(__slot_2 = Point(50));
+    (*p) = Point(50);
     held.bump();
     std::cout << "hatch_copy:" << " " << held.x << " " << p->x << "\n";
 }
@@ -177,11 +174,10 @@ void hatch_copy_section() {
 //     shared.bump()
 //     print("hatch_rc:", shared.x, r.x)
 void hatch_rc_section() {
-    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(12));
     ::tpystd::tplib::rc::Rc<Point>* r = &__slot_1;
     ::tpystd::tplib::rc::Rc<Point> shared = r->clone();
-    r = &*(__slot_2 = Rc<Point>::new_<Point>(Point(50)));
+    (*r) = Rc<Point>::new_<Point>(Point(50));
     shared.__deref__().bump();
     std::cout << "hatch_rc:" << " " << shared.__deref__().x << " " << r->__deref__().x << "\n";
 }
@@ -195,10 +191,9 @@ void hatch_rc_section() {
 //     alias.bump()
 //     print("hatch_fresh_name:", alias.x, p.x, q.x)
 void hatch_fresh_name_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(13);
     Point* p = &__slot_1;
-    p = &*(__slot_2 = Point(14));
+    (*p) = Point(14);
     Point& alias = (*p);
     Point q = Point(50);
     alias.bump();

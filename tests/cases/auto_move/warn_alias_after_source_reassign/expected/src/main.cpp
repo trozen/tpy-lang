@@ -21,12 +21,11 @@ int32_t consume(Point&& p) {
 //     print(consume(p))   # tpyc: warning(/copies.*into owned storage/)
 //     print(alias.x)
 void main() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point();
     Point* p = &__slot_1;
     p->x = 0;
     p->y = 0;
-    p = &*(__slot_2 = Point());
+    (*p) = Point();
     p->x = 1;
     p->y = 2;
     Point& alias = (*p);

@@ -62,7 +62,7 @@ void __tpy_init() {
     }
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_5 = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
     d2 = &__global_slot_5;
-    it = &(__global_slot_2 = ::tpy::__iter__((*d2)));
+    (*it) = ::tpy::__iter__((*d2));
     auto& __src_2 = (*it);
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {

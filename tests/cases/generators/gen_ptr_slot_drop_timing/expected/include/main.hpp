@@ -46,7 +46,6 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     Resource* saved = nullptr;
     std::optional<Resource> __ptr_slot_f0;
-    std::optional<Resource> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,

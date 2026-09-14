@@ -202,8 +202,8 @@ std::string str_local() {
         std::array<int32_t, 2>* xs = &__slot_1;
         std::cout << ::tpy::__getitem__((*xs), 0) << "\n";
     }
-    std::array<int32_t, 2> __slot_3 = {9, 9};
-    std::array<int32_t, 2>* xs = &__slot_3;
+    std::array<int32_t, 2> __slot_2 = {9, 9};
+    std::array<int32_t, 2>* xs = &__slot_2;
     return ::tpy::__getitem__((*xs), 0);
 }
 

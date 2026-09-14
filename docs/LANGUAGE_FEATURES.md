@@ -1684,44 +1684,46 @@ If the two names genuinely need to reach one object, that is a design change rat
 
 The warning covers `for` and `while` bodies, nested loops, module scope, method bodies, and sources reached through a field or container element (`saved = o.inner` keeps `o`'s storage alive, so it is `o` that escapes). It is *not* exhaustive: the check runs at plain-name assignment, so an escape routed through a walrus binding or a `nonlocal` rebind inside a nested def is not seen — those diverge with no diagnostic at all, and are tracked in `BUGS.md`.
 
-##### The rebind-site sibling
+##### Rebinding under an alias: the alias-gated slot model
 
-The check above fires where the alias is **bound**, keyed on scope depth. Its sibling fires where the source is **rebound**, keyed on the alias itself — the same hazard reached from the other end, and the one that catches a local declared above the loop:
+Rebinding a reference-typed local to a fresh object writes to one of two places, decided per rebind statement by sema's alias-rebind pass (`tpyc/sema/alias_rebind.py`):
+
+- **In place**, when no other name holds the object the local currently refers to: the new object is constructed into the same storage and the superseded one is destroyed there, which is when CPython's refcount drops it.
+- **Storage of its own**, when some name still holds a loan of the current object -- a whole-name alias, a field or element loan, a `Ptr` (copied or not), a borrow-returning call result, a generator or coroutine that captured it -- or when the pass cannot tell (a pointer that left through a call argument, a `nonlocal` name, a parameter). The old object lives on, so the alias keeps it, as under CPython. **This is a declared divergence in `__del__` timing:** the object's `__del__` runs at scope end (inside a loop, when the site's slot is reused on the next iteration) rather than when CPython's last reference to it dies; the value is never affected, and `del` on the alias once it is done drops the object there.
 
 ```python
 def gen() -> Iterator[int32]:
     p = Point(1)
     alias = p
-    p = Point(100)  # WARNING: 'alias' will not keep the object it was given
+    p = Point(100)   # alias still holds Point(1): the rebind takes storage of its own
     alias.bump()
-    yield alias.x   # TPy 101, CPython 2
+    yield alias.x    # 101 under TPy and CPython
+
+def drop() -> None:
+    r = Noisy("a")
+    r = Noisy("b")   # nothing else holds "a": written in place, "drop a" prints here
 ```
 
-```
-'alias' will not keep the object it was given -- 'p' is rebound here and both
-names share its storage; bind 'alias' with copy(p), or bind the new value to a
-name of its own
-```
+A holder counts while it is bound, read again or not, because that is what keeps the object alive under CPython. The decision is flow-sensitive and loops iterate to a fixpoint, so a loan taken after the rebind on the previous iteration, or a borrow arriving over the back edge, is seen. The same rule applies in every position: sync functions and methods, generator and async frames (a local with an own-storage rebind becomes a pointer over per-site frame fields), nested defs, module level, `@error_return` bodies.
 
-Whether the *first* rebind already clobbers or only a later one depends on how many object generations the name's storage can hold at once. An ordinary sync body holds **two** — the declaration's own storage plus one rebind slot — so a loan taken before the first rebind survives it and only a loan taken after is clobbered. A resumable frame (`async def`, a generator that keeps state across a `yield`), module level, and a nested-def local with no enclosing name of the same name hold **one**, so the first rebind clobbers. A rebind inside a loop counts as a later one, because it re-executes over the loan the body takes.
-
-A loan the loop body takes is still held after the last iteration, so it is the statement *after* the loop that clobbers it — the in-loop rebind stays quiet when the holder's value is dead there:
+One clobber remains, and it warns: a loan taken from a rebind site's own storage that is still read after that site runs again on the next iteration -- one slot per site cannot hold two iterations' objects:
 
 ```python
-def after_loop() -> None:
-    saved = Point(1)
-    p = Point(2)
+def loop_carried() -> None:
+    p = Point(0)
+    q = take_ptr(p)
     for i in range(2):
-        p = Point(i)      # quiet: the value `saved` holds is dead -- the next line rebinds it
-        saved = p
-    p = Point(100)        # WARNING: 'saved' will not keep the object it was given
-    saved.bump()
-    print(saved.x, p.x)   # TPy 200 200, CPython 101 100
+        p = Point(i)      # WARNING: 'q' will not keep the object it was given
+        print(q.x)        # iteration 2: TPy 1, CPython 0
+        q = take_ptr(p)
 ```
 
-Three spellings avoid it, and none of them warn: `alias = copy(p)` (an independent object), `Rc.new` plus `.clone()` (identity and refcount preserved, at a heap block), or binding the new value to a name of its own (allocation-free). A rebind that only reseats a pointer — `p = other`, `p = xs[1]`, `p = None` — clobbers nothing and never warns, and neither does a value-typed local, whose rebind copies.
+```
+'q' will not keep the object it was given -- 'p' is rebound here and both
+names share its storage; bind the new value to a name of its own
+```
 
-The same divergence caveat applies: the value stays wrong if the warning is ignored. The shapes are tracked in `BUGS.md`.
+Three spellings avoid it, and none of them warn: `alias = copy(p)` (an independent object), `Rc.new` plus `.clone()` (identity and refcount preserved, at a heap block), or binding the new value to a name of its own (allocation-free). A rebind that only reseats a pointer -- `p = other`, `p = xs[1]`, `p = None` -- clobbers nothing and never warns, and neither does a value-typed local, whose rebind copies. The value stays wrong if the warning is ignored. Two shapes keep the single-storage clobber and are tracked in `BUGS.md`: a `nonlocal` rebind inside a nested def, and a rebound owning tuple local.
 
 For `for-each` variables hoisting does not help — the variable is a reference into the container, so the reference itself would dangle. Those stay **hard errors**:
 
@@ -1993,9 +1995,9 @@ Empty-fields `__del__`-only records (the abstract-Base pattern: `class Base: def
 
 Without the default ctor, such types can only be constructed via a parameterized ctor, and enclosing records that hold them as fields must MIL-initialize (the field appears in the member initializer list), not default-init-then-assign in the body. The suppression cascades: a record holding a field of a `__del__`-suppressed type automatically loses its own auto `= default;` too. Field initializers whose RHS references a body-local variable cannot MIL-hoist and are rejected with a clean sema error; the recommended shape is a `@staticmethod` factory returning `Own[Self]` that bundles any multi-step or error-checked allocation. See `lib/tpy/re.py` (`_OwnedCode.make_compiled`, `_OwnedMatchContext.make_default`) for the canonical pattern.
 
-**Generator rebind limitation:** a reference-typed local declared BEFORE a generator's loop and then reassigned to a NEW value inside it is rejected at compile time -- the rebind needs storage that both outlives the generator's closure and is visible inside it, which TPy has no spelling for yet. Declare the local inside the loop instead; reassigning to an existing object (or mutating through it) is unaffected. CPython accepts the rejected form, so this is an acknowledged limitation, not a semantic divergence. Note the resumable-frame path is NOT a workaround: a generator that takes the frame instead (two yields, say) accepts the same shape and then silently clobbers an alias taken before the rebind -- see BUGS.md. The rejection is a stopgap over one codegen-visible slice of a general hazard (rebinding a local while a live alias points at it, which a single rebind slot cannot represent past one generation); it is expected to be replaced by a uniform diagnostic covering sync, generator and async bodies alike. The same rejection covers a nested `def` that rebinds a local the enclosing scope reserved storage for. It does NOT cover every nested-`def` rebind: a `nonlocal` rebind of a local that has no such storage is currently miscompiled rather than rejected (the enclosing scope's rebind facts do not recurse into nested defs) -- see BUGS.md.
+**Generator locals rebound under an alias:** a generator or `async def` body takes the same alias-gated slot model as a sync body (see "Rebinding under an alias" above): a reference local that some rebind must keep alive for a loan is stored as a pointer over per-site frame fields, every other local keeps its owning frame slot and rebinds in place. A `nonlocal` rebind of an enclosing function's rebound local inside a nested def is rejected (the closure cannot give the new object storage that outlives the call); a `nonlocal` rebind of a plain enclosing local writes it in place -- see BUGS.md.
 
-**`__del__` timing (drop at scope end, matching CPython):** A `@nocopy` local's `__del__` runs when the enclosing block exits (C++ RAII at the closing `}`), which mirrors CPython, where a local lives until its frame tears down. Passing a value to a function does **not** drop it early: an `Own[T]` parameter is a `T&&` borrow, so the callee never destructs the argument (the `Optional[Own[T]]` spelling is the exception today: it is a by-value `std::optional<T>`, so a moved-in payload dies at the callee's return, `BUGS.md#opt-own-by-value-param-early-del`) -- a `dispose(x: Own[T])` helper that doesn't re-home `x` leaves the drop with the caller, firing at the caller's scope end. This too matches CPython (the local still holds the reference after the call returns). TPy does **not** adopt Rust-style drop-at-last-use; the timing follows Python's model. One case does NOT match: a local REBOUND from an rvalue (`r = T(a); r = T(b)`) keeps the superseded value alive to scope end, where CPython drops it at the rebind -- the rvalue rebind slot is allocated whether or not anything aliases the init value, so the old value has a second home to sit in (tracked in `BUGS.md`; `docs/OWNERSHIP_DESIGN.md` covers the slot mechanics). For *prompt* cleanup, use an explicit spelling -- all three match CPython:
+**`__del__` timing (drop at scope end, matching CPython; the two declared exceptions are below):** A `@nocopy` local's `__del__` runs when the enclosing block exits (C++ RAII at the closing `}`), which mirrors CPython, where a local lives until its frame tears down. Passing a value to a function does **not** drop it early: an `Own[T]` parameter is a `T&&` borrow, so the callee never destructs the argument (the `Optional[Own[T]]` spelling is the exception today: it is a by-value `std::optional<T>`, so a moved-in payload dies at the callee's return, `BUGS.md#opt-own-by-value-param-early-del`) -- a `dispose(x: Own[T])` helper that doesn't re-home `x` leaves the drop with the caller, firing at the caller's scope end. This too matches CPython (the local still holds the reference after the call returns). TPy does **not** adopt Rust-style drop-at-last-use; the timing follows Python's model. A local REBOUND from an rvalue (`r = T(a); r = T(b)`) drops the superseded value at the rebind when no other name holds it, as CPython does; when another name still holds it, the value lives in storage of its own until scope end -- a declared divergence: CPython drops it when the last reference dies (`docs/OWNERSHIP_DESIGN.md` covers the slot mechanics; `del` the alias to drop it earlier). A record local first declared inside a block lives in block-scoped C++ storage, so its last value drops at the block's closing brace where CPython drops it at function exit. For *prompt* cleanup, use an explicit spelling -- all three match CPython:
 - `del x` -- drops `x` at that point (relocates into a scoped temp that dies immediately).
 - `x.close()` (or any explicit disposal method) -- runs the cleanup synchronously, independent of drop timing.
 - `with x as ...:` -- ties cleanup to block exit via `__enter__`/`__exit__`.

@@ -1,6 +1,6 @@
-TPy currently drops the superseded value at block exit; CPython drops it at the
-rebind (`drop if-first` before `inside:`, not after). The cause is that the
-rvalue rebind slot is allocated unconditionally, so the superseded object has a
-second home to sit in -- tracked in BUGS.md ("The rvalue rebind slot is
-allocated unconditionally"). Alias-gating that split is expected to bring this
-case to parity and retire this marker.
+A record local first declared inside a block (`if` / loop body) lives in
+block-scoped C++ storage, so its LAST value drops at the closing brace
+(`drop if-second` before `after block`) where CPython, whose locals are
+function-scoped, drops it at function exit. The superseded values drop at the
+rebind on both. The block-exit timing is the general block-local storage
+rule, not the rebind slot model.

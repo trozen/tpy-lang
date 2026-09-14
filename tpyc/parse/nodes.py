@@ -734,6 +734,16 @@ class TpyAwait(TpyExpr):
         return [self.value]
 
 
+class RebindStorage(Enum):
+    """Where an rvalue rebind of a reference-typed name writes -- decided by
+    sema's alias-rebind storage pass, consumed by the lowering. IN_PLACE:
+    through the name into its current storage (the superseded object dies
+    here, as under CPython). OWN: storage private to this site, because a
+    live loan may still point at the current storage."""
+    IN_PLACE = "in_place"
+    OWN = "own"
+
+
 @dataclass
 class TpyStmt:
     """Base class for statements."""
@@ -781,8 +791,12 @@ class TpyVarDecl(TpyStmt):
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
     # Stamped by liveness: names still live AFTER this statement (see
     # analyze_last_uses). None means the liveness walk never reached this
-    # node, where the alias-rebind check stays silent.
+    # node, where the alias-rebind pass stays silent.
     live_names_after: frozenset[str] | None = field(default=None, repr=False)
+    # Stamped by sema on an rvalue REBIND of a reference-typed local -- the
+    # sites the alias-rebind storage pass decides (see RebindStorage); read
+    # by the lowering and the frame layout.
+    rebind_storage: RebindStorage | None = field(default=None, repr=False)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.init] if self.init else []
@@ -811,6 +825,8 @@ class TpyAssign(TpyStmt):
     value: TpyExpr
     # Stamped by liveness -- see TpyVarDecl.live_names_after.
     live_names_after: frozenset[str] | None = field(default=None, repr=False)
+    # Stamped by sema for a name target -- see TpyVarDecl.rebind_storage.
+    rebind_storage: RebindStorage | None = field(default=None, repr=False)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.target, self.value]

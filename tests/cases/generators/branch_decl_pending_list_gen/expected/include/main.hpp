@@ -20,7 +20,9 @@ void main();
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
     bool c;
-    ::tpy::frame_slot<std::vector<int32_t>> xs;
+    std::vector<int32_t>* xs = nullptr;
+    std::optional<std::vector<int32_t>> __ptr_slot_f0;
+    std::optional<std::vector<int32_t>> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,

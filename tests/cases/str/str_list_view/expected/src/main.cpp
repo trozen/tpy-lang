@@ -35,11 +35,10 @@ void test_list_mutation_fallback() {
 //     names = ["dave"]
 //     print(x)
 void test_list_reassign_fallback() {
-    std::optional<std::vector<std::string>> __slot_2;
     std::vector<std::string> __slot_1 = {"alice", "bob"};
     std::vector<std::string>* names = &__slot_1;
     std::string x = ::tpy::__getitem__((*names), 0);
-    names = &*(__slot_2 = {"dave"});
+    (*names) = {"dave"};
     std::cout << x << "\n";
 }
 

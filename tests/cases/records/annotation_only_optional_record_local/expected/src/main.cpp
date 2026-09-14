@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //         return r.x
 //     return 0
 int32_t build(int32_t x) {
+    std::optional<R> __slot_1;
     R* r = nullptr;
-    R __slot_1 = R(x);
-    r = &__slot_1;
+    r = &*(__slot_1 = R(x));
     if ((r != nullptr)) {
         r->x = (::tpy::add_check<int32_t>(r->x, 1));
         return r->x;

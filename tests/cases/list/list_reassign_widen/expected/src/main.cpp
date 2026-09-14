@@ -13,10 +13,9 @@ namespace tpyapp::main {
 //     xs.append(6)
 //     print(len(xs), xs[3])
 void main() {
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = {1, 2};
     std::vector<int32_t>* xs = &__slot_1;
-    xs = &*(__slot_2 = {3, 4, 5});
+    (*xs) = {3, 4, 5};
     std::cout << ::tpy::__len__((*xs)) << "\n";
     xs->push_back(6);
     std::cout << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 3) << "\n";

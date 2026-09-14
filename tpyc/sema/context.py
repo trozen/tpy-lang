@@ -215,33 +215,12 @@ BORROW_KIND_RANK: dict[BorrowKind, int] = {
 }
 
 
-class LoanResidency(Enum):
-    """Which of a name's storages the loaned-from value sat in at bind time.
-
-    A reference-typed local can hold up to two live object generations: the
-    block-scoped INIT storage its declaration writes, and the function-scoped
-    rebind SLOT every later rvalue rebind writes. A loan taken while the
-    source sat in the INIT storage survives a first rebind; one taken while
-    it sat in the SLOT is clobbered by the next. Positions that reserve no
-    rebind slot (a resumable frame, module level) hold ONE generation, so
-    every loan there is clobbered -- see `sema.alias_rebind`.
-    """
-    INIT = "init"
-    SLOT = "slot"
-
-
-# SLOT is the hazardous end: at a merge the loan that can be clobbered wins.
-LOAN_RESIDENCY_RANK: dict[LoanResidency, int] = {
-    LoanResidency.INIT: 0,
-    LoanResidency.SLOT: 1,
-}
-
-
 @dataclass(frozen=True, slots=True)
 class LoanInfo:
-    """One loan: what shape it has, and which storage generation it sits in."""
+    """One loan: what shape it has. Which storage generation it sits in is
+    not tracked here -- `sema.alias_rebind` replays the registrations in
+    program order and answers that itself."""
     kind: BorrowKind
-    residency: LoanResidency = LoanResidency.INIT
 
 
 # Borrower name of the implicit iterator borrow a for-loop registers. Not a
@@ -252,18 +231,12 @@ ITER_BORROWER = "__for_iter"
 
 
 def combine_loan_info(a: LoanInfo, b: LoanInfo) -> LoanInfo:
-    """The more dangerous of two loans on the same (storage, borrower) pair.
-
-    Each field independently: the kind by BORROW_KIND_RANK and the residency
-    by LOAN_RESIDENCY_RANK, so a loan that loses on kind still contributes its
-    clobberable residency. `a` wins a rank tie, which is what both callers --
+    """The more dangerous of two loans on the same (storage, borrower) pair,
+    by BORROW_KIND_RANK. `a` wins a rank tie, which is what both callers --
     a branch-merge dedup and a retarget onto an existing loan -- want.
     """
-    kind = (b.kind if BORROW_KIND_RANK[b.kind] > BORROW_KIND_RANK[a.kind]
-            else a.kind)
-    residency = max(a.residency, b.residency,
-                    key=LOAN_RESIDENCY_RANK.__getitem__)
-    return LoanInfo(kind, residency)
+    return (b if BORROW_KIND_RANK[b.kind] > BORROW_KIND_RANK[a.kind]
+            else a)
 
 
 class BorrowTracker:
@@ -282,33 +255,29 @@ class BorrowTracker:
     "deferred type tracking" system emerges.
     """
 
-    __slots__ = ('loans', 'slot_resident')
+    __slots__ = ('loans', 'current_stmt', 'stmt_loans')
 
     def __init__(self) -> None:
         self.loans: dict[str, dict[str, LoanInfo]] = {}
-        # Names whose current value has moved into their rebind slot. A
-        # per-path fact, saved/restored/merged beside `loans` by FlowFacts: a
-        # sibling branch's rebind must not stamp this branch's loans, or a
-        # valid `if c: p = X` / `else: alias = p; p = Y` warns.
-        self.slot_resident: set[str] = set()
+        # The statement sema is analyzing (set by the statement dispatcher),
+        # and every loan registered while it was current, as
+        # (storage key, holder, kind) per statement -- what the alias-rebind
+        # storage pass replays in program order after the walk.
+        self.current_stmt: 'TpyStmt | None' = None
+        self.stmt_loans: IdentityMap = IdentityMap()
 
     def reset(self) -> None:
         """Clear all borrow state (called between function analyses)."""
         self.loans.clear()
-        self.slot_resident.clear()
-
-    def mark_slot_resident(self, name: str) -> None:
-        """Record that ``name``'s value now lives in its rebind slot."""
-        self.slot_resident.add(name)
+        self.current_stmt = None
+        self.stmt_loans.clear()
 
     def add_borrow(self, storage: str, borrower: str, kind: BorrowKind = BorrowKind.ALIAS) -> None:
         """Record that ``borrower`` borrows from ``storage``."""
-        # A dotted key (`h.inner`) reaches through the ROOT name's storage, so
-        # it moves into the slot when the root does.
-        root = storage.split(".", 1)[0]
-        residency = (LoanResidency.SLOT if root in self.slot_resident
-                     else LoanResidency.INIT)
-        self.loans.setdefault(storage, {})[borrower] = LoanInfo(kind, residency)
+        self.loans.setdefault(storage, {})[borrower] = LoanInfo(kind)
+        if self.current_stmt is not None:
+            self.stmt_loans.setdefault(self.current_stmt, []).append(
+                (storage, borrower, kind))
 
     def remove_borrower(self, borrower: str) -> None:
         """Remove all borrows held by ``borrower`` (e.g. on reassignment)."""
@@ -351,7 +320,7 @@ class BorrowTracker:
                 # rank-promoting it into the invalidating set would mint
                 # exactly the mutation warnings the kind exists to avoid.
                 if child.kind is BorrowKind.OPAQUE:
-                    chained = LoanInfo(BorrowKind.OPAQUE, chained.residency)
+                    chained = LoanInfo(BorrowKind.OPAQUE)
                 existing = self.loans.get(upstream, {}).get(b)
                 if existing is not None:
                     chained = combine_loan_info(existing, chained)
@@ -522,14 +491,12 @@ class BorrowTracker:
             for borrower, loan in holders.items()
         )
 
-    def restore_from_frozen(self, triples: frozenset[tuple[str, str, LoanInfo]],
-                            slot_resident: frozenset[str]) -> None:
-        """Restore loan state and slot residency from a frozen snapshot."""
+    def restore_from_frozen(
+            self, triples: frozenset[tuple[str, str, LoanInfo]]) -> None:
+        """Restore loan state from a frozen snapshot."""
         self.loans.clear()
         for storage, borrower, loan in triples:
             self.loans.setdefault(storage, {})[borrower] = loan
-        self.slot_resident.clear()
-        self.slot_resident.update(slot_resident)
 
 
 def ephemeral_borrow_root(ephemeral_vars: set[str],
@@ -929,19 +896,17 @@ class FunctionTrackingState:
 
     # --- Prescan / last-use ---
     current_reassigned_vars: set[str] = field(default_factory=set)
-    # Names for which the lowering reserves a function-scoped rebind slot --
-    # `prescan.rvalue_reassigned`, the very set the THIR slot allocation
-    # reads, so `sema.alias_rebind.storage_generations` agrees with the
-    # emitted code by construction. Inside a nested def this stays the
-    # ENCLOSING body's set, mirroring the lowering's own prescan swap.
-    rebind_slot_names: set[str] = field(default_factory=set)
-    # Per enclosing loop (innermost last): storage root -> holder -> kind of
-    # the loans the body binds, anywhere. A rebind inside a loop re-executes,
-    # so the alias-rebind check must see loans the body takes at ANY position,
-    # not only those the walk has already registered. Holds strings, not AST
-    # -- `save_function_state` deep-copies this state for nested defs.
-    loop_body_loans: list[dict[str, dict[str, BorrowKind]]] = field(
-        default_factory=list)
+    # What each binding of a name puts in its storage (`alias_rebind.BindKind`),
+    # keyed by the binding node (var-decl, assign, walrus); the alias-rebind
+    # storage pass reads it after the walk.
+    bind_kinds: IdentityMap = field(default_factory=IdentityMap)
+    # Every rvalue rebind of a reference local sema stamped (default OWN);
+    # the pass decides them and derives `own_rebind_names`. Identity-keyed
+    # so the nested-def state deep copy keeps the real statement objects.
+    gate_sites: IdentitySet = field(default_factory=IdentitySet)
+    # Locals with a rebind the pass left OWN, for the frame layout's
+    # pointer-form verdict; harvested per function by the analyzer.
+    own_rebind_names: frozenset[str] = frozenset()
     # Locals whose sole binding is a fresh constructor call of their exact static
     # type (never rebound -- field mutation doesn't count). Their dynamic type is
     # provably their static type, so the polymorphic-slicing guard may move them

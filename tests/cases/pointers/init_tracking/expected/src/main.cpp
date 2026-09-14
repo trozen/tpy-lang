@@ -36,11 +36,10 @@ void value_init() {
 //         x = Point(3, 4)
 //     print(x.x, x.y)  # tpyc: ok
 void assign_before_if(bool cond) {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(1, 2);
     Point* x = &__slot_1;
     if (cond) {
-        x = &*(__slot_2 = Point(3, 4));
+        (*x) = Point(3, 4);
     }
     std::cout << x->x << " " << x->y << "\n";
 }

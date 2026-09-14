@@ -9333,9 +9333,10 @@ def _storage_call_container(t: TpyType) -> bool:
 
 def _container_rebind_call_ret(call: TpyExpr, ret: TpyType | None,
                                analyzer) -> bool:
-    """A container-returning call filling a rebindable two-slot local
-    (`r = make(3)` reseated by `r = other(7)` -> `r = &*(__slot_2 =
-    other(7));`). RVALUE sources only: a borrow (`T&`) return reseats via
+    """A container-returning call filling a rebind-slot pointer-local
+    (`r = make(3)` reseated by `r = other(7)` -> `(*r) = other(7);`, or an
+    own slot where sema's verdict says so). RVALUE sources only: a borrow
+    (`T&`) return reseats via
     `&(call)`, the pointer arm's lift, not this slot. One predicate for the
     decl-binding admission and the call-render gate so the two layers cannot
     drift."""

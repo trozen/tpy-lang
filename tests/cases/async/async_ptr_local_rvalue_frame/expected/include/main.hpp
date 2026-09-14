@@ -43,7 +43,6 @@ struct __coro_read_after_await {
     bool __cancel_pending;
     Point* saved = nullptr;
     std::optional<Point> __ptr_slot_f0;
-    std::optional<Point> __ptr_slot_f1;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 

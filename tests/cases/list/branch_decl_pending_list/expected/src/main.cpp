@@ -15,11 +15,12 @@ namespace tpyapp::main {
 //     return xs[0] + len(xs)
 ::tpy::BigInt pick_list(bool c) {
     std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs;
     if (c) {
         xs = &*(__slot_1 = {1, 2});
     } else {
-        xs = &*(__slot_1 = {3});
+        xs = &*(__slot_2 = {3});
     }
     xs->push_back(9);
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
@@ -33,11 +34,12 @@ namespace tpyapp::main {
 //     return len(d)
 ::tpy::BigInt pick_dict(bool c) {
     std::optional<::tpy::ordered_map<std::string, int32_t>> __slot_1;
+    std::optional<::tpy::ordered_map<std::string, int32_t>> __slot_2;
     ::tpy::ordered_map<std::string, int32_t>* d;
     if (c) {
         d = &*(__slot_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}}));
     } else {
-        d = &*(__slot_1 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}, {"c", 3}}));
+        d = &*(__slot_2 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}, {"c", 3}}));
     }
     return ::tpy::BigInt(::tpy::__len__((*d)));
 }
@@ -50,11 +52,12 @@ namespace tpyapp::main {
 //     return len(s)
 ::tpy::BigInt pick_set(bool c) {
     std::optional<::tpy::ordered_set<int32_t>> __slot_1;
+    std::optional<::tpy::ordered_set<int32_t>> __slot_2;
     ::tpy::ordered_set<int32_t>* s;
     if (c) {
         s = &*(__slot_1 = ::tpy::ordered_set<int32_t>({1, 2}));
     } else {
-        s = &*(__slot_1 = ::tpy::ordered_set<int32_t>({3}));
+        s = &*(__slot_2 = ::tpy::ordered_set<int32_t>({3}));
     }
     return ::tpy::BigInt(::tpy::__len__((*s)));
 }
@@ -69,6 +72,7 @@ namespace tpyapp::main {
 //     return xs[0] + len(xs)
 ::tpy::BigInt pick_try(bool c) {
     std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs;
     {
         try {
@@ -77,7 +81,7 @@ namespace tpyapp::main {
             }
             xs = &*(__slot_1 = {1, 2});
         } catch (const ::tpy::ValueError&) {
-            xs = &*(__slot_1 = {3});
+            xs = &*(__slot_2 = {3});
         }
     }
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));

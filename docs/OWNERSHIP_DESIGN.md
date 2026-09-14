@@ -192,51 +192,43 @@ for i in range(1000):
 
 ### Rebind slot for rvalue reassignment
 
-When a pointer-local is reassigned to an rvalue (constructor call, `copy()` result), the codegen reuses a function-scoped "rebind slot" instead of creating a new slot at the current scope. This prevents dangling pointers when rvalue rebinds happen inside loops:
+When a pointer-local is reassigned to an rvalue (constructor call, `copy()` result), the new object needs storage that outlives the current block -- a rebind inside a loop must not leave the pointer at a slot that dies with the iteration:
 
 ```python
 p = Point(0, 0)                 # function scope, __slot_1
 saved = Point(0, 0)
 for i in range(1000):
-    p = Point(i, i)             # reuses __slot_1 (function-scoped)
-    saved = p                   # safe — points to function-scoped storage
+    p = Point(i, i)             # in place: __slot_1 is p's own storage, nothing else holds it
+    saved = p                   # safe -- points at function-scoped storage
 print(saved.x)                  # valid
 ```
 
-The slot NUMBER is reserved where the local is declared -- a later rebind must
-not emplace over an init value some alias already points at -- but whether any
-rebind follows is only known once the body is walked. (The split is currently
-taken whether or not anything actually aliases the init value, which keeps a
-superseded value alive to scope end; see BUGS.md.)
-
-The declaration is drained at the prologue of the body being emitted -- which
-for a body rendered into a C++ lambda (a nested `def`) is the LAMBDA's own
-prologue, not the enclosing
-function's. The enclosing prologue is unreachable from there: an emitter that
-never drains would drop the declaration, and a lambda's explicit capture list
-cannot see a local declared outside it. `nested_hoist_scope` gives such a body
-its own collection, and `_lambda_body_sink` pairs that with buffering the body
-so the declarations can be written ahead of it.
-
-A slot reserved in one scope and consumed in another is REJECTED rather than
-placed: a local declared before a generator's loop and reassigned inside it has
-no sound home -- inside the lambda the slot dies each invocation while the
-pointer aliasing it is captured and outlives it, and outside it the lambda
-cannot name the slot. `use_rebind_slot` tags each held-back declaration with the
-scope that reserved it and raises on a cross-scope consumption. Declaring the
-local inside the loop is the working spelling. So the slot's C++
-declaration is held back and emitted at the function top only if a rebind
-consumes it (`ctx.declare_rebind_slot` / `use_rebind_slot`, mirrored by THIR's
-`_declare_rebind_slot`). A reassignment that needs no slot -- a
+Where an rvalue rebind writes is sema's alias-rebind verdict
+(`tpyc/sema/alias_rebind.py`, stamped on the statement as `rebind_storage`).
+IN_PLACE renders `(*p) = <rvalue>;` -- the new object is constructed into the
+storage the pointer already aims at and the superseded one is destroyed there,
+which is CPython's drop point for an object no other name holds. OWN draws a
+slot private to that site, `std::optional<T> __slot_N;` on the body's hoist
+lines (the function prologue; the lambda prologue for a nested def;
+`static __global_slot_N` at module scope), and renders
+`p = &*(__slot_N = <rvalue>);`, so a name that still holds the old object
+keeps it. The declaration reserves nothing: `T __slot_1 = init; T* p =
+&__slot_1;` is the whole of it. A reassignment that needs no storage -- a
 borrow-returning call or operator (which takes an address), or `None` (a null
-pointer) -- therefore leaves no declaration behind at all.
+pointer) -- reseats the pointer bare.
 
-Because the held-back declaration lands in the function prologue, the slot is
-declared before every inline local -- so it is destroyed *after* all of them,
-including the local's own init slot. A `__del__` that observes another object's
-teardown sees prologue-declared slots drop last. Slots that were reserved
-inside a block are hoisted the same way, so the value one holds lives to
-function exit rather than block exit.
+Because an OWN slot lands in the prologue, it is declared before every inline
+local -- so it is destroyed *after* all of them, including the local's own
+init slot. A `__del__` that observes another object's teardown sees
+prologue-declared slots drop last. A slot drawn inside a block is hoisted the
+same way, so the value one holds lives to function exit rather than block
+exit -- CPython's timing for a value some other name still holds.
+
+On a resumable frame the same verdict picks between `p.emplace(<rvalue>)` on
+an owning `frame_slot<T>` field (IN_PLACE) and, for a local with any OWN
+site, a `T* p` field over per-site `std::optional<T> __ptr_slot_fN` fields
+(`_prescan_resumable_ptr_slots`), where OWN renders
+`p = &*(__ptr_slot_fN = <rvalue>);` and IN_PLACE `(*p) = <rvalue>;`.
 
 ### Stack slot reuse in loops
 

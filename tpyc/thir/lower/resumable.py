@@ -1411,6 +1411,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     value_opt_record_locals: set[str] = set()
     opt_ptr_locals: set[str] = set()
     alias_ptr_locals: set[str] = set()
+    rebind_ptr_locals: set[str] = set()
     value_tuple_locals: set[str] = set()
     opt_tuple_holders: set[str] = set()
     borrow_tuple_loop_vars: set[str] = set()
@@ -1590,6 +1591,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 opt_ptr_locals.add(lname)
                 continue
             return _reject("res.local_storage")
+        if kind is _K.REBIND_PTR:
+            # A plain local some rebind of which owns its storage: reads
+            # ride lc.pointers like a sync rebind-slot pointer-local, writes
+            # take the REBIND_PTR leaf arm (per-site field or in place).
+            rebind_ptr_locals.add(lname)
+            continue
         if kind is _K.OWNING_TUPLE_SLOT:
             # A one-shot `__await_lift_*` tuple holder is an OWNING
             # frame_slot (an await result is always owned, so even a
@@ -1832,6 +1839,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # both stay out of plain_frame_fields.
     lc.pointers.update(ptr_frame_locals)
     lc.pointers.update(opt_ptr_locals)
+    lc.pointers.update(rebind_ptr_locals)
+    lc.rebind_ptr_frame_locals = frozenset(rebind_ptr_locals)
     # Pointer-alias locals ride the same pointer read arms; their binds
     # render at the dedicated alias leaf arms (never plain field assigns),
     # so they subtract from plain_frame_fields below like every
@@ -1851,7 +1860,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.plain_frame_fields = frozenset(
         frame_fields - frame_slots - borrow_tuple_locals - coro_handle_slots
         - erased_handle_locals - ptr_frame_locals - opt_ptr_locals
-        - alias_ptr_locals - unpack_ptr_targets)
+        - alias_ptr_locals - unpack_ptr_targets - rebind_ptr_locals)
     lc.borrow_tuple_frame_locals = frozenset(borrow_tuple_locals)
     lc.coro_handle_slots = frozenset(coro_handle_slots)
     lc.frame_local_types = dict(gen_local_types)
@@ -2917,7 +2926,8 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
     saved_leaf = lc.resumable_leaf_mode
     lc.resumable_leaf_mode = False
     try:
-        with _nested_def_lowering_scope(lc, func, self_captured=True):
+        with _nested_def_lowering_scope(lc, func, self_captured=True,
+                                        nonlocal_names=nd.nonlocal_names):
             body = _lower_stmts(func.body, lc, body_declared)
             if lc.unhandled_hoists:
                 note_detail("nesteddef.hoisted_vars")

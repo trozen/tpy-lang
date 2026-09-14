@@ -28,6 +28,7 @@ from typing import NoReturn, TYPE_CHECKING
 from ..identity_map import IdentityMap
 from ..namespace import Namespace
 from ..parse.nodes import (
+    RebindStorage,
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
     TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWhile, TpyWith, TpyWithItem,
@@ -123,6 +124,8 @@ if TYPE_CHECKING:
     # _restore_resume_narrowings reverts after a narrowed scope is emitted.
     _NarrowingToken = tuple[dict[str, str | None],
                             dict[str, TpyType], dict[str, TpyType]]
+
+
 
 
 class _CoroParamKind(IntEnum):
@@ -1598,6 +1601,8 @@ class AsyncCoroCodegen:
         owning_tuple_locals = self.ctx.owning_generator_tuple_locals(func)
         pointer_form_names: set[str] = set()
         borrow_tuple_names: set[str] = set()
+        own_rebind_names = self.ctx.analyzer.function_own_rebind_names.get(
+            func, frozenset())
         # Loop vars whose field payload is spelled from the iteration
         # source; the trait decides alias-vs-own, so no TPy-side form.
         source_form_fields: dict[str, str] = {}
@@ -1696,6 +1701,15 @@ class AsyncCoroCodegen:
                 # silent-copy divergence). Pointers default-construct to
                 # null, so no frame_slot wrapper is needed.
                 kind = rcfg.FrameLocalKind.BORROW_TUPLE
+            elif (lname in own_rebind_names
+                    and emit_prims.is_plain_nonvalue(
+                        self.ctx, unwrap_own(ltype_inner))):
+                # Some rvalue rebind of this local must keep the superseded
+                # object alive for a loan (sema's OWN verdict), which an
+                # owning `frame_slot<T>` cannot: the local goes pointer-form
+                # over per-site materialization fields, and its IN_PLACE
+                # rebinds assign through the pointer.
+                kind = rcfg.FrameLocalKind.REBIND_PTR
             elif (isinstance(ltype_inner, OwnType)
                     and not unwrap_own(ltype_inner).is_value_type()
                     and not is_dyn_protocol(
@@ -1825,6 +1839,9 @@ class AsyncCoroCodegen:
                     inner_cpp = self.types.type_to_cpp(ltype_inner.inner)
                     out.write(
                         f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
+                elif kind is rcfg.FrameLocalKind.REBIND_PTR:
+                    inner_cpp = self.types.type_to_cpp(unwrap_own(ltype_inner))
+                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
                 else:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}::tpy::frame_slot<{cpp_type}> {cpp_name};\n")
@@ -3510,17 +3527,17 @@ class AsyncCoroCodegen:
         with the pointer-local reseat lowering, which rejects on a
         missing entry). Fields land on `state.ptr_slot_fields`; the site
         map (`stmt -> field`) on `state.ptr_slot_map`, seeded into the
-        body ctx by `setup_resumable_frame_locals`. Per-site fields (no
-        shared rebind slot): an alias holding the previous value keeps a
-        live target, and a loop's re-executed site destroys the prior
-        payload at the rebind, like sync slot reuse.
+        body ctx by `setup_resumable_frame_locals`. One field per write
+        sema's alias-rebind verdict does not send in place: an alias
+        holding the previous value keeps a live target.
         """
         state = rcfg.resumable_state(func)
         if state.ptr_slots_prescanned:
             return
         state.ptr_slots_prescanned = True
         layout = self._frame_layout(func)
-        ptr_kinds = (rcfg.FrameLocalKind.PTR_ALIAS, rcfg.FrameLocalKind.OPT_PTR)
+        ptr_kinds = (rcfg.FrameLocalKind.PTR_ALIAS, rcfg.FrameLocalKind.OPT_PTR,
+                     rcfg.FrameLocalKind.REBIND_PTR)
         ptr_names = {n for n, v in layout.bindings.items()
                      if v.kind in ptr_kinds}
         if not ptr_names:
@@ -3531,6 +3548,11 @@ class AsyncCoroCodegen:
 
         def visit(stmt: TpyStmt, name: str, init: 'TpyExpr | None') -> None:
             if name not in ptr_names or init is None:
+                return
+            # An IN_PLACE rebind assigns through the pointer into the
+            # storage it already aims at: no field of its own. The reseat
+            # lowering keys on the same verdict.
+            if getattr(stmt, "rebind_storage", None) is RebindStorage.IN_PLACE:
                 return
             target_type = local_types.get(name)
             inner = (target_type.inner

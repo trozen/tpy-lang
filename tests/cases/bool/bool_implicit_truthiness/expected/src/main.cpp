@@ -28,7 +28,6 @@ namespace tpyapp::main {
 //     if c1 and not c2:
 //         print("c1 and not c2")
 void main() {
-    std::optional<Container> __slot_2;
     Container c1 = Container(::tpy::BigInt(3));
     Container c2 = Container(::tpy::BigInt(0));
     if (::tpy::__bool__(c1)) {
@@ -41,7 +40,7 @@ void main() {
     Container* c3 = &__slot_1;
     while (::tpy::__bool__((*c3))) {
         std::cout << c3->count << "\n";
-        c3 = &*(__slot_2 = Container(((c3->count) - (::tpy::BigInt(1)))));
+        (*c3) = Container(((c3->count) - (::tpy::BigInt(1))));
     }
     if ((!(::tpy::__bool__(c2)))) {
         std::cout << "c2 falsy" << "\n";

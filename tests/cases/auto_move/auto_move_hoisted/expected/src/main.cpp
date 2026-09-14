@@ -21,12 +21,13 @@ int32_t consume(Point&& p) {
 //     return consume(p)  # last use -> std::move((*p))
 int32_t test(bool cond) {
     std::optional<Point> __slot_1;
+    std::optional<Point> __slot_2;
     Point* p;
     if (cond) {
         p = &*(__slot_1 = Point());
         p->x = 42;
     } else {
-        p = &*(__slot_1 = Point());
+        p = &*(__slot_2 = Point());
         p->x = 99;
     }
     return consume(std::move((*p)));

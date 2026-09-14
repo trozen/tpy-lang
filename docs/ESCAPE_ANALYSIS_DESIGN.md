@@ -147,11 +147,12 @@ The tracker compares `var_scope_depth` entries. Two outcomes:
 - **Error**: source is a loop variable or lvalue-initialized (aliases other storage).
   Hard error -- hoisting cannot help, since the aliased storage dies anyway.
 
-The rebind-site sibling of the same hazard is `check_alias_rebind_clobber`
-(`sema/alias_rebind.py`): it warns at the REBIND rather than the bind, and keys
-on a live loan plus `storage_generations` rather than on scope depth, so it
-reaches the shapes where source and target share a scope. The two coexist;
-folding them into one mechanism is a TODO.md entry.
+The rebind-site sibling of the same hazard is the alias-rebind storage pass
+(`sema/alias_rebind.py`): after the body walk it replays the loans the tracker
+stamped on each statement, decides per rvalue rebind whether the write goes in
+place or into storage of its own, and warns only for the loop-carried clobber
+a site slot cannot avoid. The two coexist; folding `check_escape` into the
+pass is a TODO.md entry.
 
 **Provenance tracking** (`param_derived`, `safe_to_return`): two flow-sensitive
 facts, now the `param_derived` / `safe_to_return` fields of the per-local

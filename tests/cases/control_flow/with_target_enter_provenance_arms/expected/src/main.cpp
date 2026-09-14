@@ -14,12 +14,12 @@ namespace tpyapp::main {
 //     c.n += 10
 //     return c.n
 int32_t read_nested(bool flag) {
+    std::optional<ViaNestedDef> __slot_1;
     std::optional<ViaNestedDef> __slot_2;
-    std::optional<ViaNestedDef> __slot_3;
     Item* c;
     if (flag) {
-        __slot_2.emplace(ViaNestedDef());
-        auto& __ctx_1 = (*__slot_2);
+        __slot_1.emplace(ViaNestedDef());
+        auto& __ctx_1 = (*__slot_1);
         c = &(__ctx_1.__enter__());
         try {
             goto __with_exit_1;
@@ -33,8 +33,8 @@ int32_t read_nested(bool flag) {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     } else {
-        __slot_3.emplace(ViaNestedDef());
-        auto& __ctx_2 = (*__slot_3);
+        __slot_2.emplace(ViaNestedDef());
+        auto& __ctx_2 = (*__slot_2);
         c = &(__ctx_2.__enter__());
         try {
             goto __with_exit_2;
@@ -62,12 +62,12 @@ int32_t read_nested(bool flag) {
 //     d.n += 10
 //     return d.n
 int32_t read_two_returns(bool flag) {
+    std::optional<ViaTwoReturns> __slot_1;
     std::optional<ViaTwoReturns> __slot_2;
-    std::optional<ViaTwoReturns> __slot_3;
     Item* d;
     if (flag) {
-        __slot_2.emplace(ViaTwoReturns());
-        auto& __ctx_3 = (*__slot_2);
+        __slot_1.emplace(ViaTwoReturns());
+        auto& __ctx_3 = (*__slot_1);
         d = &(__ctx_3.__enter__());
         try {
             goto __with_exit_3;
@@ -81,8 +81,8 @@ int32_t read_two_returns(bool flag) {
         __with_exit_3:
         __ctx_3.__exit__({}, nullptr, {});
     } else {
-        __slot_3.emplace(ViaTwoReturns());
-        auto& __ctx_4 = (*__slot_3);
+        __slot_2.emplace(ViaTwoReturns());
+        auto& __ctx_4 = (*__slot_2);
         d = &(__ctx_4.__enter__());
         try {
             goto __with_exit_4;

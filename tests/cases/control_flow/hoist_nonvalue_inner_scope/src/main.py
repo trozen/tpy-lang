@@ -291,9 +291,7 @@ def match_arm(k: int32) -> None:
             print("match_arm other")
 
 
-# Closure body. Renders the single-bind `std::optional<T> f;` flavor, not the
-# rebind slot a free function takes: the nested body classifies off the OUTER
-# prescan (BUGS.md#rebind-slot-missing-module-nested-def).
+# Closure body.
 def closure() -> None:
     def inner(k: int32) -> int32:
         for j in range(2):

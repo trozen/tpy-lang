@@ -20,7 +20,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         return "start";
     }
     case S_RESUME_0: {  // after: yield "start"
-        p = &*(__ptr_slot_f1 = Cat());
+        (*p) = Cat();
         if ((p != nullptr)) {
             __state = S_RESUME_1;
             return p->name();

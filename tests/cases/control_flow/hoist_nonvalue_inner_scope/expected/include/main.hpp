@@ -290,12 +290,13 @@ inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std:
 //         self.total += f.n
 inline Builder::Builder(int32_t k) : total(0) {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     for (int32_t i = 0; i < 2; ++i) {
         Flat* f;
         if ((i == 0)) {
             f = &*(__slot_1 = Flat(k));
         } else {
-            f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(k, i))));
+            f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(k, i))));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         this->total = ::tpy::add_check<int32_t>(this->total, f->n);
@@ -313,12 +314,13 @@ inline Builder::Builder(int32_t k) : total(0) {
 //         self.total += f.n
 inline void Builder::add(int32_t k) {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     for (int32_t i = 0; i < 2; ++i) {
         Flat* f;
         if ((i == 0)) {
             f = &*(__slot_1 = Flat(k));
         } else {
-            f = &*(__slot_1 = Flat((::tpy::mul_check<int32_t>(k, 2))));
+            f = &*(__slot_2 = Flat((::tpy::mul_check<int32_t>(k, 2))));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         this->total = ::tpy::add_check<int32_t>(this->total, f->n);

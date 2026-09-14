@@ -27,14 +27,13 @@ std::vector<int32_t> gen(int32_t n) {
 //     # `best` is a `T*` rebind-slot local here; the return is the deref+move.
 //     return best
 std::vector<int32_t> longest(int32_t n) {
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{};
     std::vector<int32_t>* best = &__slot_1;
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         std::vector<int32_t> cur = gen(i);
         if ((::tpy::__len__(cur) > ::tpy::__len__((*best)))) {
-            best = &*(__slot_2 = std::vector<int32_t>(cur));
+            (*best) = std::vector<int32_t>(cur);
         }
     }
     return std::move((*best));
@@ -48,14 +47,13 @@ std::vector<int32_t> longest(int32_t n) {
 //         acc = copy(fresh)
 //     return acc
 ::tpy::ordered_map<std::string, int32_t> tally(int32_t n) {
-    std::optional<::tpy::ordered_map<std::string, int32_t>> __slot_2;
     ::tpy::ordered_map<std::string, int32_t> __slot_1 = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::ordered_map<std::string, int32_t>* acc = &__slot_1;
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         ::tpy::ordered_map<std::string, int32_t> fresh = ::tpy::ordered_map<std::string, int32_t>();
         ::tpy::__setitem__(fresh, "n", i);
-        acc = &*(__slot_2 = ::tpy::ordered_map<std::string, int32_t>(fresh));
+        (*acc) = ::tpy::ordered_map<std::string, int32_t>(fresh);
     }
     return std::move((*acc));
 }
@@ -67,13 +65,12 @@ std::vector<int32_t> longest(int32_t n) {
 //         s = copy(fresh)
 //     return s
 ::tpy::ordered_set<int32_t> uniq(int32_t n) {
-    std::optional<::tpy::ordered_set<int32_t>> __slot_2;
     ::tpy::ordered_set<int32_t> __slot_1 = ::tpy::ordered_set<int32_t>({0});
     ::tpy::ordered_set<int32_t>* s = &__slot_1;
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         ::tpy::ordered_set<int32_t> fresh = ::tpy::ordered_set<int32_t>({i});
-        s = &*(__slot_2 = ::tpy::ordered_set<int32_t>(fresh));
+        (*s) = ::tpy::ordered_set<int32_t>(fresh);
     }
     return std::move((*s));
 }

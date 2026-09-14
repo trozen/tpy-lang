@@ -1,16 +1,16 @@
 enter in_if
-inside: if-second
 drop if-first
-after block
+inside: if-second
 drop if-second
+after block
 ---
 enter in_loop
-inside: loop-second
 drop loop-first
+inside: loop-second
 drop loop-second
-inside: loop-second
 drop loop-first
+inside: loop-second
+drop loop-second
 after loop
-drop loop-second
 ---
 done

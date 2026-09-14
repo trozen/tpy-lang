@@ -53,21 +53,6 @@ def _merge_sets(
     return then_set | else_set
 
 
-def merge_slot_resident(
-    then_resident: frozenset[str],
-    else_resident: frozenset[str],
-    then_term: bool,
-    else_term: bool,
-) -> frozenset[str]:
-    """Merge rebind-slot residency across two endpoints.
-
-    A HAZARD fact, so it unions: a name whose value moved into its rebind
-    slot on either reaching path sits there after the merge.
-    """
-    return _merge_sets(then_resident, else_resident, then_term, else_term,
-                       _MergePolicy.UNION)
-
-
 def _merge_narrowed(
     then_narrowed: frozenset[tuple[str, TpyType]],
     else_narrowed: frozenset[tuple[str, TpyType]],
@@ -239,11 +224,6 @@ class FlowFacts:
     # Loan map: (storage_name, borrower_name, LoanInfo) triples.
     # ITER_BORROWER is the borrower for implicit for-loop iterator borrows.
     borrows: frozenset[tuple[str, str, LoanInfo]] = frozenset()
-    # Names whose value has moved into their rebind slot (see LoanResidency).
-    # A HAZARD fact: it unions at a join, but a branch that does not rebind
-    # must not inherit the sibling arm's residency, so it is restored like any
-    # other flow fact rather than growing monotonically.
-    slot_resident: frozenset[str] = frozenset()
     value_ranges: frozenset[tuple[str, ValueRange]] = frozenset()
 
     @staticmethod
@@ -279,10 +259,6 @@ class FlowFacts:
             ),
             borrows=merge_borrow_triples(
                 then.borrows, else_.borrows,
-                then_term, else_term,
-            ),
-            slot_resident=merge_slot_resident(
-                then.slot_resident, else_.slot_resident,
                 then_term, else_term,
             ),
             value_ranges=_merge_value_ranges(

@@ -14,11 +14,12 @@ Point* p{};
 //     print(p.x, p.y)
 void foo(bool cond) {
     std::optional<Point> __slot_1;
+    std::optional<Point> __slot_2;
     Point* p;
     if (cond) {
         p = &*(__slot_1 = Point(1, 2));
     } else {
-        p = &*(__slot_1 = Point(3, 4));
+        p = &*(__slot_2 = Point(3, 4));
     }
     std::cout << p->x << " " << p->y << "\n";
 }

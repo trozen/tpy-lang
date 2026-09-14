@@ -511,7 +511,8 @@ class _Prescan:
     """Per-function prescan facts the binding classifier reads -- the same sets
     codegen seeds into ctx (see setup_body_scope), recomputed here from the
     analyzer so lowering classifies identically without a CodeGenContext."""
-    __slots__ = ("reassigned", "rvalue_reassigned", "hoisted", "move_through",
+    __slots__ = ("reassigned", "rvalue_reassigned", "nonlocal_names",
+                 "hoisted", "move_through",
                  "alias_sources", "alias_born", "owned_viewfam_params",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_record_borrow", "ret_record_storage",
@@ -611,6 +612,10 @@ class _Prescan:
         # trigger -- mirrors codegen's `ctx.rvalue_reassigned_vars` seeding).
         self.rvalue_reassigned = (
             (scan.rvalue_reassigned - global_decls) if scan else set())
+        # Names a NESTED def rebinds through `nonlocal` -- set by the
+        # nested-def lowering scope; the enclosing function's storage, so
+        # no reseat inside the lambda may take a slot of its own.
+        self.nonlocal_names: set[str] = set()
         self.hoisted = (analyzer.function_hoisted_vars.get(func, set())
                         if hoisted_override is None else hoisted_override)
         self.move_through = (
@@ -996,6 +1001,7 @@ class _LowerCtx:
                  "frame_field_names",
                  "value_tuple_frame_locals",
                  "opt_tuple_holders", "opt_ptr_frame_locals",
+                 "rebind_ptr_frame_locals",
                  "oneshot_lift_locals", "alias_ptr_locals",
                  "unpack_ptr_targets",
                  "unhandled_hoists", "narrow", "literal_facts",
@@ -1363,6 +1369,7 @@ class _LowerCtx:
         self.value_tuple_frame_locals: frozenset = frozenset()
         self.opt_tuple_holders: frozenset = frozenset()
         self.opt_ptr_frame_locals: frozenset = frozenset()
+        self.rebind_ptr_frame_locals: frozenset = frozenset()
         # One-shot `__await_lift_*` frame temps (the skeleton's
         # `one_shot_lift_names`): the unpack arm rvalue-ref-binds one as a
         # consumable source (`auto&& __tup_N = (*<name>);`) and moves its

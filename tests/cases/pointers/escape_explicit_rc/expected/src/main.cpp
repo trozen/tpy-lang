@@ -14,13 +14,12 @@ namespace tpyapp::main {
 //     # The write through `p` IS visible through `saved` -- same object.
 //     print(saved.get().x)
 void rc_is_shared() {
-    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(-1));
     ::tpystd::tplib::rc::Rc<Point>* saved = &__slot_1;
     for (int32_t i = 0; i < 3; ++i) {
         ::tpystd::tplib::rc::Rc<Point> p = Rc<Point>::new_<Point>(Point(i));
         if ((i == 0)) {
-            saved = &*(__slot_2 = p.clone());
+            (*saved) = p.clone();
             p.get().x = 99;
         }
     }
@@ -36,13 +35,12 @@ void rc_is_shared() {
 //     saved.get().x = 77
 //     print(saved.get().x)
 void rc_outlives_the_loop() {
-    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(-1));
     ::tpystd::tplib::rc::Rc<Point>* saved = &__slot_1;
     for (int32_t i = 0; i < 4; ++i) {
         ::tpystd::tplib::rc::Rc<Point> p = Rc<Point>::new_<Point>(Point(i));
         if ((i == 1)) {
-            saved = &*(__slot_2 = p.clone());
+            (*saved) = p.clone();
         }
     }
     saved->get().x = 77;

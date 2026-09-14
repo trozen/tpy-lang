@@ -95,11 +95,10 @@ void test_chained() {
 //     v = v + inc
 //     print(v.x, v.y)
 void test_binop_assign() {
-    std::optional<Vec> __slot_2;
     Vec __slot_1 = Vec(1.0, 2.0);
     Vec* v = &__slot_1;
     Vec inc = Vec(10.0, 20.0);
-    v = &*(__slot_2 = (((*v)) + (inc)));
+    (*v) = (((*v)) + (inc));
     std::cout << ::tpy::print_float(v->x) << " " << ::tpy::print_float(v->y) << "\n";
 }
 

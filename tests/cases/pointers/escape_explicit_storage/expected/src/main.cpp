@@ -14,13 +14,12 @@ namespace tpyapp::main {
 //     # The write through `p` did not reach `saved`.
 //     print(saved.x)
 void copy_is_independent() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(-1);
     Point* saved = &__slot_1;
     for (int32_t i = 0; i < 3; ++i) {
         Point p = Point(i);
         if ((i == 0)) {
-            saved = &*(__slot_2 = Point(p));
+            (*saved) = Point(p);
             p.x = 99;
         }
     }
@@ -38,13 +37,12 @@ void copy_is_independent() {
 //     saved.x = 77
 //     print(saved.x)
 void copy_outlives_the_loop() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(-1);
     Point* saved = &__slot_1;
     for (int32_t i = 0; i < 4; ++i) {
         Point p = Point(i);
         if ((i == 1)) {
-            saved = &*(__slot_2 = Point(p));
+            (*saved) = Point(p);
         }
     }
     saved->x = 77;

@@ -26,6 +26,7 @@ namespace tpyapp::main {
 //         print(pet.name)
 void main() {
     std::optional<::tpy::Union<Cat, Dog>> __slot_2;
+    std::optional<::tpy::Union<Cat, Dog>> __slot_3;
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     if (true) {
@@ -38,14 +39,14 @@ void main() {
         auto& __pet = *std::get<Cat*>(pet);
         std::cout << __pet.name << "\n";
     }
-    __slot_2.emplace(Dog("Buddy"));
-    pet = ::tpy::to_ptr_variant(*__slot_2);
+    __slot_3.emplace(Dog("Buddy"));
+    pet = ::tpy::to_ptr_variant(*__slot_3);
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
         std::cout << __pet.name << "\n";
     }
-    ::tpy::Union<Cat, Dog> __slot_3 = Cat("Luna");
-    ::tpy::Union<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Cat, Dog> __slot_4 = Cat("Luna");
+    ::tpy::Union<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_4);
     pet = other;
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);

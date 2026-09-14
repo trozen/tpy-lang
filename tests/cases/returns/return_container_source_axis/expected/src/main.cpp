@@ -20,11 +20,10 @@ std::array<int32_t, 3> fresh_array() {
 //         buf = bytearray(b"cde")   # reassigned -> a rebind-slot pointer local
 //     return buf                    # tpyc: ok -- deref+move out of the slot
 ::tpy::ByteArray grow_bytes(int32_t n) {
-    std::optional<::tpy::ByteArray> __slot_2;
     ::tpy::ByteArray __slot_1 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::ByteArray* buf = &__slot_1;
     if ((n > 2)) {
-        buf = &*(__slot_2 = ::tpy::ByteArray(::tpy::bytes_literal("cde", 3)));
+        (*buf) = ::tpy::ByteArray(::tpy::bytes_literal("cde", 3));
     }
     return std::move((*buf));
 }
@@ -35,11 +34,10 @@ std::array<int32_t, 3> fresh_array() {
 //         xs = [3, 4, 5]
 //     return xs                     # the list flavour that already routed
 std::vector<int32_t> grow_list(int32_t n) {
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = {1, 2};
     std::vector<int32_t>* xs = &__slot_1;
     if ((n > 2)) {
-        xs = &*(__slot_2 = {3, 4, 5});
+        (*xs) = {3, 4, 5};
     }
     return std::move((*xs));
 }
@@ -50,11 +48,10 @@ std::vector<int32_t> grow_list(int32_t n) {
 //         bs = [Box(2), Box(3)]     # the same rebind slot, @nocopy payload
 //     return bs                     # tpyc: ok -- a copy here would not compile
 std::vector<::tpystd::tplib::box::Box<int32_t>> grow_boxes(int32_t n) {
-    std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> __slot_2;
     std::vector<::tpystd::tplib::box::Box<int32_t>> __slot_1 = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1));
     std::vector<::tpystd::tplib::box::Box<int32_t>>* bs = &__slot_1;
     if ((n > 2)) {
-        bs = &*(__slot_2 = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(2), ::tpystd::tplib::box::Box<int32_t>(3)));
+        (*bs) = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(2), ::tpystd::tplib::box::Box<int32_t>(3));
     }
     return std::move((*bs));
 }

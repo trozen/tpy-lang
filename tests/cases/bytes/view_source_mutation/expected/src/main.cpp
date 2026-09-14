@@ -35,11 +35,10 @@ void test_list_mutation_fallback() {
 //     items = [b"dave"]
 //     print(x)
 void test_list_reassign_fallback() {
-    std::optional<std::vector<::tpy::Bytes>> __slot_2;
     std::vector<::tpy::Bytes> __slot_1 = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     std::vector<::tpy::Bytes>* items = &__slot_1;
     ::tpy::Bytes x = ::tpy::__getitem__((*items), 0);
-    items = &*(__slot_2 = {::tpy::bytes_literal_owned("dave", 4)});
+    (*items) = {::tpy::bytes_literal_owned("dave", 4)};
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }
 

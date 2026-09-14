@@ -59,11 +59,10 @@ void test_record_field_mutated() {
 //     p = Person("Eve", int32(35))
 //     print(s)
 void test_record_reassigned() {
-    std::optional<Person> __slot_2;
     Person __slot_1 = Person("Dave", 40);
     Person* p = &__slot_1;
     std::string s = p->name;
-    p = &*(__slot_2 = Person("Eve", 35));
+    (*p) = Person("Eve", 35);
     std::cout << s << "\n";
 }
 

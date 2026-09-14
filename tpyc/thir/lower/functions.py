@@ -2959,10 +2959,6 @@ def _needs_held_back_slot(node) -> bool:
     `nonlocal` hazard (`_rejects_lambda_hoist`). Mirrors
     `_rejects_global_slot`: every emit site calling `_declare_rebind_slot`
     must be represented here."""
-    if isinstance(node, THIRPtrLocalDecl):
-        return node.needs_rebind_slot
-    if isinstance(node, THIRVarDecl):
-        return node.cpp_local_representation is LocalBinding.REBIND_SLOT
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
     return False
@@ -3053,10 +3049,8 @@ def _rejects_global_slot(node) -> bool:
         # lines, which spell `static __global_slot_N` at module scope
         # (state.slot_static + slot_prefix), so nothing block-scoped
         # outlives __tpy_init.
-        if (node.kind is PtrSlotKind.RECORD_HOISTED
-                and not node.needs_rebind_slot):
-            return False
-        return node.kind is not PtrSlotKind.GLOBAL_RVALUE
+        return node.kind not in (PtrSlotKind.RECORD_HOISTED,
+                                 PtrSlotKind.GLOBAL_RVALUE)
     if isinstance(node, THIRPtrLocalRebind):
         return node.kind not in (PtrSlotKind.GLOBAL_REBIND,
                                  PtrSlotKind.GLOBAL_NULL,
@@ -3078,9 +3072,13 @@ def _rejects_global_slot(node) -> bool:
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
     if isinstance(node, THIRVarDecl):
-        # The F2d two-slot rvalue pointer-local allocates an init AND a rebind
-        # slot; it carries no `slot_cpp`, so the tail below cannot see it.
+        # The F2d rvalue pointer-local allocates its init slot; it carries no
+        # `slot_cpp`, so the tail below cannot see it.
         return node.cpp_local_representation is LocalBinding.REBIND_SLOT
+    if isinstance(node, THIRAssign):
+        # An OWN reseat's slot rides the hoist lines (static + global prefix
+        # at module scope), like RECORD_HOISTED's; nothing block-scoped.
+        return False
     if isinstance(node, THIRGenExpr):
         # `slot_cpp` here is the make_generator YIELD-slot spelling
         # (`optional<slot>`), not a `__slot_N` allocation -- _emit_genexpr

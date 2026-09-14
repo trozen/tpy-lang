@@ -34,11 +34,12 @@ void test_list_one_branch(bool flag) {
 //     print(items)
 void test_own_list_both_branches(bool flag) {
     std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* items;
     if (flag) {
         items = &*(__slot_1 = make_list());
     } else {
-        items = &*(__slot_1 = {4, 5, 6});
+        items = &*(__slot_2 = {4, 5, 6});
     }
     std::cout << ::tpy::ListPrinter((*items)) << "\n";
 }
@@ -88,11 +89,12 @@ void test_record_one_branch(bool flag) {
 //     print(p.x, p.y)
 void test_record_both_branches(bool flag) {
     std::optional<Point> __slot_1;
+    std::optional<Point> __slot_2;
     Point* p;
     if (flag) {
         p = &*(__slot_1 = Point(1, 2));
     } else {
-        p = &*(__slot_1 = Point(3, 4));
+        p = &*(__slot_2 = Point(3, 4));
     }
     std::cout << p->x << " " << p->y << "\n";
 }

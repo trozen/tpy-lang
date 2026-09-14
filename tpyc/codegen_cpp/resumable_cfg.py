@@ -225,6 +225,12 @@ class FrameLocalKind(Enum):
                             statement-level borrow alias).
       * OPT_PTR          -- `T* name = nullptr;` for a pointer-repr
                             Optional local (nullptr doubles as None).
+      * REBIND_PTR       -- `T* name = nullptr;` for a plain non-value
+                            local some rvalue rebind of which needs storage
+                            of its own (sema's alias-rebind OWN verdict):
+                            writes materialize in per-site `__ptr_slot_fN`
+                            fields like OPT_PTR's, or assign through the
+                            pointer where the verdict is IN_PLACE.
       * BORROW_TUPLE     -- `std::tuple<..., T*> name;` borrow-form tuple.
       * OWNING_TUPLE_SLOT-- `::tpy::frame_slot<std::tuple<...storage...>>`:
                             an owning tuple (Own element / owned call
@@ -258,6 +264,7 @@ class FrameLocalKind(Enum):
     OWNED_STR = "owned_str"
     PTR_ALIAS = "ptr_alias"
     OPT_PTR = "opt_ptr"
+    REBIND_PTR = "rebind_ptr"
     BORROW_TUPLE = "borrow_tuple"
     OWNING_TUPLE_SLOT = "owning_tuple_slot"
     MIXED_TUPLE_SLOT = "mixed_tuple_slot"

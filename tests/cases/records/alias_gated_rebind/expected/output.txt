@@ -1,0 +1,40 @@
+free_alias: 101 50
+drop a
+free_drop alive: b
+drop b
+free_drop alive: c
+drop c
+second_rebind: 104 50
+field_chain: 105 50
+element_loan: 107 50
+ptr_copy: 109 50
+dead_alias: d1
+dead_alias alive: d2
+drop d1
+after_branch: 115 50
+after_branch: 115 50
+after_loop: 101 50
+loan_before_loop: 120 1
+borrow_call: 116 60
+ptr_escapes: 117 50
+generator_holds_receiver: 18 50
+generator_holds_receiver: 18 50
+constructor: 119 50
+method: 111 50
+gen: 1
+gen: 101
+gen: 2
+gen_drop: 1
+drop g1
+gen_drop: 2
+drop g2
+async: 152
+nested_def: 111 50
+with_body: 112 50
+try_finally: 113 50
+match_arm: 114 50
+match_arm: 114 60
+error_return: 165
+module: 112 50
+drop m1
+module alive: m2

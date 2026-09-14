@@ -24,9 +24,9 @@ void __tpy_init() {
     static Container __global_slot_1 = Container(1);
     c = &__global_slot_1;
     std::cout << c->value << "\n";
-    c = &(__global_slot_1 = Container(2));
+    (*c) = Container(2);
     std::cout << c->value << "\n";
-    c = &(__global_slot_1 = Container(3));
+    (*c) = Container(3);
     std::cout << c->value << "\n";
 }
 

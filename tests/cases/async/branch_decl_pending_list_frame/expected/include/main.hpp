@@ -25,7 +25,9 @@ struct __coro_pick {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
-    ::tpy::frame_slot<std::vector<int32_t>> xs;
+    std::vector<int32_t>* xs = nullptr;
+    std::optional<std::vector<int32_t>> __ptr_slot_f0;
+    std::optional<std::vector<int32_t>> __ptr_slot_f1;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

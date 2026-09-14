@@ -1343,7 +1343,6 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         if hkind == "ptr_slot":
             # Route-gated to the record tiers (ptr_slot_ok).
             hoist_decls.append((name, f"{lc.render_type(vtype)}*"))
-            hoist_slots.append((name, lc.render_type(vtype)))
             lc.pointers.add(name)
             lc.promote_movable(name)
             lc.rebind_slot_locals.add(name)

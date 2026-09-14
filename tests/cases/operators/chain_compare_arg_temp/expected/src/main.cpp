@@ -65,25 +65,24 @@ bool first_pair_only(Counter& c, int32_t a, int32_t b) {
 //     c = Counter()
 //     print("long_taken", stmtexpr_chain_long(c, 0, [1, 5]), c.n)        # True 1
 void main() {
-    std::optional<Counter> __slot_2;
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
     std::cout << "inline_skipped" << " " << ::tpy::print_bool(inline_chain((*c), 5, 1)) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::cout << "inline_taken" << " " << ::tpy::print_bool(first_pair_only((*c), 0, 5)) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::vector<int32_t> __tmp_5 = {1};
     std::cout << "stmtexpr_skipped" << " " << ::tpy::print_bool(stmtexpr_chain((*c), 5, __tmp_5)) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::vector<int32_t> __tmp_6 = {5};
     std::cout << "stmtexpr_taken" << " " << ::tpy::print_bool(stmtexpr_chain((*c), 0, __tmp_6)) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::vector<int32_t> __tmp_7 = {1, 9};
     std::cout << "long_skip_first" << " " << ::tpy::print_bool(stmtexpr_chain_long((*c), 5, __tmp_7)) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::vector<int32_t> __tmp_8 = {5, 1};
     std::cout << "long_skip_mid" << " " << ::tpy::print_bool(stmtexpr_chain_long((*c), 0, __tmp_8)) << " " << c->n << "\n";
-    c = &*(__slot_2 = Counter());
+    (*c) = Counter();
     std::vector<int32_t> __tmp_9 = {1, 5};
     std::cout << "long_taken" << " " << ::tpy::print_bool(stmtexpr_chain_long((*c), 0, __tmp_9)) << " " << c->n << "\n";
 }

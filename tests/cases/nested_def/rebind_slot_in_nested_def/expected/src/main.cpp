@@ -23,29 +23,27 @@ namespace tpyapp::main {
 //         p = Point(99)
 //     return p.x + inner(flag) + inner_alias(flag)
 int32_t outer(int32_t flag) {
-    std::optional<Point> __slot_6;
     auto inner = [](int32_t k) -> int32_t {
-        std::optional<Point> __slot_2;
         Point __slot_1 = Point(k);
         Point* p = &__slot_1;
         if ((k > 0)) {
-            p = &*(__slot_2 = Point((::tpy::mul_check<int32_t>(k, 10))));
+            (*p) = Point((::tpy::mul_check<int32_t>(k, 10)));
         }
         return p->x;
     };
     auto inner_alias = [](int32_t k) -> int32_t {
-        std::optional<Point> __slot_4;
-        Point __slot_3 = Point(k);
-        Point* p = &__slot_3;
+        std::optional<Point> __slot_3;
+        Point __slot_2 = Point(k);
+        Point* p = &__slot_2;
         Point& alias = (*p);
-        p = &*(__slot_4 = Point((::tpy::mul_check<int32_t>(k, 100))));
+        p = &*(__slot_3 = Point((::tpy::mul_check<int32_t>(k, 100))));
         alias.bump();
         return (::tpy::add_check<int32_t>(alias.x, p->x));
     };
-    Point __slot_5 = Point(1);
-    Point* p = &__slot_5;
+    Point __slot_4 = Point(1);
+    Point* p = &__slot_4;
     if ((flag > 0)) {
-        p = &*(__slot_6 = Point(99));
+        (*p) = Point(99);
     }
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(p->x, inner(flag))), inner_alias(flag)));
 }

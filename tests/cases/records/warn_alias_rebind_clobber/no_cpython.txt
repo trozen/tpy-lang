@@ -1,4 +1,4 @@
-The case pins the WRONG values the new alias-rebind warning announces
-(BUGS.md#resumable-alias-identity and its sync siblings): each section reads
-back the object the loan was given and gets the rebound one instead. CPython
-keeps the original object, so a cpy phase would compare two different bugs.
+The case pins the WRONG values the alias-rebind warning announces: a loan
+taken from a rebind site's own storage and still live when the site runs again
+is overwritten (one slot per site), where CPython keeps the object the loan
+was given. A cpy phase would compare two different behaviours.

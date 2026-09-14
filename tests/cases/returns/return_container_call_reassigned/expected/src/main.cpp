@@ -26,14 +26,13 @@ std::vector<int32_t> gen(int32_t n) {
 //             best = copy(cur)
 //     return best
 std::vector<int32_t> longest(int32_t n) {
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = gen(0);
     std::vector<int32_t>* best = &__slot_1;
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         std::vector<int32_t> cur = gen(i);
         if ((::tpy::__len__(cur) > ::tpy::__len__((*best)))) {
-            best = &*(__slot_2 = std::vector<int32_t>(cur));
+            (*best) = std::vector<int32_t>(cur);
         }
     }
     return std::move((*best));

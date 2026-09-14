@@ -278,7 +278,6 @@ void own_marker_and_pending() {
 //     f = Flat([bytes([i]) for i in range(k + 1)])  # tpyc: ok
 //     print("rebind_slot_reseat", f.n)
 void rebind_slot_reseat(int32_t k) {
-    std::optional<Flat> __slot_2;
     std::vector<::tpy::Bytes> __tmp_12 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = k;
@@ -300,7 +299,7 @@ void rebind_slot_reseat(int32_t k) {
         }
         std::move(__result);
     });
-    f = &*(__slot_2 = Flat(__tmp_13));
+    (*f) = Flat(__tmp_13);
     std::cout << "rebind_slot_reseat" << " " << f->n << "\n";
 }
 
@@ -381,7 +380,7 @@ void blocks(int32_t k) {
                 }
                 std::move(__result);
             });
-            f = &*(__slot_1 = Flat(__tmp_16));
+            (*f) = Flat(__tmp_16);
             std::cout << "try_body" << " " << f->n << "\n";
         } catch (const ::tpy::ValueError&) {
             std::cout << "try_body err" << "\n";
@@ -399,7 +398,7 @@ void blocks(int32_t k) {
             }
             std::move(__result);
         });
-        f = &*(__slot_1 = Flat(__tmp_17));
+        (*f) = Flat(__tmp_17);
         std::cout << "match_arm" << " " << f->n << "\n";
         break;
     }
@@ -445,7 +444,7 @@ void hoisted_reseat(int32_t k) {
         }
         std::move(__result);
     });
-    f = &*(__slot_1 = Flat(__tmp_18));
+    (*f) = Flat(__tmp_18);
     std::cout << "hoisted_reseat" << " " << f->n << "\n";
 }
 

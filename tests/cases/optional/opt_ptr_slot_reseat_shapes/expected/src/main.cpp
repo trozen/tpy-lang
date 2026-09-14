@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //         return p.value
 //     return 0
 int32_t double_rvalue_reseat() {
+    std::optional<Inner> __slot_1;
     Inner* p = nullptr;
-    Inner __slot_1 = Inner(1);
-    p = &__slot_1;
-    p = &(__slot_1 = Inner(2));
+    p = &*(__slot_1 = Inner(1));
+    (*p) = Inner(2);
     if ((p != nullptr)) {
         return p->value;
     }

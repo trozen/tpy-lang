@@ -89,7 +89,7 @@ int32_t nonvalue_rvalue_reassigned(int32_t n) {
     __ctx_3.__exit__({}, nullptr, {});
     xs->push_back(9);
     std::cout << ::tpy::ListPrinter((*xs)) << "\n";
-    xs = &*(__slot_1 = {n, n, n});
+    (*xs) = {n, n, n};
     return ::tpy::__len__((*xs));
 }
 

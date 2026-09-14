@@ -14,12 +14,13 @@ namespace tpyapp::main {
 //         print(p.x, p.y)
 void branch_rvalue_independent(bool cond) {
     std::optional<Point> __slot_1;
+    std::optional<Point> __slot_2;
     Point* p;
     if (cond) {
         p = &*(__slot_1 = Point(1, 2));
         std::cout << p->x << " " << p->y << "\n";
     } else {
-        p = &*(__slot_1 = Point(3, 4));
+        p = &*(__slot_2 = Point(3, 4));
         std::cout << p->x << " " << p->y << "\n";
     }
 }
@@ -37,15 +38,17 @@ void branch_rvalue_independent(bool cond) {
 //         print(p.x, p.y)
 void branch_rvalue_three_way(int32_t flag) {
     std::optional<Point> __slot_1;
+    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_3;
     Point* p;
     if ((flag == 0)) {
         p = &*(__slot_1 = Point(10, 20));
         std::cout << p->x << " " << p->y << "\n";
     } else if ((flag == 1)) {
-        p = &*(__slot_1 = Point(30, 40));
+        p = &*(__slot_2 = Point(30, 40));
         std::cout << p->x << " " << p->y << "\n";
     } else {
-        p = &*(__slot_1 = Point(50, 60));
+        p = &*(__slot_3 = Point(50, 60));
         std::cout << p->x << " " << p->y << "\n";
     }
 }
@@ -62,17 +65,19 @@ void branch_rvalue_three_way(int32_t flag) {
 //         print(local.x, local.y)
 //     print(shared.x, shared.y)
 void branch_mixed_scope(bool cond) {
-    std::optional<Point> __slot_2;
     std::optional<Point> __slot_1;
+    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_3;
+    std::optional<Point> __slot_4;
     Point* local;
     Point* shared;
     if (cond) {
-        shared = &*(__slot_2 = Point(1, 2));
-        local = &*(__slot_1 = Point(10, 20));
+        shared = &*(__slot_1 = Point(1, 2));
+        local = &*(__slot_2 = Point(10, 20));
         std::cout << local->x << " " << local->y << "\n";
     } else {
-        shared = &*(__slot_2 = Point(3, 4));
-        local = &*(__slot_1 = Point(30, 40));
+        shared = &*(__slot_3 = Point(3, 4));
+        local = &*(__slot_4 = Point(30, 40));
         std::cout << local->x << " " << local->y << "\n";
     }
     std::cout << shared->x << " " << shared->y << "\n";

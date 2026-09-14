@@ -20,12 +20,11 @@ int32_t consume(Point&& p) {
 //         p = a  # lvalue reassignment -> borrowed
 //     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
 int32_t test(Point& a, bool cond) {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point();
     Point* p = &__slot_1;
     p->x = 10;
     if (cond) {
-        p = &*(__slot_2 = Point());
+        (*p) = Point();
         p->x = 20;
     } else {
         p = &(a);

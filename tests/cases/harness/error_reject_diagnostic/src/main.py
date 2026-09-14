@@ -12,13 +12,13 @@ class Point:
         self.x = x
 
 
-def main() -> None:  # tpyc: error(/not yet supported by C\+\+ code generation/)
+def main() -> None:
     p: Point | None = None
     p = Point(1)
 
     def reset() -> None:
         nonlocal p
-        p = Point(2)  # the rebind with no slot home
+        p = Point(2)  # tpyc: error(/not yet supported by C\+\+ code generation/)
 
     reset()
     if p is not None:

@@ -23,12 +23,13 @@ std::vector<int32_t> make_list() {
 //         print("for_record", f.n, g.n)
 void for_record() {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         Flat* f;
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
             f = &*(__slot_1 = Flat(i));
         } else {
-            f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, 10))));
+            f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(i, 10))));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         Flat& g = (*f);
@@ -48,12 +49,13 @@ void for_record() {
 //         print("for_list", xs)
 void for_list() {
     std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         std::vector<int32_t>* xs;
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
             xs = &*(__slot_1 = {i});
         } else {
-            xs = &*(__slot_1 = {i, i});
+            xs = &*(__slot_2 = {i, i});
         }
         xs->push_back(7);
         std::cout << "for_list" << " " << ::tpy::ListPrinter((*xs)) << "\n";
@@ -71,12 +73,13 @@ void for_list() {
 //         print("for_own_call", items)
 void for_own_call(bool flag) {
     std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     for (int32_t i = 0; i < 2; ++i) {
         std::vector<int32_t>* items;
         if (flag) {
             items = &*(__slot_1 = make_list());
         } else {
-            items = &*(__slot_1 = {i});
+            items = &*(__slot_2 = {i});
         }
         items->push_back(99);
         std::cout << "for_own_call" << " " << ::tpy::ListPrinter((*items)) << "\n";
@@ -122,12 +125,13 @@ void while_one_arm() {
 //         print("nested_if none")
 void nested_if(bool a, bool b) {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     if (a) {
         Flat* f;
         if (b) {
             f = &*(__slot_1 = Flat(1));
         } else {
-            f = &*(__slot_1 = Flat(2));
+            f = &*(__slot_2 = Flat(2));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         std::cout << "nested_if" << " " << f->n << "\n";
@@ -152,20 +156,21 @@ void nested_if(bool a, bool b) {
 //         print("sibling_decl", f.n)
 void sibling_decl(bool a) {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     if (a) {
         for (int32_t i = 0; i < 2; ++i) {
             Flat* f;
             if ((i == 0)) {
                 f = &*(__slot_1 = Flat(i));
             } else {
-                f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, 10))));
+                f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(i, 10))));
             }
             f->n = ::tpy::add_check<int32_t>(f->n, 1);
             std::cout << "sibling_decl" << " " << f->n << "\n";
         }
     } else {
-        Flat __slot_2 = Flat(5);
-        Flat* f = &__slot_2;
+        Flat __slot_3 = Flat(5);
+        Flat* f = &__slot_3;
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         std::cout << "sibling_decl" << " " << f->n << "\n";
     }
@@ -184,17 +189,18 @@ void sibling_decl(bool a) {
 //     print("post_loop_redecl", f.n)
 void post_loop_redecl() {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     for (int32_t i = 0; i < 2; ++i) {
         Flat* f;
         if ((i == 0)) {
             f = &*(__slot_1 = Flat(i));
         } else {
-            f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, 10))));
+            f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(i, 10))));
         }
         std::cout << "post_loop_redecl" << " " << f->n << "\n";
     }
-    Flat __slot_2 = Flat(99);
-    Flat* f = &__slot_2;
+    Flat __slot_3 = Flat(99);
+    Flat* f = &__slot_3;
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
     std::cout << "post_loop_redecl" << " " << f->n << "\n";
 }
@@ -338,7 +344,6 @@ void optional_list_init() {
 //         print("optional_redecl_post_loop", p.n)
 void optional_redecl_post_loop() {
     std::optional<Pic> __slot_1;
-    std::optional<Pic> __slot_3;
     for (int32_t i = 0; i < 2; ++i) {
         Pic* p = nullptr;
         if ((i == 0)) {
@@ -350,7 +355,7 @@ void optional_redecl_post_loop() {
     }
     Pic __slot_2 = Pic(9);
     Pic* p = &__slot_2;
-    p = &*(__slot_3 = Pic(10));
+    (*p) = Pic(10);
     if ((p != nullptr)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
         std::cout << "optional_redecl_post_loop" << " " << p->n << "\n";
@@ -369,6 +374,7 @@ void optional_redecl_post_loop() {
 //         print("with_body", f.n)
 void with_body() {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     Flat* f;
     auto __ctx_1 = CM(1);
     auto n = __ctx_1.__enter__();
@@ -376,7 +382,7 @@ void with_body() {
         if ((n > 0)) {
             f = &*(__slot_1 = Flat(n));
         } else {
-            f = &*(__slot_1 = Flat(0));
+            f = &*(__slot_2 = Flat(0));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         std::cout << "with_body" << " " << f->n << "\n";
@@ -406,6 +412,7 @@ void with_body() {
 //             print("try_body err")
 void try_body() {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     for (int32_t i = 0; i < 2; ++i) {
         {
             try {
@@ -413,7 +420,7 @@ void try_body() {
                 if ((i == 0)) {
                     f = &*(__slot_1 = Flat(1));
                 } else {
-                    f = &*(__slot_1 = Flat(2));
+                    f = &*(__slot_2 = Flat(2));
                 }
                 f->n = ::tpy::add_check<int32_t>(f->n, 1);
                 std::cout << "try_body" << " " << f->n << "\n";
@@ -438,6 +445,7 @@ void try_body() {
 //             print("match_arm other")
 void match_arm(int32_t k) {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 0: {
@@ -445,7 +453,7 @@ void match_arm(int32_t k) {
         if ((k == 0)) {
             f = &*(__slot_1 = Flat(10));
         } else {
-            f = &*(__slot_1 = Flat(11));
+            f = &*(__slot_2 = Flat(11));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         std::cout << "match_arm" << " " << f->n << "\n";
@@ -458,9 +466,7 @@ void match_arm(int32_t k) {
     }
 }
 
-// # Closure body. Renders the single-bind `std::optional<T> f;` flavor, not the
-// # rebind slot a free function takes: the nested body classifies off the OUTER
-// # prescan (BUGS.md#rebind-slot-missing-module-nested-def).
+// # Closure body.
 // def closure() -> None:
 //     def inner(k: int32) -> int32:
 //         for j in range(2):
@@ -475,12 +481,14 @@ void match_arm(int32_t k) {
 //     print("closure", inner(1))
 void closure() {
     auto inner = [](int32_t k) -> int32_t {
+        std::optional<Flat> __slot_1;
+        std::optional<Flat> __slot_2;
         for (int32_t j = 0; j < 2; ++j) {
-            std::optional<Flat> f;
+            Flat* f;
             if ((j == 0)) {
-                f = Flat(k);
+                f = &*(__slot_1 = Flat(k));
             } else {
-                f = Flat((::tpy::add_check<int32_t>(k, j)));
+                f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(k, j))));
             }
             f->n = ::tpy::add_check<int32_t>(f->n, 1);
             k = ::tpy::add_check<int32_t>(k, f->n);
@@ -503,12 +511,13 @@ void closure() {
 //     return i
 std::expected<int32_t, MyErr> error_return_body(int32_t i) {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     for (int32_t j = 0; j < 2; ++j) {
         Flat* f;
         if ((j == 0)) {
             f = &*(__slot_1 = Flat(i));
         } else {
-            f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, j))));
+            f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(i, j))));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         i = ::tpy::add_check<int32_t>(i, f->n);

@@ -923,8 +923,8 @@ struct _GatherSettledFuture {
                     if ((::tpy::__getitem__(this->_exc_indices, k) == orig_i)) {
                         ::tpy::list_pop_at(this->_exc_indices, k);
                         ::tpystd::tplib::box::Box<::tpy::Throwable> ebox = ::tpy::list_pop_at(this->_exc_boxes, k);
-                        Settled<T> __slot_3 = Settled<T>();
-                        Settled<T>* entry = &__slot_3;
+                        Settled<T> __slot_2 = Settled<T>();
+                        Settled<T>* entry = &__slot_2;
                         entry->exception = std::move(ebox);
                         result.push_back(std::move((*entry)));
                         break;

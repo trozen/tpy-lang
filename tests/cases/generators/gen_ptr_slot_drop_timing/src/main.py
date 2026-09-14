@@ -1,6 +1,6 @@
-# Pins the per-site frame-slot drop order: a superseded rvalue payload
-# lives in its own site's slot until the frame dies (CPython drops it at
-# the rebind -- the declared divergence in no_cpython.txt).
+# A pointer-form frame local rebound while nothing else holds its payload
+# writes in place: the superseded payload drops at the rebind, as under
+# CPython, instead of living in a second per-site field until the frame dies.
 from typing import Iterator, Optional
 from tpy import int32
 
@@ -16,8 +16,8 @@ class Resource:
 
 
 def gen() -> Iterator[int32]:
-    # Two distinct write sites: Resource(1)'s slot is never revisited, so
-    # its payload drops only at frame destruction, after Resource(2)'s.
+    # Two write sites, nothing aliases the first payload: the second write
+    # assigns through the pointer and drops Resource(1) right there.
     saved: Optional[Resource] = Resource(1)
     yield 1
     saved = Resource(2)

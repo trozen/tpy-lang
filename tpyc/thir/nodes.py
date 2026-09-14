@@ -20,7 +20,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
 from ..identity_map import IdentityMap
-from ..parse import SourceLocation
+from ..parse import RebindStorage, SourceLocation
 from ..typesys import ResolvedBinop, TpyType
 
 if TYPE_CHECKING:
@@ -1655,20 +1655,19 @@ class THIRVarDecl(THIRStmt):
 class PtrSlotKind(Enum):
     """Source shape of a pointer-repr local's slot-hoist declaration/reseat.
 
-      * `OPT_NONE`     -- `x: T | None = None` -> `T* x = nullptr;` (plus the
-                          `std::optional<T>` rebind-slot pre-decl when a later
-                          rvalue reseat needs it). As a reseat: `x = nullptr;`.
+      * `OPT_NONE`     -- `x: T | None = None` -> `T* x = nullptr;`. As a
+                          reseat: `x = nullptr;`.
       * `OPT_RVALUE`   -- `x: T | None = T(...)` -> a direct `T __slot_N` init
-                          slot + `T* x = &__slot_N;` (plus the rebind-slot
-                          pre-decl). Reseats ride THIRAssign's rebind-slot arm.
+                          slot + `T* x = &__slot_N;`. Rvalue reseats ride
+                          THIRAssign's storage verdict (`rebind_storage`).
       * `UNION_NONE`   -- ptr-variant union reseat to None: `v = std::monostate{};`
                           (the DECL None case stays on the existing literal arm).
       * `UNION_RVALUE` -- `v: A | B = A(...)` -> value-variant `__slot_N` +
                           `to_ptr_variant(__slot_N)`. As a reseat: `.emplace`
-                          into the pre-declared rebind slot + re-lift.
+                          into a slot of the site's own + re-lift.
       * `UNION_INLINE_SLOT` -- a ptr-variant union RESEAT whose decl had
-                          no rvalue init (no pre-declared rebind slot,
-                          `v: A | B | None = None; v = A(...)`): a FRESH
+                          no rvalue init (`v: A | B | None = None;
+                          v = A(...)`): a FRESH
                           value-variant `__slot_N = init;` declared at the
                           reseat + `v = to_ptr_variant(__slot_N);` (the
                           slotless inline-slot form).
@@ -1698,8 +1697,7 @@ class PtrSlotKind(Enum):
     #   * `RECORD_HOISTED` -- a HOISTED local's decl inside a loop/branch:
     #     the `std::optional<T> __slot_N;` pre-decl rides the function-top
     #     hoist lines and the decl re-emplaces per execution
-    #     (`T* x = &*(__slot_N = init);`). `needs_rebind_slot` pre-declares
-    #     the second hoisted slot for rvalue reseats.
+    #     (`T* x = &*(__slot_N = init);`).
     RECORD_RVALUE = auto()
     RECORD_HOISTED = auto()
     # `p: Optional[P] = Conformer(...)` for a @dynamic P: the slot types at
@@ -1758,7 +1756,7 @@ class PtrSlotKind(Enum):
     # (the UNION_ADDR precedent).
     PTR_ADDR = auto()
     # Rvalue reseat of a SLOTLESS pointer-repr Optional local (an
-    # annotation-only decl -- no pre-declared rebind slot): the first such
+    # annotation-only decl): the first such
     # reseat declares its PLAIN block slot in place and registers it
     # (`T __slot_N = <rvalue>;\nname = &__slot_N;` --
     # the no-slot rvalue branch); later rvalue
@@ -1815,18 +1813,15 @@ class THIRPtrLocalDecl(THIRStmt):
     `cpp_type` is the POINTEE spelling for the OPT_* kinds (`T` of `T* x`)
     and the full pointer-variant spelling for the UNION_* kinds. `val_cpp`
     is the value-variant spelling backing a UNION slot (None for OPT_*,
-    whose slots reuse `cpp_type`). `needs_rebind_slot` is the
-    `name in rvalue_reassigned_vars` pre-declaration of the shared
-    `std::optional<...>` rebind slot; emit allocates slot numbers in a fixed
-    order (init slot before rebind slot; union rebind slot before
-    the value slot's TEXT but after it in NUMBERING -- see the emit arm)."""
+    whose slots reuse `cpp_type`). An rvalue reseat of the name decides its
+    own storage (`THIRAssign.rebind_storage` / `THIRPtrLocalRebind`), so
+    the decl pre-declares no rebind slot."""
     name: str
     resolved_type: TpyType
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     init: THIRExpr | None = None
     cpp_type: str | None = None
     val_cpp: str | None = None
-    needs_rebind_slot: bool = False
     # GLOBAL_RVALUE only: the write sits inside a top-level branch/loop, so
     # the in-place slot decl drops the `static` (a static would init once
     # across iterations).
@@ -1844,13 +1839,20 @@ class THIRPtrLocalDecl(THIRStmt):
 class THIRPtrLocalRebind(THIRStmt):
     """Reseat of a slot-hoist pointer-repr local for the shapes THIRAssign's
     rebind-slot arm does not cover: `x = None` (`x = nullptr;` /
-    `v = std::monostate{};`) and the union rvalue reseat (`.emplace` into the
-    pre-declared rebind slot + `to_ptr_variant(*slot)` re-lift). `val_cpp` is
+    `v = std::monostate{};`) and the union rvalue reseat (`.emplace` into a
+    slot of the site's own + `to_ptr_variant(*slot)` re-lift). `val_cpp` is
     the union value-variant spelling (unused by the OPT_NONE kind)."""
     name: str
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     value: THIRExpr | None = None
     val_cpp: str | None = None
+    # Where an rvalue reseat writes (sema's alias-rebind verdict): IN_PLACE
+    # through the pointer, OWN into a slot private to this site. Read by
+    # the BRANCH_RVALUE, GLOBAL_REBIND, GLOBAL_HOIST_RVALUE and FRAME_RVALUE
+    # kinds; the storage-optional and union kinds always take their own
+    # slot (no in-place write exists for them). None: not an rvalue
+    # reseat of a reference local (allocate as the kind's first write).
+    rebind_storage: 'RebindStorage | None' = None
 
 
 @dataclass(frozen=True)
@@ -1890,6 +1892,13 @@ class THIRAssign(THIRStmt):
     # wraps through the optional spelling (`t = std::optional<B>{
     # ::tpy::tuple_to_pointer<B>(__slot_N.emplace(v))};`).
     btuple_opt_cpp: 'str | None' = None
+    # An rvalue reseat of a pointer-local (`p = Point(2)` over `T* p`):
+    # sema's alias-rebind verdict says where the object lands -- IN_PLACE
+    # (`(*p) = <rvalue>;`, the superseded object dies here) or OWN (a slot
+    # private to this site, `p = &*(__slot_N = <rvalue>);`). `slot_cpp`
+    # spells the pointee for the OWN slot. None on every other assign.
+    rebind_storage: 'RebindStorage | None' = None
+    slot_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -2276,10 +2285,11 @@ class THIRIf(THIRStmt):
     cpp_type carries the full spelling per flavor: `T` for a value var,
     `std::optional<T>` for a single-bind non-value (OPTIONAL_STORAGE), a
     `T*` / `Base*` pointer-local for reassigned non-values and @dynamic
-    protocols. `hoist_slots` names the rvalue-reassigned subset: emit
-    writes `std::optional<T> __slot_N;` (allocating N from the shared slot
-    counter, registered in `rebind_slots`) immediately before that name's
-    predecl line -- the rebind-slot arm. The
+    protocols. `hoist_slots` names the branch-bound borrow-tuple locals
+    with an owning-call source: emit writes their
+    `std::optional<std::tuple<...>> __slot_N;` (allocating N from the shared
+    slot counter, registered in `rebind_slots`) immediately before that
+    name's predecl line. The
     narrowing-condition path never carries hoists (deferred)."""
     condition: THIRExpr
     then_body: tuple[THIRStmt, ...]
@@ -2889,6 +2899,10 @@ class THIRErrorReturnBind(THIRStmt):
     call: THIRExpr
     decl_cpp: 'str | None' = None
     ptr_rebind: bool = False
+    # With `ptr_rebind`: the reseat's storage verdict and OWN slot pointee
+    # spelling (see THIRAssign.rebind_storage).
+    rebind_storage: 'RebindStorage | None' = None
+    slot_cpp: 'str | None' = None
     alias_bind: bool = False
     target: 'THIRExpr | None' = None
 
@@ -3084,9 +3098,8 @@ class THIRMatch(THIRStmt):
     subject_ref: bool = True          # auto& (lvalue subject) vs auto
     arms: tuple[THIRMatchArm, ...] = ()
     hoist_decls: tuple[tuple[str, str], ...] = ()
-    # The rvalue-reassigned subset of hoist_decls: emit allocates that
-    # name's rebind slot (`std::optional<T> __slot_N;`) immediately before
-    # its predecl line, mirroring THIRIf.hoist_slots.
+    # Hoists that reserve a slot beside their predecl (THIRIf.hoist_slots);
+    # no match hoist does today.
     hoist_slots: tuple[tuple[str, str], ...] = ()
     is_exhaustive: bool = False
     emit_unreachable: bool = False    # is_exhaustive AND every arm terminates

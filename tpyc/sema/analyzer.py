@@ -98,6 +98,7 @@ from .statements import StatementAnalyzer
 
 from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
 from ..liveness import analyze_last_uses, collect_finally_return_candidates
+from .alias_rebind import decide_rebind_storage, globals_declared_in
 from ..value_category import wants_move
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
@@ -320,6 +321,10 @@ class SemanticAnalyzer:
 
         # Per-function/method pre-scan results (shared with codegen)
         self.function_scan_results: IdentityMap = IdentityMap()
+        # Per function: locals some rvalue rebind of which owns its storage
+        # (the alias-rebind pass's OWN verdict) -- the frame layout's
+        # pointer-form criterion.
+        self.function_own_rebind_names: IdentityMap = IdentityMap()
         self.top_level_scan_result: ScanResult | None = None
 
         # Per-function/method hoisted vars (try/finally + branch predecl)
@@ -849,7 +854,11 @@ class SemanticAnalyzer:
         # against decl-finalized peer ModuleInfos (deps run first in
         # topo order in the declarations pass).
         if module.top_level_stmts:
-            self._analyze_top_level(module.top_level_stmts)
+            self._analyze_top_level(
+                module.top_level_stmts,
+                globals_declared_in(
+                    [*module.functions,
+                     *(m for r in module.records for m in r.methods)]))
         self._advance_phase(
             self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
             self._PHASE_REGISTER_SIGNATURES,
@@ -1654,6 +1663,7 @@ class SemanticAnalyzer:
     def _store_analysis_results(self, func: TpyFunction, scan: ScanResult) -> None:
         """Store prescan/liveness results for codegen consumption."""
         self.function_scan_results[func] = scan
+        self.function_own_rebind_names[func] = self.ctx.func.own_rebind_names
         if self.ctx.func.hoisted_vars:
             self.function_hoisted_vars[func] = self.ctx.func.hoisted_vars.copy()
         if self.ctx.func.move_through_vars:
@@ -3418,7 +3428,8 @@ class SemanticAnalyzer:
                 return True
         return False
 
-    def _analyze_top_level(self, stmts: list[TpyStmt]) -> None:
+    def _analyze_top_level(self, stmts: list[TpyStmt],
+                           function_globals: set[str]) -> None:
         """Analyze top-level statements (for generated main()).
 
         Treats top-level code like a function body so list literals and other
@@ -3456,6 +3467,9 @@ class SemanticAnalyzer:
         for stmt in stmts:
             self.stmts.analyze_stmt(stmt)
         self.deduction.resolve_all()
+        # A global some function rebinds through `global` can change between
+        # two module-level statements: foreign storage for the replay.
+        decide_rebind_storage(self.ctx, stmts, always_foreign=function_globals)
 
         if self.ctx.func.hoisted_vars:
             self.top_level_hoisted_vars = self.ctx.func.hoisted_vars.copy()

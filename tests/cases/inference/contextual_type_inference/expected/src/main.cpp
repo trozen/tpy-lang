@@ -37,7 +37,6 @@ Container<int32_t> get_box() {
 //
 //     print("done")
 void main() {
-    std::optional<Container<int32_t>> __slot_2;
     Container<int32_t> b = make_box<int32_t>();
     std::cout << b << "\n";
     Container<int32_t> c = Container<int32_t>();
@@ -47,7 +46,7 @@ void main() {
     std::cout << y << "\n";
     Container<int32_t> __slot_1 = Container<int32_t>();
     Container<int32_t>* r = &__slot_1;
-    r = &*(__slot_2 = Container<int32_t>());
+    (*r) = Container<int32_t>();
     std::cout << (*r) << "\n";
     Pair<int32_t, std::string> p = Pair<int32_t, std::string>(42);
     std::cout << p << "\n";

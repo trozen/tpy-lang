@@ -177,10 +177,9 @@ inline void Guard::__exit__(std::monostate et, const ::tpy::BaseException* ev, s
 //     self.n = xs[0]
 //     self.xs = [1, 2, 3]
 inline C::C() {
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
-    xs = &*(__slot_2 = ({
+    (*xs) = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -191,7 +190,7 @@ inline C::C() {
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
-    }));
+    });
     this->n = ::tpy::__getitem__((*xs), 0);
     this->xs = {1, 2, 3};
 }
@@ -202,10 +201,9 @@ inline C::C() {
 //     xs = [x + ys[0] for x in xs]  # tpyc: ok
 //     return xs[0]
 inline int32_t C::bump(const std::vector<int32_t>& ys) const {
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
-    xs = &*(__slot_2 = ({
+    (*xs) = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -216,7 +214,7 @@ inline int32_t C::bump(const std::vector<int32_t>& ys) const {
             __result.push_back((::tpy::add_check<int32_t>(x, ::tpy::__getitem__(ys, 0))));
         }
         std::move(__result);
-    }));
+    });
     return ::tpy::__getitem__((*xs), 0);
 }
 

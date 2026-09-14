@@ -76,7 +76,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .alias_rebind import check_alias_rebind_clobber
+from .alias_rebind import decide_rebind_storage, stamp_bind_kind
 from .context import BorrowKind, ITER_BORROWER, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, _borrow_storage_roots, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
@@ -1285,9 +1285,13 @@ class StatementAnalyzer:
 
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
+        bt = self.ctx.func.borrow_tracker
+        prev_stmt = bt.current_stmt
+        bt.current_stmt = stmt
         try:
             self._analyze_stmt_dispatch(stmt)
         finally:
+            bt.current_stmt = prev_stmt
             # Flush post-access ptr narrowing queued during expression analysis.
             # See FunctionTrackingState.pending_non_null_ptr_vars for rationale
             # (deferred to statement boundary so within-statement sibling
@@ -3126,11 +3130,6 @@ class StatementAnalyzer:
             func.body, liveness_alias_sources(scan))
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
-        # A nested def keeps the ENCLOSING body's rebind-slot set (installed by
-        # _analyze_nested_def), because that is the set the lowering hands its
-        # lambda -- see the prescan swap in thir/lower/statements.
-        if not self.ctx.func.in_nested_def:
-            self.ctx.func.rebind_slot_names = scan.rvalue_reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
@@ -3153,6 +3152,14 @@ class StatementAnalyzer:
             self.analyze_stmt(implicit_ret)
 
         self._check_closure_del_of_deferred_returns(func)
+
+        # Every binding and loan is stamped now; the storage each rvalue
+        # rebind writes is decided over the whole body at once.
+        decide_rebind_storage(
+            self.ctx, func.body,
+            always_foreign=(self.ctx.func.current_nonlocal_names
+                            | self.ctx.func.global_declarations),
+            initial_foreign=param_names)
 
         return scan
 
@@ -3306,11 +3313,9 @@ class StatementAnalyzer:
                     f"the default", stmt)
 
         self_is_receiver = self.ctx.receiver_self_in_scope()
-        outer_rebind_slots = self.ctx.func.rebind_slot_names
 
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
-            self.ctx.func.rebind_slot_names = outer_rebind_slots
             self.ctx.func.outer_scope_locals = outer_locals
             self.ctx.func.outer_self_is_receiver = self_is_receiver
 
@@ -4672,8 +4677,8 @@ class StatementAnalyzer:
         self.ctx.mark_all_view_borrowers_mutated(stmt.name)
         _handle_pinned_view_rebind(self.ctx, stmt.name, stmt)
         bt = self.ctx.func.borrow_tracker
-        if existing_type is not None and stmt.init is not None:
-            check_alias_rebind_clobber(self.ctx, stmt.name, stmt)
+        stamp_bind_kind(self.ctx, stmt, stmt.name, stmt.init, var_type,
+                        rebind=existing_type is not None)
         bt.retarget_storage_borrows(stmt.name)
         bt.remove_borrower(stmt.name)
         # Bound async-METHOD coroutine: stable-lvalue receiver + borrow
@@ -5488,7 +5493,8 @@ class StatementAnalyzer:
             self.ctx.mark_all_view_borrowers_mutated(stmt.target.name)
             _handle_pinned_view_rebind(self.ctx, stmt.target.name, stmt)
             bt = self.ctx.func.borrow_tracker
-            check_alias_rebind_clobber(self.ctx, stmt.target.name, stmt)
+            stamp_bind_kind(self.ctx, stmt, stmt.target.name, stmt.value,
+                            target_type, rebind=True)
             bt.retarget_storage_borrows(stmt.target.name)
             bt.remove_borrower(stmt.target.name)
             # Rebinding a non-value pointer-local generates local = &(source) in C++,

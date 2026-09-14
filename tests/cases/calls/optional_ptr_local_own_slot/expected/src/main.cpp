@@ -384,7 +384,7 @@ void main() {
 // # silent copy would show. A non-last-use occurrence keeps rejecting
 // # (error_optional_ptr_local_copy_into_own_slot). Not here: iterating the list
 // # of optionals (BUGS.md#optional-container-element-read-unlowered); a nested
-// # def, which has no movable locals (BUGS.md#rebind-slot-missing-module-nested-def);
+// # def, which has no movable locals;
 // # a comprehension body, where an outer name is read per iteration and so never
 // # at a last use (the copy path, with its warning); module level, whose init
 // # carrier has no movable set. A resumable body (a generator past the

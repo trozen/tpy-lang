@@ -16,12 +16,12 @@ namespace tpyapp::main {
 //     print("reading:", it.n)
 //     return it.n
 int32_t run(bool flag) {
+    std::optional<Owner> __slot_1;
     std::optional<Owner> __slot_2;
-    std::optional<Owner> __slot_3;
     Item* it;
     if (flag) {
-        __slot_2.emplace(Owner(5));
-        auto& __ctx_1 = (*__slot_2);
+        __slot_1.emplace(Owner(5));
+        auto& __ctx_1 = (*__slot_1);
         it = &(__ctx_1.__enter__());
         try {
             goto __with_exit_1;
@@ -35,8 +35,8 @@ int32_t run(bool flag) {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     } else {
-        __slot_3.emplace(Owner(9));
-        auto& __ctx_2 = (*__slot_3);
+        __slot_2.emplace(Owner(9));
+        auto& __ctx_2 = (*__slot_2);
         it = &(__ctx_2.__enter__());
         try {
             goto __with_exit_2;

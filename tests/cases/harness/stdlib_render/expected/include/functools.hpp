@@ -41,7 +41,6 @@ template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
 ::tpy::own_return_t<U> reduce(__F0&& func, T_a& a, ::tpy::param_val_or_ref_t<U> initial) {
-    std::optional<U> __slot_2;
     U __slot_1 = U(initial);
     U* acc = &__slot_1;
     auto& __src_0 = a;
@@ -50,7 +49,7 @@ template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        acc = &*(__slot_2 = func((*acc), x));
+        (*acc) = func((*acc), x);
     }
     return std::move((*acc));
 }
@@ -67,7 +66,6 @@ template<typename T, typename __F0>
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
 ::tpy::own_return_t<T> reduce(__F0&& func, std::vector<T>& a) {
-    std::optional<T> __slot_2;
     if ((::tpy::__len__(a) == 0)) {
         throw ::tpy::ValueError("reduce() of empty list with no initial value");
     }
@@ -75,7 +73,7 @@ template<typename T, typename __F0>
     T* acc = &__slot_1;
     int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        acc = &*(__slot_2 = func((*acc), ::tpy::__getitem__(a, i)));
+        (*acc) = func((*acc), ::tpy::__getitem__(a, i));
     }
     return std::move((*acc));
 }

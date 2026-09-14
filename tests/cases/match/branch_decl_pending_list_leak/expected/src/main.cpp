@@ -33,12 +33,13 @@ namespace tpyapp::main {
 //     return xs[0] + len(xs)
 ::tpy::BigInt g(const Point& p) {
     std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs;
     auto& __match_subject_1 = p;
     if (__match_subject_1.x == 0) {
         xs = &*(__slot_1 = {1, 2});
     } else {
-        xs = &*(__slot_1 = {3});
+        xs = &*(__slot_2 = {3});
     }
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
 }

@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int32]:
-//     # Two distinct write sites: Resource(1)'s slot is never revisited, so
-//     # its payload drops only at frame destruction, after Resource(2)'s.
+//     # Two write sites, nothing aliases the first payload: the second write
+//     # assigns through the pointer and drops Resource(1) right there.
 //     saved: Optional[Resource] = Resource(1)
-//     yield 1                                                                # -> S_RESUME_0
+//     yield 1                                                                 # -> S_RESUME_0
 //     saved = Resource(2)
-//     yield 2                                                                # -> S_RESUME_1
+//     yield 2                                                                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -19,7 +19,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        saved = &*(__ptr_slot_f1 = Resource(2));
+        (*saved) = Resource(2);
         __state = S_RESUME_1;
         return 2;
     }

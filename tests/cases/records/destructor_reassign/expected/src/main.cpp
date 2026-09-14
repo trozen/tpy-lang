@@ -10,11 +10,10 @@ namespace tpyapp::main {
 //     r = Resource("c")
 //     print("alive:", r.name)
 void test_straight() {
-    std::optional<Resource> __slot_2;
     Resource __slot_1 = Resource("a");
     Resource* r = &__slot_1;
-    r = &*(__slot_2 = Resource("b"));
-    r = &*(__slot_2 = Resource("c"));
+    (*r) = Resource("b");
+    (*r) = Resource("c");
     std::cout << "alive:" << " " << r->name << "\n";
 }
 
@@ -24,11 +23,10 @@ void test_straight() {
 //         r = Resource("loop")
 //     print("alive:", r.name)
 void test_loop() {
-    std::optional<Resource> __slot_2;
     Resource __slot_1 = Resource("init");
     Resource* r = &__slot_1;
     for (int32_t i = 0; i < 3; ++i) {
-        r = &*(__slot_2 = Resource("loop"));
+        (*r) = Resource("loop");
     }
     std::cout << "alive:" << " " << r->name << "\n";
 }
@@ -39,11 +37,10 @@ void test_loop() {
 //         r = Resource("branch")
 //     print("alive:", r.name)
 void test_conditional(int32_t flag) {
-    std::optional<Resource> __slot_2;
     Resource __slot_1 = Resource("start");
     Resource* r = &__slot_1;
     if ((flag > 0)) {
-        r = &*(__slot_2 = Resource("branch"));
+        (*r) = Resource("branch");
     }
     std::cout << "alive:" << " " << r->name << "\n";
 }
@@ -54,11 +51,10 @@ void test_conditional(int32_t flag) {
 //     c = Child("z")
 //     print("alive:", c.tag)
 void test_inherit() {
-    std::optional<Child> __slot_2;
     Child __slot_1 = Child("x");
     Child* c = &__slot_1;
-    c = &*(__slot_2 = Child("y"));
-    c = &*(__slot_2 = Child("z"));
+    (*c) = Child("y");
+    (*c) = Child("z");
     std::cout << "alive:" << " " << c->tag << "\n";
 }
 

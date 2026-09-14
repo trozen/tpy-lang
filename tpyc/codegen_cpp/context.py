@@ -3156,6 +3156,8 @@ class CodeGenContext:
                 self.pointer_locals.add(lname)
                 if verdict.const:
                     self.const_indirect_locals.add(lname)
+            elif kind is _rcfg.FrameLocalKind.REBIND_PTR:
+                self.pointer_locals.add(lname)
             elif kind is _rcfg.FrameLocalKind.BORROW_TUPLE:
                 # Borrow-form tuple frame fields are declared
                 # std::tuple<..., T*> (gen_coro_struct), so assignments from

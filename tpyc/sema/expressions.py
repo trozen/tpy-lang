@@ -63,6 +63,7 @@ from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
 from ..value_category import is_rvalue_source, async_result_aliases
+from .alias_rebind import bind_kind_of
 from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
@@ -2721,6 +2722,7 @@ class ExpressionAnalyzer:
             # form and last-use moves); a borrow records the statement-level
             # borrow fact and registers the alias for mutation tracking,
             # exactly like `v = h.view()` would.
+            self.ctx.func.bind_kinds[expr] = bind_kind_of(self.ctx, expr.value)
             if not unwrap_readonly(resolved).is_value_type():
                 if is_rvalue_source(self.ctx, expr.value):
                     self.ctx.func.owned_locals.add(name)

@@ -4,45 +4,17 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
-#include "tpystd/coro.hpp"
-#include "tpystd/asyncio.hpp"
 
 namespace tpyapp::main {
 
 struct Point;
-struct Holder;
 
-extern Point* g;
-extern Point* galias;
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __gen_gen_section;
-struct __coro_async_section;
-
-// def gen_section() -> Iterator[int32]:
-__gen_gen_section gen_section();
-// async def async_section() -> int32:
-__coro_async_section async_section();
-// def sync_second_section() -> None:
-void sync_second_section();
-// def field_chain_section() -> None:
-void field_chain_section();
-// def element_section(run: bool) -> None:
-void element_section(bool run);
-// def ptr_section() -> None:
-void ptr_section();
-// def nested_def_section() -> None:
-void nested_def_section();
-// def after_branch_section(c: bool) -> None:
-void after_branch_section(bool c);
-// def after_loop_section() -> None:
-void after_loop_section();
-// def body_local_holder_section() -> None:
-void body_local_holder_section();
-// def after_while_section() -> None:
-void after_while_section();
 // def loop_carried_section() -> None:
 void loop_carried_section();
+// def for_carried_section() -> None:
+void for_carried_section();
 // def main() -> None:
 void main();
 
@@ -54,9 +26,6 @@ struct Point {
     // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
-
-    // def bump(self) -> None:
-    void bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -65,82 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// class Holder:
-struct Holder {
-    // inner: Point
-    Point inner;
-
-    // def __init__(self, inner: Own[Point]) -> None:
-    Holder() = default;
-    explicit Holder(Point&& inner);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
-    return os;
-}
-
-// async def async_section() -> int32:
-struct __coro_async_section {
-    int32_t __state;
-    bool __cancel_pending;
-    ::tpy::frame_slot<Point> p;
-    Point* alias = nullptr;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_DONE = 1,
-    };
-
-    __coro_async_section()
-        : __state(S_INITIAL), __cancel_pending(false) {}
-
-    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
-    void cancel() { __cancel_pending = true; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __coro_async_section&) {
-        return os << "<coroutine async_section>";
-    }
-};
-
-// def gen_section() -> Iterator[int32]:
-struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int32_t> {
-    int32_t __state;
-    ::tpy::frame_slot<Point> p;
-    Point* alias = nullptr;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_RESUME_0 = 1,
-        S_RESUME_1 = 2,
-        S_DONE = 3,
-    };
-
-    __gen_gen_section()
-        : __state(S_INITIAL) {}
-
-    std::expected<int32_t, ::tpy::StopIteration> __next__();
-    __gen_gen_section& __iter__() { return *this; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_section&) {
-        return os << "<generator gen_section>";
-    }
-};
-
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
-
-// def bump(self) -> None:
-//     self.x += 100
-inline void Point::bump() {
-    this->x = ::tpy::add_check<int32_t>(this->x, 100);
-}
-
-// def __init__(self, inner: Own[Point]) -> None:
-//     self.inner = inner
-inline Holder::Holder(Point&& inner) : inner(std::move(inner)) {}
 void __tpy_init();
 } // namespace tpyapp::main

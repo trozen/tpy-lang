@@ -71,11 +71,12 @@ inline Picker::Picker(int32_t val) : val(val) {}
 //     print(p.x, p.y)
 inline void Picker::pick(bool cond) const {
     std::optional<Point> __slot_1;
+    std::optional<Point> __slot_2;
     Point* p;
     if (cond) {
         p = &*(__slot_1 = Point(this->val, this->val));
     } else {
-        p = &*(__slot_1 = Point(0, 0));
+        p = &*(__slot_2 = Point(0, 0));
     }
     std::cout << p->x << " " << p->y << "\n";
 }

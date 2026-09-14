@@ -763,6 +763,7 @@ std::string urlunparse(const std::tuple<std::string, std::string, std::string, s
 //     return urlunsplit((scheme, netloc, joined, r.query, r.fragment))
 std::string urljoin(std::string_view base, std::string_view url) {
     std::optional<std::vector<std::string>> __slot_1;
+    std::optional<std::vector<std::string>> __slot_2;
     if ((::tpy::__len__(base) == 0)) {
         return std::string(url);
     }
@@ -814,7 +815,7 @@ std::string urljoin(std::string_view base, std::string_view url) {
             std::string_view p = *__beg_1;
             merged.push_back(std::string(p));
         }
-        segments = &*(__slot_1 = _drop_inner_empties(merged));
+        segments = &*(__slot_2 = _drop_inner_empties(merged));
     }
     std::vector<std::string> resolved = std::vector<std::string>{};
     auto& __obj_2 = (*segments);

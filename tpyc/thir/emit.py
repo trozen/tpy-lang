@@ -16,6 +16,7 @@ import io
 from dataclasses import dataclass, field
 from typing import Callable, TextIO
 
+from ..parse.nodes import RebindStorage
 from ..codegen_cpp.context import (
     INDENT,
     any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
@@ -294,9 +295,9 @@ class _EmitState:
     those bump it (the other `__slot_N` consumers -- unions, @dynamic -- are
     gated out), and it pre-increments per allocation just like
     `SlotState.next_slot`, which fixes the `__slot_N` numbering.
-    `rebind_slots` maps a rebind-slot local's name to its optional rebind
-    slot N (allocated at the decl / first walrus, read at each reseat) --
-    the analog of `ctx.rebind_slots`.
+    `rebind_slots` maps a borrow-tuple local's name to the owning slot N its
+    decl / branch head pre-declared (read at each owning-call reseat); the
+    pointer-local reseats carry their storage verdict on the node instead.
 
     `temps` is the `__tmp_N` sink THIRArgTemp renders through, flushed before
     the enclosing statement line (one flush point per statement). Unlike the counters above it is NOT per-function: it is
@@ -370,29 +371,8 @@ class _EmitState:
     hoist_drainable: bool = True
     rebind_slots: dict[str, int] = field(default_factory=dict)
     # Plain block slots allocated by a slotless local's first INLINE_RVALUE
-    # reseat (function-top only). A SEPARATE registry from `rebind_slots`:
-    # the THIRAssign rebind-slot special case keys on that dict, and a
-    # slotless local's later field-lift / pointer-copy reseats are plain
-    # assigns rendered without consulting the slot -- registering
-    # here keeps them from being hijacked into `p = &*(__slot = ...)`.
+    # reseat (function-top only), reused by its later INLINE_RVALUE reseats.
     inline_rvalue_slots: dict[str, int] = field(default_factory=dict)
-    # Names whose rebind slot backs a ptr-variant UNION local: their rvalue
-    # reseats spell `.emplace` + `to_ptr_variant(*slot)` via THIRPtrLocalRebind,
-    # so a plain THIRAssign on them (a same-union name copy) must NOT take the
-    # `&*(__slot_N = ...)` optional-slot reseat arm.
-    union_slot_locals: set[str] = field(default_factory=set)
-    # Names whose `rebind_slots` entry numbers a MODULE-scope
-    # `__global_slot_N` -- a slot the GLOBAL_* rebinds spell through
-    # `slot_prefix` rather than as a local `__slot_N`, optional
-    # (GLOBAL_HOIST_RVALUE) or not: a plain THIRAssign on such a name -- the
-    # pointer-Optional global's pass-through / field-lift writes -- must NOT
-    # take the `&*(__slot_N = ...)` reseat arm, which would both name an
-    # undeclared local slot and deref a `T*`.
-    global_slot_locals: set[str] = field(default_factory=set)
-    # Names whose rebind slot backs a reassigned borrow-tuple WALRUS: their
-    # later storage-alias reseats are plain assigns
-    # (`t = tuple_to_pointer<..>(h.pair);`), never the optional-slot arm.
-    btuple_slot_locals: set[str] = field(default_factory=set)
     # Enclosing `with` layers, innermost last -- return/break/continue walk it
     # to render the inline `__exit__` chain (the emit-side finally stack);
     # `loop_depth` mirrors `len(ctx.loop_else_labels)` (bumped around every
@@ -1426,6 +1406,20 @@ def _use_rebind_slot(state: '_EmitState', name: str) -> int | None:
     return slot
 
 
+def _own_slot(state: '_EmitState', slot_cpp: str) -> str:
+    """A slot private to one rvalue reseat site (the OWN verdict of sema's
+    alias-rebind pass): a `std::optional<T>` on the body's hoist lines,
+    spelled `static __global_slot_N` at module scope. Returns the slot's
+    spelling."""
+    n = state.next_slot()
+    assert state.hoist_drainable, (
+        "an OWN rebind slot reached a non-draining leaf emitter")
+    slot = f"{state.slot_prefix}_{n}"
+    state.hoist_lines.append(
+        f"{state.slot_static}std::optional<{slot_cpp}> {slot};")
+    return slot
+
+
 def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRName):
         # `deref`: a pointer-local read in a value position (a record call
@@ -1487,9 +1481,6 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
                 state.rebind_slots[e.name] = slot_n
                 state.temps.declare_named(
                     f"__slot_{slot_n}", f"std::optional<{e.slot_cpp}>")
-            # Both the fresh and the hoisted-slot (reuse) paths mark the
-            # name so plain reseats stay off the ptr-Optional arm.
-            state.btuple_slot_locals.add(e.name)
             v = (f"::tpy::tuple_to_pointer<{e.borrow_cpp}>"
                  f"(__slot_{slot_n}.emplace({v}))")
         if e.addr_of:
@@ -1984,7 +1975,7 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     saved = (state.finally_frames, state.return_cpp, state.loop_depth,
              state.switch_depth, state.loop_break_labels,
              state.loop_else_labels, dict(state.rebind_slots),
-             set(state.union_slot_locals), state.error_return_cpp,
+             state.error_return_cpp,
              state.try_except_label, state.try_except_err_opt,
              state.in_except_tier, dict(state.inline_rvalue_slots))
     state.finally_frames = []
@@ -2022,7 +2013,7 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
         (state.finally_frames, state.return_cpp, state.loop_depth,
          state.switch_depth, state.loop_break_labels,
          state.loop_else_labels, state.rebind_slots,
-         state.union_slot_locals, state.error_return_cpp,
+         state.error_return_cpp,
          state.try_except_label, state.try_except_err_opt,
          state.in_except_tier, state.inline_rvalue_slots) = saved
     out.write(body_buf.getvalue())
@@ -3512,14 +3503,12 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     if isinstance(stmt, THIRVarDecl):
         name = escape_cpp_name(stmt.name)
         if stmt.cpp_local_representation is LocalBinding.REBIND_SLOT:
-            # F2d two-slot rvalue pointer-local: a direct init slot holding the
-            # value (so an alias taken before a reseat survives) + an empty
-            # `std::optional<T>` rebind slot reused on each reseat. The init
-            # slot is allocated before the rebind slot.
+            # F2d rvalue pointer-local: a direct init slot holding the value,
+            # aliased by a reseatable pointer. Each rvalue reseat decides its
+            # own storage (THIRAssign.rebind_storage), so nothing is
+            # pre-declared here.
             init_slot = (state.assert_local_slot() or state.next_slot())
-            rebind_slot = (state.assert_local_slot() or state.next_slot())
             cpp = stmt.cpp_type
-            _declare_rebind_slot(state, stmt.name, rebind_slot, cpp)
             const_pfx = "const " if stmt.is_const else ""
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
@@ -3559,14 +3548,12 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # emplaces into a per-target `std::optional<...>` slot the local
             # aliases. Init renders before the slot draws its number (the
             # init's own counter draws come first); the
-            # slot registers for sibling reuse, and the btuple_slot_locals
-            # membership keeps THIRAssign's rebind-slot reseat off these
-            # names (their reseats are plain tuple_to_pointer assigns).
+            # slot registers for sibling reuse (their plain reseats are bare
+            # tuple_to_pointer assigns).
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
             slot = (state.assert_local_slot() or state.next_slot())
             state.rebind_slots[stmt.name] = slot
-            state.btuple_slot_locals.add(stmt.name)
             out.write(f"{indent}std::optional<{stmt.btuple_slot_cpp}> "
                       f"__slot_{slot};\n")
             if stmt.btuple_opt_borrow_cpp is not None:
@@ -3601,15 +3588,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # slot backing a reseat stays non-const.
         cpfx = "const " if stmt.is_const else ""
         if stmt.kind is PtrSlotKind.OPT_NONE:
-            if stmt.needs_rebind_slot:
-                slot = (state.assert_local_slot() or state.next_slot())
-                _declare_rebind_slot(state, stmt.name, slot, stmt.cpp_type)
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = nullptr;\n")
         elif stmt.kind in (PtrSlotKind.OPT_RVALUE, PtrSlotKind.RECORD_RVALUE):
             # RECORD_RVALUE (the escape-hoist plain-record flavor) shares the
-            # render exactly: `T __slot_N = init;` + `T* name = &__slot_N;`
-            # (its needs_rebind_slot is always False -- an rvalue-reassigned
-            # record is the REBIND_SLOT binding, not this kind).
+            # render exactly: `T __slot_N = init;` + `T* name = &__slot_N;`.
             init_cpp = _emit_expr(stmt.init, state)
             # The decl is a flush position: an init's arg temps print before
             # the slot line (the statement-level drain).
@@ -3617,9 +3599,6 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             init_slot = (state.assert_local_slot() or state.next_slot())
             out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot} = "
                       f"{init_cpp};\n")
-            if stmt.needs_rebind_slot:
-                rebind = (state.assert_local_slot() or state.next_slot())
-                _declare_rebind_slot(state, stmt.name, rebind, stmt.cpp_type)
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&__slot_{init_slot};\n")
         elif stmt.kind is PtrSlotKind.OPT_PROTO_RVALUE:
@@ -3642,11 +3621,6 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{_gs_static}{stmt.cpp_type} {slot} = "
                       f"{init_cpp};\n")
             out.write(f"{indent}{name} = &{slot};\n")
-            # A later rvalue write reuses this slot, so it registers in
-            # `rebind_slots` here; the slot is plain, not an
-            # optional, so the reseat takes `&(slot = ...)`.
-            state.rebind_slots[stmt.name] = state.slot_counter
-            state.global_slot_locals.add(stmt.name)
             _witness("top_level.global_slot")
         elif stmt.kind is PtrSlotKind.RECORD_HOISTED:
             # Hoisted record pointer-local: the `std::optional<T>` slot
@@ -3662,15 +3636,6 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.hoist_lines.append(
                 f"{state.slot_static}std::optional<{stmt.cpp_type}> "
                 f"{state.slot_prefix}_{init_slot};")
-            if stmt.needs_rebind_slot:
-                rebind = (state.assert_local_slot() or state.next_slot())
-                _declare_rebind_slot(state, stmt.name, rebind, stmt.cpp_type)
-            # Deliberately NO rebind_slots registration without a rebind
-            # slot: the THIRAssign rebind-slot emit special-case is keyed on
-            # membership alone, so registering the init slot would hijack a
-            # later field / pointer-copy reseat into `&*(__slot = <T*>)` --
-            # uncompilable. An rvalue reseat implies rvalue_reassigned,
-            # which implies needs_rebind_slot -- no valid consumer exists.
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&*({state.slot_prefix}_{init_slot} = {init_cpp});\n")
         elif stmt.kind is PtrSlotKind.UNION_RVALUE:
@@ -3680,10 +3645,6 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # (`std::variant<...> __tmp_1 = "world";` then the slot).
             state.temps.flush(out, indent)
             slot = (state.assert_local_slot() or state.next_slot())
-            if stmt.needs_rebind_slot:
-                rebind = (state.assert_local_slot() or state.next_slot())
-                _declare_rebind_slot(state, stmt.name, rebind, stmt.val_cpp)
-                state.union_slot_locals.add(stmt.name)
             out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = {init_cpp};\n")
             out.write(f"{indent}{stmt.cpp_type} {name} = "
                       f"::tpy::to_ptr_variant(__slot_{slot});\n")
@@ -3708,36 +3669,22 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Own-declared optional-returning call init: the storage
             # optional materializes in a slot, the binding lifts the
             # pointer (`std::optional<T> __slot_N = make_some();`
-            # `T* s = ::tpy::optional_to_ptr(__slot_N);`). The slot is
-            # registered in `rebind_slots` here at the decl site for reseat
-            # reuse -- the OPT_STORAGE_CALL rebind arm
-            # is its only consumer (lowering rejects other reseat shapes
-            # for such names, so the THIRAssign special-case cannot see
-            # them).
+            # `T* s = ::tpy::optional_to_ptr(__slot_N);`). A reseat takes
+            # a slot of its own (the OPT_STORAGE_CALL rebind arm).
             init_slot = (state.assert_local_slot() or state.next_slot())
             init_cpp = _emit_expr(stmt.init, state)
             out.write(f"{indent}std::optional<{stmt.cpp_type}> "
                       f"__slot_{init_slot} = {init_cpp};\n")
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"::tpy::optional_to_ptr(__slot_{init_slot});\n")
-            state.rebind_slots[stmt.name] = init_slot
         elif stmt.kind is PtrSlotKind.PTR_ADDR:
             # Address-of an existing lvalue -- the decl itself takes no slot
-            # (the decl twin of the PTR_ADDR reseat). A rebind slot is drawn
-            # ahead of the pointer line, as an lvalue init's slot
-            # pre-declaration always is.
+            # (the decl twin of the PTR_ADDR reseat).
             init_cpp = _emit_expr(stmt.init, state)
-            if stmt.needs_rebind_slot:
-                rebind = (state.assert_local_slot() or state.next_slot())
-                _declare_rebind_slot(state, stmt.name, rebind, stmt.cpp_type)
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&({init_cpp});\n")
         else:  # PtrSlotKind.UNION_ADDR
             init_cpp = _emit_expr(stmt.init, state)
-            if stmt.needs_rebind_slot:
-                rebind = (state.assert_local_slot() or state.next_slot())
-                _declare_rebind_slot(state, stmt.name, rebind, stmt.val_cpp)
-                state.union_slot_locals.add(stmt.name)
             out.write(f"{indent}{stmt.cpp_type} {name}{{&({init_cpp})}};\n")
     elif isinstance(stmt, THIRPtrLocalRebind):
         name = escape_cpp_name(stmt.name)
@@ -3762,29 +3709,26 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{name} = "
                       f"&*({stmt.val_cpp} = {value_cpp});\n")
         elif stmt.kind is PtrSlotKind.OPT_FIELD_RVALUE:
-            # Storage-form Optional FIELD off an rvalue receiver: write the
-            # decl-site rebind slot INLINE and lift the pointer off the
-            # assignment result, so the whole optional outlives the
-            # receiver temporary.
+            # Storage-form Optional FIELD off an rvalue receiver: the site's
+            # own slot takes the whole optional INLINE and the pointer lifts
+            # off the assignment result, so the optional outlives the
+            # receiver temporary. Always OWN: the field may hold None.
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            slot = _use_rebind_slot(state, stmt.name)
-            assert slot is not None, (
-                "OPT_FIELD_RVALUE reseat without its decl-site rebind slot")
+            slot = _own_slot(state, stmt.val_cpp)
             out.write(f"{indent}{name} = ::tpy::optional_to_ptr("
-                      f"{state.slot_prefix}_{slot} = {value_cpp});\n")
+                      f"{slot} = {value_cpp});\n")
         elif stmt.kind is PtrSlotKind.OPT_STORAGE_CALL:
-            # Reseat of an OPT_STORAGE_CALL-declared name: re-fill the slot
-            # registered at the decl, re-lift the pointer (`__slot_1 =
-            # make(43);` `z = ::tpy::optional_to_ptr(__slot_1);`).
-            slot = state.rebind_slots.get(stmt.name)
-            assert slot is not None, (
-                "OPT_STORAGE_CALL reseat without its decl-registered slot")
+            # Reseat of an OPT_STORAGE_CALL-declared name: fill the site's
+            # own slot, re-lift the pointer (`__slot_2 = make(43);`
+            # `z = ::tpy::optional_to_ptr(__slot_2);`). Always OWN: the
+            # call may return None.
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            out.write(f"{indent}__slot_{slot} = {value_cpp};\n")
+            slot = _own_slot(state, stmt.val_cpp)
+            out.write(f"{indent}{slot} = {value_cpp};\n")
             out.write(f"{indent}{name} = "
-                      f"::tpy::optional_to_ptr(__slot_{slot});\n")
+                      f"::tpy::optional_to_ptr({slot});\n")
         elif stmt.kind is PtrSlotKind.DYN_PROTOCOL:
             # @dynamic rebind: a FRESH hoisted optional slot per reseat (a
             # distinct concrete/adapter type per target). Slot drawn before
@@ -3822,24 +3766,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # re-assignable, so it rides the hoist lines as a
             # `static std::optional<T> __global_slot_N;` and the write lifts
             # through it. No assert_local_slot -- the hoist line spells the
-            # scope's own prefix + static, like RECORD_HOISTED. The FIRST
-            # write allocates the slot and registers it by name; every later
-            # write to the same global lifts through that same slot.
+            # scope's own prefix + static, like RECORD_HOISTED. The first
+            # write and every OWN reseat allocate a slot of their own; an
+            # IN_PLACE reseat writes through the pointer.
             val_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            slot = _use_rebind_slot(state, stmt.name)
-            if slot is None:
-                slot = state.next_slot()
-                state.rebind_slots[stmt.name] = slot
-                state.global_slot_locals.add(stmt.name)
-                assert state.hoist_drainable, (
-                    "GLOBAL_HOIST_RVALUE hoist reached a non-draining leaf "
-                    "emitter")
-                state.hoist_lines.append(
-                    f"{state.slot_static}std::optional<{stmt.val_cpp}> "
-                    f"{state.slot_prefix}_{slot};")
-            out.write(f"{indent}{name} = "
-                      f"&*({state.slot_prefix}_{slot} = {val_cpp});\n")
+            if stmt.rebind_storage is RebindStorage.IN_PLACE:
+                out.write(f"{indent}(*{name}) = {val_cpp};\n")
+            else:
+                slot = _own_slot(state, stmt.val_cpp)
+                out.write(f"{indent}{name} = &*({slot} = {val_cpp});\n")
             _witness("top_level.global_hoist_slot")
         elif stmt.kind is PtrSlotKind.GLOBAL_NULL:
             out.write(f"{indent}{name} = nullptr;\n")
@@ -3851,13 +3787,19 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"{escape_cpp_name(stmt.value.name)};\n")
             _witness("top_level.global_ptr_copy")
         elif stmt.kind is PtrSlotKind.GLOBAL_REBIND:
-            # Later rvalue write: reuse the `static __global_slot_N` the
-            # first write allocated (a PLAIN slot, hence `&(slot = ..)`).
+            # Later rvalue write of a pointer-slot global: IN_PLACE writes
+            # through the pointer into whichever static slot it aims at;
+            # OWN takes a static slot of its own. A slot whose type the
+            # lowering could not spell (`static auto`, the structural-
+            # protocol iterator flavor) has no OWN form and writes in place.
             val_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            slot = _use_rebind_slot(state, stmt.name)
-            out.write(f"{indent}{name} = "
-                      f"&({state.slot_prefix}_{slot} = {val_cpp});\n")
+            if (stmt.rebind_storage is RebindStorage.IN_PLACE
+                    or stmt.val_cpp is None):
+                out.write(f"{indent}(*{name}) = {val_cpp};\n")
+            else:
+                slot = _own_slot(state, stmt.val_cpp)
+                out.write(f"{indent}{name} = &*({slot} = {val_cpp});\n")
             _witness("top_level.global_slot_reuse")
         elif stmt.kind is PtrSlotKind.INLINE_RVALUE:
             # Slotless local's rvalue reseat: the first allocates the plain
@@ -3875,23 +3817,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             else:
                 out.write(f"{indent}{name} = &(__slot_{slot} = {val_cpp});\n")
         elif stmt.kind is PtrSlotKind.BRANCH_RVALUE:
-            # Branch-hoisted rvalue reseat without an if-head slot: the first
-            # reseat allocates the function-top `std::optional<T>` lazily
-            # (appended to the function-top hoist lines) and registers it;
-            # later rvalue reseats reuse it. Value renders before the
-            # allocation, so its own counter draws come first.
+            # Branch-hoisted rvalue reseat: IN_PLACE writes through the
+            # pointer; OWN takes a function-top slot of its own. Value
+            # renders before the allocation, so its own counter draws come
+            # first.
             val_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            slot = _use_rebind_slot(state, stmt.name)
-            if slot is None:
-                slot = (state.assert_local_slot() or state.next_slot())
-                state.rebind_slots[stmt.name] = slot
-                assert state.hoist_drainable, (
-                    "BRANCH_RVALUE rebind hoist reached a non-draining "
-                    "leaf emitter")
-                state.hoist_lines.append(
-                    f"std::optional<{stmt.val_cpp}> __slot_{slot};")
-            out.write(f"{indent}{name} = &*(__slot_{slot} = {val_cpp});\n")
+            if stmt.rebind_storage is RebindStorage.IN_PLACE:
+                out.write(f"{indent}(*{name}) = {val_cpp};\n")
+            else:
+                slot = _own_slot(state, stmt.val_cpp)
+                out.write(f"{indent}{name} = &*({slot} = {val_cpp});\n")
         elif stmt.kind is PtrSlotKind.UNION_INLINE_SLOT:
             # The slotless reseat: a FRESH value-variant slot declared at
             # the reseat line + the lift, for a decl that pre-declared no
@@ -3903,13 +3839,15 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"{val_cpp};\n")
             out.write(f"{indent}{name} = "
                       f"::tpy::to_ptr_variant(__slot_{slot});\n")
-        else:  # PtrSlotKind.UNION_RVALUE -- emplace + re-lift the rebind slot
+        else:  # PtrSlotKind.UNION_RVALUE -- emplace + re-lift the site's slot
+            # Always OWN: the pointer variant's current alternative need not
+            # be the new member's type, so there is no in-place write.
             val_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            slot = _use_rebind_slot(state, stmt.name)
-            out.write(f"{indent}__slot_{slot}.emplace({val_cpp});\n")
+            slot = _own_slot(state, stmt.val_cpp)
+            out.write(f"{indent}{slot}.emplace({val_cpp});\n")
             out.write(f"{indent}{name} = "
-                      f"::tpy::to_ptr_variant(*__slot_{slot});\n")
+                      f"::tpy::to_ptr_variant(*{slot});\n")
     elif isinstance(stmt, THIRAssign):
         # target is a THIRName (`x = ...`) or, for F2b, a THIRFieldAccess
         # (`recv.field = ...` / `recv->field = ...`); _emit_expr renders both. An
@@ -3918,14 +3856,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         if (stmt.btuple_borrow_cpp is not None
                 and isinstance(stmt.target, THIRName)):
             # Owning-call reseat of a hoisted borrow-tuple local: emplace
-            # into the pre-declared slot, alias via tuple_to_pointer. The
-            # name joins btuple_slot_locals so later plain reseats stay
-            # off the `&*(__slot = ...)` ptr-Optional arm.
+            # into the pre-declared slot, alias via tuple_to_pointer.
             v = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
             slot = _use_rebind_slot(state, stmt.target.name)
             assert slot is not None, "btuple emplace reseat without a slot"
-            state.btuple_slot_locals.add(stmt.target.name)
             if stmt.btuple_opt_cpp is not None:
                 out.write(
                     f"{indent}{escape_cpp_name(stmt.target.name)} = "
@@ -3937,23 +3872,20 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                           f"::tpy::tuple_to_pointer<{stmt.btuple_borrow_cpp}>"
                           f"(__slot_{slot}.emplace({v}));\n")
             _witness("btuple.reseat_emplace_emit")
-        elif (isinstance(stmt.target, THIRName)
-                and stmt.target.name not in state.union_slot_locals
-                and stmt.target.name not in state.btuple_slot_locals
-                and stmt.target.name not in state.global_slot_locals
-                # A borrow-tuple target never takes the ptr-Optional
-                # `&*(__slot = ...)` reseat, whatever the branch order put
-                # in btuple_slot_locals so far -- its plain reseats are
-                # bare tuple_to_pointer assigns over the SAME hoisted slot.
-                and not (isinstance(stmt.target.result_type, TupleType)
-                         and stmt.target.result_type
-                         .has_pointer_repr_element())
-                and _use_rebind_slot(state, stmt.target.name) is not None):
-            slot = state.rebind_slots[stmt.target.name]
+        elif stmt.rebind_storage is not None:
+            # Rvalue reseat of a pointer-local: sema's alias-rebind verdict
+            # picks the storage. IN_PLACE destroys the superseded object
+            # here (CPython's drop point); OWN keeps it alive for the loan
+            # that still points at it.
+            assert isinstance(stmt.target, THIRName)
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
-                      f"&*(__slot_{slot} = {value_cpp});\n")
+            name = escape_cpp_name(stmt.target.name)
+            if stmt.rebind_storage is RebindStorage.IN_PLACE:
+                out.write(f"{indent}(*{name}) = {value_cpp};\n")
+            else:
+                slot = _own_slot(state, stmt.slot_cpp)
+                out.write(f"{indent}{name} = &*({slot} = {value_cpp});\n")
         else:
             # Receiver eval (class-constant writes) renders first, then the
             # value (its arg temps flush before the line); targets are
@@ -4246,10 +4178,6 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}{state.slot_static}{cpp} {slot} = "
                           f"std::move({get});\n")
                 out.write(f"{indent}{escape_cpp_name(name)} = &{slot};\n")
-                # A later rvalue write reuses this slot, so it registers in
-                # `rebind_slots` here.
-                state.rebind_slots[name] = state.slot_counter
-                state.global_slot_locals.add(name)
             elif bind == "unwrap_ref":
                 # Wrapper-reference element: the capture's slot is a live
                 # `X&`; unwrap_ref hands back that reference to alias.
@@ -4354,9 +4282,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"::tpy::unwrap_ref_move(*{tmp});\n")
             _witness("er.bind_field_target")
         elif stmt.ptr_rebind:
-            slot = _use_rebind_slot(state, stmt.name)
-            out.write(f"{inner}{name} = &*({state.slot_prefix}_{slot} = "
-                      f"::tpy::unwrap_ref_move(*{tmp}));\n")
+            if stmt.rebind_storage is RebindStorage.IN_PLACE:
+                out.write(f"{inner}(*{name}) = "
+                          f"::tpy::unwrap_ref_move(*{tmp});\n")
+            else:
+                slot = _own_slot(state, stmt.slot_cpp)
+                out.write(f"{inner}{name} = &*({slot} = "
+                          f"::tpy::unwrap_ref_move(*{tmp}));\n")
             _witness("er.bind_ptr_rebind")
         elif stmt.alias_bind:
             out.write(f"{inner}{name} = &(::tpy::unwrap_ref(*{tmp}));\n")

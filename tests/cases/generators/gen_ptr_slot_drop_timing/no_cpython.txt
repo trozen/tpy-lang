@@ -1,6 +1,0 @@
-Per-site frame slots hold a superseded rvalue payload until the frame is
-destroyed: TPy prints `1 2 drop2 drop1 done`, CPython `1 drop1 2 drop2
-done` (refcount drop at the rebind). Tracked in BUGS.md ("resumable
-per-site frame slot keeps a superseded payload alive"); the sync sibling
-divergence carries the same marker on records/destructor_reassign. A
-liveness-gated slot model is the shared fix; this marker retires with it.

@@ -1,6 +1,5 @@
 # A container local rebound from a comprehension (`xs = [f(x) for x in xs]`)
 # takes the rvalue rebind slot at every position; self-iteration is safe.
-# No __del__ on the elements: the superseded container's drop is deferred to scope end (BUGS.md#rebind-slot-drop-deferred).
 import asyncio
 
 from tpy import int32, error_return, ReturnException

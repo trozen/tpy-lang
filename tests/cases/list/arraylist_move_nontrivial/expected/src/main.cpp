@@ -78,7 +78,6 @@ namespace tpyapp::main {
 //     acc = make_full()           # reassign -> drop old, relocate [a, b, c, d]
 //     print(len(acc), acc[0].name, acc[3].name)  # 4 a d
 void main() {
-    std::optional<::tpystd::tplib::array_list::ArrayList<Item, 4>> __slot_2;
     ::tpystd::tplib::array_list::ArrayList<Item, 4> xs = make();
     std::cout << ::tpy::__len__(xs) << "\n";
     std::cout << xs[0].name << " " << xs[1].name << "\n";
@@ -105,7 +104,7 @@ void main() {
     std::cout << moved[0].name << "\n";
     ::tpystd::tplib::array_list::ArrayList<Item, 4> __slot_1 = make();
     ::tpystd::tplib::array_list::ArrayList<Item, 4>* acc = &__slot_1;
-    acc = &*(__slot_2 = make_full());
+    (*acc) = make_full();
     std::cout << ::tpy::__len__((*acc)) << " " << (*acc)[0].name << " " << (*acc)[3].name << "\n";
 }
 

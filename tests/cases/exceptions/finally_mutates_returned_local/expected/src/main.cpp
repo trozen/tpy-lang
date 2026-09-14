@@ -118,7 +118,6 @@ int32_t ret_value_int() {
 //     finally:
 //         b = Box()  # rebinding: the pending return keeps the original object
 Box ret_rebound() {
-    std::optional<Box> __slot_2;
     Box __slot_1 = Box();
     Box* b = &__slot_1;
     {
@@ -126,11 +125,11 @@ Box ret_rebound() {
         try {
             auto* __tpy_retp_0 = &((*b));
             __fin_ran_5 = true;
-            b = &*(__slot_2 = Box());
+            (*b) = Box();
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_5) {
-                b = &*(__slot_2 = Box());
+                (*b) = Box();
             }
             throw;
         }

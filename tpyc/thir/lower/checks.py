@@ -1785,7 +1785,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     if binding is LocalBinding.REBIND_SLOT:
         # A bare TYPE-kind type-param slot rebound by an rvalue CALL
         # (`acc: U = copy(initial)` reseated by `acc = func(acc, x)`): the
-        # same two-slot machinery an F1 record's REBIND_SLOT takes. `U` has
+        # same rebind-slot pointer-local an F1 record's REBIND_SLOT takes. `U` has
         # no borrow/storage split of its own -- the C++ template traits fix
         # the shape at instantiation -- so the pointer binding renders
         # per-instantiation (`U __slot_1 = <init>; U* acc = &__slot_1;`).
@@ -1806,14 +1806,15 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _record_rvalue_source_shape(stmt.init, analyzer)):
             return binding
         # ... or an rvalue F1-record METHOD call (`cur = a.clone()` -> the
-        # same two-slot machinery, `Rc<Node>* cur = &__slot_1;`): the
+        # same rebind-slot pointer-local, `Rc<Node>* cur = &__slot_1;`): the
         # method-call lowering's own gates validate callee/args, the shared
         # `_owned_record_decl_ok` disjunct.
         if (_f1_record(target_type, analyzer)
                 and _method_rvalue_f1_record(stmt.init, analyzer)):
             return binding
-        # A rebound container-literal local rides the same two-slot machinery
-        # (`std::vector<T>* xs = &__slot_1; ... xs = &*(__slot_2 = {...});`);
+        # A rebound container-literal local rides the same pointer-local
+        # (`std::vector<T>* xs = &__slot_1; ... (*xs) = {...};`, or an own
+        # slot where sema's storage verdict says so);
         # the literal itself lowers through the shared container-literal arm
         # (its per-element gates reject there).
         if (isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,

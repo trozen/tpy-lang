@@ -16,7 +16,6 @@ namespace tpyapp::main {
 //     p.items.append(4)
 //     show()
 void main() {
-    std::optional<Point> __slot_2;
     Sink s = Sink();
     Point __slot_1 = Point();
     Point* p = &__slot_1;
@@ -24,7 +23,7 @@ void main() {
         std::cout << ::tpy::__len__(p->items) << "\n";
     };
     s.consume(std::move((*p)));
-    p = &*(__slot_2 = Point());
+    (*p) = Point();
     p->items.push_back(4);
     show();
 }

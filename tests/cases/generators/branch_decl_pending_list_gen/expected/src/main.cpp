@@ -15,9 +15,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         if (c) {
-            xs.emplace(std::vector<int32_t>{1, 2});
+            xs = &*(__ptr_slot_f0 = {1, 2});
         } else {
-            xs.emplace(std::vector<int32_t>{3});
+            xs = &*(__ptr_slot_f1 = {3});
         }
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__len__((*xs)));

@@ -12,12 +12,11 @@ namespace tpyapp::main {
 //         saved = copy(p)  # tpyc: ok
 //     print(saved.x, saved.y)
 void loop_escape_copy_ok() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     for (int32_t i = 0; i < 3; ++i) {
         Point p = Point(i, i);
-        saved = &*(__slot_2 = Point(p));
+        (*saved) = Point(p);
     }
     std::cout << saved->x << " " << saved->y << "\n";
 }
@@ -29,11 +28,10 @@ void loop_escape_copy_ok() {
 //         saved = Point(i, i)  # tpyc: ok
 //     print(saved.x, saved.y)
 void loop_rvalue_ok() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     for (int32_t i = 0; i < 3; ++i) {
-        saved = &*(__slot_2 = Point(i, i));
+        (*saved) = Point(i, i);
     }
     std::cout << saved->x << " " << saved->y << "\n";
 }
@@ -198,11 +196,10 @@ void rvalue_alias_preserved() {
 //         p = Point(2, 2)
 //     print(p.x, p.y)
 void if_branch_rvalue_rebind() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
     if ((p->x > 0)) {
-        p = &*(__slot_2 = Point(2, 2));
+        (*p) = Point(2, 2);
     }
     std::cout << p->x << " " << p->y << "\n";
 }
@@ -216,13 +213,12 @@ void if_branch_rvalue_rebind() {
 //         p = Point(3, 3)
 //     print(p.x, p.y)
 void if_else_rvalue_rebinds() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
     if ((p->x > 0)) {
-        p = &*(__slot_2 = Point(2, 2));
+        (*p) = Point(2, 2);
     } else {
-        p = &*(__slot_2 = Point(3, 3));
+        (*p) = Point(3, 3);
     }
     std::cout << p->x << " " << p->y << "\n";
 }
@@ -256,12 +252,11 @@ void if_alias_preserved() {
 //         i = i + 1
 //     print(p.x, p.y)
 void while_rvalue_rebind() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(0, 0);
     Point* p = &__slot_1;
     int32_t i = 0;
     while ((i < 3)) {
-        p = &*(__slot_2 = Point(i, i));
+        (*p) = Point(i, i);
         i = (::tpy::add_check<int32_t>(i, 1));
     }
     std::cout << p->x << " " << p->y << "\n";

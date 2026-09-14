@@ -3,296 +3,12 @@
 
 namespace tpyapp::main {
 
-Point* g{};
-Point* galias{};
 
-// # frame generator: one frame field per name, so the FIRST rebind clobbers.
-// def gen_section() -> Iterator[int32]:
-//     p = Point(1)
-//     alias = p
-//     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//     alias.bump()
-//     yield alias.x                                                            # -> S_RESUME_0
-//     yield p.x                                                                # -> S_RESUME_1
-std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
-    while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        p.emplace(Point(1));
-        alias = &((*p));
-        p.emplace(Point(50));
-        alias->bump();
-        __state = S_RESUME_0;
-        return alias->x;
-    }
-    case S_RESUME_0: {  // after: yield alias.x
-        __state = S_RESUME_1;
-        return (*p).x;
-    }
-    case S_RESUME_1: {  // after: yield p.x
-        __state = S_DONE;
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    __builtin_unreachable();
-}
-
-
-// def gen_section() -> Iterator[int32]:
-__gen_gen_section gen_section() {
-    return __gen_gen_section();
-}
-
-// # async def: same resumable frame, same single generation.
-// async def async_section() -> int32:
-//     p = Point(2)
-//     alias = p
-//     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//     alias.bump()
-//     return alias.x
-::tpystd::tpy::Poll<int32_t> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
-    (void)waker;
-    switch (__state) {
-    case S_INITIAL: {  // entry
-        p.emplace(Point(2));
-        alias = &((*p));
-        p.emplace(Point(50));
-        alias->bump();
-        __state = S_DONE;
-        int32_t __tpy_async_ret = alias->x;
-        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-    }
-    case S_DONE: ::tpy::tpy_panic("poll after Ready");
-    }
-    __builtin_unreachable();
-}
-
-
-// async def async_section() -> int32:
-__coro_async_section async_section() {
-    return __coro_async_section();
-}
-
-// # sync body: the SECOND rebind writes the slot the alias was taken from.
-// def sync_second_section() -> None:
-//     p = Point(3)
-//     p = Point(4)
-//     alias = p
-//     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//     alias.bump()
-//     print("sync_second:", alias.x, p.x)
-void sync_second_section() {
-    std::optional<Point> __slot_2;
-    Point __slot_1 = Point(3);
-    Point* p = &__slot_1;
-    p = &*(__slot_2 = Point(4));
-    Point& alias = (*p);
-    p = &*(__slot_2 = Point(50));
-    alias.bump();
-    std::cout << "sync_second:" << " " << alias.x << " " << p->x << "\n";
-}
-
-// # field-chain loan: `inner` points into h's object, which the rebind replaces.
-// def field_chain_section() -> None:
-//     h = Holder(Point(5))
-//     h = Holder(Point(6))
-//     inner = h.inner
-//     h = Holder(Point(50))  # tpyc: warning(/will not keep the object it was given/)
-//     inner.bump()
-//     print("field_chain:", inner.x, h.inner.x)
-void field_chain_section() {
-    std::optional<Holder> __slot_2;
-    Holder __slot_1 = Holder(Point(5));
-    Holder* h = &__slot_1;
-    h = &*(__slot_2 = Holder(Point(6)));
-    Point& inner = h->inner;
-    h = &*(__slot_2 = Holder(Point(50)));
-    inner.bump();
-    std::cout << "field_chain:" << " " << inner.x << " " << h->inner.x << "\n";
-}
-
-// # element loan: `e` points into the list the rebind replaces. Unlike the other
-// # sections the old storage is a heap buffer the rebind FREES, so reading `e`
-// # afterwards is a use-after-free with no stable value to pin -- the read is
-// # kept live for the analysis but never executed (`run` is False). The dangling
-// # read is the separate defect BUGS.md#container-rebind-frees-element-loan; the
-// # warning below announces the clobber, not the free.
-// def element_section(run: bool) -> None:
-//     xs = [Point(7)]
-//     xs = [Point(8)]
-//     e = xs[0]
-//     xs = [Point(50)]  # tpyc: warning(/will not keep the object it was given/)
-//     if run:
-//         e.bump()
-//         print("element-unreachable:", e.x)
-//     print("element:", xs[0].x)
-void element_section(bool run) {
-    std::optional<std::vector<Point>> __slot_2;
-    std::vector<Point> __slot_1 = {Point(7)};
-    std::vector<Point>* xs = &__slot_1;
-    xs = &*(__slot_2 = {Point(8)});
-    Point& e = ::tpy::__getitem__((*xs), 0);
-    xs = &*(__slot_2 = {Point(50)});
-    if (run) {
-        e.bump();
-        std::cout << "element-unreachable:" << " " << e.x << "\n";
-    }
-    std::cout << "element:" << " " << ::tpy::__getitem__((*xs), 0).x << "\n";
-}
-
-// # Ptr loan: a value-typed holder still borrows the storage.
-// def ptr_section() -> None:
-//     p = Point(9)
-//     p = Point(10)
-//     q = take_ptr(p)
-//     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//     q.x += 100
-//     print("ptr:", q.x, p.x)
-void ptr_section() {
-    std::optional<Point> __slot_2;
-    Point __slot_1 = Point(9);
-    Point* p = &__slot_1;
-    p = &*(__slot_2 = Point(10));
-    Point* q = &(*p);
-    p = &*(__slot_2 = Point(50));
-    q->x = ::tpy::add_check<int32_t>(q->x, 100);
-    std::cout << "ptr:" << " " << q->x << " " << p->x << "\n";
-}
-
-// # nested def whose local does not collide with an enclosing rebound name:
-// # the lowering reserves no slot for it, so the FIRST rebind clobbers.
-// def nested_def_section() -> None:
-//     def inner() -> None:
-//         n = Point(11)
-//         nalias = n
-//         n = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//         nalias.bump()
-//         print("nested_def:", nalias.x, n.x)
-//
-//     inner()
-void nested_def_section() {
-    auto inner = []() {
-        Point n = Point(11);
-        Point& nalias = n;
-        n = Point(50);
-        nalias.bump();
-        std::cout << "nested_def:" << " " << nalias.x << " " << n.x << "\n";
-    };
-    inner();
-}
-
-// # a rebind on ONE arm of a branch still moves the value into the slot, so a
-// # loan taken after the join sits in the slot the next rebind writes.
-// def after_branch_section(c: bool) -> None:
-//     p = Point(15)
-//     if c:
-//         p = Point(16)
-//     alias = p
-//     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//     alias.bump()
-//     print("after_branch:", alias.x, p.x)
-void after_branch_section(bool c) {
-    std::optional<Point> __slot_2;
-    Point __slot_1 = Point(15);
-    Point* p = &__slot_1;
-    if (c) {
-        p = &*(__slot_2 = Point(16));
-    }
-    Point& alias = (*p);
-    p = &*(__slot_2 = Point(50));
-    alias.bump();
-    std::cout << "after_branch:" << " " << alias.x << " " << p->x << "\n";
-}
-
-// # a loan the LOOP BODY binds is still held after the last iteration, so the
-// # post-loop rebind clobbers it (the annotation is on the post-loop line).
-// def after_loop_section() -> None:
-//     saved = Point(17)
-//     p = Point(18)
-//     for i in range(2):
-//         p = Point(i)
-//         saved = p
-//     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//     saved.bump()
-//     print("after_loop:", saved.x, p.x)
-void after_loop_section() {
-    std::optional<Point> __slot_3;
-    Point __slot_1 = Point(17);
-    Point* saved = &__slot_1;
-    Point __slot_2 = Point(18);
-    Point* p = &__slot_2;
-    for (int32_t i = 0; i < 2; ++i) {
-        p = &*(__slot_3 = Point(i));
-        saved = p;
-    }
-    p = &*(__slot_3 = Point(50));
-    saved->bump();
-    std::cout << "after_loop:" << " " << saved->x << " " << p->x << "\n";
-}
-
-// # the HOLDER is first bound inside the body: TPy locals are function-scoped, so
-// # its loan is still live at the post-loop rebind (a record-typed holder hits
-// # the codegen reject stmt.for_each:foreach.hoist_type; a Ptr one compiles).
-// def body_local_holder_section() -> None:
-//     p = Point(24)
-//     p = Point(25)
-//     for i in range(2):
-//         p = Point(i)
-//         loan = take_ptr(p)
-//     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//     loan.bump()
-//     print("body_local_holder:", loan.x, p.x)
-void body_local_holder_section() {
-    std::optional<Point> __slot_2;
-    Point __slot_1 = Point(24);
-    Point* p = &__slot_1;
-    p = &*(__slot_2 = Point(25));
-    Point* loan;
-    for (int32_t i = 0; i < 2; ++i) {
-        p = &*(__slot_2 = Point(i));
-        loan = &(*p);
-    }
-    p = &*(__slot_2 = Point(50));
-    ::tpy::deref_check(loan).bump();
-    std::cout << "body_local_holder:" << " " << loan->x << " " << p->x << "\n";
-}
-
-// # the `while` spelling of the same carry: sema walks the body once either way.
-// def after_while_section() -> None:
-//     saved = Point(19)
-//     p = Point(20)
-//     i = 0
-//     while i < 2:
-//         p = Point(i)
-//         saved = p
-//         i += 1
-//     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-//     saved.bump()
-//     print("after_while:", saved.x, p.x)
-void after_while_section() {
-    std::optional<Point> __slot_3;
-    Point __slot_1 = Point(19);
-    Point* saved = &__slot_1;
-    Point __slot_2 = Point(20);
-    Point* p = &__slot_2;
-    int32_t i = 0;
-    while ((i < 2)) {
-        p = &*(__slot_3 = Point(i));
-        saved = p;
-        i = ::tpy::add_check<int32_t>(i, 1);
-    }
-    p = &*(__slot_3 = Point(50));
-    saved->bump();
-    std::cout << "after_while:" << " " << saved->x << " " << p->x << "\n";
-}
-
-// # the loop-carried leg: `q` is bound BEFORE the loop to another object and
-// # re-taken of `p` after the in-loop rebind, so only the body pre-scan can see
-// # that the next iteration's rebind clobbers it.
+// # `q` is re-taken of `p` AFTER the in-loop rebind and read before that on the
+// # next iteration, so the rebind overwrites what `q` points at.
 // def loop_carried_section() -> None:
 //     other = Point(21)
 //     p = Point(22)
-//     p = Point(23)
 //     q = take_ptr(other)
 //     i = 0
 //     while i < 2:
@@ -306,7 +22,6 @@ void loop_carried_section() {
     Point other = Point(21);
     Point __slot_1 = Point(22);
     Point* p = &__slot_1;
-    p = &*(__slot_2 = Point(23));
     Point* q = &other;
     int32_t i = 0;
     while ((i < 2)) {
@@ -318,75 +33,43 @@ void loop_carried_section() {
     std::cout << "loop_carried:" << " " << q->x << " " << p->x << "\n";
 }
 
-// def main() -> None:
-//     for got in gen_section():
-//         print("gen:", got)
-//     print("async:", asyncio.run(async_section()))
-//     sync_second_section()
-//     field_chain_section()
-//     element_section(False)
-//     ptr_section()
-//     nested_def_section()
-//     after_branch_section(True)
-//     after_loop_section()
-//     body_local_holder_section()
-//     after_while_section()
-//     loop_carried_section()
-void main() {
-    {
-        auto __src_0 = gen_section();
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
-        for (;;) {
-            auto __r_1 = __itr_0.__next__();
-            if (!__r_1.has_value()) break;
-            int32_t got = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen:" << " " << got << "\n";
-        }
+// # the `for` spelling
+// def for_carried_section() -> None:
+//     p = Point(30)
+//     q = take_ptr(p)
+//     for i in range(2):
+//         p = Point(i)  # tpyc: warning(/will not keep the object it was given/)
+//         print("for_carried_iter:", q.x)
+//         q = take_ptr(p)
+//     print("for_carried:", q.x, p.x)
+void for_carried_section() {
+    std::optional<Point> __slot_2;
+    Point __slot_1 = Point(30);
+    Point* p = &__slot_1;
+    Point* q = &(*p);
+    for (int32_t i = 0; i < 2; ++i) {
+        p = &*(__slot_2 = Point(i));
+        std::cout << "for_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n";
+        q = &(*p);
     }
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_section())) << "\n";
-    sync_second_section();
-    field_chain_section();
-    element_section(false);
-    ptr_section();
-    nested_def_section();
-    after_branch_section(true);
-    after_loop_section();
-    body_local_holder_section();
-    after_while_section();
-    loop_carried_section();
+    std::cout << "for_carried:" << " " << q->x << " " << p->x << "\n";
 }
 
-// # Rebinding a reference local while a live loan still points at the object it
-// # held hands the loan the NEW object. One section per position that holds ONE
-// # object generation (frame generator, async def, module level, nested def with
-// # a non-colliding name) plus the sync SECOND rebind, and one per loan form that
-// # the rule sees (name, field chain, element, Ptr).
-// #
-// # The printed values are the WRONG ones the warning announces
-// # (BUGS.md#resumable-alias-identity) -- hence no_cpython.txt.
-// import asyncio
-//
+// def main() -> None:
+//     loop_carried_section()
+//     for_carried_section()
+void main() {
+    loop_carried_section();
+    for_carried_section();
+}
+
 // main()
-//
-// # module level: no rebind slot at all, so the FIRST rebind clobbers.
-// g = Point(12)
-// galias = g
-// g = Point(50)  # tpyc: warning(/will not keep the object it was given/)
-// galias.bump()
-// print("module:", galias.x, g.x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::asyncio::__tpy_init();
     main();
-    static Point __global_slot_1 = Point(12);
-    g = &__global_slot_1;
-    galias = g;
-    g = &(__global_slot_1 = Point(50));
-    galias->bump();
-    std::cout << "module:" << " " << galias->x << " " << g->x << "\n";
 }
 
 } // namespace tpyapp::main

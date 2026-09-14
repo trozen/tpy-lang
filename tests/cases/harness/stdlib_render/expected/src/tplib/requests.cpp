@@ -1512,8 +1512,8 @@ Response Session::_send_for_hop(std::string_view method, std::string_view url, c
         return std::move((*resp));
     }
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> fresh = _connect(url, timeout, verify);
-    Response __slot_3 = _request_on(fresh, method, url, params, data, files, json, &(headers), auth, send_cookies, stream, follow);
-    Response* resp = &__slot_3;
+    Response __slot_2 = _request_on(fresh, method, url, params, data, files, json, &(headers), auth, send_cookies, stream, follow);
+    Response* resp = &__slot_2;
     if ((!resp->_raw.has_value())) {
         ::tpy::__setitem__(this->_pool, key, std::move(fresh));
     }

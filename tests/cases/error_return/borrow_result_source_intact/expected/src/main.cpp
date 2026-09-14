@@ -46,8 +46,8 @@ void main() {
         q->items.push_back(4);
     }
     std::cout << ::tpy::__len__(h.src.items) << "\n";
-    Source __slot_2 = Source();
-    Source* v = &__slot_2;
+    Source __slot_1 = Source();
+    Source* v = &__slot_1;
     {
         {
             auto __try_tmp_6 = h.view();
