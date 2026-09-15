@@ -1297,7 +1297,7 @@ v1.5 M2: SHIPPED. Class-based exception dispatch via `isinstance(exc_val, X)` in
 
 v2 I/O reactor M1: SHIPPED. The `Reactor` is the executor's second wake source: `EpollReactor` owns the reactor fd + a single-waiter `fd -> Waker` registry (one-shot arming); `Executor.wait_for_event` blocks in `epoll_wait` / `kevent` bounded by the nearest timer deadline. Low-level surface: `asyncio.get_running_loop().sock_recv(sock, n)` / `sock_sendall(sock, data)` on a non-blocking socket (`socket.socket.setblocking(False)`, an fcntl `O_NONBLOCK` helper), backed by hand-written `_SockRecv` / `_SockSendAll` awaitables. Binding via `lib/tpy/_bindings/posix_epoll.py` + `runtime/cpp/src/stdlib/epoll_impl.cpp`, which holds two backends behind the flat `tpy_epoll_*` ABI: epoll on Linux, kqueue on macOS / *BSD (the system headers confined to the .cpp). See `docs/ASYNC_DESIGN.md` "I/O reactor".
 
-v2 I/O reactor M2: SHIPPED. `asyncio.get_running_loop().sock_accept(sock)` -> `(conn, (host, port))` (conn set non-blocking) and `sock_connect(sock, addr)` (non-blocking connect + `SO_ERROR` check), backed by hand-written `_SockAccept` / `_SockConnect` awaitables. All four `sock_*` methods now drive the public `socket` methods and park on `BlockingIOError` (the errno-keyed `OSError` subclass raised on EAGAIN/EWOULDBLOCK/EINPROGRESS), mirroring CPython's `loop.sock_*`. See `examples/net/async_echo_*`.
+v2 I/O reactor M2: SHIPPED. `asyncio.get_running_loop().sock_accept(sock)` -> `(conn, (host, port))` (conn set non-blocking) and `sock_connect(sock, addr)` (non-blocking connect + `SO_ERROR` check), backed by hand-written `_SockAccept` / `_SockConnect` awaitables. All four `sock_*` methods now drive the public `socket` methods and park on `BlockingIOError` (the errno-keyed `OSError` subclass raised on EAGAIN/EWOULDBLOCK/EINPROGRESS), mirroring CPython's `loop.sock_*`. See `tplib/async_echo_*` in the `tpy-examples` repo.
 
 v2 streams (client side): SHIPPED. `asyncio.open_connection(host, port)` returns a `(StreamReader, StreamWriter)` that share the connection's `socket` via an `Rc[socket]` cell (either can drive it; it outlives both across awaits). `StreamReader` buffers bytes and fills via `sock_recv` -- `read(n)` (up to n; `n<0` reads to EOF), `readexactly(n)` (raises `IncompleteReadError` carrying the partial bytes), `readline()` (to `\n` or EOF), `readuntil(sep)` (to a `bytes` separator, `IncompleteReadError` on EOF first; no `limit`/`LimitOverrunError`), `at_eof()`. `StreamWriter` buffers `write(data)` (sync) and flushes via `sock_sendall` in `drain()`; `close()` / `wait_closed()`. `IncompleteReadError(EOFError)` added.
 
@@ -1390,7 +1390,7 @@ Tests:
   * No integration test cases under `tests/cases/` -- running real client/
     server end-to-end needs threading or fork (not in Phase 1), and
     fingerprint-based skip logic doesn't play well with network ports.
-  * Examples under `examples/net/` (`tcp_client.py` + `tcp_server.py`)
+  * Examples under `tplib/` in the `tpy-examples` repo (`tcp_client.py` + `tcp_server.py`)
     serve as manual smoke tests: run the server in one terminal, the
     client in another, verify the echo round-trip.
 

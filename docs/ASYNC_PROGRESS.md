@@ -398,7 +398,7 @@ Deferred to v1.x:
   (`open_connection` + `start_server` -> `StreamReader`/`StreamWriter`, socket
   shared via `Rc[socket]`, `IncompleteReadError`; `start_server` runs the async
   handler per connection on the async-fn->Callable coercion) shipped on top. See
-  `docs/ASYNC_DESIGN.md` "I/O reactor" and `examples/net/async_echo_*` /
+  `docs/ASYNC_DESIGN.md` "I/O reactor" and `tplib/async_echo_*` in the `tpy-examples` repo /
   `stream_server.py`. `StreamReader.readuntil(sep)` shipped (str/bytes coro-param
   owned-capture fix); its `limit`/`LimitOverrunError`, an io_uring backend,
   and a user (protocol-level) swap-in remain.

@@ -42,7 +42,7 @@ def _anchors() -> list[str]:
 # remote test host has no repo metadata; anchored here rather than at the
 # repo root so a scratch file dropped beside them is never read.
 SCANNED_ROOTS = ("tpyc", "tests", "lib", "runtime", "docs", "scripts",
-                 "examples", "frontends", "ci", ".claude")
+                 "frontends", "ci", ".claude")
 SCANNED_TOP_LEVEL = ("BUGS.md", "TODO.md", "CLAUDE.md", "README.md",
                      "RELEASE_PLAN.md", "RELEASE_NOTES.md")
 

@@ -13,7 +13,7 @@ In scope -- the diff across ALL changed files, judged against `CLAUDE.md`:
 - `tpyc/**/*.py` (compiler source)
 - `lib/tpy/**`, `lib/cpy/**` (stdlib / stubs)
 - `tests/cases/*/src/*.py` (test snippets)
-- `examples/**`, `frontends/**`
+- `frontends/**`
 
 Out of scope:
 - Design / phase-boundary / duplication / perf-cliff judgment -> architecture-fit

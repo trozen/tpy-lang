@@ -87,7 +87,7 @@ Two commands are installed: `tpy` (runs programs, drops to a REPL with no args) 
 
 ```bash
 uv sync                          # in a checkout of the source tree
-uv run tpy examples/hello.py
+uv run tpy hello.py              # any TPy program
 ```
 
 ## Quick Start

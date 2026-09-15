@@ -20,6 +20,8 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 
 **Always** use `uv run` to invoke Python/tpy (never bare `python` or `tpy`). Use Read/Grep/Glob tools instead of `cat`/`head`/`tail`/`grep`/`rg`/`find`.
 
+Example programs live in the separate `tpy-examples` repo (https://github.com/trozen/tpy-examples), not in this tree.
+
 **Snippets**: write to a file under `/tmp/agents/` (any filename or subdirectory) and run from there. Do NOT use heredocs (`<<EOF`) -- they trigger permission prompts for multi-line commands.
 
 **Committing -- branch-aware.** A *temporary working branch* is any branch that is **not** `master`/`main` **and** has **no** remote-tracking (upstream) branch -- a throwaway branch for developing a feature before it's squash-merged into `master`. Detect it mechanically: branch from `git branch --show-current`; upstream from `git rev-parse --abbrev-ref --symbolic-full-name @{u}` (this command fails when there is no upstream). Make this determination yourself -- do **not** ask the user whether the branch qualifies.
@@ -55,11 +57,11 @@ In all cases: never `--amend`, rebase, force-push, or commit changes you didn't 
 
 ```bash
 uv run tpy                              # Interactive REPL
-uv run tpy examples/hello.py            # Run a program
-uv run tpy --dump-code examples/hello.py  # Print generated C++ to stdout
-uv run tpyc --dump-thir examples/hello.py # Print the lowered THIR for each body
-uv run tpy examples/hello.py -vv        # -v = commands+timing, -vv adds generated C++
-uv run tpyc examples/hello.py -o out/   # Compile to C++ only
+uv run tpy hello.py                     # Run a program
+uv run tpy --dump-code hello.py         # Print generated C++ to stdout
+uv run tpyc --dump-thir hello.py        # Print the lowered THIR for each body
+uv run tpy hello.py -vv                 # -v = commands+timing, -vv adds generated C++
+uv run tpyc hello.py -o out/            # Compile to C++ only
 uv sync                                 # Install for development
 ```
 

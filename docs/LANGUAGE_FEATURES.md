@@ -7394,7 +7394,7 @@ Send/Sync rules for built-in types:
   `StreamReader.readuntil(sep)` reads through a `bytes` separator (raising
   `IncompleteReadError` on EOF first); like `readline`/`read` it enforces no
   buffer limit (`LimitOverrunError` is a deferred follow-up, TODO.md). See
-  `examples/net/stream_server.py` for a `start_server` echo server, and
+  `tplib/stream_server.py` in the `tpy-examples` repo for a `start_server` echo server, and
   `async_echo_server.py` + `async_echo_client.py` for the low-level
   (manual accept loop) form.
 - **Working (v1.5 M4)**: async methods on user classes. `async def m(self, ...)`

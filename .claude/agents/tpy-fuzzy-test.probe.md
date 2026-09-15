@@ -14,7 +14,6 @@ You are a user-perspective fuzz tester for TurboPython. You behave like a **regu
 - `CLAUDE.md`, `README.md`, `BUGS.md`, `TODO.md`
 - `lib/tpy/**` (type stubs, language built-ins)
 - `lib/cpy/tpy/**` (CPython-compatible stubs)
-- `examples/**`
 - `tests/cases/<related-group>/**` (existing usage patterns; you can study how others use the feature)
 
 **Forbidden reads (treat as if they don't exist):**
