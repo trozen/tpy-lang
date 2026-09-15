@@ -48,6 +48,7 @@ from ..parse import (
     TpyTupleUnpack, TpyVarDecl, TpyWhile, TpyWith,
 )
 from ..parse.nodes import RebindStorage
+from ..prescan import bound_names_of, walrus_names_of
 from ..type_def_registry import (
     is_bytes_view_type, is_char_type, is_str_view_type,
 )
@@ -134,24 +135,58 @@ def stamp_bind_kind(ctx: 'SemanticContext', stmt: 'TpyVarDecl | TpyAssign',
         ctx.func.gate_sites.add(stmt)
 
 
-def globals_declared_in(funcs: Iterable[TpyFunction]) -> set[str]:
-    """Names some function rebinds through `global`: their module-level
-    storage can change between two module-level statements, so the
-    module-init replay treats them as foreign."""
-    names: set[str] = set()
+def global_write_facts(
+        funcs: Iterable[TpyFunction]) -> tuple[set[str], dict[str, str]]:
+    """The module's two `global` facts, from one walk over every body.
 
-    def walk(stmts: list[TpyStmt]) -> None:
+    `declared`: every name some body declares `global`, read-only
+    declarations included. Their module-level storage can change between two
+    module-level statements, so the module-init replay treats them as
+    foreign.
+
+    `rebound`: the globals some function actually REBINDS, each mapped to
+    that function. A `global X` only declares which storage a write in that
+    body targets; a body that never binds X merely READS the module slot, so
+    it is not a rebind. Every nested def is its own scope: its `global`
+    declarations pair with its own writes, not the enclosing body's, and it
+    is reported under the enclosing function the user can find.
+
+    The rebind is what makes a module global un-borrowable across calls --
+    it reseats the slot's storage, freeing the buffer every outstanding view
+    or reference points into -- so the fact must be complete before any body
+    is analyzed, which is why it is decided here from the AST rather than
+    accumulated as the `global` statements are analyzed. That places it
+    before `@function_macro` expansion, so a `global X` write a macro
+    introduces is invisible to it (BUGS.md#rebound-global-borrow-open-sinks).
+    """
+    declared_any: set[str] = set()
+    rebound: dict[str, str] = {}
+
+    def scope(stmts: list[TpyStmt], owner: str) -> None:
+        declared: set[str] = set()
+        bound: set[str] = set()
+        walk(stmts, declared, bound, owner)
+        declared_any.update(declared)
+        for name in declared & bound:
+            rebound.setdefault(name, owner)
+
+    def walk(stmts: list[TpyStmt], declared: set[str], bound: set[str],
+             owner: str) -> None:
         for s in stmts:
             if isinstance(s, TpyGlobal):
-                names.update(s.names)
+                declared.update(s.names)
             elif isinstance(s, TpyNestedDef):
-                walk(s.func.body)
+                scope(s.func.body, owner)
+                continue
+            else:
+                bound.update(bound_names_of(s))
+                bound.update(walrus_names_of(s))
             for body in s.sub_bodies():
-                walk(body)
+                walk(body, declared, bound, owner)
 
     for f in funcs:
-        walk(f.body)
-    return names
+        scope(f.body, f.name)
+    return declared_any, rebound
 
 
 # -- the replay ---------------------------------------------------------------

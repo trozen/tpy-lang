@@ -36,7 +36,7 @@ from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
-    TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
+    TpyRaise, TpyExceptHandler, TpyTry, TpyWith, TryTier,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
     TpySubscript, TpySlice, TpyStrLiteral, TpyBytesLiteral, TpyName, TpyTupleLiteral,
@@ -2036,7 +2036,8 @@ class StatementAnalyzer:
             if self.ctx.func.in_except_tier is None:
                 raise self.ctx.error(
                     "bare 'raise' is only valid inside an 'except' block", stmt)
-            if self.ctx.func.in_except_tier == "return" and not self.ctx.func.in_except_has_binding:
+            if (self.ctx.func.in_except_tier is TryTier.RETURN
+                    and not self.ctx.func.in_except_has_binding):
                 raise self.ctx.error(
                     "bare 'raise' in return-tier except requires 'as' binding "
                     "(e.g. 'except E as e') to capture the error value",
@@ -2255,10 +2256,10 @@ class StatementAnalyzer:
             f"expected an exception type",
             stmt)
 
-    def _classify_try_tier(self, stmt: TpyTry) -> str:
-        """Classify a try statement as 'return', 'throw', or 'finally_only'."""
+    def _classify_try_tier(self, stmt: TpyTry) -> TryTier:
+        """Classify a try statement onto one of the TryTier dispatch forms."""
         if not stmt.handlers:
-            return "finally_only"
+            return TryTier.FINALLY_ONLY
 
         has_cf = False
         has_throw = False
@@ -2287,22 +2288,22 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 "bare 'except:' cannot be mixed with ReturnException handlers", stmt)
 
-        return "return" if has_cf else "throw"
+        return TryTier.RETURN if has_cf else TryTier.THROW
 
     def _analyze_try(self, stmt: TpyTry) -> None:
         """Analyze a try/except/else/finally statement.
 
         Classifies the try block into tiers:
-        - 'return': ReturnException handlers -> goto-based dispatch (existing)
-        - 'throw': non-ReturnException handlers -> C++ try/catch
-        - 'finally_only': no handlers, just finally cleanup
+        - RETURN: ReturnException handlers -> goto-based dispatch (existing)
+        - THROW: non-ReturnException handlers -> C++ try/catch
+        - FINALLY_ONLY: no handlers, just finally cleanup
         """
         tier = self._classify_try_tier(stmt)
         stmt.tier = tier
 
-        if tier == "finally_only":
+        if tier is TryTier.FINALLY_ONLY:
             self._analyze_try_finally_only(stmt)
-        elif tier == "return":
+        elif tier is TryTier.RETURN:
             self._analyze_try_return(stmt)
         else:
             self._analyze_try_throw(stmt)
@@ -2448,6 +2449,8 @@ class StatementAnalyzer:
 
         # Set try context so call analysis can allow error_return calls
         prev_try_error = self.ctx.func.try_except_error_type
+        prev_handled = self.ctx.func.try_except_error_handled
+        self.ctx.func.try_except_error_handled = False
         if is_return_exception_catch_all:
             self.ctx.func.try_except_error_type = "*"
         else:
@@ -2457,7 +2460,13 @@ class StatementAnalyzer:
         for s in stmt.try_body:
             self.analyze_stmt(s)
 
+        # The last analysis of this body wins. `trial_scope` rolls back the
+        # context but not AST mutations, so accumulating would let a
+        # discarded trial's True stand over a real analysis that says False
+        # -- a reject with no way back.
+        stmt.handled_error_return = self.ctx.func.try_except_error_handled
         self.ctx.func.try_except_error_type = prev_try_error
+        self.ctx.func.try_except_error_handled = prev_handled
 
         for s in stmt.else_body:
             self.analyze_stmt(s)
@@ -2496,7 +2505,7 @@ class StatementAnalyzer:
         # Set in_except_tier for bare raise validation
         prev_except_tier = self.ctx.func.in_except_tier
         prev_has_binding = self.ctx.func.in_except_has_binding
-        self.ctx.func.in_except_tier = "return"
+        self.ctx.func.in_except_tier = TryTier.RETURN
         self.ctx.func.in_except_has_binding = handler.binding is not None
         for s in handler.body:
             self.analyze_stmt(s)
@@ -2603,7 +2612,7 @@ class StatementAnalyzer:
                     ns_bound = True
 
             prev_except_tier = self.ctx.func.in_except_tier
-            self.ctx.func.in_except_tier = "throw"
+            self.ctx.func.in_except_tier = TryTier.THROW
             for s in h.body:
                 self.analyze_stmt(s)
             self.ctx.func.in_except_tier = prev_except_tier
@@ -2934,6 +2943,24 @@ class StatementAnalyzer:
             if item.manager_borrowed and not (
                     enter_info.is_readonly and exit_info.is_readonly):
                 self._mark_with_manager_mutated(item.context_expr)
+
+            # An @error_return enter/exit has no admission site: the `with`
+            # header calls it implicitly, so it never reaches the call
+            # chokepoint that decides whether an enclosing try handles the
+            # error, and the header has no unwrap of its own. Reject here
+            # rather than binding the target to the unhandled result. EVERY
+            # variant is checked, not the one this function otherwise reads:
+            # the header never resolves the dunder against arguments (there
+            # are none beside `self`), so an @error_return variant in any
+            # position is a variant the header could call.
+            for dunder, infos in ((enter_method, enter_overloads),
+                                  (exit_method, exit_overloads)):
+                if any(i.error_return_type is not None for i in infos):
+                    raise self.ctx.error(
+                        f"`{dunder}` on '{ctx_type}' returns an error with "
+                        f"@error_return, which a `with` statement has no way "
+                        f"to handle. Move the failing work into a method the "
+                        f"body calls inside a try/except.", err_node)
 
             if stmt.is_async and enter_owner is not None:
                 item.aenter_owner_type = enter_owner
@@ -4287,10 +4314,19 @@ class StatementAnalyzer:
                 and stmt.type is None
                 and stmt.init is not None
                 and stmt.name not in self.ctx.func.current_scope.bindings
-                and stmt.name in self.ctx.global_scope.bindings
+                and stmt.name in self.ctx.preregistered_globals
                 and stmt.name not in self.ctx.func.authoritative_types
             )
             if is_preregistered_global_write:
+                existing_type = None
+            elif (existing_type is not None
+                    and not self.ctx.is_top_level
+                    and stmt.name in self.ctx.global_scope.bindings
+                    and not self.compat.is_local_shadow(stmt.name)):
+                # Inside a function a bare write binds a fresh LOCAL even when
+                # the name is a module global (only `global x` writes the
+                # module variable), so the global's type is not this write's
+                # history. Same rule as the tuple-unpack arm.
                 existing_type = None
             if existing_type is None:
                 # A local first declared inside a block (loop body, and any
@@ -4678,6 +4714,13 @@ class StatementAnalyzer:
             self.ctx.func.current_scope.define(stmt.name, var_type)
         else:
             self.ctx.func.current_scope.define(stmt.name, var_type)
+        if self.ctx.is_module_slot_stmt(stmt):
+            # An INFERRED module-slot binding is a global exactly as an
+            # annotated one is; `global_scope` is the table the export
+            # collection and the storage-durability checks read, so a binding
+            # left only in the module-init scope is invisible to both.
+            self.ctx.define_module_global(
+                stmt.name, var_type, stmt.loc.line if stmt.loc else 0)
         # Reassignment revives a consumed variable
         self.ctx.func.consumed_vars.discard(stmt.name)
         # Flag the local if it's bound to a tuple literal with a FRESH
@@ -4941,14 +4984,6 @@ class StatementAnalyzer:
             self._warn_ternary_ref_copy(stmt.init, var_type, stmt)
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.bind_variable(stmt.name, var_type)
-        # Track top-level declarations with line number for order-aware codegen
-        # Use earliest declaration line (min) so uses between redeclarations work
-        if self.ctx.is_top_level:
-            decl_line = stmt.loc.line if stmt.loc else 0
-            if stmt.name not in self.ctx.top_level_decls:
-                self.ctx.top_level_decls[stmt.name] = decl_line
-            else:
-                self.ctx.top_level_decls[stmt.name] = min(self.ctx.top_level_decls[stmt.name], decl_line)
         # Track first var_decl for later type updates on reassignment-driven inference.
         if existing_type is None:
             self.ctx.func.var_decl_by_name[stmt.name] = stmt
@@ -5007,7 +5042,7 @@ class StatementAnalyzer:
                 stmt.is_new.append(True)
                 continue
 
-            if self.ctx.is_top_level:
+            if self.ctx.is_module_slot_stmt(stmt):
                 # Block reassignment of Final globals at module level
                 if name in self.ctx.final_globals:
                     raise self.ctx.error(
@@ -5019,16 +5054,14 @@ class StatementAnalyzer:
                 # Resolve IntLiteralType so the global's declared type aligns
                 # with the int32_t storage codegen emits (sema/codegen parity).
                 elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
-                self.ctx.global_scope.define(name, elem_type)
+                self.ctx.define_module_global(
+                    name, elem_type, stmt.loc.line if stmt.loc else 0)
                 self.ctx.func.current_scope.define(name, elem_type)
                 self.ctx.func.nonstmt_bound_names.add(name)
                 self.init.mark_assigned(name)
                 self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
                 if self.ctx.func.current_ns:
                     self.ctx.func.current_ns.bind_variable(name, elem_type)
-                decl_line = stmt.loc.line if stmt.loc else 0
-                if name not in self.ctx.top_level_decls:
-                    self.ctx.top_level_decls[name] = decl_line
                 self._warn_all_caps_without_final(name, elem_type, stmt)
                 if stmt.loc:
                     display_type = unwrap_own(elem_type) if elem_type else elem_type
@@ -5038,10 +5071,13 @@ class StatementAnalyzer:
 
             existing = self.ctx.func.current_scope.lookup(name)
             # Don't treat globals as existing unless explicitly declared
-            # with 'global' -- unpack should create locals by default
+            # with 'global' -- unpack should create locals by default. Same
+            # fresh-local rule (and same shadow predicate) as the scalar
+            # var-decl arm, which must not disagree about a name already
+            # bound in an enclosing BLOCK scope of this function.
             if (existing is not None
                     and name not in self.ctx.func.global_declarations
-                    and name not in self.ctx.func.current_scope.bindings
+                    and not self.compat.is_local_shadow(name)
                     and name in self.ctx.global_scope.bindings):
                 existing = None
             if existing is not None:
@@ -5767,7 +5803,13 @@ class StatementAnalyzer:
                 raise self.ctx.error(
                     f"'del' is not supported for type {actual}", stmt)
             # Analyze the index expression only after confirming __delitem__ exists
-            self.expr.analyze_expr(subscript.index)
+            index_type = self.expr.analyze_expr(subscript.index)
+            if is_dict(actual):
+                # `del d[k]` hands the key to the same map lookup a read does,
+                # so it takes the same key check and the same narrow node --
+                # otherwise an unchecked key reaches `erase` raw.
+                self.expr.check_dict_key(
+                    subscript, actual.type_args[0], unwrap_readonly(index_type))
 
     def _target_is_dyn_writable_only(self, target: TpyFieldAccess) -> bool:
         """D16: True if `target` is `obj.foo` where foo is undeclared on the

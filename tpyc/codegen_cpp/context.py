@@ -11,7 +11,7 @@ import tokenize
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Callable, Iterator, Literal, TextIO, TYPE_CHECKING
+from typing import Callable, Iterator, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
@@ -542,9 +542,11 @@ def module_native_global_names(top_level_stmts) -> dict[str, str]:
     (`qualify_native_name(map[name])`), shared by the generator's
     `ctx.native_global_names` seeding and the THIR seeding mirror (which
     runs before the generator populates ctx). Mirrors the generator's
-    seen_globals dedup exactly: first decl of a name wins (a later native
+    seen_globals dedup: first decl of a name wins (a later native
     re-decl of an already-seen DEFAULT name maps nothing), tuple-unpack
-    targets count as seen, module_init_local temps are skipped."""
+    targets count as seen, module_init_local temps are skipped. The
+    generator additionally drops names sema gave no module slot; a
+    non-DEFAULT-linkage decl needs an annotation, so it always has one."""
     seen: set[str] = set()
     out: dict[str, str] = {}
     for stmt in top_level_stmts:
@@ -1656,7 +1658,6 @@ class CodeGenContext:
     try_except_label: str | None = None
     # When set (except E as e), error_return calls should move error into this var before goto
     try_except_err_opt: str | None = None
-    in_except_tier: Literal["return", "throw"] | None = None
 
     # --- finally (inline emit pattern) ---
     # Stack of active try/finally (and with) blocks. Codegen invokes
@@ -2107,7 +2108,6 @@ class CodeGenContext:
             self.finally_stack,
             self.try_except_label,
             self.try_except_err_opt,
-            self.in_except_tier,
             self.loop_else_labels,
             self.loop_break_labels,
             self.match_switch_depth,
@@ -2133,7 +2133,6 @@ class CodeGenContext:
         self.finally_stack = []
         self.try_except_label = None
         self.try_except_err_opt = None
-        self.in_except_tier = None
         self.loop_else_labels = []
         self.loop_break_labels = []
         self.match_switch_depth = 0
@@ -2161,7 +2160,6 @@ class CodeGenContext:
             (self.finally_stack,
              self.try_except_label,
              self.try_except_err_opt,
-             self.in_except_tier,
              self.loop_else_labels,
              self.loop_break_labels,
              self.match_switch_depth,

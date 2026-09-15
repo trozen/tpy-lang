@@ -10,12 +10,33 @@ namespace tpyapp::main {
 //     print(d.setdefault("c", 42))   # 42 (inserted)
 //     print(d["c"])                    # 42
 //     print(len(d))                    # 3
+//
+//     s: dict[str, str] = {"a": "alpha"}
+//     lv = String("lvalue")
+//     print("lit hit", s.setdefault("a", "lit"))        # tpyc: ok
+//     print("lit miss", s.setdefault("l", "lit"))       # tpyc: ok
+//     print("String hit", s.setdefault("a", lv))        # tpyc: ok
+//     print("String miss", s.setdefault("s", lv))       # tpyc: ok
+//     print("char hit", s.setdefault("a", char("c")))   # tpyc: ok
+//     print("char miss", s.setdefault("h", char("c")))  # tpyc: ok
+//     print("stored", s["l"], s["s"], s["h"], len(s))
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     std::cout << ::tpy::dict_setdefault(d, "a", 99) << "\n";
     std::cout << ::tpy::dict_setdefault(d, "c", 42) << "\n";
     std::cout << ::tpy::__getitem__(d, "c") << "\n";
     std::cout << ::tpy::__len__(d) << "\n";
+    ::tpy::ordered_map<std::string, std::string> s = ::tpy::ordered_map<std::string, std::string>({{"a", "alpha"}});
+    ::tpy::String lv = ::tpy::String("lvalue");
+    std::cout << "lit hit" << " " << ::tpy::dict_setdefault(s, "a", "lit") << "\n";
+    std::cout << "lit miss" << " " << ::tpy::dict_setdefault(s, "l", "lit") << "\n";
+    std::string __tmp_1{lv};
+    std::cout << "String hit" << " " << ::tpy::dict_setdefault(s, "a", std::move(__tmp_1)) << "\n";
+    std::string __tmp_2{lv};
+    std::cout << "String miss" << " " << ::tpy::dict_setdefault(s, "s", std::move(__tmp_2)) << "\n";
+    std::cout << "char hit" << " " << ::tpy::dict_setdefault(s, "a", std::string(::tpy::char_to_str(::tpy::char_from_str("c")))) << "\n";
+    std::cout << "char miss" << " " << ::tpy::dict_setdefault(s, "h", std::string(::tpy::char_to_str(::tpy::char_from_str("c")))) << "\n";
+    std::cout << "stored" << " " << ::tpy::__getitem__(s, "l") << " " << ::tpy::__getitem__(s, "s") << " " << ::tpy::__getitem__(s, "h") << " " << ::tpy::__len__(s) << "\n";
 }
 
 // main()

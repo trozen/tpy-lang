@@ -1,1 +1,1 @@
-main.py:10: error: Cannot return local or temporary as reference. Object type 'Tree[int32]' is returned by reference. Use Own[Tree[int32]] to return by value.
+main.py:10: error: Cannot return local or temporary as reference. Reference type 'Tree[int32]' is returned by reference. Use Own[Tree[int32]] to return by value.

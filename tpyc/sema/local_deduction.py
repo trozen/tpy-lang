@@ -1350,13 +1350,23 @@ class LocalTypeDeduction:
         `list[Pending]`, a `tuple[Pending,...]`) or bare on a loop var survives
         the deferred resolver and crashes codegen's `to_cpp()`. Only per-function
         stores are touched (namespace locals + loop-var snapshots feeding the
-        frame hoist) plus the per-function-recorded composite expr nodes -- never
-        a sweep over the module-wide `expr_types`."""
+        frame hoist) plus the per-function-recorded composite expr nodes, and --
+        for module code only -- the module's global scope; never a sweep over
+        the module-wide `expr_types`."""
         ns = self.ctx.func.current_ns
         if ns is not None:
             for binding in ns.all_bindings().values():
                 if binding.kind is BindingKind.VARIABLE and binding.type is not None:
                     binding.type = self._deep_resolve_pending(binding.type)
+
+        if self.ctx.is_top_level:
+            # An inferred top-level binding is recorded in `global_scope`
+            # while its container type is still pending, and the module's
+            # export table renders straight off that type.
+            gbindings = self.ctx.global_scope.bindings
+            for name, gtype in gbindings.items():
+                if gtype is not None:
+                    gbindings[name] = self._deep_resolve_pending(gtype)
 
         for node in self.ctx.func.pending_composite_exprs:
             current = self.ctx.expr_types.get(node)

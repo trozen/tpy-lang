@@ -1,0 +1,2 @@
+lib.py:9: warning: ALL_CAPS variable 'LOOPY' without Final annotation; use Final[int32] if this is a constant
+main.py:5: error: 'LOOPY' not found in module 'lib'

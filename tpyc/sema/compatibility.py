@@ -6,7 +6,7 @@ Type compatibility checking, coercions, and lvalue analysis.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
@@ -70,26 +70,59 @@ def _literal_value_from_source(
     return None
 
 
+# Borrowing-view return families, each with the display name and the owning
+# types a user switches to. Ordered: a *args pack is also a Span, so the
+# Span arm must be tried first to keep its wording.
+_VIEW_RETURN_FAMILIES = (
+    (is_str_view_type, "StrView", "str or String"),
+    (is_bytes_view_type, "BytesView", "bytes or bytearray"),
+    (is_span, "Span", "list or Array"),
+    (is_varargs, "a *args view", "list or Array"),
+)
+
+
+def _view_return_family(return_type: TpyType) -> tuple[str, str] | None:
+    """(display name, owning alternatives) for a borrowing-view return type."""
+    for pred, display, owned in _VIEW_RETURN_FAMILIES:
+        if pred(return_type):
+            return display, owned
+    return None
+
+
 def _dangling_view_message(return_type: TpyType) -> str | None:
     """Error message for returning a view that borrows from a local, or None
     if return_type is not a borrowing-view type.
     """
-    if is_str_view_type(return_type):
-        return ("Cannot return StrView referencing a local or temporary; "
-                "use str or String to return an owned copy")
-    if is_bytes_view_type(return_type):
-        return ("Cannot return BytesView referencing a local or temporary; "
-                "use bytes or bytearray to return an owned copy")
-    if is_span(return_type):
-        return ("Cannot return Span referencing a local or temporary; "
-                "use list or Array to return an owned copy")
-    if is_varargs(return_type):
-        return ("Cannot return a *args view referencing a local or temporary; "
-                "use list or Array to return an owned copy")
+    family = _view_return_family(return_type)
+    if family is not None:
+        display, owned = family
+        return (f"Cannot return {display} referencing a local or temporary; "
+                f"use {owned} to return an owned copy")
     if is_span_iter(return_type):
         return ("Cannot return SpanIter referencing a local or temporary; "
                 "the underlying Span would dangle after the function returns")
     return None
+
+
+def _elem_is_borrow_form(elem_type: TpyType) -> bool:
+    """Whether a tuple element's slot holds a BORROW of its source rather than
+    a copy of it -- the element-level mirror of `check_dangling_reference`'s
+    own arms (a pointer, a view over the source's buffer, a reference form).
+
+    A value element is COPIED into the tuple, so nothing that happens to its
+    source afterwards can reach it; the scalar return of the same expression
+    takes `check_dangling_reference`'s value-type early return and is not
+    borrow-checked either, so the two must agree here. A type-parameter
+    element is treated as a copy: at an open `T` the view family is unknown,
+    and every generic tuple-return shape rejects at lowering before either
+    rule sees it, so nothing is lost by the conservative reading.
+    """
+    bare = unwrap_readonly(elem_type)
+    if isinstance(bare, (OwnType, TypeParamRef)):
+        return False
+    if isinstance(bare, PtrType) or _dangling_view_message(bare) is not None:
+        return True
+    return not bare.is_value_type()
 
 
 def _container_elem_matches(actual_elem: TpyType, expected_elem: TpyType) -> bool:
@@ -1649,6 +1682,25 @@ class TypeCompatibility:
                 if async_result_aliases(fi.async_inner_return, awaited)
                 else None)
 
+    def materialize_fresh_value(
+        self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
+        coercion: Optional[Coercion], coercion_ctx: CoercionContext,
+        target_is_storage_form: bool = False,
+    ) -> TpyExpr:
+        """The node to store back for a sink that emits its operand against the
+        expected C++ type WITHOUT applying the coercion -- an aggregate literal
+        element, a dict lookup key. A `builds_fresh_value` rule has no implicit
+        C++ conversion, so a coercion left off the node is silently dropped
+        there (see that `Coercion` flag); every other rule is C++-implicit or
+        applied by the sink's own codegen, so spelling it here would
+        double-convert. `coercion` is what the sink's compatibility check
+        already resolved -- this decides only whether to spell it."""
+        if coercion is None or not coercion.builds_fresh_value:
+            return expr
+        return self.coerce_expr(expr, actual, expected, context,
+                                coercion_ctx=coercion_ctx,
+                                target_is_storage_form=target_is_storage_form)
+
     def coerce_expr(
         self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
         coercion_ctx: CoercionContext, is_return: bool = False,
@@ -2509,7 +2561,7 @@ class TypeCompatibility:
             return self.ctx.registry.is_subclass_of(child, parent)
         return False
 
-    def _is_local_shadow(self, name: str) -> bool:
+    def is_local_shadow(self, name: str) -> bool:
         """Check if a name is bound in a local scope, shadowing a global.
 
         NarrowingTracker._is_rebindable_global (narrowing.py) walks the same
@@ -2611,7 +2663,11 @@ class TypeCompatibility:
         same TypeParamRef exemption the per-element tuple dangle check uses.
         """
         func = self.ctx.func.current_function
-        if name == "self":
+        # Only a real receiver is durable by being `self`; in a free function
+        # or a staticmethod the name is an ordinary local, param or global and
+        # must answer from its storage, like any other name.
+        if name == "self" and (self.ctx.receiver_self_in_scope()
+                               or self.ctx.func.outer_self_is_receiver):
             return not (isinstance(func, TpyFunction) and func.is_consuming)
         if isinstance(func, TpyFunction):
             for pname, ptype in func.params:
@@ -2619,10 +2675,122 @@ class TypeCompatibility:
                     own_inner = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
                     return (own_inner is None
                             or contains_type_param(own_inner))
-        if name in self.ctx.global_scope.bindings:
-            if not self._is_local_shadow(name):
-                return True
-        return False
+        return self._name_is_module_global(name)
+
+    def _name_is_module_global(self, name: str) -> bool:
+        """Whether `name` reads the module slot here: a global binding that no
+        parameter and no local shadows.
+
+        The global arm of `_name_is_param_or_global`, which calls it, so a
+        caller that needs to know WHY that predicate said durable asks the
+        same question it did. (`is_local_shadow` and
+        `NarrowingTracker._is_rebindable_global` walk the same chain.)
+        """
+        if name in self.ctx.func.current_param_names:
+            return False
+        return (name in self.ctx.global_scope.bindings
+                and not self.is_local_shadow(name))
+
+    def _borrow_root_names(self, expr: TpyExpr, out: set[str]) -> None:
+        """Collect the names whose storage a borrow-form return points into.
+
+        Walks the same chain `is_param_derived_expr` certifies as durable, so
+        every root that predicate answers for is a root reported here; a local
+        bound from one of them resolves through the borrow tracker.
+        """
+        if isinstance(expr, TpyCoerce):
+            self._borrow_root_names(expr.expr, out)
+            return
+        if isinstance(expr, TpyNamedExpr):
+            self._borrow_root_names(expr.value, out)
+            return
+        if isinstance(expr, TpyName):
+            out.add(expr.name)
+            bt = self.ctx.func.borrow_tracker
+            for src in bt.storage_roots_or_self(expr.name):
+                out.add(_storage_root(src))
+            return
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            self._borrow_root_names(expr.obj, out)
+            return
+        if isinstance(expr, TpyIfExpr):
+            self._borrow_root_names(expr.then_expr, out)
+            self._borrow_root_names(expr.else_expr, out)
+            return
+        if (isinstance(expr, TpyCall) and expr.call_type is not None
+                and expr.call_type.is_pointer() and expr.args):
+            self._borrow_root_names(expr.args[0], out)
+            return
+        view_arg = self._view_constructor_arg(expr)
+        if view_arg is not None:
+            self._borrow_root_names(view_arg, out)
+            return
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            fi = expr.resolved_function_info
+            if fi is not None and fi.return_borrows_from:
+                obj = expr.obj if isinstance(expr, TpyMethodCall) else None
+                for idx in fi.return_borrows_from:
+                    if idx == -1 and obj is not None:
+                        self._borrow_root_names(obj, out)
+                    elif 0 <= idx < len(expr.args):
+                        self._borrow_root_names(expr.args[idx], out)
+
+    def _return_borrows_global_storage(self, name: str,
+                                       return_type: TpyType) -> str | None:
+        """How a borrow-form return rooted in global `name` points INTO that
+        global's slot -- `'reference'`, `'view'`, or None when it copies a
+        self-contained value out instead.
+
+        Two ways it points in: the global's own type is a reference type, so
+        the return renders `T&` / `T*` at the slot; or a VIEW is formed over
+        the slot's buffer (`str` -> `StrView`). A global that already holds a
+        handle -- a `Ptr[T]`, a `Span[T]` over someone else's buffer -- hands
+        back a COPY of that handle, and reseating the slot leaves the copy
+        (and what it points at) untouched.
+
+        `return_type` must be the BORROW-form type the caller is checking; a
+        value-typed one copies out of the slot and never reaches here (the
+        answer would be the reference-typed global's `'reference'` regardless,
+        which is why the callers filter first).
+        """
+        declared = self.ctx.global_scope.lookup(name)
+        if declared is None:
+            return None
+        bare = unwrap_readonly(unwrap_ref_type(declared))
+        if not bare.is_value_type():
+            return 'reference'
+        if (_view_return_family(return_type) is not None
+                and not is_borrowing_view_type(bare)):
+            return 'view'
+        return None
+
+    def rebound_global_borrow_root(
+            self, expr: TpyExpr,
+            return_type: TpyType) -> tuple[str, str, str] | None:
+        """The (global, rebinding function, leg) a returned borrow roots in,
+        when some function in this module rebinds that global -- else None.
+        `leg` is `_return_borrows_global_storage`'s verdict, which decides
+        which remedy the diagnostic can offer.
+
+        A module global is durable storage, so the dangling checks pass a
+        borrow of one: it outlives every call. `global S; S = ...` breaks
+        that, because it RESEATS the slot and frees the buffer the borrow
+        points into, and the rebind may live in a different function than
+        the borrow -- which is why the fact is module-wide
+        (`SemanticContext.rebound_globals`) rather than re-derived here.
+        """
+        if not self.ctx.rebound_globals:
+            return None
+        roots: set[str] = set()
+        self._borrow_root_names(expr, roots)
+        for name in sorted(roots):
+            owner = self.ctx.rebound_globals.get(name)
+            if owner is None or not self._name_is_module_global(name):
+                continue
+            leg = self._return_borrows_global_storage(name, return_type)
+            if leg is not None:
+                return name, owner, leg
+        return None
 
     def is_param_derived_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression's root storage derives from parameters or globals."""
@@ -2642,7 +2810,7 @@ class TypeCompatibility:
             # Globals are param-derived (live forever), but only if
             # the name isn't shadowed by a local binding
             if expr.name in self.ctx.global_scope.bindings:
-                if not self._is_local_shadow(expr.name):
+                if not self.is_local_shadow(expr.name):
                     return True
             # Variables tracked as param-derived
             if self.ctx.func.bp_is_param_derived(expr.name):
@@ -3024,13 +3192,51 @@ class TypeCompatibility:
                 expr, return_type, loc,
                 source_type=self.ctx.get_expr_type(expr))
 
+    def _check_rebound_global_borrow(self, expr: TpyExpr,
+                                     return_type: TpyType, verb: str) -> None:
+        """Reject a borrow return/yield rooted in a module global that some
+        function rebinds.
+
+        The dangling checks pass this shape and are right to: a module global
+        outlives every call. What they cannot see is that `global S; S = ...`
+        REBINDS the slot, freeing the buffer the borrow points into -- so the
+        caller reads storage that was released between the call and the read.
+
+        Called from the arms of `check_dangling_reference` that borrow-check a
+        (sub-expression, type) pair, with that pair -- never off a parallel
+        classification of `return_type`, which drifted from the arms and
+        missed the tuple one.
+        """
+        found = self.rebound_global_borrow_root(expr, return_type)
+        if found is None:
+            return
+        name, owner, leg = found
+        family = _view_return_family(return_type)
+        if leg == 'view' and family is not None:
+            fix = (f"{verb.capitalize()} {family[1]} to hand back an owned "
+                   f"copy, or stop rebinding '{name}'.")
+        else:
+            # The reference-typed leg has no owning escape to offer, and the
+            # remedy must not claim the rebind itself is illegal: a plain `=`
+            # rebind is rejected in its own right (which of the two errors the
+            # user sees depends only on which function sema reaches first),
+            # but `+=` is an in-place extend in CPython that the lowering does
+            # not admit yet, so naming the function is all that is true.
+            fix = f"Stop rebinding '{name}' in '{owner}'."
+        raise self.ctx.error(
+            f"Cannot {verb} a borrow of module variable '{name}': function "
+            f"'{owner}' rebinds '{name}', and the rebind frees the storage "
+            f"this borrow points into. {fix}",
+            expr
+        )
+
     def check_dangling_reference(self, expr: TpyExpr, return_type: TpyType,
                                  loc: SourceLocation | None,
                                  source_type: TpyType | None = None,
                                  *, for_yield: bool = False) -> None:
         """Check if returning (or yielding) expr as a reference would dangle.
 
-        Object types are returned/yielded by reference. A local variable or
+        Reference types are returned/yielded by reference. A local variable or
         newly constructed object would create a dangling reference. `source_type`
         is the analyzed type of `expr` before return-coercion; it lets the
         recursive-union-wrapper case tell a wrap-into-wrapper (fresh temporary)
@@ -3053,6 +3259,7 @@ class TypeCompatibility:
         # OwnType returns by value (ownership transfer), so no dangling risk
         # Pointer types need dangling checks (the pointer value may point to a local)
         if isinstance(return_type, PtrType):
+            self._check_rebound_global_borrow(expr, return_type, verb)
             if self.is_dangling_return(expr, gen_yield=for_yield):
                 raise self.ctx.error(
                     f"Cannot {verb} pointer to local or temporary value; "
@@ -3064,6 +3271,7 @@ class TypeCompatibility:
         # borrows from a local would dangle after the function returns.
         view_msg = _dangling_view_message(return_type)
         if view_msg is not None:
+            self._check_rebound_global_borrow(expr, return_type, verb)
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
             view_arg = self._view_constructor_arg(inner)
             if view_arg is not None:
@@ -3114,6 +3322,10 @@ class TypeCompatibility:
                 or isinstance(return_type, (VoidType, OwnType))):
             return
 
+        # Every arm below returns a bare reference form (`T&` / `T*`), so one
+        # rebound-global check covers the wrapper, Optional and reference arms.
+        self._check_rebound_global_borrow(expr, return_type, verb)
+
         # Recursive-union wrappers follow the reference-type convention: a bare
         # `X` return lowers to `X&`. Coercing a value / list / None into the
         # wrapper materializes a fresh wrapper temporary, so returning it by
@@ -3132,7 +3344,7 @@ class TypeCompatibility:
                     src, gen_yield=for_yield):
                 raise self.ctx.error(
                     f"Cannot {verb} local or temporary as reference. "
-                    f"Object type '{return_type}' is {verb}ed by reference. "
+                    f"Reference type '{return_type}' is {verb}ed by reference. "
                     f"{_own_fix(return_type, cap=True)}.",
                     expr
                 )
@@ -3163,7 +3375,7 @@ class TypeCompatibility:
                 )
             raise self.ctx.error(
                 f"Cannot {verb} local or temporary as reference. "
-                f"Object type '{return_type}' is {verb}ed by reference. "
+                f"Reference type '{return_type}' is {verb}ed by reference. "
                 f"{_own_fix(return_type, cap=True)}.",
                 expr
             )
@@ -3218,6 +3430,11 @@ class TypeCompatibility:
         None coerced into it is a fresh temporary, so the per-element check uses
         the pre-coercion `source_type` member types to tell a wrap-into-wrapper
         leaf from a reference to an existing wrapper.
+
+        This is also where the rebound-global rule sees a tuple: the TUPLE is a
+        value type, so only its members are borrows, and each member is checked
+        against its own element type (a `StrView` member is a view over the
+        slot even though `StrView` itself is a value type).
         """
         inner = peel_value_wrappers(expr)
         # A ternary returns whichever arm is taken -- check both.
@@ -3236,6 +3453,8 @@ class TypeCompatibility:
         for i, et in enumerate(tuple_type.element_types):
             if i >= len(inner.elements):
                 break
+            if _elem_is_borrow_form(et):
+                self._check_rebound_global_borrow(inner.elements[i], et, verb)
             if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
                 continue
             bad = self.is_dangling_return(inner.elements[i], gen_yield=gen_yield)

@@ -1,0 +1,1 @@
+main.py:18: error: Cannot return local or temporary as reference. Reference type 'Holder' is returned by reference. Use Own[Holder] to return by value.

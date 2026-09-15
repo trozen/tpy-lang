@@ -1,0 +1,1 @@
+main.py:19: error: Cannot reassign global variable 'XS' of non-value type 'list[int32]'

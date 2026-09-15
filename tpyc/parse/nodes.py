@@ -744,6 +744,16 @@ class RebindStorage(Enum):
     OWN = "own"
 
 
+class TryTier(Enum):
+    """How a `try` statement dispatches -- decided by sema's tier
+    classification, read by the lowering and the resumable CFG. RETURN:
+    ReturnException handlers, goto-based dispatch. THROW: ordinary
+    handlers, a C++ try/catch. FINALLY_ONLY: no handlers, cleanup only."""
+    RETURN = "return"
+    THROW = "throw"
+    FINALLY_ONLY = "finally_only"
+
+
 @dataclass
 class TpyStmt:
     """Base class for statements."""
@@ -1066,8 +1076,14 @@ class TpyTry(TpyStmt):
     handlers: list[TpyExceptHandler]  # 0+ except clauses
     else_body: list[TpyStmt]         # may be empty
     finally_body: list[TpyStmt]      # may be empty
-    # Set by sema: "return" for ReturnException goto-based, "throw" for C++ try/catch
-    tier: Literal["return", "throw", "finally_only"] | None = None
+    # Set by sema; None until the tier classification runs.
+    tier: TryTier | None = None
+    # Set by sema on a RETURN tier: does the try body hold a call whose
+    # @error_return failure this handler catches? Nothing else can enter a
+    # return-tier handler (a `raise` of the error type returns from the
+    # enclosing @error_return function instead of dispatching locally), so
+    # when this is False the handler is dead code.
+    handled_error_return: bool = False
 
     def sub_bodies(self) -> list[list[TpyStmt]]:
         bodies = [self.try_body, self.else_body, self.finally_body]

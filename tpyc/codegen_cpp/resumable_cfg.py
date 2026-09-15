@@ -40,7 +40,7 @@ from ..parse.nodes import (
     TpyMatch,
     TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyTupleUnpack, TpyVarDecl,
     TpyWhile, TpyWith,
-    TpyWithItem, TpyYield,
+    TpyWithItem, TpyYield, TryTier,
     stmt_has_any_suspension as _stmt_has_any_suspension,
     stmts_have_any_suspension as _stmts_have_any_suspension,
     stmts_have_any_return as _stmts_have_any_return,
@@ -567,7 +567,6 @@ class TryRegion:
     """
     handlers: tuple[TpyExceptHandler, ...]
     finally_helper_name: str | None       # None if try has no finally body OR CFG-based
-    tier: str                              # "throw" / "return" / "finally_only"
     # Source-level loc for emit diagnostics.
     loc_source: TpyStmt | None = None
     # CFG-based finally fields (None for helper-based / no finally).
@@ -1436,7 +1435,6 @@ class CFGBuilder:
         try_region = TryRegion(
             handlers=(handler,),
             finally_helper_name=None,
-            tier="throw",
             loc_source=stmt,
         )
 
@@ -1504,6 +1502,37 @@ class CFGBuilder:
     # -- try/except/finally ---------------------------------------------
 
     def _build_try(self, cur: int, stmt: TpyTry) -> int | None:
+        if stmt.tier is TryTier.RETURN and stmt.handled_error_return:
+            # Sema classified the handlers as ReturnException ones, so the
+            # only thing that can enter them is a failing @error_return
+            # call -- never a C++ throw. A decomposed try has no way to
+            # spell that edge yet (the handler is another basic block, and
+            # the unwrap check has no state transition to take), so the
+            # region would emit a catch nothing reaches and the calls in
+            # its body would take the unhandled disposition. Reject instead
+            # of emitting that. A False flag means no EXPLICIT call: those
+            # are admitted at one sema chokepoint
+            # (`_check_error_return_handled`), and the implicit caller that
+            # would otherwise bypass it -- a `with` header's
+            # `__enter__`/`__exit__` -- is rejected in `_analyze_with`. The
+            # other implicit callers (an `@error_return` `__getitem__` or
+            # `__add__`) never reach this function at all: the record's
+            # generated operator bridge returns the raw `std::expected` and
+            # the C++ build fails at the class definition
+            # (BUGS.md#error-return-operator-bridge-unlocated). So no
+            # reachable shape leaves the flag False with a failing call in
+            # the body: the handler is unreachable, the dead catch the
+            # region emits is harmless, and the shape keeps compiling.
+            raise _CFGNotYetSupported(
+                "'except StopIteration' (or any other ReturnException type) "
+                "is not yet supported inside a generator or 'async def' when "
+                "the 'try' needs its own states -- it holds an "
+                "'await'/'yield', or a 'break'/'continue' that leaves it. "
+                "Move the 'try' into a helper function and call that, or "
+                "keep the 'try' free of suspensions and of transfers out of "
+                "it.",
+                loc=stmt.loc,
+            )
         finally_name: str | None = None
         finally_entry_bb: int | None = None
         captured_exc_field: str | None = None
@@ -1583,7 +1612,6 @@ class CFGBuilder:
         try_region = TryRegion(
             handlers=tuple(stmt.handlers),
             finally_helper_name=finally_name,
-            tier=stmt.tier or "throw",
             loc_source=stmt,
             finally_entry_bb=finally_entry_bb,
             captured_exc_field=captured_exc_field,
@@ -1881,7 +1909,6 @@ class CFGBuilder:
         try_region = TryRegion(
             handlers=(),
             finally_helper_name=None,
-            tier="throw",
             loc_source=stmt,
             finally_entry_bb=finally_entry_bb,
             captured_exc_field=captured_exc_field,

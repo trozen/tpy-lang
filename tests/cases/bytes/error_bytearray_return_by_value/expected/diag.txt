@@ -1,1 +1,1 @@
-main.py:5: error: Cannot return local or temporary as reference. Object type 'bytearray' is returned by reference. Use Own[bytearray] to return by value.
+main.py:5: error: Cannot return local or temporary as reference. Reference type 'bytearray' is returned by reference. Use Own[bytearray] to return by value.

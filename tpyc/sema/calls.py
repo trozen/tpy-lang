@@ -5169,6 +5169,7 @@ class CallAnalyzer:
         # Inside matching try/except (or except ReturnException catch-all)
         ctx_error_type = self.ctx.func.try_except_error_type
         if error_return_matches(ctx_error_type, func.error_return_type) or ctx_error_type == "*":
+            self.ctx.func.try_except_error_handled = True
             return
         # Auto-propagation: caller has matching @error_return(E), not inside a try/except
         # (inside try/except, the goto-based dispatch handles it instead)

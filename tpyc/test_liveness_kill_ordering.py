@@ -13,7 +13,7 @@ from tpyc.liveness import analyze_last_uses
 from tpyc.parse.nodes import (
     TpyExceptHandler, TpyFunction, TpyMethodCall, TpyName, TpyNestedDef,
     TpyNoneLiteral,
-    TpyPassStmt, TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl,
+    TpyPassStmt, TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl, TryTier,
 )
 
 
@@ -115,7 +115,7 @@ class TestExceptionPathRestore:
                 handlers=[],
                 else_body=[],
                 finally_body=[_decl("x", TpyName(name="v"))],
-                tier="finally_only",
+                tier=TryTier.FINALLY_ONLY,
             ),
         ])
         assert not _is_last_use(marks, consumed)
@@ -132,7 +132,7 @@ class TestExceptionPathRestore:
                     body=[_decl("x", TpyName(name="v"))])],
                 else_body=[],
                 finally_body=[],
-                tier="throw",
+                tier=TryTier.THROW,
             ),
         ])
         assert not _is_last_use(marks, consumed)
@@ -149,7 +149,7 @@ class TestExceptionPathRestore:
                     body=[TpyPassStmt()])],
                 else_body=[],
                 finally_body=[],
-                tier="throw",
+                tier=TryTier.THROW,
             ),
         ])
         assert _is_last_use(marks, consumed)

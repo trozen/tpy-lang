@@ -186,6 +186,11 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
     if expr is None:
         return False
     if isinstance(expr, TpyCoerce):
+        # The rule is on the node, so the untyped scan reads the same fact the
+        # typed twin does: a fresh-value rule renders a prvalue whatever the
+        # source was, every other rule passes its inner through.
+        if expr.coercion.builds_fresh_value:
+            return True
         return is_scan_rvalue(expr.expr)
     if isinstance(expr, (TpyName, TpySubscript)):
         return False
@@ -193,9 +198,12 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
         return is_scan_rvalue(expr.obj)
     if isinstance(expr, TpyNamedExpr):
         return is_scan_rvalue(expr.value)
-    # The container/generator-shaped rvalues (comprehensions included) are
-    # the same set the typed twin `value_category.is_rvalue_source` admits,
-    # so a comp-rebound name lands in `rvalue_reassigned` on both sides.
+    # These are the shapes the typed twin `value_category.is_rvalue_source`
+    # admits too (the container/generator-shaped rvalues, comprehensions
+    # included), so a comp-rebound name lands in `rvalue_reassigned` on both
+    # sides. The twin then NARROWS a call/subscript/dunder result to an
+    # lvalue when the callee returns `T&` -- a resolved-signature fact this
+    # scan cannot see, so it answers True for the whole shape.
     return isinstance(expr, (TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
                              TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                              TpyBoolLiteral, TpyNoneLiteral,
@@ -500,24 +508,59 @@ def collect_fact_kills(stmts: list[TpyStmt],
     return kills
 
 
+def bound_names_of(stmt: TpyStmt) -> set[str]:
+    """Names this ONE statement binds by whole name -- no sub-body walk, no
+    nested-def descent, no field / element targets (those write THROUGH a
+    binding rather than reseating it).
+
+    `del x` is a binding write: it releases the storage the name held, which
+    invalidates an outstanding borrow exactly as a rebind does.
+    """
+    if isinstance(stmt, TpyVarDecl):
+        return {stmt.name}
+    if isinstance(stmt, (TpyAssign, TpyAugAssign)):
+        return ({stmt.target.name} if isinstance(stmt.target, TpyName)
+                else set())
+    if isinstance(stmt, TpyTupleUnpack):
+        return {n for n in stmt.targets if n is not None}
+    if isinstance(stmt, TpyForEach):
+        return {stmt.var}
+    if isinstance(stmt, TpyWith):
+        return {i.target for i in stmt.items if i.target is not None}
+    if isinstance(stmt, TpyDelVar):
+        return set(stmt.names)
+    return set()
+
+
+def walrus_names_of(stmt: TpyStmt) -> set[str]:
+    """Names this ONE statement binds through a walrus in its own expressions.
+
+    A walrus is a whole-name binding of the enclosing scope exactly as an
+    assignment is (in a comprehension too), but it sits inside an expression
+    where `bound_names_of`'s target walk cannot reach it. Reads the same
+    enumerator the fact-kill scan uses rather than walking expressions again.
+
+    `_kills_in_expr`'s generic field walk descends into a LAMBDA body, so a
+    walrus there counts as a binding of this statement's scope. That is wrong
+    for Python -- the lambda is its own scope, which is why the parser's
+    `written_names` / `walrus_bindings` stop at `TpyLambda.children() == []`
+    -- but it matches what TPy currently EMITS for such a walrus under a
+    `global` declaration (a write to the module slot,
+    BUGS.md#lambda-body-walrus-binds-enclosing-scope), so counting it keeps
+    the rebind facts consistent with the generated code. Swap this for
+    `written_names` once the lambda-scope divergence is fixed.
+    """
+    kills = FactKills()
+    for expr in stmt.exprs():
+        _kills_in_expr(expr, kills)
+    return kills.names
+
+
 def _collect_fact_kills(stmts: list[TpyStmt], kills: FactKills) -> None:
     for stmt in stmts:
-        if isinstance(stmt, TpyVarDecl):
-            kills.names.add(stmt.name)
-        elif isinstance(stmt, (TpyAssign, TpyAugAssign)):
+        kills.names.update(bound_names_of(stmt))
+        if isinstance(stmt, (TpyAssign, TpyAugAssign)):
             _kills_assign_target(stmt.target, kills)
-        elif isinstance(stmt, TpyTupleUnpack):
-            for name in stmt.targets:
-                if name is not None:
-                    kills.names.add(name)
-        elif isinstance(stmt, TpyForEach):
-            kills.names.add(stmt.var)
-        elif isinstance(stmt, TpyWith):
-            for item in stmt.items:
-                if item.target is not None:
-                    kills.names.add(item.target)
-        elif isinstance(stmt, TpyDelVar):
-            kills.names.update(stmt.names)
         elif isinstance(stmt, TpyDelAttr):
             for t in stmt.targets:
                 key = _expr_to_narrowing_key(t)

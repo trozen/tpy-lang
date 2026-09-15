@@ -29,7 +29,7 @@
 
 | Area | Detail |
 |------|--------|
-| `get(key, default)` default by value | Default is always constructed even on hit (C++ pass-by-value). Pre-existing pattern shared with `pop(key, default)`. |
+| `get(key, default)` default forwarded | The runtime takes the default as a forwarding reference and builds the owned `V` from it only on the miss path; a hit never touches it. Shared with `pop(key, default)` and `setdefault`. |
 | `setdefault` default ownership | Uses `OwnType(V)` for sema-level move enforcement; `get` uses plain `V` since it never inserts. Intentional asymmetry. |
 
 ---

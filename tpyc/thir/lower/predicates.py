@@ -131,7 +131,7 @@ from ...type_def_registry import (
     is_string_type,
     type_def_of,
 )
-from ...coercions import CoercionContext
+from ...coercions import CoercionContext, context_free_wrap_template
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
     call_returns_cpp_ref,
@@ -245,29 +245,6 @@ _VIEW_TARGET_STR_COERCIONS = frozenset({"str_to_strview", "string_to_strview"})
 _IDENTITY_STR_COERCIONS = (frozenset({_STRING_TO_STR_COERCION})
                            | _VIEW_TARGET_STR_COERCIONS)
 
-# Scalar-cast coercions whose codegen lambda is a fixed template around the
-# inner render, position-independent -- spelled here as `{0}` templates and
-# carried on `THIRCoerce.wrap` (computed at lowering, formatted at emit).
-# `fixed_int_widening`'s target-typed cast is derived from the coerce's
-# expected type at lowering (see `_coerce_wrap`), not listed here.
-_TEMPLATE_COERCIONS: dict[str, str] = {
-    "int_literal_to_float": "static_cast<double>({0})",
-    "fixed_int_to_float": "static_cast<double>({0})",
-    "float32_to_float": "static_cast<double>({0})",
-    "int_literal_to_float32": "static_cast<float>({0})",
-    "fixed_int_to_float32": "static_cast<float>({0})",
-    "float_to_float32": "static_cast<float>({0})",
-    "fixed_int_to_bigint": "::tpy::BigInt({0})",
-    "bigint_to_float": "static_cast<double>({0})",
-    "bigint_to_float32": "static_cast<float>({0})",
-    # char -> str/String/StrView: position-independent single-arg wraps
-    # (coercions.py's char_to_* lambdas). The StrView target views the shared
-    # buffer, so the coerce arm's str-view-target rule tags it BORROW.
-    "char_to_str": "std::string(::tpy::char_to_str({0}))",
-    "char_to_string": "std::string(1, {0})",
-    "char_to_strview": "::tpy::char_to_str({0})",
-}
-
 # The float32-targeted float literal: an identity lambda whose `f`-suffix
 # render comes from the literal seeing the coerce TARGET, so lowering retypes
 # the THIRLiteral to float32.
@@ -278,10 +255,10 @@ _FLOAT32_LIT_COERCION = "float_literal_to_float32"
 # lowering retypes the THIRLiteral so the emitter picks the ctor arms.
 _BIGINT_LIT_COERCION = "int_literal_to_bigint"
 
-# Address-taking Ptr coercions: the codegen lambda is `&{e}` in every
-# position. An indirect-name inner is pre-dereferenced (`&(*g)` for a
-# pointer-slot global / pointer-local source), so the coerce arm derefs
-# names in lc.pointers.
+# Address-taking Ptr coercions. An indirect-name inner is pre-dereferenced
+# (`&(*g)` for a pointer-slot global / pointer-local source), so the coerce
+# arm derefs names in lc.pointers; the `&{0}` render itself comes from the
+# rows (they are `context_free_wrap`).
 _ADDR_PTR_COERCIONS = frozenset({
     "record_to_ptr", "record_to_const_ptr", "value_to_ptr",
     "upcast_to_ptr", "upcast_to_const_ptr"})
@@ -317,27 +294,19 @@ _INDIRECT_DEREF_COERCIONS = (_ADDR_PTR_COERCIONS | {"bigint_to_fixed_int"}
                              | _SPAN_METHOD_COERCIONS)
 
 def _coerce_wrap(e: TpyCoerce) -> 'str | None':
-    """The `{0}` render template for the scalar-cast coercion family, else
-    None. `fixed_int_widening`'s and
-    `bigint_to_fixed_int`'s target-typed spellings are derived from the
-    coerce's expected type verbatim (the lambdas read `b.to_cpp()` off the
-    same node field)."""
+    """The `{0}` render template for a coercion the lowering can pre-render,
+    else None.
+
+    A `context_free_wrap` row renders itself off the node's own types, so
+    every scalar cast, the char->str family and the address-takers come
+    straight from `COERCIONS`. The rows below are position-dependent in a way
+    the flag cannot express -- they read the ACTUAL type's shape, so the
+    choice has to be made here."""
     name = e.coercion.name
-    if name in _TEMPLATE_COERCIONS:
-        return _TEMPLATE_COERCIONS[name]
-    if name == "fixed_int_widening":
-        return f"static_cast<{e.expected_type.to_cpp()}>({{0}})"
-    if name == "bigint_to_fixed_int":
-        return f"({{0}}).to_fixed_check<{e.expected_type.to_cpp()}>()"
-    # INT-kind type-param reads (`N` -- a std::size_t template value param)
-    # cast per the coercion lambdas: target-typed for fixed ints, the
-    # int64_t hop for BigInt.
-    if name == "int_type_param_to_fixed_int":
-        return f"static_cast<{e.expected_type.to_cpp()}>({{0}})"
-    if name == "int_type_param_to_bigint":
-        return "::tpy::BigInt(static_cast<int64_t>({0}))"
-    if name in _ADDR_PTR_COERCIONS:
-        return "&{0}"
+    template = context_free_wrap_template(
+        e.coercion, e.actual_type, e.expected_type)
+    if template is not None:
+        return template
     # `deref_to_target` over a Ptr[T] source is position-uniform
     # (arg/return/init all render `::tpy::deref_check(x)`); the
     # record-wrapper `.__deref__()` flavor keeps its dedicated arg row.
@@ -390,8 +359,10 @@ def _coerce_disposition(e: TpyCoerce, *,
     directly (the lambda's startswith('"') token check made structural:
     cpp_string_literal_expr emits the bare-quote form exactly when the value
     is NUL-free). `strview_to_string` (a `const ::tpy::String&` slot / an owned
-    String target) materializes in every position. The Optional and char
-    arms have their own renders and reject here."""
+    String target) materializes in every position. The Optional arms have
+    their own renders and reject here; the char family takes the `{0}` wrap
+    (`_coerce_wrap`), at an `Own[str]` element slot included -- its render
+    is a prvalue, so no cascade owns the decision there."""
     name = e.coercion.name
     if name in (_INT_LIT_COERCION, _FLOAT_LIT_COERCION,
                 _FLOAT32_LIT_COERCION, _BIGINT_LIT_COERCION):
@@ -428,6 +399,14 @@ def _coerce_disposition(e: TpyCoerce, *,
             # (`log.append(v)` -> `push_back((v).to_fixed_check<..>())`):
             # Own over a value scalar adds nothing, and the cast rvalue
             # binds the slot natively -- the Own[Ptr] precedent.
+            return "template"
+        if e.coercion.builds_fresh_value and _coerce_wrap(e) is not None:
+            # A fresh-value rule at an `Own[str]`/`Own[String]` element slot
+            # (`lut.append(CHARS[i])` -> `push_back(std::string(
+            # ::tpy::char_to_str(::tpy::__getitem__(CHARS, i))))`): the wrap
+            # renders a prvalue whatever the source was, so it binds the
+            # owned slot natively and there is no cascade to defer to --
+            # the `Own[value-scalar]` cast row above, one type family over.
             return "template"
         if (name == "strview_to_str" and not isinstance(e.expr, TpyName)):
             # A view->owned materialize of an RVALUE source at an
@@ -2524,9 +2503,10 @@ def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
         return "bare" if narrow is None else "reject"
     if _const_index(_unwrap_lit_coerce(index)) is not None:
         # A coerce-wrapped literal is not a plain int constant, so the
-        # narrow would wrap the literal's target-typed render -- a shape
-        # not observed at index positions (sema leaves indices unwrapped);
-        # a defensive reject rather than a guess.
+        # narrow would wrap the literal's target-typed render -- a shape no
+        # index position produces (the one coercion sema puts on an index,
+        # the dict-key narrow, already carries the width, so such an index
+        # tests non-BigInt above); a defensive reject rather than a guess.
         return "reject"
     return "bare" if narrow is None else narrow
 
@@ -2535,7 +2515,14 @@ def _narrow_bigint_index(idx: 'THIRExpr', e: TpyExpr, obj_type: 'TpyType | None'
                          declared: dict[str, TpyType]) -> 'THIRExpr':
     """Wrap a lowered runtime-BigInt index in the `.to_fixed_check<T>()`
     narrow when its disposition says so (reads, del-item); 'reject' never
-    reaches lowering (the gates exclude it)."""
+    reaches lowering (the gates exclude it). A DICT key arrives already
+    narrowed -- sema checks it against the key type and puts the coercion on
+    the node -- so this serves the positions sema does not check: list /
+    Array / Span indices, and a user record's subscript. On a record the
+    width always comes from `__getitem__`'s key param, whatever dunder the
+    operation dispatches to, so a `__delitem__(self, i: int)` still narrows
+    to int32 and panics where CPython runs
+    (BUGS.md#record-subscript-bigint-narrow-width)."""
     disp = _bigint_index_disposition(e, obj_type, analyzer, declared)
     if isinstance(disp, str):
         return idx

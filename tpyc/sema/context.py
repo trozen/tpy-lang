@@ -9,11 +9,11 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import Any, Iterator, Literal, TYPE_CHECKING
+from typing import Any, Iterator, TYPE_CHECKING
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..macro_loader import MacroRegistry
-from ..parse.nodes import SourceLocation
+from ..parse.nodes import SourceLocation, TryTier
 from .. import qnames
 from . import own_copy
 from .value_range import ValueRange
@@ -787,7 +787,11 @@ class FunctionTrackingState:
     #     @error_return calls pass the must-handle check and emit gotos
     #     to labels outside the lambda) ---
     try_except_error_type: str | None = None
-    in_except_tier: Literal["return", "throw"] | None = None
+    # Set by the call check when a call's @error_return failure is admitted
+    # BECAUSE `try_except_error_type` matches it; the enclosing
+    # `_analyze_try_return` reads it back into `TpyTry.handled_error_return`.
+    try_except_error_handled: bool = False
+    in_except_tier: TryTier | None = None
     # Whether the current except handler has an 'as e' binding (needed for return-tier re-raise)
     in_except_has_binding: bool = False
     # True when analyzing a finally body
@@ -1197,6 +1201,10 @@ class SemanticContext:
 
     # --- Import tracking ---
     imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
+    # Source line of each user-module import statement, so a diagnostic about
+    # an imported NAME can point at the import instead of the whole file
+    # (the name tuples in `imports` carry no location of their own).
+    user_module_import_lines: dict[str, int] = field(default_factory=dict)
     bare_module_imports: set[str] = field(default_factory=set)
     imported_names: dict[str, tuple[str, str]] = field(default_factory=dict)
 
@@ -1237,6 +1245,12 @@ class SemanticContext:
     # `install_binding` no-ops.
     module_attributes: 'dict | None' = None
     top_level_decls: dict[str, int] = field(default_factory=dict)
+    # The module-level statement currently being analyzed at depth 0, set by
+    # `_analyze_top_level`'s driver loop. A binding made by THIS statement is
+    # the module's namespace-scope storage; one made inside an `if`/`for`/
+    # `try` body at module level is a local of the generated `__tpy_init`,
+    # with no slot to export, import or borrow from.
+    current_module_stmt: 'TpyStmt | None' = None
     # Defining modules this module's code references. Populated by
     # sema.reach_analysis after analysis completes; consumed by codegen
     # to drive transitive include emission.
@@ -1257,6 +1271,18 @@ class SemanticContext:
     # which would strand a closure's obligations away from the placeholder
     # they hold.
     own_copy_forwards: list = field(default_factory=list)
+
+    # Top-level names `register_globals` put in `global_scope` from their
+    # ANNOTATION, before any statement was analyzed. Distinct from the
+    # scope's membership, which also carries inferred top-level bindings
+    # once their init has been analyzed.
+    preregistered_globals: set[str] = field(default_factory=set)
+
+    # Module globals some function in this module rebinds through `global`,
+    # mapped to that function's name (`global_write_facts`). Decided before
+    # any body is analyzed, because a borrow return in the FIRST body has to
+    # know about a rebind in the last one.
+    rebound_globals: dict[str, str] = field(default_factory=dict)
 
     # --- Final globals ---
     final_globals: set[str] = field(default_factory=set)
@@ -1381,6 +1407,16 @@ class SemanticContext:
     def error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
         """Create a SemanticError with location from a node."""
         return SemanticError(message, self._resolve_loc(node))
+
+    def error_from_loc(self, message: str,
+                       loc: 'SourceLocation | None') -> SemanticError:
+        """Create a SemanticError from a location the caller already has.
+
+        Keeps `error`'s fallback to the enclosing function / record, so a
+        diagnostic raised off a recorded line is never less located than one
+        raised off a node."""
+        return SemanticError(message, loc if loc is not None
+                             else self._resolve_loc(None))
 
     def reject_resumable_nested_def_escape(
             self, name: str, node: 'TpyExpr | TpyStmt | None') -> None:
@@ -1976,6 +2012,24 @@ class SemanticContext:
         f = self.func.current_function
         return (isinstance(f, TpyFunction) and f.is_method
                 and not f.is_staticmethod)
+
+    def is_module_slot_stmt(self, stmt: 'TpyStmt') -> bool:
+        """True when `stmt` is the module-level statement whose bindings get
+        namespace-scope storage: a direct element of the module's statement
+        list, not one nested in a block body and not a synthetic init temp."""
+        return self.is_top_level and stmt is self.current_module_stmt
+
+    def define_module_global(self, name: str, var_type: 'TpyType | None',
+                             line: int) -> None:
+        """Record a module-slot binding. The single writer of the module's
+        global tables, so the export collection, the storage-durability
+        checks and the order-aware codegen all see one verdict.
+
+        `top_level_decls` keeps the EARLIEST line, so a use between two
+        re-declarations still resolves against the global."""
+        self.global_scope.define(name, var_type)
+        prior = self.top_level_decls.get(name)
+        self.top_level_decls[name] = line if prior is None else min(prior, line)
 
     def mark_param_mutated(self, name: str, *, through_field: bool = False) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).

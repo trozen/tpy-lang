@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<int64_t, std::string> d = ::tpy::ordered_map<int64_t, std::string>();
     ::tpy::BigInt k = ::tpy::BigInt::from_str("1180591620717411303424");
-    ::tpy::__setitem__(d, k.to_fixed_check<int64_t>(), "boom");
+    ::tpy::__setitem__(d, (k).to_fixed_check<int64_t>(), "boom");
 }
 
 // main()

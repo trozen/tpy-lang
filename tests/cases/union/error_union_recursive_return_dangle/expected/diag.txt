@@ -1,1 +1,1 @@
-main.py:8: error: Cannot return local or temporary as reference. Object type 'Expr' is returned by reference. Use Own[Expr] to return by value.
+main.py:8: error: Cannot return local or temporary as reference. Reference type 'Expr' is returned by reference. Use Own[Expr] to return by value.

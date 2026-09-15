@@ -574,15 +574,31 @@ class CodeGenerator:
         # Separate global declarations from other top-level statements early
         # (needed for extern declarations in header)
         # Track seen names and types to handle re-declarations (z = 0; z = 5; -> one global, one assignment)
+        # WHICH names get a module slot is sema's verdict, read off
+        # `top_level_decls` (`SemanticContext.define_module_global`); this
+        # walk only recovers the NODES to emit for them, so the two cannot
+        # drift into sema certifying storage the header never declares. A
+        # binding made inside a block body at module level, and a synthetic
+        # init-scoped temp, are `__tpy_init` locals and are absent there.
+        module_slots = self.analyzer.ctx.top_level_decls
         global_decls = []
         final_decls: list[TpyVarDecl] = []
         native_globals: list[TpyVarDecl] = []
         seen_globals: dict[str, TpyType | None] = {}
         for stmt in module.top_level_stmts:
             if isinstance(stmt, TpyVarDecl):
-                if stmt.module_init_local:
-                    # A synthetic init-scoped temp: emitted as a __tpy_init local
-                    # by the body codegen, not hoisted to a module global.
+                if stmt.name not in module_slots:
+                    # Only a synthetic init-scope temp may be absent: every
+                    # other depth-0 declaration is a module slot by sema's own
+                    # rule (`is_module_slot_stmt`). Silently skipping one would
+                    # emit a header without its storage and surface as an
+                    # unlocated g++ error at every use.
+                    if not stmt.module_init_local:
+                        raise CodeGenError(
+                            f"internal: module-level declaration '{stmt.name}' "
+                            f"has no module slot; sema did not call "
+                            f"define_module_global for it",
+                            stmt.loc)
                     continue
                 if stmt.name not in seen_globals:
                     # Store the type for this global
@@ -599,7 +615,8 @@ class CodeGenerator:
                         global_decls.append(stmt)
             elif isinstance(stmt, TpyTupleUnpack):
                 for i, name in enumerate(stmt.targets):
-                    if name is None or name in seen_globals:
+                    if (name is None or name in seen_globals
+                            or name not in module_slots):
                         continue
                     var_type = stmt.target_types[i]
                     if isinstance(var_type, OwnType):

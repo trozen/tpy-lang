@@ -1,0 +1,1 @@
+main.py:14: error: Cannot return a borrow of module variable 'XS': function 'reset' rebinds 'XS', and the rebind frees the storage this borrow points into. Stop rebinding 'XS' in 'reset'.

@@ -225,8 +225,12 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         return True
     if isinstance(expr, TpyMethodCall):
         return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
-    # Coercions: depends on inner expr
+    # Coercions: a rule that builds a fresh value yields a prvalue whatever the
+    # source was; every other rule renders the inner through, so it inherits
+    # the inner's category.
     if isinstance(expr, TpyCoerce):
+        if expr.coercion.builds_fresh_value:
+            return True
         return is_rvalue_source(analyzer, expr.expr)
     # Function calls
     if isinstance(expr, TpyCall):

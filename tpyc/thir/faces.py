@@ -819,6 +819,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ctor call (classifier row)
     "field_write.str_call",         # str field <- a str-typed call rvalue
                                     # (classifier row; shared bare STR emit)
+    "field_write.fresh_value_coerce",  # str field <- a builds_fresh_value
+                                    # coerce (`self.s = CHARS[i]`), whose own
+                                    # wrap is the construction (classifier row)
     "field_write.bytes_narrowed_opt",  # bytes field <- a NAME declared
                                     # `bytes | None`, narrowed here
     "field_write.bytes_slice",      # `self.b = x[1:3]` -- a bytes SLICE value
@@ -1778,6 +1781,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # pointer-repr tuple slot (borrow builder)
     "mil.native_ctor",              # ctor MIL field init from a plain @native
                                     # record ctor (`_logger(::ns::H(name))`)
+    "mil.fresh_value_coerce",       # ctor MIL str field init from a
+                                    # builds_fresh_value coerce (`self.t =
+                                    # s[0]`), whose wrap is the construction
     "arg.own_tparam_call_rvalue",   # T-returning call rvalue bare at the
                                     # same open Own[T] slot
     "call.dyn_getattr_builtin",     # 2-arg getattr(obj, name) delegated to

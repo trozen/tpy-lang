@@ -9,11 +9,42 @@ namespace tpyapp::main {
 //     print(d.get("a", 99))     # 1
 //     print(d.get("z", 99))     # 99
 //     print(d.get("b", 0))      # 2
+//
+//     s: dict[str, str] = {"a": "alpha"}
+//     lv = String("lvalue")
+//     # a default whose form is not V's storage: a String lvalue, then a char
+//     print(s.get("a", lv))          # tpyc: ok
+//     print(s.get("z", lv))          # tpyc: ok
+//     print(s.pop("z", char("q")))   # tpyc: ok
+//
+//     b: dict[str, bytes] = {"a": b"hi"}
+//     ba = bytearray(b"zz")
+//     # the subject: a bytearray copied into the bytes default slot -- the legs
+//     # print the value, so a divergence from CPython cannot hide behind a bool
+//     print(b.get("a", bytes(ba)))   # tpyc: ok
+//     print(b.get("z", bytes(ba)))   # tpyc: ok
+//     print(b.pop("z", bytes(ba)))   # tpyc: ok
+//     # setdefault takes the same default and STORES it, so the key is present
+//     # on the second call and the stored value comes back
+//     print(b.setdefault("c", bytes(ba)))   # tpyc: ok
+//     print(b.setdefault("c", b"other"))    # tpyc: ok
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     std::cout << ::tpy::dict_get_default(d, "a", 99) << "\n";
     std::cout << ::tpy::dict_get_default(d, "z", 99) << "\n";
     std::cout << ::tpy::dict_get_default(d, "b", 0) << "\n";
+    ::tpy::ordered_map<std::string, std::string> s = ::tpy::ordered_map<std::string, std::string>({{"a", "alpha"}});
+    ::tpy::String lv = ::tpy::String("lvalue");
+    std::cout << ::tpy::dict_get_default(s, "a", lv) << "\n";
+    std::cout << ::tpy::dict_get_default(s, "z", lv) << "\n";
+    std::cout << ::tpy::dict_pop_default(s, "z", ::tpy::char_to_str(::tpy::char_from_str("q"))) << "\n";
+    ::tpy::ordered_map<std::string, ::tpy::Bytes> b = ::tpy::ordered_map<std::string, ::tpy::Bytes>({{"a", ::tpy::bytes_literal_owned("hi", 2)}});
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("zz", 2));
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_get_default(b, "a", ::tpy::Bytes(ba))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_get_default(b, "z", ::tpy::Bytes(ba))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_pop_default(b, "z", ::tpy::Bytes(ba))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_setdefault(b, "c", ::tpy::Bytes(ba))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_setdefault(b, "c", ::tpy::bytes_literal_owned("other", 5))) << "\n";
 }
 
 // main()

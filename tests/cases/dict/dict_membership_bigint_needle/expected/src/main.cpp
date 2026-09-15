@@ -55,7 +55,7 @@ void main() {
     ::tpy::BigInt one = ::tpy::BigInt(1);
     std::cout << ::tpy::print_bool((::tpy::dict_values(counts).contains(one))) << "\n";
     ::tpy::ordered_map<int64_t, std::string> d64 = ::tpy::ordered_map<int64_t, std::string>();
-    ::tpy::__setitem__(d64, big.to_fixed_check<int64_t>(), "wide");
+    ::tpy::__setitem__(d64, (big).to_fixed_check<int64_t>(), "wide");
     std::cout << ::tpy::print_bool((d64.contains(big))) << "\n";
     ::tpy::BigInt huge = ::tpy::BigInt::from_str("1180591620717411303424");
     std::cout << ::tpy::print_bool((d64.contains(huge))) << "\n";

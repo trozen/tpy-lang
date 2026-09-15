@@ -21,6 +21,7 @@
 #include <sstream>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 #include "core.hpp"
 #include "next_iter.hpp"
@@ -96,21 +97,36 @@ V dict_pop(ordered_map<K, V>& m, const KeyArg& key) {
     return result;
 }
 
+// The message the three default-taking natives share when the default cannot
+// become the dict's value type. Each spells it as a static_assert in the body
+// rather than as a `requires` clause: a failed constraint would REMOVE the only
+// candidate, and the toolchain would report "no matching function" instead.
+#define TPY_DICT_DEFAULT_ASSERT(V, DefArg)                                   \
+    static_assert(std::constructible_from<V, DefArg&&>,                      \
+                  "the default passed to dict get/pop/setdefault must be "   \
+                  "constructible into the dict's value type")
+
 // d.pop(key, default) -> V
-template<typename K, typename V, typename KeyArg>
-V dict_pop_default(ordered_map<K, V>& m, const KeyArg& key, V def) {
+// The default arrives in the BORROW form the stub declares (`default: V`):
+// a `str` one is a view, a `bytes` one a span, a BigInt one still an `int`
+// literal -- so it gets its own parameter, like the heterogeneous key, and
+// the owned V this returns is built here rather than deduced from it.
+template<typename K, typename V, typename KeyArg, typename DefArg>
+V dict_pop_default(ordered_map<K, V>& m, const KeyArg& key, DefArg&& def) {
+    TPY_DICT_DEFAULT_ASSERT(V, DefArg);
     auto it = m.find(key);
-    if (it == m.items_end()) return def;
+    if (it == m.items_end()) return V(std::forward<DefArg>(def));
     V result = std::move((*it).second);
     m.erase(it);
     return result;
 }
 
 // d.get(key, default) -> V
-template<typename K, typename V, typename KeyArg>
-V dict_get_default(const ordered_map<K, V>& m, const KeyArg& key, V def) {
+template<typename K, typename V, typename KeyArg, typename DefArg>
+V dict_get_default(const ordered_map<K, V>& m, const KeyArg& key, DefArg&& def) {
+    TPY_DICT_DEFAULT_ASSERT(V, DefArg);
     auto it = m.find(key);
-    if (it == m.items_end()) return def;
+    if (it == m.items_end()) return V(std::forward<DefArg>(def));
     return (*it).second;
 }
 
@@ -125,15 +141,24 @@ void dict_update(ordered_map<K, V>& m, const ordered_map<K, V>& other) {
 
 // d.setdefault(key, default) -> V& into the map (CPython returns the stored
 // object; the borrow makes `d.setdefault(k, []).append(x)` reach the dict).
-template<typename K, typename V, typename KeyArg>
-V& dict_setdefault(ordered_map<K, V>& m, const KeyArg& key, V def) {
+// Unlike its siblings this one STORES the default, so it builds the owned V
+// once, on the miss path, and moves it into the node -- but V is deduced from
+// the map either way, so a default in borrow form (a `str` view, a `bytes`
+// span) reaches it like any other.
+template<typename K, typename V, typename KeyArg, typename DefArg>
+V& dict_setdefault(ordered_map<K, V>& m, const KeyArg& key, DefArg&& def) {
+    TPY_DICT_DEFAULT_ASSERT(V, DefArg);
     auto it = m.find(key);
     if (it != m.items_end()) return (*it).second;
-    // Only the MISS path stores, so only it builds the key.
+    // Only the MISS path stores, so only it builds the key and the value.
     K k(key);
-    m.insert_or_assign(k, std::move(def));
+    m.insert_or_assign(k, V(std::forward<DefArg>(def)));
     return (*m.find(k)).second;
 }
+
+// A header-only runtime leaks no macro into the generated TU: a TPy
+// function of this name called with two arguments would otherwise expand it.
+#undef TPY_DICT_DEFAULT_ASSERT
 
 // -- Views (zero-allocation wrappers for keys/values/items iteration) -------
 

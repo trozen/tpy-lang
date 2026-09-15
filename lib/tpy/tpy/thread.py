@@ -31,7 +31,7 @@ class ThreadTask[R](Protocol):
 @native("tpy::JoinHandle")
 @nocopy
 class _RawJoin[R]:
-    def join(self) -> R: ...
+    def join(self) -> Own[R]: ...
     def detach(self) -> None: ...
 
 
@@ -60,7 +60,10 @@ class JoinHandle[R]:
         self._raw = raw
         self._consumed = False
 
-    def join(self) -> R:
+    # `-> Own[R]`, not `-> R`: the result is moved out of the future. A bare
+    # `-> R` is the generic BORROW convention, which binds no rvalue -- and a
+    # borrow would point into a task the worker thread already destroyed.
+    def join(self) -> Own[R]:
         if self._consumed:
             raise RuntimeError("JoinHandle.join(): handle already consumed")
         # Set before the call so a re-raised task exception does not re-trip

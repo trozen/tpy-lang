@@ -2137,25 +2137,41 @@ class ExpressionAnalyzer:
         self, elem: TpyExpr, actual: TpyType, expected: TpyType,
         ctx_msg: str, target_is_storage_form: bool,
     ) -> TpyExpr:
-        """Materialize a `materialize_at_aggregate_element` coercion (today only
-        `BigInt -> fixed-width int`) at an aggregate (list / tuple) literal
-        element, returning the TpyCoerce-wrapped node to store back (or `elem`
-        unchanged when no such coercion applies). See that `Coercion` flag for
-        why those coercions alone need materializing here while every other
-        element coercion must not be (it would double-convert). Caller-side
-        validation (the per-element compatibility check) still rejects
-        genuinely incompatible elements."""
+        """`compat.materialize_fresh_value` for an aggregate-literal element
+        whose caller holds no resolved coercion (the tuple-literal hint path,
+        which validates the element against the whole tuple afterwards).
+        Caller-side validation still rejects genuinely incompatible
+        elements."""
         # A literal's element slot owns what it is handed, so a borrow-only
         # rule does not apply here.
         coercion = resolve_coercion(
             unwrap_own(actual), unwrap_own(expected), CoercionContext.INIT,
             sink_owns=True)
-        if coercion is not None and coercion.materialize_at_aggregate_element:
-            return self.compat.coerce_expr(
-                elem, actual, expected, ctx_msg,
-                coercion_ctx=CoercionContext.INIT,
-                target_is_storage_form=target_is_storage_form)
-        return elem
+        return self.compat.materialize_fresh_value(
+            elem, actual, expected, ctx_msg, coercion,
+            CoercionContext.INIT,
+            target_is_storage_form=target_is_storage_form)
+
+    def _materialize_fresh_value_elements(
+        self, nodes: list[TpyExpr], types: list[TpyType],
+        expected: TpyType | None, ctx_label: str,
+    ) -> None:
+        """Spell a fresh-value element coercion onto each element of a set /
+        dict literal analysed against a slot, retyping the element to the slot
+        it converts into. The array literal does this inside its contextual
+        per-element check; the set and dict literals have no such pass, so
+        without it their elements peer-unify to the SOURCE type and the decl
+        rejects a value the same slot takes elsewhere (`{s[0]}` at `set[str]`,
+        where `[s[0]]` at `list[str]` compiles)."""
+        if expected is None:
+            return
+        for i, elem_type in enumerate(types):
+            new_elem = self._materialize_narrowing_element_coercion(
+                nodes[i], elem_type, expected, f"{ctx_label} {i + 1}",
+                target_is_storage_form=True)
+            if new_elem is not nodes[i]:
+                nodes[i] = new_elem
+                types[i] = expected
 
     def _comp_elem_moves(self, gen: TpyComprehensionGenerator, elem: TpyExpr,
                          is_last_sink: bool = False) -> bool:
@@ -2291,16 +2307,10 @@ class ExpressionAnalyzer:
                         f"List literal element {i} has type {act_s}, "
                         f"incompatible with annotated element type {exp_s}", expr
                     )
-                # Materialize an aggregate-element coercion (BigInt->fixed-int)
-                # as a node so codegen emits it; check_type_compatible above
-                # already validated + resolved it, so gate on the flag directly
-                # rather than re-resolving (see _materialize_narrowing_element_coercion).
-                if coercion is not None and coercion.materialize_at_aggregate_element:
-                    expr.elements[i - 1] = self.compat.coerce_expr(
-                        expr.elements[i - 1], elem_type, expected_elem,
-                        f"array literal element {i}",
-                        coercion_ctx=CoercionContext.INIT,
-                        target_is_storage_form=True)
+                expr.elements[i - 1] = self.compat.materialize_fresh_value(
+                    expr.elements[i - 1], elem_type, expected_elem,
+                    f"array literal element {i}", coercion,
+                    CoercionContext.INIT, target_is_storage_form=True)
         else:
             # Inferred mode: check all elements against first element's type
             first_type = elem_types[0]
@@ -3060,6 +3070,11 @@ class ExpressionAnalyzer:
         else:
             value_types = [self._analyze_and_strip(v) for v in expr.values]
 
+        self._materialize_fresh_value_elements(
+            expr.keys, key_types, expected_key, "dict literal key")
+        self._materialize_fresh_value_elements(
+            expr.values, value_types, expected_value, "dict literal value")
+
         # Unify key types
         if is_union_or_optional_type(expected_key) or isinstance(expected_key, AnyType):
             key_type = expected_key
@@ -3167,6 +3182,9 @@ class ExpressionAnalyzer:
             elem_types = [self._analyze_and_strip(e, expected_elem) for e in expr.elements]
         else:
             elem_types = [self._analyze_and_strip(e) for e in expr.elements]
+
+        self._materialize_fresh_value_elements(
+            expr.elements, elem_types, expected_elem, "set literal element")
 
         # Unify element types
         if (is_union_or_optional_type(expected_elem) or isinstance(expected_elem, AnyType)
@@ -3683,10 +3701,10 @@ class ExpressionAnalyzer:
                 # Preserve Own[] from hint when the analyzed type matches
                 if isinstance(hint, OwnType) and not isinstance(analyzed, OwnType):
                     analyzed = OwnType(analyzed)
-                # Materialize a BigInt->fixed-int element coercion (only) so it
-                # reaches codegen; other element coercions are handled by the
-                # outer tuple compat + the tuple-literal slot codegen, so this
-                # is a no-op for them (see _materialize_narrowing_element_coercion).
+                # Materialize a fresh-value element coercion (BigInt->fixed-int,
+                # char->str) so it reaches codegen; other element coercions are
+                # handled by the outer tuple compat + the tuple-literal slot
+                # codegen, so this is a no-op for them.
                 new_elem = self._materialize_narrowing_element_coercion(
                     elem, analyzed, hint, f"tuple element {i + 1}",
                     target_is_storage_form=False)
@@ -3730,6 +3748,22 @@ class ExpressionAnalyzer:
                 expr,
             )
         return tuple_type.element_types[idx]
+
+    def check_dict_key(self, sub: TpySubscript, key_type: TpyType,
+                       index_type: TpyType) -> None:
+        """Validate a dict subscript's key against the dict's key type and
+        store back the node the lookup must carry. The map lookup takes the
+        key against `const K&` and converts nothing of its own, so a
+        fresh-value rule dropped from the node never compiles (a `char` key at
+        `dict[str, V]` reaches `erase`/`find` raw). Every dict subscript --
+        read, store, `del` -- comes through here, so the key narrow has one
+        owner and one spelling."""
+        context = "dict key"
+        coercion = self.compat.check_type_compatible(
+            index_type, key_type, context, loc=sub.loc, source_expr=sub.index)
+        sub.index = self.compat.materialize_fresh_value(
+            sub.index, index_type, key_type, context, coercion,
+            CoercionContext.ARG)
 
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
         """Analyze subscript indexing: obj[index] or slicing: obj[start:stop]"""
@@ -3804,13 +3838,11 @@ class ExpressionAnalyzer:
         readonly_dict = isinstance(inner_obj_type, ReadonlyType)
         lookup_index_type = unwrap_readonly(index_type)
         if isinstance(actual_obj, PendingDictType):
+            # An unresolved key type has nothing to check against; every other
+            # pending dict takes the same narrow a resolved one does.
             if not isinstance(actual_obj.key_type, UnknownElementType):
-                self.compat.check_type_compatible(
-                    lookup_index_type, actual_obj.key_type,
-                    f"dict key (expected {actual_obj.key_type})",
-                    loc=expr.loc,
-                    source_expr=expr.index,
-                )
+                self.check_dict_key(expr, actual_obj.key_type,
+                                    lookup_index_type)
             v_type = actual_obj.value_type
             if readonly_dict and not v_type.is_value_type():
                 v_type = ReadonlyType(unwrap_readonly(v_type))
@@ -3818,12 +3850,7 @@ class ExpressionAnalyzer:
         if is_dict(actual_obj):
             k_type = actual_obj.type_args[0]
             v_type = actual_obj.type_args[1]
-            self.compat.check_type_compatible(
-                lookup_index_type, k_type,
-                f"dict key (expected {k_type})",
-                loc=expr.loc,
-                source_expr=expr.index,
-            )
+            self.check_dict_key(expr, k_type, lookup_index_type)
             if readonly_dict and not v_type.is_value_type():
                 v_type = ReadonlyType(unwrap_readonly(v_type))
             return make_ref(v_type)

@@ -20,6 +20,7 @@ from .type_def_registry import (
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
     is_basic_slice_type, is_slice_type, view_to_owned_conv,
+    has_view_param_form,
 )
 
 
@@ -160,21 +161,35 @@ class Coercion:
     # Address-taking coercions (`&{expr}`) produce a Ptr that is unconditionally
     # non-null. Consumers can elide the deref null-check, same as for `take_ptr`.
     produces_non_null_ptr: bool = False
-    # Must be emitted as an explicit coercion node at list/tuple literal element
-    # positions: C++ applies no implicit conversion for it and the container /
-    # tuple literal codegen emits each element against the expected C++ type
-    # without applying the coercion, so a dropped one yields ill-formed C++.
-    # Other element coercions are C++-implicit or applied by the element codegen,
-    # so they must NOT be materialized here (it would double-convert).
-    materialize_at_aggregate_element: bool = False
+    # The codegen BUILDS a fresh value (`(x).to_fixed_check<int32_t>()`,
+    # `std::string(::tpy::char_to_str(c))`) because C++ has no implicit
+    # conversion for the pair. Two consequences every sink reads off this one
+    # fact: the render must be SPELLED wherever it lands -- including a
+    # list/tuple literal element, which the aggregate codegen otherwise emits
+    # against the expected C++ type and silently drops (a dropped char->str
+    # leaves `std::vector<std::string>{c}`, which resolves to the SIZE ctor) --
+    # and what it spells is a prvalue, never an alias of the source, so it is
+    # an rvalue at every position and an owning slot needs no copy/move
+    # cascade for it. Rules whose render is C++-implicit or position-dependent
+    # must stay out: spelling one here would double-convert.
+    builds_fresh_value: bool = False
     # Admitted only where the destination BORROWS what it is handed: the rule
-    # binds the source's buffer instead of copying it, so at an owning sink
-    # (a field, a container element, an `Own[...]` slot, or any sink that is
-    # not a plain argument) the program has to spell the copy. `contexts`
-    # cannot express this -- the owning verdict is not a context: a borrowing
-    # parameter, an `Own[...]` parameter and a container element all arrive
-    # here as CoercionContext.ARG.
+    # binds a buffer it does not own, so an owning sink (a field, a container
+    # element, an `Own[...]` slot, or any sink that is not a plain argument)
+    # must not take it. Where an owning sibling row exists the owning sink
+    # falls through to it; where none does, the program has to spell the copy
+    # (`borrow_only_veto` is what says so). `contexts` cannot express this --
+    # the owning verdict is not a context: a borrowing parameter, an
+    # `Own[...]` parameter and a container element all arrive here as
+    # CoercionContext.ARG.
     borrow_only: bool = False
+    # The codegen is a single wrap around its operand that reads neither the
+    # coercion context nor the operand's text, so the render can be computed
+    # once as a `{0}` template. THIR carries no CoercionContext, so that is
+    # the only shape the lowering can pre-render; a row that reads either
+    # (`str_to_string`'s literal test, the optional-view statement expression)
+    # must stay out.
+    context_free_wrap: bool = False
     codegen: Callable[[str, TpyType, TpyType, CoercionContext], str] = lambda expr, _a, _e, _c: expr
 
 
@@ -186,6 +201,7 @@ COERCIONS: list[Coercion] = [
         from_type=_is(TypeParamRef),
         to_type=is_fixed_int_type,
         type_match=_int_type_param_match,
+        context_free_wrap=True,
         codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
     Coercion(
@@ -193,6 +209,7 @@ COERCIONS: list[Coercion] = [
         from_type=_is(TypeParamRef),
         to_type=is_big_int_type,
         type_match=_int_type_param_match,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"::tpy::BigInt(static_cast<int64_t>({e}))",
     ),
 
@@ -218,6 +235,7 @@ COERCIONS: list[Coercion] = [
         to_type=is_fixed_int_type,
         type_match=_is_safe_widening,
         widening_safe=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
 
@@ -227,6 +245,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_fixed_int_type,
         to_type=is_big_int_type,
         widening_safe=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"::tpy::BigInt({e})",
     ),
     # BigInt to fixed-width integer (narrowing, runtime checked)
@@ -234,7 +253,8 @@ COERCIONS: list[Coercion] = [
         name="bigint_to_fixed_int",
         from_type=is_big_int_type,
         to_type=is_fixed_int_type,
-        materialize_at_aggregate_element=True,
+        builds_fresh_value=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, b, _c: f"({e}).to_fixed_check<{b.to_cpp()}>()",
     ),
 
@@ -243,6 +263,7 @@ COERCIONS: list[Coercion] = [
         name="int_literal_to_float",
         from_type=_is(IntLiteralType),
         to_type=is_float64_type,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     Coercion(
@@ -250,6 +271,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_fixed_int_type,
         to_type=is_float64_type,
         widening_safe=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     Coercion(
@@ -257,6 +279,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_big_int_type,
         to_type=is_float64_type,
         widening_safe=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
 
@@ -279,6 +302,7 @@ COERCIONS: list[Coercion] = [
         name="int_literal_to_float32",
         from_type=_is(IntLiteralType),
         to_type=is_float32_type,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
     Coercion(
@@ -286,6 +310,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_fixed_int_type,
         to_type=is_float32_type,
         widening_safe=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
     Coercion(
@@ -293,6 +318,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_big_int_type,
         to_type=is_float32_type,
         widening_safe=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
     # float32 -> float (widening, lossless)
@@ -301,6 +327,7 @@ COERCIONS: list[Coercion] = [
         from_type=is_float32_type,
         to_type=is_float64_type,
         widening_safe=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     # float -> float32 (narrowing, but allowed for convenience -- matches C++ behavior)
@@ -308,14 +335,35 @@ COERCIONS: list[Coercion] = [
         name="float_to_float32",
         from_type=is_float64_type,
         to_type=is_float32_type,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
 
+    # char -> str at a BORROWING slot. `str`'s param form is a view, so the
+    # owning row below would bind the slot to a full-expression temporary and
+    # a view the callee hands back would dangle. `char_to_str` views an
+    # immortal one-char table, which outlives every caller. Ordered before the
+    # owning row so the borrowing sink takes it; `resolve_coercion` skips it
+    # wherever the sink owns.
+    Coercion(
+        name="char_to_borrowed_str",
+        from_type=is_char_type,
+        to_type=is_str_type,
+        # Reads the param-form verdict rather than assuming it: the row only
+        # applies while `str`'s borrow form really is a distinct view type.
+        type_match=lambda _a, b: has_view_param_form(b),
+        borrow_only=True,
+        builds_fresh_value=True,
+        context_free_wrap=True,
+        codegen=lambda e, _a, _b, _c: f"::tpy::char_to_str({e})",
+    ),
     # char to str coercion
     Coercion(
         name="char_to_str",
         from_type=is_char_type,
         to_type=is_str_type,
+        builds_fresh_value=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"std::string(::tpy::char_to_str({e}))",
     ),
     # char to String coercion
@@ -323,6 +371,8 @@ COERCIONS: list[Coercion] = [
         name="char_to_string",
         from_type=is_char_type,
         to_type=is_string_type,
+        builds_fresh_value=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"::tpy::String(1, {e})",
     ),
     # char to StrView coercion
@@ -330,6 +380,8 @@ COERCIONS: list[Coercion] = [
         name="char_to_strview",
         from_type=is_char_type,
         to_type=is_str_view_type,
+        builds_fresh_value=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"::tpy::char_to_str({e})",
     ),
 
@@ -477,6 +529,7 @@ COERCIONS: list[Coercion] = [
         requires_mutable_lvalue=True,
         forbid_return_local=True,
         produces_non_null_ptr=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"&{e}",
     ),
     Coercion(
@@ -490,6 +543,7 @@ COERCIONS: list[Coercion] = [
         requires_lvalue=True,
         forbid_return_local=True,
         produces_non_null_ptr=True,
+        context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"&{e}",
     ),
     Coercion(
@@ -566,6 +620,21 @@ def resolve_coercion(actual: TpyType, expected: TpyType,
             if coercion.type_match(actual, expected):
                 return coercion
     return None
+
+
+def context_free_wrap_template(coercion: Coercion, actual: TpyType,
+                               expected: TpyType) -> Optional[str]:
+    """The `{0}` render template of a `context_free_wrap` row, else None.
+
+    The template is the row's OWN codegen lambda applied to the placeholder,
+    so a coercion's C++ spelling has one home; a second table of the same
+    renders drifts (`char_to_string` shipped `std::string(1, c)` from one and
+    `::tpy::String(1, c)` from the other). The context handed to the lambda is
+    arbitrary -- that is exactly what the flag asserts.
+    """
+    if not coercion.context_free_wrap:
+        return None
+    return coercion.codegen("{0}", actual, expected, CoercionContext.ARG)
 
 
 def borrow_only_veto(actual: TpyType, expected: TpyType,
@@ -661,6 +730,7 @@ VALUE_TO_PTR = Coercion(
     requires_mutable_lvalue=True,
     forbid_return_local=True,
     produces_non_null_ptr=True,
+    context_free_wrap=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 
@@ -675,6 +745,7 @@ UPCAST_TO_PTR = Coercion(
     requires_mutable_lvalue=True,
     forbid_return_local=True,
     produces_non_null_ptr=True,
+    context_free_wrap=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 
@@ -704,6 +775,7 @@ UPCAST_TO_CONST_PTR = Coercion(
     requires_lvalue=True,
     forbid_return_local=True,
     produces_non_null_ptr=True,
+    context_free_wrap=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from tpyc.liveness import stmts_terminate, try_terminates_ignoring_finally
 from tpyc.parse.nodes import (
-    TpyExceptHandler, TpyPassStmt, TpyRaise, TpyStmt, TpyTry,
+    TpyExceptHandler, TpyPassStmt, TpyRaise, TpyStmt, TpyTry, TryTier,
 )
 
 
@@ -27,7 +27,7 @@ def _try(try_body: list[TpyStmt],
         handlers=handlers or [],
         else_body=[],
         finally_body=finally_body or [],
-        tier="throw" if handlers else "finally_only",
+        tier=TryTier.THROW if handlers else TryTier.FINALLY_ONLY,
     )
 
 

@@ -2803,7 +2803,10 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     str-family SLICE subscript (`self.s = x[1:3]` -- the sema coerce node
     carries its own `std::string(::tpy::str_slice(...))` materialization,
     which is why the render must keep lowering the UNPEELED value) and a
-    zero-arg `str()` ctor call. A NAME declared `str | None` and narrowed to
+    zero-arg `str()` ctor call. A `builds_fresh_value` coerce (`self.tag =
+    CHARS[i]`) is the same argument stated as the FACT rather than as a
+    source shape: its wrap is the construction, so whatever sits under it
+    assigns bare. A NAME declared `str | None` and narrowed to
     `str` stays OUT: the deref moves at a last use
     (`this->s = std::move((*s));`) and this arm renders it bare. A str-typed
     call or method call of any other shape rides the same bare assign as
@@ -2827,6 +2830,14 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     outer_str = _resolved_str_value(analyzer.get_expr_type(v), analyzer)
     if isinstance(v, TpyCoerce):
         v = v.expr
+    # A fresh-value coerce (`self.tag = CHARS[i]`) carries its own
+    # `std::string(::tpy::char_to_str(...))` construction, so the UNPEELED
+    # value assigns bare -- the str_slice row's argument, keyed on the fact
+    # rather than on the source shape under the wrap.
+    if (isinstance(stmt.value, TpyCoerce)
+            and stmt.value.coercion.builds_fresh_value
+            and outer_str is not None):
+        return _witness("field_write.fresh_value_coerce")
     if isinstance(v, TpyStrLiteral):
         return True
     if isinstance(v, TpyBinOp) and outer_str is not None:

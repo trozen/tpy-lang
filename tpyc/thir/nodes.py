@@ -20,7 +20,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
 from ..identity_map import IdentityMap
-from ..parse import RebindStorage, SourceLocation
+from ..parse import RebindStorage, SourceLocation, TryTier
 from ..typesys import ResolvedBinop, TpyType
 
 if TYPE_CHECKING:
@@ -2823,7 +2823,7 @@ class THIRTry(THIRStmt):
     so folding it in (as whole-statement `stmts_terminate` does) would elide
     the fall-through copy of an always-raising/returning finally and stop it
     running at all. The async/resumable lowerings stay gate-rejected."""
-    tier: str = "finally_only"
+    tier: TryTier = TryTier.FINALLY_ONLY
     try_body: tuple[THIRStmt, ...] = ()
     handlers: tuple[THIRExceptHandler, ...] = ()
     else_body: tuple[THIRStmt, ...] = ()

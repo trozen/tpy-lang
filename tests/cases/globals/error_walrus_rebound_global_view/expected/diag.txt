@@ -1,0 +1,1 @@
+main.py:13: error: Cannot return a borrow of module variable 'S': function 'reset' rebinds 'S', and the rebind frees the storage this borrow points into. Return str or String to hand back an owned copy, or stop rebinding 'S'.

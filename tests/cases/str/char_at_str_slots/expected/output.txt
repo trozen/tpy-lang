@@ -1,0 +1,15 @@
+listlit 2 .,
+extend 12  .,:;+*?%S#@
+methods 3 ;.,
+setdict 1 1 ?
+getdef ? .
+popdef , ? 0
+literals 2 0
+tuple , 1
+params % 1 1 1
+ctor a S
+field x .
+charvar 1 x
+string 1 .
+comp 3  .,
+gen  .,

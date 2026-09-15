@@ -61,8 +61,8 @@ void main() {
     ::tpyapp::main::take_string(::tpy::String(sv));
     ::tpyapp::main::take_str(sv);
     char c = 'X';
-    ::tpyapp::main::take_str(std::string(::tpy::char_to_str(c)));
-    ::tpyapp::main::take_string(std::string(1, c));
+    ::tpyapp::main::take_str(::tpy::char_to_str(c));
+    ::tpyapp::main::take_string(::tpy::String(1, c));
 }
 
 // main()

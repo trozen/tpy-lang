@@ -29,7 +29,7 @@ def test_value_types():
 
 
 def test_object_types():
-    # Object type on ArrayList - get_ref (reference semantics)
+    # Reference type on ArrayList - get_ref (reference semantics)
     points = ArrayList[Point, 4]()
     points.append(Point(1, 2))
     points.append(Point(3, 4))

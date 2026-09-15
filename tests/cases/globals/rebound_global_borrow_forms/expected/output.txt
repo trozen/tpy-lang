@@ -1,0 +1,15 @@
+method banner text long enough that no small-string buffer hides a reuse
+owned label text long enough that no small-string buffer hides a reuse
+valueelem 64 1
+owned relabelled
+motto onward
+motto onward!
+valueelem 10 1
+walrus retitled
+readonly-global tagline text long enough that no small-string buffer hides a reuse
+readonly 1
+alias 4 4
+handle 10
+handle 20
+yield banner text long enough that no small-string buffer hides a reuse
+yield banner

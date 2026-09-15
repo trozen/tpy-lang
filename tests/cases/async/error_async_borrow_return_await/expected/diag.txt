@@ -1,1 +1,1 @@
-main.py:21: error: Cannot return local or temporary as reference. Object type 'C' is returned by reference. Use Own[C] to return by value.
+main.py:21: error: Cannot return local or temporary as reference. Reference type 'C' is returned by reference. Use Own[C] to return by value.

@@ -1,0 +1,1 @@
+main.py:11: error: List literal element 1 has type char, incompatible with annotated element type bytes

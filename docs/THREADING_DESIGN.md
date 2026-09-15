@@ -46,7 +46,7 @@ review findings are recorded inline so they do not get re-litigated.
 
 | ID | Increment | Scope | Status | Depends on |
 |----|-----------|-------|--------|------------|
-| V1 | `tpy.thread.spawn` (Runnable-struct) | `spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]` (`ThreadTask` = structural `run() -> R`; `Send` via the `Send[Own[T]]` wrapper; `R: Send` bound since R crosses the thread boundary; `spawn(task)` fully inferred -- the marker-wrapper + associated-type inference gaps are closed). `JoinHandle`: `join() -> R`/`detach()`, abort-on-unconsumed-drop. | **BUILT** | -- |
+| V1 | `tpy.thread.spawn` (Runnable-struct) | `spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]` (`ThreadTask` = structural `run() -> R`; `Send` via the `Send[Own[T]]` wrapper; `R: Send` bound since R crosses the thread boundary; `spawn(task)` fully inferred -- the marker-wrapper + associated-type inference gaps are closed). `JoinHandle`: `join() -> Own[R]`/`detach()`, abort-on-unconsumed-drop. | **BUILT** | -- |
 | V2 | `Arc[T]` / `Weak[T]` | Atomic sibling of `Rc`, built on a new generic `Atomic[T: AnyFixedInt]` (`tpy.atomic`, wrapping `std::atomic<T>`). `Send + Sync` iff `T` is, via the conditional `@unsafe_send`/`@unsafe_sync` (if_params_*) override. Shared into a task by `arc.clone()` into a struct field. | **built** | V1 |
 | V3 | `Mutex[T]` / `RwLock[T]` | Both `Send + Sync` iff `T: Send` (RwLock looser than Rust's `T: Send + Sync` -- correct because TPy interior mutability is unsafe/user-owned). Shared as `Arc[Mutex[T]]`. `@readonly` lock/read/write hand out a `Deref[T]` context-manager guard (interior mutability via `unsafe_interior_mutable[Ptr[cell]]`). Module placement decided: `tpy.sync` (native-primitive layer, parallel to `tpy.atomic`; `Arc` stays pure-TPy in `tplib.arc`). | **BUILT** | V2 |
 | D1 | Closure `spawn` (ergonomic layer) | `spawn(lambda: work(data))` desugaring to the V1 core. Needs a **callable generic bound** + owning-capture. Own design pass; the current spelling is shaky (see "Deferred: closures"). Likely **post-THIR**. | **deferred** | V1, (THIR) |
@@ -86,7 +86,7 @@ from tpy.thread import spawn
 
 class Blur(Send):                       # Send auto-derived from fields
     src: Own[list[float]]               # data moved in via existing Own-move
-    def run(self) -> list[float]: ...
+    def run(self) -> Own[list[float]]: ...   # a thread result is owned; join() hands it back as Own[R]
 
 def main() -> None:
     h = spawn(Blur(src=partition))      # task moved into a new OS thread
@@ -163,7 +163,7 @@ def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]: 
   use it stay `no_cpython`; the inferred-form cases run under CPython
   against the `lib/cpy/tpy/thread.py` stub.
 
-`JoinHandle[R]` (v1, minimal): `join(self) -> R`, `detach(self)`. Drop model
+`JoinHandle[R]` (v1, minimal): `join(self) -> Own[R]`, `detach(self)`. Drop model
 (as built): `@nocopy` + `__del__` + a mutable `_consumed` flag (the `Rc`
 pattern) -- `join`/`detach` set the flag and then delegate to the raw handle;
 `__del__` on an unconsumed handle calls a native `[[noreturn]]` `tpy_panic`

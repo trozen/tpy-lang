@@ -953,7 +953,7 @@ class NarrowingTracker:
         a VARIABLE binding in the module namespace, not shadowed by a
         function-level binding or param, of value type.
 
-        The shadow walk parallels TypeCompatibility._is_local_shadow
+        The shadow walk parallels TypeCompatibility.is_local_shadow
         (compatibility.py) but terminates on scope depth (module = 0) and
         additionally excludes params -- keep the two in sync."""
         gns = self.ctx.global_ns

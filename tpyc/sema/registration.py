@@ -3785,15 +3785,13 @@ class TypeRegistrar:
                     actual_type = final_type_str_to_strview(actual_type.wrapped)
                     stmt.is_final = True
                     self.ctx.final_globals.add(stmt.name)
-                self.ctx.global_scope.define(stmt.name, actual_type)
+                # This walk is over the module's statement list itself, so
+                # every decl it sees is a module slot by construction.
+                self.ctx.define_module_global(
+                    stmt.name, actual_type, stmt.loc.line if stmt.loc else 0)
+                self.ctx.preregistered_globals.add(stmt.name)
                 self.ctx.global_ns.bind_variable(stmt.name, actual_type)
                 install_binding(
                     self.ctx.module_attributes, stmt.name,
                     SymbolKind.VARIABLE, actual_type,
                 )
-                # Track with line number for order-aware codegen (earliest line wins)
-                decl_line = stmt.loc.line if stmt.loc else 0
-                if stmt.name not in self.ctx.top_level_decls:
-                    self.ctx.top_level_decls[stmt.name] = decl_line
-                else:
-                    self.ctx.top_level_decls[stmt.name] = min(self.ctx.top_level_decls[stmt.name], decl_line)

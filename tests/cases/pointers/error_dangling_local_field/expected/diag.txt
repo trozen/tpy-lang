@@ -1,1 +1,1 @@
-main.py:12: error: Cannot return local or temporary as reference. Object type 'Inner' is returned by reference. Use Own[Inner] to return by value.
+main.py:12: error: Cannot return local or temporary as reference. Reference type 'Inner' is returned by reference. Use Own[Inner] to return by value.

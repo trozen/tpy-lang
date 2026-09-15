@@ -1,1 +1,1 @@
-main.py:16: error: Cannot yield local or temporary as reference. Object type 'Node' is yielded by reference. Declare the generator 'Iterator[Own[Node]]' to yield by value.
+main.py:16: error: Cannot yield local or temporary as reference. Reference type 'Node' is yielded by reference. Declare the generator 'Iterator[Own[Node]]' to yield by value.

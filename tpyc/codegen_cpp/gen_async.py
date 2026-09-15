@@ -4647,8 +4647,6 @@ class AsyncCoroCodegen:
             # resumable_region_guards just above), so a return/break/continue
             # inside the handler shares the guard the nested catch tests.
             self._push_finally_helpers(handler_stack_helpers)
-            old_except_tier = self.ctx.in_except_tier
-            self.ctx.in_except_tier = "throw"
             # Pending-return ctx for the handler body: a return inside
             # the handler routes through the parent CFG-based finally's
             # pending-return slot.
@@ -4677,7 +4675,6 @@ class AsyncCoroCodegen:
             finally:
                 if has_throw_unwind:
                     self.ctx.indent_level -= 1
-                self.ctx.in_except_tier = old_except_tier
                 self.ctx.finally_stack = old_finally_stack
                 self._restore_pending_return_ctx(prev_pending)
                 # NOT `region`: that name holds the try region this whole

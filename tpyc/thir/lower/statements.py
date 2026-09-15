@@ -13,6 +13,7 @@ from ...diagnostics import SemanticError
 from ...prescan import scan_reassigned_vars
 from ...parse.nodes import (
     RebindStorage,
+    TryTier,
     TpyArrayLiteral,
     TpyAssert,
     TpyAssign,
@@ -15942,7 +15943,7 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
     `body_terminates` is the frame-wrap fact -- the try body plus every
     handler, never the whole statement, so an always-terminating finally
     can't elide its own fall-through copy."""
-    if stmt.tier == "return" and len(stmt.handlers) != 1:
+    if stmt.tier is TryTier.RETURN and len(stmt.handlers) != 1:
         # The return tier dispatches on handlers[0] alone; sema confines it
         # to a single ReturnException handler -- defensive.
         note_detail("try.return_handlers")
@@ -15985,9 +15986,9 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
     hoist_decls = _lower_hoist_predecls(hoists, declared, lc, "try.hoist_decl",
                                         try_flavors)
     body_terminates = try_terminates_ignoring_finally(stmt)
-    if stmt.tier == "finally_only":
+    if stmt.tier is TryTier.FINALLY_ONLY:
         _witness("try.finally_only")
-    elif stmt.tier == "return":
+    elif stmt.tier is TryTier.RETURN:
         _witness("try.return_tier")
     else:
         _witness("try.throw_tier")
@@ -16014,7 +16015,7 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
             bt = _handler_binding_type(h, lc.analyzer)
             assert bt is not None, "ineligible handler reached lowering"
             h_declared[h.binding] = bt
-        if stmt.tier == "return" and h.binding:
+        if stmt.tier is TryTier.RETURN and h.binding:
             # The `__err_opt_N` capture decl spells the QUALIFIED error type
             # (the `qualify_exception_name` wrap).
             err_opt_cpp = error_return_to_cpp(
@@ -16029,7 +16030,7 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
                 h.body, lc, h_declared, branch_decls_ok=True,
                 loop_depth=loop_depth),
             source_display=(h.exception_type
-                            if stmt.tier == "return" else None)))
+                            if stmt.tier is TryTier.RETURN else None)))
     last = stmt.finally_body[-1] if stmt.finally_body else None
     finally_terminates = isinstance(last, (TpyRaise, TpyReturn))
     if body_terminates and stmt.finally_body:

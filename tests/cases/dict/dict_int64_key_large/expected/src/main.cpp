@@ -18,14 +18,14 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<int64_t, std::string> d = ::tpy::ordered_map<int64_t, std::string>();
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
-    ::tpy::__setitem__(d, k.to_fixed_check<int64_t>(), "big");
-    std::cout << ::tpy::__getitem__(d, k.to_fixed_check<int64_t>()) << "\n";
-    ::tpy::__delitem__(d, k.to_fixed_check<int64_t>());
+    ::tpy::__setitem__(d, (k).to_fixed_check<int64_t>(), "big");
+    std::cout << ::tpy::__getitem__(d, (k).to_fixed_check<int64_t>()) << "\n";
+    ::tpy::__delitem__(d, (k).to_fixed_check<int64_t>());
     std::cout << ::tpy::__len__(d) << "\n";
     ::tpy::ordered_map<int64_t, int32_t> counts = ::tpy::ordered_map<int64_t, int32_t>();
-    ::tpy::__setitem__(counts, k.to_fixed_check<int64_t>(), 1);
-    ::tpy::__setitem__(counts, k.to_fixed_check<int64_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(counts, k.to_fixed_check<int64_t>()), 5));
-    std::cout << ::tpy::__getitem__(counts, k.to_fixed_check<int64_t>()) << "\n";
+    ::tpy::__setitem__(counts, (k).to_fixed_check<int64_t>(), 1);
+    ::tpy::__setitem__(counts, (k).to_fixed_check<int64_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(counts, (k).to_fixed_check<int64_t>()), 5));
+    std::cout << ::tpy::__getitem__(counts, (k).to_fixed_check<int64_t>()) << "\n";
 }
 
 // main()

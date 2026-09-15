@@ -47,7 +47,7 @@ def main() -> None:
     r = 200
     print(p, q, r)
 
-    # Object type: aliasing (both usable, mutations visible)
+    # Reference type: aliasing (both usable, mutations visible)
     o1 = o2 = Obj(5)
     o1.val = 10
     print(o1.val, o2.val)

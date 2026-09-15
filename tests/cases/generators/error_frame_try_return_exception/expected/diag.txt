@@ -1,0 +1,1 @@
+main.py:36: error: 'except StopIteration' (or any other ReturnException type) is not yet supported inside a generator or 'async def' when the 'try' needs its own states -- it holds an 'await'/'yield', or a 'break'/'continue' that leaves it. Move the 'try' into a helper function and call that, or keep the 'try' free of suspensions and of transfers out of it.

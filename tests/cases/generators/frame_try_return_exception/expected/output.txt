@@ -1,0 +1,15 @@
+module 2 101 102
+free 6
+error_return 1
+gen_leaf 90 2
+gen_leaf_empty 0 1 2
+gen_helper 11 12
+method 3
+dead_pass 91 92
+nested_inner 0
+nested_inner -1
+nested 6 7
+dead_break [1, 2]
+dead_return [1, 2]
+async_leaf 0 -1
+async_dead 3

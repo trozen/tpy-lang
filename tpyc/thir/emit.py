@@ -16,7 +16,7 @@ import io
 from dataclasses import dataclass, field
 from typing import Callable, Mapping, TextIO
 
-from ..parse.nodes import RebindStorage
+from ..parse.nodes import RebindStorage, TryTier
 from ..codegen_cpp.context import (
     INDENT,
     any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
@@ -326,7 +326,7 @@ class _EmitState:
     error_return_cpp: 'str | None' = None
     try_except_label: 'str | None' = None
     try_except_err_opt: 'str | None' = None
-    in_except_tier: 'str | None' = None
+    in_except_tier: 'TryTier | None' = None
     # Resumable-leaf shadow probe: the skeleton registers C++-local shadows of
     # frame fields (for-loop iter vars) in ctx.frame_field_shadows; a
     # shadowed name must not take the `(*name)` peel. The
@@ -2617,7 +2617,7 @@ def _emit_try_except(out: TextIO, stmt: THIRTry, level: int,
         # handler sits inside a return-tier handler body (ctx.in_except_tier
         # is reassigned per handler emit).
         prev_tier = state.in_except_tier
-        state.in_except_tier = "throw"
+        state.in_except_tier = TryTier.THROW
         _emit_stmts(out, h.body, level + 1, state)
         state.in_except_tier = prev_tier
         if stmt.else_body:
@@ -2666,7 +2666,7 @@ def _emit_try_return(out: TextIO, stmt: THIRTry, inner_level: int,
         o.write(f"{body_indent}// except {exc_display}:\n")
         o.write(f"{body_indent}{except_label}:;\n")
         prev_tier = state.in_except_tier
-        state.in_except_tier = "return"
+        state.in_except_tier = TryTier.RETURN
         if h.binding and err_opt_var:
             binding = escape_cpp_name(h.binding)
             o.write(f"{body_indent}{{\n")
@@ -2696,11 +2696,11 @@ def _emit_try(out: TextIO, stmt: THIRTry, indent_level: int,
         out.write(f"{indent}{cpp_type} {name};\n")
     out.write(f"{indent}{{\n")
     inner_level = indent_level + 1
-    if stmt.tier == "finally_only":
+    if stmt.tier is TryTier.FINALLY_ONLY:
         _emit_frame_wrapped(
             out, inner_level, state, stmt,
             lambda o, lvl: _emit_stmts(o, stmt.try_body, lvl, state))
-    elif stmt.tier == "return":
+    elif stmt.tier is TryTier.RETURN:
         _emit_try_return(out, stmt, inner_level, state)
     elif stmt.finally_body:
         _emit_frame_wrapped(
@@ -4248,7 +4248,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 _emit_finally_return(out, value_cpp, indent, state)
             else:
                 out.write(f"{indent}return {value_cpp};\n")
-        elif stmt.cpp_type is None and state.in_except_tier == "return":
+        elif stmt.cpp_type is None and state.in_except_tier is TryTier.RETURN:
             # Bare re-raise inside a return-tier handler: re-return the
             # captured error.
             assert state.try_except_err_opt is not None, \

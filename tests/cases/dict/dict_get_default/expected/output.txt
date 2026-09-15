@@ -1,3 +1,11 @@
 1
 99
 2
+alpha
+lvalue
+q
+b'hi'
+b'zz'
+b'zz'
+b'zz'
+b'zz'

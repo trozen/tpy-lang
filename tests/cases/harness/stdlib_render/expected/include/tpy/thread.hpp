@@ -59,14 +59,17 @@ struct JoinHandle {
         }
     }
 
-    // def join(self) -> R:
+    // # `-> Own[R]`, not `-> R`: the result is moved out of the future. A bare
+    // # `-> R` is the generic BORROW convention, which binds no rvalue -- and a
+    // # borrow would point into a task the worker thread already destroyed.
+    // def join(self) -> Own[R]:
     //     if self._consumed:
     //         raise RuntimeError("JoinHandle.join(): handle already consumed")
     //     # Set before the call so a re-raised task exception does not re-trip
     //     # the abort-on-drop check when this handle unwinds.
     //     self._consumed = True
     //     return self._raw.join()
-    ::tpy::val_or_ref_t<R> join() {
+    ::tpy::own_return_t<R> join() {
         if (this->_consumed) {
             throw ::tpy::RuntimeError("JoinHandle.join(): handle already consumed");
         }

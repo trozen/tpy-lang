@@ -1,1 +1,1 @@
-main.py:5: error: Cannot return local or temporary as reference. Object type 'dict[str, int32]' is returned by reference. Use Own[dict[str, int32]] to return by value.
+main.py:5: error: Cannot return local or temporary as reference. Reference type 'dict[str, int32]' is returned by reference. Use Own[dict[str, int32]] to return by value.

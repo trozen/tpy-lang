@@ -13,7 +13,7 @@
 | `Spannable[T]` protocol | **Done** | `__span__() -> Span[readonly[T]]`; used for `Span[T]` coercion and contiguous iteration |
 | `Iterable[T]` protocol | **Done** | Structural conformance; works as parameter type and union arm |
 | Iterator consumption semantics | **Done** | `auto&&` binding preserves in-place mutation and move-only owning iterators |
-| `__next__()` explicit calls | **Done** | Direct calls require `try/except StopIteration` |
+| `__next__()` explicit calls | **Done** | Direct calls require `try/except StopIteration`. Inside a generator or `async def` that `try` must not also need frame states of its own (no `await`/`yield` in it, no `break`/`continue` leaving it) -- see the `ReturnException` row in Validation Rules |
 | Consuming iteration (`__iter__(self: Own[Self])`) | **Done** | See `docs/CONSUMING_ITERATION_DESIGN.md` |
 | `OwnIter[T]` runtime type | **Done** | Drain iterator for `list[T]`, owns moved `std::vector<T>` |
 | `Iterator[Own[T]]` coercion to `Iterator[T]` | **Done** | Strips `Own` on each element |
@@ -166,6 +166,7 @@ struct Counter {
 | `raise StopIteration` only inside `__next__` (or `@error_return(StopIteration)` functions) | Sema |
 | `raise StopIteration` does not accept arguments | Parser |
 | Direct `obj.__next__()` calls require `try/except StopIteration` | Sema (caller enforcement) |
+| Inside a generator or `async def`, a `try` that needs frame states of its own (holds an `await`/`yield`, or a `break`/`continue` leaving it) must not also hold a call its `ReturnException` handler would catch -- the frame has no edge for the failing unwrap (BUGS.md#frame-try-next-error-return-miscompiles). Either condition alone is fine | Sema + resumable CFG |
 
 ---
 

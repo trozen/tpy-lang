@@ -1,0 +1,16 @@
+module 400
+free 805
+method 1600
+qualified 800 wide 3
+comprehension 12
+generator 2406
+closure 805
+scalars wide 3 5
+alias 4 4
+inner 101 2
+block 101
+star 32
+borrow 9
+rebind 10 1
+shadow 7 seven
+globals global 1

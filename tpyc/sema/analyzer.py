@@ -33,7 +33,7 @@ from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
     TpyFieldAccess, TpyName, TpyCall, TpyLambda,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef, TpyCoerce,
-    expr_contains_self_method_call,
+    SourceLocation, expr_contains_self_method_call,
 )
 from .expressions import _collect_body_name_refs
 from ..interop.sema_validators import (
@@ -98,7 +98,7 @@ from .statements import StatementAnalyzer
 
 from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
 from ..liveness import analyze_last_uses, collect_finally_return_candidates
-from .alias_rebind import decide_rebind_storage, globals_declared_in
+from .alias_rebind import decide_rebind_storage, global_write_facts
 from ..value_category import wants_move
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
@@ -546,6 +546,7 @@ class SemanticAnalyzer:
 
         # Process imports
         self.ctx.imports = module.imports
+        self.ctx.user_module_import_lines = module.user_module_imports
         self.ctx.bare_module_imports = module.bare_module_imports
         if module.tpy_star_import:
             self.registrar.register_tpy_star_import()
@@ -843,6 +844,13 @@ class SemanticAnalyzer:
         # modules' `from X import VAR` resolve at decl-time, which the
         # workspace-wide two-pass sema needs (Phase 5 split).
         self.registrar.register_globals(module.top_level_stmts)
+        bodies = [*module.functions,
+                  *(m for r in module.all_records() for m in r.methods)]
+        # A borrow return rooted in a module global is certified durable
+        # while the body that RESEATS that global may only be analyzed
+        # afterwards, so the rebind fact is decided here, over every body at
+        # once, before the first return is checked.
+        declared_globals, self.ctx.rebound_globals = global_write_facts(bodies)
         # Top-level statement analysis also moves into the declaration
         # sub-phases. It populates `global_scope` with names assigned via
         # top-level expressions, including tuple-unpacks
@@ -854,11 +862,7 @@ class SemanticAnalyzer:
         # against decl-finalized peer ModuleInfos (deps run first in
         # topo order in the declarations pass).
         if module.top_level_stmts:
-            self._analyze_top_level(
-                module.top_level_stmts,
-                globals_declared_in(
-                    [*module.functions,
-                     *(m for r in module.records for m in r.methods)]))
+            self._analyze_top_level(module.top_level_stmts, declared_globals)
         self._advance_phase(
             self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
             self._PHASE_REGISTER_SIGNATURES,
@@ -3465,7 +3469,13 @@ class SemanticAnalyzer:
             self.top_level_scan_result.chain_alias_sources)
 
         for stmt in stmts:
+            # A parser-minted comprehension temp is an init-scope local, not a
+            # module slot; everything else at depth 0 declares one.
+            self.ctx.current_module_stmt = (
+                None if isinstance(stmt, TpyVarDecl) and stmt.module_init_local
+                else stmt)
             self.stmts.analyze_stmt(stmt)
+        self.ctx.current_module_stmt = None
         self.deduction.resolve_all()
         # A global some function rebinds through `global` can change between
         # two module-level statements: foreign storage for the replay.
@@ -3901,7 +3911,10 @@ class SemanticAnalyzer:
         if from_star_import:
             return False
 
-        raise self._error(f"'{original_name}' not found in module '{module_name}'")
+        line = self.ctx.user_module_import_lines.get(module_name)
+        raise self.ctx.error_from_loc(
+            f"'{original_name}' not found in module '{module_name}'",
+            SourceLocation(line=line) if line else None)
 
     def _resolve_macro_chain(
         self, module_name: str, name: str,

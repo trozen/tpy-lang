@@ -1,0 +1,1 @@
+main.py:42: error: `__enter__` on 'Res' returns an error with @error_return, which a `with` statement has no way to handle. Move the failing work into a method the body calls inside a try/except.

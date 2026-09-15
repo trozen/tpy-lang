@@ -591,7 +591,7 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         tier = " [return_tier]" if stmt.return_tier else ""
         return [f"{pad}raise {stmt.cpp_type}({_exprs(stmt.args)}){via}{tier}"]
     if isinstance(stmt, THIRTry):
-        lines = [f"{pad}try [{stmt.tier}]:"]
+        lines = [f"{pad}try [{stmt.tier.value}]:"]
         for s in stmt.try_body:
             lines.extend(_stmt_lines(s, depth + 1))
         for h in stmt.handlers:

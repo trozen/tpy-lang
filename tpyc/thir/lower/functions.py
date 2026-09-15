@@ -1165,6 +1165,14 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
     if isinstance(value, TpyStrLiteral):
         return True
     src = value
+    if (isinstance(src, TpyCoerce) and src.coercion.builds_fresh_value
+            and _resolved_str_value(analyzer.get_expr_type(src),
+                                    analyzer) is not None):
+        # A fresh-value coerce (`self.tag = s[0]`) IS the construction: its
+        # wrap renders a prvalue the direct-init takes bare whatever sits
+        # under it, so the source shape is not this row's business -- the
+        # same argument the assign path's fresh-value row makes.
+        return _witness("mil.fresh_value_coerce")
     if (isinstance(src, (TpyCall, TpyMethodCall))
             and is_rvalue_source(analyzer, src)
             and _resolved_str_value(analyzer.get_expr_type(src),
