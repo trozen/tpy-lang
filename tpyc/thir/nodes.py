@@ -3441,6 +3441,12 @@ class THIRResumableBody:
     # The skeleton keeps the signature/struct-decl lines; the statement
     # position keeps its THIRFrameNestedDef marker.
     nested_def_bodies: 'IdentityMap' = field(default_factory=IdentityMap)
+    # The extraction alias each narrowing subject gets when a resume case
+    # re-establishes its fact (keyed by the subject name). The lowering is
+    # the only speller: the skeleton reads this rather than re-deriving a
+    # name from the frame layout, so body reads and skeleton declarations
+    # cannot disagree.
+    narrow_aliases: 'Mapping[str, str]' = field(default_factory=dict)
     # Sema-stamped finally-deferred returns (keyed by the TpyReturn):
     # the capture recipe the skeleton's return scaffolding consults. Present
     # for EVERY stamped return of a routed body -- lowering rejects the body

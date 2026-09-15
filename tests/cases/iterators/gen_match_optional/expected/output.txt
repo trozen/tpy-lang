@@ -2,3 +2,22 @@
 --
 4
 8
+chain_one: 1
+chain_one: 11
+chain_one: 9
+chain_none: 0
+chain_none: 9
+chain_other: 2
+chain_other: 9
+cap_one: 1
+cap_one: 9
+cap_none: 0
+cap_none: -1
+cap_none: 9
+cap_other: 0
+cap_other: 6
+cap_other: 9
+guarded_hit: 1
+guarded_hit: 9
+guarded_miss: 2
+guarded_miss: 9

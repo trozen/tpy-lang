@@ -3914,6 +3914,7 @@ class Parser:
         # body. _parse_function restored self._type_param_scope to the
         # enclosing value before returning.
         self._finalize_function_refs(func, outer_scope=self._type_param_scope)
+        func.is_nested_def = True
         return TpyNestedDef(func=func, loc=loc)
 
     def _parse_multi_assign(self, node: ast.Assign,

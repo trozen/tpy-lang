@@ -1,0 +1,36 @@
+module meow 12
+plain meow 7
+bumped_twice meow 7 11
+cross meow woof 7
+multi_cross meow woof 8
+global_read meow 12
+match_capture meow 100
+lambda_param meow 101 101
+multi meow woof 1 2
+asserted meow 4
+complement meow 3
+inner_decl meow 6
+comprehension meow [11, 12]
+nested meow 5
+poly tweet 13
+poly other fish 13
+gen yield 0
+gen meow 5
+gen_across yield 1
+gen_across meow 8
+gen_cross yield 0
+gen_cross meow woof 5
+gen_assert yield 3
+gen_assert meow 2
+gen_bumped_frame yield 1
+gen_bumped_frame meow 5 6
+gen_resume_cross yield 1
+gen_resume_cross meow woof 5
+gen_resume_cross after 3
+gen_sibling yield 0
+gen_sibling yield 17
+gen_sibling after 5
+coro meow 9
+coro_complement woof1
+coro_global meow 3 13
+coro_global after 13

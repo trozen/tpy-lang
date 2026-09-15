@@ -44,9 +44,12 @@ def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
 
 
 def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
-    # the `readonly[T]` slot: `const T&` at every instantiation -- still a
-    # reference (the capture rule), but const, so only a @readonly method is
-    # callable through it and `obj.append(1)` here would not compile
+    # the `readonly[T]` slot: the param is `readonly_form_t<T>` and the frame
+    # member `val_or_cref_t<T>` -- a const reference at a reference
+    # instantiation, a copy at a value one. Const either way, so only a
+    # @readonly method is callable through it and `obj.append(1)` here would
+    # not compile. The same classifier serves `async def`
+    # (async/generic_async_free_func).
     i: int32 = 0
     while i < count:
         yield obj.size() + i
@@ -60,8 +63,9 @@ class Sized(Protocol):
 
 def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
     # the same slot at a VALUE instantiation (str): the frame copies the
-    # argument into its own member, so the factory's slot form is not
-    # observable here; fed a NAMED local.
+    # argument into its own member (`val_or_cref_t<T>`), which is what lets
+    # an RVALUE source below survive -- the factory's `readonly_form_t<T>`
+    # slot is only a view of the caller's temporary.
     i: int32 = 0
     while i < count:
         yield len(obj) + i
@@ -115,5 +119,12 @@ def main() -> None:
     word = "ro"
     for t in len_each(word, 2):  # tpyc: ok
         print("len", t)
+    # the same slot fed an RVALUE: the temporary the factory call
+    # materializes dies with that statement, so the frame must OWN its copy.
+    # Only the committed .hpp catches a regression here -- a frame member
+    # that went back to a view would print the same numbers or crash by luck,
+    # never a stable output.txt diff.
+    for t in len_each("rv", 3):  # tpyc: ok
+        print("rvalue", t)
 
 main()

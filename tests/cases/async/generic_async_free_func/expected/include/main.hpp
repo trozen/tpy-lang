@@ -6,22 +6,56 @@
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
+
+// class Readable(Protocol):
+template<typename T>
+concept Readable = requires(const T& t) {
+    { t.size() } -> std::convertible_to<int32_t>;
+};
+
+struct Bin;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 template <typename T>
 struct __coro_identity;
+template <typename T>
+struct __coro_sized_after;
 struct __coro_main_coro;
 
 // async def identity[T](x: T) -> T:
 template <typename T>
 __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> x);
+// async def sized_after[T: Readable](obj: readonly[T], alias: Bin) -> int32:
+template <typename T>
+__coro_sized_after<T> sized_after(::tpy::readonly_form_t<T> obj, Bin& alias);
 // async def main_coro() -> None:
 __coro_main_coro main_coro();
 // def main() -> None:
 void main();
+
+// class Bin:
+struct Bin {
+    // total: int32
+    int32_t total;
+
+    // def __init__(self, n: int32) -> None:
+    Bin() = default;
+    explicit Bin(int32_t n);
+
+    // @readonly
+    // def size(self) -> int32:
+    int32_t size() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bin";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
+    ::tpy::print_object_default(os, "Bin", obj);
+    return os;
+}
 
 // async def identity[T](x: T) -> T:
 template <typename T>
@@ -68,21 +102,91 @@ __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> x) {
     return __coro_identity<T>(x);
 }
 
+// async def sized_after[T: Readable](obj: readonly[T], alias: Bin) -> int32:
+template <typename T>
+struct __coro_sized_after {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::val_or_cref_t<T> obj;
+    Bin& alias;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_sized_after(::tpy::readonly_form_t<T> obj_, Bin& alias)
+        : __state(S_INITIAL), __cancel_pending(false), obj(obj_), alias(alias) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_sized_after<T>&) {
+        return os << "<coroutine sized_after>";
+    }
+};
+// async def sized_after[T: Readable](obj: readonly[T], alias: Bin) -> int32:
+//     # the `readonly[T]` slot in a CORO frame: the same shared classifier the
+//     # generator frame uses (`val_or_cref_t<T>` -- a const reference at a
+//     # reference instantiation, a copy at a value one), read after a suspend
+//     # so the slot has to survive the resume. `alias` is the SAME object as
+//     # `obj` at the one call below, mutated after the suspend: the read then
+//     # answers 15 through the const reference and would answer 5 if the slot
+//     # had copied, so this section is not parity-blind about the form.
+//     await asyncio.sleep(0)                                                    # -> S_RESUME_0
+//     alias.total += 10
+//     return obj.size()
+template <typename T>
+::tpystd::tpy::Poll<int32_t> __coro_sized_after<T>::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        alias.total = ::tpy::add_check<int32_t>(alias.total, 10);
+        __state = S_DONE;
+        int32_t __tpy_async_ret = obj.size();
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def sized_after[T: Readable](obj: readonly[T], alias: Bin) -> int32:
+template <typename T>
+__coro_sized_after<T> sized_after(::tpy::readonly_form_t<T> obj, Bin& alias) {
+    return __coro_sized_after<T>(obj, alias);
+}
+
 // async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     int32_t result;
     std::string s;
+    ::tpy::frame_slot<Bin> b;
+    int32_t __await_lift_0;
     std::string __coro_arg_0;
     std::optional<__coro_identity<int32_t>> __sub_0;
     std::optional<__coro_identity<std::string>> __sub_1;
+    std::optional<__coro_sized_after<Bin>> __sub_2;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_RESUME_1 = 2,
-        S_DONE = 3,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
     };
 
     __coro_main_coro()
@@ -96,5 +200,16 @@ struct __coro_main_coro {
     }
 };
 
+
+// def __init__(self, n: int32) -> None:
+//     self.total = n
+inline Bin::Bin(int32_t n) : total(n) {}
+
+// @readonly
+// def size(self) -> int32:
+//     return self.total
+inline int32_t Bin::size() const {
+    return this->total;
+}
 void __tpy_init();
 } // namespace tpyapp::main

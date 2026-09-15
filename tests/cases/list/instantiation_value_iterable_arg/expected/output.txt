@@ -1,0 +1,7 @@
+range 5
+set 4
+str 4
+span 3
+array 3
+borrow 32
+method 6

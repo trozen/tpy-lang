@@ -19,3 +19,6 @@ size 1
 size 2
 len 2
 len 3
+rvalue 2
+rvalue 3
+rvalue 4

@@ -115,6 +115,7 @@ from ...codegen_cpp.forms import is_plain_nonvalue
 from ...codegen_cpp.gen_async import collect_frame_nested_defs
 from ..nodes import Form, THIRLiteral
 from .checks import (
+    _borrow_form_tuple_call,
     _module_qual_ctor_shape,
     _assert_narrow_info,
     _ctor_shape_ok,
@@ -124,8 +125,8 @@ from .checks import (
     check_polymorphic_rvalue_opt_rebind,
 )
 from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
-                      _ONLY_CORO_FACTORY, _Prescan,
-                      SinkPos, ValueOptKind)
+                      _ONLY_BTUPLE_SLOT, _ONLY_CORO_FACTORY, _Prescan,
+                      narrow_alias_taken, SinkPos, ValueOptKind)
 from .expressions import (
     _is_move_source,
     _poly_cast_checks,
@@ -146,6 +147,7 @@ from . import match as _match
 from ...typesys import polymorphic_source_inner
 from .predicates import (
     _eligible_ptr_value,
+    _narrow_alias_name,
     _poly_narrow_info,
     _storage_optional_return_type,
     _callable_value,
@@ -589,29 +591,33 @@ def _bare_yield_param_ok(name: str, yt_bare: TpyType, lc: '_LowerCtx',
     return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))) == yt_bare
 
 
-def _alias_frame_collision(var: str, frame_fields: 'set[str]') -> bool:
-    """Whether the `__{var}` extraction alias would collide with a real frame
-    field (or `self`). On a collision the skeleton bumps the alias name
-    (`fresh_alias_local`'s `__{var}_narrowed` rename), which none of the THIR
-    narrowing arms reproduce -- so every one of them rejects the shape
-    instead. Shared so the three arms cannot drift apart."""
-    return f"__{var}" in frame_fields or var == "self"
+def _resume_narrow_aliases(cfg: 'rcfg.CFG',
+                           taken: 'AbstractSet[str]') -> 'dict[str, str]':
+    """The extraction alias for every narrowing subject of a resumable body,
+    spelled by the SAME ladder the body's own arms use (`_narrow_alias_name`
+    over the body-wide taken set). This map is the single speller: the
+    skeleton reads it off `THIRResumableBody.narrow_aliases` instead of
+    re-deriving a name from the frame layout, so a body read and the
+    skeleton's declaration cannot disagree.
 
-
-def _resume_alias_name(var: str, frame_fields: 'set[str]') -> str:
-    """The extraction alias the skeleton emits for a resume-narrowed var:
-    `__{var}`, bumped to `__{var}_narrowed` on a frame-field collision
-    (`fresh_alias_local`'s rename -- `self`'s `__self` always collides
-    with the frame's receiver ref)."""
-    base = f"__{var}"
-    return (f"{base}_narrowed"
-            if base in frame_fields or var == "self" else base)
+    Each minted name joins the taken set, so two subjects whose ladders would
+    otherwise land on one spelling (`a` bumped past the frame field `__a`,
+    beside a subject literally named `a_narrowed`) stay distinct."""
+    aliases: dict[str, str] = {}
+    live = set(taken)
+    for bb in cfg.blocks.values():
+        for var in bb.entry_narrowings:
+            if var in aliases:
+                continue
+            name = _narrow_alias_name(var, live)
+            aliases[var] = name
+            live.add(name)
+    return aliases
 
 
 def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
                              param_types: 'dict[str, TpyType]',
                              gen_local_types: 'dict[str, TpyType]',
-                             frame_fields: 'set[str]',
                              case_entry_ids: 'frozenset[int] | None',
                              self_type: 'TpyType | None' = None,
                              analyzer=None,
@@ -619,11 +625,10 @@ def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
     """Narrowed-BB admission: the variant-get slice only. Each fact must be
     a concrete non-protocol member narrowing a union-declared frame field --
     the shape `emit_isinstance_extractions` re-establishes with a plain
-    `std::get` alias whose name the lowering can mirror (`__{var}`, the
-    non-persistent `fresh_alias_local`). Everything else -- the polymorphic
-    self/subclass dynamic_cast family, Optional `is not None`, literal /
-    protocol / Any facts, narrowed-to-smaller-union -- keeps the named
-    reject. Without the skeleton's case-entry set the match-arm alias
+    `std::get` alias under the name `_resume_narrow_aliases` picked.
+    Everything else -- the polymorphic self/subclass dynamic_cast family,
+    Optional `is not None`, literal / protocol / Any facts,
+    narrowed-to-smaller-union -- keeps the named reject. Without the skeleton's case-entry set the match-arm alias
     environments can't be mirrored, so every narrowed body rejects."""
     if case_entry_ids is None:
         return "res.narrowed_resume"
@@ -635,9 +640,9 @@ def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
                 is not None):
             # The POLY-SELF fact: the skeleton re-extracts per resume case
             # (`const Dog& __self_narrowed = *dynamic_cast<...>(&__self);`
-            # -- emit_isinstance_extractions' poly arm with the
-            # fresh_alias_local bump), and the leaves read the SPELLED
-            # alias -- no cross-BB state.
+            # -- emit_isinstance_extractions' poly arm under the same
+            # spelling), and the leaves read the SPELLED alias -- no
+            # cross-BB state.
             continue
         decl = param_types.get(var, gen_local_types.get(var))
         if not isinstance(decl, TpyType):
@@ -647,7 +652,10 @@ def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
             return "res.narrowed_resume"
         if not isinstance(fact, NominalType) or is_protocol_type(fact):
             return "res.narrowed_resume"
-        if _alias_frame_collision(var, frame_fields):
+        # A non-poly RECEIVER fact (the poly one `continue`d above) has no
+        # witness that its `__self_narrowed` re-extraction is even
+        # constructible, so it keeps the reject.
+        if var == "self":
             return "res.narrowed_resume"
     return None
 
@@ -759,7 +767,7 @@ def _narrow_kill_plan(stmts, names: 'frozenset[str]'
 
 def _resume_narrow_envs(cfg: 'rcfg.CFG',
                         case_entry_ids: 'frozenset[int]',
-                        frame_fields: 'set[str]' = frozenset(),
+                        narrow_aliases: 'Mapping[str, str]',
                         ) -> 'dict[int, dict[str, tuple[TpyType, str]] | None]':
     """Per-BB narrowing environments `{var: (fact, alias)}`, mirroring the
     walker's inline emission: an extraction local stays lexically live for
@@ -769,14 +777,14 @@ def _resume_narrow_envs(cfg: 'rcfg.CFG',
     each BB's own `entry_narrowings`.
 
     Alias sources, matching the emit sites exactly: a case entry
-    re-establishes ALL its stamped facts as `__{var}` (`_emit_case_body` ->
-    `_emit_resume_narrowings(outer=None)`); a Branch arm adds the delta of
-    its stamped facts vs the walk-start BB's (`_walk_inline_or_jump(outer=
-    chain_entry)`) as `__{var}`; a match arm binds the subject to the
-    tier's `__case_{i}` (i = source case index -- the rule
-    `_lower_match_union` draws it by); the match join and the async-for
-    body re-establish ALL their stamped facts as `__{var}` (walked with
-    outer=None). A BB visited twice with different envs maps to None
+    re-establishes ALL its stamped facts under `narrow_aliases`
+    (`_emit_case_body` -> `_emit_resume_narrowings(outer=None)`); a Branch arm
+    adds the delta of its stamped facts vs the walk-start BB's
+    (`_walk_inline_or_jump(outer=chain_entry)`) under the same map; a match
+    arm binds the subject to the tier's `__case_{i}` (i = source case index
+    -- the rule `_lower_match_union` draws it by); the match join and the
+    async-for body re-establish ALL their stamped facts under the map too
+    (walked with outer=None). A BB visited twice with different envs maps to None
     (unmodeled -- the caller rejects if it carries facts)."""
     envs: dict[int, 'dict[str, tuple[TpyType, str]] | None'] = {}
 
@@ -795,7 +803,7 @@ def _resume_narrow_envs(cfg: 'rcfg.CFG',
         bb = cfg.blocks.get(ce)
         if bb is None:
             continue
-        env = {v: (f, _resume_alias_name(v, frame_fields))
+        env = {v: (f, narrow_aliases[v])
                for v, f in bb.entry_narrowings.items()}
         work.append((ce, env, bb.entry_narrowings))
     while work:
@@ -820,7 +828,7 @@ def _resume_narrow_envs(cfg: 'rcfg.CFG',
             tb = cfg.blocks[target]
             new_env = dict(env)
             new_env.update(
-                {v: (f, _resume_alias_name(v, frame_fields))
+                {v: (f, narrow_aliases[v])
                  for v, f in tb.entry_narrowings.items()
                  if outer.get(v) is not f})
             work.append((target, new_env, tb.entry_narrowings))
@@ -1026,7 +1034,8 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
 
 
 def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
-                       declared: dict[str, TpyType]) -> 'str | None':
+                       declared: dict[str, TpyType],
+                       narrowed: 'AbstractSet[str]') -> 'str | None':
     """WithEnter / AsyncWithSetup admission (R6-with / R5-async-with). The
     bind's emplace / &(..) wrap and the __enter__ / __aenter__ yields are
     skeleton; the manager expression is the one leaf render, so admit exactly
@@ -1039,6 +1048,15 @@ def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
     if item.manager_borrowed:
         ok = (isinstance(ctx, TpyName) and ctx.name in declared
               and _f1_record(declared[ctx.name], analyzer))
+        # ... and the sync gate's field-access lvalue row (`with self.mgr:`,
+        # `with h.g:`): the field read IS the lvalue the skeleton's `auto&`
+        # binds, so nothing about the manager render depends on the frame.
+        if (not ok and isinstance(ctx, TpyFieldAccess)
+                and isinstance(ctx.obj, TpyName)
+                and ctx.obj.name not in narrowed
+                and _f1_record(analyzer.get_expr_type(ctx), analyzer)):
+            ok = True
+            _witness("res.with_manager_field")
     else:
         ok = ((isinstance(ctx, TpyCall)
                and _f1_record(analyzer.get_expr_type(ctx), analyzer)
@@ -1686,6 +1704,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # through THIRFieldAccess), so it stays out of frame_fields.
     frame_fields = set(n for n, _t in func.params) | {
         lname for lname, _lt in (func.generator_locals or [])}
+    # The set `_LowerCtx.alias_taken` builds, through the shared function
+    # because the alias map below is spelled before `lc` exists: a resume-case
+    # extraction must not take a name the body binds anywhere (a
+    # comprehension var is bound but is no frame field).
+    _scan = analyzer.function_scan_results.get(func)
+    alias_taken = narrow_alias_taken(
+        (_scan.bound_names() if _scan is not None else frozenset()),
+        frame_fields, frame_self=self_type is not None,
+        module_globals=analyzer.global_ns.all_bindings())
+    narrow_aliases = _resume_narrow_aliases(cfg, alias_taken)
     gen_local_types = {n: t for n, t in (func.generator_locals or [])}
     param_types = {n: t for n, t in func.params}
 
@@ -1722,8 +1750,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if bb.entry_narrowings:
             reason = _entry_narrowings_reject(
                 bb.entry_narrowings, param_types, gen_local_types,
-                frame_fields, case_entry_ids,
-                self_type=self_type, analyzer=analyzer)
+                case_entry_ids, self_type=self_type, analyzer=analyzer)
             if reason is not None:
                 return _reject(reason)
         # AsyncForIterSetup (sync + async), AsyncWithSetup and
@@ -2105,7 +2132,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             return _lower_frame_field_assign(stmt, lc, declared)
         return _lower_stmt(stmt, lc, declared)
 
-    narrow_envs = (_resume_narrow_envs(cfg, case_entry_ids, frame_fields)
+    narrow_envs = (_resume_narrow_envs(cfg, case_entry_ids, narrow_aliases)
                    if case_entry_ids is not None else {})
     # The driver's per-BB restore record, live while its _lower_bb runs;
     # _apply_leaf_post_if records the declared-types it overrides into it.
@@ -2151,12 +2178,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         lc.narrow = lc.narrow.snapshot()
         nodes = []
         for var, post, u in plan:
-            if u is None or _alias_frame_collision(var, frame_fields):
-                # A poly cast-and-cache has no frame-aware maker here, and an
-                # alias colliding with a frame field would shadow it. The poly
-                # half has no constructible witness: the fact needs a negated
-                # poly guard, which a resumable leaf rejects at the `if`
-                # itself, before this runs.
+            if u is None:
+                # A poly cast-and-cache has no frame-aware maker here, and no
+                # constructible witness either: the fact needs a negated poly
+                # guard, which a resumable leaf rejects at the `if` itself,
+                # before this runs.
                 raise ThirUnsupported("res.narrowed_resume")
             alias = _persistent_alias_name(var, lc)
             nodes.append(_make_narrow_alias(alias, var, post, u, lc,
@@ -2180,8 +2206,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         The alias does NOT need to survive a BB: the CFG flows the assert's
         then_type_facts into every successor's entry_narrowings
         (resumable_cfg's `_active_narrowings`), and each resume case
-        re-establishes ALL its stamped facts as `__{var}` -- which is exactly
-        what `_resume_narrow_envs` walks. So the alias is walk-local here,
+        re-establishes ALL its stamped facts under the one spelling
+        (`_resume_narrow_aliases`) -- which is exactly what
+        `_resume_narrow_envs` walks. So the alias is walk-local here,
         unlike the post-`if` fact, whose scope the env walk does not model.
         `saved` is the caller's restore record for the scope the alias lives
         in (the BB for the CFG walk, the helper body for a finally helper)."""
@@ -2189,7 +2216,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         rv = _reassert_bump_info(
             stmt, declared, lc.narrow.persistent_narrowed, analyzer)
         nvar = (av or rv or (None,))[0]
-        if nvar is None or _alias_frame_collision(nvar, frame_fields):
+        if nvar is None:
             raise ThirUnsupported("res.narrowed_resume")
         # SNAPSHOT before mutating, and record the declared entry --
         # `_append_assert_narrow` mutates lc.narrow IN PLACE and rebinds
@@ -2234,7 +2261,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Sync + async with: only the manager expression renders; the
                 # bind wrap / __enter__ / __aenter__ yields are skeleton.
                 begin_stmt()
-                reason = _with_enter_reject(stmt, analyzer, declared)
+                reason = _with_enter_reject(stmt, analyzer, declared,
+                                            lc.narrow.narrowed)
                 if reason is not None:
                     raise ThirUnsupported(reason)
                 region_exprs[stmt.item.context_expr] = (
@@ -2514,6 +2542,24 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         form=Form.BORROW, move=False,
                         loc=getattr(yv_src, "loc", None))
                     _witness("res.btuple_yield_elem_lift")
+                elif _borrow_form_tuple_call(yv_src, lc.analyzer):
+                    # A CALL whose tuple result is already the slot's BORROW
+                    # form (`yield mk(xs)` -> `return
+                    # ::tpyapp::m::mk(xs);`): no lift is owed, and the
+                    # pointers it carries are into the caller's storage --
+                    # the callee cannot return pointers into its own frame
+                    # (sema refuses that return outright), so they outlive
+                    # the resume like every other borrow this slot hands out.
+                    # No temp right: a yield is not a flush point, and an arg
+                    # temp would die at the suspend with the handed-out
+                    # pointers still aimed at it -- the arg gate rejects the
+                    # temp rows here the way it does in a match guard.
+                    yield_values[ys] = _lower_expr(
+                        yv_src, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.VALUE,
+                                     pos=SinkPos.RETURN,
+                                     forms=_ONLY_BTUPLE_SLOT))
+                    _witness("res.btuple_yield_borrow_call")
                 else:
                     raise ThirUnsupported("res.btuple_yield_source")
                 _witness("res.btuple_yield")
@@ -2790,6 +2836,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     lc.narrow.spelled[var] = alias
                 else:
                     lc.narrow.narrowed[var] = alias
+                # The skeleton DECLARED this name at the case entry, so an
+                # in-body mint for another subject inside this BB must bump
+                # past it -- one registry, both spellers.
+                lc.narrow.live_aliases.add(alias)
                 declared[var] = fact
             _witness("res.narrow_scope")
         # A mid-BB post-if narrowing (`_apply_leaf_post_if`) records its
@@ -2881,6 +2931,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         suspend_exprs=suspend_exprs, region_exprs=region_exprs,
         match_dispatches=match_dispatches,
         nested_def_bodies=nested_def_bodies,
+        narrow_aliases=narrow_aliases,
         deferred_returns=deferred_returns)
     validate_resumable_body(func.name, res_body)
     return res_body
@@ -2906,9 +2957,11 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
                 and (ri := analyzer.registry.get_record(lc.record_name))
                 is not None
                 and ri.get_method_overloads(func.name))):
-        # Same hazard as the lambda form (which keeps its own copy so its
-        # reject-tag ORDER stays stable): a colliding name makes the body's
-        # const-verdict lookups consult the wrong FunctionInfo.
+        # A frame nested def is emitted as a NAMED MEMBER of the frame struct
+        # (`gen_coro_finally_top_def`), so a name that also names a module
+        # function or a method of the enclosing record collides at the C++
+        # level, not only in the Python scope the lambda form lives in.
+        # Unaudited -- refuse rather than pick a spelling.
         note_detail("nesteddef.name_collision")
         raise ThirUnsupported("res.nested_def_member")
     body_declared = dict(declared)

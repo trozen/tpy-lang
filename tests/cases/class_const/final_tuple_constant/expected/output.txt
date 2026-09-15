@@ -3,3 +3,7 @@
 3
 alpha
 True
+whole 1 2 3
+direct 1
+nested 5
+method r 2

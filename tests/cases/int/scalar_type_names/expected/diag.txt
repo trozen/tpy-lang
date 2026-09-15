@@ -9,4 +9,6 @@ main.py:83: warning: 'float32' shadows the tpy type 'float32' for the rest of th
 main.py:90: warning: 'int8' shadows the tpy type 'int8' for the rest of this function; consider renaming
 main.py:98: warning: 'int32' shadows the tpy type 'int32' within its scope; consider renaming
 main.py:107: warning: 'int32' shadows the tpy type 'int32' within its scope; consider renaming
-main.py:119: warning: 'i16' shadows the tpy type 'int16' for the rest of this function; consider renaming
+main.py:113: warning: 'uint8' shadows the tpy type 'uint8' within its scope; consider renaming
+main.py:122: warning: 'uint32' shadows the tpy type 'uint32' within its scope; consider renaming
+main.py:134: warning: 'i16' shadows the tpy type 'int16' for the rest of this function; consider renaming

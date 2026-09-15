@@ -1,0 +1,11 @@
+gs a!
+gs a!?
+gb 3
+gb 4
+gi 2
+gi 4
+gi 8
+gstr x!
+gstr x!
+walk Tm
+walk Tm.

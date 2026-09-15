@@ -522,7 +522,11 @@ class AsyncCoroCodegen:
         # the same set). Explicit view params (StrView/Span) stay borrow-form.
         if is_owned_in_coro_frame(ptype_inner):
             return _CoroParamKind.OWNED_COPY
-        if isinstance(ptype_inner, TypeParamRef):
+        # `readonly[T]` is the same slot seen through the const wrapper, so it
+        # takes the same per-instantiation traits: a literal `const T&` field
+        # would hold a reference at a VALUE instantiation too, where the frame
+        # outlives the temporary the factory call materialized.
+        if isinstance(actual, TypeParamRef):
             return _CoroParamKind.TYPE_PARAM
         # Checked before the OptionalType-pointer-repr branch so
         # `Own[Awaitable[T]] | None` isn't mis-routed to POINTER --
@@ -2528,7 +2532,8 @@ class AsyncCoroCodegen:
         from ..thir.lower.resumable import lower_resumable
         begin_attempt()
         # The case-label set (cached on the CFG) doubles as the lowering's
-        # narrowing-alias boundary: case entries re-establish `__{var}`.
+        # narrowing-alias boundary: case entries re-establish the extraction
+        # alias under the name lowering picked (`narrow_aliases`).
         case_entry_ids = frozenset(self._compute_case_entries(cfg))
         # The frame-layout plan is the skeleton's own placement decision;
         # handing it to lowering (vs re-deriving) keeps the skeleton and the
@@ -4888,7 +4893,7 @@ class AsyncCoroCodegen:
         proto_snap = self.ctx.save_protocol_narrowings()
         nv_saved = emit_prims.emit_isinstance_extractions(
             self.ctx, self.types, self.functions.protocols,
-            out, delta, indent_extra=0)
+            out, delta, self._leaf.narrow_aliases, indent_extra=0)
         return (nv_saved, proto_snap, lit_snap)
 
     def _restore_resume_narrowings(self, token: '_NarrowingToken | None') -> None:

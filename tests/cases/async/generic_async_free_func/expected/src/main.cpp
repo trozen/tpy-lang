@@ -5,10 +5,16 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
-//     result = await identity(int32(42))  # tpyc: type(int32)  # -> S_RESUME_0
+//     result = await identity(int32(42))  # tpyc: type(int32)                 # -> S_RESUME_0
 //     print(result)
-//     s = await identity("hi")  # tpyc: type(str)              # -> S_RESUME_1
+//     s = await identity("hi")  # tpyc: type(str)                             # -> S_RESUME_1
 //     print(s)
+//     b = Bin(5)
+//     # the same object at both params, so the mutation lands under the slot
+//     print("readonly", await sized_after(b, b))  # tpyc: ok                  # -> S_RESUME_2
+//     # the caller still owns the object the const slot referred to
+//     b.total += 1
+//     print("readonly after", b.total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -33,6 +39,19 @@ namespace tpyapp::main {
         s = std::move(__r1).value();
         __sub_1.reset();
         std::cout << s << "\n";
+        b.emplace(Bin(5));
+        __sub_2.emplace((*b), (*b));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: print("readonly", await sized_after(b, b))  # tpyc: ok
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_0 = std::move(__r2).value();
+        __sub_2.reset();
+        std::cout << "readonly" << " " << __await_lift_0 << "\n";
+        (*b).total = ::tpy::add_check<int32_t>((*b).total, 1);
+        std::cout << "readonly after" << " " << (*b).total << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -57,6 +76,8 @@ void main() {
 // # site. Two invariants exercised: (a) the callee's sub-coro struct
 // # carries `<T_substituted>` in the awaited frame slot, and (b) the
 // # awaited-value slot in the caller has the substituted type, not bare T.
+// # The `sized_after` section adds the readonly-generic frame slot, whose
+// # classifier is shared with the generator frame (iterators/gen_generic).
 // import asyncio
 //
 // main()

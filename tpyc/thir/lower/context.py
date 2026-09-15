@@ -505,6 +505,34 @@ class _ExprUse:
         forms = self.forms
         return form in (_POS_FORMS[self.pos] if forms is None else forms)
 
+
+def narrow_alias_taken(bound_names, frame_field_names, *,
+                       frame_self: bool, module_globals) -> 'frozenset[str]':
+    """The body-wide half of the names a synthesized narrowing alias must not
+    take: every binding the body makes (params, locals declared anywhere --
+    including inside the very branch the alias opens -- `for`/`with` targets,
+    walrus targets, comprehension, `except as`, `match` capture and lambda
+    params, nested-def names), a resumable frame's fields, and the module's
+    own globals (a body that only READS one never binds it, so no body scan
+    can see it).
+
+    Body-wide rather than in-scope: an alias declared at branch entry stays
+    live to the closing brace, so a same-spelled binding LATER in that scope
+    is a redeclaration and one in an inner scope (a comprehension's loop var)
+    shadows the alias for the reads inside it.
+
+    Shared with `lower_resumable`'s admission scan, which runs before a
+    `_LowerCtx` exists."""
+    taken = frozenset(bound_names) | frozenset(frame_field_names)
+    if frame_self:
+        # A resumable frame stores its receiver as the reference `__self`,
+        # which is not one of its FIELDS -- so nothing above sees it, and a
+        # fieldless frame would report nothing at all. A plain method's
+        # receiver is `this`, which is no name an alias can take.
+        taken = taken | {"__self"}
+    return taken | frozenset(module_globals)
+
+
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 
 class _Prescan:
@@ -527,7 +555,8 @@ class _Prescan:
                  "ret_supported", "ret_callable",
                  "ret_value_opt", "ret_value_opt_view",
                  "ret_value_opt_tuple",
-                 "value_opt_params", "param_names",
+                 "value_opt_params", "param_names", "bound_names",
+                 "module_global_names",
                  "own_tuple_params",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
                  "global_cpp", "global_write_cpp", "native_globals",
@@ -607,6 +636,19 @@ class _Prescan:
         scan = (analyzer.function_scan_results.get(func)
                 if scan_override is None else scan_override)
         global_decls = analyzer.function_global_decls.get(func, set())
+        # Every name the body binds anywhere, params included -- the set a
+        # SYNTHESIZED local (a narrowing extraction alias) must stay clear of.
+        # Body-wide on purpose: `declared` at the site only holds the bindings
+        # made BEFORE it, and a later same-spelled declaration collides just
+        # as hard.
+        self.bound_names: frozenset[str] = frozenset(
+            self.param_names | (scan.bound_names() if scan else set()))
+        # Module-scope names (globals, functions, records, imports): a body
+        # that only READS one binds nothing, so `bound_names` cannot see it,
+        # yet a synthesized local spelled the same hides it for the rest of
+        # the scope.
+        self.module_global_names: frozenset[str] = frozenset(
+            analyzer.global_ns.all_bindings())
         self.reassigned = (scan.reassigned - global_decls) if scan else set()
         # F2d: the subset reassigned with an rvalue source (the rebind-slot
         # trigger -- mirrors codegen's `ctx.rvalue_reassigned_vars` seeding).
@@ -846,9 +888,9 @@ class _NarrowScope:
     `narrowed` maps each U3 isinstance-narrowed source var to its live
     extraction alias
     (`ctx.narrowed_vars`); reads rename, the isinstance condition keeps the
-    original variant. `persistent_aliases` mirrors
-    `ctx.declared_persistent_aliases` for the post-if statement-level
-    extraction's collision bump (`__v` -> `__v_2`). `subject_union` records
+    original variant. `persistent_aliases` holds the names already declared at
+    the enclosing C++ scope, for the post-if statement-level extraction's
+    collision bump (`__v` -> `__v_2`). `subject_union` records
     each narrowed subject's ORIGINAL union after `declared` is retyped to
     the member. Consumers use it for alias lifting and re-extraction;
     subscript dispatch still follows the narrowed member type.
@@ -877,6 +919,15 @@ class _NarrowScope:
     # adapter-vs-dynamic_cast pick, and the readonly const verdict all key
     # on it).
     poly_source: dict[str, TpyType] = field(default_factory=dict)
+    # Every synthesized narrowing local currently LIVE in the enclosing scope
+    # chain -- branch extraction aliases, the poly if-init cast pointers, and
+    # (through `persistent_aliases`) the statement-level ones. The freshness
+    # ladder consults it via `_LowerCtx.alias_taken`: two subjects whose
+    # spellings collide only AFTER a bump (`a` bumped to `__a_narrowed`
+    # because the body binds `__a`, and a nested narrowing of `a_narrowed`)
+    # would otherwise both declare the same name, and the inner shadow makes
+    # reads of the outer subject return the wrong object.
+    live_aliases: set[str] = field(default_factory=set)
 
     def snapshot(self) -> '_NarrowScope':
         # Field-generic so a new container can't be silently shared: every
@@ -956,6 +1007,9 @@ _FUNCTION_SCOPED_STATE = (
     # per-function fact discipline, not walk-order state.
     "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
     "_btuple_const_computed",
+    # The memoized body-wide half of `alias_taken`: keyed on the state it
+    # reads, so a branch cannot make it stale.
+    "_alias_taken_memo",
 )
 
 
@@ -1015,7 +1069,7 @@ class _LowerCtx:
                  "in_for_body",
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
                  "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
-                 "_btuple_const_computed")
+                 "_btuple_const_computed", "_alias_taken_memo")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -1454,6 +1508,7 @@ class _LowerCtx:
         self.const_borrow_tuple_locals: set[str] = set()
         self.const_opt_borrow_tuple_locals: set[str] = set()
         self._btuple_const_computed = False
+        self._alias_taken_memo: 'tuple | None' = None
         # F2e: sema's RAW owned-locals fact, the mirror of codegen's
         # `ctx.sema_movable_locals`. It means "sema proved this local owned",
         # NOT "movable" -- a name becomes movable only by joining the working
@@ -1637,6 +1692,42 @@ class _LowerCtx:
             for name, entries in zip(_BRANCH_SCOPED_SETS, saved):
                 setattr(self, name, entries)
             self.narrow = saved_narrow
+
+    def alias_taken(self) -> 'frozenset[str]':
+        """Names a synthesized narrowing alias must not take -- the one
+        registry every minting site consults. See `narrow_alias_taken` for
+        the body-wide half; on top of it come the aliases already live in an
+        enclosing scope (`_NarrowScope.live_aliases` and its statement-level
+        subset `persistent_aliases`), which pop with their branch -- a
+        resumable BB's re-established extractions register there too, for the
+        BB they are live in.
+
+        The body-wide half is memoized against the state it reads (the
+        prescan object, which a nested-def scope SWAPS, the frame's field
+        set and the receiver spelling) rather than recomputed per mint: it
+        unions every module global, and a narrowing-heavy body mints many."""
+        key = (self.prescan, self.frame_field_names,
+               self.self_receiver is not None and self.self_cpp != "this")
+        memo = self._alias_taken_memo
+        if memo is None or memo[0] != key:
+            memo = (key, narrow_alias_taken(
+                self.prescan.bound_names, self.frame_field_names,
+                frame_self=key[2],
+                module_globals=self.prescan.module_global_names))
+            self._alias_taken_memo = memo
+        return (memo[1] | self.narrow.live_aliases
+                | self.narrow.persistent_aliases)
+
+    @contextmanager
+    def live_alias(self, name: str):
+        """Hold `name` in the live-alias registry for a region the narrowing
+        scope does not bracket -- the poly if-init cast pointer, whose C++
+        scope is the whole `if`, both arms included."""
+        self.narrow.live_aliases.add(name)
+        try:
+            yield
+        finally:
+            self.narrow.live_aliases.discard(name)
 
 
 def _walrus_pairs(expr):

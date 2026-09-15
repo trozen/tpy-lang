@@ -1,0 +1,14 @@
+module aa 1
+values 3
+prvalue_arm 15
+local_arms 70
+strings b2
+reseat_view aa 1 qq
+reseat_value 1 2 7
+nested_view aa 1 2
+gen_view aa
+gen_view aa1
+method 17
+gen 1
+gen 2
+async 7

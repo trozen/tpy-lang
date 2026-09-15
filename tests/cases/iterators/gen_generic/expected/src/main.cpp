@@ -40,6 +40,13 @@ namespace tpyapp::main {
 //     word = "ro"
 //     for t in len_each(word, 2):  # tpyc: ok
 //         print("len", t)
+//     # the same slot fed an RVALUE: the temporary the factory call
+//     # materializes dies with that statement, so the frame must OWN its copy.
+//     # Only the committed .hpp catches a regression here -- a frame member
+//     # that went back to a view would print the same numbers or crash by luck,
+//     # never a stable output.txt diff.
+//     for t in len_each("rv", 3):  # tpyc: ok
+//         print("rvalue", t)
 void main() {
     {
         auto __src_0 = ::tpyapp::main::repeat<int32_t>(42, 3);
@@ -134,6 +141,16 @@ void main() {
             if (!__r_15.has_value()) break;
             int32_t t = ::tpy::unwrap_ref(*__r_15);
         std::cout << "len" << " " << t << "\n";
+        }
+    }
+    {
+        auto __src_16 = ::tpyapp::main::len_each<std::string>("rv", 3);
+        auto&& __itr_16 = ::tpy::__iter__(__src_16);
+        for (;;) {
+            auto __r_17 = __itr_16.__next__();
+            if (!__r_17.has_value()) break;
+            int32_t t = ::tpy::unwrap_ref(*__r_17);
+        std::cout << "rvalue" << " " << t << "\n";
         }
     }
 }

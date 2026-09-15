@@ -639,6 +639,40 @@ def _callable_value(t: 'TpyType | None') -> bool:
     return isinstance(t, CallableType) and not t.is_template
 
 
+def _narrow_alias_name(var: str, taken: 'AbstractSet[str]') -> str:
+    """The narrowing extraction alias for `var` -- `__{var}`, bumped past
+    every name in `taken` (`lc.alias_taken()`: the body's own bindings plus a
+    resumable frame's captured fields). Shadowing an outer ALIAS is harmless
+    -- the branch opens its own C++ scope -- but shadowing the user's own
+    `__x` makes every later read in the branch see the narrowed subject
+    instead, and a same-scope user `__x` is an outright redeclaration.
+
+    The bump is a LADDER, not a single step: `__x_narrowed` is a spelling the
+    user may also have taken. This is the ONE speller: the in-body narrowing
+    arms call it directly, and a resumable body's resume-case extractions go
+    through `_resume_narrow_aliases`, which calls it over the body-wide taken
+    set -- so a body read and the skeleton's declaration cannot disagree."""
+    base = f"__{var}"
+    if base not in taken:
+        return base
+    # `_narrowed` before the numeric rungs: it names what the local IS, and a
+    # user who took `__x` is likelier to have taken `__x_2` as well.
+    return _fresh_narrow_local(f"{base}_narrowed", taken)
+
+
+def _fresh_narrow_local(base: str, taken: 'AbstractSet[str]') -> str:
+    """`base`, suffix-bumped (`_2`, `_3`, ...) until it is clear of `taken`
+    (`lc.alias_taken()`, every binding the body makes). The freshness rule
+    for a synthesized narrowing local -- the poly if-init's cast pointer,
+    and the tail of the extraction alias's own ladder."""
+    if base not in taken:
+        return base
+    n = 2
+    while f"{base}_{n}" in taken:
+        n += 1
+    return f"{base}_{n}"
+
+
 def _is_type_param_slot(t: 'TpyType | int | None') -> bool:
     """True if `t` is a bare generic type-param slot (`T` in a `Record[T]`),
     seen through the readonly / Ref wrappers a param or field type carries. A
@@ -647,6 +681,27 @@ def _is_type_param_slot(t: 'TpyType | int | None') -> bool:
     keys on this single shape."""
     return isinstance(t, TpyType) and isinstance(
         unwrap_readonly(unwrap_ref_type(t)), TypeParamRef)
+
+def _tparam_arg_bound_ok(arg_t: 'TpyType | None', slot: 'TpyType | None',
+                         bounds: 'dict | None', slot_bounds: 'dict | None',
+                         analyzer) -> bool:
+    """Does a TYPE-PARAM argument's own bound satisfy the resolved overload's
+    type-param slot bound?
+
+    Sema picks one overload for the whole template, so an UNBOUNDED caller
+    param gets the same pick a bounded one does -- `int32(x)` under a bare
+    `[T]` resolves to the `[T: AnyFixedInt]` __init__ and expands its
+    fixed-int cast at an `int` or `str` instantiation, where the monomorphic
+    spelling would have picked the BigInt or parse overload. The caller's
+    bound is what says the pick holds at every instantiation, and
+    `satisfies_bound` is the fact sema checks an explicit type argument
+    with."""
+    ab = _bounded_tparam_protocol(arg_t, bounds)
+    sb = _bounded_tparam_protocol(slot, slot_bounds)
+    if ab is None or sb is None:
+        return False
+    return ab == sb or analyzer.protocols.satisfies_bound(ab, sb)
+
 
 def _type_param_value_slot(t: 'TpyType | None') -> bool:
     """A DECL slot spelled as a BARE TYPE-kind type-param (`T newitem = ...;`
@@ -2607,6 +2662,23 @@ def _module_var_read_cpp(module_name: str, var_name: str,
         return f"(*{vi.cpp_expr})"
     return vi.cpp_expr
 
+
+def _module_var_access_pair(recv, declared: dict[str, TpyType],
+                            analyzer) -> 'tuple[str, str] | None':
+    """The (module, var) pair when `recv` is a module-variable read (dotted
+    `pkg.X` or `mod.X` off a MODULE binding), else None -- the shared
+    recognizer; each consumer decides its own `allow_ref_pointer` policy."""
+    if not isinstance(recv, TpyFieldAccess):
+        return None
+    if recv.module_var_access is not None:
+        return recv.module_var_access
+    bare_mod = _bare_module_recv(recv.obj, declared, analyzer)
+    if (bare_mod is not None
+            and _module_var_read_cpp(bare_mod, recv.field, analyzer)
+            is not None):
+        return bare_mod, recv.field
+    return None
+
 def _module_var_recv(recv: TpyExpr, locals_: dict[str, TpyType],
                      analyzer) -> bool:
     """A module-attr GLOBAL as a subscript/setitem/method receiver
@@ -2791,16 +2863,24 @@ def _plain_enum_truthy(t: TpyType | None, analyzer) -> bool:
     et = _eligible_enum(t, analyzer)
     return et is not None and not is_int_enum_type(et)
 
-def _opt_record_dunder(t: TpyType | None, analyzer) -> bool:
-    """A pointer-repr `Optional[user record]` whose inner carries
-    `__bool__`/`__len__` -- the type half of the un-narrowed truthiness
-    dispatch. Builtin containers fail `is_user_record` there, so they keep
-    the bare non-null test (BUGS.md's un-narrowed container entry)."""
+def _opt_record_inner(t: TpyType | None) -> 'TpyType | None':
+    """The user-record inner of a pointer-repr `Optional[...]` -- the type
+    half of the un-narrowed truthiness dispatch. Builtin containers fail
+    `is_user_record` here, so they keep the bare non-null test (BUGS.md's
+    un-narrowed container entry)."""
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))) if t else None
     if not (isinstance(u, OptionalType) and u.uses_pointer_repr()):
-        return False
+        return None
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(u.inner)))
     if not (isinstance(inner, NominalType) and inner.is_user_record):
+        return None
+    return inner
+
+def _opt_record_dunder(t: TpyType | None, analyzer) -> bool:
+    """That inner, restricted to records carrying `__bool__`/`__len__` --
+    the ones whose truthiness is more than a null test."""
+    inner = _opt_record_inner(t)
+    if inner is None:
         return False
     rec = analyzer.registry.get_record_for_type(inner)
     return bool(rec and (rec.get_method_overloads("__bool__")
@@ -2826,9 +2906,12 @@ def _storage_opt_record_truthy(e: TpyExpr, t: TpyType | None, analyzer,
                                storage_opt_locals: set[str]) -> bool:
     """The storage-form complement: `std::optional<T>` reads truthy through
     its own bool conversion, so no truthiness wrap applies and the
-    read renders BARE (`if (h.f)` / `if (__getitem__(xs, 0))`). That skips
-    the inner's dunder -- a filed divergence, not a render accident."""
-    return (_opt_record_dunder(t, analyzer)
+    read renders BARE (`if (h.f)` / `if (__getitem__(xs, 0))`). For a
+    dunder-LESS inner that bare engagement test IS Python's truthiness (a
+    plain object is always truthy, so `if h.f:` asks only `is not None`);
+    for a dunder-carrying one it skips the dunder -- a filed divergence, not
+    a render accident."""
+    return (_opt_record_inner(t) is not None
             and _storage_form_opt_source(e, analyzer, storage_opt_locals))
 
 def _native_cond_scalar(t: TpyType | None, analyzer) -> bool:
@@ -6011,11 +6094,18 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
         # A value-tuple field (`self.data[N]`) or a storage-form mixed
         # record/scalar tuple field (`c.data[N]` on an `_f1_tuple` -- elements
         # held by value, so a scalar element reads bare like the name arm).
-        if not (_field_receiver_ok(recv, locals_, analyzer)
-                and (_value_tuple(analyzer.get_expr_type(recv), analyzer)
-                     is not None
-                     or _f1_tuple(analyzer.get_expr_type(recv), analyzer)
-                     is not None)):
+        # A CLASS-CONSTANT receiver (`Counter.PAIR[N]`) reads the same bare
+        # `std::get<N>` off the qualified static; its own arm decides the
+        # receiver render, so the record-receiver rule does not apply.
+        if recv.class_constant_owner is not None:
+            if _value_tuple_global(analyzer.get_expr_type(recv),
+                                   analyzer) is None:
+                return None
+        elif not (_field_receiver_ok(recv, locals_, analyzer)
+                  and (_value_tuple(analyzer.get_expr_type(recv), analyzer)
+                       is not None
+                       or _f1_tuple(analyzer.get_expr_type(recv), analyzer)
+                       is not None)):
             return None
     elif isinstance(recv, TpySubscript):
         # A nested read `t[i][j]`: the inner `t[i]` is a value-tuple
@@ -7953,6 +8043,11 @@ def _owning_fi(func: TpyFunction, analyzer,
     """The registry FunctionInfo a callable's param verdicts live on -- on the
     owning record for a method, in the function registry otherwise. `[-1]` is
     codegen's own last-overload pick (`_get_method_mutated_params`)."""
+    if func.is_nested_def:
+        # A nested def is bound in the enclosing body's namespace only, so a
+        # name lookup here answers with a same-named module function or
+        # method -- another callable's verdicts, by param index.
+        return None
     if record_name is not None:
         ri = analyzer.registry.get_record(record_name)
         overloads = ri.get_method_overloads(func.name) if ri is not None else None
@@ -8074,12 +8169,24 @@ def _forced_const_dropped(name: str, func: TpyFunction, analyzer,
         const_params=True,
     ).signature_const
 
-def _const_borrow_name(name: str, lc) -> bool:
+def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     """The const-borrow-source verdict for a bare name: a param under the
     deep-const or const-borrow verdicts. The third arm
     (ReadonlyType declared type) never fires for admitted subjects -- the
     poly/dyn admission requires the declared entry fully unwrapped, so a
-    readonly-declared name rejects before const-ness is consulted."""
+    readonly-declared name rejects before const-ness is consulted.
+
+    `const_locals=True` adds the locally declared readonly names -- the
+    tuple-unpack RECEIVER asks it, because a `tuple_to_pointer` wrap off a
+    const local must spell `const T*` elements. It is the only extra
+    receiver family the body tracks: a const LOOP VAR is in neither set, so
+    the unpack off one still spells mutable element pointers
+    (BUGS.md#unpack-recv-const-misses-loop-var). The verdict cannot
+    disagree with an unpack target's use -- a body that writes through an
+    unpacked element marks the param mutated, which drops the const
+    verdict."""
+    if const_locals and name in lc.const_locals:
+        return True
     f = _const_verdict_func(name, lc)
     return (_param_is_deep_const(name, f, lc.analyzer, lc.record_name)
             or _param_is_const(name, f, lc.analyzer, lc.record_name))
@@ -8109,7 +8216,13 @@ def _poly_subject_const(expr: TpyExpr, lc) -> bool:
     a readonly-typed subject, a name param under the const verdicts, or a
     field/subscript whose receiver chain is const (C++ propagates const
     through member access)."""
-    if isinstance(lc.analyzer.get_expr_type(expr), ReadonlyType):
+    st = lc.analyzer.get_expr_type(expr)
+    if isinstance(st, ReadonlyType):
+        return True
+    # `Ptr[readonly[T]]` carries the const on the POINTEE (`const T*`), so a
+    # top-level ReadonlyType never appears -- the cast pair still has to
+    # target `const Sub*` or the dynamic_cast casts away constness.
+    if isinstance(st, PtrType) and isinstance(st.pointee, ReadonlyType):
         return True
     while isinstance(expr, (TpyFieldAccess, TpySubscript)):
         expr = expr.obj
@@ -11232,25 +11345,26 @@ def _template_ctor_call_fi(e: TpyCall) -> 'FunctionInfo | None':
     return fi
 
 
-def _inst_call_rvalue_arg(arg: TpyExpr, analyzer) -> bool:
-    """A CALL RVALUE at an instantiation arg slot -- `set(make_nodes())`,
-    `set(copy(b))`, `list(copy_iter(it))`, `list(heapq.merge(a, b))`. It
-    renders through the ordinary call-arg dispatch, inline into the
-    construct template, exactly as the generator-factory and combinator arms
-    above do for their narrower callee shapes.
+def _inst_call_container_arg(arg: TpyExpr, analyzer) -> bool:
+    """A container-returning CALL at an instantiation arg slot --
+    `set(make_nodes())`, `set(copy(b))`, `list(copy_iter(it))`,
+    `list(heapq.merge(a, b))`, `list(borrow(b))`. It renders through the
+    ordinary call-arg dispatch, inline into the construct template, exactly
+    as the generator-factory and combinator arms above do for their narrower
+    callee shapes.
 
-    Keyed on the value CATEGORY, not on the callee: an rvalue owns its result,
-    so none of the own_iter / last-use machinery the bare-NAME branch exists
-    for can apply to it.
+    Keyed on the RESULT, not on the callee and not on the value category: a
+    call result is not a binding, so none of the own_iter / last-use
+    machinery the bare-NAME branch exists for can apply to it whether the
+    callee returns by value or by reference -- and `list(x)` copies either
+    way.
 
-    Restricted to a CONTAINER result. The iterator-shaped rvalues in the same
+    Restricted to a CONTAINER result. The iterator-shaped results in the same
     position (`copy_iter(..)`'s `CopyIter[T]`, a module-qualified generator
     factory) are blocked one layer down at the free-call result gate and the
     module-marker gate, so admitting them here would be unwitnessable
     surface."""
     if not isinstance(arg, (TpyCall, TpyMethodCall)):
-        return False
-    if not is_rvalue_source(analyzer, arg):
         return False
     rt = analyzer.get_expr_type(arg)
     if rt is None:

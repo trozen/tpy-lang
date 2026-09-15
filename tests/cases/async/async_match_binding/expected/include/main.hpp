@@ -13,11 +13,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_sub;
 struct __coro_caller;
+struct __coro_opt_chain;
 
 // async def sub(n: int) -> int:
 __coro_sub sub(::tpy::BigInt n);
 // async def caller(tag: int) -> int:
 __coro_caller caller(::tpy::BigInt tag);
+// async def opt_chain(o: Optional[int32]) -> int32:
+__coro_opt_chain opt_chain(std::optional<int32_t> o);
 // def main() -> None:
 void main();
 
@@ -68,6 +71,32 @@ struct __coro_caller {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_caller&) {
         return os << "<coroutine caller>";
+    }
+};
+
+// async def opt_chain(o: Optional[int32]) -> int32:
+struct __coro_opt_chain {
+    int32_t __state;
+    bool __cancel_pending;
+    std::optional<int32_t> o;
+    std::optional<__coro_sub> __sub_0;
+    std::optional<__coro_sub> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_opt_chain(std::optional<int32_t> o_)
+        : __state(S_INITIAL), __cancel_pending(false), o(std::move(o_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_opt_chain&) {
+        return os << "<coroutine opt_chain>";
     }
 };
 

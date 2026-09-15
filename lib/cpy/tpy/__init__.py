@@ -942,6 +942,16 @@ class AnyFixedInt(_Protocol):
     pass
 
 
+class AnyFixedSigned(AnyFixedInt, _Protocol):
+    """Marker bound for signed fixed-width integers."""
+    pass
+
+
+class AnyFixedUnsigned(AnyFixedInt, _Protocol):
+    """Marker bound for unsigned fixed-width integers."""
+    pass
+
+
 class ValueType(_Protocol):
     """Marker for types with value semantics (passed by value, copy on access)."""
     pass

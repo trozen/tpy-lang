@@ -1,0 +1,1 @@
+main.py:67: warning: non-exhaustive match on 'Cat'; no unconditional catch-all arm (add 'case _: pass' to suppress)

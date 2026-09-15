@@ -4,6 +4,29 @@
 namespace tpyapp::main {
 
 
+// # free function: the constant bound whole into a local tuple slot.
+// def whole() -> None:
+//     v = Version.SEMVER  # tpyc: ok
+//     print("whole", v[0], v[1], v[2])
+void whole() {
+    std::tuple<int32_t, int32_t, int32_t> v = Version::SEMVER;
+    std::cout << "whole" << " " << std::get<0>(v) << " " << std::get<1>(v) << " " << std::get<2>(v) << "\n";
+}
+
+// # free function: the element read in place, no intermediate binding.
+// def direct() -> None:
+//     print("direct", Version.SEMVER[0])  # tpyc: ok
+void direct() {
+    std::cout << "direct" << " " << std::get<0>(Version::SEMVER) << "\n";
+}
+
+// # free function: a nested-tuple constant read in place.
+// def nested() -> None:
+//     print("nested", Version.NESTED[0][1])  # tpyc: ok
+void nested() {
+    std::cout << "nested" << " " << std::get<1>(std::get<0>(Version::NESTED)) << "\n";
+}
+
 // def main() -> None:
 //     major, minor, patch = Version.SEMVER
 //     print(major)
@@ -12,6 +35,10 @@ namespace tpyapp::main {
 //     name, stable = Version.LABEL
 //     print(name)
 //     print(stable)
+//     whole()
+//     direct()
+//     nested()
+//     Reader("r").show()
 void main() {
     auto __tup_1 = Version::SEMVER;
     int32_t major = std::get<0>(__tup_1);
@@ -25,6 +52,10 @@ void main() {
     bool stable = std::get<1>(__tup_2);
     std::cout << name << "\n";
     std::cout << ::tpy::print_bool(stable) << "\n";
+    ::tpyapp::main::whole();
+    ::tpyapp::main::direct();
+    ::tpyapp::main::nested();
+    Reader("r").show();
 }
 
 // main()

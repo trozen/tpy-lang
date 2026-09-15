@@ -63,6 +63,10 @@ int32_t shadowed_nested();
 int32_t shadowed_comp(const std::vector<int32_t>& xs);
 // def shadowed_except(n: int32) -> int32:
 int32_t shadowed_except(int32_t n);
+// def shadowed_lambda(n: int32) -> int32:
+int32_t shadowed_lambda(int32_t n);
+// def shadowed_match(n: int32) -> int32:
+int32_t shadowed_match(int32_t n);
 // def alias_free() -> int32:
 int32_t alias_free();
 // def alias_shadow() -> int32:

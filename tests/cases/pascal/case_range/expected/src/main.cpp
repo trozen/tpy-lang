@@ -153,30 +153,35 @@ void __tpy_init() {
     for (int32_t i = 0; i < __stop_0; ++i) {
         n = i;
         auto& __match_subject_1 = n;
-        switch (__match_subject_1) {
-        case 0: {
+        if (__match_subject_1 == 0) {
             std::cout << "zero" << "\n";
-            break;
+            goto __match_end_2;
         }
-        case 4: {
-            std::cout << "mid" << "\n";
-            break;
-        }
-        case 5: {
-            std::cout << "mid" << "\n";
-            break;
-        }
-        default: {
+        {
             if (((1 <= n) && (n <= 3))) {
                 std::cout << "low" << "\n";
-            } else if (((6 <= n) && (n <= 9))) {
-                std::cout << "high" << "\n";
-            } else {
-                std::cout << "out" << "\n";
+                goto __match_end_2;
             }
-            break;
         }
+        if (__match_subject_1 == 4) {
+            std::cout << "mid" << "\n";
+            goto __match_end_2;
         }
+        if (__match_subject_1 == 5) {
+            std::cout << "mid" << "\n";
+            goto __match_end_2;
+        }
+        {
+            if (((6 <= n) && (n <= 9))) {
+                std::cout << "high" << "\n";
+                goto __match_end_2;
+            }
+        }
+        {
+            std::cout << "out" << "\n";
+            goto __match_end_2;
+        }
+        __match_end_2:;
     }
     d = day::wed;
     ::tpyapp::main::classify(d);

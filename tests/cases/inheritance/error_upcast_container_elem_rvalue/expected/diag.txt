@@ -1,0 +1,2 @@
+main.py:19: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:19: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.assign:setitem.record_value_shape)

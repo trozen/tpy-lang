@@ -1,0 +1,6 @@
+scalar 7
+dict 3
+str hi
+rec 11
+nested [1, 2, 9]
+comp 30

@@ -77,16 +77,81 @@ __coro_caller caller(::tpy::BigInt tag) {
     return __coro_caller(tag);
 }
 
+// async def opt_chain(o: Optional[int32]) -> int32:
+//     match o:  # tpyc: ok
+//         case 1:
+//             await sub(1)                           # -> S_RESUME_0
+//             return 1
+//         case None:
+//             return 0
+//         case _:
+//             await sub(2)                           # -> S_RESUME_1
+//             return 2
+::tpystd::tpy::Poll<int32_t> __coro_opt_chain::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto& __match_subject_1 = o;
+        if (__match_subject_1.has_value() && (*__match_subject_1) == 1) {
+            __sub_0.emplace(::tpy::BigInt(1));
+            __state = S_RESUME_0;
+            continue;
+        } else if (!__match_subject_1.has_value()) {
+            __state = S_DONE;
+            int32_t __tpy_async_ret = 0;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        } else {
+            __sub_1.emplace(::tpy::BigInt(2));
+            __state = S_RESUME_1;
+            continue;
+        }
+        ::std::unreachable();
+        __builtin_unreachable();
+    }
+    case S_RESUME_0: {  // after: await sub(1)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        int32_t __tpy_async_ret = 1;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_RESUME_1: {  // after: await sub(2)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        __state = S_DONE;
+        int32_t __tpy_async_ret = 2;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def opt_chain(o: Optional[int32]) -> int32:
+__coro_opt_chain opt_chain(std::optional<int32_t> o) {
+    return __coro_opt_chain(o);
+}
+
 // def main() -> None:
 //     print(asyncio.run(caller(0)))
 //     print(asyncio.run(caller(5)))
+//     print(asyncio.run(opt_chain(1)), asyncio.run(opt_chain(None)),
+//           asyncio.run(opt_chain(7)))
 void main() {
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(0)))) << "\n";
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::opt_chain(1))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::opt_chain(std::nullopt))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::opt_chain(7))) << "\n";
 }
 
 // # H1: `await` inside a `match` arm, plus a capture binding (`v`) read after
 // # the await in the same arm -- the binding is a frame field on the coroutine.
+// # Also an Optional subject on the CHAIN tier (the None arm is not a prefix,
+// # so the null-split partition does not apply): the chain carries the
+// # resumable dispatch hook, so its arm bodies suspend like any other.
 // import asyncio
 //
 // main()

@@ -14,6 +14,8 @@ shadow-with 3
 shadow-nested 8
 shadow-comp 9
 shadow-except 6 -1
+shadow-lambda 3
+shadow-match 0 5
 alias-free 3
 alias-shadow 4
 module 7 1.5

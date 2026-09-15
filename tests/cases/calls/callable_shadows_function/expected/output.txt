@@ -1,0 +1,4 @@
+same 8 5
+diff 8 102
+local 10
+method 12

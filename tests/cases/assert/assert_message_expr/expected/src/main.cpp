@@ -24,21 +24,132 @@ int32_t check_error(int32_t n, const Error& e) {
     return n;
 }
 
-// def main() -> None:
-//     print(check_positive(5, "must be positive"))
-//     print(check_error(3, Error("bad value")))
-void main() {
-    std::cout << ::tpyapp::main::check_positive(5, "must be positive") << "\n";
-    Error __tmp_1 = Error("bad value");
-    std::cout << ::tpyapp::main::check_error(3, __tmp_1) << "\n";
+// def check_property(n: int32, e: Error) -> int32:
+//     # a @property message: the getter CALL, not a member read
+//     assert n > 0, e.detail  # tpyc: ok
+//     return n
+int32_t check_property(int32_t n, const Error& e) {
+    if (!((n > 0))) {
+        ::tpy::raise_assertion_error(e.detail());
+    }
+    return n;
 }
 
+// def check_method(n: int32, e: Error) -> int32:
+//     assert n > 0, e.described()  # tpyc: ok
+//     return n
+int32_t check_method(int32_t n, Error& e) {
+    if (!((n > 0))) {
+        ::tpy::raise_assertion_error(e.described());
+    }
+    return n;
+}
+
+// # generator position
+// def gen(n: int32, e: Error) -> Iterator[int32]:
+//     assert n > 0, e.detail  # tpyc: ok
+//     yield n                                      # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        if (!((n > 0))) {
+            ::tpy::raise_assertion_error(e.detail());
+        }
+        __state = S_RESUME_0;
+        return n;
+    }
+    case S_RESUME_0: {  // after: yield n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen(n: int32, e: Error) -> Iterator[int32]:
+__gen_gen gen(int32_t n, Error& e) {
+    return __gen_gen(n, e);
+}
+
+// # async position
+// async def coro(n: int32, e: Error) -> int32:
+//     assert n > 0, e.detail  # tpyc: ok
+//     await asyncio.sleep(0)                    # -> S_RESUME_0
+//     return n
+::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        if (!((n > 0))) {
+            ::tpy::raise_assertion_error(e.detail());
+        }
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        int32_t __tpy_async_ret = n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def coro(n: int32, e: Error) -> int32:
+__coro_coro coro(int32_t n, Error& e) {
+    return __coro_coro(n, e);
+}
+
+// def main() -> None:
+//     e = Error("bad value")
+//     print(check_positive(5, "must be positive"))
+//     print(check_error(3, e))
+//     print("property", check_property(7, e))
+//     print("method_msg", check_method(8, e))
+//     print("method", Checker(100).check(9, e))
+//     for v in gen(11, e):
+//         print("gen", v)
+//     print("async", asyncio.run(coro(12, e)))
+void main() {
+    Error e = Error("bad value");
+    std::cout << ::tpyapp::main::check_positive(5, "must be positive") << "\n";
+    std::cout << ::tpyapp::main::check_error(3, e) << "\n";
+    std::cout << "property" << " " << ::tpyapp::main::check_property(7, e) << "\n";
+    std::cout << "method_msg" << " " << ::tpyapp::main::check_method(8, e) << "\n";
+    std::cout << "method" << " " << Checker(100).check(9, e) << "\n";
+    {
+        auto __src_0 = ::tpyapp::main::gen(11, e);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
+        std::cout << "gen" << " " << v << "\n";
+        }
+    }
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(12, e))) << "\n";
+}
+
+// # Assert with expression messages (variables, method calls, field access,
+// # a @property read). The message is evaluated only on failure, so the
+// # property's getter call sits inside the negated-if.
+// import asyncio
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    ::tpystd::asyncio::__tpy_init();
     ::tpyapp::main::main();
 }
 

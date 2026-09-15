@@ -222,6 +222,38 @@ int32_t shadowed_except(int32_t n) {
     }
 }
 
+// # shadow warning: lambda parameter
+// def shadowed_lambda(n: int32) -> int32:
+//     f: Callable[[int32], int32] = lambda uint8: uint8 + 1  # tpyc: warning(/'uint8' shadows the tpy type 'uint8' within its scope/)
+//     return f(n)
+int32_t shadowed_lambda(int32_t n) {
+    std::function<int32_t(int32_t)> f = [](int32_t uint8) -> int32_t { return (::tpy::add_check<int32_t>(uint8, 1)); };
+    return f(n);
+}
+
+// # shadow warning: match-arm capture
+// def shadowed_match(n: int32) -> int32:
+//     match n:
+//         case 0:
+//             return 0
+//         case uint32:  # tpyc: warning(/'uint32' shadows the tpy type 'uint32' within its scope/)
+//             return uint32
+int32_t shadowed_match(int32_t n) {
+    auto& __match_subject_1 = n;
+    switch (__match_subject_1) {
+    case 0: {
+        return 0;
+        break;
+    }
+    default: {
+        auto uint32 = __match_subject_1;
+        return uint32;
+        break;
+    }
+    }
+    ::std::unreachable();
+}
+
 // # alias rule: the type was imported as i16, so a local int16 is no shadow
 // def alias_free() -> int32:
 //     int16 = 3  # tpyc: ok
@@ -259,6 +291,8 @@ int32_t alias_shadow() {
 //     print("shadow-nested", shadowed_nested())
 //     print("shadow-comp", shadowed_comp([4, 5]))
 //     print("shadow-except", shadowed_except(6), shadowed_except(-6))
+//     print("shadow-lambda", shadowed_lambda(2))
+//     print("shadow-match", shadowed_match(0), shadowed_match(5))
 //     print("alias-free", alias_free())
 //     print("alias-shadow", alias_shadow())
 //     print("module", uint16, float64)
@@ -282,6 +316,8 @@ void main() {
     std::vector<int32_t> __tmp_2 = {4, 5};
     std::cout << "shadow-comp" << " " << ::tpyapp::main::shadowed_comp(__tmp_2) << "\n";
     std::cout << "shadow-except" << " " << ::tpyapp::main::shadowed_except(6) << " " << ::tpyapp::main::shadowed_except(-6) << "\n";
+    std::cout << "shadow-lambda" << " " << ::tpyapp::main::shadowed_lambda(2) << "\n";
+    std::cout << "shadow-match" << " " << ::tpyapp::main::shadowed_match(0) << " " << ::tpyapp::main::shadowed_match(5) << "\n";
     std::cout << "alias-free" << " " << ::tpyapp::main::alias_free() << "\n";
     std::cout << "alias-shadow" << " " << ::tpyapp::main::alias_shadow() << "\n";
     std::cout << "module" << " " << uint16 << " " << ::tpy::print_float(float64) << "\n";

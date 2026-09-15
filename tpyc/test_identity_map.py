@@ -294,7 +294,13 @@ class TestDataclassDefaults:
             leaves=IdentityMap(), conds=IdentityMap(),
             await_args=IdentityMap(), return_values=IdentityMap())
         for f in dataclasses.fields(body):
-            assert isinstance(getattr(body, f.name), IdentityMap), f.name
+            # Forward-referenced annotations keep their quotes in `f.type`.
+            if f.type.strip("'\"") == "IdentityMap":
+                assert isinstance(getattr(body, f.name), IdentityMap), f.name
+            else:
+                # A name-keyed table is the one shape that may be a dict;
+                # anything else keyed by a node must say IdentityMap.
+                assert f.type.strip("'\"").startswith("Mapping[str"), f.name
 
 
 class TestDeepCopy:

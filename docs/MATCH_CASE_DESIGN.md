@@ -22,7 +22,7 @@
 | Sequence patterns `[x, y]` | List/tuple unpacking in patterns; needs sequence protocol |
 | Star capture `[x, *rest]` | Sequence with rest binding |
 | Mapping patterns `{"k": v}` | Dict matching; needs mapping protocol |
-| Nested class sub-patterns | `case Circle(center=Point(x=0)):` -- recursive pattern compilation |
+| A BINDING below a nested class sub-pattern, off the record tiers | `case Circle(center=Point(x=r)):` on an Optional-chain or polymorphic subject -- the condition-only form works on every tier |
 | Builtin type patterns | `case int():` / `case str():` as type checks |
 | `Any` subject | `match x:` where `x: Any`; class patterns via `typeid` (reuse the isinstance-on-`Any` path) |
 | Or-pattern body dedup | Lambda-based body sharing instead of codegen duplication |
@@ -128,8 +128,13 @@ Phase 1 supports these sub-pattern types within class patterns:
   is **not yet emitted** (rejected with a guard hint; only literal field
   comparisons are supported -- see TODO.md "Open feature gaps")
 
-Deeply nested class sub-patterns (`case Circle(center=Point(x=0)):`)
-are deferred to Phase 2.
+Nested class sub-patterns (`case Circle(center=Point(x=0)):`) work wherever
+the nested test is only a CONDITION: it composes into the arm's condition on
+the record tiers, the Optional chain and the polymorphic tier. A nested
+sub-pattern that BINDS a name is record-tier only, since the binding is
+spelled against the base-name map only those emitters thread; elsewhere it is
+rejected (`tests/cases/match/nested_field_cond_tiers`,
+`tests/cases/match/error_opt_nested_field_bind`).
 
 ### Supported subject types
 
@@ -799,6 +804,17 @@ arm.
 
 Guards add a condition that must be true for the case to match. The key
 constraint: a failed guard must fall through to the next case.
+
+**Source order beats the partitioning tiers.** A guarded catch-all arm
+(`case _ if flag:`, or an irrefutable or-group `case 1 | _ if flag:`) may
+legally precede a more specific arm -- sema reports only the UNGUARDED one as
+unreachable. The switch tiers, the string discriminator and the Optional
+partition all collect label-less arms into one trailing group, so such an arm
+would lose to a later label, which a C++ switch cannot order. A match whose
+catch-all arm precedes a labeled arm is therefore demoted to the ordered
+if/elif chain, which keeps source order by construction and renders every
+label the switch tiers do (`_dispatch_order_safe` in
+`tpyc/thir/lower/match.py`).
 
 **Union subjects with guards**: uses standalone `if` blocks with
 `goto`-based forward jumps to skip remaining arms after a match:

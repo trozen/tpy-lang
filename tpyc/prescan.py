@@ -19,8 +19,10 @@ from .parse import (
     TpyFStringValue, TpyComprehensionGenerator,
     TpyTupleLiteral, TpyFString,
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
+    TpyLambda, TpyMatch,
 )
-from .parse.nodes import SourceLocation, stmts_have_any_suspension
+from .parse.nodes import (SourceLocation, iter_capture_bindings,
+                          stmts_have_any_suspension)
 from .value_category import CONTAINER_LITERAL_NODES
 
 
@@ -47,9 +49,24 @@ class ScanResult:
     initial_alias_names: set[str] = field(default_factory=set)
     # name -> location of its first binding in the body (params excluded).
     first_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
-    # Bindings whose scope is narrower than the body (comprehension vars,
-    # `except ... as`); kept apart so they never displace a body binding.
+    # Bindings whose scope is narrower than the body (comprehension and
+    # genexpr loop vars, lambda params, `except ... as`, `match` arm
+    # captures); kept apart so they never displace a body binding.
     scoped_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
+
+    def bound_names(self) -> set[str]:
+        """Every name the body binds, wherever it binds it: locals declared
+        inside a branch or loop, `with`/`for` targets, walrus targets and
+        nested-def names, plus every narrower-scoped binding
+        (`scoped_bind_loc`: comprehension and genexpr loop vars, lambda
+        params, `except ... as`, `match` arm captures). Params are NOT here
+        (they are never `_declare`d); a caller that needs the whole binding
+        set unions them in.
+
+        A synthesized name must avoid ALL of these, not only the ones
+        bound before it: a later binding at the same C++ scope redeclares,
+        and one at an inner scope shadows."""
+        return set(self.first_bind_loc) | set(self.scoped_bind_loc)
 
 
 def _declare(name: str, loc: SourceLocation | None, declared: set[str],
@@ -201,13 +218,18 @@ def _scan_walrus_in_expr(expr: TpyExpr | None, declared: set[str],
             result.rvalue_reassigned.add(expr.target)
         else:
             _declare(expr.target, expr.loc, declared, result)
+    if isinstance(expr, TpyLambda):
+        # Lambda-scoped, like a comprehension var: it never displaces a body
+        # binding, but a synthesized name must still avoid it (`bound_names`).
+        for pname in expr.param_names:
+            result.scoped_bind_loc.setdefault(pname, expr.loc)
     for f in dc_fields(expr):
         val = getattr(expr, f.name)
         if isinstance(val, TpyExpr):
             _scan_walrus_in_expr(val, declared, result)
         elif isinstance(val, TpyComprehensionGenerator):
-            # Comprehension-scoped, so not a body declaration; recorded only
-            # so the scalar-type shadow warning can see the binding.
+            # Comprehension-scoped, so not a body declaration -- but still a
+            # name a synthesized one must avoid (`bound_names`).
             for name in (val.unpack_vars or [val.var]):
                 if name is not None:
                     result.scoped_bind_loc.setdefault(name, expr.loc)
@@ -302,10 +324,16 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                     else:
                         _declare(item.target, stmt.loc, declared, result)
         if isinstance(stmt, TpyTry):
-            # Handler-scoped like a comprehension var: shadow candidate only.
+            # Handler-scoped, like a comprehension var.
             for handler in stmt.handlers:
                 if handler.binding is not None:
                     result.scoped_bind_loc.setdefault(handler.binding, handler.loc)
+        if isinstance(stmt, TpyMatch):
+            # Arm-scoped, like a handler binding: the capture is a real local
+            # for the arm body only.
+            for case in stmt.cases:
+                for cap in iter_capture_bindings(case.pattern):
+                    result.scoped_bind_loc.setdefault(cap.name, case.loc)
         for body in stmt.sub_bodies():
             _scan_stmts(body, declared, result)
 

@@ -24,8 +24,8 @@ skeleton and the THIR emitter both call them, and neither owns them.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import (Callable, Container, Final, Iterator, NoReturn, TextIO,
-                    TYPE_CHECKING)
+from typing import (Callable, Container, Final, Iterator, Mapping, NoReturn,
+                    TextIO, TYPE_CHECKING)
 
 from ..namespace import Namespace
 from ..parse.nodes import (
@@ -484,45 +484,24 @@ def emit_finally_chain(ctx: 'CodeGenContext', out: TextIO, indent: str,
     return terminated
 
 
-def fresh_alias_local(ctx: 'CodeGenContext', var_name: str, *,
-                      persistent: bool) -> str:
-    # Default is `__{var_name}`. `persistent` is True when the emit is at
-    # the same C++ scope as the caller (assert, early-return) -- where a
-    # prior alias declared in the same lexical scope would collide. False
-    # when the caller opened a fresh `{...}` block (if-body, while-body):
-    # shadowing the outer alias is fine and produces cleaner names.
-    #
-    # Collision check spans the scope-global `declared_persistent_aliases`
-    # set rather than `narrowed_vars` (which only holds the most-recent
-    # alias per source variable -- earlier aliases like `__p` become
-    # invisible after a bump to `__p_2` even though their C++ declaration
-    # is still live). The caller records the chosen name in the set; the
-    # set is part of LocalScopeSnap so it tracks C++ lexical scope.
-    base = f"__{var_name}"
-    # In a resumable frame the alias must not shadow a captured frame
-    # field (e.g. `self` is the field `__self`): the cast initializer
-    # reads the source by name, so a same-named alias would self-reference
-    # its own uninitialized storage. Frame-field sets are empty outside
-    # resumable bodies, so this is a no-op for sync codegen.
-    if (base == ctx.generator_self_ref
-            or base in ctx.generator_field_names):
-        base = f"{base}_narrowed"
-    if not persistent:
-        return base
-    in_use = ctx.declared_persistent_aliases
-    if base not in in_use:
-        return base
-    n = 2
-    while f"{base}_{n}" in in_use:
-        n += 1
-    return f"{base}_{n}"
+def _resume_alias(alias_names: 'Mapping[str, str]', var_name: str) -> str:
+    """The lowering's spelling for this subject's extraction alias. A miss is
+    a lowering/seam disagreement, not a name this layer may invent: inventing
+    one would put the declaration and the body's reads on two spellings."""
+    name = alias_names.get(var_name)
+    if name is None:
+        raise CodeGenError(
+            "internal error: no lowered narrowing alias for "
+            f"'{var_name}'", None)
+    return name
 
 
 def emit_isinstance_extractions(
     ctx: 'CodeGenContext', types: 'TypeResolver',
     protocols: 'ProtocolGenerator',
     out: TextIO, type_facts: dict[str, TpyType],
-    *, indent_extra: int = 1, persistent: bool = False,
+    alias_names: 'Mapping[str, str]',
+    *, indent_extra: int = 1,
 ) -> dict[str, str | None]:
     """Emit std::get extractions for isinstance-narrowed variables.
 
@@ -531,11 +510,11 @@ def emit_isinstance_extractions(
     `indent_extra` controls how many indent levels past the current level
     to emit at: 1 (default) inside an if-block / while-block, 0 after an
     assert or at the implicit-else of an early-returning if.
-    `persistent` is True when the alias must outlive the caller's emit
-    block (assert / early-return): the alias-name picker bumps the suffix
-    if a prior alias of the same shape is in scope. False when the caller
-    opened a fresh `{...}` block (if-body / while-body / else-body) --
-    shadowing the outer alias is fine.
+
+    `alias_names` is the lowering's spelling for each narrowing subject
+    (`THIRResumableBody.narrow_aliases`), the single speller both this
+    declaration and the body's reads go by; a subject missing from it means
+    lowering and the seam disagree on the body's narrowings.
     """
     saved: dict[str, str | None] = {}
     if not type_facts:
@@ -586,7 +565,7 @@ def emit_isinstance_extractions(
                 saved[var_name] = ctx.narrowed_vars.get(var_name)
                 ctx.narrowed_vars[var_name] = f"(*{init_local})"
                 continue
-            local_name = fresh_alias_local(ctx, var_name, persistent=persistent)
+            local_name = _resume_alias(alias_names, var_name)
             cast_const = "const " if is_const_borrow_source(ctx, var_name, var_decl) else ""
             cast_arg = ctx.polymorphic_cast_arg(var_name, var_decl)
             source_inner = polymorphic_source_inner(
@@ -600,14 +579,12 @@ def emit_isinstance_extractions(
             )
             saved[var_name] = ctx.narrowed_vars.get(var_name)
             ctx.narrowed_vars[var_name] = local_name
-            if persistent:
-                ctx.declared_persistent_aliases.add(local_name)
             continue
         # Any narrowing (D15): the source variable is a tpy::Any cell;
         # the narrowed binding is a `const T&` borrow into its
         # contents. The outer Any survives unchanged.
         if isinstance(var_decl, AnyType):
-            local_name = fresh_alias_local(ctx, var_name, persistent=persistent)
+            local_name = _resume_alias(alias_names, var_name)
             if ctx.is_indirect_name(TpyName(var_name)):
                 var_ref = f"(*{var_name})"
             else:
@@ -618,8 +595,6 @@ def emit_isinstance_extractions(
             )
             saved[var_name] = ctx.narrowed_vars.get(var_name)
             ctx.narrowed_vars[var_name] = local_name
-            if persistent:
-                ctx.declared_persistent_aliases.add(local_name)
             continue
         # std::get needs the underlying variant. Previously-extracted T&
         # aliases in narrowed_vars (from outer if-branch narrowing, match
@@ -635,7 +610,7 @@ def emit_isinstance_extractions(
             var_ref = fs_deref
         else:
             var_ref = var_name
-        local_name = fresh_alias_local(ctx, var_name, persistent=persistent)
+        local_name = _resume_alias(alias_names, var_name)
         # Value-type union params are const&, so std::get yields const T&.
         # Non-value union params and locals are mutable.
         var_decl_type = ctx.var_types.get(var_name)
@@ -652,8 +627,6 @@ def emit_isinstance_extractions(
         out.write(f"{inner_indent}{qualifier} {local_name} = {va.get_by_type(cpp_type, lvalue=True)};\n")
         saved[var_name] = ctx.narrowed_vars.get(var_name)
         ctx.narrowed_vars[var_name] = local_name
-        if persistent:
-            ctx.declared_persistent_aliases.add(local_name)
     return saved
 
 
@@ -1545,7 +1518,6 @@ __all__ = [
     "emit_finally_chain",
     "emit_isinstance_extractions",
     "extract_int_literal",
-    "fresh_alias_local",
     "gen_range_overflow_check",
     "is_const_borrow_source",
     "is_const_indirect",

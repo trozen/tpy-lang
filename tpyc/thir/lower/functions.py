@@ -591,20 +591,9 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # place) gets a mutable owned copy hoisted into the prologue
     # (`::tpy::BigInt x = __param_x;` + signature rename). Sync bodies emit
     # that prologue via `_param_reassign_copies` in lower_function.
-    # ASYNC resumables need no gate: the frame member respells owned at the
-    # SKELETON (`std::string t;` -- gen_async owns the member spelling), no
-    # prologue arises, and the body reads ride the frame-field arms.
-    # GENERATOR bodies KEEP the reject: nothing produces the owned respell
-    # of a reassigned param in a generator frame
-    # (BUGS.md#generator-frame-param-reassign-copy-rejects).
-    if allow_resumable and func.is_generator:
-        scan = analyzer.function_scan_results.get(func)
-        if scan is not None and scan.reassigned:
-            for name, ptype in func.params:
-                pt = ptype if isinstance(ptype, TpyType) else None
-                if (name in scan.reassigned and pt is not None
-                        and pt.param_needs_copy_for_reassign()):
-                    raise ThirUnsupported("sig.param_reassign_copy")
+    # RESUMABLES need no gate at all: generator and coroutine frames share
+    # one skeleton, which respells the member owned (`std::string t;`), so no
+    # prologue arises and the body reads ride the frame-field arms.
 
 def _param_reassign_copies(func: TpyFunction,
                            analyzer,
@@ -1813,10 +1802,9 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         note("ctor.special_init")
         return None
     # A reassigned param needing the owned-copy prologue (String/BigInt/owned
-    # bytes...) rejects (`ctor.param_reassign_copy`, the ctor sibling of
-    # sig.param_reassign_copy): the prologue local `T name = __param_name;`
-    # has no matching `__param_` rename in the ctor signature -- a
-    # pre-existing defect the tail does not reproduce.
+    # bytes...) rejects (`ctor.param_reassign_copy`): the prologue local
+    # `T name = __param_name;` has no matching `__param_` rename in the ctor
+    # signature -- a pre-existing defect the tail does not reproduce.
     scan = analyzer.function_scan_results.get(init_method)
     if scan is not None and scan.reassigned:
         for pname, ptype in init_method.params:

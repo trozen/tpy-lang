@@ -1,0 +1,1 @@
+main.py:23: error: in function 'g': this construct is not yet supported by C++ code generation (expr.call:call.arg_shape.record_f1)

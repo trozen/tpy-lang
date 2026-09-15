@@ -1,0 +1,8 @@
+total 6
+doubled [2, 4, 6]
+scaled 18
+ranged 9
+gen 6
+gen 9
+other arm 2 0 0
+after 15

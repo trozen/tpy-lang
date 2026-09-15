@@ -331,7 +331,7 @@ def _peel_value_readonly(t: 'TpyType | None') -> 'TpyType | None':
     return None if t is None else peel_value_readonly(t)
 
 
-def _source_route(gen, declared: dict[str, TpyType], narrowed: 'set[str]',
+def _source_route(gen, declared: dict[str, TpyType],
                   analyzer) -> '_SourceRoute | None':
     """Classify a comprehension / genexpr SOURCE (`gen` is the
     TpyComprehensionGenerator), or None. Slice: range1/range2 counter loops
@@ -340,8 +340,10 @@ def _source_route(gen, declared: dict[str, TpyType], narrowed: 'set[str]',
     admit, `d.values()`/`d.keys()` dict views (`d.items()` for the
     tuple-unpack form), native iterator combinators, container-returning and
     generator-factory calls, container literals, and Own[T]-yielding
-    generator calls (`owns_elements`). Subscript and narrowed-Optional
-    iterables are outside the slice: None, and the caller rejects."""
+    generator calls (`owns_elements`). A NARROWED name is in the slice: the
+    branch retyped `declared`, and the reads the route feeds rename to the
+    extraction alias like any other. Subscript iterables are outside it:
+    None, and the caller rejects."""
     owns = gen.owns_elements
     it = gen.iterable
     genfac = False
@@ -431,7 +433,7 @@ def _source_route(gen, declared: dict[str, TpyType], narrowed: 'set[str]',
             return None
     elif isinstance(it, (TpyName, TpyFieldAccess)):
         if isinstance(it, TpyName):
-            if it.name not in declared or it.name in narrowed:
+            if it.name not in declared:
                 return None
             base = declared[it.name]
         else:
@@ -564,7 +566,7 @@ def _source_route(gen, declared: dict[str, TpyType], narrowed: 'set[str]',
                         gen_factory=genfac, native_combinator=combinator)
 
 
-def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
+def _comp_route(init, declared: dict[str, TpyType],
                 analyzer) -> '_CompRoute | None':
     """Classify a comprehension init: the shared `_source_route` verdict plus
     the comp's own result-slot / unpack-target gates and the reserve fact, or
@@ -573,7 +575,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     if kind is None:
         return None
     gen = init.generator
-    src = _source_route(gen, declared, narrowed, analyzer)
+    src = _source_route(gen, declared, analyzer)
     if src is None:
         return None
     if _is_range_call(gen.iterable):
@@ -749,7 +751,7 @@ def _comp_lowering_route(
         return _comp_array_route(
             init, t, declared, pointers, rebind_slots,
             storage_tuple_locals, narrowed, analyzer)
-    route = _comp_route(init, declared, narrowed, analyzer)
+    route = _comp_route(init, declared, analyzer)
     if route is None:
         return None
     args = getattr(t, "type_args", None)
@@ -911,7 +913,7 @@ def _comp_array_route(
     # begin/end name/field classifier for the loop-var binding fact, then
     # require a statically-sized Array source (the only shape sema demotes to
     # Array). A view result off the source rebinds it_type in _comp_route.
-    base = _comp_route(init, declared, narrowed, analyzer)
+    base = _comp_route(init, declared, analyzer)
     if base is None or base.loop != "begin_end":
         return None
     # A storage-opt element under the INDEXED read (`__obj_N[__i_N]`) has no
@@ -1422,7 +1424,8 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
 
 def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
                       self_receiver, module_globals=frozenset(),
-                      frame_lc: '_LowerCtx | None' = None) -> str:
+                      frame_lc: '_LowerCtx | None' = None,
+                      narrow: '_NarrowScope | None' = None) -> str:
     """The `&local, ` capture prefix for the outer names a genexpr lambda
     reads. Refs come from the element
     (+ filter conditions, + `extra_refs` for the IIFE's iterable refs); keep only
@@ -1433,7 +1436,11 @@ def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
     IIFE's list: inside a resumable frame a captured name may be a frame
     member, which `_capture_entry_cpp` names in an init-capture (`&xs = xs`)
     the way a lambda does; the inner lambda captures the IIFE's own
-    references and needs no such entry."""
+    references and needs no such entry. A name narrowed by an enclosing
+    `isinstance` is captured under its extraction ALIAS -- that is the
+    binding the lowered body reads, and the union itself is the wrong C++
+    type for it. A poly-narrowed subject has no capturable name (its read is
+    a spelled deref), so it rejects."""
     refs = collect_name_refs(element)
     for c in conditions:
         refs |= collect_name_refs(c)
@@ -1445,10 +1452,20 @@ def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
     if needs_this:
         parts.append("this")
     names = sorted((refs & set(declared)) - comp_vars - set(module_globals))
-    if frame_lc is None:
-        parts.extend(f"&{escape_cpp_name(n)}" for n in names)
-    else:
-        for n in names:
+    aliases = dict(narrow.narrowed) if narrow is not None else {}
+    if narrow is not None and any(n in narrow.spelled for n in names):
+        # A poly-narrowed subject reads as a spelled deref, not a name.
+        raise ThirUnsupported("genexpr.spelled_capture")
+    for n in names:
+        alias = aliases.get(n)
+        if alias is not None:
+            # The alias is a plain block-scoped reference, never a frame
+            # member, so it takes the by-reference entry on both lists.
+            parts.append(f"&{escape_cpp_name(alias)}")
+            _witness("genexpr.narrowed_capture")
+        elif frame_lc is None:
+            parts.append(f"&{escape_cpp_name(n)}")
+        else:
             try:
                 parts.append(_capture_entry_cpp(n, frame_lc, declared,
                                                 by_value=False))
@@ -1488,7 +1505,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     it = gen.iterable
     if isinstance(it, TpyCall) and it.func_name == "range":
         return _lower_genexpr_range(expr, it, lc, declared)
-    route = _source_route(gen, declared, lc.narrow.narrowed.keys(), analyzer)
+    route = _source_route(gen, declared, analyzer)
     if route is None:
         raise ThirUnsupported("genexpr.iterable_shape")
     if route.owns_elements:
@@ -1634,11 +1651,13 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     mod_globals = _module_global_names(lc)
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
-                                       lc.self_receiver, mod_globals)
+                                       lc.self_receiver, mod_globals,
+                                       narrow=lc.narrow)
     iife_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                       collect_name_refs(it), declared,
                                       comp_vars, lc.self_receiver,
-                                      mod_globals, frame_lc=lc)
+                                      mod_globals, frame_lc=lc,
+                                      narrow=lc.narrow)
     _witness("genexpr.native_iterable")
     return THIRGenExpr(
         result_type=analyzer.get_expr_type(expr),
@@ -1721,7 +1740,8 @@ def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
                                        lc.self_receiver,
-                                       _module_global_names(lc))
+                                       _module_global_names(lc),
+                                       narrow=lc.narrow)
     var_cpp = escape_cpp_name(gen.var)
     binding_cpp = (f"{counter_cpp} {var_cpp} = __i++;" if len(it.args) <= 2
                    else f"{counter_cpp} {var_cpp} = __i;")

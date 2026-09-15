@@ -1,0 +1,5 @@
+pick 1 2 2
+then 7 -1
+label a other
+pair 3 4
+method 7 0

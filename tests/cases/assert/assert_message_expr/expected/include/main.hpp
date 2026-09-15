@@ -4,17 +4,32 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
 struct Error;
+struct Checker;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen;
+struct __coro_coro;
 
 // def check_positive(n: int32, msg: str) -> int32:
 int32_t check_positive(int32_t n, std::string_view msg);
 // def check_error(n: int32, e: Error) -> int32:
 int32_t check_error(int32_t n, const Error& e);
+// def check_property(n: int32, e: Error) -> int32:
+int32_t check_property(int32_t n, const Error& e);
+// def check_method(n: int32, e: Error) -> int32:
+int32_t check_method(int32_t n, Error& e);
+// def gen(n: int32, e: Error) -> Iterator[int32]:
+__gen_gen gen(int32_t n, Error& e);
+// async def coro(n: int32, e: Error) -> int32:
+__coro_coro coro(int32_t n, Error& e);
 // def main() -> None:
 void main();
 
@@ -26,6 +41,13 @@ struct Error {
     // def __init__(self, message: str) -> None:
     Error() = default;
     explicit Error(std::string_view message);
+
+    // @property
+    // def detail(self) -> StrView:
+    std::string_view detail() const;
+
+    // def described(self) -> str:
+    std::string described() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Error";
 };
 
@@ -34,9 +56,104 @@ inline std::ostream& operator<<(std::ostream& os, const Error& obj) {
     return os;
 }
 
+// class Checker:
+struct Checker {
+    // limit: int32
+    int32_t limit;
+
+    // def __init__(self, limit: int32) -> None:
+    Checker() = default;
+    explicit Checker(int32_t limit);
+
+    // def check(self, n: int32, e: Error) -> int32:
+    int32_t check(int32_t n, const Error& e) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Checker";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Checker& obj) {
+    ::tpy::print_object_default(os, "Checker", obj);
+    return os;
+}
+
+// async def coro(n: int32, e: Error) -> int32:
+struct __coro_coro {
+    int32_t __state;
+    bool __cancel_pending;
+    int32_t n;
+    Error& e;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_coro(int32_t n_, Error& e)
+        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)), e(e) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_coro&) {
+        return os << "<coroutine coro>";
+    }
+};
+
+// def gen(n: int32, e: Error) -> Iterator[int32]:
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
+    int32_t __state;
+    int32_t n;
+    Error& e;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen(int32_t n_, Error& e)
+        : __state(S_INITIAL), n(std::move(n_)), e(e) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
 
 // def __init__(self, message: str) -> None:
 //     self.message = message
 inline Error::Error(std::string_view message) : message(message) {}
+
+// @property
+// def detail(self) -> StrView:
+//     return self.message
+inline std::string_view Error::detail() const {
+    return this->message;
+}
+
+// def described(self) -> str:
+//     return "described:" + self.message
+inline std::string Error::described() const {
+    return (::tpy::str_concat("described:", this->message));
+}
+
+// def __init__(self, limit: int32) -> None:
+//     self.limit = limit
+inline Checker::Checker(int32_t limit) : limit(limit) {}
+
+// # method position
+// def check(self, n: int32, e: Error) -> int32:
+//     assert n > 0, e.detail  # tpyc: ok
+//     return n + self.limit
+inline int32_t Checker::check(int32_t n, const Error& e) const {
+    if (!((n > 0))) {
+        ::tpy::raise_assertion_error(e.detail());
+    }
+    return (::tpy::add_check<int32_t>(n, this->limit));
+}
 void __tpy_init();
 } // namespace tpyapp::main

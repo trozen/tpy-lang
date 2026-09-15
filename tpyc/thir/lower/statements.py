@@ -28,6 +28,7 @@ from ...parse.nodes import (
     TpyCall,
     TpyChainedCompare,
     TpyCoerce,
+    TpyComprehensionGenerator,
     TpyContinue,
     TpyDelAttr,
     TpyDelItem,
@@ -73,6 +74,7 @@ from ...parse.nodes import (
     VarLinkage,
     is_docstring,
     is_super_del_call,
+    iter_capture_bindings,
 )
 from ...typesys import (
     AnyType,
@@ -259,6 +261,8 @@ from ..nodes import (
 )
 from .predicates import (
     _binding_peel,
+    _narrow_alias_name,
+    _fresh_narrow_local,
     _generic_value_tuple_return,
     _own_opt_storage_binding,
     _comp_shadow_pointers,
@@ -2181,16 +2185,39 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
     a borrow-form source could not serve."""
     if any(stmt.is_owned) and not owned_storage_src:
         return None
-    if not all(stmt.is_new):
-        return None
     types: list[TpyType | None] = []
     for i, name in enumerate(stmt.targets):
         if name is None:
             types.append(None)
             continue
-        if name in declared or name in narrowed:
+        if name in narrowed:
             return None
         tt = unwrap_ref_type(stmt.target_types[i])
+        if name in declared:
+            # A REUSED target -- an enclosing loop's variable, or any local
+            # already in scope -- assigns its slot per iteration instead of
+            # declaring a fresh one (`i = std::get<0>(__tup_N);`; the
+            # lowering's "assign" bind, which the post-loop-hoist targets
+            # already take). Same-type SCALARS only: the slot is the
+            # enclosing one, so its C++ spelling is not this arm's to pick,
+            # and a str/bytes slot could be the view form while the element
+            # is owned, which would outlive the holder.
+            dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                declared[name])))
+            # The element type of a literal-seeded container is still an
+            # int literal here; the slot's own width decides, so resolve
+            # before comparing (the fresh path resolves at its decl).
+            rt = resolve_int_literals(unwrap_readonly(tt),
+                                      analyzer.ctx.default_int_for_literal)
+            if (dt != rt or not _eligible_scalar(rt)
+                    or (i < len(stmt.is_ref) and stmt.is_ref[i])
+                    or (i < len(stmt.is_owned) and stmt.is_owned[i])):
+                return None
+            types.append(rt)
+            _witness("foreach.unpack_reused_target")
+            continue
+        if not stmt.is_new[i]:
+            return None
         if i < len(stmt.is_owned) and stmt.is_owned[i]:
             # owned_storage_src only (the blanket reject above): the fresh
             # owned F1-record local moved out of the copy-head.
@@ -2363,6 +2390,47 @@ def _standalone_unpack_target_binds(
         out.append((tt, "cref" if cref else "value"))
     return out
 
+def _lvalue_tuple_ternary(v: TpyExpr, declared: dict[str, TpyType],
+                          pointers: AbstractSet[str],
+                          narrowed: AbstractSet[str], analyzer, *,
+                          owning_targets: bool = False) -> bool:
+    """True for `t1 if c else t2` over two same-typed tuple NAMES whose
+    elements all copy out of the holder. C++ makes a conditional over two
+    lvalues of one type an LVALUE, so the unpack holder const-ref-binds it
+    exactly as it binds a bare name source; a by-value holder would deep-copy
+    the whole tuple at every evaluation. A prvalue arm (a call, a literal)
+    makes the conditional a prvalue, which only a by-value holder can hold.
+
+    A str/bytes element is the carve-out, at any depth of the element tree:
+    its target is a VIEW into the holder, so a const-ref holder makes the
+    target alias the SELECTED SOURCE and a reseat of that source before the
+    read shows the new value where CPython keeps the old (the class of
+    BUGS.md#tuple-unpack-view-outlives-reseat, reachable here through the
+    select). Such a tuple keeps the owning holder, whose copy the view
+    outlives.
+
+    `owning_targets` is the position's answer to the question the carve-out
+    is really asking: a frame field and a module-level global are OWNING
+    slots, so the element COPIES into them and no view outlives the holder.
+    There the carve-out would only buy a deep copy of the whole tuple per
+    evaluation, so the const-ref bind stays."""
+    if not isinstance(v, TpyIfExpr):
+        return False
+    arms = (v.then_expr, v.else_expr)
+    if not all(isinstance(a, TpyName) and a.name in declared
+               and a.name not in pointers and a.name not in narrowed
+               for a in arms):
+        return False
+    t0, t1 = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        declared[a.name]))) for a in arms)
+    if not (isinstance(t0, TupleType) and t0 == t1):
+        return False
+    if owning_targets:
+        return True
+    return not t0.has_nested_element(
+        lambda et: _resolved_viewfam_value(et, analyzer) is not None)
+
+
 def _tuple_unpack_source(
         stmt: TpyTupleUnpack, analyzer, declared: dict[str, TpyType],
         pointers: set[str], narrowed: AbstractSet[str]) -> 'TupleType | None':
@@ -2431,11 +2499,17 @@ def _tuple_unpack_source(
             _kind_detail("tuple_unpack.src_", v)
             return None
         call_src = True
-    elif isinstance(v, TpySubscript):
-        # A container element read (`a, b = addrs[0]`) binds the same
-        # `auto __tup_N = ::tpy::__getitem__(addrs, 0);` rvalue capture as a
-        # call source; the source expr lowers through the ordinary subscript
-        # arm, which gates its own receiver/index shapes.
+    elif isinstance(v, (TpySubscript, TpyIfExpr)):
+        # A container element read (`a, b = addrs[0]`) and a SELECT over two
+        # tuple sources (`a, b = t1 if c else t2`) bind the same
+        # `auto __tup_N = <expr>;` rvalue capture as a call source -- except a
+        # select over two same-typed lvalue arms with no view element, which IS
+        # an lvalue and takes the name source's const-ref bind
+        # (`_lvalue_tuple_ternary`); the source expr lowers through its own
+        # ordinary arm, which gates its shapes.
+        # `call_src` stays False for either: the Own-element and
+        # reference-element rows below key on a CALL result, whose ownership
+        # the callee's return contract states.
         src_raw = analyzer.get_expr_type(v)
     elif (isinstance(v, TpyFieldAccess)
           and (_field_receiver_ok(v, declared, analyzer)
@@ -2563,7 +2637,7 @@ def _iteration_yields_const(it: TpyExpr, lc: '_LowerCtx', analyzer) -> bool:
         # declared-or-inferred @readonly method's const self lives on the
         # method fi, and its field iterables yield const elements.
         ri = (analyzer.registry.get_record(lc.record_name)
-              if lc.record_name else None)
+              if lc.record_name and not lc.func.is_nested_def else None)
         ovs = (ri.get_method_overloads(lc.func.name)
                if ri is not None else None)
         return bool(ovs and ovs[-1].is_readonly)
@@ -5189,6 +5263,136 @@ def _nested_def_entry_reject(func, lc: '_LowerCtx', reason_for) -> None:
         raise ThirUnsupported(reason_for())
 
 
+def _scope_binds_name(func: TpyFunction, name: str, analyzer) -> bool:
+    """True when `func`'s OWN scope binds `name` -- a param, or a
+    FUNCTION-LEVEL binding in its body. Python makes such a name local for the
+    whole function, so a read inside it never reaches an outer callable of the
+    same name. `first_bind_loc` alone, never `bound_names()`: the scoped half
+    of that set (lambda params, comprehension vars, `except ... as`, match
+    captures) shadows only inside its own sub-scope, and reading it here would
+    switch the shadow gate off for a body whose other reads still resolve
+    outward.
+
+    Sema's stored scan answers it; a nested def has none (sema discards the
+    nested body's facts), so that one scans. Its `pre_declared` params are
+    no difference: a param is never `_declare`d into `first_bind_loc`, and
+    the param arm above answers for one first."""
+    if any(p == name for p, _t in func.params):
+        return True
+    scan = analyzer.function_scan_results.get(func)
+    if scan is None:
+        scan = scan_reassigned_vars(func.body)
+    return name in scan.first_bind_loc
+
+
+def _comp_scope_binds(expr: TpyExpr, name: str) -> bool:
+    """True when `expr` is a comprehension whose own loop target is `name`."""
+    gen = getattr(expr, "generator", None)
+    if not isinstance(gen, TpyComprehensionGenerator):
+        return False
+    return name in (gen.unpack_vars or [gen.var])
+
+
+def _reads_name_in_expr(e: TpyExpr, name: str,
+                        before_line: int | None) -> bool:
+    """True when `e` reads `name` in the ENCLOSING function's scope. Descends
+    into lambda bodies (`TpyLambda.children()` is empty because the body is
+    its own scope) and stops at every sub-scope that binds the name itself --
+    a comprehension keeps only its iterable, which is evaluated outside."""
+    stack = [e]
+    while stack:
+        n = stack.pop()
+        if isinstance(n, TpyName) and n.name == name:
+            line = getattr(getattr(n, "loc", None), "line", None)
+            if before_line is None or (line is not None
+                                       and line < before_line):
+                return True
+        if isinstance(n, TpyLambda):
+            if name not in n.param_names:
+                stack.append(n.body)
+            continue
+        if _comp_scope_binds(n, name):
+            stack.append(n.generator.iterable)
+            continue
+        stack.extend(n.children())
+    return False
+
+
+def _reads_name(stmts: list[TpyStmt], name: str, analyzer,
+                before_line: int | None = None) -> bool:
+    """True when `stmts` reference `name`, optionally only at a line before
+    `before_line`. Descends into every construct that shares the enclosing
+    function's binding for the name -- nested def bodies included -- and stops
+    at the ones whose own scope rebinds it: an `except ... as name` handler
+    body and a match arm that captures `name` read their own binding, not the
+    enclosing one."""
+    for s in stmts:
+        if (isinstance(s, TpyNestedDef)
+                and not _scope_binds_name(s.func, name, analyzer)):
+            if _reads_name(s.func.body, name, analyzer, before_line):
+                return True
+        if isinstance(s, TpyMatch):
+            if _reads_name_in_expr(s.subject, name, before_line):
+                return True
+            for case in s.cases:
+                if any(c.name == name
+                       for c in iter_capture_bindings(case.pattern)):
+                    continue
+                if (case.guard is not None
+                        and _reads_name_in_expr(case.guard, name,
+                                                before_line)):
+                    return True
+                if _reads_name(case.body, name, analyzer, before_line):
+                    return True
+            continue
+        for e in (s.exprs() if hasattr(s, "exprs") else ()):
+            if e is None:
+                continue
+            if _reads_name_in_expr(e, name, before_line):
+                return True
+        if isinstance(s, TpyTry):
+            bodies: list[list[TpyStmt]] = [s.try_body, s.else_body,
+                                           s.finally_body]
+            bodies += [h.body for h in s.handlers if h.binding != name]
+        else:
+            bodies = list(s.sub_bodies()) if hasattr(s, "sub_bodies") else []
+        for b in bodies:
+            if _reads_name(b, name, analyzer, before_line):
+                return True
+    return False
+
+
+def _nested_def_shadow_reject(stmt: TpyNestedDef, lc: '_LowerCtx') -> None:
+    """A nested def MAY shadow a module-level name (a function, a class, or a
+    method of the owning record) -- but sema binds the shadowing name only from
+    the `def` onward and resolves it through the registry everywhere else, so
+    two shapes silently reach the SHADOWED entity where Python reaches the
+    nested one (or raises UnboundLocalError): a reference to the name inside
+    the nested body, and a read of the name earlier in the enclosing body than
+    the `def`. Either rejects until sema treats the name as a local of the
+    enclosing scope from its start
+    (BUGS.md#nested-def-shadow-resolves-to-shadowed-callable)."""
+    func = stmt.func
+    analyzer = lc.analyzer
+    registry = analyzer.registry
+    ri = (registry.get_record(lc.record_name)
+          if lc.record_name is not None else None)
+    if not (registry.get_function(func.name)
+            or registry.get_record(func.name)
+            or func.name in registry.enums
+            or (ri is not None and ri.get_method_overloads(func.name))):
+        return
+    def_line = getattr(getattr(stmt, "loc", None), "line", None)
+    inner_reads = (not _scope_binds_name(func, func.name, analyzer)
+                   and _reads_name(func.body, func.name, analyzer))
+    if (inner_reads
+            or (def_line is not None
+                and _reads_name(lc.func.body, func.name, analyzer,
+                                def_line))):
+        note_detail("nesteddef.name_collision")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+
+
 def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     """Lower `def name(...)` in a function body to a C++ lambda: the capture
     list spelled purely from sema's node facts, params and the non-void
@@ -5243,17 +5447,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
                 for n in stmt.captured_names) + "]"
     else:
         capture = "[]"
-    # A nested func whose name collides with a registry function (or the
-    # owning record's methods) makes the body's const-verdict lookups
-    # (`_param_is_const` keyed by name) consult the WRONG FunctionInfo, so it
-    # rejects rather than risk a wrong spelling.
-    if (analyzer.registry.get_function(func.name)
-            or (lc.record_name is not None
-                and (ri := analyzer.registry.get_record(lc.record_name))
-                is not None
-                and ri.get_method_overloads(func.name))):
-        note_detail("nesteddef.name_collision")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+    _nested_def_shadow_reject(stmt, lc)
     params_cpp = []
     body_declared = dict(scope.declared)
     for pname, ptype in func.params:
@@ -5338,16 +5532,35 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
     return result
 
 
+def _rebranch_taken(var: str, lc: _LowerCtx) -> 'frozenset[str]':
+    """`lc.alias_taken()` for a BRANCH extraction of `var`, minus the alias
+    `var` already has live. A branch body is its own C++ scope, so a
+    re-narrowing of the SAME subject (the folded `if (true)` re-extraction, a
+    nested isinstance) may keep the outer spelling: the inner declaration
+    shadows an alias for the same object, which is what the reads inside want.
+    Every other live alias belongs to another subject and still blocks."""
+    taken = lc.alias_taken()
+    prior = lc.narrow.narrowed.get(var)
+    return taken - {prior} if prior is not None else taken
+
+
 def _persistent_alias_name(var: str, lc: _LowerCtx) -> str:
-    """A persistent extraction alias name: `__{var}`, suffix-bumped past
-    persistent aliases already declared at the enclosing C++ scope. (No
-    frame-field rename is needed: the resumable post-if caller rejects a
-    frame-field-colliding alias before calling.)"""
-    base = f"__{var}"
+    """A persistent extraction alias name: the branch spelling
+    (`_narrow_alias_name`, clear of every binding the body makes and of every
+    live alias), then suffix-bumped past persistent aliases already declared
+    at the enclosing C++ scope. This alias lands at the CALLER's scope, so a
+    collision here is a same-scope redeclaration, not a shadow.
+
+    The persistent set is held out of the BASE ladder on purpose: a
+    re-narrowing chain on one subject reads as `__p` / `__p_2`, not as `__p` /
+    `__p_narrowed` (the `_narrowed` rung means "the user took `__p`")."""
+    taken = lc.alias_taken()
+    base = _narrow_alias_name(var, taken - lc.narrow.persistent_aliases)
     if base not in lc.narrow.persistent_aliases:
         return base
     n = 2
-    while f"{base}_{n}" in lc.narrow.persistent_aliases:
+    while (f"{base}_{n}" in lc.narrow.persistent_aliases
+           or f"{base}_{n}" in taken):
         n += 1
     return f"{base}_{n}"
 
@@ -5743,7 +5956,13 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
             if bind_spelled is not None:
                 lc.narrow.spelled[var] = bind_spelled
             else:
-                alias = f"__{var}"  # branch-scoped: shadowing is fine
+                # A same-spelled binding anywhere in the body (a local
+                # declared later inside this very branch, a frame field in a
+                # resumable body) is the user's own variable, and an outer
+                # alias that BUMPED may already hold this spelling -- so the
+                # mint registers itself for the branch it opens.
+                alias = _narrow_alias_name(var, _rebranch_taken(var, lc))
+                lc.narrow.live_aliases.add(alias)
                 if make_alias is not None:
                     out.append(make_alias(alias, fact, alias_loc))
                 else:
@@ -6029,7 +6248,11 @@ def _lower_multi_narrow_if(stmt: TpyIf, hits, lc: _LowerCtx,
         for var, u, _members, _leaf in hits:
             fact = _narrow_fact_member(u, stmt.then_type_facts, var)
             assert fact is not None  # dispatcher gate
-            alias = f"__{var}"
+            # The subjects' aliases share one C++ scope, so each must also
+            # clear the ones the earlier subjects took -- the registry the
+            # branch scope pops carries them.
+            alias = _narrow_alias_name(var, _rebranch_taken(var, lc))
+            lc.narrow.live_aliases.add(alias)
             out.append(_make_narrow_alias(alias, var, fact, u, lc, loc))
             lc.narrow.subject_union[var] = u
             lc.narrow.narrowed[var] = alias
@@ -6176,7 +6399,7 @@ def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
     # pointer-vs-address split).
     const, cast_arg, inner_src = _poly_cast_context(var, lc, declared)
     const_pfx = "const " if const else ""
-    ptr_local = f"__{var}_ptr"
+    ptr_local = _fresh_narrow_local(f"__{var}_ptr", lc.alias_taken())
     cast_rhs = narrow_cast_rhs(
         cpp_type, member, inner_src,
         cast_arg, is_const=const, analyzer=analyzer)
@@ -6196,8 +6419,11 @@ def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
                                       alias_loc, loop_depth=loop_depth,
                                       bind_spelled=f"(*{ptr_local})")
 
-    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
-                                  declared, loc, loop_depth=loop_depth)
+    # The if-init pointer's C++ scope is the whole `if`, both arms included,
+    # so a narrowing nested in either must bump past it.
+    with lc.live_alias(ptr_local):
+        return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                      declared, loc, loop_depth=loop_depth)
 
 
 def _lower_deref_view_narrow_if(stmt: TpyIf, dvinfo, lc: _LowerCtx,
@@ -6216,7 +6442,7 @@ def _lower_deref_view_narrow_if(stmt: TpyIf, dvinfo, lc: _LowerCtx,
     const = (_const_borrow_name(var, lc)
              or _poly_subject_readonly(declared.get(var)))
     const_pfx = "const " if const else ""
-    ptr_local = f"__{var}_ptr"
+    ptr_local = _fresh_narrow_local(f"__{var}_ptr", lc.alias_taken())
     _dv_base = (f"(*{escape_cpp_name(var)})" if var in lc.pointers
                 else escape_cpp_name(var))
     cast_arg = "&(" + _dv_base + ".__deref__()" * depth + ")"
@@ -6248,8 +6474,9 @@ def _lower_deref_view_narrow_if(stmt: TpyIf, dvinfo, lc: _LowerCtx,
             del lc.deref_view_spelled[var]
 
     _witness("if.deref_view_narrow")
-    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
-                                  declared, loc, loop_depth=loop_depth)
+    with lc.live_alias(ptr_local):
+        return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                      declared, loc, loop_depth=loop_depth)
 
 
 def _lower_dyn_multi_if(stmt: TpyIf, minfo, lc: _LowerCtx,
@@ -6907,11 +7134,21 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                          pos=SinkPos.UNPACK_SOURCE),
             field_prechecked=isinstance(stmt.value, TpyFieldAccess))
     _witness("res.frame_unpack")
+    # Same lvalue-select rule as the sync arm: the frame's own fields outlive
+    # the case block the holder lives in, so the const-ref bind is the strictly
+    # safer one -- a by-value holder would copy the tuple per resume. Every
+    # target here is a frame field, an OWNING slot the element copies into, so
+    # the view carve-out has nothing to protect.
+    lvalue_select = _lvalue_tuple_ternary(
+        stmt.value, declared, scope.admission_pointers(),
+        lc.narrow.narrowed.keys(), lc.analyzer, owning_targets=True)
     return THIRTupleUnpack(
         source="", targets=tuple(stmt.targets),
         target_cpps=(None,) * len(stmt.targets),
         binds=tuple(binds), wraps=tuple(wraps),
-        source_expr=value, source_bind=TupleSourceBind.RVALUE, loc=loc)
+        source_expr=value,
+        source_bind=(TupleSourceBind.NAME_CREF if lvalue_select
+                     else TupleSourceBind.RVALUE), loc=loc)
 
 
 def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
@@ -13821,8 +14058,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # spells its cast arg (`this` / `&__self`), and this arm's
                 # single-fact/then-only slice is exactly the if-INIT
                 # form (`__self_ptr`, no frame-field collision). The
-                # `__self_narrowed` rename lives in `_fresh_alias_local`'s
-                # ALIAS emissions (assert / early-return), which stay gated.
+                # `__self_narrowed` rename belongs to the ALIAS emissions
+                # (assert / early-return), which stay gated.
                 or pvar in lc.prescan.global_seeded
                 or pvar in lc.narrow.narrowed
                 or pvar in lc.narrow.spelled
@@ -14321,12 +14558,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             msg = None
         elif isinstance(stmt.message, TpyStrLiteral):
             msg = stmt.message.value
-        elif isinstance(stmt.message, TpyFieldAccess):
-            # Same eligibility as every other _lower_field_source site: a
+        elif (isinstance(stmt.message, TpyFieldAccess)
+              and _field_receiver_ok(stmt.message, declared, analyzer)):
+            # Same eligibility as every other _lower_field_source site; a
             # marker-bearing access (property / dyn attr / unproven Optional
-            # deref_check / ...) takes its own emit path.
-            if not _field_receiver_ok(stmt.message, declared, analyzer):
-                raise ThirUnsupported("stmt.assert")
+            # deref_check / ...) takes its own emit path -- the generic
+            # expression arm below, which reaches the property's getter call.
             msg = _lower_field_source(stmt.message, lc, declared)
         elif stmt.message is not None:
             msg = _lower_expr(stmt.message, lc, declared)
@@ -14615,22 +14852,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             elif (isinstance(stmt.value, TpySubscript)
                   and isinstance(stmt.value.obj, TpyName)
                   and stmt.value.obj.name in declared
-                  and stmt.value.obj.name not in lc.pointers
-                  # Mutable receivers only: const_locals covers locally-
-                  # declared readonly names, _param_is_const the readonly-
-                  # typed PARAMS (a readonly container binding is a const
-                  # ref -- the non-const tuple_to_pointer spelling would be
-                  # a hard C++ error, not a divergence).
-                  and stmt.value.obj.name not in lc.const_locals
-                  and not _param_is_const(stmt.value.obj.name, lc.func,
-                                          analyzer, lc.record_name)):
+                  and stmt.value.obj.name not in lc.pointers):
                 # A storage-tuple ELEMENT read source (`a0, b0 = pairs[0]`):
                 # the whole element lifts via tuple_to_pointer off the
-                # mutable `__getitem__` lvalue
-                # (`auto __tup_N = tuple_to_pointer<std::tuple<P*, P*>>(
-                # __getitem__(pairs, 0));`). Mutable plain-name receivers
-                # only -- a const/readonly receiver's const spelling is
-                # unwitnessed and defers.
+                # `__getitem__` lvalue (`auto __tup_N = tuple_to_pointer<
+                # std::tuple<P*, P*>>(__getitem__(pairs, 0));`). A CONST
+                # receiver -- a readonly local, or a param sema proved
+                # unmutated -- yields `const P*` element pointers, so the
+                # wrap spells its const form; a mutating body makes the
+                # param non-const, so the two verdicts cannot disagree.
                 _sv_at = analyzer.get_expr_type(stmt.value)
                 _sv_ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     _sv_at))) if _sv_at is not None else None)
@@ -14639,7 +14869,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     note_detail("tuple_unpack.ref_source_form")
                     raise ThirUnsupported("stmt.tuple_unpack")
                 source_wrap_cpp = _borrow_tuple_wrap_cpp(
-                    stmt.target_types, analyzer, const_source=False)
+                    stmt.target_types, analyzer,
+                    const_source=_const_borrow_name(stmt.value.obj.name, lc,
+                                                    const_locals=True))
                 if source_wrap_cpp is None:
                     note_detail("tuple_unpack.ref_source_form")
                     raise ThirUnsupported("stmt.tuple_unpack")
@@ -14648,16 +14880,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             elif (isinstance(stmt.value, TpyFieldAccess)
                   and isinstance(stmt.value.obj, TpyName)
                   and stmt.value.obj.name in declared
-                  and stmt.value.obj.name not in lc.pointers
-                  and stmt.value.obj.name not in lc.const_locals
-                  and not _param_is_const(stmt.value.obj.name, lc.func,
-                                          analyzer, lc.record_name)):
+                  and stmt.value.obj.name not in lc.pointers):
                 # A storage-tuple FIELD read source (`a, b = h.pair`): the
                 # member lifts via tuple_to_pointer exactly like the
                 # subscript element (`auto __tup_N = ::tpy::tuple_to_pointer<
-                # std::tuple<T*, T*>>(h.pair);`). Mutable plain-name
-                # receivers only -- the same const fence as the subscript
-                # row (a readonly receiver's const spelling is unwitnessed).
+                # std::tuple<T*, T*>>(h.pair);`), const receiver included.
                 _fv_at = analyzer.get_expr_type(stmt.value)
                 _fv_ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     _fv_at))) if _fv_at is not None else None)
@@ -14666,7 +14893,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     note_detail("tuple_unpack.ref_source_form")
                     raise ThirUnsupported("stmt.tuple_unpack")
                 source_wrap_cpp = _borrow_tuple_wrap_cpp(
-                    stmt.target_types, analyzer, const_source=False)
+                    stmt.target_types, analyzer,
+                    const_source=_const_borrow_name(stmt.value.obj.name, lc,
+                                                    const_locals=True))
                 if source_wrap_cpp is None:
                     note_detail("tuple_unpack.ref_source_form")
                     raise ThirUnsupported("stmt.tuple_unpack")
@@ -14731,11 +14960,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 source_wrap_cpp=source_wrap_cpp,
                 loc=loc)
         # A free call hoists its arg temps (temp_args, inert for a field read).
-        _witness("stmt.tuple_unpack.rvalue_source")
+        # At module level every target is a global -- an owning slot the
+        # element copies into -- so the view carve-out does not apply.
+        lvalue_select = _lvalue_tuple_ternary(
+            stmt.value, declared, scope.admission_pointers(),
+            lc.narrow.narrowed.keys(), analyzer,
+            owning_targets=lc.top_level_scope)
+        _witness("stmt.tuple_unpack.lvalue_select_source" if lvalue_select
+                 else "stmt.tuple_unpack.rvalue_source")
         return THIRTupleUnpack(
             source="", targets=tuple(stmt.targets),
             target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
-            source_bind=TupleSourceBind.RVALUE,
+            source_bind=(TupleSourceBind.NAME_CREF if lvalue_select
+                         else TupleSourceBind.RVALUE),
             source_expr=_lower_expr(
                 stmt.value, lc, declared,
                 use=_ExprUse(
@@ -15311,11 +15548,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # sep=/end= (str literal or resolved str-value name), file=
                 # (an ostream / stream-pointer sink read in value position, so
                 # `sys.stderr` derefs), and a LITERAL flush= (True appends
-                # `<< std::flush`, False is a no-op). Empty-args print admits
-                # the file-only form (`print(file=s)` -> just the end token);
-                # other kwargs on an empty print would need the emit-nothing
-                # arm. Runtime flush values and non-str-slice sep/end shapes
-                # reject.
+                # `<< std::flush`, False is a no-op). With no args the chain
+                # is just the end token, which `end=""` suppresses entirely
+                # (the emitter's empty-parts arm writes nothing, which is
+                # what `print(end="")` does); a sep with nothing to separate
+                # never reaches the chain. Runtime flush values and
+                # non-str-slice sep/end shapes reject.
                 file_val = e.kwargs.get("file")
                 rest = {k: v for k, v in e.kwargs.items() if k != "file"}
                 flush_val = rest.pop("flush", None)
@@ -15332,10 +15570,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if any(k not in ("sep", "end") for k in rest):
                     note_detail("print.kwargs")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                if not e.args and (rest or flush_val is not None
-                                   or file_val is None):
-                    note_detail("print.kwargs")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                if not e.args and rest:
+                    _witness("print.kw_no_args")
                 for kw, kv in rest.items():
                     token = _print_kwarg_token(
                         kv, declared, pointers, narrowed, analyzer)

@@ -1409,6 +1409,11 @@ class TpyFunction:
     # forms differ (group validation, diagnostics).
     overload_form: OverloadForm | None = None
     is_method: bool = False
+    # A `def` inside a function body (the func of a TpyNestedDef). Its
+    # FunctionInfo lives in the enclosing body's namespace, never in the
+    # module registry or on a record, so a registry lookup by name would
+    # answer with a same-named SIBLING's verdicts.
+    is_nested_def: bool = False
     is_staticmethod: bool = False
     # A @classmethod also sets is_staticmethod (no receiver param, static
     # emission); this flag only distinguishes it for diagnostics and for

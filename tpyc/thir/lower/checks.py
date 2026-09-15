@@ -160,6 +160,7 @@ from .predicates import (
     _nullable_static_protocol_param,
     _static_protocol_union_binding,
     _bare_module_recv,
+    _module_var_access_pair,
     _module_var_recv,
     _module_var_read_cpp,
     _record_getitem_key,
@@ -1211,6 +1212,12 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # `pointers`) returns None there and the generic call tail rejects --
         # a compile error, never a divergent render.
         if copy_construct_source(e, analyzer, pointers) is not None:
+            return True
+        # A module-VARIABLE record read (`[sys.stdout, sys.stderr]`): the
+        # element slot holds the record by value, so the pointer slot's
+        # `(*slot)` read copy-initializes it like any other record source.
+        if (_module_var_access_pair(e, declared, analyzer) is not None
+                and _f1_record(analyzer.get_expr_type(e), analyzer)):
             return True
         return (_record_source_call(e, analyzer)
                 or (note_detail("container_lit.elem.record") if note else False))
@@ -2429,7 +2436,9 @@ def _ref_field_write_ok(
             or _container_prvalue_field_write_ok(stmt, declared, analyzer)):
         return True
     if _record_rvalue_source_shape(stmt.value, analyzer):
-        return analyzer.get_expr_type(stmt.value) == ftype
+        vt = analyzer.get_expr_type(stmt.value)
+        return (vt == ftype
+                or _record_slice_upcast_ok(vt, ftype, analyzer))
     v = stmt.value
     # A BORROW-returning call source copies bare on assignment
     # (`h.p = identity(pt);` / `self.mirror = h.peek();` -- the C++
@@ -2560,7 +2569,8 @@ def _optional_record_field_write_ok(
     if crec is not None:
         return crec == inner
     if _record_rvalue_source_shape(v, analyzer):
-        return analyzer.get_expr_type(v) == inner
+        vt = analyzer.get_expr_type(v)
+        return vt == inner or _record_slice_upcast_ok(vt, inner, analyzer)
     if (isinstance(v, TpyMethodCall)
             and is_rvalue_source(analyzer, v)):
         vt = analyzer.get_expr_type(v)
@@ -2587,6 +2597,23 @@ def _covariant_record_upcast_ok(vt: 'TpyType | None', target: 'TpyType | None',
     the two admission sites cannot drift."""
     return (isinstance(vt, NominalType) and isinstance(target, NominalType)
             and analyzer.compat.is_covariant_generic_upcast(vt, target))
+
+def _record_slice_upcast_ok(vt: 'TpyType | None', target: 'TpyType | None',
+                            analyzer) -> bool:
+    """`vt -> target` is a plain SUBCLASS upcast at a record slot, where the
+    C++ assign slices to the base -- the narrowing sema admits for ASSIGN /
+    INIT / RETURN under its "upcast narrows" warning, so the divergence from
+    CPython (which keeps the derived object) is declared, not silent. The
+    source keeps its own spelling; `operator=` does the slicing.
+
+    Distinct from `_covariant_record_upcast_ok`, which is
+    representation-PRESERVING and loses nothing. A polymorphic base never
+    reaches here: sema rejects a `@dynamic`-protocol rvalue at a record slot
+    before lowering."""
+    return (isinstance(vt, NominalType) and isinstance(target, NominalType)
+            and vt != target and _f1_record(vt, analyzer)
+            and _f1_record(target, analyzer)
+            and analyzer.registry.is_subclass_of(vt, target))
 
 
 def _optional_record_field_upcast_write_ok(
@@ -3822,6 +3849,19 @@ def free_literal_mangled_name(e: TpyCall, fi, analyzer) -> 'str | None':
     return literal_mangled_name(e.func_name, fi)
 
 
+def _bare_callee_shadows_import(name: str, analyzer) -> bool:
+    """Does a BARE-name callee (a nested def's frame lambda, a `Callable`/`Fn`
+    value) also name an import?
+
+    The bare spelling cannot say which of the two the call means, and
+    resolving it to the imported/builtin one calls the shadowed callable
+    where Python calls the local -- a silent divergence, so both legs reject
+    on it."""
+    return bool(name in analyzer.imported_names
+                or imported_free_callee_cpp(analyzer.ctx.module_attributes,
+                                            name))
+
+
 def _free_callee_kind(e: TpyCall, analyzer, *,
                       generator_ok: bool = False,
                       error_return_ok: bool = False,
@@ -3920,12 +3960,21 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         # the callee is a C++ LOCAL, so no namespace can name it. Decided
         # BEFORE the registry / import spellings. A
         # closure shadowing an imported OR builtin name is ambiguous here
-        # (resolving it to the BUILTIN is a CPython divergence, see
-        # BUGS.md) -> reject the shadow.
-        if (e.func_name in analyzer.imported_names
-                or imported_free_callee_cpp(analyzer.ctx.module_attributes,
-                                            e.func_name)):
+        # -> reject the shadow.
+        if _bare_callee_shadows_import(e.func_name, analyzer):
             note_detail("call.closure_import_shadow")
+            return None
+        return ("local", "")
+    if fi.is_callable_value:
+        # A `Callable`/`Fn` VALUE callee (param, local or field): sema
+        # resolved the BINDING, so the render is the bare name. Decided
+        # BEFORE the name-keyed namespace lookup below, which would find a
+        # same-named module function and qualify THAT -- a different callee,
+        # whose params would also zip against these args. A value shadowing
+        # an IMPORTED name rejects like the closure case above, for the same
+        # reason.
+        if _bare_callee_shadows_import(e.func_name, analyzer):
+            note_detail("call.callable_import_shadow")
             return None
         return ("local", "")
     # A native-FUNCTION `__init__` ctor (`int(str)` -> `tpy::BigInt::from_str`,
@@ -4073,16 +4122,13 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
                           analyzer.ctx.cpp_module_name, e.func_name, fi,
                           lit_mangled)
     if cpp is None:
-        # No namespace names this callee. The only shape that legitimately
-        # spells the bare name here is a `Callable`/`Fn` VALUE (param, local
-        # or field); a nested def's frame lambda already returned above on
-        # `frame_captures`. Anything else reaching this point is a
-        # registration-fact drift, and a bare spelling would be ADL-visible,
-        # so it rejects rather than falling back.
-        if not fi.is_callable_value:
-            note_detail("call.callee_unnamed")
-            return None
-        return ("local", "")
+        # No namespace names this callee. Both shapes that legitimately spell
+        # the bare name -- a nested def's frame lambda and a `Callable`/`Fn`
+        # VALUE -- returned above, so anything reaching here is a
+        # registration-fact drift; a bare spelling would be ADL-visible, so it
+        # rejects rather than falling back.
+        note_detail("call.callee_unnamed")
+        return None
     return ("plain", cpp)
 
 

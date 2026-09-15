@@ -142,17 +142,15 @@ def test_end_to_end_first_reject_reasons():
 
 
 def test_function_lowering_reject_falls_back_without_scope_residue():
-    # A nested def whose name collides with a module function is a durable
-    # mid-body reject (`nesteddef.name_collision` -- the body's const
-    # verdicts are looked up by name). A param default, the previous
-    # vehicle, routes now.
+    # A nested def with an Optional PARAM is a durable mid-body reject
+    # (`nesteddef.param_type` -- a lambda param carries no pointer/movable
+    # classification). A param default and a name collision, the previous
+    # vehicles, route now.
     compiler, modules = _compile(
         "from tpy import int32\n"
-        "def g(a: int32) -> int32:\n"
-        "    return a\n"
         "def rejected(d: dict[int32, int32]) -> int32:\n"
-        "    def g(a: int32) -> int32:\n"
-        "        return a + 1\n"
+        "    def g(a: int32 | None) -> int32:\n"
+        "        return 0 if a is None else a\n"
         "    return g(2)\n"
         "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
@@ -168,21 +166,19 @@ def test_function_lowering_reject_falls_back_without_scope_residue():
             else:
                 routed.append(fn.name)
     assert _tally(compiler).get(
-        "body:stmt.nested_def:nesteddef.name_collision") == 1
+        "body:stmt.nested_def:nesteddef.param_type") == 1
     assert "clean" in routed
 
 
 def test_constructor_lowering_reject_falls_back():
     compiler, modules = _compile(
         "from tpy import int32\n"
-        "def g(a: int32) -> int32:\n"
-        "    return a\n"
         "class R:\n"
         "    n: int32\n"
         "    def __init__(self, n: int32):\n"
         "        self.n = n\n"
-        "        def g(a: int32) -> int32:\n"
-        "            return a + 1\n"
+        "        def g(a: int32 | None) -> int32:\n"
+        "            return 0 if a is None else a\n"
         "        self.n = g(2)\n"
     )
     entry = _entry(modules)
@@ -196,7 +192,7 @@ def test_constructor_lowering_reject_falls_back():
             _record_reject("ctor")
     assert ctor is None
     assert _tally(compiler).get(
-        "ctor:stmt.nested_def:nesteddef.name_collision") == 1
+        "ctor:stmt.nested_def:nesteddef.param_type") == 1
 
 
 def test_base_init_arg_lowering_reject_falls_back():
@@ -923,15 +919,17 @@ def test_for_each_tuple_unpack_ref_target_routes():
 
 
 def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():
-    # A REFERENCE-element tuple keeps the unpack source rejecting (only
-    # VALUE-tuple elements render bare at the capture).
+    # A REFERENCE element at a TERNARY unpack source keeps rejecting: the
+    # select binds the holder by value, so the record element would be copied
+    # where CPython aliases. The value-element twin routes.
     compiler, modules = _compile(
         "from tpy import int32\n"
         "class Box:\n"
         "    n: int32\n"
         "    def __init__(self, n: int32) -> None:\n        self.n = n\n"
-        "def rejected(pairs: list[tuple[int32, Box]]) -> int32:\n"
-        "    a, b = pairs[0]\n"
+        "def rejected(c: bool, t1: tuple[int32, Box],\n"
+        "             t2: tuple[int32, Box]) -> int32:\n"
+        "    a, b = t1 if c else t2\n"
         "    return a + b.n\n"
         "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
@@ -946,10 +944,6 @@ def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():
                 _record_reject("body")
             else:
                 routed.append(fn.name)
-    # The reject composes from the subscript source's element read now
-    # (the ref-target unpack admits ptr-Optional-element subscript sources,
-    # so a plain-record-member tuple rejects one level deeper, with the
-    # drilldown detail appended to the tag).
     assert sum(n for k, n in _tally(compiler).items()
                if k.startswith("body:stmt.tuple_unpack")) == 1
     assert "clean" in routed
@@ -1050,8 +1044,9 @@ def test_assert_message_clean_field_routes():
 
 
 def test_assert_message_optional_field_falls_back():
-    # Unproven Optional receiver: the AST render is
-    # `::tpy::deref_check(e).message` -- out of the admitted slice.
+    # Unproven Optional receiver: the message falls through the
+    # field-source arm to the generic expression one, whose field READ row
+    # refuses the deref_check spelling -- so the reject drills one level in.
     compiler, entry, f = _fn_body(
         _ASSERT_MSG_RECORD
         + "def rejected(n: int32, e: E | None) -> int32:\n"
@@ -1064,31 +1059,7 @@ def test_assert_message_optional_field_falls_back():
         if fn is None:
             _record_reject("body")
     assert fn is None
-    assert _tally(compiler) == {"body:stmt.assert": 1}
-
-
-def test_assert_message_property_field_falls_back():
-    # A property message is a getter CALL on the AST path, not a member read.
-    compiler, entry, f = _fn_body(
-        "from tpy import int32\n"
-        "class F:\n"
-        "    _m: str\n"
-        "    def __init__(self, m: str):\n"
-        "        self._m = m\n"
-        "    @property\n"
-        "    def msg(self) -> str:\n"
-        "        return self._m\n"
-        "def rejected(n: int32, f: F) -> int32:\n"
-        "    assert n > 0, f.msg\n"
-        "    return n\n",
-        "rejected")
-    with activate_compiler(compiler):
-        begin_attempt()
-        fn = lower_function(f, entry.analyzer, self_type=None)
-        if fn is None:
-            _record_reject("body")
-    assert fn is None
-    assert _tally(compiler) == {"body:stmt.assert": 1}
+    assert _tally(compiler) == {"body:stmt.assert:field.result_type": 1}
 
 
 _DELATTR_RECORD = (
@@ -1448,22 +1419,16 @@ def test_print_arg_reports_the_inner_reject_not_its_own_shape():
     # The print arm's own shape tag is composed AFTER the inner lowering
     # rejects; since the detail slot is first-wins, a tag composed here would
     # win by default and bury the reason that actually blocked the body.
-    # The inner shape must still reject: a RECORD-name needle over a LIST
-    # haystack rides the ranges_contains arm, whose needle set is
-    # scalar/str/ptr-tuple only. (The previous fixture -- a view-keyed set
-    # membership -- routed when the view-key family landed.)
-    src = ("from tpy import int32\n"
-           "class Point:\n"
-           "    x: int32\n"
-           "    def __init__(self, x: int32) -> None:\n        self.x = x\n"
-           "    def __eq__(self, other: Point) -> bool:\n"
-           "        return self.x == other.x\n"
-           "class Item:\n"
-           "    pts: list[Point]\n"
-           "    def __init__(self) -> None:\n        self.pts = []\n"
-           "def f(item: Item, p: Point) -> None:\n"
-           "    print(p in item.pts)\n"
+    # The vehicle must pass the arg-family gate (which composes `print.arg.`
+    # BEFORE the inner lowering runs) and then reject inside it: a narrowed
+    # `char | None` compared to a one-char literal is such a shape. (An
+    # earlier fixture -- a view-keyed set membership -- routed once its
+    # family landed.)
+    src = ("from tpy import char\n"
+           "def f(c: char | None) -> None:\n"
+           "    if c is not None:\n"
+           "        print(c == 'x')\n"
            "def main() -> None:\n    pass\nmain()\n")
     reasons = _reasons(src)
-    assert any("binop.shape.in" in k for k in reasons), reasons
+    assert any("binop.narrowed_char_eq_literal" in k for k in reasons), reasons
     assert not any("print.arg." in k for k in reasons), reasons

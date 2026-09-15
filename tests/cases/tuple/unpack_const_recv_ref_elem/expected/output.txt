@@ -1,0 +1,4 @@
+read 3
+mut 13 12
+field 6
+method 7

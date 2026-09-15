@@ -1,0 +1,5 @@
+narrow 7 -2
+widen 8
+signed -3
+unsigned 9
+method 9

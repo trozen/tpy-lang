@@ -1,0 +1,6 @@
+kind: dog cat other
+furry: furry bare
+loud: loud-dog dog other
+walk: 1
+method: cat-room yard
+readonly: 1 -1

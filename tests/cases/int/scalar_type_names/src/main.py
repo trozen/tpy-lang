@@ -4,7 +4,7 @@
 # pre-scan records. The alias sections pin that the warning keys on the type's
 # own name, not on the local spelling an import gave it.
 from enum import Enum
-from typing import Iterator
+from typing import Callable, Iterator
 
 from tpy import AnyFixedInt, char, float32, float64, int8, int32, int64, uint8, uint16, uint32, uint64
 from tpy import int16 as i16
@@ -108,6 +108,21 @@ def shadowed_except(n: int32) -> int32:
         return -1
 
 
+# shadow warning: lambda parameter
+def shadowed_lambda(n: int32) -> int32:
+    f: Callable[[int32], int32] = lambda uint8: uint8 + 1  # tpyc: warning(/'uint8' shadows the tpy type 'uint8' within its scope/)
+    return f(n)
+
+
+# shadow warning: match-arm capture
+def shadowed_match(n: int32) -> int32:
+    match n:
+        case 0:
+            return 0
+        case uint32:  # tpyc: warning(/'uint32' shadows the tpy type 'uint32' within its scope/)
+            return uint32
+
+
 # alias rule: the type was imported as i16, so a local int16 is no shadow
 def alias_free() -> int32:
     int16 = 3  # tpyc: ok
@@ -139,6 +154,8 @@ def main() -> None:
     print("shadow-nested", shadowed_nested())
     print("shadow-comp", shadowed_comp([4, 5]))
     print("shadow-except", shadowed_except(6), shadowed_except(-6))
+    print("shadow-lambda", shadowed_lambda(2))
+    print("shadow-match", shadowed_match(0), shadowed_match(5))
     print("alias-free", alias_free())
     print("alias-shadow", alias_shadow())
     print("module", uint16, float64)

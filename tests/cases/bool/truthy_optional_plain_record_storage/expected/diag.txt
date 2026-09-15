@@ -1,0 +1,3 @@
+main.py:20: warning: copies Node | None into field; use copy() to make this explicit
+main.py:27: warning: copies Holder into field; use copy() to make this explicit
+main.py:78: warning: copies Node | None into field; use copy() to make this explicit

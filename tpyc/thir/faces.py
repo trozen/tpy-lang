@@ -511,6 +511,9 @@ THIR_FACES: frozenset[str] = frozenset({
 
     "call.inst_bare_name_arg",      # non-movable name at a container
                                     # instantiation: the bare render
+    "call.inst_value_iter_arg",     # VALUE-form native-iterable NAME at an
+                                    # instantiation template (`list(r)` on a
+                                    # `range` local): bare, no own_iter wrap
     "call.inst_field_arg",          # container FIELD read at the same
                                     # position: the bare member render
     "call.inst_call_rvalue_arg",    # `set(make_nodes())` -> an owning call
@@ -856,6 +859,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "print.file_name_sink",
     # A literal flush=True kwarg: the `<< std::flush` tail token.
     "print.kw_flush",
+    # sep=/end= on an argument-less print: the chain is the end token alone
+    # (`print(end="")` suppresses it and emits nothing).
+    "print.kw_no_args",
     # `return self` at an Optional[Self] ptr-opt return: the bare `this`.
     "ret.ptr_opt_self",
     "ret.ptr_opt_ptr_name",         # a Ptr[T] local at the ptr-opt return
@@ -1164,6 +1170,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `T* v = nullptr;` predecl
     "foreach.hoist_ptr_target",     # its per-iteration re-point (the
                                     # frame_ptr_elem render, sync twin)
+    # An unpack target already bound in an enclosing scope: the per-iteration
+    # assign into that slot, not a fresh decl.
+    "foreach.unpack_reused_target",
     "foreach.value_opt_elem",
     # A ptr-repr Optional[F1-record] element loop var (`for v in d.values():`
     # over `dict[str, P | None]`): the STORAGE-form binding registers in the
@@ -2519,6 +2528,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # A non-name unpack source (lowering): a value-tuple-returning call or a
     # value-tuple field read -> `auto __tup_N = <expr>;` (value capture).
     "stmt.tuple_unpack.rvalue_source",
+    # A select over two same-typed tuple NAMES (`a, b = t1 if c else t2`): the
+    # conditional is a C++ lvalue, so the holder const-ref-binds it
+    # (`const auto& __tup_N = ((c) ? (t1) : (t2));`) instead of deep-copying.
+    "stmt.tuple_unpack.lvalue_select_source",
     # A value-repr Optional[value tuple] NAME read under its None narrow: the
     # holder const-ref-binds the name arm's deref read
     # (`const auto& __tup_N = (*r);`).
@@ -2685,11 +2698,15 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # protocol slot: the bare member read
     "arg.native_protocol_field",    # bare optional/record field read at a
                                     # native protocol slot (repr_of(this->f))
-    "arg.type_ctor_protocol_field",
-    # An INT-kind type-param arg at a scalar type-ctor slot (`int32(N)` under
-    # `[N: int]`): the non-type template parameter passes bare.
-    "arg.type_ctor_int_tparam",  # the same bare member read on the
+    "arg.type_ctor_protocol_field",  # the same bare member read on the
                                     # TYPE-CTOR arg loop (str(p.name))
+    "arg.type_ctor_int_tparam",     # INT-kind type-param arg at a scalar
+                                    # type-ctor slot (`int32(N)` under
+                                    # `[N: int]`): the non-type template
+                                    # parameter passes bare
+    "arg.type_ctor_tparam",         # TYPE-param-typed arg at that same slot
+                                    # (`int32(x)` under `[T: AnyFixedInt]`):
+                                    # the bare monomorphized name
     "arg.native_value_tuple_field",  # value-tuple field passed whole at a
                                     # native tuple slot (tuple_to_str(f))
     "arg.native_slice_subscript",   # list/Span slice subscript inline at a
@@ -2808,6 +2825,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ListPrinter(list_slice/list_stepped_slice)
     "print.file_ternary_sink",      # `file=` sink is a ternary of two
                                     # admitted sink reads
+    "print.file_elem_sink",         # `file=` sink is a container-element
+                                    # record read (`file=outs[0]`)
     "print.walrus_arg",             # container walrus print arg -> the
                                     # kind-keyed wrap over the walrus render
     "print.container_call_arg",     # container-returning CALL print arg -> its
@@ -2940,6 +2959,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.poly_if_elif",           # dynamic_cast if-init chain (P1)
     "match.poly_guarded",           # poly standalone-if + goto end tier
     "match.poly_or_arm",            # or-pattern -> ||-joined null tests
+    "match.poly_ptr_subject",       # Ptr/ptr-repr Optional: bare cast arg
     "match.optional_partition",     # Optional-ptr subject: None/has-value split
     "match.optional_value_dispatch",  # value-repr subject: multi-arm inner tier
     "match.optional_none_arm",      # `case None:` prefix -> the nullptr block
@@ -3086,6 +3106,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.try_region",               # body routed with a try/except region (R6)
     "res.with_region",              # body routed with a with region (R6)
     "res.with_ctx",                 # with-region manager expression render
+    "res.with_manager_field",       # borrowed manager read off a field
+    "genexpr.narrowed_capture",     # genexpr captures a narrowing alias
+    "res.btuple_yield_borrow_call", # yield of a borrow-form tuple CALL
     "res.finally_helper",           # helper-based finally body routed (R6)
     "res.for_iter_setup",           # sync for-loop iterable/range render (R3)
     "res.sync_loop",                # body routed with a sync for-loop (R3)

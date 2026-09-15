@@ -1,2 +1,4 @@
 42
 hi
+readonly 15
+readonly after 16

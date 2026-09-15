@@ -10,9 +10,18 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
+struct __gen_chain;
+struct __gen_chain_capture;
+struct __gen_chain_guarded;
 
 // def gen(x: Optional[int]) -> Iterator[int]:
 __gen_gen gen(std::optional<::tpy::BigInt> x);
+// def chain(x: Optional[int32]) -> Iterator[int32]:
+__gen_chain chain(std::optional<int32_t> x);
+// def chain_capture(x: Optional[int32]) -> Iterator[int32]:
+__gen_chain_capture chain_capture(std::optional<int32_t> x);
+// def chain_guarded(x: Optional[int32], k: bool) -> Iterator[int32]:
+__gen_chain_guarded chain_guarded(std::optional<int32_t> x, bool k);
 // def main() -> None:
 void main();
 
@@ -39,6 +48,89 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
         return os << "<generator gen>";
+    }
+};
+
+// def chain(x: Optional[int32]) -> Iterator[int32]:
+struct __gen_chain : public ::tpy::next_iter_mixin<__gen_chain, int32_t> {
+    int32_t __state;
+    std::optional<int32_t> x;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_RESUME_4 = 5,
+        S_JOIN_0 = 6,
+        S_DONE = 7,
+    };
+
+    __gen_chain(std::optional<int32_t> x_)
+        : __state(S_INITIAL), x(std::move(x_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_chain& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_chain&) {
+        return os << "<generator chain>";
+    }
+};
+
+// def chain_capture(x: Optional[int32]) -> Iterator[int32]:
+struct __gen_chain_capture : public ::tpy::next_iter_mixin<__gen_chain_capture, int32_t> {
+    int32_t __state;
+    std::optional<int32_t> x;
+    std::optional<int32_t> y;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_RESUME_4 = 5,
+        S_JOIN_0 = 6,
+        S_JOIN_1 = 7,
+        S_DONE = 8,
+    };
+
+    __gen_chain_capture(std::optional<int32_t> x_)
+        : __state(S_INITIAL), x(std::move(x_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_chain_capture& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_chain_capture&) {
+        return os << "<generator chain_capture>";
+    }
+};
+
+// def chain_guarded(x: Optional[int32], k: bool) -> Iterator[int32]:
+struct __gen_chain_guarded : public ::tpy::next_iter_mixin<__gen_chain_guarded, int32_t> {
+    int32_t __state;
+    std::optional<int32_t> x;
+    bool k;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_JOIN_0 = 5,
+        S_DONE = 6,
+    };
+
+    __gen_chain_guarded(std::optional<int32_t> x_, bool k_)
+        : __state(S_INITIAL), x(std::move(x_)), k(std::move(k_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_chain_guarded& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_chain_guarded&) {
+        return os << "<generator chain_guarded>";
     }
 };
 

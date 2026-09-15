@@ -112,7 +112,7 @@ std::string sequential_negative(const Pet& p) {
 
 // def triple_chain(p: Pet) -> str:
 //     # Three-level chain on the same variable exercises the multi-bump path
-//     # in `_fresh_alias_local`: `__p` -> `__p_2` -> `__p_3`.
+//     # of the alias ladder: `__p` -> `__p_2` -> `__p_3`.
 //     if not isinstance(p, Dog):  # tpyc: ok
 //         return "non-dog"
 //     if not isinstance(p, WatchDog):  # tpyc: ok
@@ -140,9 +140,9 @@ std::string triple_chain(const Pet& p) {
 
 // def assert_then_assert(p: Pet) -> str:
 //     # Two persistent emits at the same C++ scope via the assert path. Both
-//     # route through _emit_isinstance_extractions with persistent=True, so
-//     # the second alias must bump to __p_2 -- same mechanism, different
-//     # caller from the early-return shape.
+//     # land their alias at the enclosing scope, where a collision is a
+//     # redeclaration and not a shadow, so the second must bump to __p_2 --
+//     # same mechanism, different caller from the early-return shape.
 //     assert isinstance(p, Dog)  # tpyc: ok
 //     assert isinstance(p, WatchDog)  # tpyc: ok
 //     w = p  # tpyc: type(WatchDog)
@@ -177,10 +177,10 @@ std::string assert_then_early_return(const Pet& p) {
 }
 
 // def sibling_vars(p: Pet, q: Pet) -> str:
-//     # Two sibling polymorphic params each with chained narrowings. Without the
-//     # scope-global alias-name check (`_fresh_alias_local` queries
-//     # `declared_persistent_aliases`), q's first narrowing could pick a base
-//     # name (`__q`) that happens to collide with p's earlier bumped name --
+//     # Two sibling polymorphic params each with chained narrowings. Without a
+//     # scope-global check -- the ladder is bumped past every alias already
+//     # declared at the enclosing scope, not just this subject's -- q's first
+//     # narrowing could pick a base name (`__q`) colliding with p's bumped one,
 //     # or vice versa with `p`/`p_2` siblings both producing `__p_2`. C++
 //     # identifiers live in one scope-global namespace; the picker has to
 //     # respect that.

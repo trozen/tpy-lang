@@ -1,0 +1,11 @@
+free:a
+b
+c
+d
+e
+method:|
+gen:yield 1
+g
+async:h
+ran 2
+try:i

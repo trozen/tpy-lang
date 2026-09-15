@@ -1,0 +1,13 @@
+plain: hit hit
+nonfinal: first first first
+opt_inner: none cat cat
+method: in in
+gen_one: 1
+gen_one: 9
+gen_five: 2
+gen_five: 9
+gen_guarded: 1
+gen_guarded: 11
+gen_guarded: 9
+gen_unguarded: 2
+gen_unguarded: 9

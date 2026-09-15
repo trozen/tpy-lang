@@ -56,12 +56,230 @@ __gen_gen gen(std::optional<::tpy::BigInt> x) {
     return __gen_gen(x);
 }
 
+// def chain(x: Optional[int32]) -> Iterator[int32]:
+//     # The literal arm before the None arm forces the unguarded chain.
+//     match x:  # tpyc: ok
+//         case 1:
+//             yield 1                                                    # -> S_RESUME_0
+//             yield 11                                                   # -> S_RESUME_1
+//         case None:
+//             yield 0                                                    # -> S_RESUME_2
+//         case _:
+//             yield 2                                                    # -> S_RESUME_3
+//     yield 9                                                            # -> S_RESUME_4
+std::expected<int32_t, ::tpy::StopIteration> __gen_chain::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto& __match_subject_1 = x;
+        if (__match_subject_1.has_value() && (*__match_subject_1) == 1) {
+            __state = S_RESUME_0;
+            return 1;
+        } else if (!__match_subject_1.has_value()) {
+            __state = S_RESUME_2;
+            return 0;
+        } else {
+            __state = S_RESUME_3;
+            return 2;
+        }
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 1
+        __state = S_RESUME_1;
+        return 11;
+    }
+    case S_RESUME_1: {  // after: yield 11
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_2: {  // after: yield 0
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_3: {  // after: yield 2
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_4: {  // after: yield 9
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        __state = S_RESUME_4;
+        return 9;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def chain(x: Optional[int32]) -> Iterator[int32]:
+__gen_chain chain(std::optional<int32_t> x) {
+    return __gen_chain(x);
+}
+
+// def chain_capture(x: Optional[int32]) -> Iterator[int32]:
+//     # A whole-Optional capture on the chain: in a resumable body the capture
+//     # is a frame WRITE, not a block-local declaration, and the name is read
+//     # after a suspension.
+//     match x:  # tpyc: ok
+//         case 1:
+//             yield 1                                                           # -> S_RESUME_0
+//         case y:
+//             yield 0                                                           # -> S_RESUME_1
+//             if y is None:
+//                 yield -1                                                      # -> S_RESUME_2
+//             else:
+//                 yield y                                                       # -> S_RESUME_3
+//     yield 9                                                                   # -> S_RESUME_4
+std::expected<int32_t, ::tpy::StopIteration> __gen_chain_capture::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto& __match_subject_1 = x;
+        if (__match_subject_1.has_value() && (*__match_subject_1) == 1) {
+            __state = S_RESUME_0;
+            return 1;
+        } else {
+            y = __match_subject_1;
+            __state = S_RESUME_1;
+            return 0;
+        }
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 1
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: yield 0
+        if ((!y.has_value())) {
+            __state = S_RESUME_2;
+            return -1;
+        } else {
+            __state = S_RESUME_3;
+            return (*y);
+        }
+    }
+    case S_RESUME_2: {  // after: yield -1
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_3: {  // after: yield y
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_4: {  // after: yield 9
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        __state = S_RESUME_4;
+        return 9;
+    }
+    case S_JOIN_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def chain_capture(x: Optional[int32]) -> Iterator[int32]:
+__gen_chain_capture chain_capture(std::optional<int32_t> x) {
+    return __gen_chain_capture(x);
+}
+
+// def chain_guarded(x: Optional[int32], k: bool) -> Iterator[int32]:
+//     # A guard puts it on the standalone-block chain.
+//     match x:  # tpyc: ok
+//         case 1 if k:
+//             yield 1                                                 # -> S_RESUME_0
+//         case None:
+//             yield 0                                                 # -> S_RESUME_1
+//         case _:
+//             yield 2                                                 # -> S_RESUME_2
+//     yield 9                                                         # -> S_RESUME_3
+std::expected<int32_t, ::tpy::StopIteration> __gen_chain_guarded::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto& __match_subject_1 = x;
+        if (__match_subject_1.has_value() && (*__match_subject_1) == 1) {
+            if (k) {
+                __state = S_RESUME_0;
+                return 1;
+                goto __match_end_2;
+            }
+        }
+        if (!__match_subject_1.has_value()) {
+            __state = S_RESUME_1;
+            return 0;
+            goto __match_end_2;
+        }
+        {
+            __state = S_RESUME_2;
+            return 2;
+            goto __match_end_2;
+        }
+        __match_end_2:;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 1
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: yield 0
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_2: {  // after: yield 2
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_3: {  // after: yield 9
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        __state = S_RESUME_3;
+        return 9;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def chain_guarded(x: Optional[int32], k: bool) -> Iterator[int32]:
+__gen_chain_guarded chain_guarded(std::optional<int32_t> x, bool k) {
+    return __gen_chain_guarded(x, k);
+}
+
 // def main() -> None:
 //     for y in gen(None):
 //         print(y)
 //     print("--")
 //     for y in gen(4):
 //         print(y)
+//     for y in chain(1):
+//         print("chain_one:", y)
+//     for y in chain(None):
+//         print("chain_none:", y)
+//     for y in chain(7):
+//         print("chain_other:", y)
+//     for y in chain_capture(1):
+//         print("cap_one:", y)
+//     for y in chain_capture(None):
+//         print("cap_none:", y)
+//     for y in chain_capture(6):
+//         print("cap_other:", y)
+//     for y in chain_guarded(1, True):
+//         print("guarded_hit:", y)
+//     for y in chain_guarded(1, False):
+//         print("guarded_miss:", y)
 void main() {
     {
         auto __src_0 = ::tpyapp::main::gen(std::nullopt);
@@ -82,6 +300,86 @@ void main() {
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_3);
         std::cout << y << "\n";
+        }
+    }
+    {
+        auto __src_4 = ::tpyapp::main::chain(1);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_5);
+        std::cout << "chain_one:" << " " << y << "\n";
+        }
+    }
+    {
+        auto __src_6 = ::tpyapp::main::chain(std::nullopt);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_7);
+        std::cout << "chain_none:" << " " << y << "\n";
+        }
+    }
+    {
+        auto __src_8 = ::tpyapp::main::chain(7);
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_9);
+        std::cout << "chain_other:" << " " << y << "\n";
+        }
+    }
+    {
+        auto __src_10 = ::tpyapp::main::chain_capture(1);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_11);
+        std::cout << "cap_one:" << " " << y << "\n";
+        }
+    }
+    {
+        auto __src_12 = ::tpyapp::main::chain_capture(std::nullopt);
+        auto&& __itr_12 = ::tpy::__iter__(__src_12);
+        for (;;) {
+            auto __r_13 = __itr_12.__next__();
+            if (!__r_13.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_13);
+        std::cout << "cap_none:" << " " << y << "\n";
+        }
+    }
+    {
+        auto __src_14 = ::tpyapp::main::chain_capture(6);
+        auto&& __itr_14 = ::tpy::__iter__(__src_14);
+        for (;;) {
+            auto __r_15 = __itr_14.__next__();
+            if (!__r_15.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_15);
+        std::cout << "cap_other:" << " " << y << "\n";
+        }
+    }
+    {
+        auto __src_16 = ::tpyapp::main::chain_guarded(1, true);
+        auto&& __itr_16 = ::tpy::__iter__(__src_16);
+        for (;;) {
+            auto __r_17 = __itr_16.__next__();
+            if (!__r_17.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_17);
+        std::cout << "guarded_hit:" << " " << y << "\n";
+        }
+    }
+    {
+        auto __src_18 = ::tpyapp::main::chain_guarded(1, false);
+        auto&& __itr_18 = ::tpy::__iter__(__src_18);
+        for (;;) {
+            auto __r_19 = __itr_18.__next__();
+            if (!__r_19.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_19);
+        std::cout << "guarded_miss:" << " " << y << "\n";
         }
     }
 }

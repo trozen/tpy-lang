@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass, field
-from typing import Callable, TextIO
+from typing import Callable, Mapping, TextIO
 
 from ..parse.nodes import RebindStorage
 from ..codegen_cpp.context import (
@@ -3227,7 +3227,7 @@ def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
             keyword = "if" if i == 0 else "} else if"
             out.write(f"{indent}{keyword} ({cond}) {{\n")
         _emit_match_opt_arm_bindings(out, entry, subject, inner)
-        _emit_stmts(out, entry.body, indent_level + 1, state)
+        _emit_match_arm_body(out, entry, indent_level + 1, state)
     out.write(f"{indent}}}\n")
 
 
@@ -3421,7 +3421,9 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
     # (...)` (condition-free class arms and wildcards open bare `{` / `}
     # else {`), then the field capture bindings, the whole-subject
     # capture/`as` binding, and the body one level in; an or-pattern arm
-    # renders its ||-joined alternative groups and carries NO bindings.
+    # renders its ||-joined alternative groups, then the same whole-subject
+    # binding (its alternatives all match the one subject, so there is one
+    # thing to bind).
     # One closing brace ends the chain (the gate keeps the always-match
     # arm last, so no `} else { ... } else if` can arise).
     indent = INDENT * indent_level
@@ -3436,6 +3438,7 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
             else:
                 out.write(f"{indent}{{\n" if i == 0
                           else f"{indent}}} else {{\n")
+            _emit_match_whole_bindings(out, entry, subject, inner)
             _emit_match_arm_body(out, entry, indent_level + 1, state)
             continue
         conds = [f"{pre}{subject}{suf}" for pre, suf in entry.field_conds]
@@ -3462,7 +3465,9 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
     # goto end; }` two levels in (unguarded: body + goto one level). An
     # or-pattern arm composes the guard INTO the block condition
     # (`(conds) && guard`, or the bare guard when its groups collapsed
-    # empty) with the body + goto one level in regardless.
+    # empty) with its whole-subject binding and the body + goto one level in
+    # regardless -- lowering keeps a GUARDED or-arm binding out, since the
+    # composed condition would run ahead of the line it reads.
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     state.match_counter += 1
@@ -3480,7 +3485,8 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
                           f"({_emit_expr(entry.guard, state)}) {{\n")
             else:
                 out.write(f"{indent}{{\n")
-            _emit_stmts(out, entry.body, indent_level + 1, state)
+            _emit_match_whole_bindings(out, entry, subject, inner)
+            _emit_match_arm_body(out, entry, indent_level + 1, state)
             out.write(f"{inner}goto {end_label};\n")
             out.write(f"{indent}}}\n")
             continue
@@ -3495,11 +3501,11 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
         _emit_match_whole_bindings(out, entry, subject, inner)
         if entry.guard is not None:
             out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
-            _emit_stmts(out, entry.body, indent_level + 2, state)
+            _emit_match_arm_body(out, entry, indent_level + 2, state)
             out.write(f"{INDENT * (indent_level + 2)}goto {end_label};\n")
             out.write(f"{inner}}}\n")
         else:
-            _emit_stmts(out, entry.body, indent_level + 1, state)
+            _emit_match_arm_body(out, entry, indent_level + 1, state)
             out.write(f"{inner}goto {end_label};\n")
         out.write(f"{indent}}}\n")
     out.write(f"{indent}{end_label}:;\n")
@@ -4642,6 +4648,13 @@ class ResumableLeafEmitter:
                 f"resumable seam: routed body has no lowered {what} for "
                 f"{type(node).__name__} (lowering/seam disagreement)")
         return table[node]
+
+    @property
+    def narrow_aliases(self) -> 'Mapping[str, str]':
+        """The lowered spelling of each narrowing subject's resume-case
+        extraction alias -- the skeleton declares under these names so the
+        leaves' reads of the same alias resolve."""
+        return self._body.narrow_aliases
 
     def emit_leaf_stmt(self, out: TextIO, stmt, indent_level: int) -> None:
         """Emit one BB leaf statement (or a RaiseT terminator's statement),

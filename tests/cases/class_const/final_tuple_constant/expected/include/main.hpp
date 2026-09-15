@@ -8,9 +8,16 @@
 namespace tpyapp::main {
 
 struct Version;
+struct Reader;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def whole() -> None:
+void whole();
+// def direct() -> None:
+void direct();
+// def nested() -> None:
+void nested();
 // def main() -> None:
 void main();
 
@@ -20,6 +27,8 @@ struct Version {
     static constexpr std::tuple<int32_t, int32_t, int32_t> SEMVER = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
     // LABEL: Final[tuple[str, bool]] = ("alpha", True)
     static constexpr std::tuple<std::string_view, bool> LABEL = std::tuple<std::string_view, bool>{"alpha", true};
+    // NESTED: Final[tuple[tuple[int32, int32], str]] = ((4, 5), "beta")
+    static constexpr std::tuple<std::tuple<int32_t, int32_t>, std::string_view> NESTED = std::tuple<std::tuple<int32_t, int32_t>, std::string_view>{std::tuple<int32_t, int32_t>{4, 5}, "beta"};
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Version";
 };
@@ -29,5 +38,37 @@ inline std::ostream& operator<<(std::ostream& os, const Version& obj) {
     return os;
 }
 
+// class Reader:
+struct Reader {
+    // self.tag = tag
+    std::string tag;
+
+    // def __init__(self, tag: str) -> None:
+    Reader() = default;
+    explicit Reader(std::string_view tag);
+
+    // def show(self) -> None:
+    void show() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Reader";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
+    ::tpy::print_object_default(os, "Reader", obj);
+    return os;
+}
+
+
+// def __init__(self, tag: str) -> None:
+//     self.tag = tag
+inline Reader::Reader(std::string_view tag) : tag(tag) {}
+
+// # method: the same whole bind inside a record method body.
+// def show(self) -> None:
+//     v = Version.SEMVER  # tpyc: ok
+//     print("method", self.tag, v[1])
+inline void Reader::show() const {
+    std::tuple<int32_t, int32_t, int32_t> v = Version::SEMVER;
+    std::cout << "method" << " " << this->tag << " " << std::get<1>(v) << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

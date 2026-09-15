@@ -1,1 +1,0 @@
-main.py:11: error: in function 'gen': this construct is not yet supported by C++ code generation (stmt.for_each:tuple.reused_target)

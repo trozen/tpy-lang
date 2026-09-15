@@ -1,0 +1,5 @@
+main.py:18: warning: copies _StdStream into owned storage; use copy() to make this explicit
+main.py:18: warning: copies _StdStream into owned storage; use copy() to make this explicit
+main.py:24: warning: copies _StdStream into owned storage; use copy() to make this explicit
+main.py:24: warning: copies _StdStream into owned storage; use copy() to make this explicit
+main.py:30: warning: copies _StdStream into owned storage; use copy() to make this explicit

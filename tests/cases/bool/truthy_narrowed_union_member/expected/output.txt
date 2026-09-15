@@ -1,0 +1,4 @@
+bool flag-true flag-false plain
+len bag-nonempty bag-empty plain
+while 3 0
+method r-true r-false

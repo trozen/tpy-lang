@@ -1504,14 +1504,24 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         name="AnyFixedSigned", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
         cpp_concept="::tpy::AnyFixedSigned",
-        type_params=(), parent_protocols=(),
+        type_params=(), parent_protocols=(
+            ts.NominalType(
+                name="AnyFixedInt", type_args=(), is_protocol=True,
+                _module_qname="tpy.AnyFixedInt",
+            ),
+        ),
         methods=(),
     ),
     "tpy.AnyFixedUnsigned": dict(
         name="AnyFixedUnsigned", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
         cpp_concept="::tpy::AnyFixedUnsigned",
-        type_params=(), parent_protocols=(),
+        type_params=(), parent_protocols=(
+            ts.NominalType(
+                name="AnyFixedInt", type_args=(), is_protocol=True,
+                _module_qname="tpy.AnyFixedInt",
+            ),
+        ),
         methods=(),
     ),
 }

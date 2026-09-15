@@ -1,0 +1,8 @@
+free f-renamed f-opt
+method m-plain m-opt
+ctor c c
+gen 1
+gen 2
+gen g-plain g-opt
+async 3
+async a-plain a-opt
