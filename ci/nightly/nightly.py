@@ -81,13 +81,29 @@ class ConfigResult:
         return self.status in ("pass", "unavailable")
 
 
-def run_logged(cmd: list[str], log_file: Path, timeout: float | None = None) -> int:
-    """Run cmd appending combined output to log_file; return the exit code."""
+# Runs a script handed over on stdin. `cat` slurps the whole script before
+# `eval` starts it, so a command in the script that reads stdin (or leaves it
+# open for a child) can't swallow the rest of the script; every command then
+# sees stdin at EOF, as it did under the old `bash -c`.
+STDIN_SCRIPT_SHELL = 'eval "$(cat)"'
+
+
+def run_logged(cmd: list[str], log_file: Path, timeout: float | None = None,
+               script: str | None = None) -> int:
+    """Run cmd appending combined output to log_file; return the exit code.
+
+    A `script` goes over stdin, never into argv: the host-visible command
+    line of the docker/ssh client must not contain the suite command. A
+    `pkill -f pytest` from another session on this box once matched the
+    nightly's `docker run ... bash -c '... uv run pytest ...'` client, and
+    the client proxied the SIGTERM into the container.
+    """
     with open(log_file, "a") as f:
-        f.write(f"\n$ {shlex.join(cmd)}\n")
+        f.write(f"\n$ {shlex.join(cmd)}")
+        f.write(f" <<'EOF'\n{script}\nEOF\n" if script is not None else "\n")
         f.flush()
         proc = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT,
-                              timeout=timeout)
+                              timeout=timeout, input=script, text=True)
     return proc.returncode
 
 
@@ -197,7 +213,7 @@ def _run_docker(cfg: dict, src_dir: Path, out_dir: Path, smoke: bool,
     # Self-heal an orphan from a crashed/rebooted previous run: it would
     # otherwise hold this fixed name and fail tonight's docker run.
     subprocess.run(["docker", "rm", "-f", container], capture_output=True)
-    cmd = ["docker", "run", "--rm", "--name", container,
+    cmd = ["docker", "run", "--rm", "-i", "--name", container,
            "-v", f"{src_dir}:/repo:ro",
            "-v", f"{out_dir}:/out",
            "-v", f"{CACHE_VOLUME}:/cache",
@@ -219,8 +235,9 @@ def _run_docker(cfg: dict, src_dir: Path, out_dir: Path, smoke: bool,
         # the managed download the base image lacks.
         cmd += ["-e", f"UV_PYTHON={cfg['cpython']}",
                 "-e", "UV_PYTHON_DOWNLOADS=automatic"]
-    cmd += [tag, "bash", "-c", container_script(cfg, smoke)]
-    return run_logged(cmd, log_file, timeout=timeout)
+    cmd += [tag, "bash", "-c", STDIN_SCRIPT_SHELL]
+    return run_logged(cmd, log_file, timeout=timeout,
+                      script=container_script(cfg, smoke))
 
 
 def remote_script(cfg: dict, smoke: bool) -> str:
@@ -273,8 +290,8 @@ def _run_ssh(cfg: dict, src_dir: Path, out_dir: Path, smoke: bool,
     if rc != 0:
         raise RuntimeError(f"rsync to {host} failed (exit {rc})")
     rc = run_logged(
-        ["ssh", "-o", "BatchMode=yes", host, remote_script(cfg, smoke)],
-        log_file, timeout=timeout)
+        ["ssh", "-o", "BatchMode=yes", host, f"sh -c {shlex.quote(STDIN_SCRIPT_SHELL)}"],
+        log_file, timeout=timeout, script=remote_script(cfg, smoke))
     # Pull the junit back even on failure -- it names the failing tests.
     # Best-effort: run_config treats a missing file as an infra failure.
     subprocess.run(

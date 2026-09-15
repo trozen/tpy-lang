@@ -1,6 +1,7 @@
-"""Hatch build hook: generates tpyc/_buildinfo.py with git metadata."""
+"""Hatch build hook: ships tpyc/_buildinfo.py stamped with git metadata."""
 
 import subprocess
+import tempfile
 from pathlib import Path
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
@@ -9,18 +10,28 @@ class BuildInfoHook(BuildHookInterface):
     PLUGIN_NAME = "buildinfo"
 
     def initialize(self, version, build_data):
-        out = Path(self.root) / "tpyc" / "_buildinfo.py"
+        force_include = build_data.setdefault("force_include", {})
+        shipped = Path(self.root) / "tpyc" / "_buildinfo.py"
         commit = _git_commit(self.root)
-        # When building wheel from an unpacked sdist, the temp dir isn't a
-        # git repo, so `git describe` fails. The sdist already carries a
-        # stamped _buildinfo.py; keep it instead of clobbering with "unknown".
-        if commit == "unknown" and out.exists():
+        # A wheel built from an unpacked sdist has no git metadata, but the
+        # sdist already carries a stamped module: ship that one rather than
+        # clobbering it with "unknown".
+        if commit == "unknown" and shipped.exists():
+            force_include[str(shipped)] = "tpyc/_buildinfo.py"
             return
-        out.write_text(f'GIT_COMMIT = "{commit}"\n')
+        # Stamped OUTSIDE the source tree. A tpy/tpyc run in the same
+        # checkout fingerprints every .py under tpyc/ for its build cache, so
+        # a file that appears and disappears there mid-build makes an
+        # unchanged rerun miss the cache.
+        self._stamp_dir = tempfile.TemporaryDirectory()
+        stamp = Path(self._stamp_dir.name) / "_buildinfo.py"
+        stamp.write_text(f'GIT_COMMIT = "{commit}"\n')
+        force_include[str(stamp)] = "tpyc/_buildinfo.py"
 
     def finalize(self, version, build_data, artifact_path):
-        out = Path(self.root) / "tpyc" / "_buildinfo.py"
-        out.unlink(missing_ok=True)
+        stamp_dir = getattr(self, "_stamp_dir", None)
+        if stamp_dir is not None:
+            stamp_dir.cleanup()
 
 
 def _git_commit(root: str) -> str:

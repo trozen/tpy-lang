@@ -6,6 +6,7 @@ decisions an unattended night makes about what to run and report."""
 
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -234,3 +235,66 @@ def test_script_row_verdict_comes_from_the_exit_code(monkeypatch,
     _subject, body = nightly.format_report([res], "abc1234", smoke=False,
                                            pull_failed=False)
     assert "ratchet" in body and "exited 1" in body
+
+
+def _capture_run_logged(monkeypatch) -> list[tuple[list[str], str | None]]:
+    calls: list[tuple[list[str], str | None]] = []
+
+    def fake_run_logged(cmd, log_file, timeout=None, script=None):
+        calls.append((list(cmd), script))
+        return 0
+
+    monkeypatch.setattr(nightly, "run_logged", fake_run_logged)
+    return calls
+
+
+def test_docker_backend_keeps_the_suite_command_out_of_argv(
+        monkeypatch, tmp_path: Path) -> None:
+    """The suite script travels over stdin. The host-visible argv of the
+    docker client must never contain it: a `pkill -f pytest` from another
+    session matched the old `bash -c '... uv run pytest ...'` client and its
+    proxied SIGTERM killed the container mid-run."""
+    calls = _capture_run_logged(monkeypatch)
+    monkeypatch.setattr(nightly, "build_image", lambda cfg, refresh, log: "img")
+    monkeypatch.setattr(nightly.subprocess, "run",
+                        lambda *a, **k: subprocess.CompletedProcess(a, 0))
+    cfg = {"name": "2404-gcc13", "cxx": "gcc-13"}
+    # Mount paths land in argv, and pytest's own tmp root is named after it.
+    src, out = Path("/nightly/src"), Path("/nightly/out")
+    nightly._run_docker(cfg, src, out, smoke=False, refresh=False,
+                        log_file=tmp_path / "log", timeout=10)
+    [(cmd, script)] = calls
+    assert "pytest" not in " ".join(cmd) and "-i" in cmd
+    assert script is not None and "uv run pytest" in script
+    assert cmd[-3:] == ["bash", "-c", nightly.STDIN_SCRIPT_SHELL]
+
+
+def test_ssh_backend_keeps_the_suite_command_out_of_argv(
+        monkeypatch, tmp_path: Path) -> None:
+    """Same guard for the native-host row: the ssh client's argv carries only
+    the stdin-reading shell, the script itself goes over stdin."""
+    calls = _capture_run_logged(monkeypatch)
+    monkeypatch.setattr(nightly.subprocess, "run",
+                        lambda *a, **k: subprocess.CompletedProcess(a, 0))
+    cfg = {"name": "macos-native",
+           "ssh": {"host": "tpy-nightly-mac", "workdir": "w"}}
+    nightly._run_ssh(cfg, tmp_path, tmp_path, smoke=False,
+                     log_file=tmp_path / "log", timeout=10)
+    [(rsync_cmd, rsync_script), (ssh_cmd, script)] = calls
+    assert rsync_cmd[0] == "rsync" and rsync_script is None
+    assert ssh_cmd[0] == "ssh" and "pytest" not in " ".join(ssh_cmd)
+    assert script is not None and "uv run pytest" in script
+
+
+def test_run_logged_feeds_the_script_on_stdin_and_logs_it(
+        tmp_path: Path) -> None:
+    """The stdin-reading shell sees the WHOLE script before running any of
+    it (a script line that reads stdin can't eat the lines after it), and
+    the log keeps the script readable next to the command."""
+    log = tmp_path / "log"
+    script = "read -r first_line_of_stdin || true\necho ran-to-the-end"
+    rc = nightly.run_logged(["sh", "-c", nightly.STDIN_SCRIPT_SHELL], log,
+                            script=script)
+    assert rc == 0
+    text = log.read_text()
+    assert "ran-to-the-end" in text and "<<'EOF'" in text and script in text

@@ -52,7 +52,6 @@ path = "tpyc/_build_hook.py"
 "docs/TPY_FOR_AGENTS.md" = "tpyc/_data/docs/TPY_FOR_AGENTS.md"
 "docs/LANGUAGE_FEATURES.md" = "tpyc/_data/docs/LANGUAGE_FEATURES.md"
 "docs/STDLIB_ROADMAP.md" = "tpyc/_data/docs/STDLIB_ROADMAP.md"
-"tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
 
 # Allowlist exactly what a wheel-from-sdist build needs, so stray
 # working-tree files (untracked scratch, local tool configs) can never
@@ -74,14 +73,11 @@ only-include = [
     "RELEASE_NOTES.md",
 ]
 
-# Stamp _buildinfo.py for sdist too, so wheel-from-sdist (uv build's
-# default flow) inherits a real GIT_COMMIT instead of falling back to
-# "unknown" when the temp build dir isn't a git repo.
+# The hook stamps _buildinfo.py into the sdist too, so wheel-from-sdist
+# (uv build's default flow) inherits a real GIT_COMMIT instead of falling
+# back to "unknown" when the temp build dir isn't a git repo.
 [tool.hatch.build.targets.sdist.hooks.custom]
 path = "tpyc/_build_hook.py"
-
-[tool.hatch.build.targets.sdist.force-include]
-"tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
 
 [tool.pyright]
 extraPaths = ["lib/cpy"]
