@@ -4803,6 +4803,15 @@ def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 def _lambda_routable(a: TpyExpr, analyzer, *,
                      self_capturable: bool = False) -> bool:
+    if not isinstance(a, TpyLambda):
+        return False
+    reason = _lambda_reject_reason(a, analyzer,
+                                    self_capturable=self_capturable)
+    return reason is None or note_detail(reason, loc=a.loc)
+
+
+def _lambda_reject_reason(a: TpyLambda, analyzer, *,
+                          self_capturable: bool = False) -> str | None:
     """The lambda-expression shapes `_lower_lambda` renders:
     a closure with a non-void, non-pointer-tuple return and param types in the
     families the body emit renders without seeding (value scalars / char /
@@ -4815,16 +4824,14 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
     reject. The single source of truth for both the arg-admission
     gate and the lowering arm (they must agree, else the gate admits a
     shape lowering then rejects)."""
-    if not isinstance(a, TpyLambda):
-        return False
     # A captured `self` needs a receiver HANDLE the closure can copy --
     # admitted only where the caller confirmed the enclosing body holds one
     # (a plain method or a frame's `__self`).
     if "self" in a.captured_names and not self_capturable:
-        return False
+        return "lambda.self_capture"
     rt = a.inferred_return_type
     if rt is None:
-        return False
+        return "lambda.unresolved_return"
     if is_void_like_type(rt):
         b = a.body
         # A param/capture named `print` would shadow the builtin; kwargs
@@ -4835,7 +4842,7 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
                 and "print" not in a.param_names
                 and "print" not in a.captured_names
                 and _is_builtin_print(b, {}, analyzer)):
-            return False
+            return "lambda.void_body"
     else:
         ru = unwrap_readonly(rt)
         if isinstance(ru, TupleType) and ru.has_pointer_repr_element():
@@ -4848,10 +4855,10 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
             # LITERAL body (element lifts) or a concrete-callee body
             # (storage-form tuple) rejects.
             if not isinstance(a.body, (TpyCall, TpyMethodCall)):
-                return False
+                return "lambda.borrow_tuple_body"
             fi = a.body.resolved_function_info
             if fi is None or not fi.type_params:
-                return False
+                return "lambda.borrow_tuple_callee"
             bt = analyzer.get_expr_type(a.body)
             bt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
                   if bt is not None else None)
@@ -4861,10 +4868,10 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
                             == unwrap_readonly(unwrap_ref_type(re))
                             for be, re in zip(bt.element_types,
                                               ru.element_types))):
-                return False
+                return "lambda.borrow_tuple_result"
     for pt in a.inferred_param_types:
         if not isinstance(pt, TpyType):
-            return False
+            return "lambda.unresolved_parameter"
         pu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
         if not (_eligible_scalar(pu) or _eligible_char(pu)
                 or _eligible_enum(pu, analyzer) is not None
@@ -4881,8 +4888,8 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
                 # reject -- that spelling is unverified here.
                 or (isinstance(pu, TupleType)
                     and not pu.has_pointer_repr_element())):
-            return False
-    return True
+            return "lambda.parameter_type"
+    return None
 
 def _func_ref_routable(a: TpyExpr, analyzer) -> bool:
     """A named function used as a value (`apply(double, ...)` ->

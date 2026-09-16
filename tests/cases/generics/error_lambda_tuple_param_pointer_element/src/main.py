@@ -20,7 +20,7 @@ def pick[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[K]]:
 
 
 def keys(pairs: list[tuple[Box, int32]]) -> Own[list[int32]]:
-    return pick(pairs, lambda p: p[1])  # tpyc: error(/call\.generic_arg_shape/)
+    return pick(pairs, lambda p: p[1])  # tpyc: error(/lambda\.parameter_type/)
 
 
 def main() -> None:

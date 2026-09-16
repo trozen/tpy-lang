@@ -26,7 +26,7 @@ def apply(f: Callable[[int32], int32], v: int32) -> int32:
 
 
 def run(g: Guard) -> None:
-    print(apply(lambda i: i + g.x, 1))  # tpyc: error(/expr\.lambda/)
+    print(apply(lambda i: i + g.x, 1))  # tpyc: error(/lambda\.capture_nocopy/)
 
 
 def main() -> None:

@@ -7949,7 +7949,7 @@ def _lower_overload_folded_if(
             cond = _lower_truthy(node.condition, lc, declared,
                                  temps_ok=(i == 0))
         except ThirUnsupported as ex:
-            raise ThirUnsupported(stmt_reject_reason(
+            raise ex.with_context(stmt_reject_reason(
                 stmt, f"if.overload_live_cond:{ex.reason}")) from None
         body = _lower_stmts(node.then_body, lc, declared,
                             in_branch=True, loop_depth=loop_depth)
@@ -10537,7 +10537,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     binit = _lower_borrow_tuple_literal(
                         stmt.init, slot_bt, lc, declared)
                 except ThirUnsupported as ex:
-                    raise ThirUnsupported(stmt_reject_reason(
+                    raise ex.with_context(stmt_reject_reason(
                         stmt,
                         f"decl.tuple_literal_shape:{ex.reason}")) from None
                 declared[stmt.name] = slot_bt
@@ -10559,7 +10559,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         winit = _lower_tuple_literal(stmt.init, wide_t, lc,
                                                      declared)
                     except ThirUnsupported as ex:
-                        raise ThirUnsupported(stmt_reject_reason(
+                        raise ex.with_context(stmt_reject_reason(
                             stmt,
                             f"decl.tuple_literal_shape:{ex.reason}")) from None
                     cpp = "auto" if wide_t.has_ref_elements() else None
@@ -10590,7 +10590,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             try:
                 init = _lower_tuple_literal(stmt.init, tuple_t, lc, declared)
             except ThirUnsupported as ex:
-                raise ThirUnsupported(stmt_reject_reason(
+                raise ex.with_context(stmt_reject_reason(
                     stmt, f"decl.tuple_literal_shape:{ex.reason}")) from None
             if storage_record:
                 # The local OWNS its elements, so downstream subscript / name
@@ -12701,7 +12701,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         stmt.value, _vot_inner, lc, declared,
                         use=_ExprUse(allow_temps=True))
                 except ThirUnsupported as ex:
-                    raise ThirUnsupported(stmt_reject_reason(
+                    raise ex.with_context(stmt_reject_reason(
                         stmt, f"return.tuple_source:{ex.reason}")) from None
                 _witness("ret.value_opt_tuple_literal")
                 return THIRReturn(value=value, loc=loc)
@@ -13401,7 +13401,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value = _lower_tuple_literal(source, ret_vt, lc, declared,
                                                  use=_ExprUse(allow_temps=True))
                 except ThirUnsupported as ex:
-                    raise ThirUnsupported(stmt_reject_reason(
+                    raise ex.with_context(stmt_reject_reason(
                         stmt, f"return.tuple_source:{ex.reason}")) from None
                 _witness("ret.tuple_literal")
                 return THIRReturn(value=value, loc=loc)
@@ -14234,7 +14234,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     note_detail(f"if.cond_binop.{c.op}.{lf}_{rf}:{ex.reason}")
                 else:
                     _kind_detail("cond.", c)
-                raise ThirUnsupported(stmt_reject_reason(stmt))
+                raise ex.with_context(stmt_reject_reason(stmt))
         if _cond_mixed_walrus_temps(condition, walrus_nested_ok=True):
             # Mixed walrus + OUTSIDE temps: the flat-flush (i==0) and
             # nested-elif renders need a clear-and-burn temp numbering this
@@ -14522,7 +14522,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # The landmark names the loop head; the condition's own reason
                 # rides it, or the tag names this catcher instead of the
                 # construct that blocked.
-                raise ThirUnsupported(f"stmt.while:{ex.reason}") from None
+                raise ex.with_context(f"stmt.while:{ex.reason}") from None
             if _cond_mixed_walrus_temps(condition):
                 # The mixed shape needs the legacy single-eval flush --
                 # reject rather than restructure it here.
@@ -15773,7 +15773,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # first-wins, so a shape tag composed here would win by
                     # default and hide it.
                     note_detail(exc.reason)
-                    raise ThirUnsupported(stmt_reject_reason(stmt)) from None
+                    raise exc.with_context(stmt_reject_reason(stmt)) from None
             return THIRPrint(args=tuple(lowered_args), sep_expr=sep_expr,
                              end_expr=end_expr, sep_value=sep_value,
                              end_value=end_value, sink_expr=sink_expr,

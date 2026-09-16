@@ -12,9 +12,9 @@ def apply(f: Fn[[int32], int32], v: int32) -> int32:
     return f(v)
 
 
-def gen() -> Iterator[int32]:  # tpyc: error(/expr\.lambda/)
+def gen() -> Iterator[int32]:
     ys = [1, 2]
-    yield apply(lambda i: ys[i], 0)
+    yield apply(lambda i: ys[i], 0)  # tpyc: error(/lambda\.capture_frame_slot/)
     yield apply(lambda i: ys[i], 1)
 
 

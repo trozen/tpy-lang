@@ -2681,7 +2681,7 @@ def _lower_ctor_mil_init(
             try:
                 value = _lower_tuple_literal(source, vt, lc, declared)
             except ThirUnsupported as ex:
-                raise ThirUnsupported(
+                raise ex.with_context(
                     f"{_mil_reject_detail(stmt, analyzer)}:{ex.reason}"
                 ) from None
             return THIRMilInit(field_cpp=field_cpp, value=value)
@@ -2695,7 +2695,7 @@ def _lower_ctor_mil_init(
         try:
             value = _lower_tuple_literal(source, nt, lc, declared)
         except ThirUnsupported as ex:
-            raise ThirUnsupported(
+            raise ex.with_context(
                 f"{_mil_reject_detail(stmt, analyzer)}:{ex.reason}") from None
         return THIRMilInit(field_cpp=field_cpp, value=value)
     if isinstance(ftype, OptionalType):

@@ -1,1 +1,1 @@
-main.py:29: error: in function 'run': this construct is not yet supported by C++ code generation (expr.lambda)
+main.py:29: error: in function 'run': this construct is not yet supported by C++ code generation (expr.lambda:lambda.capture_nocopy)

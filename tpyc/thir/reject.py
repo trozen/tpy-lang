@@ -96,6 +96,18 @@ class ThirUnsupported(Exception):
         # the reject unwinds (innermost frame wins) -- what the diagnostic
         # points the user at.
         self.loc = loc
+        compiler = get_current_compiler()
+        if loc is None and compiler is not None:
+            cause = compiler._thir_reject_detail
+            if cause is not None and reason.endswith(":" + cause):
+                self.loc = compiler._thir_reject_detail_loc
+
+    def with_context(self, reason: str) -> 'ThirUnsupported':
+        # Lambda failures identify the actual expression; an enclosing
+        # statement's landmark scan must not replace that evidence.
+        if self.loc is not None and ":lambda." in self.reason:
+            return self
+        return ThirUnsupported(reason, loc=self.loc)
 
 
 def is_bodyless_binding(fn) -> bool:
@@ -136,13 +148,16 @@ def note(reason: str, loc: 'SourceLocation | None' = None) -> bool:
     return False
 
 
-def note_detail(reason: str) -> bool:
+def note_detail(reason: str, loc: 'SourceLocation | None' = None) -> bool:
     """Record the blocking sub-construct for the statement currently being
     gated, if none is recorded yet (first reject wins, like `note`). Returns
-    False so reject arms can `return note_detail("call.linkage")`."""
+    False so reject arms can `return note_detail("call.linkage")`.
+    A location belongs to this detail alone; only a reject carrying the detail
+    may use it instead of the enclosing statement's position."""
     compiler = get_current_compiler()
     if compiler is not None and compiler._thir_reject_detail is None:
         compiler._thir_reject_detail = reason
+        compiler._thir_reject_detail_loc = loc
     return False
 
 
@@ -153,6 +168,7 @@ def begin_stmt() -> None:
     compiler = get_current_compiler()
     if compiler is not None:
         compiler._thir_reject_detail = None
+        compiler._thir_reject_detail_loc = None
 
 
 def begin_attempt() -> None:
@@ -161,6 +177,7 @@ def begin_attempt() -> None:
     if compiler is not None:
         compiler._thir_reject_reason = None
         compiler._thir_reject_detail = None
+        compiler._thir_reject_detail_loc = None
         compiler._thir_reject_loc = None
     begin_witness_journal()
 
@@ -305,7 +322,8 @@ def call_reject_reason(base: str) -> str:
 
 def stmt_reject_reason(stmt: TpyStmt, detail: str | None = None) -> str:
     """The composed tag for a statement lowering rejected:
-    a landmark tag stands alone; a bare `stmt.*` shape picks up the
+    a landmark tag stands alone except for a located lambda cause;
+    a bare `stmt.*` shape picks up the
     sub-construct detail recorded during this statement's admission, if any.
 
     CALL-TIME composition: the detail is read off the compiler when THIS
@@ -319,6 +337,8 @@ def stmt_reject_reason(stmt: TpyStmt, detail: str | None = None) -> str:
     if detail is None:
         detail = (compiler._thir_reject_detail
                   if compiler is not None else None)
-    if detail is not None and reason.startswith("stmt."):
+    if detail is not None and (reason.startswith("stmt.")
+                               or (reason == "expr.lambda"
+                                   and detail.startswith("lambda."))):
         return f"{reason}:{detail}"
     return reason

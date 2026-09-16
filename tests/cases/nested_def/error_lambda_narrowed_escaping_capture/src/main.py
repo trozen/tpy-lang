@@ -28,7 +28,7 @@ class B:
 def run(x: A | B) -> int32:
     if isinstance(x, A):
         # the escaping capture of the narrowed `x` is the subject
-        f: Callable[[], int32] = lambda: x.a  # tpyc: error(/expr\.lambda/)
+        f: Callable[[], int32] = lambda: x.a  # tpyc: error(/lambda\.capture_narrowed_reference/)
         x.a = 99
         return f()
     return 0

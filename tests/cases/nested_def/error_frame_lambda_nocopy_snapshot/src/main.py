@@ -21,8 +21,8 @@ def apply(f: Callable[[int32], int32], v: int32) -> int32:
     return f(v)
 
 
-def gen(g: Own[Guard]) -> Iterator[int32]:  # tpyc: error(/expr\.lambda/)
-    yield apply(lambda i: i + g.x, 1)
+def gen(g: Own[Guard]) -> Iterator[int32]:
+    yield apply(lambda i: i + g.x, 1)  # tpyc: error(/lambda\.capture_nocopy/)
     yield apply(lambda i: i + g.x, 2)
 
 

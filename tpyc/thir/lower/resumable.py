@@ -2421,7 +2421,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # The landmark names the branch position; the condition's own
                 # reason rides it, or the tag names this catcher instead of
                 # the construct that blocked.
-                raise ThirUnsupported(f"res.cond:{ex.reason}") from None
+                raise ex.with_context(f"res.cond:{ex.reason}") from None
             _witness("res.branch_cond")
         elif isinstance(t, rcfg.Yield) and is_generator:
             # Generator suspension: the skeleton emits `__state = S_RESUME_i;
@@ -2774,7 +2774,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # The landmark names the suspend position; the operand's
                     # own reason rides it, or the tag hides which construct
                     # actually blocked.
-                    raise ThirUnsupported(
+                    raise ex.with_context(
                         f"res.await_operand_shape:{ex.reason}") from None
                 _witness("res.suspend_operand")
             else:

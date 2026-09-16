@@ -90,8 +90,10 @@ invalidation policy must be TPy's, not Rust's (see "Mutable aliasing" below).
 10. **A closure capturing `self` by reference is a VIEW over the receiver**
     (*deferred-to-MIR*): the callback carries a loan on the receiver; a temporary
     receiver takes rule 29's reject, escaping past the owner rejects, and
-    rebinding or mutating the owner while the callback is live is an ERROR (not
-    the warning the name-rebind tracker emits today). Recognizing a callable as a
+    invalidating receiver storage while the callback is live is an ERROR (not
+    the warning the name-rebind tracker emits today). Ordinary field mutation
+    remains legal. A loan on the whole receiver and one into replaceable
+    substorage have different invalidation conditions. Recognizing a callable as a
     view is not the hard part: the predicate MIR must be able to answer is "does
     the receiver outlive this sink", at a field store and at a container insert,
     not only at a return. Two positions are decided and must both hold. A
@@ -102,11 +104,11 @@ invalidation policy must be TPy's, not Rust's (see "Mutable aliasing" below).
     receiver outlives it. A callback stored in a sink that outlives the receiver
     is an error whose message names the sink and the remedy: keep the receiver
     alive as long as the sink, or hold it as `Rc[...]` and capture the handle.
-11. **A call through a closure is a potential mutation of its captured places**
-    (*deferred-to-MIR*), so a result still borrowing those places is diagnosed at
-    the next call through the same closure, and a caller mutating a place the
-    closure borrows is diagnosed at the call that passes both -- generalized to
-    every callable reaching the call by rule 36.
+11. **A closure call checks its effects against live storage dependencies**
+    (*deferred-to-MIR*): diagnose a call that may invalidate storage a result or
+    another callback still borrows. A later call through the same closure is not
+    inherently a conflict, and ordinary mutation through aliases remains legal.
+    Apply the check to every callable reaching the call by rule 36.
 12. **Non-escape is a property of the callable VALUE, checked at EVERY binding**
     (*split: the conservative marker is contract-half A2; the precise analysis is
     deferred-to-MIR*): forwarding an `Fn` into a storing slot (a `Callable`
@@ -246,13 +248,15 @@ invalidation policy must be TPy's, not Rust's (see "Mutable aliasing" below).
     parameter-index channel records nothing for a capture or a global. The
     granularity is load-bearing: two closures over `self.items` and `self.spare`
     are ONE conflict at name granularity and NONE at place granularity, leaving
-    rule 34 nothing to evaluate on.
+    rule 34 nothing to evaluate on. Effects must distinguish ordinary writes
+    from operations that may invalidate borrowed storage; a write alone does
+    not establish a lifetime conflict.
 34. **Capture loans carry a KIND** (*deferred-to-MIR*) -- shared or mutable, read
     off rule 33's place set, so "shared" is derived from ABSENCE from the write set
-    -- and the conflict matrix is: shared and shared COEXIST; mutable conflicts
-    with anything on the same place. (This is the opposite direction from rule 5's
-    permission weakening, which is contract satisfaction, not aliasing; the two
-    must not be stated as analogues.) Two conflicting loans on one place are
+    -- but this is not Rust's exclusive-mutable-borrow rule. Shared and mutable
+    aliases may coexist. A conflict requires an effect that can invalidate
+    storage on which a live loan depends; permission weakening in rule 5 is a
+    separate contract check. Conflicting effects and loans on one place are
     diagnosed at the call that passes both: `'apply' is passed two callbacks that
     both use 'xs', and 'grow' writes it while 'peek' holds a reference into it;
     pass 'copy(xs)' to one of them, or call them in separate statements.`

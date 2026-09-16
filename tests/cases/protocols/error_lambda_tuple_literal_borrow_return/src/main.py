@@ -17,7 +17,7 @@ class Point:
 
 def main() -> None:
     pts = [Point(1), Point(2)]
-    d = dict(copy_iter(map(lambda p: (str(p.x), p), pts)))  # tpyc: error(/call\.native_arg/)
+    d = dict(copy_iter(map(lambda p: (str(p.x), p), pts)))  # tpyc: error(/lambda\.borrow_tuple_body/)
     for k in d:
         print(k, d[k])
 

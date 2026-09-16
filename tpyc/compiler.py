@@ -677,6 +677,7 @@ class Compiler:
         # reports (thir/reject.py).
         self._thir_reject_reason: str | None = None
         self._thir_reject_detail: str | None = None
+        self._thir_reject_detail_loc: 'SourceLocation | None' = None
         self._thir_reject_loc: 'SourceLocation | None' = None
         # First-reject reason per rejected body, keyed by its AST
         # callable, so `--dump-thir` can name why a lowering raised.

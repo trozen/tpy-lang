@@ -120,20 +120,20 @@ rather than compiling. The exception returns with rule 9.
 
 ## Invariant
 
-> Every callable slot carries three separate facts -- its ENVIRONMENT LOANS (the
-> caller places its captures borrow, each with a shared / mutable KIND), its
-> RESULT PROVENANCE (the result's form plus the places it roots in), and its
-> MUTATION EFFECTS (the places a call through it may write) -- each computed once
-> by the one position-aware classifier and read, never re-derived, by every
-> consumer.
+> Each fact has one authority. The position-aware type classifier determines
+> result form, permissions and possible contained borrows. Body analysis
+> determines actual environment loans, result roots and mutation effects.
+> THIR carries the resolved decisions; code generation consumes them.
 
 Collapsing any two is where the design fails: a scalar-returning callback with a
-borrowed `self` capture has no result provenance and a fatal environment loan,
-and a call that mutates its captures invalidates a result the provenance alone
-still calls live. This half computes the FIRST fact and the form half of the
-second. The other two are requirements on MIR, and the admission layer is what
-stands in for them: where a fact would be needed and cannot be had, the binding
-is refused.
+borrowed `self` capture can have an environment lifetime dependency without a
+borrowed result, and a call that invalidates captured storage can invalidate a
+result whose root is otherwise still live. Types alone cannot determine either
+fact. This half supplies the type descriptor and only the conservative body
+facts justified by its admission layer. Precise loans, roots and effects are
+requirements on MIR; unresolved obligations reject subject to the compatibility
+gate below. Ordinary mutation and overlapping mutable aliases remain legal
+unless they invalidate storage a live loan depends on.
 
 ## Rules
 
@@ -860,19 +860,70 @@ without deciding that schedule.
 
 ## Implementation plan
 
-In landing order. The first five steps are independently mergeable, each with its
-own acceptance test; everything from step 6 on is coupled and lands as one branch
-only after the compatibility gate above is satisfied.
+### Execution checkpoints
 
-**Independent, risk ascending.**
+This is the agreed implementation sequence. The numbered work items below are
+the detailed inventory; they do not bypass these checkpoints or authorize new
+language restrictions discovered during implementation.
 
-1. **P0.1 -- `expr.lambda` span + blocking element.** `ThirUnsupported` already
-   carries `loc` (`tpyc/thir/reject.py:88-98`) and `note_detail` exists; the raise
-   sites (`tpyc/thir/lower/expressions.py:10873`, `:10877`, `:10881`, `:10903`,
-   `:10953`, the `_lambda_routable` gate at `:10902` and `_capture_entry_cpp` at
-   `:10873`/`:10877`/`:10881`) pass `loc=e.loc` and a `note_detail("lambda.<cause>")`.
-   Tests: an `error_` case per cause. Pure diagnostic improvement, no design
-   dependency.
+| Checkpoint | Work and acceptance condition | Status |
+|---|---|---|
+| 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | P0.1 complete; P0.2 next |
+| 2. Shared type decisions | Unify const-inference readers and extract the result descriptor/classifier. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Pending |
+| 3. Feasibility and generic forms | Design and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Pending |
+| 4. Coupled contract implementation | Admission, conversion checks, lambda result stamps, runtime slots, THIR, erasure, native annotations and stubs land together after checkpoint 3 passes. | Gated |
+| 5. Precise provenance | Implement the MIR requirements and remove measured interim restrictions as their proofs become available. | Deferred |
+
+Checkpoint 1 starts with **P0.1 only**. Its invariant is that a lambda rejection
+identifies the actual rejecting lambda and blocking construct, preserving both
+through enclosing calls and statements. Reuse the existing THIR diagnostic
+machinery and routing predicates; do not add a second admission policy.
+
+For each implementation unit, reproduce the relevant failure, trace sibling
+paths, add focused tests and run the affected subset. Consult before updating
+existing snapshots, explaining the concrete change. Run the full suite once at
+the end of a completed compiler change, not for documentation-only checkpoints.
+Commit each coherent completed checkpoint on the working branch and update this
+table so the next session can resume from evidence rather than conversation.
+
+**P0.1 complete (2026-09-16).** The implementation preserves routing, capture and
+body failure details at the lambda's location, including through enclosing
+expression diagnostics. Focused tests cover free functions, methods,
+constructors, module scope, generators and async bodies; argument-gate failures,
+frame/non-copyable/narrowed captures, and enclosing print/tuple/condition/f-string
+paths have separate assertions. Review added coverage for suspending conditions,
+await operands and both constructor tuple initializer shapes; these wrappers
+preserve the same located rejection. Container-call elements in literals and
+comprehensions cover the intersection with the latest master changes. All 28
+focused lambda checks passed in the final full remote run after merging master
+`afd815b028`: **7,988 passed, 23 skipped**, with all **4,134 executable cases**
+built and run under `--force-exec`. Six existing diagnostic snapshots changed in
+total; generated C++ snapshots did not change. P0.2 has not started. The
+`return <void call>` fixture restriction is already tracked as
+`BUGS.md#async-void-return-drops-call`.
+
+The contract tests must distinguish borrowing from copying through mutation
+visibility (or `@nocopy`), exercise rebinding separately from initialization, and
+pair concrete and generic forms. Include named-function/lambda twins and the
+same contract at parameters, returns, locals, fields and container elements.
+Keep harmless scalar callbacks under a live loan in the compatibility corpus.
+
+### Detailed work inventory
+
+The execution checkpoints above determine the landing order. Items 1-5 are
+independently mergeable, each with its own acceptance test; everything from
+item 6 on is coupled and lands as one branch only after the compatibility gate
+above is satisfied.
+
+**Independent prerequisites and refactors.**
+
+1. **P0.1 -- `expr.lambda` span + blocking element.** The shared lambda routing
+   predicate supplies the cause; `note_detail` carries its source location.
+   Lambda lowering adds capture/body causes, and `ThirUnsupported.with_context`
+   preserves the located rejection through enclosing expressions. Tests cover
+   parameter/return tuple shapes, captures and body failures, with multi-line
+   locations and supported named-function/lambda twins. Pure diagnostic
+   improvement, no design dependency.
 2. **The const-inference reader unification.** `tpyc/codegen_cpp/functions.py:841`
    (subtracting the loan set from `mutated_params`) and
    `tpyc/sema/mutation_propagation.py:251` (skipping auto-const when the result
@@ -983,7 +1034,10 @@ measured against a corpus that cannot spell the shapes.
 
 ## Later slices
 
-- **D1 -- the hedged owning-slot obligation with a FORM dimension.** Needs three
+- **D1 -- more permissive owning-slot copy obligations.** The per-instantiation
+  FORM infrastructure is required by rules 26/27 in checkpoint 3, before the
+  contract ships; only the later relaxation to a copy-warning obligation is
+  deferred here. The initial infrastructure needs three
   pieces the own-copy channel lacks: a second openness predicate beside
   `_still_open` / `type_has_type_param` (`tpyc/sema/own_copy.py:218`, `:158`), a form
   composition rule in the forwards loop (`:246-249`) parallel to `substitute_types`,
@@ -993,7 +1047,8 @@ measured against a corpus that cannot spell the shapes.
   not file a concrete-types / open-form edge as a root (`tpyc/sema/context.py:1542`).
   The call site CAN supply the form (`record_own_copy_instantiation` runs at the call
   node with the arguments in hand, `tpyc/sema/calls.py:5290`;
-  `defer_own_copy_verdict` at `tpyc/sema/context.py:1458` is D1's channel). Lifts
+  `defer_own_copy_verdict` at `tpyc/sema/context.py:1458` is the existing channel).
+  D1's later use of that infrastructure lifts
   rule 27 and the open-type-parameter over-reject, and closes the callable leg of
   `BUGS.md#generic-own-slot-borrow-call-unwarned`.
 - **D2 -- the consuming fold, with a Python-compatible `reduce` designed

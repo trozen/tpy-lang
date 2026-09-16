@@ -669,7 +669,7 @@ from .checks import (
     _func_ref_routable,
     _copy_own_arg,
     _copy_open_elem_arg,
-    _lambda_routable,
+    _lambda_reject_reason,
     _subscript_over_container_subscript_ok,
     _subscript_over_narrowed_opt_subscript_ok,
     _field_over_field_ok,
@@ -7106,7 +7106,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # The landmark names the interpolation position; the
                     # operand's own reason rides it, or the tag hides which
                     # construct actually blocked.
-                    raise ThirUnsupported(
+                    raise ex.with_context(
                         f"expr.fstring:{ex.reason}") from None
                 parts.append(THIRFStringArg(
                     expr=lowered_part, wrap=wrap,
@@ -10907,11 +10907,11 @@ def _capture_entry_cpp(name: str, lc: '_LowerCtx',
     the entry the pre-frame lane always emitted."""
     cpp = escape_cpp_name(name)
     if by_value and _uncopyable_capture(name, declared, lc):
-        raise ThirUnsupported("expr.lambda")
+        raise ThirUnsupported("lambda.capture_nocopy")
     if name in lc.narrow.spelled or name in lc.deref_view_spelled:
         # A poly-narrowed subject reads as `(*__p_ptr)` inside the closure --
         # a spelling no capture entry can bind.
-        raise ThirUnsupported("expr.lambda")
+        raise ThirUnsupported("lambda.capture_narrowed_view")
     alias = lc.narrow.narrowed.get(name)
     if alias is not None:
         # Reads of a narrowed subject inside the closure render the
@@ -10928,21 +10928,34 @@ def _capture_entry_cpp(name: str, lc: '_LowerCtx',
         narrowed_type = declared.get(name)
         if (by_value and narrowed_type is not None
                 and is_plain_nonvalue(narrowed_type)):
-            raise ThirUnsupported("expr.lambda")
+            raise ThirUnsupported("lambda.capture_narrowed_reference")
         return f"{'' if by_value else '&'}{alias}"
     if name not in lc.frame_field_names:
         return f"{'' if by_value else '&'}{cpp}"
     if name not in lc.plain_frame_fields:
-        raise ThirUnsupported("expr.lambda")
+        raise ThirUnsupported("lambda.capture_frame_slot")
     if not by_value:
         return f"&{cpp} = {cpp}"
     if name not in declared:
-        raise ThirUnsupported("expr.lambda")
+        raise ThirUnsupported("lambda.capture_unresolved_frame_member")
     return f"{cpp} = {cpp}"
 
 
 def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
                   declared: dict[str, TpyType]) -> THIRExpr:
+    try:
+        return _lower_lambda_impl(e, lc, declared)
+    except ThirUnsupported as ex:
+        # A nested lambda already names its own failure and source location.
+        if ex.loc is not None and ":lambda." in ex.reason:
+            raise
+        cause = (ex.reason if ex.reason.startswith("lambda.")
+                 else f"lambda.body:{ex.reason}")
+        raise ThirUnsupported(f"expr.lambda:{cause}", loc=e.loc) from None
+
+
+def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
+                       declared: dict[str, TpyType]) -> THIRExpr:
     """Lower a lambda expression to its C++ closure. The single-expression
     body renders against the lambda's return type.
     `captures_by_value` (Callable/std::function --
@@ -10957,9 +10970,10 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
     analyzer = lc.analyzer
     loc = getattr(e, "loc", None)
     self_cap = _self_capture_cpp(lc)
-    if not _lambda_routable(e, analyzer,
-                            self_capturable=self_cap is not None):
-        raise ThirUnsupported("expr.lambda")
+    reason = _lambda_reject_reason(e, analyzer,
+                                   self_capturable=self_cap is not None)
+    if reason is not None:
+        raise ThirUnsupported(reason)
     ret_type = e.inferred_return_type
     params_cpp: list[str] = []
     body_declared = dict(declared)
@@ -10998,7 +11012,7 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
         capture = "[]"
     if is_void_like_type(ret_type):
         # The statement-body closure: the body IS a builtin print call
-        # (gate-checked by _lambda_routable). Its args lower TEMP-FREE --
+        # (gate-checked by _lambda_reject_reason). Its args lower TEMP-FREE --
         # a hoisted temp would flush at the ENCLOSING statement, outside
         # the closure. Narrowed-alias args reject (the subject_union print
         # keying is a statement-scope fact).
@@ -11009,7 +11023,7 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
             if (isinstance(parg, TpyName)
                     and (parg.name in lc.narrow.narrowed
                          or parg.name in lc.narrow.spelled)):
-                raise ThirUnsupported("expr.lambda")
+                raise ThirUnsupported("lambda.print_narrowed_argument")
             pargs.append(_lower_print_arg(parg, lc, body_declared,
                                           frozenset(), temps_ok=False))
         _witness("expr.lambda_void_print")
