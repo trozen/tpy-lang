@@ -29,7 +29,7 @@ from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
-from ..type_def_registry import is_list, is_set, is_fstr_type, is_borrowing_view_type
+from ..type_def_registry import is_list, is_set, is_fstr_type, is_borrowing_view_type, protocol_info_of
 from .overloads import resolve_overload, OverloadAmbiguityError
 from .bound_check import raise_if_class_param_bound_violated
 from .calls import (
@@ -586,6 +586,35 @@ class MethodAnalyzer:
         result = self._analyze_instance_method(expr, obj_type, is_readonly_receiver, is_consuming_receiver)
         if result is not None:
             return result
+        # A value field makes the saved brackets indexing, never method type args.
+        if expr.subscript_callee is not None:
+            has_field = False
+            if isinstance(obj_type, NominalType):
+                record = self.ctx.registry.get_record_for_type(obj_type)
+                has_field = (record is not None
+                    and (self.protocols.lookup_record_field(record, expr.method) is not None
+                         or self.protocols.lookup_record_property(record, expr.method) is not None))
+            elif isinstance(obj_type, TypeParamRef):
+                bound = self.type_ops.get_type_param_bound(obj_type.name)
+                if bound is not None and is_protocol_type(bound):
+                    protocol = protocol_info_of(bound)
+                    has_field = protocol is not None and any(
+                        name == expr.method for name, _ in protocol.fields or [])
+            if has_field:
+                subscript = expr.subscript_callee
+                field = subscript.obj
+                receiver_type = self.ctx.get_raw_expr_type(expr.obj)
+                assert receiver_type is not None
+                field_type = self.expr._analyze_field_access(field, receiver_type)
+                self.ctx.set_expr_type(field, field_type)
+                callee_type = self.expr._analyze_subscript(subscript, field_type)
+                self.ctx.set_expr_type(subscript, callee_type)
+                expr.obj = subscript
+                expr.method = "__call__"
+                expr.subscript_callee = None
+                expr.type_args = ()
+                expr.type_args_parse_error = None
+                return self.analyze_method_call(expr, callee_type)
         result = self._analyze_protocol_or_bound_method(expr, obj_type)
         if result is not None:
             return result
@@ -630,7 +659,8 @@ class MethodAnalyzer:
         expr.is_callable_field = True
         return ret
 
-    def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
+    def analyze_method_call(self, expr: TpyMethodCall,
+                            obj_type: TpyType | None = None) -> TpyType:
         """Analyze a method call."""
         # A `.cancel()` read of a bound coroutine handle is not
         # consumption: without this restore, `c = f(); c.cancel()`
@@ -640,12 +670,16 @@ class MethodAnalyzer:
         if expr.method == "cancel" and isinstance(expr.obj, TpyName):
             _coro_unread = self.ctx.func.unread_coro_locals.get(expr.obj.name)
         try:
-            return self._analyze_method_call_impl(expr)
+            result = self._analyze_method_call_impl(expr, obj_type)
+            # Walks after sema must see only the resolved receiver, never its alternative.
+            expr.subscript_callee = None
+            return result
         finally:
             if _coro_unread is not None:
                 self.ctx.func.unread_coro_locals[expr.obj.name] = _coro_unread
 
-    def _analyze_method_call_impl(self, expr: TpyMethodCall) -> TpyType:
+    def _analyze_method_call_impl(self, expr: TpyMethodCall,
+                                  obj_type: TpyType | None = None) -> TpyType:
         if isinstance(expr.obj, TpyName):
             # ClassName.staticmethod() pattern
             result = self._analyze_static_method_call(expr)
@@ -735,7 +769,12 @@ class MethodAnalyzer:
                     expr.representational_subst_params = flat_expr.representational_subst_params
                     return result
 
-        obj_type = self.expr.analyze_expr(expr.obj)
+        if obj_type is None:
+            obj_type = self.expr.analyze_expr(expr.obj)
+        callable_type = unwrap_qualifiers(obj_type)
+        if expr.method == "__call__" and isinstance(callable_type, CallableType):
+            return self.calls.analyze_callable_value_call(
+                expr, callable_type, "<expr>", "Callable type")
 
         # super().method() calls: the receiver resolves to SuperType via the
         # builtins.super qname dispatch in calls.py (supersedes the old bare-string
@@ -848,6 +887,10 @@ class MethodAnalyzer:
         while deref_depth <= 8:
             result = self._try_resolve_method(expr, current_type, is_readonly_receiver, is_consuming_receiver)
             if result is not None:
+                info = expr.resolved_function_info
+                if (info is not None and info.is_callable_value
+                        and not expr.is_callable_field):
+                    return result
                 expr.deref_depth = deref_depth
                 if deref_depth > 0 and isinstance(original_type, PtrType):
                     obj_key = _expr_to_narrowing_key(expr.obj)

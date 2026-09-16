@@ -1008,7 +1008,7 @@ class NarrowingTracker:
         for k in stale:
             del self.ctx.func.value_ranges[k]
 
-    def invalidate_field_facts_for_call(self, call: TpyCall) -> None:
+    def invalidate_field_facts_for_call(self, call: TpyCall | TpyMethodCall) -> None:
         """Invalidate field narrowing facts for name arguments passed by mutable reference.
 
         When a non-value-type object is passed to a function, the callee receives
@@ -1043,16 +1043,7 @@ class NarrowingTracker:
                 obj_key = _expr_to_narrowing_key(call.obj)
                 if obj_key is not None:
                     self._invalidate_field_facts(obj_key)
-        for arg in call.args:
-            if not isinstance(arg, TpyName):
-                continue
-            arg_type = self.ctx.get_expr_type(arg)
-            if arg_type is None:
-                continue
-            inner = unwrap_readonly(arg_type)
-            if inner.is_value_type():
-                continue
-            self._invalidate_field_facts(arg.name)
+        self.invalidate_field_facts_for_call(call)
 
 
 # -- Module-level helpers for range fact dict operations ------------------

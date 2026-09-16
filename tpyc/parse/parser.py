@@ -4210,13 +4210,11 @@ class Parser:
                     # be a variable, not a function/type (e.g., fns[0](args),
                     # Handlers[MyType](args)). May fail for known generic types
                     # (list[T], Array[T,N], etc. can't be used as values).
-                    # Skip slices -- they can't produce a callable value.
                     subscript_callee = None
-                    if not isinstance(node.func.slice, ast.Slice):
-                        try:
-                            subscript_callee = self._parse_expr(node.func)
-                        except ParseError:
-                            pass
+                    try:
+                        subscript_callee = self._parse_expr(node.func)
+                    except ParseError:
+                        pass
                     return TpyCall(TpyName(name, loc=loc), args, call_type=call_type, type_args=type_args,
                                    type_args_parse_error=type_args_parse_error,
                                    subscript_callee=subscript_callee, kwargs=kwargs,
@@ -4226,9 +4224,17 @@ class Parser:
                     obj = self._parse_expr(node.func.value.value)
                     method = node.func.value.attr
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func)
+                    subscript_callee = None
+                    try:
+                        subscript_callee = self._parse_expr(node.func)
+                    except ParseError:
+                        pass
+                    if subscript_callee is not None:
+                        subscript_callee.obj.obj = obj
                     return TpyMethodCall(obj, method, args, kwargs=kwargs,
                                          double_star_unpack=double_star_unpack,
                                          type_args=type_args,
+                                         subscript_callee=subscript_callee,
                                          type_args_parse_error=type_args_parse_error, loc=loc)
                 # Expression callee with subscript: expr[i](args)
                 expr_func = self._parse_expr(node.func)

@@ -1,0 +1,1 @@
+main.py:26: error: Cannot index type Callable[[int32], int32]

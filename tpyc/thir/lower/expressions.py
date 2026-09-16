@@ -5179,6 +5179,30 @@ def _check_cond_eager_temps(node: THIRExpr) -> None:
                     _check_cond_eager_temps(item)
 
 
+def _lower_computed_call(
+        e: TpyCall | TpyMethodCall, callee: TpyExpr, rtype: TpyType,
+        lc: _LowerCtx, declared: dict[str, TpyType], use: _ExprUse) -> THIRExpr:
+    ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        lc.analyzer.get_expr_type(callee))))
+    if (not isinstance(ct, CallableType) or ct.is_template
+            or e.kwargs or e.double_star_unpack is not None):
+        note_detail("call.expr_callee_shape")
+        raise ThirUnsupported(call_reject_reason("expr.call"))
+    cparams = list(ct.param_types)
+    if len(cparams) != len(e.args):
+        note_detail("call.expr_callee_arity")
+        raise ThirUnsupported(call_reject_reason("expr.call"))
+    _witness("call.expr_callee")
+    return THIRCall(
+        result_type=rtype, callee="",
+        callee_expr=_lower_expr(callee, lc, declared),
+        args=tuple(_lower_free_call_arg(
+            e, a, cparams[i], ("local", ""), lc, declared,
+            temp_args=use.allow_temps, readonly_target=False,
+            arg_index=i) for i, a in enumerate(e.args)),
+        loc=e.loc)
+
+
 def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 declared: dict[str, TpyType], *,
                 use: _ExprUse = _ExprUse(),
@@ -7675,32 +7699,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                   SinkForm.RECORD_PRVALUE))
     if isinstance(e, TpyCall):
         if not isinstance(e.func, TpyName):
-            # An expression callee (`make_adder(10)(5)`, `fns[i](x)`): every
-            # arm below reads `e.func_name`, which asserts a Name callee, so
-            # this shape gets its own render -- the parenthesized callee
-            # ahead of the args. Only a
-            # CALLABLE-typed callee whose own render is routable, and only
-            # plain positional args at their declared param slots.
-            ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                lc.analyzer.get_expr_type(e.func))))
-            if (not isinstance(ct, CallableType) or ct.is_template
-                    or e.kwargs or e.double_star_unpack is not None):
-                note_detail("call.expr_callee_shape")
-                raise ThirUnsupported(call_reject_reason("expr.call"))
-            cparams = list(ct.param_types)
-            if len(cparams) != len(e.args):
-                note_detail("call.expr_callee_arity")
-                raise ThirUnsupported(call_reject_reason("expr.call"))
-            _witness("call.expr_callee")
-            return THIRCall(
-                result_type=rtype,
-                callee="",
-                callee_expr=_lower_expr(e.func, lc, declared),
-                args=tuple(
-                    _lower_call_arg(a, cparams[i], lc, declared,
-                                    temp_args=use.allow_temps)
-                    for i, a in enumerate(e.args)),
-                loc=loc)
+            return _lower_computed_call(e, e.func, rtype, lc, declared, use)
         if (e.func.name == "ord"
                 and len(e.args) == 1
                 and isinstance(e.args[0], TpyStrLiteral)
@@ -9096,6 +9095,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             loc=loc,
         )
     if isinstance(e, TpyMethodCall):
+        if (e.resolved_function_info is not None
+                and e.resolved_function_info.is_callable_value
+                and not e.is_callable_field):
+            return _lower_computed_call(e, e.obj, rtype, lc, declared, use)
         if e.fstr_expansion is not None:
             # An `@inline` METHOD call: sema stores the substituted body's
             # expression here (a FREE `@inline` call sets `macro_expansion`
@@ -9354,22 +9357,22 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness("method.opt_callable_field" if cf_unwrap
                      else "method.callable_field")
             cf_recv = _lower_expr(recv, lc, declared)
+            cf_info = e.resolved_function_info
+            assert cf_info is not None
+            cf_args = []
+            for i, arg in enumerate(e.args):
+                if _container_field_bare_read(arg, declared, analyzer):
+                    _witness("cfield.container_arg")
+                cf_args.append(_lower_free_call_arg(
+                    e, arg, cf_info.params[i].type, ("local", ""), lc, declared,
+                    temp_args=use.allow_temps, readonly_target=False,
+                    arg_index=i))
             return THIRMethodCall(
                 result_type=rtype if rtype is not None else VoidType(),
                 receiver=cf_recv,
                 method_cpp=escape_cpp_name(e.method),
                 callable_value_unwrap=cf_unwrap,
-                # A container FIELD arg (`self.cb(self.data)`) reads bare
-                # into the std::function's `T&` param -- prechecked at the
-                # sink like the membership haystack, so the generic VALUE
-                # position keeps rejecting container field reads.
-                args=tuple(
-                    _lower_expr(
-                        x, lc, declared,
-                        field_prechecked=(
-                            _container_field_bare_read(x, declared, analyzer)
-                            and _witness("cfield.container_arg")))
-                    for x in e.args),
+                args=tuple(cf_args),
                 form=Form.VALUE, loc=loc)
         if not _plain_member_call_markers_ok(e, targs_ok=True):
             if _ptr_deref_method_call(e, analyzer):
@@ -12876,7 +12879,7 @@ def _iterator_protocol_result(e: TpyExpr, analyzer) -> bool:
             and rt.name == "Iterator")
 
 
-def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
+def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                          ptype: 'TpyType | None', kind: 'tuple[str, str] | None',
                          lc: '_LowerCtx', declared: dict[str, TpyType], *,
                          temp_args: bool,
@@ -13042,7 +13045,10 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             ok = True  # witnessed at the frame-walrus legs (expr.walrus_frame_*)
         if not ok:
             raise ThirUnsupported(call_reject_reason("expr.call"))
-    pin_slot = _strlit_overload_pin_arg(e, _callee_fi, a, ptype, analyzer)
+    pin_slot = (_strlit_overload_pin_arg(
+        e, _callee_fi, a, ptype, analyzer)
+        if isinstance(e, TpyCall) and isinstance(e.func, TpyName)
+        else None)
     if pin_slot is not None:
         # A bare str literal is `const char[N]`, whose array-to-pointer /
         # boolean conversions outrank the user-defined string_view one, so an

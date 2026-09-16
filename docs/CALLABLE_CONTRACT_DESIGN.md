@@ -868,7 +868,7 @@ language restrictions discovered during implementation.
 
 | Checkpoint | Work and acceptance condition | Status |
 |---|---|---|
-| 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | P0.1 and P0.2 implemented; P0.3 pending |
+| 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | P0.1 and P0.2 landed; P0.3 implemented and tested |
 | 2. Shared type decisions | Unify const-inference readers and extract the result descriptor/classifier. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Pending |
 | 3. Feasibility and generic forms | Design and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Pending |
 | 4. Coupled contract implementation | Admission, conversion checks, lambda result stamps, runtime slots, THIR, erasure, native annotations and stubs land together after checkpoint 3 passes. | Gated |
@@ -931,6 +931,42 @@ Validation: all 14 inference checks and three new snippet cases passed. The
 full remote `--force-exec` run passed **8,005 tests, 23 skipped**, with all
 **4,135 executable cases** built and run. No existing snapshots changed.
 
+**P0.3 implementation.** An indexed field call preserves its subscript until
+semantic analysis distinguishes a value field from a generic method. The
+receiver is visited once, including walrus expressions and consuming calls.
+Known record/property and protocol-bound fields use ordinary field/index
+analysis, then the existing callable argument and computed-call lowering paths.
+Index errors propagate; indexing a plain callable can no longer silently call
+the unindexed value. Ordinary method specialization keeps its existing path.
+
+The condensed `callable_field_index` case covers named and chained receivers,
+dictionary/list/nested-list fields, generic records, readonly methods, scalar
+and reference arguments, once-only property getters with shared results, void
+callbacks, and key-before-argument evaluation
+with inline arguments. Temporary arguments reuse direct-call materialization;
+their ordering remains subject to `BUGS.md#subexpression-right-to-left-eval`
+and the postponed evaluation-order policy.
+Named, indexed and direct-field callable invocations share argument admission
+and temporary materialization. Four lowering checks keep their existing
+lambda-body restriction identical where argument temporaries cannot flush
+(`BUGS.md#lambda-body-reference-argument-temp`).
+Mutation after invocation proves reference arguments remain shared; paired
+bounds annotations check argument-fact invalidation through indexed callbacks,
+direct callable fields and ordinary methods. Methods reuse the free-call
+argument invalidator, closing a stale-length-proof gap. Positions include free
+functions, constructors, methods, globals, generators, async, comprehensions,
+closures, context managers, `try`/`finally`, `@error_return` and `match`.
+Seventeen semantic checks cover invalid indices/signatures, single receiver
+analysis and protocol fields. Call-rooted receiver checks are semantic only:
+the separate shared lowering gap is `BUGS.md#call-rooted-container-field-index`.
+The pre-existing generic-method argument constness gap is tracked separately
+as `BUGS.md#generic-method-callable-param-forced-const`; the same failure occurs
+with named and direct-field callbacks, while the free-function twin works.
+
+Validation: all 21 unit checks and both new snippet cases passed. The full
+remote `--force-exec` run passed **8,028 tests, 23 skipped**, with all **4,136
+executable cases** built and run. No existing snapshots changed.
+
 ### Detailed work inventory
 
 The execution checkpoints above determine the landing order. Items 1-5 are
@@ -958,10 +994,10 @@ above is satisfied.
    shared THIR container-write path, including optional slots. Container
    methods and subscript writes then use the same known callable signature.
 4. **P0.3 -- a `Callable` in a dict field is callable at all.**
-   `tpyc/sema/methods.py:771` / `:967` raise `Cannot call method 'commands' on type
-   App`; the subscript-then-call shape never reaches `analyze_callable_value_call`
-   (`tpyc/sema/calls.py:6009`), so a `TpyMethodCall` whose receiver expression types
-   to `CallableType` routes into it.
+   Preserve the indexed-callee alternative and resolve fields before callable
+   invocation. Reuse `analyze_callable_value_call` and computed-call lowering,
+   including argument coercion and opaque-call mutation invalidation, while
+   preserving generic-method resolution and single receiver analysis.
 5. **The descriptor and the one classifier.** `ResultForm` / `ResultDescriptor` in
    `tpyc/typesys.py` beside `make_ref` (`:2308`) / `RefType` (`:2232`);
    `async_return_form` (`tpyc/value_category.py:55`) and `call_returns_cpp_ref`
@@ -1053,9 +1089,9 @@ measured against a corpus that cannot spell the shapes.
    Rule 7 names that binding as one it checks; signature inference alone does
    not promise lowering for every lambda body or capture shape.
 3. A `Callable` held in a DICT FIELD must be callable at all.
-   `self.commands[name](arg)` reports `Cannot call method 'commands' on type App`
-   today. The loop-filled callback registry built on it gets a
-   `docs/LANGUAGE_FEATURES.md` line until it does.
+   `self.commands[name](arg)` follows ordinary field lookup and indexing before
+   invoking the stored callable. This prerequisite is documented in
+   `docs/LANGUAGE_FEATURES.md`; it does not introduce a new callable contract.
 
 ## Later slices
 

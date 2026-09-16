@@ -7761,6 +7761,21 @@ Send/Sync rules for built-in types:
   ```
 - **Working**: `Callable` -> `Fn` implicit coercion -- `Callable`-typed variables can be passed where `Fn` parameters are expected. In C++, `std::function` satisfies template `requires` clauses. Works with user-defined functions, builtins (`map`, `filter`), and overload resolution. Signature compatibility uses standard function-type variance: params are contravariant (a callback accepting `int32 | None` satisfies `Fn[[int32], R]`; one accepting only `int32` does NOT satisfy `Fn[[int32 | None], R]`), returns covariant; a void contract accepts any return. A class with multiple `__call__` overloads satisfies an `Fn`/`Callable` contract when any overload's signature does (first declared match wins); no match is a located error listing the candidates.
 - **Working**: Calls through callable VALUES (Fn/Callable params, locals, fields) run the same arg pipeline as direct calls -- coercions are applied (a plain `int` local narrows into an `int32` callback param), `Own[T]` consumption and readonly checks run, and the callee is treated as an opaque, potentially-mutating function: reference args bound to non-readonly callable params are conservatively marked mutated (the borrowed-container warning fires like a direct call; a method calling a mutating `Callable` field is inferred non-const). Non-value callable params spell mutable in C++ (`std::function<void(std::vector<int32_t>&)>`), so callbacks that mutate compile and the mutation is caller-visible (CPython semantics). The explicit non-mutating contract is `readonly[...]` inside the param list -- `Callable[[readonly[list[int32]]], None]` keeps the const spelling, accepts borrowed containers without warnings, and rejects mutating callbacks at the assignment boundary. Exception: bare generic slots (`Fn[[T], R]`) are not conservatively marked (a value-typed instantiation cannot mutate; the generic combinator corpus keeps const params).
+- **Working**: Indexed callable fields such as `app.commands[name](arg)` and
+  `app.callbacks[i](arg)` use ordinary indexing and callable argument checks.
+  Chained fields, generic record fields, readonly receivers and void callbacks
+  are supported. The indexed receiver is evaluated once. Temporary arguments
+  retain the existing ordering limitation in
+  `BUGS.md#subexpression-right-to-left-eval`; lambda bodies also retain the
+  temporary-storage limitation in `BUGS.md#lambda-body-reference-argument-temp`.
+  Invalid indexing on a plain callable is diagnosed instead of being ignored; explicit
+  generic method calls keep their existing meaning. Indexed callbacks, direct
+  callable fields and ordinary methods invalidate length-based bounds proofs
+  for reference arguments consistently with free calls. A record-returning call
+  used directly as the field receiver still encounters the shared container
+  lowering limitation in `BUGS.md#call-rooted-container-field-index`. Generic
+  methods passing an open-type reference argument retain the existing constness
+  limitation in `BUGS.md#generic-method-callable-param-forced-const`.
 - **Working**: Named function references as callable values -- pass functions by name to `Fn`/`Callable` params or assign to `Callable` locals/fields. Overload resolution selects the matching signature. Cross-module functions use qualified C++ names. Generic functions are supported -- type parameters are inferred from the hint signature (e.g. `identity[T]` with `Fn[[int32], int32]` infers `T=int32`); bounded type params are validated. **Limitation**: generic function refs with `str` type args are rejected because `str` uses `string_view` for params while generic functions use `const string&` via `param_val_or_ref_t<T>` -- use a lambda instead.
   ```python
   def double(x: int32) -> int32:

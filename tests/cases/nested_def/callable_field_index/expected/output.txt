@@ -1,0 +1,41 @@
+constructor 2
+global 12
+constructor 2
+constructor 2
+fields 2 3 4
+alias 5
+notify 3
+chained 5 3
+nested 6
+property-getter
+property-alias-bound
+property-getter
+property 15 15
+generic 7
+order 9 [1, 2]
+guard False [1, 2]
+mutation 1 [7]
+bounds-before 7
+bounds 7
+direct-before 7
+direct-after 7
+method-before 7
+method-after 7
+literal-arg 2
+repeat-arg 3
+comp-arg 3
+return-arg 3
+local-arg 2 2
+computed-local-arg 2
+temp-skipped False [1, 2]
+temp-taken True [1, 2, 2]
+comprehension [1, 2, 3]
+generator 4
+generator 5
+async 6
+closure 7
+try 8
+finally 9
+match 10
+context 11
+error-return 11

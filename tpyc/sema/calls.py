@@ -1043,6 +1043,8 @@ class CallAnalyzer:
             binding = self.ctx.func.current_ns.lookup(expr.func_name)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
+                    if expr.subscript_callee is not None:
+                        return self._rewrite_subscript_callee(expr)
                     var_type = self.ctx.func.narrowed_types.get(expr.func_name, binding.type)
                     # Strip Own[T] -- Own is a storage property, not a type distinction
                     if isinstance(var_type, OwnType):
@@ -1058,10 +1060,6 @@ class CallAnalyzer:
                         record = self.ctx.registry.get_record_for_type(var_type)
                         if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
                             return self._analyze_dunder_call(expr)
-                    # Subscript callee fallback: fns[0](args) or fns[T](args)
-                    # was parsed as a generic call but fns is a variable.
-                    if expr.subscript_callee is not None:
-                        return self._rewrite_subscript_callee(expr)
                     raise self.ctx.error(f"'{expr.func_name}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
                     # Builtin-supplemented functions route through builtin path

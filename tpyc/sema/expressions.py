@@ -1900,7 +1900,8 @@ class ExpressionAnalyzer:
         expr.native_field_name = field_info.native_name
         return make_ref(field_type)
 
-    def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
+    def _analyze_field_access(self, expr: TpyFieldAccess,
+                             obj_type: TpyType | None = None) -> TpyType:
         """Analyze a field access."""
         # Check for module variable access (e.g., sys.argv)
         if isinstance(expr.obj, TpyName):
@@ -1985,7 +1986,8 @@ class ExpressionAnalyzer:
                     if nested is not None:
                         return nested
 
-        obj_type = self.analyze_expr(expr.obj)
+        if obj_type is None:
+            obj_type = self.analyze_expr(expr.obj)
 
         # Unwrap transparent wrappers
         is_readonly_obj = isinstance(obj_type, ReadonlyType)
@@ -3769,7 +3771,8 @@ class ExpressionAnalyzer:
             sub.index, index_type, key_type, context, coercion,
             CoercionContext.ARG)
 
-    def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
+    def _analyze_subscript(self, expr: TpySubscript,
+                          obj_type: TpyType | None = None) -> TpyType:
         """Analyze subscript indexing: obj[index] or slicing: obj[start:stop]"""
         # Enum name lookup: Color["Red"] -> Color (panics on invalid)
         if isinstance(expr.obj, TpyName) and self.ctx.func.current_ns:
@@ -3784,7 +3787,8 @@ class ExpressionAnalyzer:
                 expr.enum_from_name = binding.enum_type
                 return binding.enum_type
 
-        obj_type = self.analyze_expr(expr.obj)
+        if obj_type is None:
+            obj_type = self.analyze_expr(expr.obj)
 
         # Unwrap transparent wrappers -- Ref/Own don't affect subscript behavior
         inner_obj_type = unwrap_ref_type(obj_type)

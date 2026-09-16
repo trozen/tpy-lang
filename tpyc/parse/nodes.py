@@ -393,6 +393,7 @@ class TpyMethodCall(TpyExpr):
     # May hold TypeRefNode pre-sema-pre-pass.
     type_args: 'tuple[TpyType | TypeRefNode | None, ...]' = ()  # Explicit type args for module.func[T](args) syntax
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
+    subscript_callee: 'TpyExpr | None' = None  # Indexed field alternative to an explicit generic method call
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
     # Set by sema alongside is_static_call: the resolved owning record. Codegen
     # needs it when the receiver's spelling names no record itself (`cls`).
@@ -426,7 +427,8 @@ class TpyMethodCall(TpyExpr):
             return [self.fstr_expansion]
         if self.macro_expansion is not None:
             return [self.macro_expansion]
-        return [self.obj] + list(self.args) + list(self.kwargs.values())
+        callee = self.subscript_callee if self.subscript_callee is not None else self.obj
+        return [callee] + list(self.args) + list(self.kwargs.values())
 
 
 @dataclass
