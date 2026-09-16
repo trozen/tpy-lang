@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_pairs;
 
 // def pairs(items: list[P]) -> Iterator[readonly[tuple[P, P]]]:
-__gen_pairs pairs(std::vector<P>& items);
+__gen_pairs pairs(const std::vector<P>& items);
 // def main() -> None:
 void main();
 
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 // def pairs(items: list[P]) -> Iterator[readonly[tuple[P, P]]]:
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<const P*, const P*>> {
     int32_t __state;
-    std::vector<P>& items;
+    const std::vector<P>& items;
     int32_t n;
     int32_t i;
 
@@ -50,7 +50,7 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<const
         S_DONE = 5,
     };
 
-    __gen_pairs(std::vector<P>& items)
+    __gen_pairs(const std::vector<P>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<std::tuple<const P*, const P*>, ::tpy::StopIteration> __next__();

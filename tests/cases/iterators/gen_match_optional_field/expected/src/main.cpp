@@ -45,7 +45,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
 
 
 // def gen(b: Box) -> Iterator[int]:
-__gen_gen gen(Box& b) {
+__gen_gen gen(const Box& b) {
     return __gen_gen(b);
 }
 

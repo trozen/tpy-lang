@@ -26,7 +26,7 @@ __coro_via_union via_union(::tpy::Union<const Cat*, const Dog*> a);
 // async def via_optional(a: Dog | None) -> str:
 __coro_via_optional via_optional(Dog* a);
 // async def via_ref(a: Dog) -> str:
-__coro_via_ref via_ref(Dog& a);
+__coro_via_ref via_ref(const Dog& a);
 // async def via_mixed(tag: str, a: Dog | Cat) -> str:
 __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const Dog*> a);
 // async def main() -> None:
@@ -116,7 +116,7 @@ struct __coro_via_optional {
 struct __coro_via_ref {
     int32_t __state;
     bool __cancel_pending;
-    Dog& a;
+    const Dog& a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -125,7 +125,7 @@ struct __coro_via_ref {
         S_DONE = 2,
     };
 
-    __coro_via_ref(Dog& a)
+    __coro_via_ref(const Dog& a)
         : __state(S_INITIAL), __cancel_pending(false), a(a) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);

@@ -54,7 +54,7 @@ struct SubHolder : Holder<T> {
     // def __init__(self, val: T) -> None:
     //     super().__init__(val)
     SubHolder() = default;
-    explicit SubHolder(::tpy::readonly_form_t<T> val) : Holder<T>(val) {}
+    explicit SubHolder(::tpy::param_val_or_ref_t<T> val) : Holder<T>(val) {}
 
     // def super_lookup(self, x: int32) -> int32:
     //     return super().identity(x)

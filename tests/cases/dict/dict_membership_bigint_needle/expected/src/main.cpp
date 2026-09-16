@@ -70,8 +70,8 @@ void main() {
     std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(seven))) << "\n";
     std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(neg))) << "\n";
     std::vector<int32_t> xs = {1, 2};
-    std::cout << ::tpy::print_bool(std::ranges::contains(xs, big)) << "\n";
-    std::cout << ::tpy::print_bool(std::ranges::contains(xs, k)) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::seq_contains(xs, big)) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::seq_contains(xs, k)) << "\n";
 }
 
 // main()

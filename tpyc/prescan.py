@@ -53,6 +53,12 @@ class ScanResult:
     # genexpr loop vars, lambda params, `except ... as`, `match` arm
     # captures); kept apart so they never displace a body binding.
     scoped_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
+    # name -> location of the `def` that binds it, for every nested def in
+    # this body at any statement depth. Python makes such a name a local of
+    # the enclosing scope from the scope's START, so sema needs the set
+    # before it walks the body; a read of one before anything binds it is
+    # CPython's UnboundLocalError.
+    nested_def_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
 
     def bound_names(self) -> set[str]:
         """Every name the body binds, wherever it binds it: locals declared
@@ -307,6 +313,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 result.aug_assigned.add(stmt.target.name)
         elif isinstance(stmt, TpyNestedDef):
             name = stmt.func.name
+            result.nested_def_bind_loc.setdefault(name, stmt.loc)
             if name in declared:
                 result.reassigned.add(name)
                 result.rvalue_reassigned.add(name)

@@ -19,7 +19,7 @@ struct __coro_main;
 struct __coro_Counter___anext__;
 
 // async def first_above(c: Counts, threshold: int) -> int:
-__coro_first_above first_above(Counts& c, ::tpy::BigInt threshold);
+__coro_first_above first_above(const Counts& c, ::tpy::BigInt threshold);
 // async def main() -> None:
 __coro_main main();
 
@@ -84,7 +84,7 @@ inline __coro_Counter___anext__ Counter::__anext__() {
 struct __coro_first_above {
     int32_t __state;
     bool __cancel_pending;
-    Counts& c;
+    const Counts& c;
     ::tpy::BigInt threshold;
     ::tpy::BigInt result;
     ::tpy::BigInt x;
@@ -100,7 +100,7 @@ struct __coro_first_above {
         S_DONE = 5,
     };
 
-    __coro_first_above(Counts& c, ::tpy::BigInt threshold_)
+    __coro_first_above(const Counts& c, ::tpy::BigInt threshold_)
         : __state(S_INITIAL), __cancel_pending(false), c(c), threshold(std::move(threshold_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);

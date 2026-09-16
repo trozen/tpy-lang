@@ -70,7 +70,7 @@ namespace tpyapp::main {
 
 
 // async def first_above(c: Counts, threshold: int) -> int:
-__coro_first_above first_above(Counts& c, ::tpy::BigInt threshold) {
+__coro_first_above first_above(const Counts& c, ::tpy::BigInt threshold) {
     return __coro_first_above(c, threshold);
 }
 

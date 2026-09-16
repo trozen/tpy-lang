@@ -982,6 +982,17 @@ class FunctionTrackingState:
     nested_def_names: set[str] = field(default_factory=set)
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
+    # Nested-def names this scope binds, with the `def`'s location, from the
+    # prescan -- seeded before the body walk because Python binds them for
+    # the whole scope. An entry stays live until something actually binds
+    # the name here; while it is live, a read of the name must NOT resolve
+    # outward to the shadowed module entity
+    # (see check_nested_def_shadowed_read).
+    nested_def_pending: dict[str, 'SourceLocation | None'] = field(default_factory=dict)
+    # The namespace level this scope's own bindings land in. `current_ns`
+    # walks DOWN into a lambda/comprehension child and UP to the module, so
+    # this is the boundary that says whether a name is bound HERE.
+    own_ns: 'Namespace | None' = None
     # Mutation marks attempted while analyzing a nested-def body (recorded on
     # the NESTED tracking state, which is otherwise discarded on restore).
     # Entries are (name, through_field, structural). _analyze_nested_def
@@ -2004,6 +2015,67 @@ class SemanticContext:
         """
         if name in self.func.loop_vars:
             self.func.consumed_loop_vars.add(name)
+
+    def bound_in_own_scope(self, name: str) -> bool:
+        """True when `name` is bound by THIS function scope -- its params,
+        its locals, or a sub-scope of it (lambda param, comprehension
+        variable, live `except ... as` / match capture). An enclosing
+        function's or the module's binding of the same name is NOT this
+        scope's, which is the whole point: Python resolves such a name
+        against this scope alone once this scope binds it anywhere."""
+        ns = self.func.current_ns
+        root = self.func.own_ns
+        if ns is None or root is None:
+            return name in self.func.definitely_assigned
+        while ns is not None and ns is not self.global_ns:
+            if ns.has_local(name):
+                return True
+            if ns is root:
+                return False
+            ns = ns.parent
+        return False
+
+    def check_nested_def_shadowed_read(
+            self, name: str, node: 'TpyExpr | TpyStmt | None') -> None:
+        """Reject a read of `name` that Python resolves to a nested `def` of
+        this scope but sema would resolve outward.
+
+        Python binds a nested def's name for the WHOLE enclosing scope, while
+        sema binds the FunctionInfo only when the walk reaches the `def`;
+        without this, an earlier read silently reaches the shadowed module
+        function / class / enum.
+
+        `bound_in_own_scope` is the "already bound here" test rather than
+        `definitely_assigned`: an `except ... as name` handler leaves the name
+        in the assigned set after unbinding it, and the read that follows is
+        exactly the one that must not resolve outward."""
+        # This runs on every bare-name read and every bare-name call, so the
+        # two dict lookups that can possibly fire come before the namespace
+        # walk. A nested def's own name is deliberately not seeded into
+        # `nested_def_pending`, so the recursion leg needs its own test.
+        recursive = (self.func.in_nested_def
+                     and name == self.func.nested_def_name)
+        if not recursive and name not in self.func.nested_def_pending:
+            return
+        if self.bound_in_own_scope(name):
+            return
+        # A `global` / `nonlocal` declaration takes the name out of this
+        # scope's binding set entirely, so nothing here shadows anything.
+        if (name in self.func.global_declarations
+                or name in self.func.current_nonlocal_names):
+            return
+        if recursive:
+            raise self.error(
+                f"Recursive nested functions are not supported. "
+                f"'{name}' cannot call itself", node)
+        loc = self.func.nested_def_pending[name]
+        where = f" on line {loc.line}" if loc is not None else ""
+        raise self.error(
+            f"'{name}' is read before the nested function '{name}' defined"
+            f"{where} is bound. A nested 'def' makes its name a local of the "
+            f"whole enclosing scope, so this read cannot reach an outer "
+            f"'{name}' -- move the 'def' above this line, or rename it",
+            node)
 
     def receiver_self_in_scope(self) -> bool:
         """True when 'self' in the current function scope is the method

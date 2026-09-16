@@ -22,7 +22,7 @@ void main();
 struct Walker {
 
 
-    __gen_Walker_walk walk(std::vector<int32_t>& xs) const;
+    __gen_Walker_walk walk(const std::vector<int32_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Walker";
 };
 
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
 struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int32_t> {
     int32_t __state;
     const Walker& __self;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -47,7 +47,7 @@ struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int3
         S_DONE = 3,
     };
 
-    __gen_Walker_walk(const Walker& __self, std::vector<int32_t>& xs)
+    __gen_Walker_walk(const Walker& __self, const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __self(__self), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -58,7 +58,7 @@ struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int3
     }
 };
 
-inline __gen_Walker_walk Walker::walk(std::vector<int32_t>& xs) const {
+inline __gen_Walker_walk Walker::walk(const std::vector<int32_t>& xs) const {
     return __gen_Walker_walk(*this, xs);
 }
 

@@ -345,7 +345,6 @@ from .predicates import (
     _protocol_auto_slot,
     _is_borrow_form_name,
     _is_type_param_slot,
-    _tparam_arg_bound_ok,
     _is_range_call,
     _native_iterable_range_arg,
     _is_none_compare_operand,
@@ -3381,8 +3380,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             cpp_template=td_tpl,
             loc=loc)
     # A `__contains__`-unresolved native-set membership renders
-    # `std::ranges::contains` (set by the membership gate below).
+    # `::tpy::seq_contains` (set by the membership gate below).
     ranges_contains = False
+    # A REFERENCE-typed needle, which is what admits the record leg of that
+    # gate -- the render is the same for every needle kind.
+    record_needle = False
     # A user iterable with no `__contains__` renders the universal
     # `__iter__`+`__next__` statement-expression loop.
     iter_loop = False
@@ -3884,7 +3886,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         if fi is None:
             # No resolved `__contains__` member (`readonly[set]` strips it;
             # list/array/span have none): the `is_native_in` arm renders
-            # `std::ranges::contains(recv, x)`. Any native NativeIterable
+            # `::tpy::seq_contains(recv, x)`. Any native NativeIterable
             # receiver (set/list/array/span) with a scalar / owned-str needle;
             # the universal iterator-loop form is a later rung.
             rt = _declared_type(e.right, declared, analyzer)
@@ -3892,22 +3894,27 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                        if rt is not None else None)
             rec = (analyzer.registry.get_record_for_type(rt_bare)
                    if rt_bare is not None else None)
-            # str/bytes iterate as char/byte sequences so they qualify as
-            # native-iterable, but membership on them is SUBSTRING (`.find() !=
-            # npos`), not element-containment (`std::ranges::contains`) -- that
-            # is the str/bytes-membership arms' job, so exclude them here.
             lt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lt)))
                        if lt is not None else None)
-            if (rec is not None and rec.is_native
-                    and is_native_iterable(rt_bare, analyzer.registry)
-                    and _resolved_str_value(rt, analyzer) is None
-                    and _resolved_bytes_value(rt, analyzer) is None
+            # str/bytes iterate as char/byte sequences so they qualify as
+            # native-iterable, but membership on them is SUBSTRING (`.find() !=
+            # npos`), not element-containment (`seq_contains`) -- that
+            # is the str/bytes-membership arms' job, so exclude them here.
+            native_recv = (rec is not None and rec.is_native
+                           and is_native_iterable(rt_bare, analyzer.registry)
+                           and _resolved_str_value(rt, analyzer) is None
+                           and _resolved_bytes_value(rt, analyzer) is None)
+            # A record needle is a reference type, so Python's `x is e` leg
+            # of containment is observable on it -- which is what admits the
+            # form here; the render is the same helper every needle takes.
+            record_needle = native_recv and _f1_record(lt_bare, analyzer)
+            if (native_recv
                     and (_resolved_scalar(lt, analyzer)
                          or _resolved_viewfam_value(lt, analyzer) is not None
                          # An open-T needle inside a generic body (`key in
                          # self._data` on `dict[T, int]`): the needle
-                         # renders by name per instantiation and
-                         # ranges::contains is needle-type-neutral.
+                         # renders by name per instantiation and the helper
+                         # picks the identity leg per instantiation too.
                          or (_is_type_param_slot(lt)
                              and _witness("binop.contains_tparam_needle"))
                          # A pointer-repr tuple-LITERAL needle: the
@@ -3918,18 +3925,19 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                              and lt_bare.has_pointer_repr_element())
                          or (_value_tuple_needle_ok(lt_bare, analyzer)
                              and _witness("binop.contains_tuple_needle"))
-                         # A RECORD needle stays REJECTED: ranges::contains
-                         # is `==`-only, and CPython's containment tests
-                         # `x is e or x == e`, so a non-reflexive `__eq__`
-                         # would silently report absent
-                         # (BUGS.md#membership-skips-identity-shortcut).
-                         )):
+                         # A RECORD needle (`p in item.pts`): sema already
+                         # required the element to be Equatable, so the
+                         # record's `friend operator==` exists, and the
+                         # helper's identity leg supplies the `x is e` half
+                         # of Python's containment for it.
+                         or (record_needle
+                             and _witness("binop.contains_record_needle")))):
                 ranges_contains = True
             elif ((rec is not None and not rec.is_native
                    # A structural protocol param (`target in items` on
                    # `Iterable[T]`): the is_native_in test admits only
-                   # `tpy.NativeIterable` to ranges::contains, so every
-                   # other protocol receiver takes the same universal loop
+                   # `tpy.NativeIterable` to the `seq_contains` render, so
+                   # every other protocol receiver takes the universal loop
                    # over the bare monomorphized param. Dynamic protocols
                    # read through adapters, unwitnessed.
                    or (rec is None and isinstance(rt_bare, NominalType)
@@ -4136,7 +4144,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     if e.op in _MEMBERSHIP_OPS and ranges_contains:
         _witness("binop.set_ranges_membership")
         # A container FIELD haystack (`item in self.xs`) reads bare into
-        # `std::ranges::contains(this->xs, item)` -- prechecked here rather
+        # `::tpy::seq_contains(this->xs, item)` -- prechecked here rather
         # than admitted at RECEIVER in the ladder, which would also re-route
         # method receivers this arm says nothing about.
         recv_prechecked = (
@@ -8661,17 +8669,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # A TYPE-PARAM arg (`int32(x)` under `[T: AnyFixedInt]`):
                 # the monomorphized binding renders as the bare name, which
                 # is what the resolved overload's `{0}` slot expands over --
-                # the same bare pass a concrete scalar takes. The caller's
-                # BOUND has to satisfy the picked overload's own, or the
-                # template expands a conversion the instantiation has no
-                # runtime for (`int32(x)` under a bare `[T]` at an `int` or
-                # `str` argument).
+                # the same bare pass a concrete scalar takes. Sema has
+                # already checked the caller's bound against the picked
+                # overload's own slot bound.
                 tparam_arg = (
                     scalar_ctor
                     and _is_type_param_slot(analyzer.get_expr_type(a))
-                    and _tparam_arg_bound_ok(
-                        analyzer.get_expr_type(a), p.type, lc.tparam_bounds,
-                        template_fi.type_param_bounds, analyzer)
                     and _ctor_arg_slot_ok(p.type, analyzer)
                     and _witness("arg.type_ctor_tparam"))
                 if (scalar_ctor and not str_parse and not int_tparam

@@ -22,7 +22,7 @@ struct __coro_Counter___anext__;
 // async def doubled(n: int) -> int:
 __coro_doubled doubled(::tpy::BigInt n);
 // async def total(c: Counts) -> int:
-__coro_total total(Counts& c);
+__coro_total total(const Counts& c);
 // async def main() -> None:
 __coro_main main();
 
@@ -117,7 +117,7 @@ struct __coro_doubled {
 struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
-    Counts& c;
+    const Counts& c;
     int32_t s;
     ::tpy::BigInt x;
     ::tpy::BigInt __await_lift_0;
@@ -135,7 +135,7 @@ struct __coro_total {
         S_DONE = 6,
     };
 
-    __coro_total(Counts& c)
+    __coro_total(const Counts& c)
         : __state(S_INITIAL), __cancel_pending(false), c(c) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);

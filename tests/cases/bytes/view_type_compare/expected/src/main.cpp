@@ -26,7 +26,7 @@ void compare_pairs(::tpy::BytesView a, ::tpy::BytesView v, ::tpy::ByteArray& ba)
 //     print("dict", name in d, b"zz" not in d, name in d.keys())  # tpyc: ok
 void membership(::tpy::BytesView name, const std::vector<::tpy::Bytes>& xs, const ::tpy::ordered_set<::tpy::Bytes>& s, const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d) {
     std::cout << "tuple" << " " << ::tpy::print_bool(((name == ::tpy::bytes_literal("PLAYPAL", 7)) || (name == ::tpy::bytes_literal("COLORMAP", 8)))) << " " << ::tpy::print_bool((!((name == ::tpy::bytes_literal("PLAYPAL", 7)) || (name == ::tpy::bytes_literal("COLORMAP", 8))))) << "\n";
-    std::cout << "list" << " " << ::tpy::print_bool(std::ranges::contains(xs, name)) << " " << ::tpy::print_bool(std::ranges::contains(xs, ::tpy::bytes_literal("zz", 2))) << "\n";
+    std::cout << "list" << " " << ::tpy::print_bool(::tpy::seq_contains(xs, name)) << " " << ::tpy::print_bool(::tpy::seq_contains(xs, ::tpy::bytes_literal("zz", 2))) << "\n";
     std::cout << "set" << " " << ::tpy::print_bool((s.contains(name))) << " " << ::tpy::print_bool((!(s.contains(name)))) << " " << ::tpy::print_bool((s.contains(::tpy::bytes_literal("zz", 2)))) << "\n";
     std::cout << "dict" << " " << ::tpy::print_bool((d.contains(name))) << " " << ::tpy::print_bool((!(d.contains(::tpy::bytes_literal("zz", 2))))) << " " << ::tpy::print_bool((::tpy::dict_keys(d).contains(name))) << "\n";
 }
@@ -100,7 +100,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_matching::__next__() {
 
 
 // def matching(names: list[bytes], want: bytes) -> Iterator[bytes]:
-__gen_matching matching(std::vector<::tpy::Bytes>& names, ::tpy::BytesView want) {
+__gen_matching matching(const std::vector<::tpy::Bytes>& names, ::tpy::BytesView want) {
     return __gen_matching(names, want);
 }
 

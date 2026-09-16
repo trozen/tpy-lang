@@ -341,7 +341,7 @@ struct GenMid : GenBase<T> {
     // def __init__(self, v: T) -> None:
     //     super().__init__(v)  # tpyc: ok
     GenMid() = default;
-    explicit GenMid(::tpy::readonly_form_t<T> v) : GenBase<T>(v) {}
+    explicit GenMid(::tpy::param_val_or_ref_t<T> v) : GenBase<T>(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenMid";
 };
 
@@ -356,7 +356,7 @@ struct GenLeaf : GenMid<Cell> {
 
     // def __init__(self, v: Cell) -> None:
     GenLeaf() = default;
-    explicit GenLeaf(const Cell& v);
+    explicit GenLeaf(Cell& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenLeaf";
 };
 
@@ -529,7 +529,7 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 
 // def __init__(self, v: Cell) -> None:
 //     super().__init__(v)  # tpyc: ok
-inline GenLeaf::GenLeaf(const Cell& v) : GenMid<Cell>(v) {}
+inline GenLeaf::GenLeaf(Cell& v) : GenMid<Cell>(v) {}
 // # free function, container-element slot. `diag.txt` is the subject of every
 // # section: nothing for the value instantiation, `copies X into <sink>` for the
 // # reference one, on the BODY line rather than at the call that decided it.

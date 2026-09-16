@@ -80,7 +80,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_decl_inside_for::__next__() {
 
 
 // def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
-__gen_decl_inside_for decl_inside_for(std::vector<int32_t>& xs) {
+__gen_decl_inside_for decl_inside_for(const std::vector<int32_t>& xs) {
     return __gen_decl_inside_for(xs);
 }
 

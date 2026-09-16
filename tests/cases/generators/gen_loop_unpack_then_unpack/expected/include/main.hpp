@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen;
 
 // def gen(items: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& items);
+__gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& items);
 // def main() -> None:
 void main();
 
 // def gen(items: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
-    std::vector<std::tuple<int32_t, int32_t>>& items;
+    const std::vector<std::tuple<int32_t, int32_t>>& items;
     int32_t total;
     int32_t a;
     int32_t n;
@@ -32,7 +32,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_gen(std::vector<std::tuple<int32_t, int32_t>>& items)
+    __gen_gen(const std::vector<std::tuple<int32_t, int32_t>>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

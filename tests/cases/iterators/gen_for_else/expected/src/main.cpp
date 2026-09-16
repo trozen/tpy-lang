@@ -62,7 +62,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 
 
 // def gen(items: list[int32], limit: int32) -> Iterator[int32]:
-__gen_gen gen(std::vector<int32_t>& items, int32_t limit) {
+__gen_gen gen(const std::vector<int32_t>& items, int32_t limit) {
     return __gen_gen(items, limit);
 }
 

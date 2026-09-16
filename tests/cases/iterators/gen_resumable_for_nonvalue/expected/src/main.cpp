@@ -40,7 +40,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
 
 
 // def doubled(items: list[Node]) -> Iterator[int32]:
-__gen_doubled doubled(std::vector<Node>& items) {
+__gen_doubled doubled(const std::vector<Node>& items) {
     return __gen_doubled(items);
 }
 

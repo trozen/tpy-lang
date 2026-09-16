@@ -29,7 +29,6 @@ from ...parse.nodes import (
     TpyCall,
     TpyChainedCompare,
     TpyCoerce,
-    TpyComprehensionGenerator,
     TpyContinue,
     TpyDelAttr,
     TpyDelItem,
@@ -75,7 +74,6 @@ from ...parse.nodes import (
     VarLinkage,
     is_docstring,
     is_super_del_call,
-    iter_capture_bindings,
 )
 from ...typesys import (
     AnyType,
@@ -186,6 +184,7 @@ from ..nodes import (
     Form,
     PrintForm,
     PtrSlotKind,
+    THIRArgTemp,
     THIRAssert,
     THIRAssign,
     THIRBinOp,
@@ -487,7 +486,9 @@ from .checks import (
     _record_setitem_own_value_slot,
     _user_record_setitem_ok,
     _func_ref_routable,
+    _expr_evaluation_inert,
     _print_kwarg_token,
+    _record_slice_upcast_ok,
     _setitem_widened_elem_ok,
     _setitem_widened_family_ok,
     _tuple_elem_slots_ptr_optional,
@@ -2614,7 +2615,7 @@ def _borrow_form_tuple_param(name: str, lc: '_LowerCtx') -> bool:
 
 def _iteration_yields_const(it: TpyExpr, lc: '_LowerCtx', analyzer) -> bool:
     """Whether iterating `it` binds the loop var const (element pointers spell
-    `const T*`) -- the SUBSET of `context.iteration_yields_const` this gate
+    `const T*`) -- the SUBSET of codegen's `is_const_storage_source` this gate
     admits: a const-ref param / alias, a readonly method's `self.field`, or a
     borrowing-view accessor call (`d.items()` / `d.values()` -- const tracks
     the RECEIVER). Still out of scope: a const container/indirect LOCAL
@@ -2659,6 +2660,27 @@ def _borrow_tuple_wrap_cpp(target_types: 'tuple', analyzer, *,
         return None
     return (ptr_form.to_cpp_return_const() if const_source
             else ptr_form.to_cpp_return())
+
+def _storage_tuple_lvalue_source(value: TpyExpr, declared: dict[str, TpyType],
+                                 pointers: AbstractSet[str],
+                                 analyzer) -> bool:
+    """A STORAGE-form tuple LVALUE source (`a, b = pairs[0]` / `a, b = h.pair`)
+    whose reference elements must lift through `tuple_to_pointer` off the
+    lvalue itself. Binding one into a by-VALUE holder copies the reference
+    element, so every element pointer taken off that holder aliases the copy
+    instead of the container and dies with the holder's scope. The receiver
+    must be a declared non-pointer NAME: off an rvalue container the lift
+    would point into a dying temporary instead."""
+    if not isinstance(value, (TpySubscript, TpyFieldAccess)):
+        return False
+    obj = value.obj
+    if not (isinstance(obj, TpyName) and obj.name in declared
+            and obj.name not in pointers):
+        return False
+    vt = analyzer.get_expr_type(value)
+    bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
+            if vt is not None else None)
+    return isinstance(bare, TupleType) and bare.has_pointer_repr_element()
 
 def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
                      analyzer, pointers: AbstractSet[str],
@@ -2747,7 +2769,12 @@ def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
     if isinstance(vtype, ReadonlyType):
         return False
     if isinstance(vtype, OptionalType):
-        return _value_opt_scalar(vtype, analyzer) is not None
+        # The owned-inner `Optional[str]`/`Optional[bytes]` twin binds
+        # `std::optional<std::string>` like a first var-decl does (the VIEW
+        # kind); a view-INNER optional keeps rejecting -- its slot would
+        # alias whatever each branch bound.
+        return (_value_opt_scalar(vtype, analyzer) is not None
+                or _value_opt_owned_view(vtype, analyzer) is not None)
     return (_eligible_scalar(vtype) or _eligible_char(vtype)
             # A `Ptr[T]` local is a first-class T* VALUE (never the
             # pointer-local deref machinery): plain `T* p;` predecl,
@@ -2852,7 +2879,8 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             # sema's stmt-borrow const bit): same pointer local, const
             # spelling and registration; never movable.
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
-            hoist_decls.append((name, f"const {lc.render_type(vtype)}*"))
+            hoist_decls.append(
+                (name, f"const {lc.render_type(unwrap_readonly(vtype))}*"))
             lc.pointers.add(name)
             lc.const_locals.add(name)
             lc.branch_hoisted.add(name)
@@ -3011,11 +3039,30 @@ def _value_hoist_entry(name: str, vtype: TpyType,
     spelling, render, and register the raw binding type in the caller's
     `declared` -- the single render shared by the try/with tail and the
     if-flavor cascade so the two cannot drift."""
-    render_src = (_resolved_str_value(vtype, lc.analyzer)
-                  or _resolved_bytes_value(vtype, lc.analyzer)
-                  or vtype)
+    render_src = _value_slot_render_type(vtype, lc)
     declared[name] = vtype
+    _register_value_opt_binding(name, vtype, lc)
     return (name, lc.render_type(render_src))
+
+
+def _value_slot_render_type(vtype: TpyType, lc: '_LowerCtx') -> TpyType:
+    """The type a default-constructed VALUE slot spells: the resolved
+    str/bytes view for the view families, the binding type otherwise."""
+    return (_resolved_str_value(vtype, lc.analyzer)
+            or _resolved_bytes_value(vtype, lc.analyzer)
+            or vtype)
+
+
+def _register_value_opt_binding(name: str, vtype: TpyType,
+                                lc: '_LowerCtx') -> None:
+    """Record a value-repr Optional binding's KIND for a slot declared
+    WITHOUT its value (a hoist predecl, an annotation-only decl). A narrowed
+    read derefs through the registered binding; without the registration it
+    renders the bare `std::optional<T>` at a T sink."""
+    if _value_opt_scalar(vtype, lc.analyzer) is not None:
+        lc.value_opt_bindings[name] = ValueOptKind.SCALAR
+    elif _value_opt_owned_view(vtype, lc.analyzer) is not None:
+        lc.value_opt_bindings[name] = ValueOptKind.VIEW
 
 
 def _borrow_tuple_binding_sources(name: str, lc: '_LowerCtx'
@@ -3252,7 +3299,7 @@ def _hoist_ladder_head(name: str, raw: TpyType, declared: dict[str, TpyType],
     construct's own rungs and `_admit_nonvalue_hoist`."""
     if name in declared:
         return None
-    if name in lc.prescan.native_globals:
+    if lc.prescan.binds_global(name):
         note_detail(reject_tag)
         raise ThirUnsupported(stmt_reject_reason(stmt))
     bare = unwrap_ref_type(raw)
@@ -3295,6 +3342,16 @@ def _nonvalue_hoist_flavor(name: str, var_type: TpyType,
     its inner); a borrow-decl const bit is CONST_POINTER, unless rvalue
     reseats would write through it; resumable bodies have no function-top
     drain for the hoist line."""
+    if isinstance(var_type, ReadonlyType):
+        # A readonly-TYPED hoist (`v = r.view()` at a `readonly[T]` return)
+        # is the same const borrow sema's stmt-borrow bit names: classify
+        # the pointee, then spell it const.
+        inner_flavor = _nonvalue_hoist_flavor(
+            name, unwrap_readonly(var_type), lc)
+        return (HoistFlavor.CONST_POINTER
+                if inner_flavor in (HoistFlavor.OPT_STORAGE,
+                                    HoistFlavor.POINTER)
+                else inner_flavor)
     analyzer = lc.analyzer
     ptr_opt = (isinstance(var_type, OptionalType)
                and var_type.uses_pointer_repr()
@@ -3349,7 +3406,7 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
     for name, raw in hoists.items():
         if name in declared:
             continue
-        if name in lc.prescan.native_globals:
+        if lc.prescan.binds_global(name):
             note_detail("if.hoist_native_global")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         var_type = unwrap_ref_type(raw)
@@ -3433,9 +3490,9 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
         if (isinstance(var_type, OptionalType)
                 and var_type.uses_pointer_repr()):
             resolve_type = var_type.inner
-        if isinstance(resolve_type, ReadonlyType):
-            note_detail("if.hoist_const")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
+        # A readonly-TYPED hoist spells its pointee like every const
+        # borrow; the classifier answers CONST_POINTER for it.
+        resolve_type = unwrap_readonly(resolve_type)
         flavor = _nonvalue_hoist_flavor(name, var_type, lc)
         if flavor is not HoistFlavor.NOT_PLAIN:
             if flavor is HoistFlavor.RESUMABLE:
@@ -4153,18 +4210,19 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
 def _opt_slot_rvalue_shape(init: TpyExpr, inner: TpyType, analyzer) -> bool:
     """The rvalue init/reseat shapes an OPT_PTR_SLOT local admits: an F1-record
     ctor / by-value free call (`_record_rvalue_source_shape`) or by-value method
-    call whose expression type is EXACTLY the optional's inner record. A
-    subclass rvalue would retype the slot (the polymorphic-Optional arm) and an
-    Optional-returning call needs the `optional_to_ptr` slot lift -- both
-    reject (the type-equality check keeps them out: their expression types
-    are a subclass / an OptionalType, never `inner`)."""
+    call whose expression type is the optional's inner record, or a SUBCLASS
+    of it: the slot spells the base, so its init slices exactly as every other
+    storage-form upcast does, under sema's "upcast narrows" warning. An
+    Optional-returning call needs the `optional_to_ptr` slot lift and still
+    rejects -- its expression type is an OptionalType, neither `inner` nor a
+    subclass of it."""
     it = analyzer.get_expr_type(init)
     if it is None:
         return False
     it_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it)))
     if isinstance(it_u, OwnType):
         it_u = unwrap_readonly(it_u.wrapped)
-    if it_u != inner:
+    if it_u != inner and not _record_slice_upcast_ok(it_u, inner, analyzer):
         return False
     return (_record_rvalue_source_shape(init, analyzer)
             # A by-value METHOD call at any reference-typed slot (the
@@ -4394,9 +4452,12 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
             # as the Own-optional CALL source (`std::optional<T> __slot_N =
             # <field>; T* v = ::tpy::optional_to_ptr(__slot_N);`).
             if needs_rebind:
-                # A later RVALUE reseat writes the slot INLINE
-                # (`optional_to_ptr(__slot = ..)`), a different render from
-                # the OPT_STORAGE_CALL reseat this kind registers for.
+                # The slot may be EMPTY, so the pointer may be null -- and
+                # sema's alias-rebind pass, which owns the in-place question,
+                # answers it from the rebind's own rvalue type here, so it
+                # stamps IN_PLACE and the reseat writes `(*v) = T(..)`
+                # through the null. Re-admitting this needs the reseat to
+                # take the slot (BUGS.md#opt-storage-field-rebind-rejected).
                 note_detail("decl.opt_slot_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("decl.opt_storage_field")
@@ -4420,8 +4481,7 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
             # the inline `&*(__slot_N = ...)` rebind render instead, so it
             # stays out (the shared `_opt_slot_rvalue_shape` reseat sites do
             # NOT admit literals).
-            if needs_rebind or not _container_literal_shape_ok(
-                    stmt.init, pointee, analyzer):
+            if not _container_literal_shape_ok(stmt.init, pointee, analyzer):
                 note_detail("decl.opt_slot_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             init = _lower_expr(
@@ -5264,136 +5324,6 @@ def _nested_def_entry_reject(func, lc: '_LowerCtx', reason_for) -> None:
         raise ThirUnsupported(reason_for())
 
 
-def _scope_binds_name(func: TpyFunction, name: str, analyzer) -> bool:
-    """True when `func`'s OWN scope binds `name` -- a param, or a
-    FUNCTION-LEVEL binding in its body. Python makes such a name local for the
-    whole function, so a read inside it never reaches an outer callable of the
-    same name. `first_bind_loc` alone, never `bound_names()`: the scoped half
-    of that set (lambda params, comprehension vars, `except ... as`, match
-    captures) shadows only inside its own sub-scope, and reading it here would
-    switch the shadow gate off for a body whose other reads still resolve
-    outward.
-
-    Sema's stored scan answers it; a nested def has none (sema discards the
-    nested body's facts), so that one scans. Its `pre_declared` params are
-    no difference: a param is never `_declare`d into `first_bind_loc`, and
-    the param arm above answers for one first."""
-    if any(p == name for p, _t in func.params):
-        return True
-    scan = analyzer.function_scan_results.get(func)
-    if scan is None:
-        scan = scan_reassigned_vars(func.body)
-    return name in scan.first_bind_loc
-
-
-def _comp_scope_binds(expr: TpyExpr, name: str) -> bool:
-    """True when `expr` is a comprehension whose own loop target is `name`."""
-    gen = getattr(expr, "generator", None)
-    if not isinstance(gen, TpyComprehensionGenerator):
-        return False
-    return name in (gen.unpack_vars or [gen.var])
-
-
-def _reads_name_in_expr(e: TpyExpr, name: str,
-                        before_line: int | None) -> bool:
-    """True when `e` reads `name` in the ENCLOSING function's scope. Descends
-    into lambda bodies (`TpyLambda.children()` is empty because the body is
-    its own scope) and stops at every sub-scope that binds the name itself --
-    a comprehension keeps only its iterable, which is evaluated outside."""
-    stack = [e]
-    while stack:
-        n = stack.pop()
-        if isinstance(n, TpyName) and n.name == name:
-            line = getattr(getattr(n, "loc", None), "line", None)
-            if before_line is None or (line is not None
-                                       and line < before_line):
-                return True
-        if isinstance(n, TpyLambda):
-            if name not in n.param_names:
-                stack.append(n.body)
-            continue
-        if _comp_scope_binds(n, name):
-            stack.append(n.generator.iterable)
-            continue
-        stack.extend(n.children())
-    return False
-
-
-def _reads_name(stmts: list[TpyStmt], name: str, analyzer,
-                before_line: int | None = None) -> bool:
-    """True when `stmts` reference `name`, optionally only at a line before
-    `before_line`. Descends into every construct that shares the enclosing
-    function's binding for the name -- nested def bodies included -- and stops
-    at the ones whose own scope rebinds it: an `except ... as name` handler
-    body and a match arm that captures `name` read their own binding, not the
-    enclosing one."""
-    for s in stmts:
-        if (isinstance(s, TpyNestedDef)
-                and not _scope_binds_name(s.func, name, analyzer)):
-            if _reads_name(s.func.body, name, analyzer, before_line):
-                return True
-        if isinstance(s, TpyMatch):
-            if _reads_name_in_expr(s.subject, name, before_line):
-                return True
-            for case in s.cases:
-                if any(c.name == name
-                       for c in iter_capture_bindings(case.pattern)):
-                    continue
-                if (case.guard is not None
-                        and _reads_name_in_expr(case.guard, name,
-                                                before_line)):
-                    return True
-                if _reads_name(case.body, name, analyzer, before_line):
-                    return True
-            continue
-        for e in (s.exprs() if hasattr(s, "exprs") else ()):
-            if e is None:
-                continue
-            if _reads_name_in_expr(e, name, before_line):
-                return True
-        if isinstance(s, TpyTry):
-            bodies: list[list[TpyStmt]] = [s.try_body, s.else_body,
-                                           s.finally_body]
-            bodies += [h.body for h in s.handlers if h.binding != name]
-        else:
-            bodies = list(s.sub_bodies()) if hasattr(s, "sub_bodies") else []
-        for b in bodies:
-            if _reads_name(b, name, analyzer, before_line):
-                return True
-    return False
-
-
-def _nested_def_shadow_reject(stmt: TpyNestedDef, lc: '_LowerCtx') -> None:
-    """A nested def MAY shadow a module-level name (a function, a class, or a
-    method of the owning record) -- but sema binds the shadowing name only from
-    the `def` onward and resolves it through the registry everywhere else, so
-    two shapes silently reach the SHADOWED entity where Python reaches the
-    nested one (or raises UnboundLocalError): a reference to the name inside
-    the nested body, and a read of the name earlier in the enclosing body than
-    the `def`. Either rejects until sema treats the name as a local of the
-    enclosing scope from its start
-    (BUGS.md#nested-def-shadow-resolves-to-shadowed-callable)."""
-    func = stmt.func
-    analyzer = lc.analyzer
-    registry = analyzer.registry
-    ri = (registry.get_record(lc.record_name)
-          if lc.record_name is not None else None)
-    if not (registry.get_function(func.name)
-            or registry.get_record(func.name)
-            or func.name in registry.enums
-            or (ri is not None and ri.get_method_overloads(func.name))):
-        return
-    def_line = getattr(getattr(stmt, "loc", None), "line", None)
-    inner_reads = (not _scope_binds_name(func, func.name, analyzer)
-                   and _reads_name(func.body, func.name, analyzer))
-    if (inner_reads
-            or (def_line is not None
-                and _reads_name(lc.func.body, func.name, analyzer,
-                                def_line))):
-        note_detail("nesteddef.name_collision")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-
-
 def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     """Lower `def name(...)` in a function body to a C++ lambda: the capture
     list spelled purely from sema's node facts, params and the non-void
@@ -5448,7 +5378,6 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
                 for n in stmt.captured_names) + "]"
     else:
         capture = "[]"
-    _nested_def_shadow_reject(stmt, lc)
     params_cpp = []
     body_declared = dict(scope.declared)
     for pname, ptype in func.params:
@@ -6920,7 +6849,10 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                               scope: '_LowerScope') -> THIRStmt:
     """Resumable frame-target tuple unpack (the reactor `a, b =
     socketpair()` slice): a call/field RVALUE source materializes by value
-    (`auto __tup_N = <expr>;`) and each target is a frame field --
+    (`auto __tup_N = <expr>;`) -- except a storage-form LVALUE source feeding
+    ALIAS targets, which lifts through `tuple_to_pointer` off the lvalue so
+    the frame's element pointers reach the container rather than a holder
+    copy -- and each target is a frame field --
     ASSIGNED, never re-declared (`frame_assign`), or `.emplace()`d for a
     frame_slot (`frame_emplace`), with per-element unwrap_ref / std::move
     wraps. Name sources route two rungs: a VALUE-tuple frame
@@ -7115,6 +7047,55 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         binds.append("frame_emplace" if name in lc.frame_slots
                      else "frame_assign")
         wraps.append("move" if stmt.is_owned[i] else "")
+    # `value is None` keeps this to the sources THIS arm lowers: the name
+    # ladder's own owning-lift rung already built its borrow-form holder.
+    if (src_name is None and value is None
+            and any(b in ("frame_ptr_elem", "frame_ptr_addr") for b in binds)):
+        # An alias frame field outlives the case block the holder lives in,
+        # so it may only point at storage that outlives it too. Off a
+        # STORAGE-form lvalue the whole tuple lifts through tuple_to_pointer,
+        # the same verdict the sync unpack takes: a by-value holder would
+        # copy the reference element, and every alias field would both miss
+        # the caller's object and dangle at the next suspension.
+        if _storage_tuple_lvalue_source(stmt.value, declared, lc.pointers,
+                                        analyzer):
+            # The element pointers come off the receiver, so the lift spells
+            # them const exactly when the frame binds the receiver to const
+            # storage -- the same verdict the alias FIELDS were classified
+            # under, so the two cannot disagree. A mismatch is still refused
+            # rather than rendered: it would be a field the lift cannot bind.
+            const_recv = stmt.value.obj.name in lc.const_frame_bindings
+            if any(const_recv != (t in lc.const_alias_ptr_locals)
+                   for t, b in zip(stmt.targets, binds)
+                   if b in ("frame_ptr_elem", "frame_ptr_addr")):
+                note_detail("unpack.alias_const_verdict")
+                raise ThirUnsupported("res.unpack")
+            source_wrap_cpp = _borrow_tuple_wrap_cpp(
+                stmt.target_types, analyzer, const_source=const_recv)
+            if source_wrap_cpp is None:
+                note_detail("unpack.alias_source_form")
+                raise ThirUnsupported("res.unpack")
+            _witness("res.unpack_storage_wrap")
+            return THIRTupleUnpack(
+                source="", targets=tuple(stmt.targets),
+                target_cpps=(None,) * len(stmt.targets),
+                binds=tuple(binds), wraps=tuple(wraps),
+                source_bind=TupleSourceBind.STORAGE_WRAP,
+                source_wrap_cpp=source_wrap_cpp,
+                source_expr=_lower_expr(
+                    stmt.value, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                 allow_temps=True,
+                                 pos=SinkPos.UNPACK_SOURCE),
+                    field_prechecked=isinstance(stmt.value, TpyFieldAccess)),
+                loc=loc)
+        if not isinstance(stmt.value, (TpyCall, TpyMethodCall)):
+            # A call result is already borrow form -- its slots are pointers
+            # into the callee's storage, so the by-value holder is only a
+            # pointer copy. Every other expression source materializes the
+            # TUPLE by value, which the alias fields cannot outlive.
+            note_detail("unpack.alias_source_form")
+            raise ThirUnsupported("res.unpack")
     if src_name is not None:
         _witness("res.unpack_oneshot" if src_oneshot else "res.frame_unpack")
         sb = (TupleSourceBind.ONESHOT_DEREF if src_oneshot
@@ -8270,11 +8251,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # pointer/slot machinery, not a bare default-construct.
             vt0 = _var_decl_type(stmt, analyzer)
             nt: 'TpyType | None' = None
-            if vt0 is not None and stmt.name not in declared:
-                if _eligible_scalar(vt0) or _eligible_char(vt0):
-                    nt = vt0
-                else:
-                    nt = _resolved_str_value(vt0, analyzer)
+            if (vt0 is not None and stmt.name not in declared
+                    and _try_hoist_type_ok(vt0, analyzer)):
+                # The same value family a branch-first HOIST predecls: both
+                # declare a default-constructed slot the later assignment
+                # writes, so one predicate answers for both.
+                nt = _value_slot_render_type(vt0, lc)
             if (nt is None and not scope.in_branch
                     and vt0 is not None and stmt.name not in declared
                     and isinstance(vt0, OptionalType)
@@ -8297,6 +8279,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("decl.no_init_value")
             declared[stmt.name] = nt
+            _register_value_opt_binding(stmt.name, nt, lc)
             return THIRVarDecl(name=stmt.name, resolved_type=nt, init=None,
                                loc=loc)
         if lc.prescan.has_self and stmt.name == "self":
@@ -12823,6 +12806,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value=_lower_expr(stmt.value, lc, declared), loc=loc)
             owned_inner = _value_opt_owned_view(ret_vopt_view, analyzer)
             if (owned_inner is not None
+                    and stmt.value is not None
+                    and not isinstance(stmt.value, TpyCoerce)
+                    and _resolved_viewfam_value(
+                        analyzer.get_expr_type(stmt.value),
+                        analyzer) is not None):
+                # A VIEW-form source at an OWNED inner (`-> str | None`
+                # returning a `str` PARAM): `std::optional<std::string>`'s
+                # converting ctor is EXPLICIT from a view, so the copy IS the
+                # render -- the same view->owned sink the materializing
+                # coercion below takes. The sources whose read already has the
+                # inner's shape were taken by the arms above, so reaching here
+                # in BORROW form is exactly the crossed pair.
+                bsrc = _lower_expr(stmt.value, lc, declared)
+                if bsrc.form is Form.BORROW:
+                    _witness("ret.value_opt_view_materialize")
+                    return THIRReturn(
+                        value=_wrap_view_owned_sink(
+                            bsrc, unwrap_readonly(owned_inner.inner), loc),
+                        loc=loc)
+            if (owned_inner is not None
                     and isinstance(stmt.value, TpyCoerce)
                     and _coerce_disposition(stmt.value) == "materialize"):
                 # An OWNED inner (`-> str | None`) makes sema wrap a view
@@ -13380,6 +13383,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # as a method call): the bare pass-through rides the
                 # generic tail, whose call gates own the result rows.
                 tuple_ok = bool(_witness("ret.tuple_call"))
+            elif isinstance(source, TpyIfExpr):
+                # A ternary over value-tuple arms (`return t if f else u`):
+                # the C++ conditional IS the render and each arm rides its
+                # own source row in the generic tail. A value tuple copies at
+                # every sink, so neither arm raises the mixed-category
+                # aliasing question a reference-typed ternary does.
+                tuple_ok = bool(_witness("ret.tuple_ternary"))
             if not tuple_ok:
                 note_detail("return.tuple_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -14850,25 +14860,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     raise ThirUnsupported("stmt.tuple_unpack")
                 else:
                     _witness("stmt.tuple_unpack.call_borrow_source")
-            elif (isinstance(stmt.value, TpySubscript)
-                  and isinstance(stmt.value.obj, TpyName)
-                  and stmt.value.obj.name in declared
-                  and stmt.value.obj.name not in lc.pointers):
-                # A storage-tuple ELEMENT read source (`a0, b0 = pairs[0]`):
-                # the whole element lifts via tuple_to_pointer off the
-                # `__getitem__` lvalue (`auto __tup_N = tuple_to_pointer<
-                # std::tuple<P*, P*>>(__getitem__(pairs, 0));`). A CONST
-                # receiver -- a readonly local, or a param sema proved
-                # unmutated -- yields `const P*` element pointers, so the
-                # wrap spells its const form; a mutating body makes the
-                # param non-const, so the two verdicts cannot disagree.
-                _sv_at = analyzer.get_expr_type(stmt.value)
-                _sv_ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    _sv_at))) if _sv_at is not None else None)
-                if not (isinstance(_sv_ab, TupleType)
-                        and _sv_ab.has_pointer_repr_element()):
-                    note_detail("tuple_unpack.ref_source_form")
-                    raise ThirUnsupported("stmt.tuple_unpack")
+            elif _storage_tuple_lvalue_source(stmt.value, declared,
+                                              lc.pointers, analyzer):
+                # A storage-tuple ELEMENT or FIELD read source (`a0, b0 =
+                # pairs[0]` / `a, b = h.pair`): the whole element lifts via
+                # tuple_to_pointer off the lvalue (`auto __tup_N =
+                # tuple_to_pointer<std::tuple<P*, P*>>(__getitem__(pairs,
+                # 0));`). A CONST receiver -- a readonly local, or a param
+                # sema proved unmutated -- yields `const P*` element
+                # pointers, so the wrap spells its const form; a mutating
+                # body makes the param non-const, so the two verdicts
+                # cannot disagree.
                 source_wrap_cpp = _borrow_tuple_wrap_cpp(
                     stmt.target_types, analyzer,
                     const_source=_const_borrow_name(stmt.value.obj.name, lc,
@@ -14877,31 +14879,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     note_detail("tuple_unpack.ref_source_form")
                     raise ThirUnsupported("stmt.tuple_unpack")
                 subscript_wrap_src = True
-                _witness("stmt.tuple_unpack.subscript_wrap_source")
-            elif (isinstance(stmt.value, TpyFieldAccess)
-                  and isinstance(stmt.value.obj, TpyName)
-                  and stmt.value.obj.name in declared
-                  and stmt.value.obj.name not in lc.pointers):
-                # A storage-tuple FIELD read source (`a, b = h.pair`): the
-                # member lifts via tuple_to_pointer exactly like the
-                # subscript element (`auto __tup_N = ::tpy::tuple_to_pointer<
-                # std::tuple<T*, T*>>(h.pair);`), const receiver included.
-                _fv_at = analyzer.get_expr_type(stmt.value)
-                _fv_ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    _fv_at))) if _fv_at is not None else None)
-                if not (isinstance(_fv_ab, TupleType)
-                        and _fv_ab.has_pointer_repr_element()):
-                    note_detail("tuple_unpack.ref_source_form")
-                    raise ThirUnsupported("stmt.tuple_unpack")
-                source_wrap_cpp = _borrow_tuple_wrap_cpp(
-                    stmt.target_types, analyzer,
-                    const_source=_const_borrow_name(stmt.value.obj.name, lc,
-                                                    const_locals=True))
-                if source_wrap_cpp is None:
-                    note_detail("tuple_unpack.ref_source_form")
-                    raise ThirUnsupported("stmt.tuple_unpack")
-                subscript_wrap_src = True
-                _witness("stmt.tuple_unpack.field_wrap_source")
+                _witness("stmt.tuple_unpack.subscript_wrap_source"
+                         if isinstance(stmt.value, TpySubscript)
+                         else "stmt.tuple_unpack.field_wrap_source")
             else:
                 note_detail("tuple_unpack.ref_source_form")
                 raise ThirUnsupported("stmt.tuple_unpack")
@@ -15272,9 +15252,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # a const-ref param) binds `const optional<P>&`, so its
                     # consumers spell `const P*` -- registered in the const
                     # twin so the lift-decl threads it. A dict-VIEW iterable
-                    # (`d.values()`) tracks its RECEIVER's const-ness --
-                    # `_iteration_yields_const` has no method-call arm, so
-                    # probe the receiver.
+                    # (`d.values()`) tracks its RECEIVER's const-ness. The
+                    # hop is taken HERE, for ANY method call, where the
+                    # predicate's own arm takes it only for a borrowing-view
+                    # return -- BUGS.md#comp-storage-opt-const-any-method-recv.
                     _cs_src = (stmt.iterable.obj
                                if isinstance(stmt.iterable, TpyMethodCall)
                                else stmt.iterable)
@@ -15573,6 +15554,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 if not e.args and rest:
                     _witness("print.kw_no_args")
+                evaluated_kws: list[str] = []
                 for kw, kv in rest.items():
                     token = _print_kwarg_token(
                         kv, declared, pointers, narrowed, analyzer)
@@ -15580,8 +15562,31 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         note_detail("print.kwargs")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
                     kind, value = token
-                    lowered_kw = (_lower_expr(kv, lc, declared)
-                                  if kind == "name" else None)
+                    if kind == "expr":
+                        if not _expr_evaluation_inert(e.args, declared, analyzer):
+                            note_detail("print.kwarg_expr_arg_order")
+                            raise ThirUnsupported(stmt_reject_reason(stmt))
+                        if evaluated_kws and kw == "sep":
+                            # The chain renders sep ahead of end, so a source
+                            # that spells them the other way round would swap
+                            # two evaluations CPython orders by source.
+                            note_detail("print.kwarg_expr_order")
+                            raise ThirUnsupported(stmt_reject_reason(stmt))
+                        evaluated_kws.append(kw)
+                        _witness("print.kw_expr")
+                        # Bound by reference: an lvalue source is not copied
+                        # and a prvalue's lifetime extends to the end of the
+                        # enclosing block, so the token stays valid through
+                        # the chain.
+                        lowered_kw = THIRArgTemp(
+                            result_type=analyzer.get_expr_type(kv),
+                            init=_lower_expr(kv, lc, declared,
+                                             use=_ExprUse(allow_temps=True)),
+                            cpp_type="const auto&",
+                            movable=False)
+                    else:
+                        lowered_kw = (_lower_expr(kv, lc, declared)
+                                      if kind == "name" else None)
                     if kw == "sep":
                         sep_expr, sep_value = lowered_kw, value
                     else:

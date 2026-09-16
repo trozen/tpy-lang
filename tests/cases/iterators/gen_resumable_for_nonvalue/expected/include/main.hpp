@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_doubled;
 
 // def doubled(items: list[Node]) -> Iterator[int32]:
-__gen_doubled doubled(std::vector<Node>& items);
+__gen_doubled doubled(const std::vector<Node>& items);
 // def main() -> None:
 void main();
 
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 // def doubled(items: list[Node]) -> Iterator[int32]:
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
     int32_t __state;
-    std::vector<Node>& items;
-    Node* it = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+    const std::vector<Node>& items;
+    const Node* it = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -50,7 +50,7 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_doubled(std::vector<Node>& items)
+    __gen_doubled(const std::vector<Node>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

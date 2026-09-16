@@ -126,12 +126,12 @@ void __tpy_init() {
     std::cout << z << "\n";
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     global_list = &__global_slot_3;
-    if (std::ranges::contains((*global_list), 2)) {
+    if (::tpy::seq_contains((*global_list), 2)) {
         std::cout << 1 << "\n";
     } else {
         std::cout << 0 << "\n";
     }
-    if (std::ranges::contains((*global_list), 5)) {
+    if (::tpy::seq_contains((*global_list), 5)) {
         std::cout << 1 << "\n";
     } else {
         std::cout << 0 << "\n";

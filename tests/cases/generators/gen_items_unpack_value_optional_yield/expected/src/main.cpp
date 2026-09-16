@@ -50,7 +50,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_items::__next__() {
 
 
 // def g_items(d: dict[str, int32 | None]) -> Iterator[int32]:
-__gen_g_items g_items(::tpy::ordered_map<std::string, std::optional<int32_t>>& d) {
+__gen_g_items g_items(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d) {
     return __gen_g_items(d);
 }
 

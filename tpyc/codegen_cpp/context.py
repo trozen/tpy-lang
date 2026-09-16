@@ -1735,9 +1735,11 @@ class CodeGenContext:
     # setup_resumable_frame_locals so the frame field is a `T*` alias, not an
     # owning frame_slot<T>. Populated by _classify_pointer_alias_locals.
     generator_pointer_alias_locals: set[str] = field(default_factory=set)
-    # Subset whose source is const: seeded into const_indirect_locals so the
-    # field is `const T*` and reads stay const-correct.
-    generator_const_pointer_alias_locals: set[str] = field(default_factory=set)
+    # The enclosing resumable frame's const bindings
+    # (`rcfg.ResumableFuncState.const_frame_bindings`, shared by reference so
+    # the prescan's own additions are visible to the slot spellings it decides
+    # next). Empty outside a frame. Read through `frame_binding_is_const`.
+    frame_const_bindings: set[str] = field(default_factory=set)
     # When generating a generator method's __next__() body, self -> __self
     generator_self_ref: str | None = None
     # Params whose str/bytes view was copied into OWNED storage on the way into
@@ -2644,6 +2646,18 @@ class CodeGenContext:
                     return True
         return False
 
+    def frame_binding_is_const(self, name: str) -> bool:
+        """Whether the enclosing resumable frame binds `name` to const storage.
+
+        The frame's ONE answer for a NAME: the const-borrow capture verdict for
+        a param / a `@readonly` receiver, and `FrameLocalLayout.const` for a
+        local (a loop var over a const source, a borrow alias rooted at one).
+        Every spelling derived from such a name -- the iterator and view frame
+        slots, an element-pointer lift, the field itself -- must ask this, or
+        the frame declares a const field and initializes it from a mutable
+        deduction (or the reverse). False outside a resumable body."""
+        return name in self.frame_const_bindings
+
     def is_const_union_source(self, expr: TpyExpr) -> bool:
         """True when `expr` is an lvalue rooted in a const source -- a field /
         container element off a const-ref param or const-indirect local,
@@ -2658,7 +2672,8 @@ class CodeGenContext:
             obj = expr.obj
             if isinstance(obj, TpyName):
                 return (obj.name in self.const_ref_params
-                        or obj.name in self.const_indirect_locals)
+                        or obj.name in self.const_indirect_locals
+                        or self.frame_binding_is_const(obj.name))
             # Chained access (outer.inner.pet, self.store[k]): recurse on
             # the object
             return self.is_const_union_source(obj)
@@ -2669,16 +2684,27 @@ class CodeGenContext:
         element addresses derived from it come out `const T*`: an lvalue chain
         (field / subscript, arbitrarily deep) rooted at a const receiver
         (self in a readonly method, const param/local), or a name bound const
-        (const-storage loop var, const-inferred param/local).
+        (const-storage loop var, const-inferred param/local), or a borrowing-view
+        accessor call (`d.items()` / `d.values()`) whose verdict is its
+        RECEIVER's -- the view aliases the receiver's storage, and the
+        `@auto_readonly` clone pair means sema may have typed the call off the
+        mutable half while C++ overload resolution picks the const one.
         """
         if self.is_const_union_source(expr):
             return True
+        if isinstance(expr, TpyMethodCall) and expr.obj is not None:
+            fi = expr.resolved_function_info
+            if (fi is not None
+                    and is_borrowing_view_type(unwrap_ref_type(fi.return_type))):
+                return self.is_const_storage_source(expr.obj)
+            return False
         if isinstance(expr, TpyName):
             return (expr.name in self.const_storage_form_tuple_locals
                     or expr.name in self.const_borrow_form_tuple_locals
                     or expr.name in self.const_optional_borrow_tuple_locals
                     or expr.name in self.const_ref_params
-                    or expr.name in self.const_indirect_locals)
+                    or expr.name in self.const_indirect_locals
+                    or self.frame_binding_is_const(expr.name))
         return False
 
     def convert(self, val: 'FormValue', *, dst_type: TpyType, dst_form: CppForm) -> str:
@@ -2796,33 +2822,6 @@ class CodeGenContext:
         if name in self.pointer_locals:
             return LocalCppForm.POINTER
         return LocalCppForm.VALUE
-
-    def iteration_yields_const(self, iterable: TpyExpr) -> bool:
-        """True when iterating `iterable` binds the loop var as const.
-
-        Detects const-source iteration patterns where the resulting tuple
-        elements come out as `const optional<T>&` -- so the storage->pointer
-        wrap must use `to_cpp_return_const()` to match optional_to_ptr's
-        `const T*` output.
-        """
-        # field-of-self in a readonly method: self is const, field is const ref
-        if isinstance(iterable, TpyFieldAccess) and isinstance(iterable.obj, TpyName):
-            if iterable.obj.name == "self" and "self" in self.const_ref_params:
-                return True
-        # const-inferred param or alias of one
-        if isinstance(iterable, TpyName):
-            return (iterable.name in self.const_indirect_locals
-                    or iterable.name in self.const_ref_params)
-        # Borrowing-view accessor call (d.items() / d.values()): the view's
-        # const-ness tracks the receiver's. Sema may have selected the
-        # mutable clone (receiver const-ness inferred only in Phase 2), so
-        # re-derive from the receiver at emit time.
-        if isinstance(iterable, TpyMethodCall) and iterable.obj is not None:
-            fi = iterable.resolved_function_info
-            if (fi is not None
-                    and is_borrowing_view_type(unwrap_ref_type(fi.return_type))):
-                return self.iteration_yields_const(iterable.obj)
-        return False
 
     def register_frame_field_shadow(self, name: str) -> bool:
         """Mark `name` as a C++-local shadow of a frame field for the
@@ -3183,6 +3182,8 @@ class CodeGenContext:
                 # borrow-form local; proxy-ref loop elements (dict_items)
                 # carry the same form.
                 self.borrow_form_tuple_locals.add(lname)
+                if verdict.const:
+                    self.const_borrow_form_tuple_locals.add(lname)
             elif kind is _rcfg.FrameLocalKind.SOURCE_FORM_SLOT:
                 # A source-derived loop var is a frame slot whatever its
                 # element turns out to be -- including a value element:

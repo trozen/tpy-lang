@@ -14,23 +14,23 @@ struct __gen_firsts;
 struct __gen_multi;
 
 // def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_sums sums(std::vector<std::tuple<int32_t, int32_t>>& pairs);
+__gen_sums sums(const std::vector<std::tuple<int32_t, int32_t>>& pairs);
 // def firsts(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_firsts firsts(std::vector<std::tuple<int32_t, int32_t>>& pairs);
+__gen_firsts firsts(const std::vector<std::tuple<int32_t, int32_t>>& pairs);
 // def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_multi multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std::tuple<int32_t, int32_t>>& p2);
+__gen_multi multi(const std::vector<std::tuple<int32_t, int32_t>>& p1, const std::vector<std::tuple<int32_t, int32_t>>& p2);
 // def main():
 void main();
 
 // def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     int32_t __state;
-    std::vector<std::tuple<int32_t, int32_t>>& pairs;
+    const std::vector<std::tuple<int32_t, int32_t>>& pairs;
     std::tuple<int32_t, int32_t> __for_tup_0;
     int32_t a;
     int32_t b;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -40,7 +40,7 @@ struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_sums(std::vector<std::tuple<int32_t, int32_t>>& pairs)
+    __gen_sums(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
         : __state(S_INITIAL), pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -54,11 +54,11 @@ struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
 // def firsts(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_firsts : public ::tpy::next_iter_mixin<__gen_firsts, int32_t> {
     int32_t __state;
-    std::vector<std::tuple<int32_t, int32_t>>& pairs;
+    const std::vector<std::tuple<int32_t, int32_t>>& pairs;
     std::tuple<int32_t, int32_t> __for_tup_1;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -67,7 +67,7 @@ struct __gen_firsts : public ::tpy::next_iter_mixin<__gen_firsts, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_firsts(std::vector<std::tuple<int32_t, int32_t>>& pairs)
+    __gen_firsts(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
         : __state(S_INITIAL), pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -81,18 +81,18 @@ struct __gen_firsts : public ::tpy::next_iter_mixin<__gen_firsts, int32_t> {
 // def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     int32_t __state;
-    std::vector<std::tuple<int32_t, int32_t>>& p1;
-    std::vector<std::tuple<int32_t, int32_t>>& p2;
+    const std::vector<std::tuple<int32_t, int32_t>>& p1;
+    const std::vector<std::tuple<int32_t, int32_t>>& p2;
     std::tuple<int32_t, int32_t> __for_tup_2;
     int32_t a;
     int32_t b;
     std::tuple<int32_t, int32_t> __for_tup_3;
     int32_t c;
     int32_t d;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_it_1;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_end_1;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_1;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -103,7 +103,7 @@ struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std::tuple<int32_t, int32_t>>& p2)
+    __gen_multi(const std::vector<std::tuple<int32_t, int32_t>>& p1, const std::vector<std::tuple<int32_t, int32_t>>& p2)
         : __state(S_INITIAL), p1(p1), p2(p2) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

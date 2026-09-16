@@ -8,14 +8,15 @@ from typing import TYPE_CHECKING
 from ..parse.nodes import (
     TpyFunction, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_uses_borrow_slot
+from ..typesys import expand_fi_template, IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
 from ..compilation_context import get_current_compiler
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
                                   is_owned_in_coro_frame)
 from . import emit_prims
-from .context import CodeGenError
+from .context import (CodeGenError, expand_cpp_template,
+                      qualify_native_name)
 from .resumable_cfg import (ResumableShape, _stmts_have_any_suspension,
                             frame_struct_qualname, recursive_delegation_error,
                             same_module_dep_unit)
@@ -100,6 +101,12 @@ class GeneratorForInfo:
     # generator. Recorded here because this is where the source
     # type is resolved; consumed as an emit-ordering edge.
     dep_units: tuple[tuple[str, str | None], ...] = ()
+    # Whether the ITERATION SOURCE is const in this frame (a const-borrow
+    # capture, a const-bound local, or a chain rooted at one). Every slot this
+    # loop spells off the source carries it -- the iterator, the `__next__`
+    # result, the source-form loop-var payload -- and so does the loop var's
+    # own binding, which is why it is recorded rather than re-derived.
+    source_is_const: bool = False
 
 
 def owned_view_frame_params(
@@ -283,6 +290,18 @@ class GeneratorCodegen:
         if (isinstance(elem_bare, TupleType)
                 and elem_bare.has_pointer_repr_element()):
             elem_cpp = self.types.tuple_borrow_cpp(elem_bare)
+        # The frame's one answer for "is this source const here" (a const-borrow
+        # capture, a const frame binding, a chain rooted at one). Every slot
+        # below that names the source type must apply it, or the field is
+        # declared off a mutable spelling and initialized from a const one.
+        src_is_const = self.ctx.is_const_storage_source(stmt.iterable)
+        # What the iteration LENDS (src_is_const) and what the iterated OBJECT
+        # is are two facts. A borrowing-view accessor (`d.items()`) lends const
+        # elements off a const receiver, but the frame owns its result as a
+        # fresh, non-const view whose element const rides inside the view's own
+        # type -- so the slots naming the SOURCE type must not const-qualify it.
+        src_obj_is_const = (src_is_const
+                            and not isinstance(stmt.iterable, TpyMethodCall))
 
         # Range counter optimization
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range":
@@ -342,6 +361,7 @@ class GeneratorCodegen:
             )
             return GeneratorForInfo(
                 uid=uid, strategy="next", fields=fields,
+                source_is_const=src_is_const,
                 pointer_form_loop_var=pointer_form_var,
                 pointer_form_is_const=isinstance(
                     unwrap_ref_type(elem_type) if elem_type else None,
@@ -357,7 +377,8 @@ class GeneratorCodegen:
             if self.ctx.is_temporary_expr(stmt.iterable):
                 fields.append((f"__for_src_{uid}", iter_cpp))
             fields.append((f"__for_r_{uid}", result_type))
-            return GeneratorForInfo(uid=uid, strategy="next", fields=fields)
+            return GeneratorForInfo(uid=uid, strategy="next", fields=fields,
+                                    source_is_const=src_is_const)
 
         # Built-in NativeIterable containers (list, dict, set, Array, Span, str) -- begin/end
         record = self.ctx.analyzer.registry.get_record_for_type(iterable_type)
@@ -365,19 +386,15 @@ class GeneratorCodegen:
                          and builtin_modules.is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry))
         native_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry) if is_builtin_ni else None
         if native_elem is not None:
-            container_cpp = self.types.type_to_cpp(iterable_type)
+            container_cpp = (self._auto_readonly_result_decltype(stmt.iterable)
+                             or self.types.type_to_cpp(iterable_type))
             # A const-rooted lvalue chain (self.field in a readonly method,
-            # const param/local) or a const borrow-alias frame local renders
-            # const, so begin() yields a const_iterator -- the slot type must
-            # match. Over-approximation is safe (iterator converts to
+            # const param/local, a const frame binding) renders const, so
+            # begin() yields a const_iterator -- the slot type must match.
+            # Over-approximation is safe (iterator converts to
             # const_iterator); the __for_src_ copy slot below stays non-const
             # (temporaries are never const-storage sources).
-            src_is_const = (
-                self.ctx.is_const_storage_source(stmt.iterable)
-                or (isinstance(stmt.iterable, TpyName)
-                    and stmt.iterable.name
-                    in self.ctx.generator_const_pointer_alias_locals))
-            iter_container_cpp = (f"const {container_cpp}" if src_is_const
+            iter_container_cpp = (f"const {container_cpp}" if src_obj_is_const
                                   else container_cpp)
             iter_type = f"::tpy::begin_iter_t<{iter_container_cpp}>"
             fields = [
@@ -444,6 +461,7 @@ class GeneratorCodegen:
                 else None)
             return GeneratorForInfo(
                 uid=uid, strategy="begin_end", fields=fields,
+                source_is_const=src_is_const,
                 pointer_form_loop_var=pointer_form_var,
                 pointer_form_is_const=(src_is_const
                                        or isinstance(elem_for_form,
@@ -473,8 +491,14 @@ class GeneratorCodegen:
             src_cpp = protocol_param_template_name(subj_pname)
         else:
             src_cpp = self.types.type_to_cpp(iterable_type)
-        iter_field_type = f"::tpy::iter_type_t<{src_cpp}>"
-        result_field_type = f"::tpy::iter_result_t<{src_cpp}>"
+        # Every trait below probes `__iter__` on an `S&`, so a const source has
+        # to reach them as `const S` -- its `__iter__` is a different overload
+        # returning a different iterator (`SpanIter<const T>`), which no
+        # qualifier on the mutable spelling can express. The `__for_src_` copy
+        # slot keeps the mutable spelling: a temporary is never const-bound.
+        iter_src_cpp = f"const {src_cpp}" if src_obj_is_const else src_cpp
+        iter_field_type = f"::tpy::iter_type_t<{iter_src_cpp}>"
+        result_field_type = f"::tpy::iter_result_t<{iter_src_cpp}>"
         fields = [
             (f"__for_itr_{uid}", iter_field_type),
             (f"__for_r_{uid}", result_field_type),
@@ -499,9 +523,10 @@ class GeneratorCodegen:
         # is a separate axis.
         loop_var_field = (
             None if (stmt.is_tuple_unpack or elem_is_known_value(elem_type))
-            else (stmt.var, f"::tpy::for_elem_next_t<{src_cpp}>"))
+            else (stmt.var, f"::tpy::for_elem_next_t<{iter_src_cpp}>"))
         return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields,
                                 loop_var_field=loop_var_field,
+                                source_is_const=src_is_const,
                                 dep_units=self._iter_source_dep_units(
                                     iterable_type))
 
@@ -612,6 +637,64 @@ class GeneratorCodegen:
             return (_DelegatedGenerator(f, recv, None, owner_mod, e)
                     if f is not None else None)
         return None
+
+    def _auto_readonly_result_decltype(self, expr: TpyExpr) -> str | None:
+        """Frame-slot spelling for a call to an `@auto_readonly` method,
+        deduced by C++ instead of named from the resolved TPy type.
+
+        Sema types such a call off the MUTABLE half of the auto_readonly
+        pair; WHICH half runs is settled by C++ overload resolution on the
+        receiver, and the receiver's constness here is the Phase-2 borrow
+        verdict -- a fact sema did not have when it picked the half. The two
+        results are different C++ types, not one type under a `const`
+        (`dict_items_view<K, const V>` vs `const dict_items_view<K, V>`), so
+        no qualifier on the named type can express it. A sync body sidesteps
+        this with `auto`; a frame field must name a type, so it names the
+        same deduction. Naming the half in sema instead would need the
+        Phase-2 borrow verdict at method-resolution time, which runs before
+        it.
+
+        None means "keep the named type": the receiver's own spelling, a
+        `__deref__` hop or keyword arguments would each have to be mirrored
+        here, and nothing is gained by deducing a call whose halves agree.
+        """
+        if not isinstance(expr, TpyMethodCall):
+            return None
+        fi = expr.resolved_function_info
+        if fi is None or not fi.is_auto_readonly_mutable_clone:
+            return None
+        if expr.deref_depth or expr.kwargs or expr.double_star_unpack:
+            return None
+        recv_type = self.types.get_resolved_type(expr.obj)
+        if recv_type is None:
+            return None
+        recv_cpp = self.types.type_to_cpp(
+            unwrap_readonly(unwrap_ref_type(recv_type)))
+        qual = "const " if self.ctx.is_const_storage_source(expr.obj) else ""
+        recv = f"std::declval<{qual}{recv_cpp}&>()"
+        args: list[str] = []
+        for a in expr.args:
+            atype = self.types.get_resolved_type(a)
+            if atype is None:
+                return None
+            bare = unwrap_readonly(unwrap_ref_type(atype))
+            # A reference-typed argument is probed as an lvalue: `declval<T>()`
+            # is an xvalue and would not bind the `T&` parameter the callee
+            # declares (BUGS.md#protocol-ref-param-declval-rvalue is the same
+            # mistake in the protocol concept).
+            suffix = "" if bare.is_value_type() else "&"
+            args.append(f"std::declval<{self.types.type_to_cpp(bare)}{suffix}>()")
+        # Mirrors the three-arm receiver-call dispatch (cpp_template, @native
+        # free function with the receiver prepended, plain member call).
+        if fi.cpp_template:
+            call = expand_cpp_template(
+                expand_fi_template(fi, expr.inferred_type_args), recv, *args)
+        elif fi.native_function and fi.native_name:
+            call = (f"{qualify_native_name(fi.native_name)}"
+                    f"({', '.join([recv, *args])})")
+        else:
+            call = f"{recv}.{fi.native_name or fi.name}({', '.join(args)})"
+        return f"decltype({call})"
 
     def _temp_iterator_field_cpp(self, stmt: TpyForEach) -> str:
         """C++ frame-field type for a temporary `typing.Iterator` source:

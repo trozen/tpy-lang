@@ -44,7 +44,7 @@ int64_t take_set(::tpy::ordered_set<int64_t>& o);
 template<typename T>
 int64_t take_any(::tpy::param_val_or_ref_t<T> o);
 // def gen(o: list[int64]) -> Iterator[int64]:
-__gen_gen gen(std::vector<int64_t>& o);
+__gen_gen gen(const std::vector<int64_t>& o);
 // def free_call(flag: bool) -> int64:
 int64_t free_call(bool flag);
 // def user_ctor() -> int64:
@@ -158,7 +158,7 @@ struct Bx {
     // def __init__(self) -> None:
     Bx();
 
-    __gen_Bx_gen gen(std::vector<int64_t>& o) const;
+    __gen_Bx_gen gen(const std::vector<int64_t>& o) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bx";
 };
 
@@ -170,10 +170,10 @@ inline std::ostream& operator<<(std::ostream& os, const Bx& obj) {
 // def gen(o: list[int64]) -> Iterator[int64]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int64_t> {
     int32_t __state;
-    std::vector<int64_t>& o;
+    const std::vector<int64_t>& o;
     int64_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int64_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int64_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int64_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int64_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -182,7 +182,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int64_t> {
         S_DONE = 3,
     };
 
-    __gen_gen(std::vector<int64_t>& o)
+    __gen_gen(const std::vector<int64_t>& o)
         : __state(S_INITIAL), o(o) {}
 
     std::expected<int64_t, ::tpy::StopIteration> __next__();
@@ -197,10 +197,10 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int64_t> {
 struct __gen_Bx_gen : public ::tpy::next_iter_mixin<__gen_Bx_gen, int64_t> {
     int32_t __state;
     const Bx& __self;
-    std::vector<int64_t>& o;
+    const std::vector<int64_t>& o;
     int64_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int64_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int64_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int64_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int64_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -209,7 +209,7 @@ struct __gen_Bx_gen : public ::tpy::next_iter_mixin<__gen_Bx_gen, int64_t> {
         S_DONE = 3,
     };
 
-    __gen_Bx_gen(const Bx& __self, std::vector<int64_t>& o)
+    __gen_Bx_gen(const Bx& __self, const std::vector<int64_t>& o)
         : __state(S_INITIAL), __self(__self), o(o) {}
 
     std::expected<int64_t, ::tpy::StopIteration> __next__();
@@ -220,7 +220,7 @@ struct __gen_Bx_gen : public ::tpy::next_iter_mixin<__gen_Bx_gen, int64_t> {
     }
 };
 
-inline __gen_Bx_gen Bx::gen(std::vector<int64_t>& o) const {
+inline __gen_Bx_gen Bx::gen(const std::vector<int64_t>& o) const {
     return __gen_Bx_gen(*this, o);
 }
 

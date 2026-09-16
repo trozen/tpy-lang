@@ -150,10 +150,20 @@ class ResumableFuncState:
     # classification (pointer_form_loop_var / pointer_form_unpack_targets).
     pointer_alias_prescanned: bool = False
     pointer_alias_locals: 'set[str]' = field(default_factory=set)
-    # Subset of pointer_alias_locals whose source is const (readonly param /
-    # const tuple element): the frame field is `const T*` and the local joins
-    # const_indirect_locals so downstream reads stay const-correct.
-    const_pointer_alias_locals: 'set[str]' = field(default_factory=set)
+    # THE frame's const bindings: every name the frame binds to const storage --
+    # a const-borrow capture (the Phase-2 verdict or an explicit `readonly[T]`),
+    # the receiver of a `@readonly` method, a loop var iterating a const source,
+    # and a borrow alias rooted at one of those. One set so the field spelling,
+    # the derived slot spellings (iterator, view, element-pointer lift) and the
+    # THIR lowering cannot answer the same question differently; read through
+    # `CodeGenContext.frame_binding_is_const`.
+    const_frame_bindings: 'set[str]' = field(default_factory=set)
+    # Borrow edges, keyed by SOURCE ROOT -> the names bound out of it, recorded
+    # while classifying the bindings above: constness flows along them, and the
+    # source's own verdict can be decided after the binding was classified (a
+    # loop var is proven const by the for prescan, which runs after the alias
+    # pass). Keyed by root so a newly-const name walks only its own dependents.
+    const_source_edges: 'dict[str, list[str]]' = field(default_factory=dict)
     # try/finally prescan (_prescan_resumable_try_finally)
     try_finally_prescanned: bool = False
     try_finally_uid_map: 'dict[int, int]' = field(default_factory=dict)
@@ -175,6 +185,45 @@ def resumable_state(func: 'TpyFunction') -> ResumableFuncState:
         state = ResumableFuncState()
         func._resumable_state = state
     return state
+
+
+def mark_frame_const(state: ResumableFuncState, *names: 'str | None') -> None:
+    """Record `names` as const bindings of this frame and close the borrow
+    edges over the result."""
+    fresh = [n for n in names if n and n not in state.const_frame_bindings]
+    if not fresh:
+        return
+    state.const_frame_bindings.update(fresh)
+    _close_frame_const(state, fresh)
+
+
+def record_const_source_edge(state: ResumableFuncState, target: str,
+                             root: 'str | None') -> None:
+    """Record that `target` borrows out of `root`, so `target` is const
+    whenever `root` is -- whichever of the two is classified first."""
+    if not root or target == root:
+        return
+    state.const_source_edges.setdefault(root, []).append(target)
+    if root in state.const_frame_bindings:
+        mark_frame_const(state, target)
+
+
+def _close_frame_const(state: ResumableFuncState,
+                       roots: 'list[str]') -> None:
+    """Close `const_frame_bindings` over the borrow edges out of `roots`.
+
+    A worklist over the newly-const names, not a re-scan of every edge on
+    every mark: the verdict is consumed DURING the prescan window (a nested
+    for-loop's slot is spelled off an alias whose root the enclosing loop
+    was just proved const), so the closure cannot be deferred to the end of
+    the window -- but only the edges out of a name that just turned const
+    can fire, so the whole prescan costs one pass over the edges."""
+    work = list(roots)
+    while work:
+        for target in state.const_source_edges.get(work.pop(), ()):
+            if target not in state.const_frame_bindings:
+                state.const_frame_bindings.add(target)
+                work.append(target)
 
 
 def same_module_dep_unit(owner: 'NominalType | None', method: str,
@@ -276,8 +325,8 @@ class FrameLocalKind(Enum):
 @dataclass(frozen=True)
 class FrameLocalLayout:
     """Placement verdict for one hoisted local. `const` applies to the
-    pointer kinds (PTR_ALIAS / OPT_PTR: `const T*` when the alias source
-    is const-rooted). `payload` is the frame_slot field's C++ payload
+    pointer kinds (PTR_ALIAS / OPT_PTR: `const T*` when the local is one of
+    the frame's const bindings). `payload` is the frame_slot field's C++ payload
     spelling for the kinds that cannot re-derive it from the local's type --
     SOURCE_FORM_SLOT (spelled from the iteration source) and
     MIXED_TUPLE_SLOT (the mixed render); None for every other kind.

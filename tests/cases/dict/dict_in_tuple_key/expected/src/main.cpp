@@ -38,7 +38,7 @@ void main() {
     std::cout << ::tpy::print_bool((d.contains(k1))) << " " << ::tpy::print_bool((d.contains(k2))) << "\n";
     std::cout << ::tpy::print_bool((!(d.contains(k1)))) << " " << ::tpy::print_bool((!(d.contains(k2)))) << "\n";
     std::cout << ::tpy::print_bool((s.contains(k1))) << " " << ::tpy::print_bool((s.contains(k2))) << "\n";
-    std::cout << ::tpy::print_bool(std::ranges::contains(d, std::tuple<int32_t, int32_t>{1, 2})) << " " << ::tpy::print_bool(std::ranges::contains(d, std::tuple<int32_t, int32_t>{9, 9})) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{1, 2})) << " " << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{9, 9})) << "\n";
     std::cout << ::tpy::__getitem__(d2, std::tuple<int32_t, int32_t>{1, 2}) << "\n";
     std::cout << std::get<0>(::tpy::__getitem__(pairs, 0)) << " " << std::get<0>(::tpy::__getitem__(pairs, 1)) << "\n";
     int32_t x = 2;

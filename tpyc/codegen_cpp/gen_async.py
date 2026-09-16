@@ -37,7 +37,8 @@ from ..parse.nodes import (
     TpyNoneLiteral, TpyCoerce,
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
-    is_stable_address_lvalue, walrus_bindings,
+    TpyMatch, is_stable_address_lvalue, iter_capture_bindings,
+    walrus_bindings,
 )
 
 
@@ -349,9 +350,11 @@ class AsyncCoroCodegen:
             record_name: 'str | None') -> 'frozenset[int] | None':
         """The per-param deep-const verdict off the RAW fi (methods: the
         registry method fi; free defs: overloads[-1], the implementation).
-        Drives the frame-field const spelling for pointer-repr tuple/union
-        captures; the CFG-window const-set seeding must read the same
-        source so alias-local classification agrees with the field."""
+
+        `[-1]` is the implementation of a `typing.overload` set but only the
+        LAST variant of a `tpy.dispatch` one, which is
+        BUGS.md#frame-const-verdict-last-overload (unreachable today: an
+        overloaded generator does not get this far)."""
         if record_name:
             _ri = self.ctx.analyzer.registry.get_record(record_name)
             _mfi = _ri.get_method(func.name) if _ri else None
@@ -359,9 +362,46 @@ class AsyncCoroCodegen:
         _fis = self.ctx.analyzer.registry.get_function(func.name)
         return _fis[-1].const_borrow_params if _fis else None
 
+    def _frame_capture_const_names(
+            self, func: TpyFunction,
+            record_name: 'str | None') -> 'tuple[set[str], set[str]]':
+        """The frame's per-capture const verdict by NAME: `(const_ref, deep)`.
+
+        The ONE reading of the const-borrow verdict for a resumable frame: the
+        captured field spelling, the const sets the prescan types alias locals
+        against, and the frame's const bindings all take it from here, so one
+        capture cannot come out const in one of them and mutable in another.
+        `readonly[T]` is the explicit half of the same verdict. A capture that
+        holds no borrow (`Own[T]`, an owned view copy, a deduced template arg)
+        is excluded whatever the verdict says; the pointer-repr forms carry
+        their const inside the spelling, so they join `deep` only.
+
+        Recorded as the frame's const bindings on the way out (the loop and
+        alias prescans add theirs as they classify).
+        """
+        const_ref: set[str] = set()
+        deep: set[str] = set()
+        if func.is_readonly and (record_name is not None or func.is_method):
+            const_ref.add("self")
+        verdict = self._frame_deep_const_verdict(func, record_name)
+        for pidx, (pname, ptype) in enumerate(func.params):
+            explicit = isinstance(unwrap_ref_type(ptype), ReadonlyType)
+            if not explicit and (verdict is None or pidx not in verdict):
+                continue
+            kind = self._classify_param_kind(ptype)
+            if explicit or kind is _CoroParamKind.REF:
+                const_ref.add(pname)
+                deep.add(pname)
+                continue
+            bare = unwrap_readonly(unwrap_ref_type(ptype))
+            if ((isinstance(bare, TupleType) and bare.has_pointer_repr_element())
+                    or self.ctx.is_ptr_variant_union(bare)):
+                deep.add(pname)
+        rcfg.mark_frame_const(rcfg.resumable_state(func), *const_ref, *deep)
+        return const_ref, deep
+
     def _classify_params(self, func: TpyFunction,
-                          record_name: str | None = None
-                          ) -> list[_CoroParam]:
+                          record_name: str | None) -> list[_CoroParam]:
         """Classify async-def params for the coro struct field/ctor shape.
 
         Returns a list of `_CoroParam` records, one per captured param.
@@ -369,6 +409,12 @@ class AsyncCoroCodegen:
         `const <Record>&` for @readonly methods) so async methods
         capture their receiver -- parallels `GeneratorCodegen`
         self-capture.
+
+        `record_name` is NOT defaulted: it selects the owning `FunctionInfo`
+        that `_frame_capture_const_names` memoizes the frame's const-capture
+        verdict from, so a silent None on a method would record the frame's
+        const bindings off the free-function lookup. Free-function callers
+        pass None explicitly.
 
         Generic params (`T` as TypeParamRef) use the
         `param_val_or_ref_t<T>` / `val_or_ref_t<T>` trait so each
@@ -385,11 +431,12 @@ class AsyncCoroCodegen:
         form (the caller opted into view semantics).
         """
         out: list[_CoroParam] = []
-        # The per-param const verdict (addr-escape / readonly aware) lives on
-        # the resolved FunctionInfo. An inferred-readonly method does NOT wrap
-        # its params in ReadonlyType, so the factory field must consult the
-        # verdict, not just the param type, to match the call site + body.
-        _deep_const = self._frame_deep_const_verdict(func, record_name)
+        # The per-capture const verdict (addr-escape / readonly aware). An
+        # inferred-readonly method does NOT wrap its params in ReadonlyType, so
+        # the factory field must consult the verdict, not just the param type,
+        # to match the call site + body.
+        _const_ref, _deep_const = self._frame_capture_const_names(
+            func, record_name)
         if record_name:
             # Match the factory-site spelling (generator.py:1177, :1252):
             # convert dotted nested-class names to C++ scope syntax (`Outer.Inner`
@@ -409,7 +456,7 @@ class AsyncCoroCodegen:
                 ctor_param_type=recv_type,
                 kind=_CoroParamKind.REF,
             ))
-        for _pidx, (pname, ptype) in enumerate(func.params):
+        for pname, ptype in func.params:
             cpp_name = escape_cpp_name(pname)
             ptype_inner = unwrap_ref_type(ptype)
             actual = unwrap_readonly(ptype_inner)
@@ -468,8 +515,7 @@ class AsyncCoroCodegen:
                     # sync signature + call site; yield-escaped params are
                     # excluded by the verdict itself).
                     spell = ptype_inner
-                    if (spell is actual and _deep_const is not None
-                            and _pidx in _deep_const):
+                    if spell is actual and pname in _deep_const:
                         spell = ReadonlyType(actual)
                     field_type = ctor_type = spell.to_cpp_return()
                 else:
@@ -483,19 +529,20 @@ class AsyncCoroCodegen:
                     # param is `readonly[...]` OR the const verdict deep-consts
                     # it (matches the call site + body, addr-escape aware).
                     is_readonly_param = ((actual is not ptype_inner)
-                                         or (_deep_const is not None
-                                             and _pidx in _deep_const))
+                                         or pname in _deep_const)
                     field_type = ctor_type = (
                         self.types.type_to_cpp_const_ptr_variant(actual)
                         if is_readonly_param
                         else self.types.type_to_cpp_ptr_variant(actual))
             else:  # OWNED_VALUE / REF -- both spell the plain C++ type
                 field_type = ctor_type = self.types.type_to_cpp(ptype_inner)
-                # An explicit readonly[T] reference param captures const --
-                # flows to the frame field, ctor, and both factory decls,
-                # which all derive from this spelling.
-                if (kind is _CoroParamKind.REF
-                        and isinstance(ptype_inner, ReadonlyType)):
+                # A reference capture is const when the param is explicitly
+                # `readonly[T]` OR the inferred verdict const-borrows it --
+                # the same pair the pointer arms above consult, and the same
+                # verdict the sync twin's signature reads, so a caller holding
+                # its own const borrow can drive the factory. OWNED_VALUE
+                # (`Own[T]`) is excluded: it owns its payload, not a borrow.
+                if kind is _CoroParamKind.REF and pname in _const_ref:
                     field_type = ctor_type = f"const {field_type}"
             out.append(_CoroParam(
                 cpp_name=cpp_name,
@@ -798,7 +845,7 @@ class AsyncCoroCodegen:
         # definition would redefine them (C++ error). Aligned to func.params
         # (a free-function factory has no __self cparam).
         parts: list[str] = []
-        for i, cp in enumerate(self._classify_params(func)):
+        for i, cp in enumerate(self._classify_params(func, None)):
             decl = cp.factory_param_decl()
             if emit_defaults:
                 decl += self._default_suffix(func, i)
@@ -1610,15 +1657,9 @@ class AsyncCoroCodegen:
         # Loop vars whose field payload is spelled from the iteration
         # source; the trait decides alias-vs-own, so no TPy-side form.
         source_form_fields: dict[str, str] = {}
-        # Loop vars whose `&(*it)` is a `const T*` (const-rooted source or a
-        # readonly element); joins the statement-level const aliases below so
-        # both reach the same `const` verdict.
-        const_loop_vars: set[str] = set()
         for info in state.for_loop_info.values():
             if info.pointer_form_loop_var is not None:
                 pointer_form_names.add(info.pointer_form_loop_var)
-                if info.pointer_form_is_const:
-                    const_loop_vars.add(info.pointer_form_loop_var)
             pointer_form_names.update(info.pointer_form_unpack_targets)
             if info.loop_var_field is not None:
                 name, payload = info.loop_var_field
@@ -1633,7 +1674,6 @@ class AsyncCoroCodegen:
         # also get a `T*` field rather than an owning frame_slot<T>: a `T*`
         # field kept live across suspensions.
         pointer_form_names.update(self._classify_pointer_alias_locals(func))
-        const_aliases = state.const_pointer_alias_locals | const_loop_vars
 
         bindings: dict[str, rcfg.FrameLocalLayout] = {}
         for lname, ltype in (func.generator_locals or []):
@@ -1743,12 +1783,15 @@ class AsyncCoroCodegen:
                 kind = rcfg.FrameLocalKind.FRAME_SLOT
             bindings[lname] = rcfg.FrameLocalLayout(
                 kind=kind,
-                # Const-rooted alias sources (borrow of self's field in a
-                # readonly method) need `const T*` -- classified into
-                # const_pointer_alias_locals at the initializing decl.
+                # A pointer into const storage needs `const T*`. The binding's
+                # const-ness is the frame's own verdict (`const_frame_bindings`,
+                # recorded where each binding is classified); only the pointer
+                # kinds can carry it in their spelling (a borrow tuple carries
+                # it inside its element pointers).
                 const=(kind in (rcfg.FrameLocalKind.PTR_ALIAS,
-                                rcfg.FrameLocalKind.OPT_PTR)
-                       and lname in const_aliases),
+                                rcfg.FrameLocalKind.OPT_PTR,
+                                rcfg.FrameLocalKind.BORROW_TUPLE)
+                       and lname in state.const_frame_bindings),
                 payload=payload,
                 effective_type=effective_type)
 
@@ -1834,7 +1877,8 @@ class AsyncCoroCodegen:
                     out.write(
                         f"{INDENT}::tpy::frame_slot<{verdict.payload}> {cpp_name};\n")
                 elif kind is rcfg.FrameLocalKind.BORROW_TUPLE:
-                    cpp_type = self.types.tuple_borrow_cpp(ltype_inner)
+                    cpp_type = self.types.tuple_borrow_cpp(
+                        ltype_inner, const=verdict.const)
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
                 elif kind is rcfg.FrameLocalKind.VALUE:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
@@ -2032,7 +2076,7 @@ class AsyncCoroCodegen:
         old_for_info = self.ctx.generator_for_loop_info
         old_with_owned_ctx = self.ctx.generator_with_owned_ctx
         old_pointer_alias_locals = self.ctx.generator_pointer_alias_locals
-        old_const_pointer_alias_locals = self.ctx.generator_const_pointer_alias_locals
+        old_frame_const_bindings = self.ctx.frame_const_bindings
         old_self_ref = self.ctx.generator_self_ref
         old_owned_view_params = self.ctx.owned_view_frame_params
         old_movable_locals = self.ctx.movable_locals
@@ -2067,13 +2111,20 @@ class AsyncCoroCodegen:
         # setup_body_scope below) so borrow-alias frame locals get a `T*` slot.
         self.ctx.generator_pointer_alias_locals = (
             self._classify_pointer_alias_locals(func))
-        self.ctx.generator_const_pointer_alias_locals = (
-            rcfg.resumable_state(func).const_pointer_alias_locals)
+        self.ctx.frame_const_bindings = (
+            rcfg.resumable_state(func).const_frame_bindings)
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
 
+        # NOT the frame's capture verdict (`_frame_capture_const_names`), and
+        # the two are not interchangeable: this pair is what the BODY's
+        # signature model assumes per param, so it names value captures the
+        # frame holds by copy (a scalar, an owned `str`) which never produce a
+        # const field, while the capture verdict adds the explicit
+        # `readonly[T]` / ptr-variant deep half the body model does not reach.
+        # Measured over the corpus: they diverge in BOTH directions (TODO.md).
         crp, dcbp = self.functions.compute_body_const_sets(func, record_name)
         # Like a sync method: a generator/async method on a generic
         # record needs the record's type-param bounds in scope so for-loop
@@ -2146,7 +2197,7 @@ class AsyncCoroCodegen:
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_with_owned_ctx = old_with_owned_ctx
             self.ctx.generator_pointer_alias_locals = old_pointer_alias_locals
-            self.ctx.generator_const_pointer_alias_locals = old_const_pointer_alias_locals
+            self.ctx.frame_const_bindings = old_frame_const_bindings
             self.ctx.resumable_ptr_slot_map = old_ptr_slot_map
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.owned_view_frame_params = old_owned_view_params
@@ -2822,7 +2873,10 @@ class AsyncCoroCodegen:
         sub-future field-type computation render await-arg expressions with
         the same body name-context the emplace uses (`self`->`__self`,
         `frame_slot` deref) -- otherwise the field-type and emplace spellings
-        diverge. Generators never await, so the gate path may pass None.
+        diverge. It also selects the owning record's method when looking up
+        the per-param const verdict, so a generator method must pass it too:
+        without it the lookup answers None, or worse resolves off a same-named
+        free function.
         """
         state = rcfg.resumable_state(func)
         if state.cfg is not None:
@@ -2841,43 +2895,36 @@ class AsyncCoroCodegen:
         # The strategy analysis also consults the const sets (a const-rooted
         # iterable needs a const_iterator frame slot), which on entry still
         # hold the previous function's values -- seed FRAME-CAPTURE constness,
-        # not the sync signature inference: the frame stores `const Self&`
-        # for a readonly method and `const T&` for explicit readonly[T]
-        # params, but captures inferred-const REFERENCE params as mutable
-        # `T&`, so sync const sets would over-mark param-rooted sources.
-        # Pointer-repr tuple/union captures are the exception: their frame
-        # fields spell the inferred verdict (`_classify_params`), so the
-        # window must agree or alias locals type against the wrong field.
+        # which is what the body's alias locals must type against. Every
+        # capture whose field `_classify_params` const-qualifies belongs in
+        # the window; a capture that keeps its mutable spelling (a
+        # pointer-repr Optional, an owned value) does not, or alias locals
+        # would type against a field that isn't const.
         saved_crp = self.ctx.const_ref_params
         saved_dcbp = self.ctx.deep_const_borrow_params
-        crp: set[str] = set()
-        dcbp: set[str] = set()
-        if func.is_readonly and (record_name is not None or func.is_method):
-            crp.add("self")
-        _fdc = self._frame_deep_const_verdict(func, record_name)
-        for _pidx, (pname, ptype) in enumerate(func.params):
-            if isinstance(unwrap_ref_type(ptype), ReadonlyType):
-                crp.add(pname)
-                dcbp.add(pname)
-                continue
-            bare = unwrap_readonly(unwrap_ref_type(ptype))
-            if (_fdc is not None and _pidx in _fdc
-                    and ((isinstance(bare, TupleType)
-                          and bare.has_pointer_repr_element())
-                         or self.ctx.is_ptr_variant_union(bare))):
-                dcbp.add(pname)
+        saved_cil = self.ctx.const_indirect_locals
+        crp, dcbp = self._frame_capture_const_names(func, record_name)
         self.ctx.const_ref_params = crp
         self.ctx.deep_const_borrow_params = dcbp
+        # Local const-ness is name-keyed and belongs to whichever body was
+        # emitted last, so it must not answer for THIS one: a same-named const
+        # loop var in an earlier generator would make a mutable local here read
+        # as const. This frame's own locals answer through
+        # `frame_const_bindings` below.
+        self.ctx.const_indirect_locals = set()
+        # The frame's const bindings are shared BY REFERENCE for the whole
+        # window: the alias and for prescans below add to them as they
+        # classify, and each one's slot spelling reads what the previous ones
+        # decided (a nested loop over a const loop var, an alias off one).
+        saved_alias = self.ctx.generator_pointer_alias_locals
+        saved_frame_const = self.ctx.frame_const_bindings
+        self.ctx.frame_const_bindings = (
+            rcfg.resumable_state(func).const_frame_bindings)
         # Classify borrow-alias locals under the seeded const sets (the
         # classification is memoized, so it must not first run against a
-        # stale context) and expose the const subset: the strategy analysis
-        # types const-alias iterables' frame iterator slots off it.
-        saved_alias = self.ctx.generator_pointer_alias_locals
-        saved_alias_const = self.ctx.generator_const_pointer_alias_locals
+        # stale context).
         self.ctx.generator_pointer_alias_locals = (
             self._classify_pointer_alias_locals(func))
-        self.ctx.generator_const_pointer_alias_locals = (
-            rcfg.resumable_state(func).const_pointer_alias_locals)
         try:
             for_uid_map = self._prescan_resumable_for_loops(func, body)
             with_uid_map = self._prescan_with_stmts(func, body)
@@ -2909,8 +2956,9 @@ class AsyncCoroCodegen:
             self.ctx.var_types = saved_var_types
             self.ctx.const_ref_params = saved_crp
             self.ctx.deep_const_borrow_params = saved_dcbp
+            self.ctx.const_indirect_locals = saved_cil
             self.ctx.generator_pointer_alias_locals = saved_alias
-            self.ctx.generator_const_pointer_alias_locals = saved_alias_const
+            self.ctx.frame_const_bindings = saved_frame_const
         # Stash the builder so callers (emit) can look up handler
         # entries via builder.get_handler_entry().
         state.cfg_builder = builder
@@ -3036,6 +3084,25 @@ class AsyncCoroCodegen:
                         dep_units_out.extend(info.dep_units)
                     for_loop_info[s] = info
                     info_by_uid[cur_uid] = info
+                    # A loop var bound into const storage joins the frame's
+                    # const bindings BEFORE this loop's body is walked, so a
+                    # nested loop, an alias or a view slot inside it spells
+                    # itself against the constness its source actually has.
+                    # The unpack targets ride the same holder -- a `T*` loop
+                    # var or the proxy-ref borrow tuple (`d.items()`), which
+                    # carries the const inside its element pointers.
+                    _holder = (info.pointer_form_loop_var
+                               or info.borrow_tuple_loop_var)
+                    if _holder is not None:
+                        if info.pointer_form_is_const:
+                            rcfg.mark_frame_const(
+                                state, _holder,
+                                *info.pointer_form_unpack_targets)
+                    elif (info.loop_var_field is not None
+                            and info.source_is_const):
+                        # The slot's payload is spelled from the const source,
+                        # so the element it lends is const too.
+                        rcfg.mark_frame_const(state, s.var)
                     elem_t = (unwrap_ref_type(s.elem_type)
                               if s.elem_type else None)
                     if elem_t is None:
@@ -3079,8 +3146,11 @@ class AsyncCoroCodegen:
           - a walrus `(a := <lvalue>)`, which sema already classified as a
             statement-level borrow.
 
-        Const sources (readonly params, const tuple elements) join
-        `const_pointer_alias_locals` so the field is `const T*`. Exception-
+        Const sources (readonly params, const tuple elements) join the frame's
+        `const_frame_bindings` so the field is `const T*`; a source whose own
+        const verdict is settled later (a loop var, proven const by the for
+        prescan that runs after this pass) is reached through the borrow edge
+        recorded for the binding. Exception-
         handler bindings are excluded: the caught exception is only live inside
         the handler, so aliasing it across a suspension could dangle -- they
         keep the safe owning copy. Owning bindings (`a = Box(1)`, Own[T]
@@ -3098,7 +3168,6 @@ class AsyncCoroCodegen:
             return state.pointer_alias_locals
         frame_local_types = {n: t for n, t in func.generator_locals}
         aliases = state.pointer_alias_locals
-        const_aliases = state.const_pointer_alias_locals
         body = self._effective_body(func)
         # Read per-function off the analyzer, not off ctx: this prescan runs at
         # struct-emit time, before the body scope that would seed ctx with it.
@@ -3126,6 +3195,12 @@ class AsyncCoroCodegen:
             while cur is not None and not isinstance(cur, TpyName):
                 cur = getattr(cur, "obj", None)
             return cur.name if isinstance(cur, TpyName) else None
+
+        def borrows_from(target: str, src: 'TpyExpr | None') -> None:
+            # A binding whose storage comes out of `src` is const whenever
+            # `src` is, however late that is settled (a loop var's own verdict
+            # lands in the for prescan, which runs after this pass).
+            rcfg.record_const_source_edge(state, target, root_name(src))
 
         def walk(stmts: 'list[TpyStmt]') -> None:
             for s in stmts:
@@ -3169,18 +3244,41 @@ class AsyncCoroCodegen:
                             and emit_prims.is_plain_nonvalue(self.ctx, ltype_bare)
                             and not self.ctx.is_rvalue_source(s.init)):
                         aliases.add(s.name)
+                        borrows_from(s.name, s.init)
                         if init_is_const():
-                            const_aliases.add(s.name)
+                            rcfg.mark_frame_const(state, s.name)
                     elif (ltype is not None and s.init is not None
                             and not src_is_exc
                             and isinstance(ltype_bare, OptionalType)
-                            and ltype_bare.uses_pointer_repr()
-                            and init_is_const()):
+                            and ltype_bare.uses_pointer_repr()):
                         # Pointer-repr Optional locals get their bare `T*`
                         # frame field on their own emission branch (not via
                         # `aliases`); only the const fact is recorded here,
                         # where the initializing decl is in hand.
-                        const_aliases.add(s.name)
+                        borrows_from(s.name, s.init)
+                        if init_is_const():
+                            rcfg.mark_frame_const(state, s.name)
+                elif isinstance(s, TpyMatch):
+                    # A capture is bound out of the SUBJECT's storage, so a
+                    # const subject makes every pointer-form capture a
+                    # `const T*`. The binding is the arm's pattern, not a
+                    # VarDecl, so the arm above never sees it -- and the
+                    # subject is only in hand here. Captures bound by value
+                    # snapshot the element and carry no pointer to qualify.
+                    for case in s.cases:
+                        for cap in iter_capture_bindings(case.pattern):
+                            if cap.bind_by_value:
+                                continue
+                            cap_t = frame_local_types.get(cap.name)
+                            if cap_t is None:
+                                continue
+                            cap_bare = unwrap_ref_type(cap_t)
+                            if (cap.name in aliases
+                                    or (isinstance(cap_bare, OptionalType)
+                                        and cap_bare.uses_pointer_repr())):
+                                borrows_from(cap.name, s.subject)
+                                if self.ctx.is_const_storage_source(s.subject):
+                                    rcfg.mark_frame_const(state, cap.name)
                 elif isinstance(s, TpyWith) and s.is_async:
                     # An `async with ... as t` whose __aenter__ result is a
                     # borrow (pointer Poll payload): the as-binding must
@@ -3198,7 +3296,7 @@ class AsyncCoroCodegen:
                                     unwrap_ref_type(it.enter_type))):
                             aliases.add(it.target)
                             if it.aenter_result_is_const:
-                                const_aliases.add(it.target)
+                                rcfg.mark_frame_const(state, it.target)
                 elif isinstance(s, TpyTupleUnpack):
                     # For-loop element unpacks (`idx, it = __for_tup`) already
                     # get pointer-form slots via the loop machinery's
@@ -3219,8 +3317,15 @@ class AsyncCoroCodegen:
                         not self.ctx.is_rvalue_source(s.value)
                         or isinstance(s.value, (TpyCall, TpyMethodCall)))
                     if not src_is_loop_holder and src_safe_to_alias:
-                        src_const = emit_prims.unpack_source_has_const_slots(
-                            self.ctx, s)
+                        # The element pointers are taken off the SOURCE, so
+                        # they are const exactly when it is -- a borrow-tuple
+                        # capture, a const-bound holder, or (the lvalue lift)
+                        # a chain rooted at a const frame binding. The lift
+                        # spelling in the THIR lowering reads the same answer.
+                        src_const = (
+                            emit_prims.unpack_source_has_const_slots(
+                                self.ctx, s)
+                            or self.ctx.is_const_storage_source(s.value))
                         for i, tname in enumerate(s.targets):
                             if (tname is not None and tname in frame_local_types
                                     and i < len(s.is_ref) and s.is_ref[i]
@@ -3228,10 +3333,11 @@ class AsyncCoroCodegen:
                                         self.ctx,
                                         unwrap_ref_type(frame_local_types[tname]))):
                                 aliases.add(tname)
+                                borrows_from(tname, s.value)
                                 elem_const = src_const or (
                                     i < len(s.is_const_ref) and s.is_const_ref[i])
                                 if elem_const:
-                                    const_aliases.add(tname)
+                                    rcfg.mark_frame_const(state, tname)
                 # A walrus binds in expression position, so it is invisible to
                 # the statement arms above. Read sema's verdict rather than
                 # re-deriving one from the source shape: the sync walrus render
@@ -3253,8 +3359,9 @@ class AsyncCoroCodegen:
                             self.ctx, unwrap_ref_type(ltype)):
                         continue
                     aliases.add(ne.target)
+                    borrows_from(ne.target, ne.value)
                     if borrow_decls[ne.target]:
-                        const_aliases.add(ne.target)
+                        rcfg.mark_frame_const(state, ne.target)
                 if hasattr(s, "sub_bodies"):
                     for b in s.sub_bodies():
                         walk(b)
@@ -5368,7 +5475,9 @@ class AsyncCoroCodegen:
                 # proxy to the borrow-form tuple; element refs are stable.
                 elem_bare = unwrap_readonly(unwrap_ref_type(
                     self.types.resolve_type(stmt.elem_type)))
-                borrow_cpp = self.types.tuple_borrow_cpp(elem_bare)
+                borrow_cpp = self.types.tuple_borrow_cpp(
+                    elem_bare,
+                    const=self.ctx.frame_binding_is_const(stmt.var))
                 bind_post = [
                     f"{cpp_var} = ::tpy::tuple_to_pointer"
                     f"<{borrow_cpp}>(*({it})++);"]

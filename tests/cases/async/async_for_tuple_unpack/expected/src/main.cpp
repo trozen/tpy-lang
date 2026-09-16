@@ -66,7 +66,7 @@ namespace tpyapp::main {
 
 
 // async def sum_squares(p: Pairs) -> int:
-__coro_sum_squares sum_squares(Pairs& p) {
+__coro_sum_squares sum_squares(const Pairs& p) {
     return __coro_sum_squares(p);
 }
 

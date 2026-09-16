@@ -1552,9 +1552,12 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # container's `__contains__` is a native FREE function, so it renders
         # `(::tpy::name(recv, needle))` instead.
         if e.ranges_contains:
-            # `is_native_in` fallback: a bare `std::ranges::contains(recv,
-            # needle)`, negation a `!` prefix (no outer parens).
-            call = (f"std::ranges::contains({_emit_expr(e.receiver, state)}, "
+            # `is_native_in` fallback: a bare `::tpy::seq_contains(recv,
+            # needle)`, negation a `!` prefix (no outer parens). ONE spelling
+            # for every needle kind: the helper's own legs decide whether
+            # identity is observable, so an open-`T` needle gets the right
+            # answer at each instantiation.
+            call = (f"::tpy::seq_contains({_emit_expr(e.receiver, state)}, "
                     f"{_emit_expr(e.needle, state)})")
             return f"!{call}" if e.negate else call
         if e.iter_loop:
@@ -1758,7 +1761,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # The void-lambda body chain: the plain-print segments (default
         # sep/end literals), no sink/`;` -- the enclosing lambda adds those.
         return "std::cout << " + " << ".join(
-            _print_parts(e.args, '" "', '"\\n"', state))
+            _print_parts([_emit_print_arg(a, state) for a in e.args],
+                         '" "', '"\\n"'))
     if isinstance(e, THIROptionalPtrArg):
         if e.value is None:
             return "nullptr"
@@ -4467,15 +4471,18 @@ def _print_chain_token(expr, value, state: _EmitState) -> 'str | None':
     return cpp_string_literal_expr(value)
 
 
-def _print_parts(args, sep_token: 'str | None', end_token: 'str | None',
-                 state: _EmitState) -> list[str]:
+def _print_parts(arg_cpps: 'list[str]', sep_token: 'str | None',
+                 end_token: 'str | None') -> list[str]:
     """The `<<` chain segments shared by the print statement and the
-    void-lambda THIRPrintChain body, so the two renders cannot drift."""
+    void-lambda THIRPrintChain body, so the two renders cannot drift. Args
+    arrive already rendered: CPython evaluates the positional arguments
+    before the keyword values, and a kwarg temp is created where its
+    expression renders."""
     parts: list[str] = []
-    for i, a in enumerate(args):
+    for i, a in enumerate(arg_cpps):
         if i > 0 and sep_token is not None:
             parts.append(sep_token)
-        parts.append(_emit_print_arg(a, state))
+        parts.append(a)
     if end_token is not None:
         parts.append(end_token)
     return parts
@@ -4487,12 +4494,14 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
     # Default sep=" " between args, end="\n"; empty print() is just the
     # newline.
     indent = INDENT * indent_level
-    # end renders before sep. The order is unobservable while the kwarg gate
-    # admits only literal/plain-name sources (no hoisted temps); revisit it
-    # before widening that gate.
+    # Render order is evaluation order for the hoisted kwarg temps, and
+    # CPython evaluates the positional args first, then the keywords in
+    # source order (the lowering rejects a source that spells end= ahead of
+    # an evaluated sep=).
+    arg_cpps = [_emit_print_arg(a, state) for a in stmt.args]
     sep_token = _print_chain_token(stmt.sep_expr, stmt.sep_value, state)
     end_token = _print_chain_token(stmt.end_expr, stmt.end_value, state)
-    parts = _print_parts(stmt.args, sep_token, end_token, state)
+    parts = _print_parts(arg_cpps, sep_token, end_token)
     if stmt.flush:
         parts.append("std::flush")
     # Args render first: their hoisted temps flush before the cout line.

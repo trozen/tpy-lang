@@ -222,7 +222,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_kwgen::__next__() {
 
 
 // def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
-__gen_kwgen kwgen(::tpy::varargs<const std::vector<int32_t>> xs, std::vector<int32_t>& extra) {
+__gen_kwgen kwgen(::tpy::varargs<const std::vector<int32_t>> xs, const std::vector<int32_t>& extra) {
     return __gen_kwgen(xs, extra);
 }
 

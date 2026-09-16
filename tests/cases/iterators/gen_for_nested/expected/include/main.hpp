@@ -12,21 +12,21 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_matrix;
 
 // def matrix(rows: list[int32], cols: list[int32]) -> Iterator[int32]:
-__gen_matrix matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols);
+__gen_matrix matrix(const std::vector<int32_t>& rows, const std::vector<int32_t>& cols);
 // def main():
 void main();
 
 // def matrix(rows: list[int32], cols: list[int32]) -> Iterator[int32]:
 struct __gen_matrix : public ::tpy::next_iter_mixin<__gen_matrix, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& rows;
-    std::vector<int32_t>& cols;
+    const std::vector<int32_t>& rows;
+    const std::vector<int32_t>& cols;
     int32_t c;
     int32_t r;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_1;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_1;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_1;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -37,7 +37,7 @@ struct __gen_matrix : public ::tpy::next_iter_mixin<__gen_matrix, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols)
+    __gen_matrix(const std::vector<int32_t>& rows, const std::vector<int32_t>& cols)
         : __state(S_INITIAL), rows(rows), cols(cols) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

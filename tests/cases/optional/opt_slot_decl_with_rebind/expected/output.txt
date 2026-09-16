@@ -1,0 +1,4 @@
+literal: after decl 3
+literal: 4
+method: 4
+none arm: 3 3

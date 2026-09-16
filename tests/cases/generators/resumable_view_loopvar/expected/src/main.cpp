@@ -51,7 +51,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_words_gen::__next__() {
 
 
 // def words_gen(words: list[str]) -> Iterator[int32]:
-__gen_words_gen words_gen(std::vector<std::string>& words) {
+__gen_words_gen words_gen(const std::vector<std::string>& words) {
     return __gen_words_gen(words);
 }
 
@@ -102,7 +102,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blobs_gen::__next__() {
 
 
 // def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
-__gen_blobs_gen blobs_gen(std::vector<::tpy::Bytes>& blobs) {
+__gen_blobs_gen blobs_gen(const std::vector<::tpy::Bytes>& blobs) {
     return __gen_blobs_gen(blobs);
 }
 
@@ -157,7 +157,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_pairs_gen::__next__() {
 
 
 // def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
-__gen_pairs_gen pairs_gen(std::vector<std::tuple<std::string, int32_t>>& pairs) {
+__gen_pairs_gen pairs_gen(const std::vector<std::tuple<std::string, int32_t>>& pairs) {
     return __gen_pairs_gen(pairs);
 }
 

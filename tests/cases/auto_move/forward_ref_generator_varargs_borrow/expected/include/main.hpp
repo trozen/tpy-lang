@@ -21,7 +21,7 @@ void main();
 // def gen(*xs: list[int32]) -> Iterator[int32]:
 __gen_gen gen(::tpy::varargs<const std::vector<int32_t>> xs);
 // def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
-__gen_kwgen kwgen(::tpy::varargs<const std::vector<int32_t>> xs, std::vector<int32_t>& extra);
+__gen_kwgen kwgen(::tpy::varargs<const std::vector<int32_t>> xs, const std::vector<int32_t>& extra);
 // def first(*xs: list[int32]) -> list[int32]:
 std::vector<int32_t>& first(::tpy::varargs<std::vector<int32_t>> xs);
 // def forward(*xs: list[int32]) -> list[int32]:
@@ -90,7 +90,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 struct __gen_kwgen : public ::tpy::next_iter_mixin<__gen_kwgen, int32_t> {
     int32_t __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
-    std::vector<int32_t>& extra;
+    const std::vector<int32_t>& extra;
     int32_t n;
     const std::vector<int32_t>* s = nullptr;
     ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
@@ -104,7 +104,7 @@ struct __gen_kwgen : public ::tpy::next_iter_mixin<__gen_kwgen, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_kwgen(::tpy::varargs<const std::vector<int32_t>> xs_, std::vector<int32_t>& extra)
+    __gen_kwgen(::tpy::varargs<const std::vector<int32_t>> xs_, const std::vector<int32_t>& extra)
         : __state(S_INITIAL), xs(std::move(xs_)), extra(extra) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

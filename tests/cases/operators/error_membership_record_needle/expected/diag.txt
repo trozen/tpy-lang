@@ -1,1 +1,0 @@
-main.py:24: error: in function 'has': this construct is not yet supported by C++ code generation (stmt.return:binop.shape.in.record)

@@ -44,7 +44,7 @@ namespace tpyapp::main {
 
 
 // async def total(pairs: list[tuple[Item, Item]]) -> int32:
-__coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
+__coro_total total(const std::vector<std::tuple<Item, Item>>& pairs) {
     return __coro_total(pairs);
 }
 

@@ -44,7 +44,7 @@ std::string poly(const Pet& p);
 // def record(o: Outer) -> str:
 std::string record(const Outer& o);
 // def steps(o: Outer) -> Iterator[int32]:
-__gen_steps steps(Outer& o);
+__gen_steps steps(const Outer& o);
 // def main() -> None:
 void main();
 
@@ -170,7 +170,7 @@ namespace tpyapp::main {
 // def steps(o: Outer) -> Iterator[int32]:
 struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     int32_t __state;
-    Outer& o;
+    const Outer& o;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -181,7 +181,7 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_steps(Outer& o)
+    __gen_steps(const Outer& o)
         : __state(S_INITIAL), o(o) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

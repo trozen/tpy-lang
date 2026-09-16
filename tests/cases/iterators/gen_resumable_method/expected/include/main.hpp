@@ -26,7 +26,7 @@ struct Source {
     Source() = default;
     explicit Source(int32_t base);
 
-    __gen_Source_windowed windowed(std::vector<int32_t>& xs) const;
+    __gen_Source_windowed windowed(const std::vector<int32_t>& xs) const;
 
     __gen_Source_doubled doubled() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Source";
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 struct __gen_Source_windowed : public ::tpy::next_iter_mixin<__gen_Source_windowed, int32_t> {
     ::tpy::frame_state __state;
     const Source& __self;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     int32_t i;
 
     enum : int32_t {
@@ -54,7 +54,7 @@ struct __gen_Source_windowed : public ::tpy::next_iter_mixin<__gen_Source_window
         S_DONE = 6,
     };
 
-    __gen_Source_windowed(const Source& __self, std::vector<int32_t>& xs)
+    __gen_Source_windowed(const Source& __self, const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __self(__self), xs(xs) {}
 
     __gen_Source_windowed(__gen_Source_windowed&&) = default;
@@ -81,7 +81,7 @@ struct __gen_Source_windowed : public ::tpy::next_iter_mixin<__gen_Source_window
     }
 };
 
-inline __gen_Source_windowed Source::windowed(std::vector<int32_t>& xs) const {
+inline __gen_Source_windowed Source::windowed(const std::vector<int32_t>& xs) const {
     return __gen_Source_windowed(*this, xs);
 }
 

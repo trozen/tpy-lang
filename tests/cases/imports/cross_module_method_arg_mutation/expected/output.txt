@@ -1,0 +1,14 @@
+local 1
+field 2
+global 3
+static 4
+class 5
+super 6
+ctor 7
+comp 8
+with 9
+finally 10
+free 11
+gen 12
+async 13
+total 13

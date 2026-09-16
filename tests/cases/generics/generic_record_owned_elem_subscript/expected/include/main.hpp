@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def use_bare[T](src: list[T]) -> Own[Bare[T]]:
 template<typename T>
-Bare<T> use_bare(const std::vector<T>& src);
+Bare<T> use_bare(std::vector<T>& src);
 // def use_owned[T](src: list[T]) -> Own[Owned[T]]:
 template<typename T>
 Owned<T> use_owned(const std::vector<T>& src);
@@ -89,7 +89,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
 //     b = Bare(src[0])  # tpyc: type(/Bare\[T\]/)
 //     return b
 template<typename T>
-Bare<T> use_bare(const std::vector<T>& src) {
+Bare<T> use_bare(std::vector<T>& src) {
     Bare<T> b = Bare<T>(::tpy::__getitem__(src, 0));
     return b;
 }

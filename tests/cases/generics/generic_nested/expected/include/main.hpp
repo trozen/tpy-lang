@@ -49,7 +49,7 @@ struct Container {
     // def __init__(self, value: T) -> None:
     //     self.inner = Box[T](value)
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value) : inner(Box<T>(value)) {}
+    explicit Container(::tpy::param_val_or_ref_t<T> value) : inner(Box<T>(value)) {}
 
     // def get_inner(self) -> Box[T]:
     //     return self.inner

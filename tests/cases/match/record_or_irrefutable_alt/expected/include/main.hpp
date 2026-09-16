@@ -22,9 +22,9 @@ std::string nonfinal(const Cat& c);
 // def opt_inner(o: Optional[Cat]) -> str:
 std::string opt_inner(const Cat* o);
 // def counts(c: Cat) -> Iterator[int32]:
-__gen_counts counts(Cat& c);
+__gen_counts counts(const Cat& c);
 // def counts_ordered(c: Cat, k: bool) -> Iterator[int32]:
-__gen_counts_ordered counts_ordered(Cat& c, bool k);
+__gen_counts_ordered counts_ordered(const Cat& c, bool k);
 // def main() -> None:
 void main();
 
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
 // def counts(c: Cat) -> Iterator[int32]:
 struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, int32_t> {
     int32_t __state;
-    Cat& c;
+    const Cat& c;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -77,7 +77,7 @@ struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_counts(Cat& c)
+    __gen_counts(const Cat& c)
         : __state(S_INITIAL), c(c) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -91,7 +91,7 @@ struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, int32_t> {
 // def counts_ordered(c: Cat, k: bool) -> Iterator[int32]:
 struct __gen_counts_ordered : public ::tpy::next_iter_mixin<__gen_counts_ordered, int32_t> {
     int32_t __state;
-    Cat& c;
+    const Cat& c;
     bool k;
 
     enum : int32_t {
@@ -105,7 +105,7 @@ struct __gen_counts_ordered : public ::tpy::next_iter_mixin<__gen_counts_ordered
         S_DONE = 7,
     };
 
-    __gen_counts_ordered(Cat& c, bool k_)
+    __gen_counts_ordered(const Cat& c, bool k_)
         : __state(S_INITIAL), c(c), k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

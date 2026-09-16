@@ -1,1 +1,1 @@
-main.py:19: error: in function 'work': this construct is not yet supported by C++ code generation (res.nested_def_member)
+main.py:17: error: in function 'work': this construct is not yet supported by C++ code generation (res.nested_def_member)

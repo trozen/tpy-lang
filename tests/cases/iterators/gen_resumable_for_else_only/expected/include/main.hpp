@@ -12,18 +12,18 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen;
 
 // def gen(xs: list[int32], brk: int32) -> Iterator[int32]:
-__gen_gen gen(std::vector<int32_t>& xs, int32_t brk);
+__gen_gen gen(const std::vector<int32_t>& xs, int32_t brk);
 // def main() -> None:
 void main();
 
 // def gen(xs: list[int32], brk: int32) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     int32_t brk;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -35,7 +35,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 6,
     };
 
-    __gen_gen(std::vector<int32_t>& xs, int32_t brk_)
+    __gen_gen(const std::vector<int32_t>& xs, int32_t brk_)
         : __state(S_INITIAL), xs(xs), brk(std::move(brk_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

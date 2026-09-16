@@ -14,7 +14,7 @@ struct __gen_zip_pairs;
 
 // def zip_pairs[K, V](ks: list[K], vs: list[V]) -> Iterator[tuple[K, V]]:  # tpyc: ok
 template <typename K, typename V>
-__gen_zip_pairs<K, V> zip_pairs(std::vector<K>& ks, std::vector<V>& vs);
+__gen_zip_pairs<K, V> zip_pairs(const std::vector<K>& ks, const std::vector<V>& vs);
 // def main() -> None:
 void main();
 
@@ -22,8 +22,8 @@ void main();
 template <typename K, typename V>
 struct __gen_zip_pairs : public ::tpy::next_iter_mixin<__gen_zip_pairs<K, V>, std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>> {
     ::tpy::frame_state __state;
-    std::vector<K>& ks;
-    std::vector<V>& vs;
+    const std::vector<K>& ks;
+    const std::vector<V>& vs;
     int32_t i;
 
     enum : int32_t {
@@ -35,7 +35,7 @@ struct __gen_zip_pairs : public ::tpy::next_iter_mixin<__gen_zip_pairs<K, V>, st
         S_DONE = 5,
     };
 
-    __gen_zip_pairs(std::vector<K>& ks, std::vector<V>& vs)
+    __gen_zip_pairs(const std::vector<K>& ks, const std::vector<V>& vs)
         : __state(S_INITIAL), ks(ks), vs(vs) {}
 
     __gen_zip_pairs(__gen_zip_pairs&&) = default;
@@ -135,7 +135,7 @@ void __gen_zip_pairs<K, V>::__finally_0() {
 
 // def zip_pairs[K, V](ks: list[K], vs: list[V]) -> Iterator[tuple[K, V]]:  # tpyc: ok
 template <typename K, typename V>
-__gen_zip_pairs<K, V> zip_pairs(std::vector<K>& ks, std::vector<V>& vs) {
+__gen_zip_pairs<K, V> zip_pairs(const std::vector<K>& ks, const std::vector<V>& vs) {
     return __gen_zip_pairs<K, V>(ks, vs);
 }
 

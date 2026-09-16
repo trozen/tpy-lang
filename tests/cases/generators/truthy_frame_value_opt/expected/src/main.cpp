@@ -229,7 +229,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
 
 
 // def frame_local(b: Box) -> Iterator[int32]:
-__gen_frame_local frame_local(Box& b) {
+__gen_frame_local frame_local(const Box& b) {
     return __gen_frame_local(b);
 }
 

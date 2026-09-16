@@ -1,1 +1,1 @@
-main.py:16: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.nested_def:nesteddef.name_collision)
+main.py:22: error: Recursive nested functions are not supported. 'helper' cannot call itself

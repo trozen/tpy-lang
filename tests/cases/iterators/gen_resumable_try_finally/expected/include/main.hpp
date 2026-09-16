@@ -12,17 +12,17 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_counted;
 
 // def counted(xs: list[int]) -> Iterator[int]:
-__gen_counted counted(std::vector<::tpy::BigInt>& xs);
+__gen_counted counted(const std::vector<::tpy::BigInt>& xs);
 // def main():
 void main();
 
 // def counted(xs: list[int]) -> Iterator[int]:
 struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, ::tpy::BigInt> {
     ::tpy::frame_state __state;
-    std::vector<::tpy::BigInt>& xs;
+    const std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -33,7 +33,7 @@ struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, ::tpy::BigIn
         S_DONE = 5,
     };
 
-    __gen_counted(std::vector<::tpy::BigInt>& xs)
+    __gen_counted(const std::vector<::tpy::BigInt>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     __gen_counted(__gen_counted&&) = default;

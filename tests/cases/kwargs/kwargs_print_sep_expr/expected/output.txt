@@ -1,0 +1,13 @@
+free: 1-2-3
+free: evals 1
+free: a-|b
+free: tail-!
+method: x->y
+gen: p-%q
+gen: yield 1
+gen: r-%s
+async: u-^v
+closure: w-+x
+try: y-~z
+try: done-
+match: l1-m

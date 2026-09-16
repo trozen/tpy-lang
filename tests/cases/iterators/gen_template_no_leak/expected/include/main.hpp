@@ -29,7 +29,7 @@ __gen_skip_first<T, T_it> skip_first(T_it&& it);
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 __gen_gtakewhile<T, T_it, F_pred> gtakewhile(F_pred&& pred, T_it&& it);
 // def tag(it: list[int32]) -> Iterator[int32]:
-__gen_tag tag(std::vector<int32_t>& it);
+__gen_tag tag(const std::vector<int32_t>& it);
 // def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_first_n<T, T_it> first_n(T_it&& it, int32_t n);
@@ -40,7 +40,7 @@ void main();
 struct Doubler {
 
 
-    __gen_Doubler_each_twice each_twice(std::vector<int32_t>& it) const;
+    __gen_Doubler_each_twice each_twice(const std::vector<int32_t>& it) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Doubler";
 };
 
@@ -212,10 +212,10 @@ __gen_gtakewhile<T, T_it, F_pred> gtakewhile(F_pred&& pred, T_it&& it) {
 // def tag(it: list[int32]) -> Iterator[int32]:
 struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& it;
+    const std::vector<int32_t>& it;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -225,7 +225,7 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_tag(std::vector<int32_t>& it)
+    __gen_tag(const std::vector<int32_t>& it)
         : __state(S_INITIAL), it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -322,10 +322,10 @@ __gen_first_n<T, T_it> first_n(T_it&& it, int32_t n) {
 struct __gen_Doubler_each_twice : public ::tpy::next_iter_mixin<__gen_Doubler_each_twice, int32_t> {
     int32_t __state;
     const Doubler& __self;
-    std::vector<int32_t>& it;
+    const std::vector<int32_t>& it;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -335,7 +335,7 @@ struct __gen_Doubler_each_twice : public ::tpy::next_iter_mixin<__gen_Doubler_ea
         S_DONE = 4,
     };
 
-    __gen_Doubler_each_twice(const Doubler& __self, std::vector<int32_t>& it)
+    __gen_Doubler_each_twice(const Doubler& __self, const std::vector<int32_t>& it)
         : __state(S_INITIAL), __self(__self), it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -346,7 +346,7 @@ struct __gen_Doubler_each_twice : public ::tpy::next_iter_mixin<__gen_Doubler_ea
     }
 };
 
-inline __gen_Doubler_each_twice Doubler::each_twice(std::vector<int32_t>& it) const {
+inline __gen_Doubler_each_twice Doubler::each_twice(const std::vector<int32_t>& it) const {
     return __gen_Doubler_each_twice(*this, it);
 }
 

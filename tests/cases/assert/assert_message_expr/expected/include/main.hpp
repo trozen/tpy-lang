@@ -27,9 +27,9 @@ int32_t check_property(int32_t n, const Error& e);
 // def check_method(n: int32, e: Error) -> int32:
 int32_t check_method(int32_t n, Error& e);
 // def gen(n: int32, e: Error) -> Iterator[int32]:
-__gen_gen gen(int32_t n, Error& e);
+__gen_gen gen(int32_t n, const Error& e);
 // async def coro(n: int32, e: Error) -> int32:
-__coro_coro coro(int32_t n, Error& e);
+__coro_coro coro(int32_t n, const Error& e);
 // def main() -> None:
 void main();
 
@@ -80,7 +80,7 @@ struct __coro_coro {
     int32_t __state;
     bool __cancel_pending;
     int32_t n;
-    Error& e;
+    const Error& e;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -89,7 +89,7 @@ struct __coro_coro {
         S_DONE = 2,
     };
 
-    __coro_coro(int32_t n_, Error& e)
+    __coro_coro(int32_t n_, const Error& e)
         : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)), e(e) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -104,7 +104,7 @@ struct __coro_coro {
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     int32_t n;
-    Error& e;
+    const Error& e;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -112,7 +112,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 2,
     };
 
-    __gen_gen(int32_t n_, Error& e)
+    __gen_gen(int32_t n_, const Error& e)
         : __state(S_INITIAL), n(std::move(n_)), e(e) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

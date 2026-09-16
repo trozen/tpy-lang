@@ -44,7 +44,7 @@ std::expected<bool, ::tpy::StopIteration> __gen_gen_eq::__next__() {
 
 
 // def gen_eq(xs: list[Mixed], ys: list[Mixed]) -> Iterator[bool]:  # generator
-__gen_gen_eq gen_eq(std::vector<Mixed>& xs, std::vector<Mixed>& ys) {
+__gen_gen_eq gen_eq(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
     return __gen_gen_eq(xs, ys);
 }
 
@@ -77,7 +77,7 @@ bool in_closure(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
 
 
 // async def in_async(xs: list[Mixed], ys: list[Mixed]) -> bool:  # async
-__coro_in_async in_async(std::vector<Mixed>& xs, std::vector<Mixed>& ys) {
+__coro_in_async in_async(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
     return __coro_in_async(xs, ys);
 }
 
@@ -254,7 +254,7 @@ int32_t first_n(const std::vector<Pet>& xs) {
 
 
 // async def amain(xs: list[Mixed], ys: list[Mixed]) -> None:
-__coro_amain amain(std::vector<Mixed>& xs, std::vector<Mixed>& ys) {
+__coro_amain amain(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
     return __coro_amain(xs, ys);
 }
 

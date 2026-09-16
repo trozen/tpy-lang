@@ -28,16 +28,16 @@ bool is_small(int32_t n);
 int32_t double_(int32_t n);
 // def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
-__gen_filterfalse<F_pred> filterfalse(F_pred&& pred, std::vector<int32_t>& it);
+__gen_filterfalse<F_pred> filterfalse(F_pred&& pred, const std::vector<int32_t>& it);
 // def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
-__gen_takewhile<F_pred> takewhile(F_pred&& pred, std::vector<int32_t>& it);
+__gen_takewhile<F_pred> takewhile(F_pred&& pred, const std::vector<int32_t>& it);
 // def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
-__gen_tag<F_pred> tag(F_pred&& pred, std::vector<int32_t>& it);
+__gen_tag<F_pred> tag(F_pred&& pred, const std::vector<int32_t>& it);
 // def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
 template <typename F_fn>
-__gen_transform<F_fn> transform(F_fn&& fn, std::vector<int32_t>& it);
+__gen_transform<F_fn> transform(F_fn&& fn, const std::vector<int32_t>& it);
 // def main() -> None:
 void main();
 
@@ -51,7 +51,7 @@ struct Capped {
     explicit Capped(int32_t cap);
 
     template <typename F_pred>
-    __gen_Capped_keep<F_pred> keep(F_pred&& pred, std::vector<int32_t>& it) const;
+    __gen_Capped_keep<F_pred> keep(F_pred&& pred, const std::vector<int32_t>& it) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Capped";
 };
 
@@ -65,10 +65,10 @@ template <typename F_pred>
 struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<F_pred>, int32_t> {
     int32_t __state;
     F_pred pred;
-    std::vector<int32_t>& it;
+    const std::vector<int32_t>& it;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -78,7 +78,7 @@ struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<F_pre
         S_DONE = 4,
     };
 
-    __gen_filterfalse(F_pred&& pred_, std::vector<int32_t>& it)
+    __gen_filterfalse(F_pred&& pred_, const std::vector<int32_t>& it)
         : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -94,10 +94,10 @@ template <typename F_pred>
 struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<F_pred>, int32_t> {
     int32_t __state;
     F_pred pred;
-    std::vector<int32_t>& it;
+    const std::vector<int32_t>& it;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -107,7 +107,7 @@ struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<F_pred>, 
         S_DONE = 4,
     };
 
-    __gen_takewhile(F_pred&& pred_, std::vector<int32_t>& it)
+    __gen_takewhile(F_pred&& pred_, const std::vector<int32_t>& it)
         : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -123,10 +123,10 @@ template <typename F_pred>
 struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag<F_pred>, int32_t> {
     int32_t __state;
     F_pred pred;
-    std::vector<int32_t>& it;
+    const std::vector<int32_t>& it;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -137,7 +137,7 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag<F_pred>, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_tag(F_pred&& pred_, std::vector<int32_t>& it)
+    __gen_tag(F_pred&& pred_, const std::vector<int32_t>& it)
         : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -153,10 +153,10 @@ template <typename F_fn>
 struct __gen_transform : public ::tpy::next_iter_mixin<__gen_transform<F_fn>, int32_t> {
     int32_t __state;
     F_fn fn;
-    std::vector<int32_t>& it;
+    const std::vector<int32_t>& it;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -165,7 +165,7 @@ struct __gen_transform : public ::tpy::next_iter_mixin<__gen_transform<F_fn>, in
         S_DONE = 3,
     };
 
-    __gen_transform(F_fn&& fn_, std::vector<int32_t>& it)
+    __gen_transform(F_fn&& fn_, const std::vector<int32_t>& it)
         : __state(S_INITIAL), fn(std::forward<F_fn>(fn_)), it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -182,11 +182,11 @@ struct __gen_Capped_keep : public ::tpy::next_iter_mixin<__gen_Capped_keep<F_pre
     int32_t __state;
     const Capped& __self;
     F_pred pred;
-    std::vector<int32_t>& it;
+    const std::vector<int32_t>& it;
     int32_t n;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -197,7 +197,7 @@ struct __gen_Capped_keep : public ::tpy::next_iter_mixin<__gen_Capped_keep<F_pre
         S_DONE = 5,
     };
 
-    __gen_Capped_keep(const Capped& __self, F_pred&& pred_, std::vector<int32_t>& it)
+    __gen_Capped_keep(const Capped& __self, F_pred&& pred_, const std::vector<int32_t>& it)
         : __state(S_INITIAL), __self(__self), pred(std::forward<F_pred>(pred_)), it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -209,7 +209,7 @@ struct __gen_Capped_keep : public ::tpy::next_iter_mixin<__gen_Capped_keep<F_pre
 };
 
 template <typename F_pred>
-inline __gen_Capped_keep<F_pred> Capped::keep(F_pred&& pred, std::vector<int32_t>& it) const {
+inline __gen_Capped_keep<F_pred> Capped::keep(F_pred&& pred, const std::vector<int32_t>& it) const {
     return __gen_Capped_keep<F_pred>(*this, std::forward<F_pred>(pred), it);
 }
 

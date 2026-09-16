@@ -18,13 +18,13 @@ std::vector<int32_t> make_list(int32_t n);
 // def get_cells(cells: list[Cell]) -> list[Cell]:
 std::vector<Cell>& get_cells(std::vector<Cell>& cells);
 // def view(items: list[int32]) -> readonly[list[int32]]:
-const std::vector<int32_t>& view(std::vector<int32_t>& items);
+const std::vector<int32_t>& view(const std::vector<int32_t>& items);
 // def own_returns() -> None:
 void own_returns();
 // def bump(cells: list[Cell]) -> None:
 void bump(std::vector<Cell>& cells);
 // def readonly_sum(items: list[int32]) -> int32:
-int32_t readonly_sum(std::vector<int32_t>& items);
+int32_t readonly_sum(const std::vector<int32_t>& items);
 // def main() -> None:
 void main();
 

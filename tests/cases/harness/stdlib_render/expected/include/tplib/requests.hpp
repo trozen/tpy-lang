@@ -867,7 +867,7 @@ inline void CaseInsensitiveDict::__delitem__(std::string_view key) {
 // def __contains__(self, key: str) -> bool:
 //     return key.lower() in self._store
 inline bool CaseInsensitiveDict::__contains__(std::string_view key) const {
-    return std::ranges::contains(this->_store, ::tpy::str_lower(key));
+    return ::tpy::seq_contains(this->_store, ::tpy::str_lower(key));
 }
 
 // def __len__(self) -> int32:
@@ -1069,7 +1069,7 @@ inline void CookieJar::set(std::string_view name, std::string_view value, std::s
 //         return self._store[name].value
 //     raise KeyError(name)
 inline std::string CookieJar::__getitem__(std::string_view name) const {
-    if ((std::ranges::contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)))) {
+    if ((::tpy::seq_contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)))) {
         return ::tpy::__getitem__(this->_store, name).value;
     }
     throw ::tpy::KeyError(name);
@@ -1078,7 +1078,7 @@ inline std::string CookieJar::__getitem__(std::string_view name) const {
 // def __contains__(self, name: str) -> bool:
 //     return name in self._store and not self._store[name].deleted
 inline bool CookieJar::__contains__(std::string_view name) const {
-    return (std::ranges::contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)));
+    return (::tpy::seq_contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)));
 }
 
 // def __len__(self) -> int32:

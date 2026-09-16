@@ -1,0 +1,20 @@
+subscript 1
+subscript 3
+subscript container 3
+field 1
+field 30
+field container 30
+local 4
+local 105
+try 30
+try 1031
+try/finally done
+try container 1031
+value 40
+value 41
+call 1
+call 57
+call container 57
+readonly 70
+readonly 71
+async 123 63

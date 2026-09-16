@@ -40,7 +40,7 @@ inline Bag::Bag() : xs(std::vector<int32_t>{1, 2}) {}
 // def __contains__(self, item: int32) -> bool:
 //     return item in self.xs
 inline bool Bag::__contains__(int32_t item) const {
-    return std::ranges::contains(this->xs, item);
+    return ::tpy::seq_contains(this->xs, item);
 }
 void __tpy_init();
 } // namespace tpyapp::main

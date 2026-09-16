@@ -24,7 +24,7 @@ std::vector<Cell>& get_cells(std::vector<Cell>& cells) {
 
 // def view(items: list[int32]) -> readonly[list[int32]]:
 //     return items
-const std::vector<int32_t>& view(std::vector<int32_t>& items) {
+const std::vector<int32_t>& view(const std::vector<int32_t>& items) {
     return items;
 }
 
@@ -72,7 +72,7 @@ void bump(std::vector<Cell>& cells) {
 //     for y in view(items):
 //         s += y
 //     return s
-int32_t readonly_sum(std::vector<int32_t>& items) {
+int32_t readonly_sum(const std::vector<int32_t>& items) {
     int32_t s = 0;
     auto& __obj_0 = ::tpyapp::main::view(items);
     auto __beg_0 = __obj_0.begin();

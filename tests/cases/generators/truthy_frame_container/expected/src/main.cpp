@@ -146,7 +146,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_drain_dict::__next__() {
 
 
 // def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
-__gen_drain_dict drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int32_t>& order) {
+__gen_drain_dict drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, const std::vector<int32_t>& order) {
     return __gen_drain_dict(d, order);
 }
 
@@ -293,7 +293,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__()
 
 
 // def record_len_branch(g: Bag) -> Iterator[int32]:
-__gen_record_len_branch record_len_branch(Bag& g) {
+__gen_record_len_branch record_len_branch(const Bag& g) {
     return __gen_record_len_branch(g);
 }
 
@@ -331,7 +331,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__(
 
 
 // def record_bool_branch(f: Flag) -> Iterator[int32]:
-__gen_record_bool_branch record_bool_branch(Flag& f) {
+__gen_record_bool_branch record_bool_branch(const Flag& f) {
     return __gen_record_bool_branch(f);
 }
 
@@ -448,7 +448,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__
 
 
 // def plain_record_branch(p: Plain) -> Iterator[int32]:
-__gen_plain_record_branch plain_record_branch(Plain& p) {
+__gen_plain_record_branch plain_record_branch(const Plain& p) {
     return __gen_plain_record_branch(p);
 }
 
@@ -526,7 +526,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
 
 
 // def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
-__gen_and_branch and_branch(std::vector<int32_t>& xs, std::string_view t) {
+__gen_and_branch and_branch(const std::vector<int32_t>& xs, std::string_view t) {
     return __gen_and_branch(xs, t);
 }
 

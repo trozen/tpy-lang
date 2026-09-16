@@ -24,9 +24,9 @@ Node mk(int32_t v);
 // def mk_row(v: int32) -> Own[list[int32]]:
 std::vector<int32_t> mk_row(int32_t v);
 // def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
-__gen_fresh_records fresh_records(std::vector<Node>& src);
+__gen_fresh_records fresh_records(const std::vector<Node>& src);
 // def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
-__gen_fresh_rows fresh_rows(std::vector<std::vector<int32_t>>& src);
+__gen_fresh_rows fresh_rows(const std::vector<std::vector<int32_t>>& src);
 // def main() -> None:
 void main();
 
@@ -92,10 +92,10 @@ struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, Node> {
 // def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
 struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, Node> {
     int32_t __state;
-    std::vector<Node>& src;
-    Node* p = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+    const std::vector<Node>& src;
+    const Node* p = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -105,7 +105,7 @@ struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, 
         S_DONE = 4,
     };
 
-    __gen_fresh_records(std::vector<Node>& src)
+    __gen_fresh_records(const std::vector<Node>& src)
         : __state(S_INITIAL), src(src) {}
 
     std::expected<Node, ::tpy::StopIteration> __next__();
@@ -119,10 +119,10 @@ struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, 
 // def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
 struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::vector<int32_t>> {
     int32_t __state;
-    std::vector<std::vector<int32_t>>& src;
-    std::vector<int32_t>* r = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
+    const std::vector<std::vector<int32_t>>& src;
+    const std::vector<int32_t>* r = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -132,7 +132,7 @@ struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::v
         S_DONE = 4,
     };
 
-    __gen_fresh_rows(std::vector<std::vector<int32_t>>& src)
+    __gen_fresh_rows(const std::vector<std::vector<int32_t>>& src)
         : __state(S_INITIAL), src(src) {}
 
     std::expected<std::vector<int32_t>, ::tpy::StopIteration> __next__();

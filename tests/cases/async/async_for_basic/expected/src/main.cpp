@@ -63,7 +63,7 @@ namespace tpyapp::main {
 
 
 // async def total(c: Counts) -> int:
-__coro_total total(Counts& c) {
+__coro_total total(const Counts& c) {
     return __coro_total(c);
 }
 

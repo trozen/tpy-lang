@@ -52,7 +52,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
 
 
 // def matrix(rows: list[int32], cols: list[int32]) -> Iterator[int32]:
-__gen_matrix matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols) {
+__gen_matrix matrix(const std::vector<int32_t>& rows, const std::vector<int32_t>& cols) {
     return __gen_matrix(rows, cols);
 }
 

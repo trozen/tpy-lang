@@ -48,7 +48,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag::__next__() {
 
 
 // def tag(it: list[int32]) -> Iterator[int32]:
-__gen_tag tag(std::vector<int32_t>& it) {
+__gen_tag tag(const std::vector<int32_t>& it) {
     return __gen_tag(it);
 }
 

@@ -72,7 +72,7 @@ __coro_outer outer(int32_t n) {
 
 
 // async def borrowing(xs: list[int32]) -> int32:  # tpyc: frame_send(no)
-__coro_borrowing borrowing(std::vector<int32_t>& xs) {
+__coro_borrowing borrowing(const std::vector<int32_t>& xs) {
     return __coro_borrowing(xs);
 }
 

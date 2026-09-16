@@ -19,7 +19,7 @@ struct __coro_main;
 struct __coro_Counter___anext__;
 
 // async def sum_evens(c: Counts) -> int:
-__coro_sum_evens sum_evens(Counts& c);
+__coro_sum_evens sum_evens(const Counts& c);
 // async def main() -> None:
 __coro_main main();
 
@@ -92,7 +92,7 @@ inline __coro_Counter___anext__ Counter::__anext__() {
 struct __coro_sum_evens {
     int32_t __state;
     bool __cancel_pending;
-    Counts& c;
+    const Counts& c;
     int32_t total;
     ::tpy::BigInt x;
     ::tpy::frame_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
@@ -107,7 +107,7 @@ struct __coro_sum_evens {
         S_DONE = 5,
     };
 
-    __coro_sum_evens(Counts& c)
+    __coro_sum_evens(const Counts& c)
         : __state(S_INITIAL), __cancel_pending(false), c(c) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);

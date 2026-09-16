@@ -42,9 +42,9 @@ int32_t ro_values(const ::tpy::ordered_map<int32_t, int32_t>& d);
 // def ro_items(d: readonly[dict[int32, int32]]) -> int32:
 int32_t ro_items(const ::tpy::ordered_map<int32_t, int32_t>& d);
 // def framegen(xs: list[int32]) -> Iterator[int32]:
-__gen_framegen framegen(std::vector<int32_t>& xs);
+__gen_framegen framegen(const std::vector<int32_t>& xs);
 // async def aio(xs: list[int32]) -> int32:
-__coro_aio aio(std::vector<int32_t>& xs);
+__coro_aio aio(const std::vector<int32_t>& xs);
 // @error_return(Err)
 // def fallible(d: dict[int32, int32]) -> int32:
 std::expected<int32_t, Err> fallible(const ::tpy::ordered_map<int32_t, int32_t>& d);
@@ -138,7 +138,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 struct __coro_aio {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -147,7 +147,7 @@ struct __coro_aio {
         S_DONE = 2,
     };
 
-    __coro_aio(std::vector<int32_t>& xs)
+    __coro_aio(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -258,7 +258,7 @@ struct __gen_four : public ::tpy::next_iter_mixin<__gen_four, int32_t> {
 // def framegen(xs: list[int32]) -> Iterator[int32]:
 struct __gen_framegen : public ::tpy::next_iter_mixin<__gen_framegen, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -268,7 +268,7 @@ struct __gen_framegen : public ::tpy::next_iter_mixin<__gen_framegen, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_framegen(std::vector<int32_t>& xs)
+    __gen_framegen(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

@@ -127,7 +127,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 
 
 // def gen(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
+__gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     return __gen_gen(pairs);
 }
 
@@ -174,7 +174,7 @@ __gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 
 
 // async def coro(pairs: list[tuple[int32, int32]]) -> int32:
-__coro_coro coro(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
+__coro_coro coro(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     return __coro_coro(pairs);
 }
 

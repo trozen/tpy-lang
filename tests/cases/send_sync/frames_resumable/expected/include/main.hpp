@@ -30,7 +30,7 @@ __coro_inner inner(int32_t n);
 // async def outer(n: int32) -> int32:     # tpyc: frame_send(yes)
 __coro_outer outer(int32_t n);
 // async def borrowing(xs: list[int32]) -> int32:  # tpyc: frame_send(no)
-__coro_borrowing borrowing(std::vector<int32_t>& xs);
+__coro_borrowing borrowing(const std::vector<int32_t>& xs);
 // async def chained(n: int32) -> int32:   # tpyc: frame_send(no)
 __coro_chained chained(int32_t n);
 // def gen_while(n: int32) -> Iterator[int32]:     # tpyc: frame_send(yes)
@@ -143,14 +143,14 @@ struct __coro_outer {
 struct __coro_borrowing {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_borrowing(std::vector<int32_t>& xs)
+    __coro_borrowing(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);

@@ -4,9 +4,7 @@
 # collision is an unaudited hazard and keeps its own located reject even
 # without the recursion or pre-def read the sync lambda form needs. Its own
 # case because the compiler stops at the first error, so the generator case
-# cannot also carry this position. The sync half of the same shadow rule is
-# BUGS.md#nested-def-shadow-resolves-to-shadowed-callable, whose sema fix does
-# NOT close this frame-member reject.
+# cannot also carry this position.
 import asyncio
 
 from tpy import int32

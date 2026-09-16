@@ -27,13 +27,13 @@ struct Grid {
 
     // def copy(self) -> Own[Grid[T, N]]:
     //     return Grid[T, N](self._value)
-    Grid<T, N> copy() const {
+    Grid<T, N> copy() {
         return Grid<T, N>(this->_value);
     }
 
     // def with_value(self, value: T) -> Own[Grid[T, N]]:
     //     return Grid[T, N](value)
-    Grid<T, N> with_value(::tpy::readonly_form_t<T> value) const {
+    Grid<T, N> with_value(::tpy::param_val_or_ref_t<T> value) const {
         return Grid<T, N>(value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";

@@ -72,7 +72,7 @@ struct __gen_peephole_or;
 // def drain_list(xs: list[int32]) -> Iterator[int32]:
 __gen_drain_list drain_list(std::vector<int32_t>& xs);
 // def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
-__gen_drain_dict drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int32_t>& order);
+__gen_drain_dict drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, const std::vector<int32_t>& order);
 // def drain_set(s: set[int32]) -> Iterator[int32]:
 __gen_drain_set drain_set(::tpy::ordered_set<int32_t>& s);
 // def str_branch(t: str) -> Iterator[int32]:
@@ -80,19 +80,19 @@ __gen_str_branch str_branch(std::string_view t);
 // def bytes_branch(b: bytes) -> Iterator[int32]:
 __gen_bytes_branch bytes_branch(::tpy::BytesView b);
 // def record_len_branch(g: Bag) -> Iterator[int32]:
-__gen_record_len_branch record_len_branch(Bag& g);
+__gen_record_len_branch record_len_branch(const Bag& g);
 // def record_bool_branch(f: Flag) -> Iterator[int32]:
-__gen_record_bool_branch record_bool_branch(Flag& f);
+__gen_record_bool_branch record_bool_branch(const Flag& f);
 // def enum_branch(c: Color) -> Iterator[int32]:
 __gen_enum_branch enum_branch(Color c);
 // def int_enum_branch(lv: Level) -> Iterator[int32]:
 __gen_int_enum_branch int_enum_branch(Level lv);
 // def plain_record_branch(p: Plain) -> Iterator[int32]:
-__gen_plain_record_branch plain_record_branch(Plain& p);
+__gen_plain_record_branch plain_record_branch(const Plain& p);
 // def any_branch(v: Any) -> Iterator[int32]:
 __gen_any_branch any_branch(::tpy::Any v);
 // def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
-__gen_and_branch and_branch(std::vector<int32_t>& xs, std::string_view t);
+__gen_and_branch and_branch(const std::vector<int32_t>& xs, std::string_view t);
 // def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
 __gen_peephole_or peephole_or(std::vector<int32_t>& xs, std::string_view t);
 // def main() -> None:
@@ -185,7 +185,7 @@ struct __gen_drain_list : public ::tpy::next_iter_mixin<__gen_drain_list, int32_
 struct __gen_drain_dict : public ::tpy::next_iter_mixin<__gen_drain_dict, int32_t> {
     int32_t __state;
     ::tpy::ordered_map<int32_t, int32_t>& d;
-    std::vector<int32_t>& order;
+    const std::vector<int32_t>& order;
     int32_t i;
 
     enum : int32_t {
@@ -195,7 +195,7 @@ struct __gen_drain_dict : public ::tpy::next_iter_mixin<__gen_drain_dict, int32_
         S_DONE = 3,
     };
 
-    __gen_drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int32_t>& order)
+    __gen_drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, const std::vector<int32_t>& order)
         : __state(S_INITIAL), d(d), order(order) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -280,7 +280,7 @@ struct __gen_bytes_branch : public ::tpy::next_iter_mixin<__gen_bytes_branch, in
 // def record_len_branch(g: Bag) -> Iterator[int32]:
 struct __gen_record_len_branch : public ::tpy::next_iter_mixin<__gen_record_len_branch, int32_t> {
     int32_t __state;
-    Bag& g;
+    const Bag& g;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -290,7 +290,7 @@ struct __gen_record_len_branch : public ::tpy::next_iter_mixin<__gen_record_len_
         S_DONE = 4,
     };
 
-    __gen_record_len_branch(Bag& g)
+    __gen_record_len_branch(const Bag& g)
         : __state(S_INITIAL), g(g) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -304,7 +304,7 @@ struct __gen_record_len_branch : public ::tpy::next_iter_mixin<__gen_record_len_
 // def record_bool_branch(f: Flag) -> Iterator[int32]:
 struct __gen_record_bool_branch : public ::tpy::next_iter_mixin<__gen_record_bool_branch, int32_t> {
     int32_t __state;
-    Flag& f;
+    const Flag& f;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -314,7 +314,7 @@ struct __gen_record_bool_branch : public ::tpy::next_iter_mixin<__gen_record_boo
         S_DONE = 4,
     };
 
-    __gen_record_bool_branch(Flag& f)
+    __gen_record_bool_branch(const Flag& f)
         : __state(S_INITIAL), f(f) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -376,7 +376,7 @@ struct __gen_int_enum_branch : public ::tpy::next_iter_mixin<__gen_int_enum_bran
 // def plain_record_branch(p: Plain) -> Iterator[int32]:
 struct __gen_plain_record_branch : public ::tpy::next_iter_mixin<__gen_plain_record_branch, int32_t> {
     int32_t __state;
-    Plain& p;
+    const Plain& p;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -386,7 +386,7 @@ struct __gen_plain_record_branch : public ::tpy::next_iter_mixin<__gen_plain_rec
         S_DONE = 4,
     };
 
-    __gen_plain_record_branch(Plain& p)
+    __gen_plain_record_branch(const Plain& p)
         : __state(S_INITIAL), p(p) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -424,7 +424,7 @@ struct __gen_any_branch : public ::tpy::next_iter_mixin<__gen_any_branch, int32_
 // def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
 struct __gen_and_branch : public ::tpy::next_iter_mixin<__gen_and_branch, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     std::string t;
 
     enum : int32_t {
@@ -435,7 +435,7 @@ struct __gen_and_branch : public ::tpy::next_iter_mixin<__gen_and_branch, int32_
         S_DONE = 4,
     };
 
-    __gen_and_branch(std::vector<int32_t>& xs, std::string_view t_)
+    __gen_and_branch(const std::vector<int32_t>& xs, std::string_view t_)
         : __state(S_INITIAL), xs(xs), t(std::string(t_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

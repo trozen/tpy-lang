@@ -21,9 +21,9 @@ struct __gen_post_continue;
 struct __gen_Limiter_first_positives;
 
 // def take(items: list[int32], n: int32) -> Iterator[int32]:
-__gen_take take(std::vector<int32_t>& items, int32_t n);
+__gen_take take(const std::vector<int32_t>& items, int32_t n);
 // def evens(items: list[int32]) -> Iterator[int32]:
-__gen_evens evens(std::vector<int32_t>& items);
+__gen_evens evens(const std::vector<int32_t>& items);
 // def stride() -> Iterator[int32]:
 __gen_stride stride();
 // def upto_range(n: int32) -> Iterator[int32]:
@@ -31,9 +31,9 @@ __gen_upto_range upto_range(int32_t n);
 // def upto_while() -> Iterator[int32]:
 __gen_upto_while upto_while();
 // def iter_post_break(items: list[int32]) -> Iterator[int32]:
-__gen_iter_post_break iter_post_break(std::vector<int32_t>& items);
+__gen_iter_post_break iter_post_break(const std::vector<int32_t>& items);
 // def post_continue(items: list[int32]) -> Iterator[int32]:
-__gen_post_continue post_continue(std::vector<int32_t>& items);
+__gen_post_continue post_continue(const std::vector<int32_t>& items);
 // def main() -> None:
 void main();
 
@@ -46,7 +46,7 @@ struct Limiter {
     Limiter() = default;
     explicit Limiter(int32_t limit);
 
-    __gen_Limiter_first_positives first_positives(std::vector<int32_t>& items) const;
+    __gen_Limiter_first_positives first_positives(const std::vector<int32_t>& items) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Limiter";
 };
 
@@ -58,12 +58,12 @@ inline std::ostream& operator<<(std::ostream& os, const Limiter& obj) {
 // def take(items: list[int32], n: int32) -> Iterator[int32]:
 struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t n;
     int32_t i;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -73,7 +73,7 @@ struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_take(std::vector<int32_t>& items, int32_t n_)
+    __gen_take(const std::vector<int32_t>& items, int32_t n_)
         : __state(S_INITIAL), items(items), n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -87,10 +87,10 @@ struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
 // def evens(items: list[int32]) -> Iterator[int32]:
 struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -99,7 +99,7 @@ struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_evens(std::vector<int32_t>& items)
+    __gen_evens(const std::vector<int32_t>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -191,10 +191,10 @@ struct __gen_upto_while : public ::tpy::next_iter_mixin<__gen_upto_while, int32_
 // def iter_post_break(items: list[int32]) -> Iterator[int32]:
 struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_break, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -204,7 +204,7 @@ struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_bre
         S_DONE = 4,
     };
 
-    __gen_iter_post_break(std::vector<int32_t>& items)
+    __gen_iter_post_break(const std::vector<int32_t>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -218,10 +218,10 @@ struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_bre
 // def post_continue(items: list[int32]) -> Iterator[int32]:
 struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -230,7 +230,7 @@ struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, 
         S_DONE = 3,
     };
 
-    __gen_post_continue(std::vector<int32_t>& items)
+    __gen_post_continue(const std::vector<int32_t>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -245,11 +245,11 @@ struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, 
 struct __gen_Limiter_first_positives : public ::tpy::next_iter_mixin<__gen_Limiter_first_positives, int32_t> {
     int32_t __state;
     const Limiter& __self;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t c;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -259,7 +259,7 @@ struct __gen_Limiter_first_positives : public ::tpy::next_iter_mixin<__gen_Limit
         S_DONE = 4,
     };
 
-    __gen_Limiter_first_positives(const Limiter& __self, std::vector<int32_t>& items)
+    __gen_Limiter_first_positives(const Limiter& __self, const std::vector<int32_t>& items)
         : __state(S_INITIAL), __self(__self), items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -270,7 +270,7 @@ struct __gen_Limiter_first_positives : public ::tpy::next_iter_mixin<__gen_Limit
     }
 };
 
-inline __gen_Limiter_first_positives Limiter::first_positives(std::vector<int32_t>& items) const {
+inline __gen_Limiter_first_positives Limiter::first_positives(const std::vector<int32_t>& items) const {
     return __gen_Limiter_first_positives(*this, items);
 }
 

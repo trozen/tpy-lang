@@ -46,7 +46,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 
 
 // def gen(items: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& items) {
+__gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& items) {
     return __gen_gen(items);
 }
 

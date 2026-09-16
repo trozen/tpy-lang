@@ -1,10 +1,9 @@
 # A nested def that shadows a module function and carries a LAMBDA PARAM of
-# the same name. The param binds only inside the lambda, so the nested body
-# does not own the name and the read outside the lambda still resolves to the
-# module function (CPython reaches the nested def and prints 201) -- the shadow
-# gate must stay on. The reject tag names the first landmark construct inside
-# the rejected statement, hence `expr.lambda`
-# (BUGS.md#nested-def-shadow-resolves-to-shadowed-callable).
+# the same name. The param binds only inside the lambda, so the read outside it
+# is still the nested def's own name and meets the recursion diagnostic -- the
+# "no recursive nested defs" restriction under Lambda / Closures in
+# docs/LANGUAGE_FEATURES.md, which a sub-scope binding of the same name must
+# not switch off.
 from typing import Callable
 
 from tpy import int32
@@ -15,13 +14,12 @@ def helper(x: int32) -> int32:
 
 
 def main() -> None:
-    # the `helper(x + 200)` read is OUTSIDE the lambda's scope; the reject is
-    # on the def
-    def helper(x: int32) -> int32:  # tpyc: error(/expr\.lambda/)
+    def helper(x: int32) -> int32:
         if x > 100:
             return x
         step: Callable[[int32], int32] = lambda helper: helper + 1
-        return helper(x + 200) + step(0) - 1
+        # this read is OUTSIDE the lambda's scope, so it is the nested def
+        return helper(x + 200) + step(0) - 1  # tpyc: error(/Recursive nested functions are not supported/)
 
     print(helper(1))
 

@@ -28,7 +28,7 @@ struct __gen_Src_gen;
 // def val_scalar() -> Iterator[int32]:
 __gen_val_scalar val_scalar();
 // def val_str(words: list[str]) -> Iterator[int]:
-__gen_val_str val_str(std::vector<std::string>& words);
+__gen_val_str val_str(const std::vector<std::string>& words);
 // def make_pair(i: int32) -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> make_pair(int32_t i);
 // def val_tuple() -> Iterator[int32]:
@@ -142,7 +142,7 @@ struct __gen_val_scalar : public ::tpy::next_iter_mixin<__gen_val_scalar, int32_
 // def val_str(words: list[str]) -> Iterator[int]:
 struct __gen_val_str : public ::tpy::next_iter_mixin<__gen_val_str, ::tpy::BigInt> {
     int32_t __state;
-    std::vector<std::string>& words;
+    const std::vector<std::string>& words;
     int32_t i;
     std::string s;
 
@@ -154,7 +154,7 @@ struct __gen_val_str : public ::tpy::next_iter_mixin<__gen_val_str, ::tpy::BigIn
         S_DONE = 4,
     };
 
-    __gen_val_str(std::vector<std::string>& words)
+    __gen_val_str(const std::vector<std::string>& words)
         : __state(S_INITIAL), words(words) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();

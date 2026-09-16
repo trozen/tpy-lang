@@ -640,6 +640,10 @@ class ExpressionAnalyzer:
         # for the never-consumed warning.
         self.ctx.func.unread_coro_locals.pop(expr.name, None)
 
+        # Before the namespace walk, which reaches the module level: a nested
+        # def's name is a local of this scope from its start.
+        self.ctx.check_nested_def_shadowed_read(expr.name, expr)
+
         # No ephemeral-borrow closure-capture check is needed: an escaping closure
         # is Callable-typed and captures by value (copies the borrow's value -- safe),
         # while a by-reference Fn-typed closure is inline / non-escaping (used within

@@ -417,7 +417,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_ends::__next__() {
 
 
 // def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
-__gen_ends ends(std::vector<int32_t>& xs) {
+__gen_ends ends(const std::vector<int32_t>& xs) {
     return __gen_ends(xs);
 }
 
@@ -555,7 +555,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
 
 
 // def outer_comp(src: list[int32]) -> Iterator[int32]:
-__gen_outer_comp outer_comp(std::vector<int32_t>& src) {
+__gen_outer_comp outer_comp(const std::vector<int32_t>& src) {
     return __gen_outer_comp(src);
 }
 
@@ -614,7 +614,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__()
 
 
 // def outer_comp_method(src: list[int32]) -> Iterator[int32]:
-__gen_outer_comp_method outer_comp_method(std::vector<int32_t>& src) {
+__gen_outer_comp_method outer_comp_method(const std::vector<int32_t>& src) {
     return __gen_outer_comp_method(src);
 }
 
@@ -920,7 +920,7 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
 
 
 // async def outer_async_recv(src: list[int32]) -> int32:
-__coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src) {
+__coro_outer_async_recv outer_async_recv(const std::vector<int32_t>& src) {
     return __coro_outer_async_recv(src);
 }
 

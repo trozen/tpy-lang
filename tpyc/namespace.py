@@ -143,6 +143,10 @@ class Namespace:
         """
         self._bindings.pop(name, None)
 
+    def has_local(self, name: str) -> bool:
+        """True when THIS level binds `name`, parents excluded."""
+        return name in self._bindings
+
     def lookup(self, name: str) -> Optional[NameBinding]:
         """Look up a name in this namespace and its parents.
 

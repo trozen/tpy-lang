@@ -49,7 +49,7 @@ struct Outer {
     // def __init__(self, v: T) -> None:
     //     self._in = Inner[T](v)
     Outer() = default;
-    explicit Outer(::tpy::readonly_form_t<T> v) : _in(Inner<T>(v)) {}
+    explicit Outer(::tpy::param_val_or_ref_t<T> v) : _in(Inner<T>(v)) {}
 
     // def put(self, value: T) -> None:
     //     self._in.put(value)  # tpyc: ok -- both sides spell the same open T

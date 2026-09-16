@@ -50,7 +50,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_take::__next__() {
 
 
 // def take(items: list[int32], n: int32) -> Iterator[int32]:
-__gen_take take(std::vector<int32_t>& items, int32_t n) {
+__gen_take take(const std::vector<int32_t>& items, int32_t n) {
     return __gen_take(items, n);
 }
 
@@ -92,7 +92,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
 
 
 // def evens(items: list[int32]) -> Iterator[int32]:
-__gen_evens evens(std::vector<int32_t>& items) {
+__gen_evens evens(const std::vector<int32_t>& items) {
     return __gen_evens(items);
 }
 
@@ -282,7 +282,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_iter_post_break::__next__() {
 
 
 // def iter_post_break(items: list[int32]) -> Iterator[int32]:
-__gen_iter_post_break iter_post_break(std::vector<int32_t>& items) {
+__gen_iter_post_break iter_post_break(const std::vector<int32_t>& items) {
     return __gen_iter_post_break(items);
 }
 
@@ -328,7 +328,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_post_continue::__next__() {
 
 
 // def post_continue(items: list[int32]) -> Iterator[int32]:
-__gen_post_continue post_continue(std::vector<int32_t>& items) {
+__gen_post_continue post_continue(const std::vector<int32_t>& items) {
     return __gen_post_continue(items);
 }
 

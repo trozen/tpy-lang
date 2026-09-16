@@ -76,7 +76,7 @@ __coro_opt_branch opt_branch(std::optional<int32_t> v) {
 
 
 // async def list_branch(xs: list[int32]) -> int32:
-__coro_list_branch list_branch(std::vector<int32_t>& xs) {
+__coro_list_branch list_branch(const std::vector<int32_t>& xs) {
     return __coro_list_branch(xs);
 }
 
@@ -162,7 +162,7 @@ __coro_str_while str_while(std::string_view t) {
 
 
 // async def and_branch(xs: list[int32], v: int32 | None) -> int32:
-__coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v) {
+__coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32_t> v) {
     return __coro_and_branch(xs, v);
 }
 

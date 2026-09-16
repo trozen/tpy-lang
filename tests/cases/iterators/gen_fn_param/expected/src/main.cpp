@@ -60,7 +60,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filterfalse<F_pred>::__next__
 
 // def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
-__gen_filterfalse<F_pred> filterfalse(F_pred&& pred, std::vector<int32_t>& it) {
+__gen_filterfalse<F_pred> filterfalse(F_pred&& pred, const std::vector<int32_t>& it) {
     return __gen_filterfalse<F_pred>(std::forward<F_pred>(pred), it);
 }
 
@@ -109,7 +109,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_takewhile<F_pred>::__next__()
 
 // def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
-__gen_takewhile<F_pred> takewhile(F_pred&& pred, std::vector<int32_t>& it) {
+__gen_takewhile<F_pred> takewhile(F_pred&& pred, const std::vector<int32_t>& it) {
     return __gen_takewhile<F_pred>(std::forward<F_pred>(pred), it);
 }
 
@@ -162,7 +162,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
 
 // def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
-__gen_tag<F_pred> tag(F_pred&& pred, std::vector<int32_t>& it) {
+__gen_tag<F_pred> tag(F_pred&& pred, const std::vector<int32_t>& it) {
     return __gen_tag<F_pred>(std::forward<F_pred>(pred), it);
 }
 
@@ -201,7 +201,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_transform<F_fn>::__next__() {
 
 // def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
 template <typename F_fn>
-__gen_transform<F_fn> transform(F_fn&& fn, std::vector<int32_t>& it) {
+__gen_transform<F_fn> transform(F_fn&& fn, const std::vector<int32_t>& it) {
     return __gen_transform<F_fn>(std::forward<F_fn>(fn), it);
 }
 

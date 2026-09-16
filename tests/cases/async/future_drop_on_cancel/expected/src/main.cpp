@@ -99,7 +99,7 @@ __coro_main_coro main_coro() {
 //     print("count:", len(dropped))
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
-    if (std::ranges::contains((*dropped), "payload")) {
+    if (::tpy::seq_contains((*dropped), "payload")) {
         std::cout << "dropped:" << " " << "payload" << "\n";
     }
     std::cout << "count:" << " " << ::tpy::__len__((*dropped)) << "\n";

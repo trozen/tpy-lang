@@ -661,27 +661,6 @@ def _is_type_param_slot(t: 'TpyType | int | None') -> bool:
     return isinstance(t, TpyType) and isinstance(
         unwrap_readonly(unwrap_ref_type(t)), TypeParamRef)
 
-def _tparam_arg_bound_ok(arg_t: 'TpyType | None', slot: 'TpyType | None',
-                         bounds: 'dict | None', slot_bounds: 'dict | None',
-                         analyzer) -> bool:
-    """Does a TYPE-PARAM argument's own bound satisfy the resolved overload's
-    type-param slot bound?
-
-    Sema picks one overload for the whole template, so an UNBOUNDED caller
-    param gets the same pick a bounded one does -- `int32(x)` under a bare
-    `[T]` resolves to the `[T: AnyFixedInt]` __init__ and expands its
-    fixed-int cast at an `int` or `str` instantiation, where the monomorphic
-    spelling would have picked the BigInt or parse overload. The caller's
-    bound is what says the pick holds at every instantiation, and
-    `satisfies_bound` is the fact sema checks an explicit type argument
-    with."""
-    ab = _bounded_tparam_protocol(arg_t, bounds)
-    sb = _bounded_tparam_protocol(slot, slot_bounds)
-    if ab is None or sb is None:
-        return False
-    return ab == sb or analyzer.protocols.satisfies_bound(ab, sb)
-
-
 def _type_param_value_slot(t: 'TpyType | None') -> bool:
     """A DECL slot spelled as a BARE TYPE-kind type-param (`T newitem = ...;`
     inside a `[T]` template). Borrow and storage form coincide here because
@@ -4151,7 +4130,7 @@ def _res_container_return(t: TpyType | None, analyzer) -> 'TpyType | None':
 def _plain_container_read(t: TpyType | None) -> bool:
     """A plain (non-`Own`) reference-form container read at a position where
     the bare read IS the whole render -- the for-head, whose begin()/end() are taken
-    off it directly, and the `std::ranges::contains` haystack. `Own` is
+    off it directly, and the `::tpy::seq_contains` haystack. `Own` is
     excluded: a consuming iteration moves the container
     (`own_iter(std::move(..))`), a different render."""
     if t is None:
@@ -7215,7 +7194,7 @@ def _unbound_self_field_decl_type(e: TpyExpr, analyzer) -> 'TpyType | None':
 def _container_field_bare_read(e: TpyExpr, declared: dict[str, TpyType],
                                analyzer) -> bool:
     """A container FIELD read whose bare member render IS the whole
-    argument -- the `std::ranges::contains` haystack and the callable-field
+    argument -- the `::tpy::seq_contains` haystack and the callable-field
     call's `T&` arg slot. The caller witnesses its own face; DECLARED-type
     keyed so a narrowed Optional-container read (which unwraps) stays
     out."""

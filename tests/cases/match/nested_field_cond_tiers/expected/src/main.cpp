@@ -110,7 +110,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
 
 
 // def steps(o: Outer) -> Iterator[int32]:
-__gen_steps steps(Outer& o) {
+__gen_steps steps(const Outer& o) {
     return __gen_steps(o);
 }
 

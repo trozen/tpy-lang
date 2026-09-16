@@ -119,7 +119,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_counts::__next__() {
 
 
 // def counts(c: Cat) -> Iterator[int32]:
-__gen_counts counts(Cat& c) {
+__gen_counts counts(const Cat& c) {
     return __gen_counts(c);
 }
 
@@ -192,7 +192,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_counts_ordered::__next__() {
 
 
 // def counts_ordered(c: Cat, k: bool) -> Iterator[int32]:
-__gen_counts_ordered counts_ordered(Cat& c, bool k) {
+__gen_counts_ordered counts_ordered(const Cat& c, bool k) {
     return __gen_counts_ordered(c, k);
 }
 

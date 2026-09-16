@@ -12,19 +12,19 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_multi;
 
 // def multi(items: list[int32], n: int32) -> Iterator[int32]:
-__gen_multi multi(std::vector<int32_t>& items, int32_t n);
+__gen_multi multi(const std::vector<int32_t>& items, int32_t n);
 // def main():
 void main();
 
 // def multi(items: list[int32], n: int32) -> Iterator[int32]:
 struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t n;
     int32_t x;
     int32_t i;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
     ::tpy::frame_slot<int32_t> __for_i_1;
     ::tpy::frame_slot<int32_t> __for_stop_1;
 
@@ -40,7 +40,7 @@ struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
         S_DONE = 8,
     };
 
-    __gen_multi(std::vector<int32_t>& items, int32_t n_)
+    __gen_multi(const std::vector<int32_t>& items, int32_t n_)
         : __state(S_INITIAL), items(items), n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

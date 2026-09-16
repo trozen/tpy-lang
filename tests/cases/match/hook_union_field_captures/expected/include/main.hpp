@@ -28,9 +28,9 @@ __gen_guarded guarded(::tpy::Union<const Cat*, const Dog*> a);
 // def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[int32]:
 __gen_guarded_cond guarded_cond(::tpy::Union<const Cat*, const Dog*> a, bool flag);
 // def nested(h: Holder) -> Iterator[int32]:
-__gen_nested nested(Holder& h);
+__gen_nested nested(const Holder& h);
 // def nested_shadow(h: Holder) -> Iterator[int32]:
-__gen_nested_shadow nested_shadow(Holder& h);
+__gen_nested_shadow nested_shadow(const Holder& h);
 // async def a_guarded(a: Cat | Dog) -> int32:
 __coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a);
 // async def amain() -> None:
@@ -195,7 +195,7 @@ struct __gen_guarded_cond : public ::tpy::next_iter_mixin<__gen_guarded_cond, in
 // def nested(h: Holder) -> Iterator[int32]:
 struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
     int32_t __state;
-    Holder& h;
+    const Holder& h;
     int32_t v;
 
     enum : int32_t {
@@ -207,7 +207,7 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_nested(Holder& h)
+    __gen_nested(const Holder& h)
         : __state(S_INITIAL), h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -221,7 +221,7 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
 // def nested_shadow(h: Holder) -> Iterator[int32]:
 struct __gen_nested_shadow : public ::tpy::next_iter_mixin<__gen_nested_shadow, int32_t> {
     int32_t __state;
-    Holder& h;
+    const Holder& h;
     ::tpy::frame_slot<Cat> pet;
     int32_t v;
 
@@ -235,7 +235,7 @@ struct __gen_nested_shadow : public ::tpy::next_iter_mixin<__gen_nested_shadow, 
         S_DONE = 6,
     };
 
-    __gen_nested_shadow(Holder& h)
+    __gen_nested_shadow(const Holder& h)
         : __state(S_INITIAL), h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

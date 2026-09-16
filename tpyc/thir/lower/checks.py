@@ -6,7 +6,7 @@ predictively traverse a body or expression before lowering.
 
 from __future__ import annotations
 import math
-from collections.abc import Set as AbstractSet
+from collections.abc import Sequence, Set as AbstractSet
 from dataclasses import field, replace
 from typing import Callable, NamedTuple
 from ...parse.nodes import (
@@ -15119,8 +15119,12 @@ def _print_kwarg_token(
     for a str literal (empty -> None: the token is skipped entirely,
     the chain_token short-circuit); ("name", None) for a resolved
     str/StrView NAME, which renders bare (no special arm fires for a
-    plain str local/param). Anything else is
-    unrouted; the caller lowers a "name" source immediately."""
+    plain str local/param); ("expr", None) for any other str-valued
+    expression, which the caller hoists into a temp -- the chain repeats the
+    sep token once per gap, so an in-place render would evaluate it N-1
+    times. A StrView-typed expression is excluded: the hoisted binding
+    outlives the full expression the view may point into. Anything else is
+    unrouted; the caller lowers a "name"/"expr" source immediately."""
     if isinstance(kv, TpyStrLiteral):
         return ("literal", kv.value or None)
     if (isinstance(kv, TpyName)
@@ -15129,7 +15133,34 @@ def _print_kwarg_token(
             and _resolved_str_value(declared.get(kv.name), analyzer)
             is not None):
         return ("name", None)
+    resolved = _resolved_str_value(analyzer.get_expr_type(kv), analyzer)
+    if resolved is not None and not is_str_view_type(resolved):
+        return ("expr", None)
     return None
+
+
+def _expr_evaluation_inert(exprs: 'Sequence[TpyExpr]',
+                           declared: dict[str, TpyType], analyzer) -> bool:
+    """Does evaluating every one of these expressions produce nothing
+    observable? A literal, a name read and a marker-free member read do
+    not; every other shape can run user code (a call, a property read, an
+    element read that panics). The question is about EVALUATION ORDER: an
+    arm that reorders the evaluation of a list of expressions may do so
+    only when none of them can be observed running.
+
+    Its print caller is the concrete instance -- CPython evaluates the
+    positional args BEFORE the keyword values, while the chain evaluates an
+    inline arg after the hoisted kwarg temp, so an evaluated kwarg is
+    admitted only over inert args; the order of a side-effecting print
+    ARGUMENT is already wrong (BUGS.md#subexpression-right-to-left-eval),
+    and the gate keeps that defect from gaining a new shape. The str
+    conversions happen inside the chain in both languages, so a record NAME
+    whose `__str__` has side effects keeps CPython's order."""
+    return all(isinstance(a, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+                              TpyBytesLiteral, TpyBoolLiteral, TpyNoneLiteral,
+                              TpyName))
+               or _field_receiver_ok(a, declared, analyzer)
+               for a in exprs)
 
 def _print_tuple_record_elem(a: TpyExpr, locals_: dict[str, TpyType],
                              storage_tuple_locals: 'AbstractSet[str]',

@@ -47,7 +47,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
 
 
 // def counts(a: Cat, b: Cat) -> Iterator[int]:
-__gen_counts counts(Cat& a, Cat& b) {
+__gen_counts counts(const Cat& a, const Cat& b) {
     return __gen_counts(a, b);
 }
 

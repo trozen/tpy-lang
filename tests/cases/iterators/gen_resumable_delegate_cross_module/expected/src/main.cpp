@@ -165,7 +165,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__next__() {
 
 
 // def imported_method(s: Src) -> Iterator[int32]:
-__gen_imported_method imported_method(::tpyapp::gensrc::Src& s) {
+__gen_imported_method imported_method(const ::tpyapp::gensrc::Src& s) {
     return __gen_imported_method(s);
 }
 

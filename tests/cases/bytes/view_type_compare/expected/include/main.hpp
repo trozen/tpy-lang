@@ -26,7 +26,7 @@ void sort_bytes(std::vector<::tpy::Bytes>& xs);
 // def hashes(a: bytes) -> None:
 void hashes(::tpy::BytesView a);
 // def matching(names: list[bytes], want: bytes) -> Iterator[bytes]:
-__gen_matching matching(std::vector<::tpy::Bytes>& names, ::tpy::BytesView want);
+__gen_matching matching(const std::vector<::tpy::Bytes>& names, ::tpy::BytesView want);
 // def first_is[T: Comparable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Comparable T>
 bool first_is(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
@@ -103,11 +103,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // def matching(names: list[bytes], want: bytes) -> Iterator[bytes]:
 struct __gen_matching : public ::tpy::next_iter_mixin<__gen_matching, ::tpy::Bytes> {
     int32_t __state;
-    std::vector<::tpy::Bytes>& names;
+    const std::vector<::tpy::Bytes>& names;
     ::tpy::Bytes want;
     ::tpy::Bytes n;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::Bytes>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::Bytes>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -117,7 +117,7 @@ struct __gen_matching : public ::tpy::next_iter_mixin<__gen_matching, ::tpy::Byt
         S_DONE = 4,
     };
 
-    __gen_matching(std::vector<::tpy::Bytes>& names, ::tpy::BytesView want_)
+    __gen_matching(const std::vector<::tpy::Bytes>& names, ::tpy::BytesView want_)
         : __state(S_INITIAL), names(names), want(::tpy::Bytes(want_)) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
@@ -153,7 +153,7 @@ inline bool Entry::has_tag(::tpy::BytesView tag) const {
 // def __contains__(self, tag: bytes) -> bool:
 //     return tag in self.tags or tag == self.name  # tpyc: ok
 inline bool Entry::__contains__(::tpy::BytesView tag) const {
-    return (std::ranges::contains(this->tags, tag) || (tag == this->name));
+    return (::tpy::seq_contains(this->tags, tag) || (tag == this->name));
 }
 
 // # user __contains__ whose slot OWNS the argument: a literal needle keeps

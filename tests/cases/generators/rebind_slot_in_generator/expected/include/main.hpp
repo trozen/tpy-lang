@@ -19,7 +19,7 @@ struct __gen_before_while_after_drain;
 // def decl_inside_while(n: int32) -> Iterator[int32]:
 __gen_decl_inside_while decl_inside_while(int32_t n);
 // def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
-__gen_decl_inside_for decl_inside_for(std::vector<int32_t>& xs);
+__gen_decl_inside_for decl_inside_for(const std::vector<int32_t>& xs);
 // def before_while(n: int32) -> Iterator[int32]:
 __gen_before_while before_while(int32_t n);
 // def before_while_after_drain(n: int32) -> Iterator[int32]:
@@ -74,11 +74,11 @@ struct __gen_decl_inside_while : public ::tpy::next_iter_mixin<__gen_decl_inside
 // def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
 struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_for, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     int32_t v;
     ::tpy::frame_slot<Point> p;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -87,7 +87,7 @@ struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_f
         S_DONE = 3,
     };
 
-    __gen_decl_inside_for(std::vector<int32_t>& xs)
+    __gen_decl_inside_for(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

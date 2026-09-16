@@ -17,7 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def get_global() -> Expr:
 Expr& get_global();
 // def first_view(e: Expr) -> readonly[Expr]:
-const Expr& first_view(Expr& e);
+const Expr& first_view(const Expr& e);
 // def build() -> Own[Expr]:
 Expr build();
 // def main() -> None:

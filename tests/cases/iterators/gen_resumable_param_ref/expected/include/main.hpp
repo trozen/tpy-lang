@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_first_two;
 
 // def first_two(xs: list[int32]) -> Iterator[int32]:
-__gen_first_two first_two(std::vector<int32_t>& xs);
+__gen_first_two first_two(const std::vector<int32_t>& xs);
 // def main() -> None:
 void main();
 
 // def first_two(xs: list[int32]) -> Iterator[int32]:
 struct __gen_first_two : public ::tpy::next_iter_mixin<__gen_first_two, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -28,7 +28,7 @@ struct __gen_first_two : public ::tpy::next_iter_mixin<__gen_first_two, int32_t>
         S_DONE = 3,
     };
 
-    __gen_first_two(std::vector<int32_t>& xs)
+    __gen_first_two(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

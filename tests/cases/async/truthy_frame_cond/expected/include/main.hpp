@@ -21,11 +21,11 @@ struct __coro_main_async;
 // async def opt_branch(v: int32 | None) -> int32:
 __coro_opt_branch opt_branch(std::optional<int32_t> v);
 // async def list_branch(xs: list[int32]) -> int32:
-__coro_list_branch list_branch(std::vector<int32_t>& xs);
+__coro_list_branch list_branch(const std::vector<int32_t>& xs);
 // async def str_while(t: str) -> int32:
 __coro_str_while str_while(std::string_view t);
 // async def and_branch(xs: list[int32], v: int32 | None) -> int32:
-__coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v);
+__coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32_t> v);
 // async def main_async() -> None:
 __coro_main_async main_async();
 
@@ -57,7 +57,7 @@ struct __coro_opt_branch {
 struct __coro_list_branch {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -66,7 +66,7 @@ struct __coro_list_branch {
         S_DONE = 2,
     };
 
-    __coro_list_branch(std::vector<int32_t>& xs)
+    __coro_list_branch(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -107,7 +107,7 @@ struct __coro_str_while {
 struct __coro_and_branch {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     std::optional<int32_t> v;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -117,7 +117,7 @@ struct __coro_and_branch {
         S_DONE = 2,
     };
 
-    __coro_and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v_)
+    __coro_and_branch(const std::vector<int32_t>& xs, std::optional<int32_t> v_)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs), v(std::move(v_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);

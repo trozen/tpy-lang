@@ -28,7 +28,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_first_two::__next__() {
 
 
 // def first_two(xs: list[int32]) -> Iterator[int32]:
-__gen_first_two first_two(std::vector<int32_t>& xs) {
+__gen_first_two first_two(const std::vector<int32_t>& xs) {
     return __gen_first_two(xs);
 }
 

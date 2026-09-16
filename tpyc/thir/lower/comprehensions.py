@@ -1243,8 +1243,9 @@ def _lower_comprehension(
         # `std::optional<P>` and registers like the for-STATEMENT container
         # leg, including the const twin (a const-bound source's consumers
         # spell `const P*`). A dict-VIEW iterable tracks its RECEIVER's
-        # const-ness -- `_iteration_yields_const` has no method-call arm, so
-        # probe the receiver.
+        # const-ness. The hop is taken HERE, for ANY method call, where the
+        # predicate's own arm takes it only for a borrowing-view return --
+        # BUGS.md#comp-storage-opt-const-any-method-recv.
         _cs_src = (gen.iterable.obj
                    if isinstance(gen.iterable, TpyMethodCall)
                    else gen.iterable)
@@ -1476,20 +1477,6 @@ def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
     return ", ".join(parts) + ", "
 
 
-def _module_global_names(lc: '_LowerCtx') -> frozenset:
-    """Every module-global name lowering seeded into `declared`. They are
-    namespace-scope objects, so a lambda names them directly instead of
-    capturing them."""
-    return (frozenset(lc.prescan.global_readonly)
-            | frozenset(lc.prescan.global_slots)
-            | frozenset(lc.prescan.global_cpp)
-            | frozenset(lc.prescan.global_write_cpp)
-            # A `global`-declared name and a native-linkage global are
-            # namespace-scope too: capturing either is ill-formed C++.
-            | frozenset(lc.prescan.global_seeded)
-            | frozenset(lc.prescan.native_globals))
-
-
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                    declared: dict[str, TpyType]) -> THIRGenExpr:
     """Lower a generator expression to the make_generator render: the
@@ -1648,7 +1635,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         # backing array that dies with the IIFE. Self-describe it with the
         # resolved container type (`std::array<int32_t, 4>{1, 2, 3, 4}`).
         iterable = replace(iterable, typed_brace_cpp=lc.render_type(it_type))
-    mod_globals = _module_global_names(lc)
+    mod_globals = lc.prescan.namespace_scope_names()
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
                                        lc.self_receiver, mod_globals,
@@ -1740,7 +1727,7 @@ def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
                                        lc.self_receiver,
-                                       _module_global_names(lc),
+                                       lc.prescan.namespace_scope_names(),
                                        narrow=lc.narrow)
     var_cpp = escape_cpp_name(gen.var)
     binding_cpp = (f"{counter_cpp} {var_cpp} = __i++;" if len(it.args) <= 2

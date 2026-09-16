@@ -26,18 +26,18 @@ namespace tpyapp::main {
 //         print("30 not in list: no")
 void test_list_membership() {
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
-    if (std::ranges::contains(nums, 30)) {
+    if (::tpy::seq_contains(nums, 30)) {
         std::cout << "30 in list: yes" << "\n";
     }
-    if (std::ranges::contains(nums, 99)) {
+    if (::tpy::seq_contains(nums, 99)) {
         std::cout << "99 in list: yes" << "\n";
     } else {
         std::cout << "99 in list: no" << "\n";
     }
-    if (!std::ranges::contains(nums, 99)) {
+    if (!::tpy::seq_contains(nums, 99)) {
         std::cout << "99 not in list: yes" << "\n";
     }
-    if (!std::ranges::contains(nums, 30)) {
+    if (!::tpy::seq_contains(nums, 30)) {
         std::cout << "30 not in list: yes" << "\n";
     } else {
         std::cout << "30 not in list: no" << "\n";
@@ -59,15 +59,15 @@ void test_list_membership() {
 //         print("5 not in array: yes")
 void test_array_membership() {
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
-    if (std::ranges::contains(arr, 3)) {
+    if (::tpy::seq_contains(arr, 3)) {
         std::cout << "3 in array: yes" << "\n";
     }
-    if (std::ranges::contains(arr, 5)) {
+    if (::tpy::seq_contains(arr, 5)) {
         std::cout << "5 in array: yes" << "\n";
     } else {
         std::cout << "5 in array: no" << "\n";
     }
-    if (!std::ranges::contains(arr, 5)) {
+    if (!::tpy::seq_contains(arr, 5)) {
         std::cout << "5 not in array: yes" << "\n";
     }
 }
@@ -76,7 +76,7 @@ void test_array_membership() {
 //     """Test membership for Span[int32]."""
 //     return value in data
 bool check_span_contains(std::span<int32_t> data, int32_t value) {
-    return std::ranges::contains(data, value);
+    return ::tpy::seq_contains(data, value);
 }
 
 // def test_span_membership() -> None:
@@ -173,13 +173,13 @@ void test_string_membership() {
 //         print("1 in and 99 not in list")
 void test_membership_in_conditions() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    if ((std::ranges::contains(nums, 2) && std::ranges::contains(nums, 4))) {
+    if ((::tpy::seq_contains(nums, 2) && ::tpy::seq_contains(nums, 4))) {
         std::cout << "both 2 and 4 in list" << "\n";
     }
-    if ((std::ranges::contains(nums, 10) || std::ranges::contains(nums, 3))) {
+    if ((::tpy::seq_contains(nums, 10) || ::tpy::seq_contains(nums, 3))) {
         std::cout << "10 or 3 in list" << "\n";
     }
-    if ((std::ranges::contains(nums, 1) && !std::ranges::contains(nums, 99))) {
+    if ((::tpy::seq_contains(nums, 1) && !::tpy::seq_contains(nums, 99))) {
         std::cout << "1 in and 99 not in list" << "\n";
     }
 }
@@ -198,10 +198,10 @@ void test_membership_with_variables() {
     std::vector<int32_t> nums = {5, 10, 15, 20};
     int32_t target = 10;
     int32_t missing = 7;
-    if (std::ranges::contains(nums, target)) {
+    if (::tpy::seq_contains(nums, target)) {
         std::cout << "target found" << "\n";
     }
-    if (!std::ranges::contains(nums, missing)) {
+    if (!::tpy::seq_contains(nums, missing)) {
         std::cout << "missing not found" << "\n";
     }
 }

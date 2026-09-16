@@ -18,10 +18,10 @@ struct __gen_each_twice;
 
 // def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_each<T> each(std::vector<T>& xs);
+__gen_each<T> each(const std::vector<T>& xs);
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_each_twice<T> each_twice(std::vector<T>& xs);
+__gen_each_twice<T> each_twice(const std::vector<T>& xs);
 // def total(xs: Iterable[Own[int32]]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs);
@@ -57,10 +57,10 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 template <typename T>
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, T> {
     int32_t __state;
-    std::vector<T>& xs;
-    T* x = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+    const std::vector<T>& xs;
+    const T* x = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<T>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<T>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -69,7 +69,7 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, T> {
         S_DONE = 3,
     };
 
-    __gen_each(std::vector<T>& xs)
+    __gen_each(const std::vector<T>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
@@ -112,7 +112,7 @@ std::expected<T, ::tpy::StopIteration> __gen_each<T>::__next__() {
 
 // def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_each<T> each(std::vector<T>& xs) {
+__gen_each<T> each(const std::vector<T>& xs) {
     return __gen_each<T>(xs);
 }
 
@@ -120,10 +120,10 @@ __gen_each<T> each(std::vector<T>& xs) {
 template <typename T>
 struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> {
     int32_t __state;
-    std::vector<T>& xs;
-    T* x = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+    const std::vector<T>& xs;
+    const T* x = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<T>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<T>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -133,7 +133,7 @@ struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> 
         S_DONE = 4,
     };
 
-    __gen_each_twice(std::vector<T>& xs)
+    __gen_each_twice(const std::vector<T>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
@@ -183,7 +183,7 @@ std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
 
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_each_twice<T> each_twice(std::vector<T>& xs) {
+__gen_each_twice<T> each_twice(const std::vector<T>& xs) {
     return __gen_each_twice<T>(xs);
 }
 

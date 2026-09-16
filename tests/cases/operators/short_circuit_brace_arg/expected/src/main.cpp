@@ -116,7 +116,7 @@ std::expected<int64_t, ::tpy::StopIteration> __gen_gen::__next__() {
 
 
 // def gen(o: list[int64]) -> Iterator[int64]:
-__gen_gen gen(std::vector<int64_t>& o) {
+__gen_gen gen(const std::vector<int64_t>& o) {
     return __gen_gen(o);
 }
 

@@ -80,7 +80,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_yield::__next_
 
 
 // def gen_with_yield(xs: list[int]) -> Iterator[int]:
-__gen_gen_with_yield gen_with_yield(std::vector<::tpy::BigInt>& xs) {
+__gen_gen_with_yield gen_with_yield(const std::vector<::tpy::BigInt>& xs) {
     return __gen_gen_with_yield(xs);
 }
 

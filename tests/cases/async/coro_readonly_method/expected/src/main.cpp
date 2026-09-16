@@ -74,7 +74,7 @@ __coro_driver driver() {
 
 // # Regression: guards two fixes that interlock at the same emit site.
 // # (1) `compute_body_const_sets` populates `const_ref_params={'self'}`
-// #     for @readonly async methods so `iteration_yields_const` fires for
+// #     for @readonly async methods so the frame's const-source verdict fires for
 // #     `self.field` -> loop var binds as `const auto& it` (const ref).
 // # (2) `frame_field_shadows` suppresses the `(*it)` peel that would
 // #     otherwise misfire because sema added `it` to `generator_locals`

@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen;
 
 // def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
-__gen_gen gen(std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs);
+__gen_gen gen(const std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs);
 // def main() -> None:
 void main();
 
@@ -37,12 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 // def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
-    std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs;
+    const std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs;
     std::tuple<std::optional<P>, std::optional<P>> __for_tup_0;
     P* a = nullptr;
     P* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<std::optional<P>, std::optional<P>>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<std::optional<P>, std::optional<P>>>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<std::optional<P>, std::optional<P>>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<std::optional<P>, std::optional<P>>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -54,7 +54,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 6,
     };
 
-    __gen_gen(std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs)
+    __gen_gen(const std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs)
         : __state(S_INITIAL), pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

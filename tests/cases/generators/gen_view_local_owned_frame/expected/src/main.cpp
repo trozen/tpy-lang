@@ -84,7 +84,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
 
 
 // def dict_keys(d: dict[str, int32]) -> Iterator[str]:
-__gen_dict_keys dict_keys(::tpy::ordered_map<std::string, int32_t>& d) {
+__gen_dict_keys dict_keys(const ::tpy::ordered_map<std::string, int32_t>& d) {
     return __gen_dict_keys(d);
 }
 
@@ -132,7 +132,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
 
 
 // def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
-__gen_blob_slices blob_slices(std::vector<::tpy::Bytes>& blobs) {
+__gen_blob_slices blob_slices(const std::vector<::tpy::Bytes>& blobs) {
     return __gen_blob_slices(blobs);
 }
 

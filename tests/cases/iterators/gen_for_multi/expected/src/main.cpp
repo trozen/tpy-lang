@@ -67,7 +67,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
 
 
 // def multi(items: list[int32], n: int32) -> Iterator[int32]:
-__gen_multi multi(std::vector<int32_t>& items, int32_t n) {
+__gen_multi multi(const std::vector<int32_t>& items, int32_t n) {
     return __gen_multi(items, n);
 }
 

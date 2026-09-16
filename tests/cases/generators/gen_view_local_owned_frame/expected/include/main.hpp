@@ -19,9 +19,9 @@ std::tuple<std::string, std::string> pair(int32_t n);
 // def unpack_across_yield() -> Iterator[int32]:
 __gen_unpack_across_yield unpack_across_yield();
 // def dict_keys(d: dict[str, int32]) -> Iterator[str]:
-__gen_dict_keys dict_keys(::tpy::ordered_map<std::string, int32_t>& d);
+__gen_dict_keys dict_keys(const ::tpy::ordered_map<std::string, int32_t>& d);
 // def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
-__gen_blob_slices blob_slices(std::vector<::tpy::Bytes>& blobs);
+__gen_blob_slices blob_slices(const std::vector<::tpy::Bytes>& blobs);
 // def static_sources() -> Iterator[int32]:
 __gen_static_sources static_sources();
 // def main() -> None:
@@ -54,10 +54,10 @@ struct __gen_unpack_across_yield : public ::tpy::next_iter_mixin<__gen_unpack_ac
 // def dict_keys(d: dict[str, int32]) -> Iterator[str]:
 struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::string> {
     int32_t __state;
-    ::tpy::ordered_map<std::string, int32_t>& d;
+    const ::tpy::ordered_map<std::string, int32_t>& d;
     std::string k;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::ordered_map<std::string, int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::ordered_map<std::string, int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -67,7 +67,7 @@ struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::str
         S_DONE = 4,
     };
 
-    __gen_dict_keys(::tpy::ordered_map<std::string, int32_t>& d)
+    __gen_dict_keys(const ::tpy::ordered_map<std::string, int32_t>& d)
         : __state(S_INITIAL), d(d) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
@@ -81,11 +81,11 @@ struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::str
 // def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
 struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int32_t> {
     int32_t __state;
-    std::vector<::tpy::Bytes>& blobs;
+    const std::vector<::tpy::Bytes>& blobs;
     ::tpy::Bytes total;
     ::tpy::Bytes b;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::Bytes>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::Bytes>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -96,7 +96,7 @@ struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int3
         S_DONE = 5,
     };
 
-    __gen_blob_slices(std::vector<::tpy::Bytes>& blobs)
+    __gen_blob_slices(const std::vector<::tpy::Bytes>& blobs)
         : __state(S_INITIAL), blobs(blobs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

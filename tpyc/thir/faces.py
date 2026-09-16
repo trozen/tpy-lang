@@ -865,6 +865,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # sep=/end= on an argument-less print: the chain is the end token alone
     # (`print(end="")` suppresses it and emits nothing).
     "print.kw_no_args",
+    # An EVALUATED sep=/end= source: the `const auto& __tmp_N` the repeated
+    # chain token reads.
+    "print.kw_expr",
     # `return self` at an Optional[Self] ptr-opt return: the bare `this`.
     "ret.ptr_opt_self",
     "ret.ptr_opt_ptr_name",         # a Ptr[T] local at the ptr-opt return
@@ -1406,6 +1409,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.closure_ref",              # `return double;` -- a bare func-ref name
                                     # at a Callable return slot
     "ret.tuple_call",               # `return make_pair(n);` -- bare call source
+    # `return t if f else u` -- the C++ conditional over two value tuples
+    "ret.tuple_ternary",
     # Value-repr Optional[cheap scalar] return slot (`-> int32 | None`): the
     # None-literal `std::nullopt` arm and the whole-optional bare param pass
     # (deref-on-narrow stripped); other scalar sources ride the generic tail.
@@ -1504,8 +1509,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`await self.evt` -> `__sub_0 = &(__self.evt);`): the bare member
     # read; the skeleton owns the `&(..)` wrap.
     "field.suspend_borrow",
-    # A CONTAINER field as the `std::ranges::contains` haystack
-    # (`item in self.xs` -> `std::ranges::contains(this->xs, item)`).
+    # A CONTAINER field as the `::tpy::seq_contains` haystack
+    # (`item in self.xs` -> `::tpy::seq_contains(this->xs, item)`).
     "binop.membership_container_field",
     # A str-family FIELD source at a RESUMABLE str return slot: the bare
     # member read feeds the `<ret_cpp> __tpy_async_ret = <value>;` decl.
@@ -1592,9 +1597,13 @@ THIR_FACES: frozenset[str] = frozenset({
     # A value-tuple needle in a tuple-keyed dict/set membership
     # (`(1, 2) in d`): the spelled tuple render inside contains(...).
     "binop.contains_tuple_needle",
-    # An open-T needle at ranges::contains (`key in self._data` on
+    # An open-T needle at sequence containment (`key in self._data` on
     # dict[T, int] inside the generic body).
     "binop.contains_tparam_needle",
+    # A user-RECORD needle at containment (`p in item.pts` on list[Point]):
+    # admitted because the record's identity is observable, which the
+    # `::tpy::seq_contains` render every needle kind shares tests for.
+    "binop.contains_record_needle",
     # A list comp at a union value slot with a unique list member: the
     # comp lowers against the member (the asdict list recursion).
     "comp.union_member_source",
@@ -2406,7 +2415,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.user_membership",
     # native-set membership with no resolved __contains__ member (a
     # `readonly[set]`) -> the `is_native_in` fallback
-    # `[!]std::ranges::contains(s, x)`.
+    # `[!]::tpy::seq_contains(s, x)`.
     "binop.set_ranges_membership",
     # bytes/BytesView membership (`needle in b` -> the native free-function
     # `::tpy::bytes_contains[_sub](b, needle)`, single-byte vs substring form).
@@ -3060,6 +3069,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.unpack_union_elem",        # value-tuple call source with a value-
                                     # union element at the frame unpack
     "res.unpack_opt_ptr",           # optional_to_ptr unpack target bind
+    "res.unpack_storage_wrap",      # alias frame targets off a storage-form
+                                    # lvalue: tuple_to_pointer off the lvalue
+                                    # (never a by-value holder copy)
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
     "res.frame_own_tuple_literal",  # literal at a fully-owned frame slot

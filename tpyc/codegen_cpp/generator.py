@@ -678,7 +678,7 @@ class CodeGenerator:
             if func.skip_codegen:
                 continue
             if func.is_generator:
-                if self._resumable_generator_eligible(func):
+                if self._resumable_generator_eligible(func, None):
                     # Generator lowered onto the resumable frame. Non-template
                     # generators emit the __next__ body + factory here in the
                     # .cpp; templated ones (generic / protocol-typed params)
@@ -724,7 +724,7 @@ class CodeGenerator:
                     # methods emit the __next__ body + finally-top in the .cpp
                     # (templated ones emit inline next to the struct in the
                     # .hpp, see below).
-                    if (self._resumable_generator_eligible(method)
+                    if (self._resumable_generator_eligible(method, record.name)
                             and not self.gen_async._is_templated_coro(method, record.name)):
                         with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                             self.gen_async.gen_coro_poll_def(
@@ -795,7 +795,8 @@ class CodeGenerator:
 
         return hpp.getvalue(), cpp.getvalue()
 
-    def _resumable_generator_eligible(self, func: "TpyFunction") -> bool:
+    def _resumable_generator_eligible(self, func: "TpyFunction",
+                                      record_name: str | None) -> bool:
         """Gate for routing a generator (free function OR method) through
         the resumable state-machine emitter (`gen_async`). For a generator
         it returns True or raises a clean diagnostic -- there is no other
@@ -811,16 +812,20 @@ class CodeGenerator:
 
         The decision is memoized on the func: the gate is consulted from
         several orchestration passes, and building the CFG per call would be
-        wasteful.
+        wasteful. `record_name` is therefore required, not defaulted: the
+        first caller's value fixes the frame's const verdicts and field
+        spellings for every later one, and an omitted owner resolves them off
+        a same-named free function (or off nothing).
         """
         state = resumable_state(func)
         if state.gen_eligible is not None:
             return state.gen_eligible
-        result = self._compute_resumable_generator_eligible(func)
+        result = self._compute_resumable_generator_eligible(func, record_name)
         state.gen_eligible = result
         return result
 
-    def _compute_resumable_generator_eligible(self, func: "TpyFunction") -> bool:
+    def _compute_resumable_generator_eligible(
+            self, func: "TpyFunction", record_name: str | None) -> bool:
         # Generic generators (explicit `[T]` type params) are eligible: the
         # resumable emitter is template-aware (struct + __next__ + factory
         # emitted inline in the header for templated coros, exactly like
@@ -842,7 +847,7 @@ class CodeGenerator:
         # CodeGenError for any shape the resumable lowering can't handle, so a
         # residual unsupported shape surfaces as a diagnostic rather than a
         # silent miscompile.
-        self.gen_async._build_resumable_cfg(func)
+        self.gen_async._build_resumable_cfg(func, record_name)
         return True
 
     @staticmethod
@@ -928,7 +933,7 @@ class CodeGenerator:
             # the sites that resolve each callee (prescans + the await payload
             # factory). Build is memoized and self-seeds its scope, so forcing
             # it here only moves work the emit loop below would do anyway.
-            self.gen_async._build_resumable_cfg(f, rn if is_async else None)
+            self.gen_async._build_resumable_cfg(f, rn)
             edges = list(resumable_state(f).frame_dep_units)
             edges.extend(self.gen_generators._for_src_generator_targets(f))
             edges.extend(self._bound_coro_frame_targets(f))
@@ -986,7 +991,7 @@ class CodeGenerator:
         inline out-of-class factory for methods). Non-templated bodies are
         emitted later in the .cpp pass."""
         if record_name is None:
-            if self._resumable_generator_eligible(func):
+            if self._resumable_generator_eligible(func, None):
                 with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                     self.gen_async.gen_coro_struct(hpp, func)
                     # Templated generators: __next__ body + factory must be
@@ -1002,7 +1007,7 @@ class CodeGenerator:
                         self.gen_async.gen_factory(hpp, func)
             hpp.write("\n")
             return
-        if self._resumable_generator_eligible(func):
+        if self._resumable_generator_eligible(func, record_name):
             with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                 self.gen_async.gen_coro_struct(
                     hpp, func, record_name=record_name)
@@ -1416,7 +1421,7 @@ class CodeGenerator:
     def _gen_function_forward_decl(self, hpp: TextIO, func: TpyFunction) -> bool:
         """Emit the callable's declaration at either signature scheduling point."""
         if func.is_generator:
-            if not self._resumable_generator_eligible(func):
+            if not self._resumable_generator_eligible(func, None):
                 return False
             with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                 return self.gen_async.gen_factory_forward_decl(hpp, func)
@@ -1575,7 +1580,7 @@ class CodeGenerator:
             if func.skip_codegen:
                 continue
             if func.is_generator:
-                if self._resumable_generator_eligible(func):
+                if self._resumable_generator_eligible(func, None):
                     with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                         self.gen_async.gen_coro_forward_decl(hpp, func)
                 emitted_gen_fwd = True
@@ -1586,7 +1591,7 @@ class CodeGenerator:
         for record in module.all_records():
             for method in record.methods:
                 if method.is_generator:
-                    if self._resumable_generator_eligible(method):
+                    if self._resumable_generator_eligible(method, record.name):
                         with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                             self.gen_async.gen_coro_forward_decl(
                                 hpp, method, record_name=record.name)

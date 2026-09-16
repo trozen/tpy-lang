@@ -3,9 +3,8 @@
 # mutates): the lift spells `const T*` element pointers. The mutating
 # twin is in the same case so the two spellings sit side by side -- there the
 # unpacked element ALIASES the container, and the write is read back through
-# the container to prove it is not a copy. The resumable positions are NOT
-# covered: a frame unpack of the same source copies the tuple into a case
-# block and points the frame field into it (BUGS.md#frame-tuple-unpack-elem-copy).
+# the container to prove it is not a copy. The resumable twin of the same
+# lift is `generators/frame_unpack_ref_elem_lift`.
 from tpy import int32
 
 

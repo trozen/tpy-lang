@@ -85,15 +85,15 @@ __coro_bump_async bump_async(std::span<int32_t> s);
 // async def run_bump() -> int32:
 __coro_run_bump run_bump();
 // def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
-__gen_ends ends(std::vector<int32_t>& xs);
+__gen_ends ends(const std::vector<int32_t>& xs);
 // def outer_for() -> Iterator[str]:
 __gen_outer_for outer_for();
 // def outer_span() -> Iterator[int32]:
 __gen_outer_span outer_span();
 // def outer_comp(src: list[int32]) -> Iterator[int32]:
-__gen_outer_comp outer_comp(std::vector<int32_t>& src);
+__gen_outer_comp outer_comp(const std::vector<int32_t>& src);
 // def outer_comp_method(src: list[int32]) -> Iterator[int32]:
-__gen_outer_comp_method outer_comp_method(std::vector<int32_t>& src);
+__gen_outer_comp_method outer_comp_method(const std::vector<int32_t>& src);
 // def outer_fstring(n: int32) -> Iterator[str]:
 __gen_outer_fstring outer_fstring(int32_t n);
 // async def outer_bind() -> str:
@@ -105,7 +105,7 @@ __gen_outer_loop_for outer_loop_for(int32_t n);
 // async def outer_loop_bind(n: int32) -> str:
 __coro_outer_loop_bind outer_loop_bind(int32_t n);
 // async def outer_async_recv(src: list[int32]) -> int32:
-__coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src);
+__coro_outer_async_recv outer_async_recv(const std::vector<int32_t>& src);
 // async def outer_task_recv() -> int32:
 __coro_outer_task_recv outer_task_recv();
 // def main() -> None:
@@ -190,7 +190,7 @@ struct Summer {
     Summer() = default;
     explicit Summer(int32_t base);
 
-    __gen_Summer_pair pair(std::vector<int32_t>& xs) const;
+    __gen_Summer_pair pair(const std::vector<int32_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Summer";
 };
 
@@ -210,7 +210,7 @@ struct Outer {
 
     __gen_Outer_run run() const;
 
-    __gen_Outer_run_recv run_recv(std::vector<int32_t>& xs) const;
+    __gen_Outer_run_recv run_recv(const std::vector<int32_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -648,7 +648,7 @@ struct __gen_view_lens : public ::tpy::next_iter_mixin<__gen_view_lens, int32_t>
 // def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -657,7 +657,7 @@ struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_ends(std::vector<int32_t>& xs)
+    __gen_ends(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -725,7 +725,7 @@ struct __gen_outer_span : public ::tpy::next_iter_mixin<__gen_outer_span, int32_
 // def outer_comp(src: list[int32]) -> Iterator[int32]:
 struct __gen_outer_comp : public ::tpy::next_iter_mixin<__gen_outer_comp, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& src;
+    const std::vector<int32_t>& src;
     int32_t v;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
     ::tpy::frame_slot<__gen_ends> __for_src_0;
@@ -739,7 +739,7 @@ struct __gen_outer_comp : public ::tpy::next_iter_mixin<__gen_outer_comp, int32_
         S_DONE = 4,
     };
 
-    __gen_outer_comp(std::vector<int32_t>& src)
+    __gen_outer_comp(const std::vector<int32_t>& src)
         : __state(S_INITIAL), src(src) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -869,7 +869,7 @@ inline __gen_Tagger_tag Tagger::tag(std::string_view t) const {
 struct __gen_Summer_pair : public ::tpy::next_iter_mixin<__gen_Summer_pair, int32_t> {
     int32_t __state;
     const Summer& __self;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -878,7 +878,7 @@ struct __gen_Summer_pair : public ::tpy::next_iter_mixin<__gen_Summer_pair, int3
         S_DONE = 3,
     };
 
-    __gen_Summer_pair(const Summer& __self, std::vector<int32_t>& xs)
+    __gen_Summer_pair(const Summer& __self, const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __self(__self), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -889,7 +889,7 @@ struct __gen_Summer_pair : public ::tpy::next_iter_mixin<__gen_Summer_pair, int3
     }
 };
 
-inline __gen_Summer_pair Summer::pair(std::vector<int32_t>& xs) const {
+inline __gen_Summer_pair Summer::pair(const std::vector<int32_t>& xs) const {
     return __gen_Summer_pair(*this, xs);
 }
 
@@ -897,7 +897,7 @@ inline __gen_Summer_pair Summer::pair(std::vector<int32_t>& xs) const {
 struct __coro_outer_async_recv {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<int32_t>& src;
+    const std::vector<int32_t>& src;
     int32_t n;
     int32_t v;
     ::tpy::frame_slot<Summer> __coro_arg_0;
@@ -914,7 +914,7 @@ struct __coro_outer_async_recv {
         S_DONE = 4,
     };
 
-    __coro_outer_async_recv(std::vector<int32_t>& src)
+    __coro_outer_async_recv(const std::vector<int32_t>& src)
         : __state(S_INITIAL), __cancel_pending(false), src(src) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -928,7 +928,7 @@ struct __coro_outer_async_recv {
 // def outer_comp_method(src: list[int32]) -> Iterator[int32]:
 struct __gen_outer_comp_method : public ::tpy::next_iter_mixin<__gen_outer_comp_method, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& src;
+    const std::vector<int32_t>& src;
     int32_t v;
     ::tpy::frame_slot<Summer> __coro_arg_0;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_1;
@@ -943,7 +943,7 @@ struct __gen_outer_comp_method : public ::tpy::next_iter_mixin<__gen_outer_comp_
         S_DONE = 4,
     };
 
-    __gen_outer_comp_method(std::vector<int32_t>& src)
+    __gen_outer_comp_method(const std::vector<int32_t>& src)
         : __state(S_INITIAL), src(src) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -990,7 +990,7 @@ inline __gen_Outer_run Outer::run() const {
 struct __gen_Outer_run_recv : public ::tpy::next_iter_mixin<__gen_Outer_run_recv, int32_t> {
     int32_t __state;
     const Outer& __self;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
     int32_t v;
     ::tpy::frame_slot<Summer> __coro_arg_0;
     ::tpy::frame_slot<__gen_Summer_pair> __for_src_0;
@@ -1004,7 +1004,7 @@ struct __gen_Outer_run_recv : public ::tpy::next_iter_mixin<__gen_Outer_run_recv
         S_DONE = 4,
     };
 
-    __gen_Outer_run_recv(const Outer& __self, std::vector<int32_t>& xs)
+    __gen_Outer_run_recv(const Outer& __self, const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __self(__self), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -1015,7 +1015,7 @@ struct __gen_Outer_run_recv : public ::tpy::next_iter_mixin<__gen_Outer_run_recv
     }
 };
 
-inline __gen_Outer_run_recv Outer::run_recv(std::vector<int32_t>& xs) const {
+inline __gen_Outer_run_recv Outer::run_recv(const std::vector<int32_t>& xs) const {
     return __gen_Outer_run_recv(*this, xs);
 }
 

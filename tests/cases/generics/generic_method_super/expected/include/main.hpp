@@ -48,7 +48,7 @@ struct Child : Base<T> {
     // def __init__(self, val: T):
     //     super().__init__(val)
     Child() = default;
-    explicit Child(::tpy::readonly_form_t<T> val) : Base<T>(val) {}
+    explicit Child(::tpy::param_val_or_ref_t<T> val) : Base<T>(val) {}
 
     // def wrap[U](self, other: U) -> U:
     //     return super().transform(other)

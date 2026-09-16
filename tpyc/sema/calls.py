@@ -544,12 +544,17 @@ def validate_type_param_bounds(
     satisfies_bound,
     error_fn,
     substitute,
+    detail: str = "",
 ) -> None:
     """Validate that resolved type args satisfy their type parameter bounds.
 
     A bound may name sibling type parameters (`[R, T: Proto[R]]`); `substitute`
     resolves them against `type_subst` before the conformance check so `T`'s
     bound is checked as `Proto[<resolved R>]`, not the raw `Proto[R]`.
+
+    `detail` is appended to the message by a call site whose type args are
+    INFERRED from the argument slots, where the reason the bound has to hold is
+    not obvious from the source.
     """
     for param_name, type_arg in type_subst.items():
         if param_name in bounds:
@@ -558,6 +563,7 @@ def validate_type_param_bounds(
                 raise error_fn(
                     f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
                     f"for type parameter '{param_name}' of '{func_name}'"
+                    f"{detail}"
                     f"{_send_sync_bound_detail(bound, type_arg)}")
 
 
@@ -933,6 +939,11 @@ class CallAnalyzer:
         # Expression callees: callbacks[0](x), get_handler()(x), etc.
         if not isinstance(expr.func, TpyName):
             return self._analyze_expr_callee(expr)
+
+        # Before ANY outward resolution: the namespace chain reaches the
+        # module level, so a nested def's name would resolve to the shadowed
+        # module function/class until the walk reaches the `def`.
+        self.ctx.check_nested_def_shadowed_read(expr.func_name, expr)
 
         # Type aliases: builtin type aliases (e.g. float64 = float) resolve
         # to the underlying type's constructor. Other aliases are not callable.
@@ -1339,12 +1350,6 @@ class CallAnalyzer:
                 expr
             )
 
-        if self.ctx.func.in_nested_def and expr.func_name == self.ctx.func.nested_def_name:
-            raise self.ctx.error(
-                f"Recursive nested functions are not supported. "
-                f"'{expr.func_name}' cannot call itself",
-                expr,
-            )
         # Subscript callee fallback: name[expr](args) where name is unknown
         # as a function/type -- try as subscript expression callee
         if expr.subscript_callee is not None:
@@ -3311,7 +3316,17 @@ class CallAnalyzer:
     def _record_mutation_call_edges(self, expr: TpyCall | TpyMethodCall) -> None:
         """Record parameter flow through calls for Phase 2 mutation propagation."""
         fi = expr.resolved_function_info
-        if fi is None or fi.is_readonly or fi.is_pure:
+        if fi is None or fi.is_pure:
+            return
+        # `is_readonly` is a RECEIVER fact -- a const method may still mutate
+        # its non-self params, and `infer_method_const` sets the flag AFTER the
+        # defining module's bodies are analyzed, so a cross-module caller sees
+        # it where an intra-module caller did not. Only an UNANALYZED callee (a
+        # native / builtin stub with no body facts) may stand on the flag: there
+        # `@readonly` is the declaration that it mutates nothing at all, and
+        # without it the unknown-callee leg would conservatively mark every
+        # flowing argument mutated.
+        if fi.is_readonly and fi.root.direct_mutated_params is None:
             return
         # The mutable clone of an @auto_readonly accessor (dict.values/items,
         # Box.get) hands out a borrow but does not mutate its receiver; an
@@ -3389,6 +3404,17 @@ class CallAnalyzer:
             # generic-slot tuples. Tuples and pointer-repr Optionals with
             # non-readonly elements DO need edges so transitive mutation
             # through them propagates.
+            if self._generic_slot_binds_mutable(fi, i):
+                # An open-`T` slot renders `param_val_or_ref_t<T>`, which is a
+                # MUTABLE `T&` at every reference instantiation, so whatever
+                # binds there must stay a mutable lvalue. The callee's own
+                # mutated_params cannot answer this -- the generic body need
+                # not touch the param for its C++ slot to be a mutable borrow
+                # -- so it is a direct fact at the call site, not an edge.
+                _gr = _root_name_of_expr(expr.args[i])
+                if _gr is not None:
+                    self.ctx.mark_param_mutated(_gr)
+                continue
             if not param_has_mutable_borrow_surface(callee_param.type):
                 continue
             arg = expr.args[i]
@@ -3423,6 +3449,19 @@ class CallAnalyzer:
                                  param_map={callee_idx: caller_idx},
                                  receiver_is_self=False)
             )
+
+    @staticmethod
+    def _generic_slot_binds_mutable(fi: FunctionInfo, index: int) -> bool:
+        """Whether callee param `index` is an open type param whose C++ slot is
+        a mutable borrow. Read off the CANONICAL declaration: the call site's
+        fi may carry the substituted concrete type, which no longer says the
+        slot was generic. `readonly[T]` is excluded -- it renders
+        `readonly_form_t<T>`, the const form."""
+        params = fi.root.params
+        if index >= len(params):
+            return False
+        declared = unwrap_ref_type(params[index].type)
+        return isinstance(declared, TypeParamRef)
 
     def _arg_storage_roots(self, arg_root: str) -> list[str]:
         """The caller storages an argument name can reach, for mutation
@@ -3459,6 +3498,34 @@ class CallAnalyzer:
         # Mutable pointer to a for-each loop var prevents const-ref binding
         if not expr.call_type.is_readonly and isinstance(arg, TpyName):
             self.ctx.mark_loop_var_mutated(arg.name)
+
+    def _check_ctor_type_param_bounds(
+        self, expr: TpyCall, ctor: FunctionInfo, arg_types: list[TpyType],
+    ) -> None:
+        """A type-ctor overload carrying its OWN type params (`int32.__init__
+        [T: AnyFixedInt]`, whose @cpp_template is the fixed-int cast) is
+        resolved ONCE for the enclosing template, so the argument's own bound
+        is what says the pick holds at every instantiation: at an `int` or
+        `str` instantiation the monomorphic spelling would have picked
+        `to_fixed_check` / `from_str_check` instead. The type args are inferred
+        from the slots here, so only the pairing is local -- the conformance
+        check itself is the same one explicit type arguments take."""
+        bounds = ctor.type_param_bounds
+        if not bounds:
+            return
+        type_subst: dict[str, TpyType] = {}
+        for (_pname, ptype), arg_t in zip(ctor.params, arg_types):
+            slot = unwrap_readonly(unwrap_ref_type(ptype))
+            if isinstance(slot, TypeParamRef):
+                type_subst.setdefault(slot.name, arg_t)
+        validate_type_param_bounds(
+            type_subst, bounds, f"{expr.func_name}()",
+            self.protocols.satisfies_bound,
+            lambda msg: self.ctx.error(msg, expr),
+            self.type_ops.substitute_type_params,
+            detail=(". The conversion is picked once for the whole generic "
+                    "body, so the argument needs a bound satisfying it"),
+        )
 
     def _analyze_template_constructor(self, expr: TpyCall, record: RecordInfo,
                                       init_overloads: list[FunctionInfo]) -> TpyType:
@@ -3511,6 +3578,7 @@ class CallAnalyzer:
                 break
         if best_ctor is not None:
             ctor = best_ctor
+            self._check_ctor_type_param_bounds(expr, ctor, arg_types)
             ret = record_type or ctor.return_type
             # Reject int literals that are out of range for the target fixed-int type
             if (is_fixed_int_type(ret) and len(arg_types) == 1
@@ -3546,6 +3614,7 @@ class CallAnalyzer:
         except OverloadAmbiguityError as e:
             raise self._ambiguous_overload_error(expr, init_overloads[0].name, e)
         if matched:
+            self._check_ctor_type_param_bounds(expr, matched, arg_types)
             ret = record_type or matched.return_type
             expr.resolved_function_info = _resolve_cpp_template_type_params(matched, result_type=ret, ctx=self.ctx)
             self._check_cast_safe(expr, matched, arg_types, ret)

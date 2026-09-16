@@ -66,7 +66,7 @@ __coro_value value(::tpy::BigInt n) {
 
 
 // async def total_of(xs: list[int]) -> int:
-__coro_total_of total_of(std::vector<::tpy::BigInt>& xs) {
+__coro_total_of total_of(const std::vector<::tpy::BigInt>& xs) {
     return __coro_total_of(xs);
 }
 

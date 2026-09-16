@@ -27,13 +27,13 @@ struct __gen_Holder_peek;
 // def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
 __gen_walk_free walk_free(std::vector<std::tuple<int32_t, A>>& xs);
 // def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_walk_value walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs);
+__gen_walk_value walk_value(const std::vector<std::tuple<int32_t, int32_t>>& xs);
 // async def walk_async(xs: list[tuple[int32, A]]) -> int32:
 __coro_walk_async walk_async(std::vector<std::tuple<int32_t, A>>& xs);
 // def walk_items(d: dict[int32, A]) -> Iterator[int32]:
 __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d);
 // async def sum_items(d: dict[int32, int32]) -> int32:
-__coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d);
+__coro_sum_items sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d);
 // async def async_section() -> None:
 __coro_async_section async_section();
 // def main() -> None:
@@ -108,12 +108,12 @@ struct __coro_walk_async {
 struct __coro_sum_items {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::ordered_map<int32_t, int32_t>& d;
+    const ::tpy::ordered_map<int32_t, int32_t>& d;
     int32_t total;
     std::tuple<int32_t, int32_t> kv;
-    ::tpy::frame_slot<::tpy::dict_items_view<int32_t, int32_t>> __for_src_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_items_view<int32_t, int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_items_view<int32_t, int32_t>>> __for_end_0;
+    ::tpy::frame_slot<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))> __for_src_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -123,7 +123,7 @@ struct __coro_sum_items {
         S_DONE = 3,
     };
 
-    __coro_sum_items(::tpy::ordered_map<int32_t, int32_t>& d)
+    __coro_sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d)
         : __state(S_INITIAL), __cancel_pending(false), d(d) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -193,10 +193,10 @@ struct __gen_walk_free : public ::tpy::next_iter_mixin<__gen_walk_free, int32_t>
 // def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_walk_value : public ::tpy::next_iter_mixin<__gen_walk_value, int32_t> {
     int32_t __state;
-    std::vector<std::tuple<int32_t, int32_t>>& xs;
-    std::tuple<int32_t, int32_t>* t = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    const std::vector<std::tuple<int32_t, int32_t>>& xs;
+    const std::tuple<int32_t, int32_t>* t = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -206,7 +206,7 @@ struct __gen_walk_value : public ::tpy::next_iter_mixin<__gen_walk_value, int32_
         S_DONE = 4,
     };
 
-    __gen_walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs)
+    __gen_walk_value(const std::vector<std::tuple<int32_t, int32_t>>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -222,9 +222,9 @@ struct __gen_walk_items : public ::tpy::next_iter_mixin<__gen_walk_items, int32_
     int32_t __state;
     ::tpy::ordered_map<int32_t, A>& d;
     std::tuple<int32_t, A*> kv;
-    ::tpy::frame_slot<::tpy::dict_items_view<int32_t, A>> __for_src_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_items_view<int32_t, A>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_items_view<int32_t, A>>> __for_end_0;
+    ::tpy::frame_slot<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, A>&>()))> __for_src_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, A>&>()))>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, A>&>()))>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

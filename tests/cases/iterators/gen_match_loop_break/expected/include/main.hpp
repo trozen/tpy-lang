@@ -12,18 +12,18 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen;
 
 // def gen(items: list[int]) -> Iterator[int]:
-__gen_gen gen(std::vector<::tpy::BigInt>& items);
+__gen_gen gen(const std::vector<::tpy::BigInt>& items);
 // def main() -> None:
 void main();
 
 // def gen(items: list[int]) -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
-    std::vector<::tpy::BigInt>& items;
+    const std::vector<::tpy::BigInt>& items;
     ::tpy::BigInt it;
     ::tpy::BigInt v;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -37,7 +37,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
         S_DONE = 8,
     };
 
-    __gen_gen(std::vector<::tpy::BigInt>& items)
+    __gen_gen(const std::vector<::tpy::BigInt>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();

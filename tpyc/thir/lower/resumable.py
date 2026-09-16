@@ -1874,6 +1874,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # divergent-write family.
     lc.pointers.update(alias_ptr_locals)
     lc.alias_ptr_locals = frozenset(alias_ptr_locals)
+    lc.const_alias_ptr_locals = frozenset(
+        n for n in alias_ptr_locals if frame_layout.bindings[n].const)
+    lc.const_frame_bindings = frozenset(rstate.const_frame_bindings)
     lc.pointers.update(unpack_ptr_targets)
     lc.unpack_ptr_targets = frozenset(unpack_ptr_targets)
     lc.value_tuple_frame_locals = frozenset(value_tuple_locals)

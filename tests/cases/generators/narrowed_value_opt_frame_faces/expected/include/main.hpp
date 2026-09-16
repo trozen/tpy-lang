@@ -20,7 +20,7 @@ struct __gen_g_view;
 // def g(p: int32 | None) -> Iterator[int32]:
 __gen_g g(std::optional<int32_t> p);
 // def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
-__gen_g_loop g_loop(::tpy::ordered_map<std::string, std::optional<int32_t>>& d);
+__gen_g_loop g_loop(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d);
 // def g_whole(p: int32 | None) -> Iterator[int32 | None]:
 __gen_g_whole g_whole(std::optional<int32_t> p);
 // def g_frame_whole(p: int32 | None) -> Iterator[int32]:
@@ -61,11 +61,11 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
 // def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
 struct __gen_g_loop : public ::tpy::next_iter_mixin<__gen_g_loop, int32_t> {
     int32_t __state;
-    ::tpy::ordered_map<std::string, std::optional<int32_t>>& d;
+    const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d;
     std::optional<int32_t> val;
-    ::tpy::frame_slot<::tpy::dict_values_view<std::string, std::optional<int32_t>>> __for_src_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_values_view<std::string, std::optional<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_values_view<std::string, std::optional<int32_t>>>> __for_end_0;
+    ::tpy::frame_slot<decltype(::tpy::dict_values(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))> __for_src_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -75,7 +75,7 @@ struct __gen_g_loop : public ::tpy::next_iter_mixin<__gen_g_loop, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_g_loop(::tpy::ordered_map<std::string, std::optional<int32_t>>& d)
+    __gen_g_loop(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d)
         : __state(S_INITIAL), d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

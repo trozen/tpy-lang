@@ -12,20 +12,20 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_g_items;
 
 // def g_items(d: dict[str, int32 | None]) -> Iterator[int32]:
-__gen_g_items g_items(::tpy::ordered_map<std::string, std::optional<int32_t>>& d);
+__gen_g_items g_items(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d);
 // def main() -> None:
 void main();
 
 // def g_items(d: dict[str, int32 | None]) -> Iterator[int32]:
 struct __gen_g_items : public ::tpy::next_iter_mixin<__gen_g_items, int32_t> {
     int32_t __state;
-    ::tpy::ordered_map<std::string, std::optional<int32_t>>& d;
+    const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d;
     std::tuple<std::string, std::optional<int32_t>> __for_tup_0;
     std::string k;
     std::optional<int32_t> v;
-    ::tpy::frame_slot<::tpy::dict_items_view<std::string, std::optional<int32_t>>> __for_src_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_items_view<std::string, std::optional<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_items_view<std::string, std::optional<int32_t>>>> __for_end_0;
+    ::tpy::frame_slot<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))> __for_src_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -35,7 +35,7 @@ struct __gen_g_items : public ::tpy::next_iter_mixin<__gen_g_items, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_g_items(::tpy::ordered_map<std::string, std::optional<int32_t>>& d)
+    __gen_g_items(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d)
         : __state(S_INITIAL), d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

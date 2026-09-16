@@ -89,7 +89,7 @@ std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
 
 
 // def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
-__gen_fresh_records fresh_records(std::vector<Node>& src) {
+__gen_fresh_records fresh_records(const std::vector<Node>& src) {
     return __gen_fresh_records(src);
 }
 
@@ -131,7 +131,7 @@ std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__ne
 
 
 // def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
-__gen_fresh_rows fresh_rows(std::vector<std::vector<int32_t>>& src) {
+__gen_fresh_rows fresh_rows(const std::vector<std::vector<int32_t>>& src) {
     return __gen_fresh_rows(src);
 }
 

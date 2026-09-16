@@ -1,0 +1,1 @@
+main.py:46: warning: may copy T into field if not a value type; use copy() to make this explicit

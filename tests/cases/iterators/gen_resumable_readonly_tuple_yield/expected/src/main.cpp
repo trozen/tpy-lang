@@ -55,7 +55,7 @@ std::expected<std::tuple<const P*, const P*>, ::tpy::StopIteration> __gen_pairs:
 
 
 // def pairs(items: list[P]) -> Iterator[readonly[tuple[P, P]]]:
-__gen_pairs pairs(std::vector<P>& items) {
+__gen_pairs pairs(const std::vector<P>& items) {
     return __gen_pairs(items);
 }
 

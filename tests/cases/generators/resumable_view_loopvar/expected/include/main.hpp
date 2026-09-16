@@ -14,18 +14,18 @@ struct __gen_blobs_gen;
 struct __gen_pairs_gen;
 
 // def words_gen(words: list[str]) -> Iterator[int32]:
-__gen_words_gen words_gen(std::vector<std::string>& words);
+__gen_words_gen words_gen(const std::vector<std::string>& words);
 // def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
-__gen_blobs_gen blobs_gen(std::vector<::tpy::Bytes>& blobs);
+__gen_blobs_gen blobs_gen(const std::vector<::tpy::Bytes>& blobs);
 // def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
-__gen_pairs_gen pairs_gen(std::vector<std::tuple<std::string, int32_t>>& pairs);
+__gen_pairs_gen pairs_gen(const std::vector<std::tuple<std::string, int32_t>>& pairs);
 // def main() -> None:
 void main();
 
 // def words_gen(words: list[str]) -> Iterator[int32]:
 struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t> {
     int32_t __state;
-    std::vector<std::string>& words;
+    const std::vector<std::string>& words;
     int32_t i;
     std::string w;
 
@@ -37,7 +37,7 @@ struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t>
         S_DONE = 4,
     };
 
-    __gen_words_gen(std::vector<std::string>& words)
+    __gen_words_gen(const std::vector<std::string>& words)
         : __state(S_INITIAL), words(words) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -51,7 +51,7 @@ struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t>
 // def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
 struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t> {
     int32_t __state;
-    std::vector<::tpy::Bytes>& blobs;
+    const std::vector<::tpy::Bytes>& blobs;
     int32_t i;
     ::tpy::Bytes b;
 
@@ -63,7 +63,7 @@ struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t>
         S_DONE = 4,
     };
 
-    __gen_blobs_gen(std::vector<::tpy::Bytes>& blobs)
+    __gen_blobs_gen(const std::vector<::tpy::Bytes>& blobs)
         : __state(S_INITIAL), blobs(blobs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -77,7 +77,7 @@ struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t>
 // def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
 struct __gen_pairs_gen : public ::tpy::next_iter_mixin<__gen_pairs_gen, int32_t> {
     int32_t __state;
-    std::vector<std::tuple<std::string, int32_t>>& pairs;
+    const std::vector<std::tuple<std::string, int32_t>>& pairs;
     int32_t i;
     std::tuple<std::string, int32_t> __for_tup_0;
     std::string name;
@@ -91,7 +91,7 @@ struct __gen_pairs_gen : public ::tpy::next_iter_mixin<__gen_pairs_gen, int32_t>
         S_DONE = 4,
     };
 
-    __gen_pairs_gen(std::vector<std::tuple<std::string, int32_t>>& pairs)
+    __gen_pairs_gen(const std::vector<std::tuple<std::string, int32_t>>& pairs)
         : __state(S_INITIAL), pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

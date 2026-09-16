@@ -90,7 +90,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_val_str::__next__() {
 
 
 // def val_str(words: list[str]) -> Iterator[int]:
-__gen_val_str val_str(std::vector<std::string>& words) {
+__gen_val_str val_str(const std::vector<std::string>& words) {
     return __gen_val_str(words);
 }
 

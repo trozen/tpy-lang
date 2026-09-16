@@ -19,7 +19,7 @@ struct __coro_main;
 struct __coro_PairIter___anext__;
 
 // async def sum_squares(p: Pairs) -> int:
-__coro_sum_squares sum_squares(Pairs& p);
+__coro_sum_squares sum_squares(const Pairs& p);
 // async def main() -> None:
 __coro_main main();
 
@@ -92,7 +92,7 @@ inline __coro_PairIter___anext__ PairIter::__anext__() {
 struct __coro_sum_squares {
     int32_t __state;
     bool __cancel_pending;
-    Pairs& p;
+    const Pairs& p;
     int32_t total;
     ::tpy::BigInt k;
     ::tpy::BigInt sq;
@@ -109,7 +109,7 @@ struct __coro_sum_squares {
         S_DONE = 5,
     };
 
-    __coro_sum_squares(Pairs& p)
+    __coro_sum_squares(const Pairs& p)
         : __state(S_INITIAL), __cancel_pending(false), p(p) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);

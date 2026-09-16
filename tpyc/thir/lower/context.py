@@ -881,6 +881,34 @@ class _Prescan:
             or self.ret_dyn_borrow is not None
             or self.ret_dyn_own is not None)
 
+    def binds_global(self, name: str) -> bool:
+        """Does `name` read as a module GLOBAL in this body? The seeding
+        decides it and already excludes a sema-hoisted name -- Python
+        scoping makes a name the function assigns a LOCAL, whatever the
+        module binds. Asking the seeding is not the same as asking the
+        module's native-global map: the NAME of a native global says
+        nothing about this body's scope, and shadowing one is ordinary
+        Python."""
+        return (name in self.global_seeded
+                or name in self.global_readonly
+                or name in self.global_cpp
+                or name in self.global_slots)
+
+    def namespace_scope_names(self) -> frozenset[str]:
+        """Every name the body reads at C++ NAMESPACE scope. A closure
+        names these directly instead of capturing them -- capturing a
+        namespace-scope object is ill-formed C++. Wider than
+        `binds_global`, which answers about this body's scope: a
+        write-seeded and a native-linkage global are namespace-scope
+        objects too."""
+        return (frozenset(self.global_readonly)
+                | frozenset(self.global_slots)
+                | frozenset(self.global_cpp)
+                | frozenset(self.global_write_cpp)
+                | frozenset(self.global_seeded)
+                | frozenset(self.native_globals))
+
+
 @dataclass
 class _NarrowScope:
     """Lowering's branch/loop-scoped isinstance-narrowing state.
@@ -1057,6 +1085,7 @@ class _LowerCtx:
                  "opt_tuple_holders", "opt_ptr_frame_locals",
                  "rebind_ptr_frame_locals",
                  "oneshot_lift_locals", "alias_ptr_locals",
+                 "const_alias_ptr_locals", "const_frame_bindings",
                  "unpack_ptr_targets",
                  "unhandled_hoists", "narrow", "literal_facts",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
@@ -1436,6 +1465,18 @@ class _LowerCtx:
         # via `= &(unwrap_ref(tuple_elem_ref(...)));` (frame_ptr_elem).
         # Populated only by `lower_resumable`, empty for every sync body.
         self.alias_ptr_locals: frozenset = frozenset()
+        # The subset of `alias_ptr_locals` whose frame field is `const T*`
+        # (the frame layout's own const verdict). A lift that spells the
+        # element pointers must agree with the field, so the unpack arm
+        # reads this rather than the SYNC receiver const-verdict, which the
+        # frame does not follow. Populated only by `lower_resumable`.
+        self.const_alias_ptr_locals: frozenset = frozenset()
+        # Every name this frame binds to const storage (the frame's own
+        # `const_frame_bindings`): the const-borrow captures and `@readonly`
+        # receiver as well as the locals above. A lift off one of them spells
+        # `const T*` element pointers, because that is what the capture is.
+        # Populated only by `lower_resumable`.
+        self.const_frame_bindings: frozenset = frozenset()
         # Pointer-form tuple-unpack LOOP targets (the skeleton's
         # pointer_form_unpack_targets): `T*` fields the head unpack
         # re-points via `= &(std::get<i>(__tup_N));` off the deref'd

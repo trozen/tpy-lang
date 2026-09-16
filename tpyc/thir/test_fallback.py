@@ -1184,7 +1184,12 @@ def test_assign_lowering_reject_falls_back_at_sync_boundary():
 
 def test_return_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
-        "def rejected(s: str) -> str | None:\n"
+        # An OWNED local at a VIEW-inner Optional return: the view would
+        # point into the local's buffer, so no copy fixes it and the row
+        # keeps rejecting (the owned-inner direction lowers -- it copies).
+        "from tpy import int32, StrView\n"
+        "def rejected(n: int32) -> StrView | None:\n"
+        "    s = 'x' * n\n"
         "    return s\n"
     )
     entry = _entry(modules)

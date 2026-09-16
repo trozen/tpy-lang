@@ -1,0 +1,4 @@
+str: 5
+bytes: 3
+method: 3
+method empty: -1

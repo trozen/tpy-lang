@@ -24,9 +24,9 @@ int32_t nested_container(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
 // def plain_local(pairs: list[tuple[int32, int32]]) -> int32:
 int32_t plain_local(const std::vector<std::tuple<int32_t, int32_t>>& pairs);
 // def gen(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& pairs);
+__gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs);
 // async def coro(pairs: list[tuple[int32, int32]]) -> int32:
-__coro_coro coro(std::vector<std::tuple<int32_t, int32_t>>& pairs);
+__coro_coro coro(const std::vector<std::tuple<int32_t, int32_t>>& pairs);
 // def main() -> None:
 void main();
 
@@ -53,12 +53,12 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 struct __coro_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<std::tuple<int32_t, int32_t>>& pairs;
+    const std::vector<std::tuple<int32_t, int32_t>>& pairs;
     int32_t i;
     int32_t j;
     std::tuple<int32_t, int32_t> __for_tup_5;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -68,7 +68,7 @@ struct __coro_coro {
         S_DONE = 3,
     };
 
-    __coro_coro(std::vector<std::tuple<int32_t, int32_t>>& pairs)
+    __coro_coro(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
         : __state(S_INITIAL), __cancel_pending(false), pairs(pairs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -82,12 +82,12 @@ struct __coro_coro {
 // def gen(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
-    std::vector<std::tuple<int32_t, int32_t>>& pairs;
+    const std::vector<std::tuple<int32_t, int32_t>>& pairs;
     int32_t i;
     std::tuple<int32_t, int32_t> __for_tup_4;
     int32_t j;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -97,7 +97,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_gen(std::vector<std::tuple<int32_t, int32_t>>& pairs)
+    __gen_gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
         : __state(S_INITIAL), pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

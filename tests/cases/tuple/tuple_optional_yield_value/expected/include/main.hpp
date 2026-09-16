@@ -12,17 +12,17 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_value_pairs;
 
 // def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
-__gen_gen_value_pairs gen_value_pairs(std::vector<int32_t>& items);
+__gen_gen_value_pairs gen_value_pairs(const std::vector<int32_t>& items);
 // def main() -> None:
 void main();
 
 // def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
 struct __gen_gen_value_pairs : public ::tpy::next_iter_mixin<__gen_gen_value_pairs, std::tuple<std::optional<int32_t>, std::optional<int32_t>>> {
     int32_t __state;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t it;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -31,7 +31,7 @@ struct __gen_gen_value_pairs : public ::tpy::next_iter_mixin<__gen_gen_value_pai
         S_DONE = 3,
     };
 
-    __gen_gen_value_pairs(std::vector<int32_t>& items)
+    __gen_gen_value_pairs(const std::vector<int32_t>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<std::tuple<std::optional<int32_t>, std::optional<int32_t>>, ::tpy::StopIteration> __next__();

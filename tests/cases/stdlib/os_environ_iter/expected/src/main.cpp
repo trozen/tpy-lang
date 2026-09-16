@@ -125,7 +125,7 @@ void main() {
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         std::string_view v = *__beg_6;
-        if (std::ranges::contains(vlist, v)) {
+        if (::tpy::seq_contains(vlist, v)) {
             matched.push_back(std::string(v));
         }
     }

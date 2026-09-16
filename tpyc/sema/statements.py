@@ -1415,16 +1415,19 @@ class StatementAnalyzer:
                         and expected_bare.has_pointer_repr_element())
                     if (not expected.is_value_type() or returns_borrowing_view
                             or returns_borrow_tuple):
-                        # A readonly tuple return hands out const element
-                        # pointers -- borrow provenance is recorded but no
-                        # write access is granted (like a borrowing view).
-                        ro_tuple = (returns_borrow_tuple
-                                    and isinstance(expected, ReadonlyType))
+                        # A readonly return hands out a CONST borrow -- of a
+                        # tuple's elements or of the record itself -- so borrow
+                        # provenance is recorded but no write access is granted,
+                        # exactly as for a borrowing view. Marking the source
+                        # mutated here would raise self_mutated on the enclosing
+                        # method and, through the Phase-2 receiver edge, on every
+                        # caller that reads the borrow.
+                        ro_return = isinstance(expected, ReadonlyType)
                         if returns_borrow_tuple:
                             ret_roots = tuple_borrow_escape_roots(
-                                stmt.value, expected_bare, ro_tuple)
+                                stmt.value, expected_bare, ro_return)
                         else:
-                            ret_roots = [(root, not ro_tuple)
+                            ret_roots = [(root, not ro_return)
                                          for root in addr_taken_roots(stmt.value)]
                         for ret_root, grants_write in ret_roots:
                             if not returns_borrowing_view and grants_write:
@@ -3159,6 +3162,12 @@ class StatementAnalyzer:
 
         # Prescan for reassigned variables + last-use liveness
         scan = scan_reassigned_vars(func.body, pre_declared=param_names)
+        # Python binds a nested def's name for the whole enclosing scope, so
+        # the set has to exist before the walk reaches any `def`. The update
+        # (not an assign) keeps the outer scope's still-unbound names a
+        # nested def was seeded with.
+        self.ctx.func.nested_def_pending.update(scan.nested_def_bind_loc)
+        self.ctx.func.own_ns = ns
         self._warn_scalar_type_shadows(func, param_names, scan)
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan))
@@ -3310,6 +3319,13 @@ class StatementAnalyzer:
 
         # Collect outer locals available for capture
         outer_locals = self.ctx.func.definitely_assigned.copy()
+        # Sibling nested defs the enclosing scope has not bound yet: this
+        # body shares the enclosing scope's binding for their names, so a
+        # read of one must not resolve outward either. The def's OWN name is
+        # excluded -- a self-reference is the recursion diagnostic instead.
+        outer_pending = {n: loc for n, loc
+                         in self.ctx.func.nested_def_pending.items()
+                         if n != func.name and n not in outer_locals}
 
         # Pre-scan nonlocal declarations (at any nesting depth) to bind
         # them in the inner scope before body analysis begins.
@@ -3352,6 +3368,7 @@ class StatementAnalyzer:
         with self.scopes.nested_def_scope(func) as inner_scope:
             self.ctx.func.outer_scope_locals = outer_locals
             self.ctx.func.outer_self_is_receiver = self_is_receiver
+            self.ctx.func.nested_def_pending = outer_pending
 
             # Add nonlocal names to inner scope with types from outer
             for name in nonlocal_names:
@@ -3441,6 +3458,11 @@ class StatementAnalyzer:
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.bind_function(fi)
         self.ctx.func.definitely_assigned.add(func.name)
+        # The name is bound from here on. A `def` inside an `if`/`for`/`try`
+        # body pops the same way, so a read on a path where the `def` may not
+        # have run still resolves OUTWARD instead of raising -- the residue
+        # filed as BUGS.md#nested-def-branch-local-read-resolves-outward.
+        self.ctx.func.nested_def_pending.pop(func.name, None)
 
         # Track for escape analysis
         self.ctx.func.nested_def_names.add(func.name)

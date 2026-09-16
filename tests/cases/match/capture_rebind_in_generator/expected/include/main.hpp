@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_counts;
 
 // def counts(a: Cat) -> Iterator[int]:
-__gen_counts counts(Cat& a);
+__gen_counts counts(const Cat& a);
 // def main() -> None:
 void main();
 
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // def counts(a: Cat) -> Iterator[int]:
 struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, ::tpy::BigInt> {
     int32_t __state;
-    Cat& a;
+    const Cat& a;
     ::tpy::BigInt v;
 
     enum : int32_t {
@@ -48,7 +48,7 @@ struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, ::tpy::BigInt>
         S_DONE = 4,
     };
 
-    __gen_counts(Cat& a)
+    __gen_counts(const Cat& a)
         : __state(S_INITIAL), a(a) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();

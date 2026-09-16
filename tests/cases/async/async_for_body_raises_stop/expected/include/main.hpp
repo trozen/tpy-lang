@@ -19,7 +19,7 @@ struct __coro_main;
 struct __coro_Counter___anext__;
 
 // async def runner(c: Counts) -> str:
-__coro_runner runner(Counts& c);
+__coro_runner runner(const Counts& c);
 // async def main() -> None:
 __coro_main main();
 
@@ -92,7 +92,7 @@ inline __coro_Counter___anext__ Counter::__anext__() {
 struct __coro_runner {
     int32_t __state;
     bool __cancel_pending;
-    Counts& c;
+    const Counts& c;
     ::tpy::BigInt x;
     ::tpy::frame_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
     std::optional<__coro_Counter___anext__> __sub_0;
@@ -107,7 +107,7 @@ struct __coro_runner {
         S_DONE = 6,
     };
 
-    __coro_runner(Counts& c)
+    __coro_runner(const Counts& c)
         : __state(S_INITIAL), __cancel_pending(false), c(c) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);

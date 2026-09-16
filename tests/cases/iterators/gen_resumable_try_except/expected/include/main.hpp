@@ -12,17 +12,17 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_guarded;
 
 // def guarded(xs: list[int]) -> Iterator[int]:
-__gen_guarded guarded(std::vector<::tpy::BigInt>& xs);
+__gen_guarded guarded(const std::vector<::tpy::BigInt>& xs);
 // def main():
 void main();
 
 // def guarded(xs: list[int]) -> Iterator[int]:
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, ::tpy::BigInt> {
     int32_t __state;
-    std::vector<::tpy::BigInt>& xs;
+    const std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -34,7 +34,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, ::tpy::BigIn
         S_DONE = 6,
     };
 
-    __gen_guarded(std::vector<::tpy::BigInt>& xs)
+    __gen_guarded(const std::vector<::tpy::BigInt>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();

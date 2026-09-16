@@ -24,6 +24,7 @@ _SELFCHECKS = [
     ("test_frame_slot_forms.cpp", "resumable-frame slot storage forms"),
     ("test_bigint_small_ops.cpp", "BigInt small-operation values and allocations"),
     ("test_math_exception_policy.cpp", "math exceptions and IEEE special values"),
+    ("test_seq_contains_identity.cpp", "containment's identity-before-== rule"),
     ("test_dict_default_args.cpp", "dict get/pop/setdefault default deduction"),
 ]
 

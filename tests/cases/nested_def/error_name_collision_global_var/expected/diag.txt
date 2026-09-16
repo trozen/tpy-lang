@@ -1,0 +1,1 @@
+main.py:12: error: 'counter' is read before the nested function 'counter' defined on line 14 is bound. A nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'counter' -- move the 'def' above this line, or rename it

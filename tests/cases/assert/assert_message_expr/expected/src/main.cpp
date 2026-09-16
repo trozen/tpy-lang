@@ -69,7 +69,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 
 
 // def gen(n: int32, e: Error) -> Iterator[int32]:
-__gen_gen gen(int32_t n, Error& e) {
+__gen_gen gen(int32_t n, const Error& e) {
     return __gen_gen(n, e);
 }
 
@@ -104,7 +104,7 @@ __gen_gen gen(int32_t n, Error& e) {
 
 
 // async def coro(n: int32, e: Error) -> int32:
-__coro_coro coro(int32_t n, Error& e) {
+__coro_coro coro(int32_t n, const Error& e) {
     return __coro_coro(n, e);
 }
 

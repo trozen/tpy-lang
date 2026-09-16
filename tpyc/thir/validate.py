@@ -444,6 +444,12 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # hoist before the `std::cout` chain).
         for a in node.args:
             _walk(owner, a.expr, return_type, argtemp_ok=True)
+        # sep=/end=/file= are call arguments too, so their temps take the
+        # same flush right.
+        _walk_arg_list(owner,
+                       [x for x in (node.sep_expr, node.end_expr,
+                                    node.sink_expr) if x is not None],
+                       return_type, argtemp_ok=True)
         return
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)):
         # Both decl flavors are flush positions: a slot init's arg temps

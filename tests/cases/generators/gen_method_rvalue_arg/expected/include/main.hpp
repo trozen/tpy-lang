@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 struct Lim {
 
 
-    __gen_Lim_first first(std::vector<int32_t>& items, int32_t cap) const;
+    __gen_Lim_first first(const std::vector<int32_t>& items, int32_t cap) const;
 
     __gen_Lim_ro_pair ro_pair(const std::vector<int32_t>& xs) const;
 
@@ -49,7 +49,7 @@ struct Lim {
 
     __gen_Lim_dvals dvals(const ::tpy::ordered_map<std::string, int32_t>& d) const;
 
-    __gen_Lim_echo echo(std::vector<int32_t>& xs) const;
+    __gen_Lim_echo echo(const std::vector<int32_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Lim";
 };
 
@@ -62,12 +62,12 @@ inline std::ostream& operator<<(std::ostream& os, const Lim& obj) {
 struct __gen_Lim_first : public ::tpy::next_iter_mixin<__gen_Lim_first, int32_t> {
     int32_t __state;
     const Lim& __self;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t cap;
     int32_t n;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -77,7 +77,7 @@ struct __gen_Lim_first : public ::tpy::next_iter_mixin<__gen_Lim_first, int32_t>
         S_DONE = 4,
     };
 
-    __gen_Lim_first(const Lim& __self, std::vector<int32_t>& items, int32_t cap_)
+    __gen_Lim_first(const Lim& __self, const std::vector<int32_t>& items, int32_t cap_)
         : __state(S_INITIAL), __self(__self), items(items), cap(std::move(cap_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -88,7 +88,7 @@ struct __gen_Lim_first : public ::tpy::next_iter_mixin<__gen_Lim_first, int32_t>
     }
 };
 
-inline __gen_Lim_first Lim::first(std::vector<int32_t>& items, int32_t cap) const {
+inline __gen_Lim_first Lim::first(const std::vector<int32_t>& items, int32_t cap) const {
     return __gen_Lim_first(*this, items, cap);
 }
 
@@ -188,7 +188,7 @@ inline __gen_Lim_dvals Lim::dvals(const ::tpy::ordered_map<std::string, int32_t>
 struct __gen_Lim_echo : public ::tpy::next_iter_mixin<__gen_Lim_echo, int32_t> {
     int32_t __state;
     const Lim& __self;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -197,7 +197,7 @@ struct __gen_Lim_echo : public ::tpy::next_iter_mixin<__gen_Lim_echo, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_Lim_echo(const Lim& __self, std::vector<int32_t>& xs)
+    __gen_Lim_echo(const Lim& __self, const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __self(__self), xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -208,7 +208,7 @@ struct __gen_Lim_echo : public ::tpy::next_iter_mixin<__gen_Lim_echo, int32_t> {
     }
 };
 
-inline __gen_Lim_echo Lim::echo(std::vector<int32_t>& xs) const {
+inline __gen_Lim_echo Lim::echo(const std::vector<int32_t>& xs) const {
     return __gen_Lim_echo(*this, xs);
 }
 

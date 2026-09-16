@@ -47,7 +47,7 @@ Expr& get_global() {
 
 // def first_view(e: Expr) -> readonly[Expr]:
 //     return e
-const Expr& first_view(Expr& e) {
+const Expr& first_view(const Expr& e) {
     return e;
 }
 

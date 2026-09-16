@@ -190,7 +190,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
 
 
 // def nested(h: Holder) -> Iterator[int32]:
-__gen_nested nested(Holder& h) {
+__gen_nested nested(const Holder& h) {
     return __gen_nested(h);
 }
 
@@ -249,7 +249,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested_shadow::__next__() {
 
 
 // def nested_shadow(h: Holder) -> Iterator[int32]:
-__gen_nested_shadow nested_shadow(Holder& h) {
+__gen_nested_shadow nested_shadow(const Holder& h) {
     return __gen_nested_shadow(h);
 }
 

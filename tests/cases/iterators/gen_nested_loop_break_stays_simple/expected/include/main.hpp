@@ -12,19 +12,19 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_sums;
 
 // def sums(items: list[int32]) -> Iterator[int32]:
-__gen_sums sums(std::vector<int32_t>& items);
+__gen_sums sums(const std::vector<int32_t>& items);
 // def main() -> None:
 void main();
 
 // def sums(items: list[int32]) -> Iterator[int32]:
 struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t j;
     int32_t x;
     int32_t acc;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -33,7 +33,7 @@ struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_sums(std::vector<int32_t>& items)
+    __gen_sums(const std::vector<int32_t>& items)
         : __state(S_INITIAL), items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

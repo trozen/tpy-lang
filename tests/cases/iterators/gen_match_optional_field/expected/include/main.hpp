@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen;
 
 // def gen(b: Box) -> Iterator[int]:
-__gen_gen gen(Box& b);
+__gen_gen gen(const Box& b);
 // def main() -> None:
 void main();
 
@@ -54,8 +54,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def gen(b: Box) -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
-    Box& b;
-    Inner* v = nullptr;
+    const Box& b;
+    const Inner* v = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -65,7 +65,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
         S_DONE = 4,
     };
 
-    __gen_gen(Box& b)
+    __gen_gen(const Box& b)
         : __state(S_INITIAL), b(b) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();

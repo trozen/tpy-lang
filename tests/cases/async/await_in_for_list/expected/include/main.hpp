@@ -17,7 +17,7 @@ struct __coro_total_of;
 // async def value(n: int) -> int:
 __coro_value value(::tpy::BigInt n);
 // async def total_of(xs: list[int]) -> int:
-__coro_total_of total_of(std::vector<::tpy::BigInt>& xs);
+__coro_total_of total_of(const std::vector<::tpy::BigInt>& xs);
 // def main() -> None:
 void main();
 
@@ -47,12 +47,12 @@ struct __coro_value {
 struct __coro_total_of {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<::tpy::BigInt>& xs;
+    const std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt total;
     ::tpy::BigInt x;
     ::tpy::BigInt __await_lift_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
     std::optional<__coro_value> __sub_0;
 
     enum : int32_t {
@@ -62,7 +62,7 @@ struct __coro_total_of {
         S_DONE = 3,
     };
 
-    __coro_total_of(std::vector<::tpy::BigInt>& xs)
+    __coro_total_of(const std::vector<::tpy::BigInt>& xs)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);

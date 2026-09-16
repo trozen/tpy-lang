@@ -1,1 +1,1 @@
-main.py:21: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.nested_def:nesteddef.name_collision)
+main.py:20: error: 'helper' is read before the nested function 'helper' defined on line 22 is bound. A nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'helper' -- move the 'def' above this line, or rename it

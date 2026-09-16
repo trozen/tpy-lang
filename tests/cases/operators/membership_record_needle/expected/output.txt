@@ -1,0 +1,16 @@
+reflexive True False
+equal-not-identical True
+method True False
+fstring True
+comp [True, False]
+closure True False
+holds 0 True False
+holds 1 True False
+holds-nan True
+slice True
+generator [True, True]
+async True
+generic-record 0 True
+generic-record 1 True
+generic-int True False
+distinct-nan False

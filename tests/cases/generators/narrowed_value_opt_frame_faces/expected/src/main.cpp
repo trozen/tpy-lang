@@ -97,7 +97,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_loop::__next__() {
 
 
 // def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
-__gen_g_loop g_loop(::tpy::ordered_map<std::string, std::optional<int32_t>>& d) {
+__gen_g_loop g_loop(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d) {
     return __gen_g_loop(d);
 }
 

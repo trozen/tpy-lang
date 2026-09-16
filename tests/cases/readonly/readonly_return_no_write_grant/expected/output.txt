@@ -1,0 +1,8 @@
+method: 1
+method after bump: 11
+caller: 5
+caller after bump: 15
+free: 1 6
+free after write: 40 45
+tuple: 7 8
+tuple after write: 70

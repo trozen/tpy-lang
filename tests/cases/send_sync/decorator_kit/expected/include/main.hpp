@@ -21,7 +21,7 @@ struct __gen_gen_forced;
 
 // @unsafe_send
 // async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
-__coro_forced forced(std::vector<int32_t>& xs);
+__coro_forced forced(const std::vector<int32_t>& xs);
 // @nosync
 // def gen_forced(n: int32) -> Iterator[int32]:    # tpyc: frame_send(yes) frame_sync(no)
 __gen_gen_forced gen_forced(int32_t n);
@@ -101,14 +101,14 @@ inline std::ostream& operator<<(std::ostream& os, const SharedTable& obj) {
 struct __coro_forced {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<int32_t>& xs;
+    const std::vector<int32_t>& xs;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_forced(std::vector<int32_t>& xs)
+    __coro_forced(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);

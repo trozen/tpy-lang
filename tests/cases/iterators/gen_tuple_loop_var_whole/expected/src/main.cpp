@@ -84,7 +84,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
 
 
 // def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
-__gen_walk_value walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs) {
+__gen_walk_value walk_value(const std::vector<std::tuple<int32_t, int32_t>>& xs) {
     return __gen_walk_value(xs);
 }
 
@@ -229,7 +229,7 @@ __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
 
 
 // async def sum_items(d: dict[int32, int32]) -> int32:
-__coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d) {
+__coro_sum_items sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
     return __coro_sum_items(d);
 }
 

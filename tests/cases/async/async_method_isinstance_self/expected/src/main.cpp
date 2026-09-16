@@ -30,7 +30,7 @@ namespace tpyapp::main {
 
 
 // async def describe_via_pet(p: Pet) -> str:
-__coro_describe_via_pet describe_via_pet(Pet& p) {
+__coro_describe_via_pet describe_via_pet(const Pet& p) {
     return __coro_describe_via_pet(p);
 }
 

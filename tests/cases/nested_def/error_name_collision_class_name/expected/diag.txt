@@ -1,1 +1,1 @@
-main.py:24: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.nested_def:nesteddef.name_collision)
+main.py:20: error: 'Tag' is read before the nested function 'Tag' defined on line 23 is bound. A nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'Tag' -- move the 'def' above this line, or rename it

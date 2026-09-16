@@ -81,7 +81,14 @@ Phase 2 mutation propagation runs workspace-wide: each analyzer's
 ModuleInfo in the shared `registry.modules` dict (deduplicated by
 `id()`), so cross-module mutating calls propagate facts uniformly
 through the workspace call graph instead of getting conservative
-defaults at module boundaries.
+defaults at module boundaries. The edges are seeded during body sema
+(`_record_mutation_call_edges`), so a callee's facts may be at
+different maturity depending on import order: `infer_method_const`
+has already run for a peer module's methods but not for this
+module's own. An edge gate must therefore never read `is_readonly`
+-- a RECEIVER fact that also arrives late -- as "the callee mutates
+nothing"; only a callee with no body facts at all (`native` /
+builtin stub) may stand on the declaration.
 
 Parsing is mostly syntactic: the parser emits `TypeRefNode` (see
 `parse/nodes.py`) for every annotation site and a dedicated resolve

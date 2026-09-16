@@ -475,8 +475,12 @@ class THIRMembership(THIRExpr):
     When `ranges_contains` is set (a native container whose
     `__contains__` is NOT a resolved member -- e.g. a
     `readonly[set[T]]`, whose readonly wrapper strips the resolved member), the
-    emit is `[!]std::ranges::contains(receiver, needle)` -- no outer parens, the
-    negation a bare `!` prefix. `method_cpp` is unused in this form.
+    emit is `[!]::tpy::seq_contains(receiver, needle)` -- no outer parens, the
+    negation a bare `!` prefix. `method_cpp` is unused in this form. The helper
+    owns Python's whole containment rule (`x is e or x == e`): it tests address
+    identity first where needle and element can be the same object and is
+    `==`-only otherwise, so the needle's value form is the RUNTIME's decision,
+    not a second render spelling here.
 
     When `iter_loop` is set (a user iterable with no `__contains__`, driven
     by the universal `__iter__`+`__next__` protocol), the emit is the
@@ -3277,7 +3281,10 @@ class THIRPrint(THIRStmt):
     Python VALUE, rendered via cpp_string_literal_expr; None suppresses the
     token entirely -- the empty-literal
     skip); a runtime one rides `sep_expr`/`end_expr` and wins over the value
-    slot. Each arg carries its PrintForm wrap (scalar/str/bytes/enum forms,
+    slot. An EVALUATED kwarg source (anything but a literal or a plain name)
+    rides a THIRArgTemp there, so the chain's repeated sep token reads one
+    evaluation, ordered after the args.
+    Each arg carries its PrintForm wrap (scalar/str/bytes/enum forms,
     the container/tuple printer wraps, records raw); args outside the wrap
     set reject."""
     args: tuple[THIRPrintArg, ...] = ()

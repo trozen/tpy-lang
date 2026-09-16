@@ -1,0 +1,10 @@
+ro 6
+mut 11 12 14
+callee 5
+callee 6
+callee 9
+views 63
+match 8
+match none 1
+async 6
+method 306

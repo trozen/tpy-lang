@@ -18,7 +18,7 @@ struct __coro_total;
 struct __coro_driver;
 
 // async def total(pairs: list[tuple[Item, Item]]) -> int32:
-__coro_total total(std::vector<std::tuple<Item, Item>>& pairs);
+__coro_total total(const std::vector<std::tuple<Item, Item>>& pairs);
 // async def driver() -> None:
 __coro_driver driver();
 
@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<std::tuple<Item, Item>>& pairs;
+    const std::vector<std::tuple<Item, Item>>& pairs;
     int32_t s;
     ::tpy::frame_slot<Item> a;
     ::tpy::frame_slot<Item> b;
@@ -54,7 +54,7 @@ struct __coro_total {
         S_DONE = 2,
     };
 
-    __coro_total(std::vector<std::tuple<Item, Item>>& pairs)
+    __coro_total(const std::vector<std::tuple<Item, Item>>& pairs)
         : __state(S_INITIAL), __cancel_pending(false), pairs(pairs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);

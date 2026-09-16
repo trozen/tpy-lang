@@ -29,7 +29,7 @@ __gen_while_suspends while_suspends(std::optional<int32_t> v);
 // def peephole_while(v: int32 | None) -> Iterator[int32]:
 __gen_peephole_while peephole_while(std::optional<int32_t> v);
 // def frame_local(b: Box) -> Iterator[int32]:
-__gen_frame_local frame_local(Box& b);
+__gen_frame_local frame_local(const Box& b);
 // def drive(label: str, v: int32 | None) -> None:
 void drive(std::string_view label, std::optional<int32_t> v);
 // def main() -> None:
@@ -172,7 +172,7 @@ struct __gen_peephole_while : public ::tpy::next_iter_mixin<__gen_peephole_while
 // def frame_local(b: Box) -> Iterator[int32]:
 struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int32_t> {
     int32_t __state;
-    Box& b;
+    const Box& b;
     std::optional<int32_t> v;
 
     enum : int32_t {
@@ -183,7 +183,7 @@ struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int3
         S_DONE = 4,
     };
 
-    __gen_frame_local(Box& b)
+    __gen_frame_local(const Box& b)
         : __state(S_INITIAL), b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

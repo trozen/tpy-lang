@@ -1,2 +1,1 @@
-main.py:16: warning: Integer literal 300000000000 is outside default int32 range; inferring int (BigInt).
-main.py:12: error: in function 'conv': this construct is not yet supported by C++ code generation (expr.call:call.type_ctor.scalar_arg)
+main.py:12: error: Type argument 'T' does not satisfy bound 'AnyFixedInt' for type parameter 'T' of 'int32()'. The conversion is picked once for the whole generic body, so the argument needs a bound satisfying it

@@ -1,1 +1,0 @@
-main.py:12: error: in function 'pick': this construct is not yet supported by C++ code generation (stmt.if:if.hoist_native_global)

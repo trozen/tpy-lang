@@ -106,7 +106,7 @@ __coro_via_optional via_optional(Dog* a) {
 
 
 // async def via_ref(a: Dog) -> str:
-__coro_via_ref via_ref(Dog& a) {
+__coro_via_ref via_ref(const Dog& a) {
     return __coro_via_ref(a);
 }
 

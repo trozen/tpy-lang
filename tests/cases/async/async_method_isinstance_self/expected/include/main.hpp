@@ -36,7 +36,7 @@ struct __coro_amain;
 struct __coro_Pet_describe;
 
 // async def describe_via_pet(p: Pet) -> str:
-__coro_describe_via_pet describe_via_pet(Pet& p);
+__coro_describe_via_pet describe_via_pet(const Pet& p);
 // async def amain() -> None:
 __coro_amain amain();
 
@@ -130,7 +130,7 @@ inline __coro_Pet_describe Pet::describe() const {
 struct __coro_describe_via_pet {
     int32_t __state;
     bool __cancel_pending;
-    Pet& p;
+    const Pet& p;
     std::optional<__coro_Pet_describe> __sub_0;
 
     enum : int32_t {
@@ -139,7 +139,7 @@ struct __coro_describe_via_pet {
         S_DONE = 2,
     };
 
-    __coro_describe_via_pet(Pet& p)
+    __coro_describe_via_pet(const Pet& p)
         : __state(S_INITIAL), __cancel_pending(false), p(p) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);

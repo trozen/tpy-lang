@@ -34,11 +34,11 @@ bool pet_list_eq(const std::vector<::tpy::Union<Cat, Dog>>& xs, const std::vecto
 // def tag_list_ne(xs: list[Labelled], ys: list[Labelled]) -> bool:  # free function
 bool tag_list_ne(const std::vector<::tpy::Union<Mark, Tag>>& xs, const std::vector<::tpy::Union<Mark, Tag>>& ys);
 // def gen_eq(xs: list[Mixed], ys: list[Mixed]) -> Iterator[bool]:  # generator
-__gen_gen_eq gen_eq(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+__gen_gen_eq gen_eq(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 // def in_closure(xs: list[Mixed], ys: list[Mixed]) -> bool:  # closure
 bool in_closure(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 // async def in_async(xs: list[Mixed], ys: list[Mixed]) -> bool:  # async
-__coro_in_async in_async(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+__coro_in_async in_async(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 // def in_with(xs: list[Mixed], ys: list[Mixed]) -> bool:  # with body
 bool in_with(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 // def in_try(xs: list[Mixed], ys: list[Mixed]) -> bool:  # try/finally
@@ -60,7 +60,7 @@ void bump_first(std::vector<::tpy::Union<Cat, Dog>>& xs);
 // def first_n(xs: list[Pet]) -> int32:
 int32_t first_n(const std::vector<::tpy::Union<Cat, Dog>>& xs);
 // async def amain(xs: list[Mixed], ys: list[Mixed]) -> None:
-__coro_amain amain(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+__coro_amain amain(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 // def main() -> None:
 void main();
 
@@ -237,15 +237,15 @@ inline std::ostream& operator<<(std::ostream& os, const Crate& obj) {
 struct __coro_in_async {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
-    std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
+    const std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
+    const std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_in_async(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
+    __coro_in_async(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs), ys(ys) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
@@ -260,8 +260,8 @@ struct __coro_in_async {
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
-    std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
+    const std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
+    const std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
     bool __await_lift_0;
     std::optional<__coro_in_async> __sub_0;
 
@@ -271,7 +271,7 @@ struct __coro_amain {
         S_DONE = 2,
     };
 
-    __coro_amain(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
+    __coro_amain(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs), ys(ys) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
@@ -285,8 +285,8 @@ struct __coro_amain {
 // def gen_eq(xs: list[Mixed], ys: list[Mixed]) -> Iterator[bool]:  # generator
 struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
     int32_t __state;
-    std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
-    std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
+    const std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
+    const std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -294,7 +294,7 @@ struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
         S_DONE = 2,
     };
 
-    __gen_gen_eq(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
+    __gen_gen_eq(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
         : __state(S_INITIAL), xs(xs), ys(ys) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();

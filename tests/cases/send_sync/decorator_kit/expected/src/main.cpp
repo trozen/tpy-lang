@@ -23,7 +23,7 @@ namespace tpyapp::main {
 
 // @unsafe_send
 // async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
-__coro_forced forced(std::vector<int32_t>& xs) {
+__coro_forced forced(const std::vector<int32_t>& xs) {
     return __coro_forced(xs);
 }
 

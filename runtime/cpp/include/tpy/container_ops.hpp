@@ -16,6 +16,7 @@
 #include <ranges>
 #include <span>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -419,6 +420,49 @@ int32_t list_count(const std::vector<T>& v, const U& value) {
     return static_cast<int32_t>(
         std::count_if(v.begin(), v.end(),
                       [&](const T& e) { return key_eq(e, value); }));
+}
+
+/**
+ * seq_contains - Python `needle in haystack` over a sequence.
+ *
+ * Python's containment is `needle is e or needle == e` per element, so an
+ * object that IS an element is present even when its `__eq__` is not
+ * reflexive -- a record with a NaN field is the everyday witness. Plain
+ * `std::ranges::contains` answers with `==` alone and reports such a needle
+ * absent.
+ *
+ * Identity exists only where needle and element can be the same object, so
+ * the identity leg is instantiated only for a needle of the range's own class
+ * over lvalue elements; every other pairing has no identity to test and keeps
+ * the `==`-only answer. A BORROW-form needle reaches this as an `Elem*` (a
+ * record local in a resumable frame is spelled that way), which is the same
+ * object seen through a pointer -- it takes the same leg. That pointer leg
+ * dereferences the needle, so it requires a non-null one; codegen only spells
+ * it for a borrow of live storage, never for a nullable source.
+ */
+template<typename Range, typename Needle>
+    requires std::ranges::input_range<Range>
+constexpr bool seq_contains(Range&& haystack, const Needle& needle) {
+    using ElemRef = decltype(*std::ranges::begin(haystack));
+    using Elem = std::remove_cvref_t<ElemRef>;
+    using Pointee = std::remove_cv_t<std::remove_pointer_t<Needle>>;
+    constexpr bool lvalue_elems = std::is_lvalue_reference_v<ElemRef>;
+    if constexpr (lvalue_elems && std::is_class_v<Needle>
+                  && std::is_same_v<Elem, Needle>) {
+        for (auto&& e : haystack) {
+            if (&e == &needle || e == needle) return true;
+        }
+        return false;
+    } else if constexpr (lvalue_elems && std::is_pointer_v<Needle>
+                         && std::is_class_v<Pointee>
+                         && std::is_same_v<Elem, Pointee>) {
+        for (auto&& e : haystack) {
+            if (&e == needle || e == *needle) return true;
+        }
+        return false;
+    } else {
+        return std::ranges::contains(haystack, needle);
+    }
 }
 
 /**

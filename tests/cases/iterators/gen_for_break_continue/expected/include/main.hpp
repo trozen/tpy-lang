@@ -12,18 +12,18 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_filtered;
 
 // def filtered(items: list[int32], limit: int32) -> Iterator[int32]:
-__gen_filtered filtered(std::vector<int32_t>& items, int32_t limit);
+__gen_filtered filtered(const std::vector<int32_t>& items, int32_t limit);
 // def main():
 void main();
 
 // def filtered(items: list[int32], limit: int32) -> Iterator[int32]:
 struct __gen_filtered : public ::tpy::next_iter_mixin<__gen_filtered, int32_t> {
     int32_t __state;
-    std::vector<int32_t>& items;
+    const std::vector<int32_t>& items;
     int32_t limit;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -34,7 +34,7 @@ struct __gen_filtered : public ::tpy::next_iter_mixin<__gen_filtered, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_filtered(std::vector<int32_t>& items, int32_t limit_)
+    __gen_filtered(const std::vector<int32_t>& items, int32_t limit_)
         : __state(S_INITIAL), items(items), limit(std::move(limit_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

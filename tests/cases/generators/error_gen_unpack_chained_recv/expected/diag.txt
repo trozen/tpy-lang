@@ -1,0 +1,1 @@
+main.py:28: error: in function 'gen': this construct is not yet supported by C++ code generation (res.unpack)

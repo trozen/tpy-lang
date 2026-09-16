@@ -48,7 +48,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
 
 
 // def sums(items: list[int32]) -> Iterator[int32]:
-__gen_sums sums(std::vector<int32_t>& items) {
+__gen_sums sums(const std::vector<int32_t>& items) {
     return __gen_sums(items);
 }
 

@@ -80,7 +80,7 @@ void __gen_counted::__finally_0() {
 }
 
 // def counted(xs: list[int]) -> Iterator[int]:
-__gen_counted counted(std::vector<::tpy::BigInt>& xs) {
+__gen_counted counted(const std::vector<::tpy::BigInt>& xs) {
     return __gen_counted(xs);
 }
 

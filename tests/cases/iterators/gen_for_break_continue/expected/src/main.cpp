@@ -58,7 +58,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
 
 
 // def filtered(items: list[int32], limit: int32) -> Iterator[int32]:
-__gen_filtered filtered(std::vector<int32_t>& items, int32_t limit) {
+__gen_filtered filtered(const std::vector<int32_t>& items, int32_t limit) {
     return __gen_filtered(items, limit);
 }
 

@@ -261,7 +261,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_framegen::__next__() {
 
 
 // def framegen(xs: list[int32]) -> Iterator[int32]:
-__gen_framegen framegen(std::vector<int32_t>& xs) {
+__gen_framegen framegen(const std::vector<int32_t>& xs) {
     return __gen_framegen(xs);
 }
 
@@ -304,7 +304,7 @@ __gen_framegen framegen(std::vector<int32_t>& xs) {
 
 
 // async def aio(xs: list[int32]) -> int32:
-__coro_aio aio(std::vector<int32_t>& xs) {
+__coro_aio aio(const std::vector<int32_t>& xs) {
     return __coro_aio(xs);
 }
 

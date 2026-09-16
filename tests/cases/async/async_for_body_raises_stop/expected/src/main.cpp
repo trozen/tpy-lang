@@ -115,7 +115,7 @@ namespace tpyapp::main {
 
 
 // async def runner(c: Counts) -> str:
-__coro_runner runner(Counts& c) {
+__coro_runner runner(const Counts& c) {
     return __coro_runner(c);
 }
 

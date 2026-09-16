@@ -35,7 +35,7 @@ std::expected<std::tuple<std::optional<int32_t>, std::optional<int32_t>>, ::tpy:
 
 
 // def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
-__gen_gen_value_pairs gen_value_pairs(std::vector<int32_t>& items) {
+__gen_gen_value_pairs gen_value_pairs(const std::vector<int32_t>& items) {
     return __gen_gen_value_pairs(items);
 }
 

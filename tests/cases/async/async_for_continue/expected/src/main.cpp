@@ -70,7 +70,7 @@ namespace tpyapp::main {
 
 
 // async def sum_evens(c: Counts) -> int:
-__coro_sum_evens sum_evens(Counts& c) {
+__coro_sum_evens sum_evens(const Counts& c) {
     return __coro_sum_evens(c);
 }
 

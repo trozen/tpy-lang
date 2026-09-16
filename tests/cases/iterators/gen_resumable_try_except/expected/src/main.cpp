@@ -69,7 +69,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_guarded::__next__() {
 
 
 // def guarded(xs: list[int]) -> Iterator[int]:
-__gen_guarded guarded(std::vector<::tpy::BigInt>& xs) {
+__gen_guarded guarded(const std::vector<::tpy::BigInt>& xs) {
     return __gen_guarded(xs);
 }
 

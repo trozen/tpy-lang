@@ -46,9 +46,9 @@ struct __coro_bump {
     int32_t k;
     C* c = nullptr;
     std::tuple<int32_t, C*> __for_tup_0;
-    ::tpy::frame_slot<::tpy::dict_items_view<int32_t, C>> __for_src_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_items_view<int32_t, C>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::dict_items_view<int32_t, C>>> __for_end_0;
+    ::tpy::frame_slot<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))> __for_src_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

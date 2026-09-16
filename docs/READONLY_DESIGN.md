@@ -445,6 +445,15 @@ def mutate(o: Outer) -> None: o.b.get().bump()      # Outer&        (mutating me
 C++ overload resolution then selects `get()` vs `get() const` automatically
 from the receiver's const-ness -- no clone is chosen in sema or codegen.
 
+A resumable frame has to name the result type of such a call, because a frame
+field cannot be `auto` the way a sync local can, and the two halves return
+different C++ types rather than one type under a `const` (`dict_items_view<K,
+const V>` vs `dict_items_view<K, V>`). It names it by deduction, not by
+selection: the field is spelled `decltype(<call>)` with a `std::declval`
+receiver carrying the const-ness the borrow verdict gives that receiver, so
+C++ overload resolution still decides which half runs -- codegen only supplies
+the receiver qualifier it would have had at the call site.
+
 Two predicates intentionally differ in scope: the call-site demotion is
 suppressed for *every* `@auto_readonly` mutable clone (`is_auto_readonly_mutable_clone`)
 -- including value-returning ones, which read the receiver to produce a copy

@@ -1,1 +1,1 @@
-main.py:20: error: in function 'main': this construct is not yet supported by C++ code generation (expr.list_comp)
+main.py:22: error: Recursive nested functions are not supported. 'helper' cannot call itself
