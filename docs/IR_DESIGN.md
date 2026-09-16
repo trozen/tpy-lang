@@ -204,6 +204,37 @@ in the current model.
   that doc defers to "Phase 3+". Natural on MIR's unification-variable model; awkward to
   bolt onto the directional AST matcher. Workaround: annotate the local
   (`heap: list[Entry[T]] = []`). Surfaced reviewing the owned-storage-form inference fix.
+- **Callable result provenance -- the analysis-only MIR's FIRST CONSUMER.** The
+  callable-result design splits along exactly this line: what a callable's result
+  MEANS is decidable from types and is proposed to ship against sema
+  (`docs/CALLABLE_CONTRACT_DESIGN.md`),
+  while WHICH of the caller's places a returned borrow roots in, and what later
+  invalidates it, is not. The second half is written as requirements on the
+  analysis-only MIR in `docs/CALLABLE_PROVENANCE_REQUIREMENTS.md`, and until they
+  are met the contract half refuses those shapes with located errors rather than
+  accepting them unsoundly -- capture-rooted callback results, stored closures with
+  borrowed environments (`self` included), global-rooted borrows, helper
+  compositions the parameter-index summaries cannot express, and any call whose
+  effects are unknown while a loan is live. These restrictions also reject safe
+  programs accepted today. The contract document's "Compatibility gate" measures
+  that cost before the coupled implementation; if the admission layer requires
+  substantial new flow analysis or rejects common safe callback idioms, bring
+  analysis-only MIR forward. Six provisions are load-bearing for it:
+  (1) stable place identities covering locals, temporaries, captures, qualified
+  globals, fields, derefs and summarized container elements; (2) explicit
+  operations -- alias, borrow, copy, move, rebind, closure construction, call,
+  return, escape into a field or container; (3) a CFG preserving evaluation order,
+  including short-circuits, back edges and exceptional cleanup, rejecting the
+  lifetime-sensitive shapes it cannot represent; (4) liveness plus loan propagation
+  that follows every holder, copied closures and aggregates included; (5)
+  summary/effect application at call sites, including named calls that forward a
+  callback; (6) form and effect obligations discharged per instantiation. No SSA,
+  no exact-index disjointness and no MIR-backed emission are needed for any of it.
+  Two constraints the consumer imposes on the eventual checker: its callable-subset
+  verdicts are hard ERRORS even in the default advisory mode (a warn-and-continue
+  verdict there is a silent use-after-free), and its conflict rule is invalidation,
+  not exclusivity -- two shared loans on one place must coexist (see "Interaction
+  with Ownership Model" below).
 - **Simple-generator peephole eager-body divergence.** RESOLVED 2026-09-12 without MIR:
   the single-yield lambda peephole was deleted outright, so every generator lowers on the
   resumable frame and no prologue or post-yield code runs eagerly. What this bullet used to

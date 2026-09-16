@@ -10,6 +10,8 @@
 | 3 | Nested `def` with captures, `nonlocal` keyword | Done |
 | 4 | Generator functions (`yield`) | Done |
 | 5 | `@noalloc` enforcement, `FnOnce` semantics for `Own[T]` captures | Not started |
+| 6a | Callable contract: result form, conversions, erasure (`docs/CALLABLE_CONTRACT_DESIGN.md`) | Designed / Not started |
+| 6b | Callable provenance: loans, summaries, effects (`docs/CALLABLE_PROVENANCE_REQUIREMENTS.md`) | Requirements on the analysis-only MIR |
 
 ### Future Extensions
 
@@ -292,9 +294,19 @@ A value accepted as `Fn` can be passed to a `Callable` parameter or stored in
 a `Callable` field (wrapping in `std::function`). The reverse is not possible --
 `Callable` cannot become `Fn` (the concrete type is erased).
 
+The coercion is legal for a callable the caller OWNS, not for an `Fn` parameter:
+an `Fn` binds by reference and may hold references to its own caller's locals, so
+copying one into a storing slot would keep those borrows alive past the frame
+they come from. Non-escape is a property of the callable VALUE, carried as a
+conservative marker through aliases and named forwarding, and it is checked at
+EVERY binding -- a lambda that merely CAPTURES the `Fn` and is itself stored is
+the same error. `docs/CALLABLE_CONTRACT_DESIGN.md` (admission rule A2 and the
+first reject row) makes that an error at the binding:
+
 ```python
 def process(f: Fn[[int32], int32], x: int32) -> None:
-    store_callback(f)  # OK: Fn coerces to Callable (wraps in std::function)
+    store_callback(f)  # ERROR: 'f' is an Fn parameter and cannot be stored;
+                       # declare it Callable[[int32], int32] instead
 
 def store_callback(cb: Callable[[int32], None]) -> None:
     self.handler = cb
@@ -948,7 +960,42 @@ multiple yield points or complex control flow.
 
 ---
 
-## VII. `@noalloc` Interaction
+## VII. Result Form and Provenance
+
+A callable's RESULT carries two facts the compiler does not track today: its
+FORM -- does the call hand back a borrow of storage the caller can name, or a
+fresh value the caller owns? -- and its PROVENANCE -- which of the caller's
+places that borrow roots in. Without them a call through a callable value reads
+as an rvalue at every owning slot, so an `Fn` bound to a borrow-returning
+function copies where CPython aliases, silently
+(`BUGS.md#callable-value-borrow-return-copies-unwarned`).
+
+One rule reads the form off a spelled return type, and it is the rule a `def`
+return already obeys: a bare reference type `R` is a **BORROW** (`R&` in C++),
+`Own[R]` is **FRESH** (a value the caller owns), and a type parameter `U` is
+**FORM-NEUTRAL**, resolved per instantiation exactly as a generic def's `-> U`
+is. `readonly[R]` and `Ptr[R]` are BORROW with a permission dimension; erasure
+into `Callable` does not change the form.
+
+The design is stated in two normative documents, because its two halves rest on
+different foundations. Rule numbers are one shared numbering, kept as stable
+identifiers, and each rule is marked in the document that owns it.
+
+- **`docs/CALLABLE_CONTRACT_DESIGN.md`** -- the half decidable from types and
+  declarations: the def rule and the result descriptor, conversion legality at
+  every binding, the erasure renders, the neutral-result slot, overload and
+  `@dispatch` selection, stub returns, `@native_borrow`, and the conservative
+  ADMISSION LAYER that makes it sound without a dataflow analysis. It carries the
+  reject table, the implementation plan and the rollout gate.
+- **`docs/CALLABLE_PROVENANCE_REQUIREMENTS.md`** -- environment loans, `self` as a
+  view, symbolic summaries, argument loans, roots and mutation effects, stated as
+  REQUIREMENTS on the analysis-only MIR of `docs/IR_DESIGN.md`, each with the
+  programs it must admit and the programs it must reject. It also carries the
+  historical review-disposition table.
+
+---
+
+## VIII. `@noalloc` Interaction
 
 | Construct | `@noalloc` allowed? | Reason |
 |-----------|-------------------|--------|
@@ -974,7 +1021,7 @@ error. `Fn` is always safe.
 
 ---
 
-## VIII. Implementation Plan
+## IX. Implementation Plan
 
 ### Phase 1: `Fn` + `Callable` Types + Lambda Expressions (M effort)
 
@@ -1056,7 +1103,7 @@ and capturing lambdas, `Callable` field, error cases.
 
 ---
 
-## IX. CPython Compatibility
+## X. CPython Compatibility
 
 Closures and lambdas are native Python -- no stubs needed. `typing.Callable` is
 standard. `Fn` is TPy-specific and will need a CPython stub in `lib/cpy/tpy/`
@@ -1069,7 +1116,7 @@ in CPython. No `no_cpython.txt` should be needed for generator tests.
 
 ---
 
-## X. Design Decisions
+## XI. Design Decisions
 
 ### Resolved
 
