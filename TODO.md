@@ -1122,6 +1122,88 @@ Next-design candidates (re-price against a FRESH probe before opening):
 - **Collapse the `is_clone_pair` OR-chain when a THIRD clone mechanism lands.** `tpyc/thir/lower/functions.py` now ORs three per-decorator markers (`auto_readonly_params_resolved`, `is_auto_own_borrowing_clone`, `is_auto_own_consuming_clone`) to answer one question: is this func one half of a method_expansion-generated clone pair. Each new clone-generating decorator adds another boolean here rather than all clone constructors setting one shared field the gate checks once. Not a defect today; surfaced by /tpy-review (architecture-fit).
 - **asyncio library surface AVOID-LIST** -- generic task factories, erased dyn-protocol handles, stored-exception raise, StreamReader non-F1 receivers: the SINK, open LAST, gated on signals S1+S2 (S1 unmet by ~10x at last check; re-check after two waves).
 
+## Architectural stabilization
+
+Follow-ups from the 2026-09-14 architecture review at `4a28220b8b`,
+recorded 2026-09-16. Retain TypeDef, THIR forms/conversions, shared argument
+rows and the common frame machinery; make their contracts complete across
+positions. These are design work items, not approved implementation choices.
+Reproduce the motivating cases on the current tree before implementation.
+Existing defects remain in BUGS.md; this section groups the architectural work.
+
+- **[design][first] Reconcile generic Optional callable representations.**
+  Start with `def echo[T](o: T | None) -> T | None: return o`
+  (`BUGS.md#generic-optional-return-committed-to-pointer`). The parameter uses
+  `opt_param_t<T>` while the return commits to `T*`; parameter substitution
+  strips the representation stamp that general substitution preserves.
+  Define one consistent slot policy for declaration, return lowering, call
+  result and receiving local, extending the existing renderers/traits and
+  `THIRFormConvert`. Preserve alias returns for reference T and owned results
+  for value T; replacing every pointer with `std::optional<T>` would copy
+  reference types. Validate scalar/reference/view instantiations, direct and
+  field returns, const sources, and generic/concrete twins across free calls
+  and methods. This does not require MIR.
+
+- **[design][first] Unify source attribution for mutation facts.** Direct
+  writes follow `loop_var_iterable` as well as binding/borrow provenance;
+  `_arg_storage_roots` for mutation-call edges reads only the borrow graph.
+  Use one source-root query for both, preserving all roots of re-seated
+  aliases and vararg packs. Start with `for p in ps: touch(p)` versus a
+  direct field write, across list/varargs and ordinary/generator bodies;
+  then check local const decisions against finalized call effects. Reuse
+  the existing parameter-const verdict and the recently consolidated
+  `const_frame_bindings`. Attribution is not invalidation: do not turn every
+  source relationship into an invalidating loan. Coordinate with the
+  import-component propagation item under "Deferred to THIR/MIR &
+  workload-gated"; evaluation order and missing edges are separate problems.
+
+- **[design] Complete the facts consumed by shared frame machinery.** Share
+  concrete protocol-subframe deduction between inline await and generator
+  delegation, deriving specialization and capture requirements from lowered
+  arguments rather than bare annotations. Preserve readonly/borrow facts at
+  the comprehension source-to-element boundary
+  (`BUGS.md#genexpr-readonly-source-slot`); do not propagate source readonly
+  blindly onto arbitrary computed results. Pin the previously working
+  protocol-delegation program lost when the single-yield shortcut was removed.
+  These bounded repairs need not wait for the larger identity decision.
+  Producer binding identity and movement belong to the existing "Producers
+  are movable only while unstarted" and "Generator expressions lower to
+  frames" entries below: settle alias-versus-reject semantics before their
+  binding/storage migration, without restoring a second generator emitter.
+
+- **[design][MIR] Make loan extents and temporary owners explicit.** Extend
+  the place/loan direction in `docs/IR_DESIGN.md`, starting with one scoped
+  example such as match-arm bindings and direct/callee-mediated subject
+  mutation. Compare advisory results with existing checks, covering missed
+  hazards and absence of warnings after the borrow ends. Keep attribution
+  separate from invalidation; OPAQUE match loans intentionally suppress
+  invalidation checks whose extent the general graph cannot express.
+  Temporary materialization should eventually carry its owner and required
+  lifetime into lowering. This is architectural work, not a prerequisite
+  for the Optional or mutation-edge fixes above.
+
+- **[tooling] Freeze a small capability corpus across revisions.** Select
+  representative existing cases and review witnesses; retain their sources
+  unchanged when comparing revisions. Record correct output, wrong output,
+  TPy rejection, compiler crash and C++ build failure separately. Include
+  mutation-based alias checks, generic/concrete twins and protocol delegation;
+  inspect materializations where immutable copies are output-invisible.
+  Complement the existing rewrite-harness/copy-counter plans below. Growing
+  test counts and shrinking reject counts alone do not measure retained
+  behavior, and the sampled historical audit is not a regression-rate estimate.
+
+- **[design][later] Carry admission decisions into argument construction.**
+  The shared argument table returns bool, so lowering still reconstructs
+  some source/slot choices. Trial a typed decision for one existing row/family,
+  carrying its conversion and temporary requirement into construction; extend
+  the current table rather than add another registry. Preserve row order,
+  witness accounting, rejection behavior and conditional evaluation. Measure
+  cost before generalizing. Success means deleting an independent decision,
+  not moving the same conditionals to another file. Composite str/bytes view
+  policies are a separate, lower-priority extension: coordinate with
+  `BUGS.md#str-tuple-element-local-owned` and the existing tuple-view work,
+  retaining ownership where values escape.
+
 ## Next
 - **[HIGH][codegen] Generator expressions lower to frames (delete the genexpr closure emitter).** Sequenced AFTER the alias-gated slot model (the "semantic half is the ALIAS-GATED slot model" entry under Refactor) and BEFORE "Producers are movable only while unstarted" below. A genexpr is a single-yield generator with a `for`, filters and nested `for`s -- exactly the shape the single-yield lambda peephole special-cased before it was deleted (2026-09-12) -- yet it still keeps a whole parallel producer: its own emitter (`_emit_genexpr`, `tpyc/thir/emit.py`), a capture list, the owned-source holder `::tpy::genexpr_state` plus the in-place `make_generator(std::in_place, factory)` overload that exists only because a closure holding one cannot be moved, the seed/advance protocol over that holder, the frame-capture helper special case (`genexpr.frame_capture`, `tpyc/thir/lower/comprehensions.py`) and the `genexpr.nonmovable_into_owning` reject.
 
