@@ -59,6 +59,63 @@ std::string describe(std::optional<std::string_view> s) {
     return "";
 }
 
+// # A bool inner reads the same "bool never switches" fact as a top-level bool
+// # subject: a C++ `switch` over a bool is -Wswitch-bool, so both take the chain.
+// def flagged(b: Optional[bool]) -> str:
+//     match b:
+//         case None:
+//             return "none"
+//         case True:  # tpyc: ok
+//             return "yes"
+//         case False:  # tpyc: ok
+//             return "no"
+//         case _:
+//             return "unreachable"
+std::string flagged(std::optional<bool> b) {
+    auto& __match_subject_1 = b;
+    if (!__match_subject_1.has_value()) {
+        return "none";
+    } else {
+        auto& __match_inner_1 = (*__match_subject_1);
+        if (__match_inner_1 == true) {
+            return "yes";
+        } else if (__match_inner_1 == false) {
+            return "no";
+        } else {
+            return "unreachable";
+        }
+    }
+    ::std::unreachable();
+}
+
+// # An int literal widened onto the bool inner reads that same chain
+// def flagged_int(b: Optional[bool]) -> str:
+//     match b:
+//         case None:
+//             return "none"
+//         case 1:  # tpyc: ok
+//             return "one"
+//         case 0:  # tpyc: ok
+//             return "zero"
+//         case _:
+//             return "other"
+std::string flagged_int(std::optional<bool> b) {
+    auto& __match_subject_1 = b;
+    if (!__match_subject_1.has_value()) {
+        return "none";
+    } else {
+        auto& __match_inner_1 = (*__match_subject_1);
+        if (__match_inner_1 == 1) {
+            return "one";
+        } else if (__match_inner_1 == 0) {
+            return "zero";
+        } else {
+            return "other";
+        }
+    }
+    ::std::unreachable();
+}
+
 // def main() -> None:
 //     print(classify(None))
 //     print(classify(int32(0)))
@@ -66,6 +123,8 @@ std::string describe(std::optional<std::string_view> s) {
 //     print(describe(None))
 //     print(describe("hello"))
 //     print(describe("world"))
+//     print(flagged(None), flagged(True), flagged(False))
+//     print(flagged_int(None), flagged_int(True), flagged_int(False))
 void main() {
     std::cout << ::tpyapp::main::classify(std::nullopt) << "\n";
     std::cout << ::tpyapp::main::classify(0) << "\n";
@@ -73,6 +132,8 @@ void main() {
     std::cout << ::tpyapp::main::describe(std::nullopt) << "\n";
     std::cout << ::tpyapp::main::describe("hello") << "\n";
     std::cout << ::tpyapp::main::describe("world") << "\n";
+    std::cout << ::tpyapp::main::flagged(std::nullopt) << " " << ::tpyapp::main::flagged(true) << " " << ::tpyapp::main::flagged(false) << "\n";
+    std::cout << ::tpyapp::main::flagged_int(std::nullopt) << " " << ::tpyapp::main::flagged_int(true) << " " << ::tpyapp::main::flagged_int(false) << "\n";
 }
 
 // main()

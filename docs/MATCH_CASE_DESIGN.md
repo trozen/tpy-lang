@@ -1021,15 +1021,21 @@ Minor differences where TPy's compiled model diverges:
 
 | Aspect | CPython | TPy | Impact |
 |--------|---------|-----|--------|
-| Singleton matching | `is` identity check | `==` comparison | No observable difference for None/True/False in C++ |
+| Singleton matching | `is` identity check | `case None:` tests `has_value()`; `case True:`/`case False:` compare `==` on a `bool` subject and are a compile error on any other subject (the arm could never fire under identity) | Same outcomes; the never-matching bool arm is rejected instead of dead (stricter) |
 | `__match_args__` | Only `@dataclass` auto-generates | All records auto-generate from field order | Strictly more permissive; valid CPython code still works |
 | Sequence patterns | Runtime protocol check | Phase 2 (not yet) | Missing feature, not a semantic difference |
 | Mapping patterns | Runtime protocol check | Phase 2 (not yet) | Missing feature, not a semantic difference |
 | Soft keyword | `match`/`case` usable as variable names | Same (Python ast handles this) | No difference |
+| Guard that mutates the subject | Subject evaluated once; guards see the snapshot | Chain tiers alias a name subject and re-read it after each guard; a field/subscript subject on the guarded chain is rejected | Silent divergence for the name face (`BUGS.md#match-subject-alias-under-guard-mutation`); fix is a by-value scalar subject |
 | Polymorphic subject expression | Any expression | Any expression (bound once into `__match_subject`); `isinstance` still requires a bare name | Match: no difference. Deliberate divergence from `isinstance`, which stays bare-name-only |
 | Shadowed polymorphic arm | Silently allowed (dead arm) | Compile error (`unreachable case`) | Stricter: rejects an arm CPython would accept-but-never-run |
 | Non-conformer polymorphic arm | Silently allowed (never matches) | Compile error | Stricter: a `case T()` whose `T` can't match the subject is rejected, not dead code |
-| Literal pattern of an incompatible kind | Silently allowed (dead arm) | Compile error | Stricter: rejects an arm CPython would accept-but-never-run |
+| Literal pattern of an incompatible kind (`str` vs int, ...) | Silently allowed (dead arm) | Compile error | Stricter: rejects an arm CPython would accept-but-never-run |
+| Cross-kind INT literal (`case 1:` on `float` / `float32`) | Matches by `==` | Same (`==`) | No difference up to the compare's precision; beyond 2**53 (2**24 for `float32`) the int-vs-float rounding compare applies (`BUGS.md#int-float-compare-rounds-bigint`) |
+| INTEGRAL-valued `float` literal on a whole-number subject (`case 2.0:` on a fixed int, `bool` or `int`) | Matches by `==` | Matches; warned (*spell it 2*) and folded to the int literal in sema | Runtime-identical -- the fold is the same test, and it is what gives the `BigInt` subject a render (`::tpy::BigInt` has no comparison against a double) -- but a warning is emitted, and an out-of-range value takes the stricter row below |
+| NON-INTEGRAL `float` literal on a whole-number subject (`case 1.5:` on a fixed int, `bool` or `int`) | Silently allowed (dead arm) | Compile error | Stricter: rejects an arm CPython would accept-but-never-run, like the bool-identity arm |
+| Integral literal outside the subject's range (`case 300:` on `int8`, `case 2:` on `bool`, `case 1e30:` on `int32`) | Silently allowed (dead arm) | Compile error | Stricter, same reason: the arm can never fire. `int` (BigInt) is unbounded, so it is never rejected |
+| `str` literal against a `char` subject | Matches the one-character string | Compile error | Declared divergence: `char` is a distinct type; match on `str(c)` (a guard over the `char` subject does not lower yet) |
 | Same, inside a class pattern's field sub-pattern | Silently allowed (dead arm) | Compile error | Same rule, applied where it previously was not checked at all |
 | `bytes` literal against a `bytes` subject or field | Matches | Compile error, reported as not yet implemented | Missing feature, not a semantic difference -- a guard is the workaround |
 | `int` literal against an `IntEnum` subject | Matches | Compile error, reported as not yet implemented | Missing feature, not a semantic difference -- a guard is the workaround |
@@ -1055,6 +1061,8 @@ workaround rather than claiming the program is wrong.
 | Duplicate case for same type | `duplicate case for 'Circle' in match statement` |
 | Incompatible literal type | `str literal pattern not valid for subject type 'int32'` |
 | Literal kind not renderable against an otherwise-compatible subject | `<kind> literal pattern against subject type '<T>' is not yet implemented; ...` |
+| `True`/`False` pattern on a non-`bool` subject | `bool literal pattern can never match subject type 'int32': 'True'/'False' patterns compare by identity, so they only match a 'bool'; use '1'/'0' to compare numerically` |
+| Non-integral `float` pattern on a whole-number subject | `float literal pattern 1.5 can never match subject type 'int32', which holds whole numbers only; drop the arm, or compare in a guard (e.g. `case _ if <subject> == 1.5:`)` |
 | Or-pattern alternative a switch tier cannot label | `unsupported alternative in an or-pattern over a <union/enum/int-or-bool> subject: ...` |
 | Or-pattern variable mismatch | `variable 'n' not bound in all alternatives of or-pattern` |
 | Or-pattern type mismatch | `variable 'n' has type 'int32' in first alternative but 'str' in second` |
@@ -1074,6 +1082,7 @@ workaround rather than claiming the program is wrong.
 | Non-exhaustive Optional match | `non-exhaustive match on '...'; missing: None, Point` (each uncovered side reported) |
 | Subject storage mutated under live bindings | `'h.pet' is mutated in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). ...` (field/element subjects; arm body or guard; covers assignment, invalidating container method, and a non-readonly method call on the subject prefix -- aliases/opaque methods evade, see BUGS.md) |
 | Non-enumerable scalar subject without a catch-all | `non-exhaustive match on '...'; no unconditional catch-all arm` |
+| Integral-valued `float` pattern on a whole-number subject | `float literal pattern 2.0 against subject type 'int32'; spell it 2` (the pattern is folded to the int literal) |
 
 ---
 

@@ -75,6 +75,14 @@ extern "C" int32_t* echo_ptr(int32_t* p) {
     return p;
 }
 
+// # Own over a value type, at both positions.
+// @export(binding="C")
+// def doubled(x: Own[int32]) -> Own[int32]:  # tpyc: ok
+//     return x * 2
+extern "C" int32_t doubled(int32_t x) {
+    return (::tpy::mul_check<int32_t>(x, 2));
+}
+
 // def main() -> None:
 //     xs = [int32(7), int32(8)]
 //     p = unsafe_ptr(xs)
@@ -86,6 +94,7 @@ extern "C" int32_t* echo_ptr(int32_t* p) {
 //     print(echo_bool(False))
 //     print(echo_char(char('q')))
 //     print(unsafe_load(echo_ptr(p), 1))
+//     print(doubled(21))
 void main() {
     std::vector<int32_t> xs = {7, 8};
     int32_t* p = xs.data();
@@ -95,12 +104,14 @@ void main() {
     std::cout << ::tpy::print_bool(echo_bool(false)) << "\n";
     std::cout << echo_char(::tpy::char_from_str("q")) << "\n";
     std::cout << echo_ptr(p)[1] << "\n";
+    std::cout << doubled(21) << "\n";
 }
 
 // # Regression guard for the PERMITTED side of the C-ABI allow-list: fixed-width
 // # ints, float32, float, bool, char and Ptr[T] must stay legal in a C-linkage
-// # signature, in both param and return position, plus `None` (void) as a return.
-// # Narrowing the allow-list has to fail here.
+// # signature, in both param and return position, plus `None` (void) as a return
+// # and Own over a value type (the owned and borrowed C++ forms coincide there,
+// # so Own says nothing about the ABI). Narrowing the allow-list has to fail here.
 // from tpy.extern import export
 //
 // from tpy.unsafe import unsafe_load, unsafe_ptr

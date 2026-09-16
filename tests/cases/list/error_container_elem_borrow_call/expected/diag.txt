@@ -1,0 +1,2 @@
+main.py:16: warning: copies list[str] into owned storage; use copy() to make this explicit
+main.py:16: error: in function 'main': this construct is not yet supported by C++ code generation (expr.list_comp)

@@ -195,6 +195,40 @@ std::string multi_guard(Color c, bool x, bool y) {
     return "";
 }
 
+// # or-pattern OVERLAP across arms: `Color.Blue` labels two arms whose label
+// # sets differ. A switch could spell it only by duplicating each shared body
+// # under every label it covers; the `==` chain keeps each body once, so the
+// # enum tier demotes to it and the second arm stays live when the guard fails
+// def or_overlap(c: Color, flag: bool) -> str:
+//     match c:
+//         case Color.Red | Color.Blue if flag:  # tpyc: ok
+//             return "warm+flag"
+//         case Color.Blue:  # tpyc: ok
+//             return "blue"
+//         case _:
+//             return "other"
+//     return ""
+std::string or_overlap(Color c, bool flag) {
+    auto& __match_subject_1 = c;
+    if ((__match_subject_1 == Color::Red || __match_subject_1 == Color::Blue)) {
+        if (flag) {
+            return "warm+flag";
+            goto __match_end_2;
+        }
+    }
+    if (__match_subject_1 == Color::Blue) {
+        return "blue";
+        goto __match_end_2;
+    }
+    {
+        return "other";
+        goto __match_end_2;
+    }
+    __match_end_2:;
+    ::std::unreachable();
+    return "";
+}
+
 // def main() -> None:
 //     print(classify(Color.Red))
 //     print(classify(Color.Blue))
@@ -212,6 +246,11 @@ std::string multi_guard(Color c, bool x, bool y) {
 //     print(multi_guard(Color.Green, False, True))
 //     print(multi_guard(Color.Green, False, False))
 //     print(multi_guard(Color.Red, True, True))
+//     print(or_overlap(Color.Red, True))
+//     print(or_overlap(Color.Red, False))
+//     print(or_overlap(Color.Blue, True))
+//     print(or_overlap(Color.Blue, False))
+//     print(or_overlap(Color.Green, False))
 void main() {
     std::cout << ::tpyapp::main::classify(Color::Red) << "\n";
     std::cout << ::tpyapp::main::classify(Color::Blue) << "\n";
@@ -229,6 +268,11 @@ void main() {
     std::cout << ::tpyapp::main::multi_guard(Color::Green, false, true) << "\n";
     std::cout << ::tpyapp::main::multi_guard(Color::Green, false, false) << "\n";
     std::cout << ::tpyapp::main::multi_guard(Color::Red, true, true) << "\n";
+    std::cout << ::tpyapp::main::or_overlap(Color::Red, true) << "\n";
+    std::cout << ::tpyapp::main::or_overlap(Color::Red, false) << "\n";
+    std::cout << ::tpyapp::main::or_overlap(Color::Blue, true) << "\n";
+    std::cout << ::tpyapp::main::or_overlap(Color::Blue, false) << "\n";
+    std::cout << ::tpyapp::main::or_overlap(Color::Green, false) << "\n";
 }
 
 // # match/case or-patterns and guards on enum subjects

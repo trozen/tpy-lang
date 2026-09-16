@@ -152,15 +152,11 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
                 # Literal subject would take the DISCRIMINATOR switch;
                 # that render is not lowered yet.
                 return None
-            if any(c.guard is not None for c in stmt.cases):
-                return "if_elif_guarded"
-            return "if_elif"
+            return _chain_kind(stmt.cases)
         if is_fixed_int_type(base):
             return "switch_primitive"
         if _eligible_scalar(base):
-            if any(c.guard is not None for c in stmt.cases):
-                return "if_elif_guarded"
-            return "if_elif"
+            return _chain_kind(stmt.cases)
         return None
     if isinstance(t, UnionType) or _wrapper_union_like(t) is not None:
         # A union subject dispatches on its variant; a recursive-alias
@@ -186,25 +182,41 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
         # unsupported arm shapes as it builds the partition / the chain.
         part = partition_optional_cases(stmt.cases)
         if (part is not None and _dispatch_order_safe(part[1])
-                and _optional_inner_dispatch_ok(t, part[1])):
+                and _optional_inner_dispatch_ok(t, part[1], analyzer)):
             return "optional_partition"
-        if any(c.guard is not None for c in stmt.cases):
-            return "if_elif_optional_guarded"
-        return "if_elif_optional"
+        return _chain_kind(stmt.cases, guarded_kind="if_elif_optional_guarded",
+                           unguarded_kind="if_elif_optional")
     if _eligible_scalar(t) or _resolved_str_value(t, analyzer) is not None:
         if _match_str_switches(stmt, analyzer):
             return "switch_str"
-        if any(c.guard is not None for c in stmt.cases):
-            return "if_elif_guarded"
-        return "if_elif"
+        return _chain_kind(stmt.cases)
     if isinstance(t, NominalType) and t.is_user_record:
-        if (any(c.guard is not None for c in stmt.cases)
-                or not _record_always_arm_last(stmt.cases)):
+        if not _record_always_arm_last(stmt.cases):
+            # An arm behind the catch-all needs the goto-sibling render that
+            # only the guarded tier has, guard or no guard.
             return "guarded_record"
-        return "if_elif_record"
+        return _chain_kind(stmt.cases, guarded_kind="guarded_record",
+                           unguarded_kind="if_elif_record")
     return None
 
-def _optional_inner_dispatch_ok(t: OptionalType, inner_cases) -> bool:
+def _optional_inner_kind(inner_type: TpyType, inner_cases,
+                         analyzer) -> 'str | None':
+    """The value-repr Optional partition's INNER dispatch tier -- the one
+    classifier both the strategy's admission (`_optional_inner_dispatch_ok`)
+    and the lowerer read, so the two cannot disagree about which tier the
+    inner arms land on. None for a record inner: the value repr has no record
+    inner dispatch at all."""
+    if _eligible_enum(inner_type, analyzer) is not None:
+        return "switch_enum"
+    if is_fixed_int_type(inner_type):
+        return "switch_primitive"
+    if isinstance(inner_type, NominalType) and inner_type.is_user_record:
+        return None
+    return _chain_kind(inner_cases, guarded_kind="if_elif")
+
+
+def _optional_inner_dispatch_ok(t: OptionalType, inner_cases,
+                                analyzer) -> bool:
     """Whether the Optional PARTITION's inner dispatch has a render for these
     arms. The partition only hoists the null test out of what the chain tier
     does per arm, so a shape the inner dispatch cannot render takes the chain
@@ -215,7 +227,11 @@ def _optional_inner_dispatch_ok(t: OptionalType, inner_cases) -> bool:
     if isinstance(inner, NominalType) and inner.is_user_record:
         return (t.uses_pointer_repr()
                 and not any(c.guard is not None for c in inner_cases))
-    return True
+    if t.uses_pointer_repr():
+        return True
+    return _dispatch_labels_unique(
+        inner_cases, _optional_inner_kind(inner, inner_cases, analyzer) or "",
+        analyzer)
 
 def _union_index_members(u: UnionType) -> 'tuple | None':
     """The member ordering `_variant_index` scans: the wrapper's full
@@ -246,6 +262,18 @@ def _str_switch_count(stmt: TpyMatch) -> int:
                    and isinstance(a.value, str) for a in pat.patterns):
                 count += len(pat.patterns)
     return count
+
+
+def _chain_kind(cases, *, guarded_kind: str = "if_elif_guarded",
+                unguarded_kind: str = "if_elif") -> str:
+    """The chain tier for one subject family: the guarded one as soon as any
+    arm carries a guard. Both kinds are parameters because each family names
+    its own pair (the Optional tier, the record tier), and because the
+    Optional INNER chain folds each guard into its own arm condition -- it
+    has no separate guarded tier, so it passes the same kind twice."""
+    if any(c.guard is not None for c in cases):
+        return guarded_kind
+    return unguarded_kind
 
 
 def _match_str_switches(stmt: TpyMatch, analyzer) -> bool:
@@ -319,6 +347,7 @@ def _match_label_ok(pattern, kind: str) -> bool:
     return (_enum_member_pattern(pattern)
             or (isinstance(pattern, TpyLiteralPattern)
                 and isinstance(pattern.value, (bool, int, float, str))))
+
 
 def _match_record_field_type(pattern: TpyClassPattern, field_name: str,
                              analyzer) -> 'TpyType | None':
@@ -764,17 +793,62 @@ def _dispatch_order_safe(cases) -> bool:
                             always_run_ok=True)
 
 
-def _ordered_scalar_kind(stmt: TpyMatch, kind: str) -> str:
+def _dispatch_labels_unique(cases, kind: str, analyzer) -> bool:
+    """Whether a `case`-LABEL tier can give each arm the labels it needs.
+
+    The primitive and enum switches group arms by their whole label tuple, so
+    two arms repeating the SAME tuple share one block -- that is how a guarded
+    arm falls through to the unguarded arm below it. Two arms whose tuples
+    only OVERLAP (`case 1 | 2 if flag:` then `case 2:`) get no such block:
+    each renders its own `case 2:` and the C++ switch is ill-formed. A switch
+    could still spell it -- one block per label carrying the guarded chain of
+    every arm that names the label -- at the cost of duplicating each shared
+    body under every label it covers; the ordered `==` chain keeps each body
+    once and spells the fallthrough by construction, and a chain of constant
+    compares optimizes to the same jump table anyway, so callers route the
+    overlap there. Sema cannot answer this: a guarded arm does not consume
+    its values, so the overlap is not a duplicate case there.
+
+    Only the label tiers are asked. The str discriminator switch dispatches on
+    a hash bucket rather than one label per alternative, and its arms may
+    repeat a literal freely."""
+    if kind not in ("switch_primitive", "switch_enum"):
+        return True
+    owner: dict[str, str] = {}
+    for case in cases:
+        if _arm_always_matches(case):
+            continue
+        parts = _match_arm_parts_two(case)
+        if parts is None:
+            continue
+        test = parts[0]
+        alts = (test.patterns if isinstance(test, TpyOrPattern) else (test,))
+        if not all(_match_label_ok(alt, kind) for alt in alts):
+            continue
+        labels = tuple(_match_case_label(alt, kind, analyzer) for alt in alts)
+        group = "|".join(labels)
+        for label in labels:
+            if owner.setdefault(label, group) != group:
+                return False
+    return True
+
+
+def _ordered_scalar_kind(stmt: TpyMatch, kind: str, analyzer) -> str:
     """`kind`, or the ordered guarded chain when the partition would reorder
-    the arms. The chain renders every scalar label the switch tiers do (enum
-    members included, `_match_label_ok`) and keeps source order by
-    construction, so it is the one tier that always has a correct render.
+    the arms or cannot spell their labels. The chain renders every scalar
+    label the switch tiers do (enum members included, `_match_label_ok`) and
+    keeps source order by construction, so it is the one tier that always has
+    a correct render.
 
     Applied after the SUBJECT admission, not at strategy selection: the
     demoted chain binds and reads the subject exactly as the switch tier it
     replaces, so an lvalue subject an enum/fixed-int switch admits admits
     here too."""
-    return kind if _dispatch_order_safe(stmt.cases) else "if_elif_guarded"
+    if not _dispatch_order_safe(stmt.cases):
+        return "if_elif_guarded"
+    if not _dispatch_labels_unique(stmt.cases, kind, analyzer):
+        return "if_elif_guarded"
+    return kind
 
 
 def _union_arm_ok(
@@ -1192,20 +1266,21 @@ def _match_route(
         # Field/subscript LVALUE subjects (storage-form: value-variant
         # `std::get`, `auto&` bind) admit on the union and record tiers,
         # plus the pointer-repr O1 partition, the pointer-repr unguarded
-        # optional chain (the `optional_to_ptr` lift, `auto` bind), and
-        # the unguarded SCALAR chain (`match self.n:` -- the `auto&`
-        # subject bind compares like a name). NB guards never demote
-        # fixed-int/enum subjects out of the SWITCH kinds, so guarded
-        # switch-kind field matches route too; only the chain scalars
-        # (bool/float/BigInt/str) demote to the excluded
-        # if_elif_guarded.
+        # optional chain (the `optional_to_ptr` lift, `auto` bind), and the
+        # UNGUARDED scalar chain (`match self.n:` -- the `auto&` subject
+        # bind compares like a name, and with no guard nothing runs between
+        # two arm tests to change what that alias sees).
         if kind not in ("switch_union", "if_elif_record", "guarded_record",
                         "optional_partition", "if_elif_optional",
                         "if_elif", "switch_primitive", "switch_enum"):
             # The guarded chain and the str discriminator switch join for
-            # NON-lvalue subjects only: those materialize into the
-            # by-value dispatch local, so every arm reads a stable copy.
-            # Their `auto&` lvalue-chain renders stay unaudited.
+            # NON-lvalue subjects only: those materialize into the by-value
+            # dispatch local, so every arm reads a stable copy. The guarded
+            # chain's arms RE-READ the `auto&` alias after each guard, so an
+            # lvalue subject a guard mutates diverges from CPython, which
+            # snapshots the subject once
+            # (BUGS.md#match-subject-alias-under-guard-mutation); the
+            # exclusion stands until a scalar subject binds by value.
             if not (kind in ("if_elif_guarded", "switch_str")
                     and not match_subject_is_lvalue(subj)):
                 return None
@@ -1312,7 +1387,7 @@ def _match_route(
                 is None):
             return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types)
-    return _MatchRoute(kind=_ordered_scalar_kind(stmt, kind),
+    return _MatchRoute(kind=_ordered_scalar_kind(stmt, kind, analyzer),
                        hoist_types=hoist_types,
                        subject_rvalue=subject_rvalue)
 
@@ -1629,9 +1704,12 @@ def _lower_scalar_arms(
     where it folds into the arm's own condition -- so there the arm must have
     a condition to fold into and no binding to read."""
     is_chain = kind in ("if_elif", "if_elif_guarded")
-    if not is_chain and not _dispatch_order_safe(cases):
+    if not is_chain and (not _dispatch_order_safe(cases)
+                         or not _dispatch_labels_unique(cases, kind,
+                                                        lc.analyzer)):
         # The switch partition would hoist an always-match arm past a label
-        # that follows it in source. Both callers route such a match to an
+        # that follows it in source, or two arms would render the same label
+        # twice. Both callers route such a match to an
         # ordered tier before reaching here (`_ordered_scalar_kind`, and the
         # Optional strategy's own partition test), so this is the invariant
         # that keeps a future caller from re-deriving the defect.
@@ -2709,16 +2787,9 @@ def _lower_optional_value_dispatch(
     `chain_guards_ok=False`); a switch arm nests its guard in the case
     block instead and needs no such shape."""
     inner_type = unwrap_readonly(unwrap_readonly(stmt.subject_type).inner)
-    if _eligible_enum(inner_type, lc.analyzer) is not None:
-        kind = "switch_enum"
-    elif is_fixed_int_type(inner_type) or is_bool_type(inner_type):
-        # A bool inner takes the primitive switch (unlike the
-        # top-level bool subject, which -Wswitch-bool keeps on the chain).
-        kind = "switch_primitive"
-    elif isinstance(inner_type, NominalType) and inner_type.is_user_record:
+    kind = _optional_inner_kind(inner_type, inner_cases, lc.analyzer)
+    if kind is None:
         raise ThirUnsupported("stmt.match")
-    else:
-        kind = "if_elif"
     _witness("match.optional_value_dispatch")
     none_entry = None
     if none_cases:

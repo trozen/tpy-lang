@@ -622,6 +622,7 @@ from .checks import (
     _container_lit_elem_ok,
     _container_literal_arg,
     _container_literal_method_arg,
+    _container_storage_call_rvalue,
     _own_container_construct_arg,
     _own_container_instantiation_arg,
     _ref_param_dictset_literal_arg,
@@ -8998,7 +8999,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         make = False
         elem_cpp = None
         if e.elements and not is_array(container_type):
-            if (any(_container_elem_move_source(x, lc) for x in e.elements)
+            if (any(_elem_needs_emplace(x, slot, lc) for x in e.elements)
                     or _container_nocopy_elem(slot, lc.analyzer)):
                 make = True
                 _witness("containerlit.make")
@@ -9073,8 +9074,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # make_ordered_map for a non-copyable or last-use-movable key/value
         # (the nocopy check reads the VALUE type only).
         make = bool(e.keys) and (
-            any(_container_elem_move_source(x, lc)
-                for pair in zip(e.keys, e.values) for x in pair)
+            any(_elem_needs_emplace(k, kslot, lc) for k in e.keys)
+            or any(_elem_needs_emplace(v, vslot, lc) for v in e.values)
             or _container_nocopy_elem(vslot, lc.analyzer))
         if make:
             _witness("containerlit.make")
@@ -11799,6 +11800,15 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
             return _lower_expr(
                 e, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+    if _container_storage_call_rvalue(e, su0, lc.analyzer):
+        # A call whose result IS the slot's storage container: STORAGE use
+        # so the call's own result gate admits the container return, then
+        # the prvalue lands bare in the element slot -- the element face of
+        # the `Own[container]` argument row (`out.append(make(i))`).
+        return _lower_expr(e, lc, declared,
+                           use=_ExprUse(pos=SinkPos.CONTAINER_ELEM,
+                                        result=_ExprResultUse.STORAGE,
+                                        allow_temps=allow_temps))
     el = _lower_expr(
         e, lc, declared, use=_ExprUse(pos=SinkPos.CONTAINER_ELEM,
                                       allow_temps=allow_temps),
@@ -11906,6 +11916,27 @@ def _container_elem_move_source(e: TpyExpr, lc: '_LowerCtx', *,
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return not t.is_value_type()
+
+def _elem_needs_emplace(e: TpyExpr, slot: 'TpyType | None',
+                        lc: '_LowerCtx') -> bool:
+    """Whether ONE element forces the reserve+emplace helpers over the
+    brace-init (the `make_container` switch, asked per element/slot pair).
+
+    std::initializer_list elements are const, so a brace-init COPY-constructs
+    every element from them. Two sources lose by that:
+
+    - a movable local at its last use -- its `std::move` wrap would be
+      silently dropped (`_container_elem_move_source`);
+    - a call whose prvalue result already IS the slot's storage container
+      (`_container_storage_call_rvalue` -- `[make(1), make(2)]`). The element
+      render is the bare call, so a brace-init copies the whole container and
+      a non-copyable payload does not compile at all.
+
+    The nocopy-SLOT switch is the callers' own leg: it reads the slot type
+    alone, with no element to ask about."""
+    return (_container_elem_move_source(e, lc)
+            or _container_storage_call_rvalue(e, slot, lc.analyzer))
+
 
 def _witness_container_elem_fam(slot: 'TpyType | None', analyzer) -> None:
     """Fold the container-literal element-family witness for a non-empty

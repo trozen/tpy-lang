@@ -58,6 +58,7 @@ from ..reject import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
     THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRMove)
+from .checks import _container_storage_call_rvalue
 from .predicates import (
     _mixed_own_storage_source,
     _storage_opt_ternary_elem,
@@ -679,7 +680,7 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
 
     `allow_container` (the dict VALUE slot only) admits a list/Array container
     slot -- SHAPE-sensitive, so `_lower_comp_container_elem` gates the element
-    NODE (a container literal / nested comprehension), mirroring
+    NODE against its own vetted set (see there), mirroring
     `_container_lit_elem_ok`'s `fam == "container"` arm."""
     if _comp_slot_ok(slot, analyzer):
         return True
@@ -1039,13 +1040,14 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
                                allow_temps: bool = False) -> 'THIRExpr':
     """Lower a comprehension element/value against a possibly-container slot
     (dict VALUE, list/set element, Array slot). A list/Array container slot
-    is element-SHAPE-sensitive, so only the two vetted sources route: a
-    container LITERAL -- rendered self-describing (`std::array<int32_t, 2>{...}`,
-    via the `typed_brace_init` prefix: the insert/brace target is a
-    template, a bare brace-init cannot deduce) -- and a nested COMPREHENSION
-    (`_lower_container_elem`'s comp arm; its `({...})` stmt-expr is already
-    self-describing, so typed_brace_init no-ops on it). Every other slot
-    family keeps the shape-independent element render (`_lower_container_elem`).
+    is element-SHAPE-sensitive, so only vetted sources route: a container
+    LITERAL -- rendered self-describing (`std::array<int32_t, 2>{...}`, via the
+    `typed_brace_init` prefix: the insert/brace target is a template, a bare
+    brace-init cannot deduce) -- a nested COMPREHENSION or list-REPEAT (already
+    self-describing, so typed_brace_init no-ops on them), a plain NAME whose
+    copy sema warned about, and a CALL whose prvalue IS the slot's storage
+    container. Every other slot family keeps the shape-independent element
+    render (`_lower_container_elem`).
 
     `typed_brace` (the dict VALUE only) spells the container literal
     self-describing (`std::array<int32_t, 2>{...}`) because `insert_or_assign`
@@ -1084,6 +1086,12 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
         # `list[list[int32]]`): the slot init copies the container by value,
         # so the read lands bare -- sema already warned about the copy.
         value = _lower_expr(e, lc, body_declared)
+    elif _container_storage_call_rvalue(e, vt, lc.analyzer):
+        # A CALL that already yields the slot's storage container
+        # (`[make_row(i) for i in range(n)]`): the prvalue lands bare, the
+        # same verdict the `Own[container]` argument slot reads for the
+        # `out.append(make_row(i))` spelling of the identical store.
+        value = _lower_container_elem(e, vt, lc, body_declared)
     else:
         raise ThirUnsupported("comp.container_value", detail=True)
     _witness("comp.container_value")

@@ -1,0 +1,2 @@
+Every section binds a @native C symbol from native_types.hpp, which CPython
+cannot see.

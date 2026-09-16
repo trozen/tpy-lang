@@ -2827,6 +2827,13 @@ def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
                                     is_char_type, is_float_category,
                                     is_enum_type, enum_info_of)
     t = unwrap_readonly(typ)
+    if isinstance(t, OwnType) and t.wrapped.is_value_type():
+        # Own selects the owned C++ form over the borrowed one; on a value
+        # type every form this gate admits is the same spelling, so the
+        # wrapper says nothing about the ABI -- as `readonly` does not.
+        # Over a reference type Own is `T&&` (and forces the value form of an
+        # Optional), which is why the unwrap stops at value types.
+        t = unwrap_readonly(t.wrapped)
     if isinstance(t, PtrType):
         # Deliberately unconditional in the pointee: a pointer is an opaque
         # handle at the ABI, whatever it addresses. The C++ spelling of the
@@ -2834,6 +2841,13 @@ def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
         # `void*` for anything it cannot name. The array form of
         # native_global checks the pointee instead, because there the
         # pointee IS the emitted element type rather than a handle.
+        return True
+    if isinstance(t, OptionalType) and t.uses_pointer_repr():
+        # A pointer-repr Optional IS the pointer -- the nullable-handle idiom
+        # (`-> Widget | None` emits the same type as `Ptr[Widget]`), admitted
+        # for the same reason and at both positions. A value inner stays out
+        # (`int32 | None` is `std::optional`), and a union stays out whatever
+        # its repr: that one is a variant, not a pointer.
         return True
     if (is_fixed_int_type(t) or is_bool_type(t)
             or is_char_type(t) or is_float_category(t)):
@@ -2847,11 +2861,31 @@ def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
     return is_return and isinstance(t, (VoidType, NoneType))
 
 
-def c_abi_type_hint(typ: 'TpyType') -> str:
+def is_c_abi_element_allowed(typ: 'TpyType') -> bool:
+    """Allow-list for the ELEMENT type of a C-linkage `native_global` array.
+
+    That form emits `extern "C" <element> <name>[];`, so the element type is
+    NAMED rather than passed. A `@native(binding="C")` struct is admitted
+    here for the reason a `@native` enum is admitted anywhere -- the author's
+    own C header owns the spelling -- while the by-value gate keeps rejecting
+    it, because a record in a signature emits a C++ reference.
+    """
+    from .type_def_registry import record_info_of
+    t = unwrap_readonly(typ)
+    info = record_info_of(t)
+    if info is not None and info.is_native_c:
+        return True
+    return is_c_abi_allowed(t)
+
+
+def c_abi_type_hint(typ: 'TpyType', *, is_element: bool = False) -> str:
     """Remedy clause naming the manual spelling for a rejected type.
 
     Generic advice ("use Ptr[T]") is useless for the two families users
     actually hit, so int and the str/buffer families get their own.
+    `is_element` is the array-global element position, where the remedy for
+    a record is to bind it to the C declaration rather than to add a
+    pointer the annotation already has.
     """
     from .type_def_registry import is_big_int_type, is_enum_type
     t = unwrap_readonly(typ)
@@ -2867,6 +2901,9 @@ def c_abi_type_hint(typ: 'TpyType') -> str:
     if is_enum_type(t):
         return "declare the enum @native so it names a real C enum"
     if isinstance(t, NominalType) and t.is_user_record:
+        if is_element:
+            return ('declare the class @native(binding="C") so it names a '
+                    'struct the C side already declares')
         # Steering a by-value C struct at Ptr[S] would be actively wrong:
         # extern "C" does not mangle, so the call links and the callee reads
         # a struct where a pointer was passed.

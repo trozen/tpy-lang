@@ -1,0 +1,1 @@
+main.py:13: error: str literal pattern not valid for subject type 'char'

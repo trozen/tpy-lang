@@ -1,0 +1,1 @@
+main.py:24: error: native_global 'gadgets': element type 'Gadget' is not representable in the C ABI; declare the class @native(binding="C") so it names a struct the C side already declares

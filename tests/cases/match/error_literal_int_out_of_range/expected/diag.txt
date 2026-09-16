@@ -1,0 +1,1 @@
+main.py:16: error: int literal pattern 300 can never match subject type 'int8', which holds -128..127; drop the arm, or compare in a guard (e.g. `case _ if <subject> == 300:`)

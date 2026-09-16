@@ -22,13 +22,11 @@ namespace tpyapp::main {
 //     s = spawn(Summer([1, 2, 3])).join()  # tpyc: ok
 //     print("value:", s)
 //
-//     # comprehension position: the handles are minted by a comprehension, then
-//     # joined in an explicit loop -- `[h.join() for h in hs]` still rejects,
-//     # because join() yields a container (BUGS.md#container-elem-from-call-rejected).
+//     # comprehension position: the handles are minted by a comprehension, and
+//     # joined by a second one -- join() yields an `Own[list[str]]`, which the
+//     # container element slot takes as the storage value it already is.
 //     hs = [spawn(Rows(t)) for t in range(3)]  # tpyc: ok
-//     joined: list[list[str]] = []
-//     for jh in hs:
-//         joined.append(jh.join())
+//     joined = [h.join() for h in hs]  # tpyc: ok
 //     joined[2].append("post")
 //     # the element is bound first: a container subscript at a method arg still
 //     # rejects (BUGS.md#container-subscript-into-method-arg). The binding must
@@ -55,14 +53,18 @@ void main() {
         int32_t t = int32_t(__i_0);
         return ::tpystd::tpy::thread::spawn<std::vector<std::string>, Rows>(Rows(t));
     });
-    std::vector<std::vector<std::string>> joined = std::vector<std::vector<std::string>>{};
-    auto& __obj_1 = hs;
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& jh = *__beg_1;
-        joined.push_back(jh.join());
-    }
+    std::vector<std::vector<std::string>> joined = ({
+        std::vector<std::vector<std::string>> __result;
+        auto& __obj_1 = hs;
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            auto&& h = *__beg_1;
+            __result.push_back(h.join());
+        }
+        std::move(__result);
+    });
     ::tpy::__getitem__(joined, 2).push_back("post");
     std::vector<std::string>& last = ::tpy::__getitem__(joined, 2);
     ::tpy::__getitem__(joined, 2).push_back("aliased");

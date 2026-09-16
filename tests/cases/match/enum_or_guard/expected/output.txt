@@ -14,3 +14,8 @@ green+x
 green+y
 green
 other
+warm+flag
+other
+warm+flag
+blue
+other

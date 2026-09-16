@@ -12,7 +12,8 @@ from ..typesys import (
     FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
-    is_c_abi_allowed, c_abi_type_hint, C_ABI_TYPE_ERROR,
+    is_c_abi_allowed, is_c_abi_element_allowed, c_abi_type_hint,
+    C_ABI_TYPE_ERROR,
     is_void_like_type,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     RecursiveAliasInstanceType,
@@ -4302,13 +4303,17 @@ class StatementAnalyzer:
                     # array form emits the POINTEE as the element type, so
                     # that is what has to be spellable in C there.
                     checked = stmt.type
-                    if is_array and isinstance(checked, PtrType):
+                    as_element = is_array and isinstance(checked, PtrType)
+                    if as_element:
                         checked = checked.pointee
-                    if not is_c_abi_allowed(checked):
+                    allowed = (is_c_abi_element_allowed(checked) if as_element
+                               else is_c_abi_allowed(checked))
+                    if not allowed:
+                        kind = "element type" if as_element else "type"
                         raise self.ctx.error(
-                            f"native_global '{stmt.name}': type "
+                            f"native_global '{stmt.name}': {kind} "
                             f"'{checked}' {C_ABI_TYPE_ERROR}; "
-                            f"{c_abi_type_hint(checked)}",
+                            f"{c_abi_type_hint(checked, is_element=as_element)}",
                             stmt
                         )
                 stmt.native_name = native_name

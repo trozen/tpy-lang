@@ -13,6 +13,10 @@ inline constexpr std::string_view __name__ = "__main__";
 std::string classify(std::optional<int32_t> x);
 // def describe(s: Optional[str]) -> str:
 std::string describe(std::optional<std::string_view> s);
+// def flagged(b: Optional[bool]) -> str:
+std::string flagged(std::optional<bool> b);
+// def flagged_int(b: Optional[bool]) -> str:
+std::string flagged_int(std::optional<bool> b);
 // def main() -> None:
 void main();
 

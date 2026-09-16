@@ -1,0 +1,2 @@
+main.py:20: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:20: error: in the constructor of 'Grid': this construct is not yet supported by C++ code generation (comp.container_value)

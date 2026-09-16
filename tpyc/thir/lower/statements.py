@@ -4932,14 +4932,14 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         if not _container_literal_shape_ok(stmt.init, slot_t, analyzer):
             note_detail("top_level.global_slot_elem")
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        # A make_vector / make_ordered_* init is admitted here (unlike at the
+        # ptr-slot local sibling): the global slot line is an ordinary
+        # initializer position, `static T __global_slot_N = <expr>;`, which
+        # the comprehension branch below already fills with a statement
+        # expression.
         init = _lower_expr(stmt.init, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.STORAGE,
                                         slot_target=slot_t))
-        if getattr(init, "make_container", False):
-            # Same unverified `make_vector` slot render the local sibling
-            # rejects.
-            note_detail("top_level.global_slot_elem")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
     elif _f1_container_ref(slot_t):
         # Source-shape BLIND, unlike the local sibling's vetted
         # `_rebind_rvalue_source_ok` list: this arm threads the target type

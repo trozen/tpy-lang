@@ -18,6 +18,7 @@ extern "C" float echo_f32(float x);
 extern "C" bool echo_bool(bool x);
 extern "C" char echo_char(char x);
 extern "C" int32_t* echo_ptr(int32_t* p);
+extern "C" int32_t doubled(int32_t x);
 
 void __tpy_init();
 } // namespace tpyapp::main

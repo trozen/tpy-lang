@@ -1,0 +1,1 @@
+main.py:7: error: int literal pattern 2 can never match subject type 'bool', which holds 0 and 1; drop the arm, or compare in a guard (e.g. `case _ if <subject> == 2:`)

@@ -83,7 +83,15 @@ def test_plain_enum_param_is_rejected():
 
 
 _EXPORT = ("from tpy.extern import export\n"
-           "from tpy import int32, int64, Span, Array, Ptr, readonly\n")
+           "from tpy import int32, int64, Span, Array, Ptr, readonly, Own\n")
+
+# A @native(binding="C") struct and a plain TPy record, for the arms that
+# split on which of the two a shape carries.
+_C_STRUCT = ("from tpy.extern import native\n"
+             '@native("Widget", binding="C")\n'
+             "class Widget:\n    n: int32\n")
+_TPY_RECORD = ("class Gadget:\n    n: int32\n"
+               "    def __init__(self, n: int32) -> None: self.n = n\n")
 
 
 def _c_fn(params: str, ret: str = "None") -> str:
@@ -172,4 +180,31 @@ def test_record_remedy_does_not_steer_a_by_value_struct_at_a_pointer():
            + "    def __init__(self, n: int32) -> None: self.n = n\n"
            + '@export(binding="C")\ndef f(w: Widget) -> None: pass\n')
     with pytest.raises(SemanticError, match="cannot be expressed"):
+        _compile(src)
+
+
+def test_value_inner_optional_stays_rejected():
+    # The split is the REPR, not the Optional: a value inner is
+    # std::optional<T>, which no C header can express.
+    with pytest.raises(SemanticError, match="not representable in the C ABI"):
+        _compile(_c_fn("", ret="int32 | None"))
+
+
+def test_record_union_stays_rejected_though_its_repr_is_pointers():
+    # A union of records is a variant OF pointers, not a pointer -- the
+    # neighbour the Optional arm must not drag in.
+    src = (_EXPORT + _C_STRUCT + _TPY_RECORD
+           + '@export(binding="C")\n'
+           + "def f(x: Widget | Gadget) -> None: pass\n")
+    with pytest.raises(SemanticError, match="not representable in the C ABI"):
+        _compile(src)
+
+
+def test_own_over_a_record_stays_rejected():
+    # There the owned form is an rvalue reference, which is why the unwrap
+    # stops at value types.
+    src = (_EXPORT + _TPY_RECORD
+           + '@export(binding="C")\n'
+           + "def f(g: Own[Gadget]) -> None: pass\n")
+    with pytest.raises(SemanticError, match="not representable in the C ABI"):
         _compile(src)

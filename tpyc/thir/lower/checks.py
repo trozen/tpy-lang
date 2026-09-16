@@ -625,8 +625,8 @@ def _container_literal_decl_ok(stmt: TpyVarDecl, declared: dict[str, TpyType],
     that type + the elements. Element families and the per-slot rules live in
     `_container_lit_elem_ok` (scalars, owned str/bytes, enums,
     Optional[scalar], value tuples, nested list literals, F1 records); the
-    `make_vector`/`make_ordered_*` move/nocopy switch is decided at lowering
-    off `movable_locals` + last-use facts. A `[0] * n`
+    `make_vector`/`make_ordered_*` owning switch is decided at lowering, off
+    the move/nocopy/storage-call element verdicts. A `[0] * n`
     repeat (TpyListRepeat) is admitted too -- its own family gate plus the
     repeat arm in lowering. The empty-literal-to-Array
     reject is defensive-only: sema errors on both routes to that shape (a bare
@@ -1190,6 +1190,15 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 and ((is_list(su) and isinstance(e, TpyListComprehension))
                      or (is_dict(su)
                          and isinstance(e, TpyDictComprehension)))):
+            return True
+        # A CALL that already yields the slot's storage container
+        # (`[make_row(i), make_row(j)]` at `list[list[float]]`): the owning
+        # element slot takes the prvalue bare, the same verdict the
+        # `Own[container]` argument slot reads for `xs.append(make_row(i))`.
+        # Not gated on `allow_nested`: that flag exists for the nested
+        # LITERAL rows, whose render needs the parent to thread the slot
+        # target -- a call renders bare at any position.
+        if _container_storage_call_rvalue(e, su, analyzer):
             return True
         if not (allow_nested and (is_list(su) or is_array(su))
                 and isinstance(e, TpyArrayLiteral)):
@@ -5824,6 +5833,49 @@ def _container_slot_call_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
             and _unown_type_args(rtu) == _unown_type_args(pt))
 
 
+def _container_storage_call_rvalue(e: TpyExpr, slot: 'TpyType | None',
+                                   analyzer) -> bool:
+    """A call whose result ALREADY IS the container slot's storage value.
+
+    Keyed on the slot PAYLOAD rather than on a param spelling, so every
+    owning container sink asks it the same way: the `Own[container]`
+    argument slot (`out.append(make(i))`), the comprehension element and
+    the container-literal element (`[make(i) for i in ..]`, `[make(1)]`).
+    Three facts, no node-kind list:
+
+    - the slot holds a container the storage sinks spell
+      (`_storage_call_ret`);
+    - the call's Own-peeled result type IS that container;
+    - the call is an RVALUE source -- a borrow-returning callee hands back
+      an alias of caller-durable storage, which the owning slot would copy;
+      sema warns there and the sink keeps rejecting, so it stays out.
+
+    A free call also rides the shared callee-shape head
+    (`_rvalue_free_call_shape`: linkage, arity, no kwargs, no str-literal
+    overload pin); a method call's own lowering validates its receiver and
+    arguments, like the other shallow call-source rows.
+
+    Distinct from `_container_slot_call_rvalue_arg`, whose slot is a
+    BORROWED `const&` container param -- nothing is stored there, so it
+    takes a borrow-returning callee too.
+    """
+    if not isinstance(e, (TpyCall, TpyMethodCall)):
+        return False
+    su = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+          if slot is not None else None)
+    if su is None or _storage_call_ret(su, analyzer) is None:
+        return False
+    at = analyzer.get_expr_type(e)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    if isinstance(atu, OwnType):
+        atu = unwrap_readonly(atu.wrapped)
+    atu = _resolve_literal_seeded(atu, analyzer)
+    if atu != su or not is_rvalue_source(analyzer, e):
+        return False
+    return isinstance(e, TpyMethodCall) or _rvalue_free_call_shape(e, analyzer)
+
+
 def _native_record_call_arg(a: TpyExpr, ptype: 'TpyType | None',
                             analyzer) -> bool:
     """An F1-record CALL rvalue into a native/template slot (`len(NegBig())`
@@ -6721,10 +6773,19 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     w_dyn = is_dyn_protocol(unwrap_readonly(unwrap_send_sync(w)))
     if not w_container and not w_dyn and not _f1_record(w, analyzer):
         return False
+    if w_container:
+        # Both CALL faces of the container leg (`table.append(make_row(1.0))`
+        # and `g.set(acked.copy())`): the rvalue binds the `T&&` slot bare,
+        # and the call's own lowering validates callee and args. Names /
+        # literals still ride the copy-temp and literal rows. The verdict is
+        # the shared owning-container-sink one, which the comprehension and
+        # container-literal element faces read too.
+        return bool(_container_storage_call_rvalue(a, w, analyzer)
+                    and _witness("own.container_call_rvalue"))
     if isinstance(a, TpyMethodCall):
-        # A record-, container- or Own[@dynamic]-returning METHOD-call rvalue
-        # (`Arc.new(Mutex.new(0))` / `g.set(acked.copy())` /
-        # `Box(e.clone())` -- the unique_ptr<P> prvalue): binds the T&& slot
+        # A record- or Own[@dynamic]-returning METHOD-call rvalue
+        # (`Arc.new(Mutex.new(0))` / `Box(e.clone())` -- the unique_ptr<P>
+        # prvalue): binds the T&& slot
         # inline like a ctor rvalue; the method-call lowering validates its
         # receiver/args itself (the shallow _record_source_call pattern).
         if w_dyn and not _own_dyn_method_rvalue_ok(a):
@@ -6738,25 +6799,6 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
         return (atu == unwrap_readonly(unwrap_send_sync(w))
                 and is_rvalue_source(analyzer, a)
                 and _witness("own.record_rvalue"))
-    if w_container:
-        # The FREE-call face of the method row above
-        # (`table.append(make_row(1.0))` at `Own[list[float]]`): a
-        # container-returning free call is an rvalue that binds the `T&&`
-        # slot bare exactly as the method-call rvalue does, and its own
-        # lowering validates callee and args. Names / literals still ride
-        # the copy-temp and literal rows.
-        if not isinstance(a, TpyCall):
-            return False
-        at = analyzer.get_expr_type(a)
-        atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-               if at is not None else None)
-        if isinstance(atu, OwnType):
-            atu = unwrap_readonly(atu.wrapped)
-        atu = _resolve_literal_seeded(atu, analyzer)
-        return bool(atu == unwrap_readonly(unwrap_send_sync(w))
-                    and is_rvalue_source(analyzer, a)
-                    and _rvalue_free_call_shape(a, analyzer)
-                    and _witness("own.container_call_rvalue"))
     if w_dyn:
         # A dyn-protocol Own slot admits only the method-rvalue face here;
         # names/literals ride the copy-temp and literal rows.

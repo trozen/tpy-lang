@@ -1,0 +1,1 @@
+main.py:18: error: parameter 'w': type 'Widget' is not representable in the C ABI; pass it as Ptr[T] -- a struct crosses a C boundary by pointer, and a by-value struct parameter cannot be expressed there

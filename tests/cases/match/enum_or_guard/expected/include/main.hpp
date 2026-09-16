@@ -43,6 +43,8 @@ std::string mixed(Color c, bool allow);
 std::string or_guard(Color c, bool flag);
 // def multi_guard(c: Color, x: bool, y: bool) -> str:
 std::string multi_guard(Color c, bool x, bool y);
+// def or_overlap(c: Color, flag: bool) -> str:
+std::string or_overlap(Color c, bool flag);
 // def main() -> None:
 void main();
 

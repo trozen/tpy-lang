@@ -54,6 +54,20 @@ def multi_guard(c: Color, x: bool, y: bool) -> str:
             return "other"
     return ""
 
+# or-pattern OVERLAP across arms: `Color.Blue` labels two arms whose label
+# sets differ. A switch could spell it only by duplicating each shared body
+# under every label it covers; the `==` chain keeps each body once, so the
+# enum tier demotes to it and the second arm stays live when the guard fails
+def or_overlap(c: Color, flag: bool) -> str:
+    match c:
+        case Color.Red | Color.Blue if flag:  # tpyc: ok
+            return "warm+flag"
+        case Color.Blue:  # tpyc: ok
+            return "blue"
+        case _:
+            return "other"
+    return ""
+
 def main() -> None:
     print(classify(Color.Red))
     print(classify(Color.Blue))
@@ -71,5 +85,10 @@ def main() -> None:
     print(multi_guard(Color.Green, False, True))
     print(multi_guard(Color.Green, False, False))
     print(multi_guard(Color.Red, True, True))
+    print(or_overlap(Color.Red, True))
+    print(or_overlap(Color.Red, False))
+    print(or_overlap(Color.Blue, True))
+    print(or_overlap(Color.Blue, False))
+    print(or_overlap(Color.Green, False))
 
 main()

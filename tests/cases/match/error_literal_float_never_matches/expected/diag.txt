@@ -1,0 +1,2 @@
+main.py:16: warning: float literal pattern 2.0 against subject type 'int32'; spell it 2
+main.py:18: error: float literal pattern 1.5 can never match subject type 'int32', which holds whole numbers only; drop the arm, or compare in a guard (e.g. `case _ if <subject> == 1.5:`)

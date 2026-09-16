@@ -4,3 +4,5 @@ something
 none
 greeting
 other: world
+none yes no
+none one zero

@@ -94,13 +94,11 @@ def main() -> None:
     s = spawn(Summer([1, 2, 3])).join()  # tpyc: ok
     print("value:", s)
 
-    # comprehension position: the handles are minted by a comprehension, then
-    # joined in an explicit loop -- `[h.join() for h in hs]` still rejects,
-    # because join() yields a container (BUGS.md#container-elem-from-call-rejected).
+    # comprehension position: the handles are minted by a comprehension, and
+    # joined by a second one -- join() yields an `Own[list[str]]`, which the
+    # container element slot takes as the storage value it already is.
     hs = [spawn(Rows(t)) for t in range(3)]  # tpyc: ok
-    joined: list[list[str]] = []
-    for jh in hs:
-        joined.append(jh.join())
+    joined = [h.join() for h in hs]  # tpyc: ok
     joined[2].append("post")
     # the element is bound first: a container subscript at a method arg still
     # rejects (BUGS.md#container-subscript-into-method-arg). The binding must

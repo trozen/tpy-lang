@@ -1,0 +1,21 @@
+free-int-at-float hit miss
+free-float-at-int hit miss
+free-int-at-bool one zero
+free-float-at-bool hit miss
+free-float-at-bigint hit miss
+free-int-at-f32 hit miss
+or-alt hit hit miss
+as-alt hit-2 miss
+guarded guarded plain miss
+guard-default guarded fallthrough fallthrough
+or-overlap-int or-guard other or-guard two other
+or-overlap-folded or-guard other or-guard two other
+method-field m-f m-i m-b m-none
+method-mutate m-none
+generator ['one', 'other']
+with-finally hit! miss!
+error-return 7 -1
+match-arm 1/2 1/? ?
+optional none hit miss
+closure hit miss
+module-level hit

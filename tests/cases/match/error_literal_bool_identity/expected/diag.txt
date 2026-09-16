@@ -1,0 +1,1 @@
+main.py:14: error: bool literal pattern can never match subject type 'int32': 'True'/'False' patterns compare by identity, so they only match a 'bool'; use '1'/'0' to compare numerically

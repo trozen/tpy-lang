@@ -1,10 +1,11 @@
 # Regression guard for the PERMITTED side of the C-ABI allow-list: fixed-width
 # ints, float32, float, bool, char and Ptr[T] must stay legal in a C-linkage
-# signature, in both param and return position, plus `None` (void) as a return.
-# Narrowing the allow-list has to fail here.
+# signature, in both param and return position, plus `None` (void) as a return
+# and Own over a value type (the owned and borrowed C++ forms coincide there,
+# so Own says nothing about the ABI). Narrowing the allow-list has to fail here.
 from tpy.extern import export
 from tpy import (int8, int16, int32, int64, uint8, uint16, uint32, uint64,
-                 float32, char, Ptr)
+                 float32, char, Own, Ptr)
 from tpy.unsafe import unsafe_load, unsafe_ptr
 
 # Every permitted family at once in param position, returning None (void).
@@ -48,6 +49,11 @@ def echo_char(x: char) -> char:
 def echo_ptr(p: Ptr[int32]) -> Ptr[int32]:
     return p
 
+# Own over a value type, at both positions.
+@export(binding="C")
+def doubled(x: Own[int32]) -> Own[int32]:  # tpyc: ok
+    return x * 2
+
 def main() -> None:
     xs = [int32(7), int32(8)]
     p = unsafe_ptr(xs)
@@ -59,5 +65,6 @@ def main() -> None:
     print(echo_bool(False))
     print(echo_char(char('q')))
     print(unsafe_load(echo_ptr(p), 1))
+    print(doubled(21))
 
 main()

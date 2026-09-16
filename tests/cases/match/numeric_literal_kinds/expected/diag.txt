@@ -1,0 +1,10 @@
+main.py:163: warning: float literal pattern 1.0 against field 'i' of type 'int32'; spell it 1
+main.py:43: warning: float literal pattern 2.0 against subject type 'int32'; spell it 2
+main.py:62: warning: float literal pattern 1.0 against subject type 'bool'; spell it 1
+main.py:72: warning: float literal pattern 2.0 against subject type 'int'; spell it 2
+main.py:91: warning: float literal pattern 2.0 against subject type 'int32'; spell it 2
+main.py:100: warning: float literal pattern 2.0 against subject type 'int32'; spell it 2
+main.py:110: warning: float literal pattern 2.0 against subject type 'int32'; spell it 2
+main.py:122: warning: float literal pattern 2.0 against subject type 'int32'; spell it 2
+main.py:146: warning: float literal pattern 2.0 against subject type 'int32'; spell it 2
+main.py:234: warning: float literal pattern 1.0 against subject type 'int32'; spell it 1

@@ -14,7 +14,7 @@ from ..typesys import (
     NoneType, OptionalType, UnionType, PendingStrType, TupleType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers,
-    is_float_type, is_any_str_type, is_protocol_type,
+    is_any_str_type, is_numeric_type, is_protocol_type,
     polymorphic_source_inner, deref_dispatch_inner,
     same_nominal_symbol_loose,
 )
@@ -25,7 +25,9 @@ from ..type_def_registry import (
     is_bool_type, is_fixed_int_type, is_big_int_type,
     is_str_category, is_char_type, is_float_category, is_bytes_category,
     is_enum_type, is_int_enum_type, enum_info_of, is_free_copy_scalar,
+    int_traits_of,
 )
+from .numeric_lattice import fixed_int_range_contains
 from ..parse import (
     TpyName, TpyFieldAccess, TpySubscript, TpyMethodCall, TpyIntLiteral,
     TpyAssign, TpyAugAssign, TpyNestedDef, TpyExpr, TpyStmt,
@@ -1624,6 +1626,40 @@ class MatchAnalyzer:
                 "'case' arm", alt
             )
 
+    def _reject_unrepresentable_literal(
+        self, pattern: TpyLiteralPattern, check_type: TpyType,
+        subject_type: TpyType, where: str, kind: str,
+        spelled: object, value: int,
+    ) -> None:
+        """Reject an integral literal the slot cannot hold.
+
+        A slot that cannot represent the value can never equal it, so the arm
+        is statically dead -- the same fact the non-integral float arm above
+        reports, one axis over. CPython runs such an arm as dead code; TPy
+        reports it, because the label or comparison it would emit is what the
+        toolchain refuses (a `case 300:` in a `switch (int8_t)`, a `== 2` on a
+        bool). Only the fixed-width families answer: 'BigInt' is unbounded,
+        and a float slot holds the value approximately but genuinely.
+        `spelled` is the literal as written, so a folded float still names its
+        own source spelling."""
+        if is_bool_type(check_type):
+            if value in (0, 1):
+                return
+            holds = "0 and 1"
+        elif is_fixed_int_type(check_type):
+            if fixed_int_range_contains(check_type, value):
+                return
+            traits = int_traits_of(check_type)
+            holds = f"{traits.min_value}..{traits.max_value}"
+        else:
+            return
+        raise self.ctx.error(
+            f"{kind} literal pattern {spelled!r} can never match {where} "
+            f"'{subject_type}', which holds {holds}; drop the arm, or "
+            f"compare in a guard (e.g. `case _ if <subject> == {spelled!r}:`)",
+            pattern,
+        )
+
     def _validate_literal_pattern(
         self, pattern: TpyLiteralPattern, subject_type: TpyType,
         where: str = "subject type",
@@ -1667,33 +1703,78 @@ class MatchAnalyzer:
                 pattern,
             )
         if isinstance(val, bool):
+            # PEP 634 compares a True/False pattern by IDENTITY, not `==`, so
+            # it matches a bool subject and nothing else -- `match 1: case
+            # True:` does not fire in CPython. Admitting the cross-kind form
+            # as `== true` would match where CPython does not, so the arm that
+            # can never match is reported instead of silently diverging.
             if not is_bool_type(check_type):
                 raise self.ctx.error(
-                    f"bool literal pattern not valid for {where} '{subject_type}'",
+                    f"bool literal pattern can never match {where} "
+                    f"'{subject_type}': 'True'/'False' patterns compare by "
+                    f"identity, so they only match a 'bool'; use '1'/'0' to "
+                    f"compare numerically",
                     pattern,
                 )
-        elif isinstance(val, int):
+        elif isinstance(val, (int, float)):
+            kind = "float" if isinstance(val, float) else "int"
             # CPython does match an int literal against an IntEnum, so this is
             # a gap rather than a type error -- say so, and keep it distinct
             # from the plain-Enum case, where the comparison is meaningless.
             if is_int_enum_type(check_type):
                 raise self.ctx.error(
-                    f"int literal pattern against IntEnum {where} "
-                    f"'{subject_type}' is not yet implemented; match the member "
-                    f"(e.g. `case {subject_type}.MEMBER:`) or use a guard",
+                    f"{kind} literal pattern against IntEnum "
+                    f"{where} '{subject_type}' is not yet implemented; match "
+                    f"the member (e.g. `case {subject_type}.MEMBER:`) or use "
+                    f"a guard",
                     pattern,
                 )
-            if not (is_fixed_int_type(check_type) or is_big_int_type(check_type)):
+            # A non-bool numeric literal is compared with `==`, which is
+            # numeric ACROSS bool/int/float in CPython and in the emitted C++
+            # alike, so the slot only has to be numeric -- not the literal's
+            # own kind. `is_numeric_type` is that one predicate, and both the
+            # subject and the field caller reach it here.
+            if not is_numeric_type(check_type):
                 raise self.ctx.error(
-                    f"int literal pattern not valid for {where} '{subject_type}'",
+                    f"{kind} literal pattern not valid for "
+                    f"{where} '{subject_type}'",
                     pattern,
                 )
-        elif isinstance(val, float):
-            if not is_float_type(check_type):
-                raise self.ctx.error(
-                    f"float literal pattern not valid for {where} '{subject_type}'",
+            if isinstance(val, float) and not is_float_category(check_type):
+                # The slot holds whole numbers only (fixed int, 'bool',
+                # BigInt), so the pattern is either the same test spelled with
+                # a decimal point or an arm that can never fire. Fold the
+                # first to its int literal HERE -- the one site both the
+                # subject and the field caller reach -- so every integral
+                # subject carries a single label form downstream (a C++ case
+                # label cannot be floating-point, and 'BigInt' has no
+                # comparison against a double at all). CPython runs the
+                # second as a dead arm; TPy reports it, as it does the
+                # bool-identity arm.
+                if not val.is_integer():
+                    raise self.ctx.error(
+                        f"float literal pattern {val!r} can never match "
+                        f"{where} '{subject_type}', which holds whole numbers "
+                        f"only; drop the arm, or compare in a guard "
+                        f"(e.g. `case _ if <subject> == {val!r}:`)",
+                        pattern,
+                    )
+                folded = int(val)
+                # The range verdict comes BEFORE the fold, so an arm that can
+                # never fire is one diagnostic naming what the user wrote,
+                # not a "spell it N" pointing at a rejected N.
+                self._reject_unrepresentable_literal(
+                    pattern, check_type, subject_type, where, kind, val,
+                    folded)
+                self.ctx.warning(
+                    f"float literal pattern {val!r} against {where} "
+                    f"'{subject_type}'; spell it {folded}",
                     pattern,
                 )
+                pattern.value = folded
+            elif isinstance(val, int):
+                self._reject_unrepresentable_literal(
+                    pattern, check_type, subject_type, where, kind, val, val)
         elif isinstance(val, str):
             if not is_any_str_type(check_type):
                 raise self.ctx.error(
