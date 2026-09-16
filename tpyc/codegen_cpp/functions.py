@@ -30,7 +30,7 @@ from ..typesys import (
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, error_return_uses_borrow_slot, unwrap_ref_type,
-    bare_name,
+    bare_name, recorded_return_borrow_sources,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
@@ -818,15 +818,11 @@ class FunctionGenerator:
         return frozenset()
 
     def _get_method_genuine_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
-        """Return genuinely mutated params for const method codegen.
+        """Return mutation indices excluding return-borrow roots for const codegen.
 
-        Uses the finalized Phase-2 `mutated_params` (direct + transitive
-        call-edge mutations) minus `return_borrows_from` -- the params marked
-        mutated only because they're returned by reference, not actually
-        modified. The full set (rather than direct-only) is needed so a param
-        mutated transitively, by being passed to a mutating callee, stays
-        non-const. Over-keeping a param as non-const is safe (a const method
-        may still take a mutable-ref param).
+        Borrow exposure shares the mutation set; its roots are subtracted
+        even when also modified. Finalized facts retain unrelated transitive
+        mutations so those parameters stay non-const.
         """
         if method.is_stub or method.is_overload_stub:
             return None
@@ -838,10 +834,7 @@ class FunctionGenerator:
                 mp = fi.mutated_params
                 if mp is None:
                     return None
-                rb = fi.return_borrows_from
-                if rb:
-                    return mp - rb
-                return mp
+                return mp - recorded_return_borrow_sources(fi)
         return None
 
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:

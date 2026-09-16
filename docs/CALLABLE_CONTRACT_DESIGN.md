@@ -868,8 +868,8 @@ language restrictions discovered during implementation.
 
 | Checkpoint | Work and acceptance condition | Status |
 |---|---|---|
-| 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | P0.1 and P0.2 landed; P0.3 implemented and tested |
-| 2. Shared type decisions | Unify const-inference readers and extract the result descriptor/classifier. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Pending |
+| 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | Complete; all three landed |
+| 2. Shared type decisions | Unify const-inference readers and extract the result descriptor/classifier. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Const-reader extraction implemented and tested; classifier pending |
 | 3. Feasibility and generic forms | Design and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Pending |
 | 4. Coupled contract implementation | Admission, conversion checks, lambda result stamps, runtime slots, THIR, erasure, native annotations and stubs land together after checkpoint 3 passes. | Gated |
 | 5. Precise provenance | Implement the MIR requirements and remove measured interim restrictions as their proofs become available. | Deferred |
@@ -967,6 +967,32 @@ Validation: all 21 unit checks and both new snippet cases passed. The full
 remote `--force-exec` run passed **8,028 tests, 23 skipped**, with all **4,136
 executable cases** built and run. No existing snapshots changed.
 
+**Const-inference reader extraction.** The shared reader returns recorded source
+indices (`-1` for the receiver, nonnegative indices for parameters). Missing
+borrow facts contribute no recorded source to these two consumers; the helper
+does not replace readers that distinguish unknown provenance from no borrow.
+Unknown mutation facts still remain unknown. The inherently-const-view
+exception remains local to receiver inference and examines the current declared
+return type without peeling new wrappers. Return-root subtraction retains its
+current overlap with mutation facts; it does not claim to separate actual
+mutation from borrow exposure.
+
+The scope is metadata reading at ordinary and resumable methods. Free functions
+keep their existing signature path; constructors, consuming methods, mutable
+auto-readonly clones and property registry reachability keep their current
+exclusions. Other statement positions and binding slots produce the same
+FunctionInfo facts and require no new handling. Consumer tests cover unknown,
+empty, receiver and parameter roots; reference, view, optional, tuple, union,
+Own, readonly, generic and async-wrapper return shapes. Existing scalar/span
+and `@nocopy` tuple-return cases check aliasing through mutation, while the
+readonly, async, iterator, property and dereference corpus pins signatures.
+No new acceptance rule, diagnostic, allocation or copying policy is introduced.
+
+Validation: **26 consumer checks** and **14 existing cases** passed in the
+focused run. The full remote `--force-exec` run passed **8,054 tests, 23 skipped**,
+with all **4,136 executable cases** rebuilt and run. All existing diagnostic
+and generated-code snapshots remained byte-identical.
+
 ### Detailed work inventory
 
 The execution checkpoints above determine the landing order. Items 1-5 are
@@ -983,11 +1009,13 @@ above is satisfied.
    parameter/return tuple shapes, captures and body failures, with multi-line
    locations and supported named-function/lambda twins. Pure diagnostic
    improvement, no design dependency.
-2. **The const-inference reader unification.** `tpyc/codegen_cpp/functions.py:841`
-   (subtracting the loan set from `mutated_params`) and
-   `tpyc/sema/mutation_propagation.py:251` (skipping auto-const when the result
-   borrows `self`) are a PRE-EXISTING sema/codegen duplicate of one rule; they
-   become one helper both import. Pure refactor, zero snapshot churn.
+2. **The const-inference reader unification.** Codegen's subtraction of return
+   roots from `mutated_params` and sema's receiver auto-const gate share
+   `recorded_return_borrow_sources` in `typesys`. The audit found related readers
+   with different policies: codegen subtracts every recorded root; sema blocks
+   auto-const for a receiver root except at an inherently const view return.
+   Preserve both policies, including their treatment of missing facts. Pure
+   refactor, zero snapshot churn.
 3. **P0.2 -- a lambda at a container-element binding gets its parameter types.**
    Recover the callable shape through `Own` in contextual analysis and preserve
    per-element tuple hints. Admit callable element replacement through the

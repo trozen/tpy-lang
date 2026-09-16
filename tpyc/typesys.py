@@ -5940,6 +5940,11 @@ class FunctionInfo:
         return len(self.params)
 
 
+def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
+    """Recorded source indices; missing facts are not proof of an owning result."""
+    return fi.return_borrows_from or frozenset()
+
+
 @dataclass
 class ResolvedBinop:
     """Result of binary operator resolution in sema.

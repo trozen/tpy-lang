@@ -9,7 +9,10 @@ mutation facts transitively through it.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import FunctionInfo, CONST_PARAMS_METHODS, view_is_inherently_const
+from ..typesys import (
+    FunctionInfo, CONST_PARAMS_METHODS, recorded_return_borrow_sources,
+    view_is_inherently_const,
+)
 
 # Methods that must never be inferred const regardless of body analysis.
 _NEVER_INFER_CONST = frozenset({"__init__", "__del__"}) | CONST_PARAMS_METHODS
@@ -248,7 +251,7 @@ def infer_method_const(all_fis: list[FunctionInfo]) -> None:
         if fi.direct_self_mutated is None:
             # Phase 1 facts not collected (should not happen for local methods)
             continue
-        if fi.return_borrows_from is not None and -1 in fi.return_borrows_from:
+        if -1 in recorded_return_borrow_sources(fi):
             # Return value borrows from self's storage -- auto-const would change
             # the return from T& to const T&, overriding the user's declared type.
             # Inherently-const views carry no mutable alias, so auto-const is safe.

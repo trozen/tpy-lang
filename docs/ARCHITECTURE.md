@@ -90,6 +90,12 @@ module's own. An edge gate must therefore never read `is_readonly`
 nothing"; only a callee with no body facts at all (`native` /
 builtin stub) may stand on the declaration.
 
+Const inference reads recorded return-borrow roots through
+`typesys.recorded_return_borrow_sources`. Receiver inference retains its
+inherently-const-view exception; const-method parameter emission subtracts
+the recorded roots from mutation facts. These are distinct policies over
+the same body-analysis facts, not a second provenance analysis.
+
 Parsing is mostly syntactic: the parser emits `TypeRefNode` (see
 `parse/nodes.py`) for every annotation site and a dedicated resolve
 phase binds them to `TpyType`. The parser's few remaining typesys
