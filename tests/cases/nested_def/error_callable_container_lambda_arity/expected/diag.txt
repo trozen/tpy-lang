@@ -1,0 +1,1 @@
+main.py:9: error: Lambda has 2 parameter(s) but Callable type expects 1

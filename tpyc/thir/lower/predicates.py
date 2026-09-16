@@ -5046,11 +5046,12 @@ def _is_borrow_form_name(t: TpyType | None) -> bool:
     return isinstance(inner, TupleType) and inner.has_pointer_repr_element()
 
 def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
-    """The narrow value-tuple element: an eligible value scalar, an owned-str
+    """The narrow value-tuple element: a scalar, callable, owned-str
     slot, or an `Any` cell. All read bare in every sink (a str element is an
     owned `std::string` lvalue, an Any element a `const ::tpy::Any&`), so a
     subscript read of such an element needs no lift."""
     return (_eligible_scalar(e) or _owned_str_slot(e, analyzer)
+            or _callable_value(e)
             # The owned-BYTES element (`tuple[bytes, bytes]` --
             # `std::vector<uint8_t>` storage) reads bare like the owned-str
             # element -- the owned form at every position.
@@ -6146,6 +6147,7 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
     # (None-tests / unwraps gate at the value-opt consumers); pointer-repr
     # Optionals stay on the borrow paths.
     return (idx if (_eligible_scalar(el) or _owned_str_slot(el, analyzer)
+                    or _callable_value(el)
                     or _value_opt_scalar(el, analyzer) is not None
                     or _value_tuple_nested(el, analyzer) is not None
                     # An enum element is a value scalar in C++ terms:
@@ -6578,15 +6580,15 @@ def _bytes_elem_container(t: TpyType | None, analyzer) -> bool:
 
     return _container_elem_family(t, analyzer, owned_bytes)
 
-def _container_value_opt_scalar_elem(t: TpyType | None, analyzer) -> bool:
-    """A container whose element/value is a value-repr `Optional[scalar]`
-    (`list[int32 | None]`, `dict[str, int | None]`): the subscript read yields
+def _container_value_optional_elem(t: TpyType | None, analyzer) -> bool:
+    """A container with an optional scalar or callable element: its read yields
     the whole `std::optional<T>` element bare. Kept OFF `_container_value_leaf_read`
     (its docstring excludes composite Optional elements) because the bare
     optional lands only in a WHOLE-optional sink -- the read arm admits it solely
     under `allow_whole_optional`."""
     return _container_elem_family(
-        t, analyzer, lambda a: _value_opt_scalar(a, analyzer) is not None)
+        t, analyzer, lambda a: (_value_opt_scalar(a, analyzer) is not None
+                               or _value_opt_callable(a, analyzer) is not None))
 
 def _container_value_tuple_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is a VALUE tuple
@@ -11654,7 +11656,7 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
             # A value-opt-scalar-valued dict (`dict[str, int32 | None]`):
             # the loop var binds the storage optional by value
             # (`std::optional<int32_t> val = *__beg_N;`).
-            or _container_value_opt_scalar_elem(recv_t, analyzer)
+            or _container_value_optional_elem(recv_t, analyzer)
             # ... and `keys()` over ANY value family: the view yields the
             # KEY, so neither `::tpy::dict_keys(d)` nor what the consumer
             # binds off it depends on what the dict maps to. Last, so the

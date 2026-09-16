@@ -270,7 +270,7 @@ from .predicates import (
     _container_scalar_read,
     _container_value_leaf_read,
     _container_opt_record_elem,
-    _container_value_opt_scalar_elem,
+    _container_value_optional_elem,
     _const_index,
     _cpp_noncopyable_type,
     _ctor_arg_slot_ok,
@@ -2741,7 +2741,7 @@ def _lower_unproven_opt_scalar(e: TpyExpr, lc: '_LowerCtx',
             and e.slice_function_info is None):
         et = analyzer.get_expr_type(e)
         opt = _value_opt_scalar(et, analyzer) if et is not None else None
-        if opt is None or not _container_value_opt_scalar_elem(
+        if opt is None or not _container_value_optional_elem(
                 _subscript_container_recv_type(e.obj, declared, analyzer),
                 analyzer):
             return None
@@ -6558,7 +6558,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # consumer -- which needs the deref_optional_check unwrap --
                 # never reaches this bare read.
                 or (allow_whole_optional
-                    and _value_opt_scalar(rtype, analyzer) is not None)
+                    and (_value_opt_scalar(rtype, analyzer) is not None
+                         or _value_opt_callable(rtype, analyzer) is not None))
                 # A storage-form `Optional[record]` element under the bare
                 # truthy read (`if xs[0]:`): the whole `std::optional<T>`
                 # element tests its own bool conversion, so the checked read
@@ -6588,7 +6589,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and (_container_value_leaf_read(recv_peeled, analyzer)
                      or nested_container_elem
                      or (allow_whole_optional
-                         and _container_value_opt_scalar_elem(
+                         and _container_value_optional_elem(
                              recv_t, analyzer))
                      # The storage-form Optional[record] element's container
                      # half (its ret_ok row).

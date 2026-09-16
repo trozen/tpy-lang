@@ -7733,6 +7733,17 @@ Send/Sync rules for built-in types:
   apply(lambda x: x + 1, 42)  # lambda inlined, zero overhead
   ```
 - **Working**: Lambda expressions `lambda x: expr` -- parameter types inferred from `Fn` or `Callable` context via bidirectional inference. Non-capturing lambdas generate `[]`, capturing lambdas generate explicit capture lists (`[&var]` for `Fn`, `[var]` by value for `Callable`).
+- **Working**: Callable container bindings supply lambda context through consuming
+  `Own[...]` parameters: `callbacks.append(lambda x: x + 1)`, `insert`, and
+  `commands.setdefault(key, lambda x: x + 1)`. Callable elements can also be
+  replaced in lists, arrays and dictionaries. Optional callable slots accept
+  callbacks and `None`; tuple elements and list/dict comprehensions propagate
+  their annotated callable context. These use the existing `Callable` capture
+  and conversion rules. Generic context can supply an open parameter type, but
+  lambdas with open type parameters still encounter the existing THIR gate.
+  Captured loop variables retain the existing by-value snapshot behavior;
+  see BUGS.md's "Loop-variable capture into an escaping closure" entry for
+  the known difference from CPython's shared closure cell.
 - **Working**: Capturing lambdas -- `Fn` captures by reference (non-escaping, template-based), `Callable` captures by value (safe for escaping via `std::function`). Exception: a captured `self` is always the `this` pointer (alias, never a copy) -- an escaping self-capturing `Callable` is not tied to the receiver's lifetime (see BUGS.md), and its frame classifies non-Send. Inside a generator / `async def`, a captured name the resumable frame holds as a MEMBER has no variable form to name, so the entry NAMES it in a C++ init-capture -- but the mode is the sync one, so the same source gets the same binding whether or not the enclosing body suspends: `Callable` snapshots the member (`[n = n]`, which is what lets such a lambda be handed to a callee that stores it) and `Fn` binds a reference to it (`[&xs = xs]`, so a mutation through the closure reaches the caller's object exactly as in the sync twin). The receiver is a handle either way (`[&__self = __self]`, the frame's own `self` reference). Two members have no entry: one whose read spelling is not the bare name (a reference-type frame LOCAL lives in a `tpy::frame_slot<T>` and reads `(*ys)`), and, at the by-value mode only, one C++ cannot copy (`Own[T]` peeled to its payload first) -- both reject rather than render.
 - **Working**: `Fn` in method parameters -- generates per-method template with `requires` constraint.
 - **Working**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). Valid in all positions: the callable itself binds as `const std::function<...>&` (params), or by value in fields/returns/containers/locals. The `std::function`'s own param types (`A`, `B`) spell mutable by default for non-value types -- see the callable-value-call bullet above for the mutability contract. `Callable | None` maps to `std::optional<std::function<...>>` with `is not None` narrowing for both fields and parameters; a lambda literal, a function by name, or `None` may be passed directly to a `Callable[...] | None` parameter (the optional wrapper is unwrapped to recover the callable shape for arg inference, then the value coerces back into the optional slot).

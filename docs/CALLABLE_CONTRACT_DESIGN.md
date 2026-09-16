@@ -868,7 +868,7 @@ language restrictions discovered during implementation.
 
 | Checkpoint | Work and acceptance condition | Status |
 |---|---|---|
-| 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | P0.1 complete; P0.2 next |
+| 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | P0.1 and P0.2 implemented; P0.3 pending |
 | 2. Shared type decisions | Unify const-inference readers and extract the result descriptor/classifier. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Pending |
 | 3. Feasibility and generic forms | Design and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Pending |
 | 4. Coupled contract implementation | Admission, conversion checks, lambda result stamps, runtime slots, THIR, erasure, native annotations and stubs land together after checkpoint 3 passes. | Gated |
@@ -898,7 +898,8 @@ comprehensions cover the intersection with the latest master changes. All 28
 focused lambda checks passed in the final full remote run after merging master
 `afd815b028`: **7,988 passed, 23 skipped**, with all **4,134 executable cases**
 built and run under `--force-exec`. Six existing diagnostic snapshots changed in
-total; generated C++ snapshots did not change. P0.2 has not started. The
+total; generated C++ snapshots did not change. At that checkpoint P0.2 had not
+started. The
 `return <void call>` fixture restriction is already tracked as
 `BUGS.md#async-void-return-drops-call`.
 
@@ -907,6 +908,28 @@ visibility (or `@nocopy`), exercise rebinding separately from initialization, an
 pair concrete and generic forms. Include named-function/lambda twins and the
 same contract at parameters, returns, locals, fields and container elements.
 Keep harmless scalar callbacks under a live loan in the compatibility corpus.
+
+**P0.2 implemented (2026-09-16).** A consuming `Own[Callable[...]]` slot retains the
+callable signature during contextual analysis, following the named-function
+path. An owning tuple also passes its element hints to nested lambdas. Container
+element writes and comprehension results reuse the existing value-form callable
+lowering; optional slots preserve whole optional values and accept `None`.
+
+The condensed `callable_container_binding` case covers free functions, methods,
+constructors, module scope, generators, async bodies, comprehensions, closures,
+context managers, `try`/`finally`, `@error_return` and `match`. It covers list,
+array and dictionary slots, scalar and tuple elements, optional callbacks,
+named-function twins, and mutation through reference arguments. Inference-only
+tests cover callable parameter shapes: scalar, tuple, optional, union,
+str/bytes, Own, readonly, Ptr/Span and Box/Rc, plus an open generic parameter.
+Those checks establish context propagation without claiming new lowering for
+every callback signature. Union-of-callable ambiguity, open-parameter lambda
+lowering and `Own[Callable]` return lowering remain outside this prerequisite;
+the last is tracked by `BUGS.md#own-callable-return-rejected`.
+
+Validation: all 14 inference checks and three new snippet cases passed. The
+full remote `--force-exec` run passed **8,005 tests, 23 skipped**, with all
+**4,135 executable cases** built and run. No existing snapshots changed.
 
 ### Detailed work inventory
 
@@ -930,9 +953,10 @@ above is satisfied.
    borrows `self`) are a PRE-EXISTING sema/codegen duplicate of one rule; they
    become one helper both import. Pure refactor, zero snapshot churn.
 3. **P0.2 -- a lambda at a container-element binding gets its parameter types.**
-   `_analyze_lambda` (`tpyc/sema/expressions.py:4134-4140`) raises with no hint,
-   though the element type is available at the `append` / subscript-assign
-   arg-coerce.
+   Recover the callable shape through `Own` in contextual analysis and preserve
+   per-element tuple hints. Admit callable element replacement through the
+   shared THIR container-write path, including optional slots. Container
+   methods and subscript writes then use the same known callable signature.
 4. **P0.3 -- a `Callable` in a dict field is callable at all.**
    `tpyc/sema/methods.py:771` / `:967` raise `Cannot call method 'commands' on type
    App`; the subscript-then-call shape never reaches `analyze_callable_value_call`
@@ -1024,9 +1048,10 @@ measured against a corpus that cannot spell the shapes.
    says nothing about why. Its NAMED twin already compiles, so the gate is only
    `expr.lambda`.
 2. A lambda at a CONTAINER-ELEMENT binding must get its parameter types.
-   `bus.listeners.append(lambda e: print(e.code))` reports `Lambda parameter types
-   cannot be inferred` today, which is false -- the list's element type is the
-   context -- and rule 7 names that binding as one it checks.
+   `bus.listeners.append(lambda e: print(e.code))` uses the list's callable
+   element type as context, including through the consuming `Own` parameter.
+   Rule 7 names that binding as one it checks; signature inference alone does
+   not promise lowering for every lambda body or capture shape.
 3. A `Callable` held in a DICT FIELD must be callable at all.
    `self.commands[name](arg)` reports `Cannot call method 'commands' on type App`
    today. The loop-filled callback registry built on it gets a

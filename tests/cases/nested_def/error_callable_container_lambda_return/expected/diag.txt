@@ -1,0 +1,1 @@
+main.py:9: error: Lambda body type 'str' is not compatible with expected return type 'int32'

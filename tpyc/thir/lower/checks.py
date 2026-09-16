@@ -196,7 +196,7 @@ from .predicates import (
     _set_method_recv,
     _container_elem_family,
     _container_scalar_read,
-    _container_value_opt_scalar_elem,
+    _container_value_optional_elem,
     _container_value_tuple_elem,
     _dict_view_iterable_ok,
     _eligible_char,
@@ -342,6 +342,7 @@ from .predicates import (
     _open_t_tuple_slot,
     _value_opt_scalar_value_arg,
     _value_opt_callable_pass_arg,
+    _value_opt_callable,
     _value_opt_view_whole_arg,
     _value_opt_member_arg,
     _whole_value_opt_field_arg,
@@ -3285,6 +3286,8 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
     widened_elem dispatch consumes this same predicate so gate and dispatch
     cannot drift apart."""
     return (_container_scalar_read(elem_t, analyzer)
+            or _callable_value(elem_t)
+            or _value_opt_callable(elem_t, analyzer) is not None
             or _optional_record_field_inner(elem_t, analyzer) is not None
             or _eligible_ptr_union(elem_t, analyzer) is not None
             # A ptr-Optional-element tuple value slot (`d[k] = make_pair(..)`

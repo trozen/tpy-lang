@@ -68,6 +68,7 @@ from .predicates import (
     _eligible_char,
     _eligible_enum,
     _eligible_scalar,
+    _callable_value,
     _f1_record,
     _field_decl_type,
     _field_receiver_ok,
@@ -668,7 +669,7 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
     - value scalar / char -- bare / target-typed literal retype;
     - owned str / bytes slot -- a BORROW source copies (`std::string(x)` /
       `::tpy::Bytes`), a STORAGE/literal source lands bare;
-    - enum -- a value type, bare;
+    - enum / callable -- a value type, bare;
     - F1-record -- a name derefs/moves off the same movable_locals facts,
       an rvalue lands bare (no owned-slot wrap for records).
 
@@ -690,6 +691,7 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
     if allow_container and _container_family_slot(slot):
         return True
     return (_eligible_enum(slot, analyzer) is not None
+            or _callable_value(slot)
             or _f1_record(slot, analyzer))
 
 def _comp_container_name_elem(e, vt: 'TpyType | None', lc: '_LowerCtx',

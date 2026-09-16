@@ -380,6 +380,7 @@ from .predicates import (
     _plain_method_fi_ok,
     _param_is_const,
     _value_opt_scalar,
+    _value_opt_callable,
     _value_opt_tuple,
     _narrowed_value_opt_tuple_name,
     _value_opt_bytes,
@@ -815,7 +816,7 @@ def _lower_dyn_setattr_call(call: TpyMethodCall, lc: '_LowerCtx',
 
 def _scalar_or_str_unpack_elem(t: TpyType | None, analyzer) -> bool:
     """A tuple-unpack target / source-tuple element this cell admits: a value
-    scalar, or a str -- the view-form target `std::string_view name =
+    scalar, callable, or str -- the view-form target `std::string_view name =
     std::get<i>(tup)` binds a view into the source tuple's element, valid for
     the tuple's scope (which encloses the targets), exactly as a str loop var /
     str decl views its source. `render_type(target_types[i])` spells the view,
@@ -824,6 +825,7 @@ def _scalar_or_str_unpack_elem(t: TpyType | None, analyzer) -> bool:
     Record / bytes / pointer-repr-Optional / union elements need the
     borrow-alias and other unpack branches, which are not lowered yet."""
     return (_eligible_scalar(t)
+            or _callable_value(t)
             or _value_opt_scalar(
                 unwrap_ref_type(t) if t is not None else None,
                 analyzer) is not None
@@ -10646,6 +10648,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # <std::string> cmd = acc;`) takes the same bare copy,
                     # gated to genuinely whole-optional sources.
                     or _value_opt_scalar(vtype, analyzer) is not None
+                    or _value_opt_callable(vtype, analyzer) is not None
                     # ... and the value-TUPLE inner (`use_auth = auth` at
                     # `tuple[str, str] | None`): the same bare
                     # `std::optional<std::tuple<...>>` copy. Its reads route
@@ -10813,19 +10816,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # ... and the value-TUPLE slot, whose whole-optional copy is
                 # the same bare one.
                 opt_slot = (_value_opt_scalar(vtype, analyzer) is not None
+                            or _value_opt_callable(vtype, analyzer) is not None
                             or _value_opt_tuple(vtype, analyzer) is not None
                             or _owned_view_opt_whole_src(stmt, vtype, lc))
                 # On a reassignment the sink is the TARGET's existing slot:
                 # only an optional binding takes the whole-optional copy; a
                 # plain-T binding reads the narrowed inner ((*p)).
-                # A value-repr `Optional[value tuple]` target is asked off its
+                # A value-repr optional tuple/callable target is asked off its
                 # DECLARED type rather than the binding registry: the name
                 # arm keys its deref-on-narrow read on the declared type
-                # too, so the tuple kind is never registered as a binding.
+                # too, so these kinds are never registered as bindings.
                 if (stmt.name in declared
                         and not _value_opt_target_binding(stmt.name, lc)
                         and _value_opt_tuple(declared[stmt.name],
-                                             analyzer) is None):
+                                             analyzer) is None
+                        and _value_opt_callable(declared[stmt.name],
+                                                analyzer) is None):
                     opt_slot = False
                 # A str-family FIELD read into a str-value decl slot
                 # (`s = p.name` -> `std::string_view s = p.name;` for a view
@@ -11344,6 +11350,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         result_type=eu, value=_lower_expr(v, lc, declared),
                         form=Form.STORAGE, loc=loc)
                     _witness("setitem.borrow_lift")
+            elif _value_opt_callable(eu, analyzer) is not None:
+                if isinstance(stmt.value, TpyNoneLiteral):
+                    value = THIRLiteral(result_type=eu, value=None,
+                                        form=Form.STORAGE, loc=loc)
+                else:
+                    value = _lower_expr(
+                        stmt.value, lc, declared, allow_whole_optional=True,
+                        use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                     allow_temps=True))
             elif _value_opt_scalar(eu, analyzer) is not None:
                 # Value-repr Optional[scalar] element: a None literal stores
                 # the STORAGE-form `std::nullopt` (`::tpy::__setitem__(items,

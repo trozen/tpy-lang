@@ -1,0 +1,24 @@
+global 71
+free 6 7 3
+own-param 10
+dict 3 6
+tuple 21
+tuple-index 21
+optional 14
+none True
+optional-reassign True
+optional-dict 15
+optional-views 3 3
+array 16 2
+reference 3 2
+constructor 11
+method 21
+generator 31
+generator 32
+async 42
+closure 51
+branch 63
+context 81
+comprehension 91 92
+dict-comprehension 92
+error-return 101

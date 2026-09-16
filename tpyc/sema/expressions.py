@@ -391,25 +391,24 @@ class ExpressionAnalyzer:
         # Lambda with Fn/Callable type hint: infer param types from the hint.
         # Transparent wrappers don't change the callable's shape, so peel them
         # before the is_callable_type check: Send/Sync markers (which only
-        # constrain the conversion, checked by _check_compat -- same peel as the
-        # line below), and a single Optional (a `Callable[...] | None` param
+        # constrain the conversion, checked by _check_compat), Own at consuming
+        # slots, and a single Optional (a `Callable[...] | None` param
         # exposes its inner callable to a lambda/function-ref arg, which coerces
         # back into the optional slot afterwards). `Send[Callable] | None` is NOT
         # handled: its marker sits inside the Optional, and narrowing + the call
         # path would also need to peel it -- see TODO.
-        lambda_hint = unwrap_send_sync(type_hint)
+        lambda_hint = unwrap_own(unwrap_send_sync(type_hint))
         if isinstance(lambda_hint, OptionalType):
             lambda_hint = lambda_hint.inner
+        lambda_hint = unwrap_own(lambda_hint)
         if isinstance(expr, TpyLambda) and is_callable_type(lambda_hint):
             typ = self._analyze_lambda_with_fn_hint(expr, lambda_hint)
             self.ctx.set_expr_type(expr, typ)
             return typ
 
         # Named function reference with Fn/Callable hint: resolve as function value.
-        # Unwrap OwnType so that e.g. list.append(Own[Callable[...]]) works.
-        fn_hint = lambda_hint.wrapped if isinstance(lambda_hint, OwnType) else lambda_hint
-        if isinstance(expr, TpyName) and is_callable_type(fn_hint):
-            result = self._try_resolve_function_ref(expr, fn_hint)
+        if isinstance(expr, TpyName) and is_callable_type(lambda_hint):
+            result = self._try_resolve_function_ref(expr, lambda_hint)
             if result is not None:
                 self.ctx.set_expr_type(expr, result)
                 return result
@@ -436,9 +435,10 @@ class ExpressionAnalyzer:
             return type_hint
 
         # Tuple literal with TupleType hint: pass per-element hints
-        if isinstance(expr, TpyTupleLiteral) and isinstance(type_hint, TupleType):
-            if len(expr.elements) == len(type_hint.element_types):
-                hints = list(type_hint.element_types)
+        tuple_hint = unwrap_own(type_hint)
+        if isinstance(expr, TpyTupleLiteral) and isinstance(tuple_hint, TupleType):
+            if len(expr.elements) == len(tuple_hint.element_types):
+                hints = list(tuple_hint.element_types)
                 typ = self._analyze_tuple_literal(expr, element_hints=hints)
                 self.ctx.set_expr_type(expr, typ)
                 return typ
