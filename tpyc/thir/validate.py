@@ -102,6 +102,12 @@ def _fail(owner: str, node: THIRNode, why: str) -> None:
 
 
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) and node.owned_storage is not None:
+        fact = node.owned_storage
+        if (node.alias_binding is not None or node.init is None
+                or unwrap_readonly(unwrap_ref_type(node.resolved_type)) != fact.type
+                or type(fact.readonly) is not bool or node.is_const != fact.readonly):
+            _fail(owner, node, "owned storage disagrees with its declaration")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
         fact = node.alias_binding
         if fact is not None:
@@ -610,6 +616,10 @@ def validate_function(fn: THIRFunction) -> None:
 def validate_constructor(ctor: THIRConstructor) -> None:
     owner = f"{ctor.record_name}.__init__"
     for mil in ctor.mil_inits:
+        if mil.field_identity is not None and (
+                ctor.record_layout is None
+                or mil.field_identity not in ctor.record_layout.fields):
+            _fail(owner, mil.value, "member identity disagrees with record layout")
         _walk(owner, mil.value)
         if (mil.value.form is Form.BORROW
                 and _pointer_lifted_storage(mil.value.result_type)):

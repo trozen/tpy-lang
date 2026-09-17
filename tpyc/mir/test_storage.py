@@ -293,7 +293,7 @@ class Child(Cell):
 
 
 @pytest.mark.parametrize("body,reason", [
-    ("    created = Cell(1)\n    return created.value\n", "unsupported metadata"),
+    ("    created = Cell(1)\n    return created.value\n", "missing constructor definition"),
     ("    return touch(cell)\n", "unsupported expression"),
     ("    return cell\n", "unsupported return type"),
 ])

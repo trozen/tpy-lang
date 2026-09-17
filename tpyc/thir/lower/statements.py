@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding
+from .storage import alias_binding, borrowed_record
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -3954,6 +3954,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=init,
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
+            owned_storage=borrowed_record(vtype, is_const, lc.analyzer),
             cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.POINTER
             and isinstance(stmt.init, (TpyCall, TpyMethodCall))):
@@ -4601,6 +4602,8 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         _witness("decl.record_slot_rvalue")
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype, kind=kind, init=init,
+        owned_storage=(borrowed_record(vtype, False, lc.analyzer)
+                       if kind is PtrSlotKind.RECORD_RVALUE else None),
         cpp_type=lc.render_type(vtype), loc=loc)
 
 
@@ -8824,6 +8827,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     lc.promote_movable(stmt.name)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype, init=copy_row,
+                    owned_storage=borrowed_record(vtype, False, lc.analyzer),
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
             # Owned record local: `Box b = Box(n);` -- the plain value decl,
             # cpp_type spelled the way codegen does (render_type qualifies
@@ -8842,6 +8846,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     lc.promote_movable(stmt.name)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
+                    owned_storage=borrowed_record(vtype, False, lc.analyzer),
                     init=_lower_expr(
                         stmt.init, lc, declared,
                         use=_ExprUse(
@@ -8876,6 +8881,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     name=stmt.name, resolved_type=vtype,
                     init=THIRMove(result_type=src.result_type, value=src,
                                   form=src.form, loc=loc),
+                    owned_storage=borrowed_record(vtype, False, lc.analyzer),
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
         # Borrow-form tuple local reseat (`std::tuple<..., T*>` -- a branch
         # hoist or btuple.decl literal): a REF/VALUE-capture literal assigns

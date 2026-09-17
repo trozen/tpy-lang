@@ -1627,8 +1627,10 @@ alongside related feature work; only the big-rock deferrals live here.
   M2.1 adds borrowed record holders, alias/reseat operations and direct scalar
   fields. Remaining work starts with the rest of M2; there is no borrow checker
   yet and current provenance checks remain authoritative.
-  Owning storage and the other M2 cells remain separate work. All excluded
-  cells are filed in that plan's scope matrix: M2 identities, storage/forms,
+  M2.2 adds owned scalar-record storage, verified simple constructors,
+  copy/move-through and acyclic replacements. The remaining constructor,
+  wrapper, container, scope and effect work stays in that plan's scope matrix.
+  All excluded cells are filed there: M2 identities, storage/forms,
   methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
   comprehension/match, binding scopes and holder propagation; M4 summaries,
   generic forms and ownership/native-trait decisions; M5 admission and authority.

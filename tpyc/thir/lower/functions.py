@@ -5,7 +5,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
-from .storage import borrowed_record
+from .storage import borrowed_record, record_layout
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
@@ -1869,6 +1869,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         if base_inits is None:
             note("ctor.base_init")
             return None
+        layout = record_layout(self_type, analyzer)
+        identities = {f.name: f for f in layout.fields} if layout else {}
         field_inits: list[THIRMilInit] = []
         mil_done_fields: set[str] = set()  # own fields already hoisted
         body_done_fields: set[str] = set()  # own fields whose init went to the body
@@ -1961,6 +1963,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 mil_node = _attempt_ctor_mil_init(
                     stmt, own_param_names, own_field_names, declared, lc)
                 if mil_node is not None:
+                    mil_node = replace(mil_node, field_identity=identities.get(stmt.target.field))
                     field_inits.append(mil_node)
                     mil_done_fields.add(stmt.target.field)
                     continue
@@ -1995,6 +1998,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         body_declared = dict(declared)
         ctor = THIRConstructor(
             record_name=record.name,
+            record_layout=layout,
             params=tuple(THIRParam(name=n, type=t) for n, t in init_method.params),
             mil_inits=tuple(field_inits),
             base_inits=tuple(base_inits),

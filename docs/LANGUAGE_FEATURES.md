@@ -8145,6 +8145,11 @@ Analysis-only MIR first is the approved sequence; `MIR_ANALYSIS_PLAN.md` records
 the implemented internal scalar CFG and borrowed-record alias/field foundation.
 M2.1 adds entry-declared aliases, name reseats and direct bool/int32 fields of
 borrowed plain records, including readonly access, for ordinary free functions.
+M2.2 adds owned locals for plain bool/int32-field records, construction from
+verified emitted THIR definitions, explicit copy, selected move-through and
+acyclic replacements that preserve existing OWN versus IN_PLACE decisions.
+Owning operations in loops, arbitrary constructor effects, containers/wrappers
+and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance
 checks remain authoritative. Callable admission remains planned, with no new
 acceptance rule or diagnostic enabled by this foundation.

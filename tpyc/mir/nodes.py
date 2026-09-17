@@ -46,6 +46,7 @@ class MIRSlotKind(Enum):
 class MIRValueKind(Enum):
     SCALAR = auto()
     BORROWED_RECORD = auto()
+    RECORD_STORAGE = auto()
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,14 @@ class MIRField:
 
 
 @dataclass(frozen=True)
+class MIRRecordLayout:
+    type: NominalType
+    fields: tuple[MIRField, ...]
+    copyable: bool
+    movable: bool
+
+
+@dataclass(frozen=True)
 class MIRPlace:
     root: MIRSlotId
     projections: tuple[MIRDeref | MIRField, ...] = ()
@@ -98,6 +107,26 @@ class MIRAlias:
 
 
 @dataclass(frozen=True)
+class MIRBorrow:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
+class MIRConstruct:
+    fields: tuple[MIRSlotId, ...]
+
+
+@dataclass(frozen=True)
+class MIRCopy:
+    source: MIRPlace
+
+
+@dataclass(frozen=True)
+class MIRMove:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
 class MIRCompare:
     op: str
     left: MIRSlotId
@@ -109,7 +138,8 @@ class MIRNot:
     operand: MIRSlotId
 
 
-MIRRvalue = MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias
+MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
+             | MIRConstruct | MIRCopy | MIRMove)
 
 
 @dataclass(frozen=True)
@@ -156,6 +186,7 @@ class MIRFunction:
     slots: tuple[MIRSlot, ...]
     blocks: tuple[MIRBlock, ...]
     entry: MIRBlockId
+    records: tuple[MIRRecordLayout, ...] = ()
 
 
 @dataclass(frozen=True)

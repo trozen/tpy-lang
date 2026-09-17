@@ -6,6 +6,7 @@ import operator
 from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind,
 )
 
 
@@ -24,6 +25,9 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
     values = dict(zip(params, args))
     objects = heap if heap is not None else {}
     blocks = {b.id: b for b in fn.blocks}
+    slots = {s.id: s for s in fn.slots}
+    records = {r.type: r for r in fn.records}
+    next_identity = max(objects, default=0) + 1
     bid = fn.entry
     comparisons = {"<": operator.lt, "<=": operator.le, ">": operator.gt,
                    ">=": operator.ge, "==": operator.eq, "!=": operator.ne}
@@ -31,7 +35,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
     def field(place: MIRPlace) -> tuple[dict[MIRFieldId, int | bool], MIRFieldId]:
         reference = values[place.root]
         assert isinstance(reference, Reference)
-        member = place.projections[1]
+        member = place.projections[-1]
         assert isinstance(member, MIRField)
         return objects[reference.identity], member.id
 
@@ -49,16 +53,34 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
                 value = rhs.value
             elif isinstance(rhs, MIRRead):
                 value = read(rhs.source)
-            elif isinstance(rhs, MIRAlias):
+            elif isinstance(rhs, (MIRAlias, MIRBorrow)):
                 value = values[rhs.source]
                 assert isinstance(value, Reference)
+            elif isinstance(rhs, MIRConstruct):
+                layout = records[slots[stmt.target.root].type]
+                value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}
+            elif isinstance(rhs, (MIRCopy, MIRMove)):
+                source = rhs.source.root if isinstance(rhs, MIRCopy) else rhs.source
+                reference = values[source]
+                assert isinstance(reference, Reference)
+                value = objects[reference.identity].copy()
             elif isinstance(rhs, MIRCompare):
                 value = comparisons[rhs.op](values[rhs.left], values[rhs.right])
             elif isinstance(rhs, MIRNot):
                 value = not values[rhs.operand]
             else:
                 raise AssertionError(rhs)
-            if stmt.target.projections:
+            if isinstance(value, dict):
+                if stmt.target.projections:
+                    reference = values[stmt.target.root]
+                    assert isinstance(reference, Reference)
+                else:
+                    assert slots[stmt.target.root].value_kind is MIRValueKind.RECORD_STORAGE
+                    reference = Reference(next_identity)
+                    next_identity += 1
+                    values[stmt.target.root] = reference
+                objects[reference.identity] = value
+            elif stmt.target.projections:
                 obj, member = field(stmt.target)
                 assert not isinstance(value, Reference)
                 obj[member] = value

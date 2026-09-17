@@ -399,6 +399,218 @@ semantic stamps and emitted operations; direct producer tests and unchanged
 codegen are the gate. M2.1 does not solve the later owning-storage, cleanup,
 capture, container-region, summary or authority-transition problems.
 
+## M2.2: owned scalar-record storage
+
+Status: scope approved and implemented in `tpyc/mir/`.
+This is an architectural extension of the internal analysis representation,
+with no change to source acceptance, generated C++ or provenance authority.
+
+### Observable example
+
+For a plain `Cell` whose constructor assigns its int32 argument to `value`:
+
+```python
+def inspect() -> int32:
+    current = Cell(1)
+    saved = current
+    current = Cell(2)
+    saved.value = 9
+    return current.value
+```
+
+The result is 2. `saved` still refers to the original object, now containing 9.
+The existing C++ materializes initial storage, binds two holders to it, then
+constructs the replacement in separate storage and redirects only `current`:
+
+```cpp
+std::optional<Cell> replacement;
+Cell initial = Cell(1);
+Cell* current = &initial;
+Cell& saved = *current;
+current = &*(replacement = Cell(2));
+saved.value = 9;
+return current->value;
+```
+
+Without the alias, the current compiler instead selects `(*current) = Cell(2)`.
+MIR must preserve that existing distinction; it must not choose a storage
+strategy or reinterpret all constructor assignments as fresh allocation.
+
+**Invariant:** every admitted materialization names its owned storage separately
+from the holder that borrows it; copy/move initialization and replacement act on
+explicit storage, while alias reseating changes only the holder.
+
+### Investigation and existing authorities
+
+Native TPy and CPython probes agreed on preserved aliases, unaliased replacement
+and explicit copy independence (`2 2 1`), and on compiler-selected move-through
+plus a local that switches from owned storage to a parameter (`9 2 7 7`).
+These are design probes, not an implemented MIR slice.
+
+| Existing authority | What the extension must preserve |
+|---|---|
+| `thir/lower/statements.py`: plain owned-record and copy declaration arms | Owning `THIRVarDecl` with STORAGE form; actual initialization is a constructor or `THIRCopy` |
+| `_lower_borrow_local`, REBIND_SLOT arm | Owning initial storage despite BORROW form; the local is also a reseatable holder |
+| `_lower_record_ptr_slot_decl`, RECORD_RVALUE arm | Initial owned storage for a local later reseated to an existing object |
+| Existing `THIRAliasBinding` producer sites | A name alias can borrow owned local storage as well as an incoming borrowed object |
+| Move-through declaration arm; `THIRMove` | Record the selected move; do not re-decide it from names or last-use hints |
+| `_rebind_storage`; `THIRAssign.rebind_storage` | Carry the effective OWN / IN_PLACE decision, including const fallback; do not rerun alias analysis |
+| `emit._own_slot` | OWN is one slot per syntactic reseat site, reused if that site executes again |
+| `THIRConstructor`, `THIRMilInit` | Existing constructor body and member initializers, not an assumed positional field recipe |
+| `RecordInfo.has_copy/has_move/has_del` and copy/move eligibility | Copies, moves and destruction may execute user code; scalar fields alone do not establish trivial behavior |
+
+Two constraints determine the proposed boundary:
+
+- A constructor call can run arbitrary code. `THIRCtorCall.type_cpp` is
+  presentation, and its argument list is not a list of fields. A covered
+  constructor needs its actual emitted THIR definition and logical field IDs.
+- A reseat site's OWN slot can be overwritten on a later loop iteration.
+  Treating every execution as a fresh object would disagree with emission.
+  The existing alias-rebind pass handles this and may warn; M2.2 excludes
+  owning operations in cycles instead of introducing an iteration model.
+
+### Representation
+
+1. **Extend the existing semantic THIR bridge.** Stamp owning materialization
+   at the actual declaration producers, alongside the M2.1 alias fact. Retain
+   constructor/copy/move as distinct operations and reuse the effective reseat
+   verdict. Facts identify logical storage and access, not emitted slot names.
+   In particular, BORROW-form REBIND_SLOT declarations still create storage.
+   Stamps must agree with the actual lowered source, including in unsupported
+   methods/constructors; M2.1's `self` regression remains a required guard.
+2. **Provide immutable record/constructor facts.** Extend the emitted
+   `THIRConstructor` artifact with canonical nominal identity and the record's
+   logical field layout and special-member eligibility; attach logical field
+   identity to its `THIRMilInit` entries at their existing producer. Feed these
+   emitted definitions to MIR through an optional immutable definition input.
+   A caller collecting `generate_code_and_thir()` results can supply them once;
+   existing M2.1 callers need no extra input. MIR gets no analyzer/AST/registry
+   reference, and does not re-lower constructor source or parse C++ names.
+   Eligibility includes constructor uniqueness, custom copy/move/destructor
+   presence and existing copyable/movable verdicts; respect `nocopy`/`nomove`.
+   Index definitions by canonical identity and verify each once per input set,
+   rather than rescanning all definitions at each materialization.
+3. **Verify the complete constructor before deriving a recipe.** Initially
+   require one explicit, non-overloaded constructor, no base initializers, an
+   empty body (apart from no-ops), and exactly one member initializer for every
+   stored field. Each initializer is a scalar parameter or scalar literal,
+   allowing the already-supported literal coercion. Parameters and all fields
+   are bool/int32. No default-only fields, hidden initialization or calls may
+   remain outside this accounting. Check the emitted call has a complete,
+   type-correct positional argument list for that definition. Fully normalized
+   keyword/default arguments can use that list; omitted/default-dependent or
+   unresolved argument binding remains uncovered. Arguments must be pure M1
+   scalar expressions, without walrus writes, calls or hoisted temps. This
+   makes argument order and member-initialization order independently harmless.
+   This is MIR coverage over existing THIR, not a second AST constructor
+   classifier, a general call summary or a separately maintained body recipe.
+4. **Reuse body-scoped slots and places.** Add a record-storage category to
+   `MIRSlot`, retaining `MIRSlotId`/`MIRPlace`; do not create a parallel identity
+   system. A source local can have a hidden owned-storage slot and a named
+   reference holder. Add explicit borrow-from-storage and record
+   construct/copy/move initialization operations. Existing `MIRAlias` continues
+   to transfer a holder's current referent. Record operands and destinations
+   are separate from scalar loads/stores and cannot use `MIRRead` as a copy.
+5. **Preserve the effective replacement operation.** OWN initializes the
+   reseat site's distinct storage and redirects the destination holder;
+   previous storage remains for its other aliases. IN_PLACE writes the new
+   record into the storage reached through the current holder, keeping that
+   storage identity. Do not rerun sema's ownership/alias proof in the verifier.
+   Every storage site in the admitted subset executes at most once; M1 loops
+   may remain only when their bodies/conditions contain no owning operations.
+6. **Keep move distinct from destruction.** A selected `THIRMove` initializes
+   distinct destination storage. With the admitted memberwise scalar move,
+   source storage remains alive and retains its scalar contents until scope
+   exit; `std::move` alone does not emit destruction or `StorageDead`. Record
+   the move event for later ownership analysis, without claiming it proves
+   source uniqueness, invalidates every alias or establishes a loan lifetime.
+   Initially admit only the existing move-through declaration from a fixed,
+   non-reassigned owned local, not consuming call/return sinks.
+7. **Extend validation and the test interpreter together.** Check storage and
+   holder categories, nominal/layout agreement, complete initialization,
+   source/destination access and definite assignment. Borrowing uninitialized
+   owned storage fails; field stores do not initialize their base holder or
+   record. Model record payload snapshots before an IN_PLACE write. The test
+   interpreter gives each owned slot its own identity and preserves identity
+   when replacing its contents. Copy and move create distinct destinations.
+   This remains structural verification, not lifetime or alias-safety proof.
+
+### Exact admitted scope
+
+The factors below intersect, preserving all existing M2.1 coverage. Stricter
+record eligibility applies to the new owning operations, not to borrowed-only
+records already admitted by M2.1.
+
+| Axis | M2.2 coverage | Deferred / existing work package |
+|---|---|---|
+| Position | Ordinary synchronous free functions; prefix declarations; acyclic replacements under M1 branches; loops with only previously covered operations | Other callable/module bodies remain M2; branch/loop-created bindings, cleanup, resumables, comprehension, match and error-return bodies remain M3 |
+| Shape | Plain non-generic reference records, all stored fields bool/int32, no native/inheritance/protocol/value-record behavior, no custom copy/move/destructor | Aggregate/wrapper/view/container forms and generic twins remain broader M2/M4; custom effects need M3/M4 |
+| Slot | New local owned storage, borrowed holders, scalar fields; existing scalar/borrowed parameters and scalar returns | Own parameters, record returns, owning arguments, globals, captures, container elements and nested/reference fields remain M2 |
+| Operation | Verified scalar construction; explicit copy to a prefix local; selected move-through to a prefix local; borrow/alias; name reseat; constructor-rvalue OWN/IN_PLACE replacement outside cycles | General calls/factories, arbitrary constructors, record copy/move assignments, consuming boundaries, del/drop and repeated materialization remain later M2-M4 |
+
+No record identity/equality/truthiness operator is added. No heap allocation,
+move optimization, new warning, source restriction or public MIR CLI is added.
+Missing definitions, unsupported metadata and unreachable unsupported nodes
+must yield whole-body `MIRNotCovered`; they must not weaken normal compilation
+or silently turn an unknown constructor effect into an empty effect.
+
+### Tests, docs and implementation order
+
+Use unit-owned source compiled through `generate_code_and_thir()`, following
+M2.1. Never read `tests/cases/` from compiler unit tests. Extend the bounded
+interpreter and malformed-IR tests; keep ordinary case snapshots unchanged.
+
+1. Add semantic storage/constructor facts and direct producer tests for plain
+   owned, REBIND_SLOT, RECORD_RVALUE, explicit copy and actual move-through.
+   Include method/constructor/other-body regression guards for globally
+   produced metadata, although these bodies remain outside MIR coverage.
+2. Extend MIR storage places and operations, then verifier/interpreter. Test
+   mutation through a borrow of owned storage, saved aliases after OWN reseats,
+   IN_PLACE replacement, switching a local to a borrowed parameter, copy
+   independence, distinct move destination, readonly source copying, and both
+   branch paths. Verify multiple storage sites and same-named fields/types
+   remain distinct; escaped field spellings must not affect identity.
+3. Pin constructor rejection for body effects, base/default-only initialization,
+   custom special members, missing/duplicate field facts, unresolved/default
+   argument binding and effectful arguments. Pin owning operations in loops,
+   the deferred shape/position matrix, malformed category/type/access facts,
+   uninitialized storage and CFG joins. Include borrowed-only M2.1 compatibility.
+4. Review the cumulative branch, run targeted checks and a final full forced
+   suite, update actual coverage in this plan, `ARCHITECTURE.md`,
+   `LANGUAGE_FEATURES.md` and `TODO.md`, then prepare one
+   squashed implementation commit on a branch. Do not merge or push.
+
+Pitfall assessment: shared mutation distinguishes aliases from copies; explicit
+copy warnings stay where current codegen puts them. Pure constructor arguments
+avoid the existing evaluation-order defect (`BUGS.md#subexpression-right-to-left-eval`).
+Other positions get metadata regression checks; tuple/Optional/union/generic
+twins are negative coverage, not inferred scalar semantics. Views, allocation,
+iteration, cleanup and user diagnostics do not change. No new source
+divergence was found in the admitted design probes; existing loop/cleanup
+limitations remain outside this subset and tracked by the broader plan.
+
+Confidence: high in the storage distinction and observed producer paths. The
+constructor-definition boundary is the main implementation risk; first test
+that its facts describe the exact emitted constructor and complete layout.
+If implementation needs arbitrary constructor effects, new move decisions or
+cyclic storage lifetimes, stop and revise the scope rather than widening it.
+
+The implementation adds `owned_storage` facts to the existing declaration
+producers and `THIRRecordLayout`/member identities to the emitted constructor.
+Callers build `MIRDefinitions(tuple(ctx.thir_constructors.values()))` from that
+emission and pass it as `definitions=` to `lower_function`. The immutable index
+verifies each definition once and retains failed coverage as an explicit reason.
+Missing definitions affect only bodies needing owning operations.
+
+MIR uses `RECORD_STORAGE` slots and `MIRConstruct`, `MIRCopy`, `MIRMove` and
+`MIRBorrow` rvalues. A record-place write through `MIRDeref` preserves identity;
+an OWN replacement initializes a distinct slot before rebinding its holder.
+The verifier checks complete layouts, initialization, access, copy/move
+eligibility and single-execution storage sites, including a linear CFG cycle
+check. `test_owned.py` uses actual emitted THIR; `test_owned_validate.py` checks
+malformed MIR. The shared bounded interpreter observes both the returned scalar
+and mutations of distinct/shared storage. No compiler unit test reads case files.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

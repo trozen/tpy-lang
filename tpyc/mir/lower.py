@@ -1,9 +1,9 @@
-"""All-or-nothing lowering of scalar and borrowed-record THIR operations."""
+"""All-or-nothing lowering of scalar and record-storage THIR operations."""
 
-from dataclasses import MISSING, dataclass, field, fields
+from dataclasses import dataclass, field
 
 from ..identity_map import IdentityMap
-from ..parse import SourceLocation
+from ..parse import RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..typesys import (
     BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, NominalType, TpyType,
@@ -14,31 +14,11 @@ from .nodes import (
     MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
 )
+from .coverage import Unsupported as _Unsupported, plain as _plain, require as _require
+from .definitions import MIRConstructorDefinition, MIRDefinitions
 from .validate import successors, validate_function
-
-
-class _Unsupported(Exception):
-    def __init__(self, node: object, reason: str) -> None:
-        self.node = node
-        self.reason = reason
-
-
-def _require(node: object, condition: bool, reason: str) -> None:
-    if not condition:
-        raise _Unsupported(node, reason)
-
-
-def _plain(node: th.THIRNode | th.THIRParam, allowed: set[str]) -> None:
-    # New non-default metadata must not silently acquire scalar semantics.
-    for f in fields(node):
-        if f.name in allowed | {"loc", "result_type", "form"}:
-            continue
-        default = f.default
-        if default is MISSING and f.default_factory is not MISSING:
-            default = f.default_factory()
-        _require(node, default is not MISSING and getattr(node, f.name) == default,
-                 f"unsupported metadata: {f.name}")
 
 
 def _literal(expr: th.THIRExpr) -> bool:
@@ -47,12 +27,15 @@ def _literal(expr: th.THIRExpr) -> bool:
 
 
 class _Coverage:
-    def __init__(self, fn: th.THIRFunction) -> None:
+    def __init__(self, fn: th.THIRFunction, definitions: MIRDefinitions) -> None:
         self.fn = fn
         self.bindings: dict[str, TpyType] = {}
         self.references: dict[str, th.THIRBorrowedRecord] = {}
         self.parameters = {p.name for p in fn.params}
         self.writes: IdentityMap[th.THIRExpr, bool] = IdentityMap()
+        self.definitions = definitions
+        self.records: dict[NominalType, MIRConstructorDefinition] = {}
+        self.fixed_owned: set[str] = set()
 
     def check(self) -> None:
         fn = self.fn
@@ -75,6 +58,9 @@ class _Coverage:
             if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
                 _require(stmt, prefix, "declaration outside entry prefix")
                 _require(stmt, stmt.name not in self.bindings, "duplicate binding")
+                if stmt.owned_storage is not None:
+                    self.owned(stmt)
+                    continue
                 if stmt.alias_binding is not None:
                     self.alias(stmt, declaration=True)
                     continue
@@ -91,6 +77,68 @@ class _Coverage:
                 if not isinstance(stmt, th.THIRNoOpStmt):
                     prefix = False
                 self.stmt(stmt, 0)
+
+    def record_value(self, expr: th.THIRExpr, typ: NominalType) -> None:
+        definition = self.definitions.get(expr, typ)
+        self.records[typ] = definition
+        _require(expr, unwrap_readonly(unwrap_ref_type(expr.result_type)) == typ,
+                 "record initializer type mismatch")
+        if isinstance(expr, th.THIRCtorCall):
+            _plain(expr, {"type_cpp", "args"})
+            _require(expr, expr.form is th.Form.STORAGE, "constructor form")
+            params = definition.constructor.params
+            _require(expr, len(expr.args) == len(params), "incomplete constructor arguments")
+            for arg, param in zip(expr.args, params):
+                _require(arg, self.expr(arg) == param.type, "constructor argument type")
+                _require(arg, not self.writes[arg], "effectful constructor argument")
+        elif isinstance(expr, (th.THIRCopy, th.THIRMove)):
+            _plain(expr, {"value", "cpp_type"} if isinstance(expr, th.THIRCopy) else {"value"})
+            source = self.reference_name(expr.value)
+            _require(expr, self.references[source].type == typ, "record source type mismatch")
+            if isinstance(expr, th.THIRCopy):
+                _require(expr, definition.layout.copyable and expr.form is th.Form.STORAGE,
+                         "record is not copyable or copy form")
+            else:
+                _require(expr, definition.layout.movable and source in self.fixed_owned
+                         and not self.references[source].readonly
+                         and expr.form is expr.value.form, "move needs fixed movable owned local")
+        else:
+            raise _Unsupported(expr, "unsupported record initializer")
+
+    def owned(self, stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> None:
+        fact = stmt.owned_storage
+        self.reference(stmt, fact, stmt.resolved_type)
+        allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", "owned_storage"}
+        if isinstance(stmt, th.THIRVarDecl):
+            allowed.add("cpp_local_representation")
+            _require(stmt, stmt.form in (th.Form.STORAGE, th.Form.BORROW), "owned declaration form")
+        else:
+            allowed.add("kind")
+            _require(stmt, stmt.kind is th.PtrSlotKind.RECORD_RVALUE, "owned declaration kind")
+        _plain(stmt, allowed)
+        _require(stmt, stmt.init is not None and stmt.is_const == fact.readonly,
+                 "owned declaration initializer or access")
+        self.record_value(stmt.init, fact.type)
+        self.bindings[stmt.name] = fact.type
+        self.references[stmt.name] = fact
+        if (isinstance(stmt, th.THIRVarDecl) and stmt.form is th.Form.STORAGE
+                and stmt.name not in self.fn.layout.reassigned_locals):
+            self.fixed_owned.add(stmt.name)
+
+    def replacement(self, stmt: th.THIRAssign, loops: int) -> None:
+        _plain(stmt, {"target", "value", "rebind_storage", "slot_cpp"})
+        _require(stmt, loops == 0, "owning operation in loop")
+        name = self.reference_name(stmt.target)
+        _require(stmt, name not in self.parameters, "reference parameter reseat")
+        _require(stmt, stmt.rebind_storage in (RebindStorage.OWN, RebindStorage.IN_PLACE),
+                 "unsupported replacement storage")
+        _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE
+                 or not self.references[name].readonly, "readonly in-place replacement")
+        _require(stmt, isinstance(stmt.value, th.THIRCtorCall), "replacement needs constructor")
+        self.record_value(stmt.value, self.references[name].type)
+        _require(stmt, self.records[self.references[name].type].layout.movable,
+                 "replacement needs movable record")
+        self.fixed_owned.discard(name)
 
     def reference(self, node: object, ref: th.THIRBorrowedRecord, typ: TpyType) -> None:
         _require(node, isinstance(ref, th.THIRBorrowedRecord), "invalid reference fact")
@@ -150,6 +198,7 @@ class _Coverage:
             self.references[name] = fact.reference
         else:
             _require(stmt, self.references.get(name) == fact.reference, "alias destination mismatch")
+            self.fixed_owned.discard(name)
 
     def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> TpyType:
         _plain(expr, {"receiver", "field_cpp", "field_identity", "is_arrow"})
@@ -241,7 +290,9 @@ class _Coverage:
         return typ
 
     def stmt(self, stmt: th.THIRStmt, loops: int) -> None:
-        if isinstance(stmt, (th.THIRAssign, th.THIRPtrLocalRebind)) and stmt.alias_binding is not None:
+        if isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is not None:
+            self.replacement(stmt, loops)
+        elif isinstance(stmt, (th.THIRAssign, th.THIRPtrLocalRebind)) and stmt.alias_binding is not None:
             self.alias(stmt)
         elif isinstance(stmt, th.THIRNoOpStmt):
             _plain(stmt, set())
@@ -289,7 +340,7 @@ class _Block:
 
 
 class _Builder:
-    def __init__(self, body: MIRBodyId, fn: th.THIRFunction) -> None:
+    def __init__(self, body: MIRBodyId, fn: th.THIRFunction, coverage: _Coverage) -> None:
         self.body = body
         self.fn = fn
         self.slots: list[MIRSlot] = []
@@ -297,6 +348,8 @@ class _Builder:
         self.blocks: list[_Block] = []
         self.current: _Block | None = self.block()
         self.loops: list[tuple[MIRBlockId, MIRBlockId]] = []
+        self.records = coverage.records
+        self.storage: dict[str, MIRSlotId] = {}
 
     def block(self) -> _Block:
         block = _Block(MIRBlockId(self.body, len(self.blocks)))
@@ -304,11 +357,13 @@ class _Builder:
         return block
 
     def slot(self, typ: TpyType, kind: MIRSlotKind = MIRSlotKind.TEMPORARY,
-             name: str | None = None, reference: th.THIRBorrowedRecord | None = None) -> MIRSlotId:
+             name: str | None = None, reference: th.THIRBorrowedRecord | None = None,
+             *, storage: bool = False) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
         self.slots.append(MIRSlot(sid, reference.type if reference else typ, kind, name,
-                                  form=th.Form.BORROW if reference else th.Form.VALUE,
-                                  value_kind=MIRValueKind.BORROWED_RECORD if reference else MIRValueKind.SCALAR,
+                                  form=th.Form.STORAGE if storage else th.Form.BORROW if reference else th.Form.VALUE,
+                                  value_kind=(MIRValueKind.RECORD_STORAGE if storage else
+                                              MIRValueKind.BORROWED_RECORD if reference else MIRValueKind.SCALAR),
                                   readonly=reference.readonly if reference else False))
         return sid
 
@@ -379,6 +434,21 @@ class _Builder:
             return self.select(self.expr(expr.cond), expr.then, expr.orelse, typ, loc)
         raise AssertionError("coverage and expression lowering disagree")
 
+    def record_value(self, expr: th.THIRExpr) -> MIRRvalue:
+        if isinstance(expr, th.THIRCtorCall):
+            definition = self.records[expr.result_type]
+            args = {p.name: self.expr(arg) for p, arg in zip(definition.constructor.params, expr.args)}
+            members = {}
+            for mil in definition.constructor.mil_inits:
+                value = mil.value
+                members[mil.field_identity.name] = (args[value.name] if isinstance(value, th.THIRName)
+                                                     else self.expr(value))
+            return MIRConstruct(tuple(members[f.id.name] for f in definition.layout.fields))
+        if isinstance(expr, th.THIRCopy):
+            return MIRCopy(MIRPlace(self.bindings[expr.value.name], (MIRDeref(),)))
+        assert isinstance(expr, th.THIRMove)
+        return MIRMove(self.storage[expr.value.name])
+
     def stmts(self, stmts: tuple[th.THIRStmt, ...]) -> None:
         for stmt in stmts:
             if self.current is None:
@@ -387,7 +457,24 @@ class _Builder:
             loc = stmt.loc
             if isinstance(stmt, th.THIRNoOpStmt):
                 continue
-            if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl, th.THIRAssign,
+            if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)) and stmt.owned_storage is not None:
+                fact = stmt.owned_storage
+                storage = self.slot(fact.type, storage=True)
+                self.write(storage, self.record_value(stmt.init), loc)
+                holder = self.slot(fact.type, MIRSlotKind.LOCAL, stmt.name, fact)
+                self.write(holder, MIRBorrow(storage), loc)
+                self.storage[stmt.name] = storage
+                self.bindings[stmt.name] = holder
+            elif isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is not None:
+                holder = self.bindings[stmt.target.name]
+                value = self.record_value(stmt.value)
+                if stmt.rebind_storage is RebindStorage.OWN:
+                    storage = self.slot(self.slots[holder.index].type, storage=True)
+                    self.write(storage, value, loc)
+                    self.write(holder, MIRBorrow(storage), loc)
+                else:
+                    self.write(MIRPlace(holder, (MIRDeref(),)), value, loc)
+            elif isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl, th.THIRAssign,
                                  th.THIRPtrLocalRebind)) and stmt.alias_binding is not None:
                 fact = stmt.alias_binding
                 source = self.bindings[fact.source]
@@ -473,19 +560,19 @@ class _Builder:
             assert b.terminator is not None
             blocks.append(MIRBlock(b.id, tuple(b.statements), b.terminator))
         fn = MIRFunction(self.body, self.fn.return_type, tuple(self.slots), tuple(blocks),
-                         self.blocks[0].id)
+                         self.blocks[0].id, tuple(d.layout for d in self.records.values()))
         validate_function(fn)
         return fn
 
 
 def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
-                   kind: MIRBodyKind) -> MIRFunction | MIRNotCovered:
+                   kind: MIRBodyKind, definitions: MIRDefinitions | None = None) -> MIRFunction | MIRNotCovered:
     """The caller supplies declaration kind; THIRFunction alone loses it."""
     try:
         _require(fn, kind is MIRBodyKind.FREE_FUNCTION, "unsupported body kind")
-        coverage = _Coverage(fn)
+        coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions())
         coverage.check()
-        return _Builder(body, fn).build()
+        return _Builder(body, fn, coverage).build()
     except _Unsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,
                              getattr(failure.node, "loc", None))

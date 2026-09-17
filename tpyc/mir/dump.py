@@ -4,6 +4,7 @@ from ..parse import SourceLocation
 from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
 )
 from .validate import validate_function
 
@@ -30,6 +31,8 @@ def dump_function(fn: MIRFunction) -> str:
         name = f" {slot.name}" if slot.name is not None else ""
         access = (" readonly-ref" if slot.readonly else " mutable-ref"
                   ) if slot.value_kind is MIRValueKind.BORROWED_RECORD else ""
+        if slot.value_kind is MIRValueKind.RECORD_STORAGE:
+            access = " owned-storage"
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}")
     for block in fn.blocks:
         lines.append(f"bb{block.id.index}:")
@@ -41,6 +44,14 @@ def dump_function(fn: MIRFunction) -> str:
                 rhs = f"read {_place(value.source)}"
             elif isinstance(value, MIRAlias):
                 rhs = f"alias %{value.source.index}"
+            elif isinstance(value, MIRBorrow):
+                rhs = f"borrow %{value.source.index}"
+            elif isinstance(value, MIRConstruct):
+                rhs = "construct (" + ", ".join(f"%{s.index}" for s in value.fields) + ")"
+            elif isinstance(value, MIRCopy):
+                rhs = f"copy {_place(value.source)}"
+            elif isinstance(value, MIRMove):
+                rhs = f"move %{value.source.index}"
             elif isinstance(value, MIRCompare):
                 rhs = f"%{value.left.index} {value.op} %{value.right.index}"
             elif isinstance(value, MIRNot):

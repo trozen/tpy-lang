@@ -4,7 +4,10 @@ from typing import TYPE_CHECKING
 
 from ...parse.nodes import TpyFieldAccess, TpyName
 from ...typesys import BOOL, INT32, NominalType, TpyType, unwrap_readonly, unwrap_ref_type
-from ..nodes import THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldIdentity, THIRName
+from ..nodes import (
+    THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldIdentity, THIRName,
+    THIRRecordLayout,
+)
 
 if TYPE_CHECKING:
     from ...sema.analyzer import SemanticAnalyzer
@@ -32,6 +35,20 @@ def alias_binding(source: THIRExpr, typ: TpyType, readonly: bool,
     if unwrap_readonly(unwrap_ref_type(source.result_type)) != reference.type:
         return None
     return THIRAliasBinding(source.name, reference)
+
+
+def record_layout(typ: TpyType, analyzer: 'SemanticAnalyzer') -> THIRRecordLayout | None:
+    reference = borrowed_record(typ, False, analyzer)
+    if reference is None:
+        return None
+    info = analyzer.registry.get_record_for_type(reference.type)
+    return THIRRecordLayout(
+        reference.type,
+        tuple(THIRFieldIdentity(reference.type, f.name, f.type) for f in info.fields),
+        info.has_init and len(info.get_method_overloads("__init__")) == 1,
+        info.has_copy, info.has_move, info.has_del,
+        not info.is_nocopy, info.is_movable and info.move_override is not False,
+    )
 
 
 def direct_field(expr: TpyFieldAccess,

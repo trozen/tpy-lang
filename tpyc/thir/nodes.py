@@ -79,6 +79,19 @@ class THIRFieldIdentity:
 
 
 @dataclass(frozen=True)
+class THIRRecordLayout:
+    """Logical storage and special-member facts from the emitted record."""
+    type: NominalType
+    fields: tuple[THIRFieldIdentity, ...]
+    unique_constructor: bool
+    custom_copy: bool
+    custom_move: bool
+    custom_destructor: bool
+    copyable: bool
+    movable: bool
+
+
+@dataclass(frozen=True)
 class THIRNode:
     # kw_only so subclasses can declare required positional fields after it
     # (base-class defaults would otherwise force every later field to default).
@@ -1667,6 +1680,7 @@ class THIRVarDecl(THIRStmt):
     name: str
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
+    owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     init: THIRExpr | None = None
     cpp_type: str | None = None
     form: Form = Form.VALUE
@@ -1851,6 +1865,7 @@ class THIRPtrLocalDecl(THIRStmt):
     name: str
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
+    owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     init: THIRExpr | None = None
     cpp_type: str | None = None
@@ -3394,6 +3409,7 @@ class THIRMilInit:
     field_cpp: str
     value: THIRExpr
     move: bool = False
+    field_identity: THIRFieldIdentity | None = None
 
 
 @dataclass(frozen=True)
@@ -3426,6 +3442,7 @@ class THIRConstructor:
     mil_inits: tuple[THIRMilInit, ...]
     base_inits: tuple[THIRBaseInit, ...] = ()
     body: tuple[THIRStmt, ...] = ()
+    record_layout: THIRRecordLayout | None = None
 
 
 @dataclass(frozen=True)
