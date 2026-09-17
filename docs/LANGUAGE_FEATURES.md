@@ -8140,6 +8140,8 @@ share a position-aware classifier. This refactor preserves current return
 conventions and their existing limitations; the full callable result contract
 (including permission and contained-borrow analysis) remains planned in
 `CALLABLE_CONTRACT_DESIGN.md`.
+The initial compatibility findings are in `CALLABLE_CONTRACT_FEASIBILITY.md`;
+the admission policy and implementation sequence still require a decision.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

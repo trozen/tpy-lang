@@ -1572,6 +1572,12 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
   feasibility checkpoint, and the complete semantic result descriptor lands
   with the coupled implementation. A storage representation is not proof that
   its payload contains no borrows.
+  The initial checkpoint-3 findings are in
+  `docs/CALLABLE_CONTRACT_FEASIBILITY.md`: generic forms are feasible but need a
+  new channel, and the proposed admission layer needs substantial provenance /
+  effect propagation while rejecting ordinary safe callbacks. Recommendation:
+  bring shared analysis-only MIR forward. Sequencing awaits a user decision;
+  the coupled contract remains gated.
   Its "Compatibility gate" first measures programs newly rejected by A1-A12,
   separating actual lifetime violations from safe false positives, including
   scalar callbacks under ordinary loans. Contract-first is conditional on an

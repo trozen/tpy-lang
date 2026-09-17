@@ -219,7 +219,10 @@ in the current model.
   programs accepted today. The contract document's "Compatibility gate" measures
   that cost before the coupled implementation; if the admission layer requires
   substantial new flow analysis or rejects common safe callback idioms, bring
-  analysis-only MIR forward. Six provisions are load-bearing for it:
+  analysis-only MIR forward. The focused measurements and code audit in
+  `docs/CALLABLE_CONTRACT_FEASIBILITY.md` recommend doing so; the sequencing
+  decision remains pending and no admission rule has been implemented.
+  Six provisions are load-bearing for it:
   (1) stable place identities covering locals, temporaries, captures, qualified
   globals, fields, derefs and summarized container elements; (2) explicit
   operations -- alias, borrow, copy, move, rebind, closure construction, call,

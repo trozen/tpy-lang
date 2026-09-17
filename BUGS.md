@@ -19,6 +19,21 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 
 ## Compiler bugs
 
+- **[MED medium] (rejects valid, loud) Forwarding an `Fn` parameter to a non-storing named helper is rejected by THIR's callable argument gate.** [`fn-parameter-named-forwarding-rejected`]
+  `def relay(f: Fn[[], int32]) -> int32: return f()` and
+  `def use(f: Fn[[], int32]) -> int32: return relay(f)` pass semantic analysis,
+  but `use(lambda: 3)` rejects at the forwarding call with
+  `expr.call:call.arg_shape.other_callabletype`. CPython prints `3`; neither
+  helper stores or returns the callable, so this is not the designed restriction
+  on escaping `Fn` values. Replacing both parameter annotations with `Callable`
+  admits the corresponding forwarding shape. The rejection comes from the
+  argument-admission fallback in `tpyc/thir/lower/checks.py`; fixing it must check
+  templated callable argument lowering and forwarding lifetime/ownership, not
+  simply remove the gate. Reproducer: the two definitions above, imported
+  `Fn`/`int32` from `tpy`, followed by `print(use(lambda: 3))`. Confirmed at
+  `d9c5173358` during the callable-contract feasibility pass, independently of
+  any proposed admission rule. Needs `/tpy-fix-bug`.
+
 - **[MED medium] (rejects valid, loud) A generic method calling a `Callable` with an open-type argument can force that argument const.** [`generic-method-callable-param-forced-const`] `def invoke(self, cb: Callable[[T], None], x: T): cb(x)` inside `Runner[T]`, instantiated at a mutable reference type such as `Cell`, emits `readonly_form_t<T>` for `x` although the callback needs `param_val_or_ref_t<T>` (`const Cell&` versus `Cell&`); C++ compilation fails while CPython runs. Direct callable fields and indexed callable fields have the same failure; the free-function twin works. Callable argument mutation tracking deliberately skips open `T` (`sema/calls.py`), then an inferred-readonly method forces parameter constness (`sema/functions.py`, `param_const.py`). These paths predate indexed callable-field support. Fixing this requires reconciling generic callable mutation and method const inference, including the existing generic combinator corpus, rather than changing field dispatch. Related to `BUGS.md#generic-ref-param-drops-const` and the `Wrap[T]`/`cmp_to_key` readonly-receiver entry, but this failure involves an independent method argument. Reproducers `/tmp/agents/p03_safety/{named_method,direct_generic,named_generic}.py`, measured 2026-09-16. Needs `/tpy-fix-bug`.
 
 - **[MED medium] (rejects valid, loud) A lambda body cannot materialize a temporary for a mutable-reference call argument.** [`lambda-body-reference-argument-temp`] `f: Callable[[], int32] = lambda: cb([1])`, where `cb: Callable[[list[int32]], int32]`, rejects at `expr.lambda:lambda.body:expr.call:call.arg_shape.container`; the same call in an ordinary function body works. Lambda expression lowering has no argument-temporary flush point. Named, direct-field and indexed callable spellings now share that existing gate, rather than some reaching C++ with an invalid rvalue-to-reference binding. General lambda-body temporary storage and its lifetime need a separate lowering change, not a per-callee exception. Pinned by `tpyc/thir/test_computed_callable_args.py`.

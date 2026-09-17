@@ -830,6 +830,12 @@ slot render of every body that binds a NEUTRAL callable result to a local; **261
 
 ## Compatibility gate
 
+The checkpoint 3 investigation is recorded in
+[`CALLABLE_CONTRACT_FEASIBILITY.md`](CALLABLE_CONTRACT_FEASIBILITY.md).
+Its focused baseline and code audit recommend bringing shared analysis forward;
+that sequencing decision is pending. The gate has not passed and the coupled
+implementation remains gated.
+
 Before committing to the coupled implementation branch, establish the admission
 layer's feasibility and its effect on programs accepted today. Contract-first is
 a proposed sequence, not an exemption from measuring safe false positives.
@@ -876,7 +882,7 @@ language restrictions discovered during implementation.
 |---|---|---|
 | 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | Complete; all three landed |
 | 2. Shared type decisions | Unify const-inference readers and extract existing result-representation decisions. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Both extractions implemented and verified |
-| 3. Feasibility and generic forms | Design the full descriptor's permission and contained-borrow analysis and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Pending |
+| 3. Feasibility and generic forms | Design the full descriptor's permission and contained-borrow analysis and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Initial descriptor survey, form model and focused compatibility baseline complete; sequencing decision pending, gate not passed |
 | 4. Coupled contract implementation | Full semantic descriptor, admission, conversion checks, lambda result stamps, runtime slots, THIR, erasure, native annotations and stubs land together after checkpoint 3 passes. | Gated |
 | 5. Precise provenance | Implement the MIR requirements and remove measured interim restrictions as their proofs become available. | Deferred |
 
@@ -1179,13 +1185,19 @@ measured against a corpus that cannot spell the shapes.
   pieces the own-copy channel lacks: a second openness predicate beside
   `_still_open` / `type_has_type_param` (`tpyc/sema/own_copy.py:218`, `:158`), a form
   composition rule in the forwards loop (`:246-249`) parallel to `substitute_types`,
-  and the form inside `OwnCopyEdge.key()` (`:115`) -- whose `seen` space is 2^k in
-  the number of form-bearing positions unless the key folds the form into the
-  existing tuple rather than crossing it -- plus a root-vs-forward split that does
+  and form-aware keys at edge, root, forward and discharge deduplication sites.
+  Up to 2^k form assignments remain possible for k independent callback positions;
+  folding form into the existing tuple key does not remove that bound. Explore
+  reachable states rather than enumerating the product. Keep selecting-call-site
+  origins separate from canonical states so repeated instantiations retain their
+  own diagnostics. Also required is a root-vs-forward split that does
   not file a concrete-types / open-form edge as a root (`tpyc/sema/context.py:1542`).
   The call site CAN supply the form (`record_own_copy_instantiation` runs at the call
   node with the arguments in hand, `tpyc/sema/calls.py:5290`;
   `defer_own_copy_verdict` at `tpyc/sema/context.py:1458` is the existing channel).
+  The feasibility report adds an 8-13 engineer-day estimate for this channel's
+  integration/diagnostics, excluding slots, descriptor analysis, provenance and
+  native move-assignment traits; it is not part of the incomplete 49-day subtotal.
   D1's later use of that infrastructure lifts
   rule 27 and the open-type-parameter over-reject, and closes the callable leg of
   `BUGS.md#generic-own-slot-borrow-call-unwarned`.
