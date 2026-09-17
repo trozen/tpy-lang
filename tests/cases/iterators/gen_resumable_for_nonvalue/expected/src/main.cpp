@@ -20,10 +20,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(it->x, 100));
     }
-    case S_RESUME_1: {  // after: yield it.x + 100
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield it.x + 100
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

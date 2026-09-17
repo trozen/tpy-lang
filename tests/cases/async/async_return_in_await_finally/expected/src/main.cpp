@@ -40,10 +40,6 @@ __coro_cleanup cleanup() {
 //         return 2
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: await cleanup()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -54,6 +50,7 @@ __coro_cleanup cleanup() {
         __state = S_JOIN_1;
         continue;
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         try {
             this->__finally_ret_0 = 1;

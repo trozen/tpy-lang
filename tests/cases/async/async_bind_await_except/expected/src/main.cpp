@@ -44,6 +44,7 @@ __coro_boom boom(::tpy::BigInt n) {
         __state = S_JOIN_1;
         continue;
     }
+    case S_JOIN_1:
     case S_RESUME_0: {  // after: print(await c)
         try {
             auto __r0 = ::tpy::poll_with_cancel(c, __cancel_pending, waker);
@@ -75,18 +76,6 @@ __coro_boom boom(::tpy::BigInt n) {
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_1;
         continue;
-    }
-    case S_JOIN_1: {
-        try {
-            __state = S_RESUME_0;
-            continue;
-        } catch (const ::tpy::ValueError&) {
-            std::cout << "caught" << "\n";
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            throw;
-        }
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

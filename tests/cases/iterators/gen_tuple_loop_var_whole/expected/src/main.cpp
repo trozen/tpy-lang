@@ -23,10 +23,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
-    case S_RESUME_1: {  // after: yield t[1].v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield t[1].v
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -64,10 +61,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
         __state = S_RESUME_1;
         return std::get<1>((*t));
     }
-    case S_RESUME_1: {  // after: yield t[1]
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield t[1]
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -160,10 +154,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__() {
         __state = S_RESUME_1;
         return std::get<1>(kv)->v;
     }
-    case S_RESUME_1: {  // after: yield kv[1].v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield kv[1].v
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -382,10 +373,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
-    case S_RESUME_1: {  // after: yield t[1].v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield t[1].v
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -419,10 +407,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
-    case S_RESUME_1: {  // after: yield t[1].v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield t[1].v
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

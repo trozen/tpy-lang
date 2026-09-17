@@ -126,18 +126,11 @@ std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield object
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield object
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield object
     case S_JOIN_1: {
         if (true) {
             __state = S_RESUME_0;
@@ -147,6 +140,7 @@ std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
             continue;
         }
     }
+    case S_RESUME_1:  // after: yield object
     case S_JOIN_2: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_JOIN_0;
@@ -218,14 +212,7 @@ std::expected<T, ::tpy::StopIteration> __gen_cycle<T, T_it>::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield y
-        __state = S_JOIN_2;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
@@ -248,6 +235,7 @@ std::expected<T, ::tpy::StopIteration> __gen_cycle<T, T_it>::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
     }
+    case S_RESUME_1:  // after: yield y
     case S_JOIN_2: {
         if ((*__for_it_1) == (*__for_end_1)) {
             __state = S_JOIN_1;
@@ -393,10 +381,7 @@ std::expected<T, ::tpy::StopIteration> __gen_takewhile<T, T_it, F_pred>::__next_
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
@@ -474,10 +459,7 @@ std::expected<T, ::tpy::StopIteration> __gen_dropwhile<T, T_it, F_pred>::__next_
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
@@ -555,10 +537,8 @@ std::expected<T, ::tpy::StopIteration> __gen_filterfalse<T, T_it, F_pred>::__nex
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
+    case S_JOIN_1:
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
@@ -573,10 +553,6 @@ std::expected<T, ::tpy::StopIteration> __gen_filterfalse<T, T_it, F_pred>::__nex
             __state = S_JOIN_1;
             continue;
         }
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

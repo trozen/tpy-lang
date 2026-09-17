@@ -51,14 +51,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_field::__next__()
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield self.s
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield "end"
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield self.s
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return "end";

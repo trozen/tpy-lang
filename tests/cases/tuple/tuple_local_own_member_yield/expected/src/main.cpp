@@ -321,10 +321,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop:
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             std::cout << "preloop-kept" << " " << ::tpyapp::main::first_item(std::get<1>((*t))) << "\n";

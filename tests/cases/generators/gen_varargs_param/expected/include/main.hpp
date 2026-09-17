@@ -573,14 +573,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump_generic<T>::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x.bump()
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield x.bump()
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
@@ -678,23 +675,17 @@ struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T
 template <::tpystd::typing::Iterator<Point> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_next<T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield before
         after = p->x;
         __state = S_RESUME_1;
         return after;
     }
-    case S_RESUME_1: {  // after: yield after
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_2: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
+    case S_RESUME_1:  // after: yield after
     case S_JOIN_0: {
         __for_r_0.emplace(it.__next__());
         if (!(*__for_r_0).has_value()) {

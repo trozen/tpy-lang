@@ -20,10 +20,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_free_import::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -62,10 +59,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_single_yield_import::__next__
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -103,10 +97,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_module_call::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -144,10 +135,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -185,10 +173,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -227,10 +212,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_imported::__nex
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -268,10 +250,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_local::__next__
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -311,10 +290,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_mutate_receiver::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -354,10 +330,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_lazy_interleave::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -396,10 +369,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {

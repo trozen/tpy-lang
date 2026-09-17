@@ -96,14 +96,8 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_src>, std::tupl
 template <::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
 std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_relay<T_src>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield pair
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield pair
     case S_JOIN_0: {
         __for_r_0.emplace(src.__next__());
         if (!(*__for_r_0).has_value()) {

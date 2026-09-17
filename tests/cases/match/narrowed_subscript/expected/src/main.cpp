@@ -281,15 +281,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
         __state = S_RESUME_1;
         return static_cast<int32_t>(::tpy::bytes_getitem(__x, -1));
     }
-    case S_RESUME_1: {  // after: yield x[-1]  # tpyc: ok
-        auto& __x = *std::get<const ::tpy::ByteArray*>(x);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield -1
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x[-1]  # tpyc: ok
+    case S_RESUME_2:  // after: yield -1
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

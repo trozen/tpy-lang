@@ -14,24 +14,10 @@ namespace tpyapp::main {
 //         print("post")
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         try {
             __state = S_RESUME_1;
             return ::tpy::BigInt(2);
-        } catch (...) {
-            this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_1;
-            continue;
-        }
-    }
-    case S_RESUME_1: {  // after: yield 2
-        try {
-            __state = S_JOIN_1;
-            continue;
         } catch (...) {
             this->__finally_exc_0 = std::current_exception();
             __state = S_JOIN_1;
@@ -52,11 +38,13 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_1:  // after: yield 2
     case S_JOIN_1: {
         std::cout << "pre" << "\n";
         __state = S_RESUME_2;
         return ::tpy::BigInt(99);
     }
+    case S_INITIAL:  // entry
     case S_JOIN_2: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);

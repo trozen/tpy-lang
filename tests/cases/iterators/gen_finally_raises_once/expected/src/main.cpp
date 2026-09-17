@@ -25,10 +25,6 @@ int32_t _code{};
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_normal_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_1 = false;
         try {
@@ -47,6 +43,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_normal_exit::__next__()
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -81,10 +78,6 @@ __gen_normal_exit normal_exit() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         try {
             throw ::tpy::ValueError("v");
@@ -111,6 +104,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__(
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -143,10 +137,6 @@ __gen_handler_exit handler_exit() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_4 = false;
         try {
@@ -161,6 +151,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__next__()
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -250,10 +241,6 @@ __gen_with_exit with_exit() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_6 = false;
         try {
@@ -282,15 +269,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__()
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    case S_JOIN_1: {
-        try {
-            __state = S_JOIN_2;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
-    }
+    case S_INITIAL:  // entry
+    case S_JOIN_1:
     case S_JOIN_2: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -357,6 +337,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_break_exit::__next__() 
             throw;
         }
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_JOIN_1;
@@ -369,10 +350,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_break_exit::__next__() 
     case S_JOIN_1: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_JOIN_3: {
         __state = S_RESUME_0;

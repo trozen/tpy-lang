@@ -877,10 +877,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_CaseInsensitiveDict___ite
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield self._store[lk][0]
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield self._store[lk][0]
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -910,10 +907,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__nex
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield name
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield name
+    case S_JOIN_1:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -927,10 +922,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__nex
             __state = S_JOIN_1;
             continue;
         }
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -977,19 +968,17 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield chunk
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield data[pos:end]
         pos = end;
         __state = S_JOIN_3;
         continue;
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield chunk
     case S_JOIN_1: {
         if (true) {
             chunk = r->read(chunk_size);
@@ -1004,10 +993,6 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
             __state = S_JOIN_2;
             continue;
         }
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_JOIN_3: {
         if ((pos < n)) {
@@ -1068,10 +1053,6 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {  // after: yield tail[:tend]
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -1109,6 +1090,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
             continue;
         }
     }
+    case S_RESUME_1:  // after: yield tail[:tend]
     case S_JOIN_2: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

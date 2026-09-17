@@ -479,21 +479,9 @@ struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Receiver___iter__<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield self.recv()
-        try {
-            __state = S_JOIN_1;
-            continue;
-        } catch (const ChannelClosed&) {
-            __state = S_DONE;
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        } catch (...) {
-            throw;
-        }
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield self.recv()
+    case S_JOIN_1:
     case S_JOIN_0: {
         if (true) {
             __state = S_JOIN_2;
@@ -502,10 +490,6 @@ std::expected<T, ::tpy::StopIteration> __gen_Receiver___iter__<T>::__next__() {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_JOIN_2: {
         try {

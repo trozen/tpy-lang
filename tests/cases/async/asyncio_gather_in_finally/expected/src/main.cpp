@@ -51,10 +51,6 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
 //         print("caught:", e)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.gather_list(tasks)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -78,18 +74,6 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
-    case S_JOIN_1: {
-        try {
-            __state = S_JOIN_3;
-            continue;
-        } catch (const ::tpy::RuntimeError& e) {
-            std::cout << "caught:" << " " << e << "\n";
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            throw;
-        }
-    }
     case S_JOIN_2: {
         try {
             if (this->__finally_exc_0) {
@@ -107,6 +91,8 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
             throw;
         }
     }
+    case S_INITIAL:  // entry
+    case S_JOIN_1:
     case S_JOIN_3: {
         try {
             try {

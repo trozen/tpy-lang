@@ -24,10 +24,6 @@ int32_t _code{};
 ::tpystd::tpy::Poll<::std::monostate> __coro_normal_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_1 = false;
         try {
@@ -51,6 +47,7 @@ int32_t _code{};
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -88,10 +85,6 @@ __coro_normal_exit normal_exit() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_return_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_3 = false;
         try {
@@ -111,6 +104,7 @@ __coro_normal_exit normal_exit() {
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -216,10 +210,6 @@ __coro_with_exit with_exit() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_handler_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -252,6 +242,7 @@ __coro_with_exit with_exit() {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -308,10 +299,6 @@ __coro_handler_exit handler_exit() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_nested_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_11 = false;
         try {
@@ -346,15 +333,8 @@ __coro_handler_exit handler_exit() {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
-    case S_JOIN_1: {
-        try {
-            __state = S_JOIN_2;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
-    }
+    case S_INITIAL:  // entry
+    case S_JOIN_1:
     case S_JOIN_2: {
         try {
             try {

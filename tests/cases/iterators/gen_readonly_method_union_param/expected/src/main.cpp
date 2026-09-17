@@ -63,16 +63,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Zoo_codes::__next__() {
             return ::tpy::BigInt(2);
         }
     }
-    case S_RESUME_1: {  // after: yield 1
-        auto& __a = *std::get<const Dog*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield 2
-        auto& __a = *std::get<const Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield 1
+    case S_RESUME_2:  // after: yield 2
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

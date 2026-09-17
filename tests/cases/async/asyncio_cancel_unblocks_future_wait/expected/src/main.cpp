@@ -13,10 +13,6 @@ namespace tpyapp::main {
 //         raise
 ::tpystd::tpy::Poll<::std::monostate> __coro_waiter::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(100.0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -39,6 +35,7 @@ namespace tpyapp::main {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(100.0)));

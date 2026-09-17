@@ -20,14 +20,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_scalars::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield n
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield n
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
@@ -65,14 +62,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_strings::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield n
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield n
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
@@ -109,14 +103,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield p.x
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield p.x
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
@@ -153,14 +144,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_read_pack::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield p.x
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield p.x
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
@@ -281,23 +269,11 @@ __gen_indexed indexed(::tpy::varargs<const int32_t> xs) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_in_finally::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_2;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield len(s)
-        try {
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield len(s)
     case S_JOIN_0: {
         bool __fin_ran_2 = false;
         try {
@@ -321,6 +297,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_finally::__next__() {
         __state = S_RESUME_1;
         return -1;
     }
+    case S_INITIAL:  // entry
     case S_JOIN_2: {
         try {
             __for_it_0.emplace((xs).begin());
@@ -365,23 +342,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {  // after: yield len(s)
-        try {
-            __state = S_JOIN_0;
-            continue;
-        } catch (::tpy::BaseException& __exc_0) {
-            if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
-            __state = S_JOIN_1;
-            continue;
-        } catch (...) {
-            (*__with_ctx_0).__exit__({}, nullptr, {});
-            throw;
-        }
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield len(s)
     case S_JOIN_0: {
         bool __fin_ran_5 = false;
         try {
@@ -453,14 +418,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_param::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield p.x
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield p.x
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
@@ -496,14 +458,7 @@ std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration> __gen_points
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield p
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield p
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield p
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __for_it_1.emplace((ps).begin());
@@ -515,6 +470,7 @@ std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration> __gen_points
         __state = S_RESUME_0;
         return (*p);
     }
+    case S_RESUME_1:  // after: yield p
     case S_JOIN_1: {
         if ((*__for_it_1) == (*__for_end_1)) {
             __state = S_DONE;
@@ -548,10 +504,7 @@ std::expected<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>, ::tpy::StopI
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield s
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -918,14 +871,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield self.base + len(s)
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield self.base + len(s)
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
@@ -957,10 +907,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Album_each::__next__() {
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(p->x, 100));
     }
-    case S_RESUME_1: {  // after: yield p.x + 100
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield p.x + 100
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -987,10 +934,7 @@ std::expected<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>, ::tpy::StopI
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield s
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

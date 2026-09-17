@@ -51,10 +51,6 @@ __coro_raise_from_finally raise_from_finally() {
 //         print("caught from finally")
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await raise_from_finally()
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -77,6 +73,7 @@ __coro_raise_from_finally raise_from_finally() {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         __sub_0.emplace();
         __state = S_RESUME_0;

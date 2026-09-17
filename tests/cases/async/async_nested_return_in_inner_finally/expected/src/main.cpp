@@ -36,10 +36,6 @@ __coro_sub sub(std::string_view label) {
 //         await sub("outer")      # -> S_RESUME_1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_RESUME_0: {  // after: await sub("inner")
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -85,38 +81,15 @@ __coro_sub sub(std::string_view label) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_JOIN_2: {
-        try {
-            __state = S_JOIN_4;
-            continue;
-        } catch (...) {
-            this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_1;
-            continue;
-        }
-    }
+    case S_INITIAL:  // entry
+    case S_JOIN_2:
+    case S_JOIN_4:
     case S_JOIN_3: {
         try {
             __coro_arg_0 = "inner";
             __sub_0.emplace(__coro_arg_0);
             __state = S_RESUME_0;
             continue;
-        } catch (...) {
-            this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_1;
-            continue;
-        }
-    }
-    case S_JOIN_4: {
-        try {
-            try {
-                __state = S_JOIN_3;
-                continue;
-            } catch (...) {
-                this->__finally_exc_1 = std::current_exception();
-                __state = S_JOIN_3;
-                continue;
-            }
         } catch (...) {
             this->__finally_exc_0 = std::current_exception();
             __state = S_JOIN_1;

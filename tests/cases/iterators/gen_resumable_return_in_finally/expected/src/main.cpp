@@ -12,10 +12,6 @@ namespace tpyapp::main {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_1 = false;
         try {
@@ -42,6 +38,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__ne
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -74,10 +71,6 @@ __gen_gen_return_normal gen_return_normal() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_suppresses_exc::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         try {
             throw ::tpy::ValueError("suppressed");
@@ -90,6 +83,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_suppresses_e
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -151,6 +145,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__n
             throw;
         }
     }
+    case S_JOIN_1:
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
@@ -158,10 +153,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__n
         }
         i = ((*__for_i_0))++;
         __state = S_JOIN_2;
-        continue;
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {

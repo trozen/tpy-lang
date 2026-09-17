@@ -206,10 +206,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield n
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_JOIN_0: {
         if ((n < 2)) {
             if ((::tpyapp::main::anyslot<int32_t>("genbody", n) && ::tpyapp::main::anyslot_i32("genbody", n))) {
@@ -224,6 +220,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
     }
+    case S_RESUME_0:  // after: yield n
     case S_JOIN_1: {
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_JOIN_0;

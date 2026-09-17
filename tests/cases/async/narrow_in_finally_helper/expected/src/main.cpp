@@ -17,10 +17,6 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::string> __coro_a_assert::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_1 = false;
         try {
@@ -45,6 +41,7 @@ namespace tpyapp::main {
         std::string __tpy_async_ret = "done";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -89,10 +86,6 @@ __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
 ::tpystd::tpy::Poll<std::string> __coro_a_post_if::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_3 = false;
         try {
@@ -117,6 +110,7 @@ __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
         std::string __tpy_async_ret = "done";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -166,10 +160,6 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
 ::tpystd::tpy::Poll<std::string> __coro_a_nested::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         try {
             bool __fin_ran_6 = false;
@@ -200,15 +190,6 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
         std::string __tpy_async_ret = "done";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
-    case S_JOIN_1: {
-        try {
-            __state = S_JOIN_3;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
-    }
     case S_JOIN_2: {
         bool __fin_ran_8 = false;
         try {
@@ -223,6 +204,8 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
             throw;
         }
     }
+    case S_INITIAL:  // entry
+    case S_JOIN_1:
     case S_JOIN_3: {
         try {
             try {
@@ -272,10 +255,6 @@ __coro_a_nested a_nested(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b)
 std::expected<std::string, ::tpy::StopIteration> __gen_g_assert::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield "one"
         bool __fin_ran_11 = false;
         try {
@@ -294,6 +273,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_g_assert::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return "one";
@@ -328,10 +308,6 @@ __gen_g_assert g_assert(::tpy::Union<Cat*, Dog*> a) {
 std::expected<std::string, ::tpy::StopIteration> __gen_g_post_if::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield "two"
         bool __fin_ran_12 = false;
         try {
@@ -350,6 +326,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_g_post_if::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return "two";

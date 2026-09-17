@@ -18,10 +18,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_items::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield v
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield v
+    case S_JOIN_1:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -38,10 +36,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_items::__next__() {
             __state = S_JOIN_1;
             continue;
         }
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

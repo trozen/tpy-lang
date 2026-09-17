@@ -19,10 +19,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x * 2
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x * 2
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, r));
         if (!(*__for_r_0).has_value()) {

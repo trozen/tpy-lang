@@ -29,16 +29,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield total
-        auto& __t = std::get<Push>((*t));
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield len(t.label)
-        auto& __t = std::get<Emit>((*t));
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield total
+    case S_RESUME_1:  // after: yield len(t.label)
+    case S_JOIN_1:
     case S_JOIN_0: {
         if ((::tpy::__len__((*work)) > 0)) {
             t.emplace(::tpy::pop_back((*work)));
@@ -64,10 +57,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

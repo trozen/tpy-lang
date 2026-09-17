@@ -33,10 +33,6 @@ __coro_sub sub() {
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: return await sub()
         bool __fin_ran_1 = false;
         try {
@@ -56,6 +52,7 @@ __coro_sub sub() {
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         __sub_0.emplace();
         __state = S_RESUME_0;

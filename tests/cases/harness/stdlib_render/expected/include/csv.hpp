@@ -398,14 +398,8 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
 template <typename R>
 std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<R>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield row
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield row
     case S_JOIN_0: {
         if (true) {
             line = ::tpy::deref_check(fp).readline();
@@ -632,14 +626,8 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
 template <::tpystd::tpy::Readable T_fp>
 std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield row
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield row
     case S_JOIN_0: {
         if (true) {
             line = fp.readline();
@@ -815,10 +803,7 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield out
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield out
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {

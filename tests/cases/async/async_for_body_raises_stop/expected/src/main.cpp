@@ -16,10 +16,6 @@ namespace tpyapp::main {
 //         return "caught: " + str(e)
 ::tpystd::tpy::Poll<std::string> __coro_runner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: async for x in c:
         try {
             try {
@@ -67,6 +63,7 @@ namespace tpyapp::main {
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __for_itr_0.emplace((c).__aiter__());

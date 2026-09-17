@@ -35,14 +35,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_classify::__next__() {
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(hit, 1));
     }
-    case S_RESUME_1: {  // after: yield hit + 1
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield -1
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield hit + 1
+    case S_RESUME_2:  // after: yield -1
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

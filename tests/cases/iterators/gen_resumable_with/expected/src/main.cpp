@@ -17,18 +17,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_yield::__next_
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        try {
-            __state = S_JOIN_0;
-            continue;
-        } catch (::tpy::BaseException& __exc_0) {
-            (*__with_ctx_0).__exit__({}, &__exc_0, {});
-            throw;
-        } catch (...) {
-            (*__with_ctx_0).__exit__({}, nullptr, {});
-            throw;
-        }
-    }
+    case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
         bool __fin_ran_2 = false;
         try {

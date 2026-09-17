@@ -13,10 +13,6 @@ namespace tpyapp::main {
 //         return 42
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_serve::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(10.0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -36,6 +32,7 @@ namespace tpyapp::main {
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         try {
             ::tpystd::signal::raise_signal(::tpy_const_sigint);

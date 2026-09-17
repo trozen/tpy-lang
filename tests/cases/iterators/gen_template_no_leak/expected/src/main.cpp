@@ -28,10 +28,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag::__next__() {
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 10));
     }
-    case S_RESUME_1: {  // after: yield x * 10
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x * 10
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -151,10 +148,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Doubler_each_twice::__next__(
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

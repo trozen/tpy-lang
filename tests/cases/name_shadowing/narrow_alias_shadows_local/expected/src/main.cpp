@@ -503,11 +503,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_sibling::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {  // after: yield a.n + __a + a_narrowed
-        auto& __a_narrowed = *std::get<Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield a.n + __a + a_narrowed
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

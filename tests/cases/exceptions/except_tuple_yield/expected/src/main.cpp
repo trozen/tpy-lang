@@ -31,36 +31,18 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield -1
-        try {
-            __state = S_JOIN_1;
-            continue;
-        } catch (const AErr&) {
-            __state = S_RESUME_1;
-            return ::tpy::BigInt(i);
-        } catch (const BErr&) {
-            __state = S_RESUME_3;
-            return ::tpy::BigInt(i);
-        } catch (...) {
-            throw;
-        }
-    }
     case S_RESUME_1: {  // after: yield i
         __state = S_RESUME_2;
         return ::tpy::BigInt((::tpy::mul_check<int32_t>(i, 100)));
-    }
-    case S_RESUME_2: {  // after: yield i * 100
-        __state = S_JOIN_1;
-        continue;
     }
     case S_RESUME_3: {  // after: yield i
         __state = S_RESUME_4;
         return ::tpy::BigInt((::tpy::mul_check<int32_t>(i, 100)));
     }
-    case S_RESUME_4: {  // after: yield i * 100
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield -1
+    case S_RESUME_2:  // after: yield i * 100
+    case S_RESUME_4:  // after: yield i * 100
+    case S_JOIN_1:
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
@@ -68,10 +50,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         }
         i = ((*__for_i_0))++;
         __state = S_JOIN_2;
-        continue;
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {

@@ -51,23 +51,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
             return "still-int";
         }
     }
-    case S_RESUME_2: {  // after: yield "str:" + a
-        const auto& __a = std::get<std::string>(a);
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_RESUME_3: {  // after: yield "still-int"
-        const auto& __a = std::get<::tpy::BigInt>(a);
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_2:  // after: yield "str:" + a
+    case S_RESUME_3:  // after: yield "still-int"
+    case S_JOIN_1:
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -20,10 +20,7 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_twice::__next_
         __state = S_RESUME_1;
         return (*b);
     }
-    case S_RESUME_1: {  // after: yield b
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield b
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

@@ -103,10 +103,7 @@ std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__
         __state = S_RESUME_1;
         return (*p);
     }
-    case S_RESUME_1: {  // after: yield p
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield p
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

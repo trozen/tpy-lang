@@ -85,10 +85,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump<T_items>::__next__() {
         __state = S_RESUME_1;
         return (*p).x;
     }
-    case S_RESUME_1: {  // after: yield p.x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield p.x
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, items));
         if (!(*__for_r_0).has_value()) {
@@ -156,10 +153,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_nums>::__next__() {
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(n, 2));
     }
-    case S_RESUME_1: {  // after: yield n * 2
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield n * 2
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, nums));
         if (!(*__for_r_0).has_value()) {

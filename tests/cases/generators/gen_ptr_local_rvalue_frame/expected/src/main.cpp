@@ -31,14 +31,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield i
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield saved.x
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield i
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             if ((saved != nullptr)) {
@@ -53,6 +46,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
         __state = S_RESUME_0;
         return i;
     }
+    case S_RESUME_1:  // after: yield saved.x
     case S_JOIN_1: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -106,10 +100,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__next__(
             continue;
         }
     }
-    case S_RESUME_2: {  // after: yield saved.x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_2:  // after: yield saved.x
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -153,10 +144,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_none::__next__()
             continue;
         }
     }
-    case S_RESUME_2: {  // after: yield saved.x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_2:  // after: yield saved.x
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -201,10 +189,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__() {
             continue;
         }
     }
-    case S_RESUME_2: {  // after: yield got.x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_2:  // after: yield got.x
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -248,10 +233,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {  // after: yield saved.x
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_JOIN_0: {
         if ((i < n)) {
             saved = &*(__ptr_slot_f0 = Point((::tpy::mul_check<int32_t>(i, 100))));
@@ -262,6 +243,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
     }
+    case S_RESUME_1:  // after: yield saved.x
     case S_JOIN_1: {
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;

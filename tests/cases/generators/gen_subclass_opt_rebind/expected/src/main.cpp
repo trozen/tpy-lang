@@ -29,10 +29,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {  // after: yield p.name()
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield p.name()
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

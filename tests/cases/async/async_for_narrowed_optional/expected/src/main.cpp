@@ -21,10 +21,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_each_byte::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield int(x)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield int(x)
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

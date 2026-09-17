@@ -24,14 +24,8 @@ namespace tpyapp::main {
 //         yield 1                                                        # -> S_RESUME_0
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
         if ((::tpyapp::main::eat(__tmp_1) > 1)) {
@@ -61,18 +55,12 @@ __gen_fresh_each_pull fresh_each_pull() {
 //         yield 2                                 # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_framed::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
-    case S_RESUME_1: {  // after: yield 2
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_1:  // after: yield 2
     case S_JOIN_0: {
         std::vector<::tpy::BigInt> __tmp_2 = {1, 2};
         if ((::tpyapp::main::eat(__tmp_2) > 1)) {
@@ -109,14 +97,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__(
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield i
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield -i
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield -i
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
@@ -132,6 +113,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__(
             continue;
         }
     }
+    case S_RESUME_0:  // after: yield i
     case S_JOIN_1: {
         __state = S_RESUME_1;
         return -(i);

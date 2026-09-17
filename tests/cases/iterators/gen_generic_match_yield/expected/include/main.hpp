@@ -71,14 +71,8 @@ std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
         __state = S_RESUME_1;
         return b;
     }
-    case S_RESUME_1: {  // after: yield b
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield a
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield b
+    case S_RESUME_2:  // after: yield a
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

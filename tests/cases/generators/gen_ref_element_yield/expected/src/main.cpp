@@ -22,10 +22,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {  // after: yield s
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -64,10 +61,7 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_rec::__ne
         __state = S_RESUME_1;
         return (*b);
     }
-    case S_RESUME_1: {  // after: yield b
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield b
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -105,10 +99,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {  // after: yield s
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -151,10 +142,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {  // after: yield s
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             std::cout << "framelocal-inner" << " " << ::tpy::__len__(::tpy::__getitem__((*own), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*own), 1)) << "\n";
@@ -261,10 +249,7 @@ std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::tpy::St
         __state = S_RESUME_1;
         return (*d);
     }
-    case S_RESUME_1: {  // after: yield d
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield d
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -301,10 +286,7 @@ std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIterati
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {  // after: yield s
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -353,19 +335,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             throw;
         }
     }
-    case S_RESUME_1: {  // after: yield s
-        try {
-            __state = S_JOIN_0;
-            continue;
-        } catch (::tpy::BaseException& __exc_0) {
-            if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
-            __state = S_JOIN_1;
-            continue;
-        } catch (...) {
-            (*__with_ctx_0).__exit__({}, nullptr, {});
-            throw;
-        }
-    }
+    case S_RESUME_1:  // after: yield s
     case S_JOIN_0: {
         bool __fin_ran_3 = false;
         try {
@@ -432,18 +402,11 @@ __gen_each_with each_with(std::vector<std::vector<int32_t>>& xs) {
 //             yield s                                                # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_finally::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_3;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield s  # tpyc: warning(/'yield' inside 'finally'/)
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {  // after: yield s
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_JOIN_1;
@@ -468,6 +431,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         __state = S_JOIN_0;
         continue;
     }
+    case S_INITIAL:  // entry
     case S_JOIN_3: {
         try {
             std::cout << "finally-try" << "\n";
@@ -510,10 +474,7 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::__next_
         __state = S_RESUME_1;
         return (*b);
     }
-    case S_RESUME_1: {  // after: yield b
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield b
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -869,10 +830,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {  // after: yield s
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

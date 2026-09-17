@@ -43,10 +43,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_once::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield i + 1
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield i + 1
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
@@ -110,10 +107,6 @@ __gen_chatty chatty() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         try {
             __state = S_RESUME_1;
@@ -141,6 +134,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return 1;

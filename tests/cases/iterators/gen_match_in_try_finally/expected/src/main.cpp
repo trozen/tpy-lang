@@ -18,19 +18,6 @@ namespace tpyapp::main {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_2;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield 10
-        try {
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
-    }
     case S_RESUME_1: {  // after: yield 20
         try {
             __state = S_RESUME_2;
@@ -40,19 +27,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_2: {  // after: yield 21
-        try {
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
-    }
     case S_RESUME_3: {  // after: yield 99
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 10
+    case S_RESUME_2:  // after: yield 21
     case S_JOIN_0: {
         bool __fin_ran_4 = false;
         try {
@@ -71,6 +51,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_3;
         return ::tpy::BigInt(99);
     }
+    case S_INITIAL:  // entry
     case S_JOIN_2: {
         try {
             auto& __match_subject_1 = n;

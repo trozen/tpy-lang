@@ -37,16 +37,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
         __state = S_RESUME_1;
         return __a.sound();
     }
-    case S_RESUME_1: {  // after: yield a.sound()
-        auto& __a = *std::get<Dog*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield a.sound()
-        auto& __a = *std::get<Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield a.sound()
+    case S_RESUME_2:  // after: yield a.sound()
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -96,16 +88,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
         __state = S_RESUME_1;
         return (*d).sound();
     }
-    case S_RESUME_1: {  // after: yield d.sound()
-        auto& __a = *std::get<Dog*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield a.sound()
-        auto& __a = *std::get<Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield d.sound()
+    case S_RESUME_2:  // after: yield a.sound()
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -165,15 +149,8 @@ __match_end_2:;
         __state = S_RESUME_1;
         return (((__a) + (::tpy::BigInt(1)))).to_string();
     }
-    case S_RESUME_1: {  // after: yield str(a + 1)
-        const auto& __a = std::get<::tpy::BigInt>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield "other"
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield str(a + 1)
+    case S_RESUME_2:  // after: yield "other"
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -252,26 +229,13 @@ std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_2: {  // after: yield "str:" + a
-        const auto& __a = std::get<std::string>(a);
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_RESUME_3: {  // after: yield "still-int"
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_RESUME_4: {  // after: yield "not-int"
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_2:  // after: yield "str:" + a
+    case S_RESUME_3:  // after: yield "still-int"
+    case S_RESUME_4:  // after: yield "not-int"
+    case S_JOIN_1:
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

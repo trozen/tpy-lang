@@ -15,10 +15,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield i + 1
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield i + 1
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
@@ -54,10 +51,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {

@@ -17,10 +17,6 @@ namespace tpyapp::main {
 //         raise
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(1.0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -40,6 +36,7 @@ namespace tpyapp::main {
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));

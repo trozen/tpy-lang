@@ -13,10 +13,6 @@ namespace tpyapp::main {
 //         print("cleanup-ran")
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(1.0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -57,6 +53,7 @@ namespace tpyapp::main {
         }
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
@@ -93,10 +90,6 @@ __coro_slow slow() {
 //         print("timed-out")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: v = await asyncio.wait_for(slow(), 0.01)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -121,6 +114,7 @@ __coro_slow slow() {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::slow()), 0.01);

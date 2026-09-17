@@ -60,14 +60,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield k
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield "end"
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield k
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
@@ -103,10 +100,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield len(b)
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 100
         __state = S_RESUME_2;
         return ::tpy::__len__(total);
@@ -115,6 +108,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield len(b)
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             total = ::tpy::__getitem__(blobs, 0);

@@ -20,14 +20,8 @@ void main() {
 //         yield self._n                   # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield self._n
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield self._n
     case S_JOIN_0: {
         if ((__self._n > 0)) {
             __self._n = ::tpy::sub_check<int32_t>(__self._n, 1);

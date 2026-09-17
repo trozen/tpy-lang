@@ -15,10 +15,7 @@ std::expected<Node, ::tpy::StopIteration> __gen_boxes::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield Node(i)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield Node(i)
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
@@ -69,10 +66,7 @@ std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
         __state = S_RESUME_1;
         return ::tpyapp::main::mk((((p->val) * (::tpy::BigInt(10)))).to_fixed_check<int32_t>());
     }
-    case S_RESUME_1: {  // after: yield mk(p.val * 10)  # tpyc: ok
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield mk(p.val * 10)  # tpyc: ok
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -111,10 +105,7 @@ std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__ne
         __state = S_RESUME_1;
         return ::tpyapp::main::mk_row(::tpy::__len__((*r)));
     }
-    case S_RESUME_1: {  // after: yield mk_row(len(r))  # tpyc: ok
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield mk_row(len(r))  # tpyc: ok
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -237,10 +228,7 @@ std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
         __state = S_RESUME_1;
         return ::tpyapp::main::mk((((p->val) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>());
     }
-    case S_RESUME_1: {  // after: yield mk(p.val + 1)  # tpyc: ok
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield mk(p.val + 1)  # tpyc: ok
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

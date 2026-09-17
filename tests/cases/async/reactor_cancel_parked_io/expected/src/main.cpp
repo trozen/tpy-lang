@@ -72,10 +72,6 @@ namespace tpyapp::main {
             throw;
         }
     }
-    case S_JOIN_0: {
-        __state = S_JOIN_3;
-        continue;
-    }
     case S_JOIN_1: {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -93,6 +89,7 @@ namespace tpyapp::main {
             throw;
         }
     }
+    case S_JOIN_0:
     case S_JOIN_3: {
         try {
             __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>((*loop).sock_sendall((*a), _BIG)), 0.01);

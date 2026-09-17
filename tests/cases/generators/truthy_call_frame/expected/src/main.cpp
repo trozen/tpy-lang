@@ -77,10 +77,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_branch::__next__() 
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield i
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_JOIN_0: {
         if ((::tpy::BigInt(i) < n)) {
             if ((static_cast<void>(::tpyapp::main::make()), true)) {
@@ -95,6 +91,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_branch::__next__() 
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
     }
+    case S_RESUME_0:  // after: yield i
     case S_JOIN_1: {
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;

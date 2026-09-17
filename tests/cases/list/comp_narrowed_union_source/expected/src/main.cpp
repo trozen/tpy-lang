@@ -155,11 +155,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     );
 }());
     }
-    case S_RESUME_1: {  // after: yield sum(x + 1 for x in u)
-        auto& __u = *std::get<const std::vector<int32_t>*>(u);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield sum(x + 1 for x in u)
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

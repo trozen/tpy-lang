@@ -83,14 +83,8 @@ namespace tpyapp::main {
 //         yield xs.pop()                                                     # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_drain_list::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield xs.pop()
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield xs.pop()
     case S_JOIN_0: {
         if ((::tpy::__len__(xs) != 0)) {
             __state = S_RESUME_0;
@@ -155,14 +149,8 @@ __gen_drain_dict drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, const std::
 //         yield s.pop()                             # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_drain_set::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield s.pop()
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield s.pop()
     case S_JOIN_0: {
         if ((::tpy::__len__(s) != 0)) {
             __state = S_RESUME_0;
@@ -198,14 +186,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -236,14 +221,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -274,14 +256,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__()
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -312,14 +291,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__(
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -353,14 +329,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -391,14 +364,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -429,14 +399,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -467,14 +434,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -507,14 +471,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;

@@ -61,10 +61,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_echo<T_it>::__next__() 
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {

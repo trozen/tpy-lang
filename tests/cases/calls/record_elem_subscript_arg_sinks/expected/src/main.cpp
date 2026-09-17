@@ -81,10 +81,7 @@ std::expected<double, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield b.x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield b.x
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;

@@ -238,11 +238,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
         __state = S_RESUME_1;
         return __v.n;
     }
-    case S_RESUME_1: {  // after: yield v.n
-        auto& __v = *std::get<A*>(v);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v.n
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -293,15 +289,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_match::__next__() {
         __state = S_RESUME_1;
         return __v.n;
     }
-    case S_RESUME_1: {  // after: yield v.n
-        auto& __v = *std::get<A*>(v);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield -1
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v.n
+    case S_RESUME_2:  // after: yield -1
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

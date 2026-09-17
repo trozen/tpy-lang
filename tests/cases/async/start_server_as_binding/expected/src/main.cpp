@@ -214,10 +214,6 @@ __coro_client client(int32_t port, std::string_view msg) {
         __state = S_RESUME_3;
         continue;
     }
-    case S_JOIN_2: {
-        __state = S_JOIN_4;
-        continue;
-    }
     case S_JOIN_3: {
         try {
             port = std::get<1>(srv->sockets[0].getsockname());
@@ -231,6 +227,7 @@ __coro_client client(int32_t port, std::string_view msg) {
             continue;
         }
     }
+    case S_JOIN_2:
     case S_JOIN_4: {
         __sub_4 = &((*sf));
         __state = S_RESUME_4;

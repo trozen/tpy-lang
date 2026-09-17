@@ -94,18 +94,12 @@ __coro_value value(::tpy::BigInt n) {
         __state = S_JOIN_2;
         continue;
     }
+    case S_JOIN_1:
+    case S_JOIN_2:
     case S_JOIN_0: {
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = x;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

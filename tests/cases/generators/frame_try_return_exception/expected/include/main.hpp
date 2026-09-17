@@ -517,6 +517,7 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_nested<T_it>:
             throw;
         }
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_JOIN_1;
@@ -529,10 +530,6 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_nested<T_it>:
     case S_JOIN_1: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_JOIN_3: {
         __state = S_RESUME_0;

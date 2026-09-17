@@ -27,18 +27,13 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_1;
         return ((v) + (::tpy::BigInt(100)));
     }
-    case S_RESUME_1: {  // after: yield v + 100
-        __state = S_JOIN_2;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield v
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_RESUME_3: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_1:  // after: yield v + 100
+    case S_RESUME_2:  // after: yield v
+    case S_JOIN_2:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_JOIN_1;
@@ -72,10 +67,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_JOIN_1: {
         __state = S_RESUME_3;
         return ::tpy::BigInt(-1);
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

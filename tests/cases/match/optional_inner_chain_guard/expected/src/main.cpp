@@ -193,22 +193,10 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield "none"
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield "a-flag"
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield "a"
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_3: {  // after: yield "other"
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield "none"
+    case S_RESUME_1:  // after: yield "a-flag"
+    case S_RESUME_2:  // after: yield "a"
+    case S_RESUME_3:  // after: yield "other"
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

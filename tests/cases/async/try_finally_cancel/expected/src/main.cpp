@@ -13,10 +13,6 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(60.0)
         bool __fin_ran_1 = false;
         try {
@@ -37,6 +33,7 @@ namespace tpyapp::main {
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));

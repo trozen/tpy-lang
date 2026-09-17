@@ -72,6 +72,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
             throw;
         }
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         bool __fin_ran_3 = false;
         try {
@@ -94,15 +95,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
     case S_JOIN_1: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_JOIN_2: {
-        try {
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -14,40 +14,7 @@ namespace tpyapp::main {
 //         yield 3              # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_2;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield 1
-        try {
-            try {
-                __state = S_JOIN_4;
-                continue;
-            } catch (...) {
-                this->__finally_exc_1 = std::current_exception();
-                __state = S_JOIN_4;
-                continue;
-            }
-        } catch (...) {
-            this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_1;
-            continue;
-        }
-    }
-    case S_RESUME_1: {  // after: yield 2
-        try {
-            __state = S_JOIN_3;
-            continue;
-        } catch (...) {
-            this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_1;
-            continue;
-        }
-    }
-    case S_RESUME_2: {  // after: yield 3
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_2:  // after: yield 3
     case S_JOIN_0: {
         if (this->__finally_exc_0) {
             std::exception_ptr __tmp = this->__finally_exc_0;
@@ -61,16 +28,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_2;
         return ::tpy::BigInt(3);
     }
-    case S_JOIN_2: {
-        try {
-            __state = S_JOIN_5;
-            continue;
-        } catch (...) {
-            this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_1;
-            continue;
-        }
-    }
+    case S_RESUME_1:  // after: yield 2
     case S_JOIN_3: {
         try {
             if (this->__finally_exc_1) {
@@ -86,10 +44,13 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_4: {
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
+    case S_INITIAL:  // entry
+    case S_JOIN_2:
     case S_JOIN_5: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);

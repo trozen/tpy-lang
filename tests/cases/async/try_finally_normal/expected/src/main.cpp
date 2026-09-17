@@ -34,10 +34,6 @@ __coro_sub sub() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: await sub()
         bool __fin_ran_1 = false;
         try {
@@ -62,6 +58,7 @@ __coro_sub sub() {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         __sub_0.emplace();
         __state = S_RESUME_0;

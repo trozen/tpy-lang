@@ -49,15 +49,8 @@ __match_end_2:;
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(v, 1));
     }
-    case S_RESUME_1: {  // after: yield v + 1
-        auto& __a = *std::get<const Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield 0
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v + 1
+    case S_RESUME_2:  // after: yield 0
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -115,20 +108,9 @@ __match_end_2:;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield 9
-        auto& __a = *std::get<const Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield v
-        auto& __a = *std::get<const Dog*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield -1
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield 9
+    case S_RESUME_1:  // after: yield v
+    case S_RESUME_2:  // after: yield -1
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -171,14 +153,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(v, 1));
     }
-    case S_RESUME_1: {  // after: yield v + 1
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield 0
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v + 1
+    case S_RESUME_2:  // after: yield 0
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -226,18 +202,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested_shadow::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield 0
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_3: {  // after: yield pet.lives
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_1:  // after: yield v
+    case S_RESUME_2:  // after: yield 0
     case S_JOIN_0: {
         __state = S_RESUME_3;
         return (*pet).lives;

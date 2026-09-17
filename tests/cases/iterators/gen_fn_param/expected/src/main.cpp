@@ -30,10 +30,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filterfalse<F_pred>::__next__
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
+    case S_JOIN_1:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -47,10 +45,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filterfalse<F_pred>::__next__
             __state = S_JOIN_1;
             continue;
         }
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -79,10 +73,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_takewhile<F_pred>::__next__()
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_JOIN_1;
@@ -137,10 +128,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {  // after: yield x * 10
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x * 10
+    case S_JOIN_1:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -149,10 +138,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
         x = *((*__for_it_0))++;
         __state = S_RESUME_0;
         return x;
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -180,10 +165,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_transform<F_fn>::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield fn(x)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield fn(x)
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -312,6 +294,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__
         __state = S_JOIN_2;
         continue;
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_JOIN_1;
@@ -334,10 +317,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__
     case S_JOIN_1: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

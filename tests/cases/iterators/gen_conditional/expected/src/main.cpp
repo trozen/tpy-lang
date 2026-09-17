@@ -17,10 +17,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield i
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_JOIN_0: {
         if ((i < n)) {
             if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
@@ -35,6 +31,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
     }
+    case S_RESUME_0:  // after: yield i
     case S_JOIN_1: {
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;

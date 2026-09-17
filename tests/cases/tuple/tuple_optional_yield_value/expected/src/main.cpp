@@ -15,10 +15,7 @@ std::expected<std::tuple<std::optional<int32_t>, std::optional<int32_t>>, ::tpy:
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield (it, None)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield (it, None)
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

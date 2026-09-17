@@ -20,21 +20,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_guarded::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        try {
-            __state = S_JOIN_1;
-            continue;
-        } catch (const ::tpy::ValueError&) {
-            __state = S_RESUME_1;
-            return ::tpy::BigInt(-1);
-        } catch (...) {
-            throw;
-        }
-    }
-    case S_RESUME_1: {  // after: yield -1
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
+    case S_RESUME_1:  // after: yield -1
+    case S_JOIN_1:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -42,10 +30,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_guarded::__next__() {
         }
         x = *((*__for_it_0))++;
         __state = S_JOIN_2;
-        continue;
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {

@@ -72,16 +72,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__next__() 
             return "not-a-dog";
         }
     }
-    case S_RESUME_1: {  // after: yield a.sound()
-        auto& __a = *std::get<Dog*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield "not-a-dog"
-        auto& __a = *std::get<Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield a.sound()
+    case S_RESUME_2:  // after: yield "not-a-dog"
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -110,16 +102,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Owner_first::__next__() {
             return __a.sound();
         }
     }
-    case S_RESUME_0: {  // after: yield a.sound()
-        auto& __a = *std::get<Dog*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield a.sound()
-        auto& __a = *std::get<Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield a.sound()
+    case S_RESUME_1:  // after: yield a.sound()
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

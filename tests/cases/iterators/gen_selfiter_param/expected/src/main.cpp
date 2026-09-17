@@ -20,10 +20,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_wrap::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -57,10 +54,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x * 2
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x * 2
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

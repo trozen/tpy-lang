@@ -20,10 +20,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield acc
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield acc
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

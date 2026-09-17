@@ -157,11 +157,6 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield (item.path, bdirs, bfiles)
-        auto& __item = std::get<_WalkEmit>((*item));
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield (cur, dirnames, filenames)
         i = (::tpy::sub_check<int32_t>(::tpy::__len__((*dirnames)), 1));
         while ((i >= 0)) {
@@ -175,6 +170,7 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
         __state = S_JOIN_1;
         continue;
     }
+    case S_RESUME_0:  // after: yield (item.path, bdirs, bfiles)
     case S_JOIN_0: {
         if ((::tpy::__len__((*bstack)) != 0)) {
             item.emplace(::tpy::pop_back((*bstack)));

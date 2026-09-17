@@ -51,19 +51,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_i
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    case S_JOIN_1: {
-        try {
-            __state = S_JOIN_3;
-            continue;
-        } catch (::tpy::BaseException& __exc_0) {
-            if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            (*__with_ctx_0).__exit__({}, nullptr, {});
-            throw;
-        }
-    }
     case S_JOIN_2: {
         bool __fin_ran_4 = false;
         try {
@@ -86,6 +73,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_i
             throw;
         }
     }
+    case S_JOIN_1:
     case S_JOIN_3: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -203,28 +191,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
             throw;
         }
     }
-    case S_JOIN_3: {
-        try {
-            try {
-                __state = S_JOIN_5;
-                continue;
-            } catch (::tpy::BaseException& __exc_1) {
-                if (!(*__with_ctx_1).__exit__({}, &__exc_1, {})) throw;
-                __state = S_JOIN_2;
-                continue;
-            } catch (...) {
-                (*__with_ctx_1).__exit__({}, nullptr, {});
-                throw;
-            }
-        } catch (::tpy::BaseException& __exc_0) {
-            if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            (*__with_ctx_0).__exit__({}, nullptr, {});
-            throw;
-        }
-    }
     case S_JOIN_4: {
         try {
             bool __fin_ran_13 = false;
@@ -252,6 +218,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
             throw;
         }
     }
+    case S_JOIN_3:
     case S_JOIN_5: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);

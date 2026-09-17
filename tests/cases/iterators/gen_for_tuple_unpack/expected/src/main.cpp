@@ -20,10 +20,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield a + b
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield a + b
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -58,10 +55,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -97,14 +91,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield a + b
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield c * d
-        __state = S_JOIN_1;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield a + b
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __for_it_1.emplace((p2).begin());
@@ -119,6 +106,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(a, b));
     }
+    case S_RESUME_1:  // after: yield c * d
     case S_JOIN_1: {
         if ((*__for_it_1) == (*__for_end_1)) {
             __state = S_DONE;

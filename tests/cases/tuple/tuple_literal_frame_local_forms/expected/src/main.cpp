@@ -433,10 +433,6 @@ __gen_own_elem_call own_elem_call() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_try_body::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield t[0].v
         try {
             std::get<0>((*t)).v = 42;
@@ -465,6 +461,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_try_body::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             t.emplace(std::tuple<A, int32_t>{A(1), 2});

@@ -15,10 +15,7 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_for::__next__(
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield (it, None)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield (it, None)
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -50,10 +47,7 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_range::__next_
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield (items[i], None)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield (items[i], None)
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;

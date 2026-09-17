@@ -15,14 +15,8 @@ int32_t _SEEK_END{};
 //         yield line                    # -> S_RESUME_0
 std::expected<std::string, ::tpy::StopIteration> __gen_StringIO___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield line
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield line
     case S_JOIN_0: {
         if (true) {
             line = __self.readline();
@@ -51,14 +45,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_StringIO___iter__::__next
 //         yield line                      # -> S_RESUME_0
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BytesIO___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield line
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield line
     case S_JOIN_0: {
         if (true) {
             line = __self.readline();
@@ -87,14 +75,8 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BytesIO___iter__::__next
 //         yield line                      # -> S_RESUME_0
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BufferedReader___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield line
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield line
     case S_JOIN_0: {
         if (true) {
             line = __self.readline();

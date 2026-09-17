@@ -87,6 +87,7 @@ std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy:
             throw;
         }
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         bool __fin_ran_2 = false;
         try {
@@ -109,15 +110,6 @@ std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy:
     case S_JOIN_1: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_JOIN_2: {
-        try {
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

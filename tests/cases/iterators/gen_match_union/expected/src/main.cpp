@@ -74,18 +74,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
         __state = S_RESUME_1;
         return n;
     }
-    case S_RESUME_1: {  // after: yield n
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_2: {  // after: yield "cat"
         __state = S_RESUME_3;
         return ((*c).lives).to_string();
     }
-    case S_RESUME_3: {  // after: yield str(c.lives)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield n
+    case S_RESUME_3:  // after: yield str(c.lives)
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

@@ -35,10 +35,6 @@ __coro_value value(int32_t n) {
 //         return int32(-1)
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: a = await value(int32(10))
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -96,6 +92,7 @@ __coro_value value(int32_t n) {
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         try {
             __sub_0.emplace(10);

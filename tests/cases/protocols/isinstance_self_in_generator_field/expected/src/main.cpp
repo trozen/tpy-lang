@@ -66,19 +66,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_describe::__next__() 
         __state = S_RESUME_2;
         return (::tpy::str_concat((::tpy::str_concat(__self_narrowed.breed, "/")), __self_narrowed.name));
     }
-    case S_RESUME_2: {  // after: yield self.breed + "/" + self.name
-        const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_3: {  // after: yield "kind:pet"
         __state = S_RESUME_4;
         return __self.name;
     }
-    case S_RESUME_4: {  // after: yield self.name
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_2:  // after: yield self.breed + "/" + self.name
+    case S_RESUME_4:  // after: yield self.name
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

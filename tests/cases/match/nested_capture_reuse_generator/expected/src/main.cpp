@@ -32,10 +32,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
         __state = S_RESUME_1;
         return v;
     }
-    case S_RESUME_1: {  // after: yield v          # 2 -- the inner bind, read after resuming
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v          # 2 -- the inner bind, read after resuming
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

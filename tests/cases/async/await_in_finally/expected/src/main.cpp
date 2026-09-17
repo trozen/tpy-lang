@@ -33,10 +33,6 @@ __coro_cleanup cleanup() {
 //     return 7
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_RESUME_0: {  // after: await cleanup()
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -75,6 +71,7 @@ __coro_cleanup cleanup() {
         __state = S_RESUME_1;
         continue;
     }
+    case S_INITIAL:  // entry
     case S_JOIN_2: {
         __sub_0.emplace();
         __state = S_RESUME_0;

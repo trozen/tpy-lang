@@ -56,10 +56,6 @@ __coro_cleanup cleanup() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_RESUME_0: {  // after: x = await value(7)
         try {
             bool __fin_ran_1 = false;
@@ -117,6 +113,7 @@ __coro_cleanup cleanup() {
         __state = S_RESUME_1;
         continue;
     }
+    case S_INITIAL:  // entry
     case S_JOIN_2: {
         try {
             __with_ctx_0.emplace(Tracer("with"));

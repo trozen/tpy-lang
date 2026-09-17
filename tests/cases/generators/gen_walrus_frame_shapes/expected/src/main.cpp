@@ -460,18 +460,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield raiser(i)
-        try {
-            __state = S_JOIN_1;
-            continue;
-        } catch (const Boom& err) {
-            std::cout << "caught" << " " << caught.emplace(err).msg << "\n";
-            __state = S_RESUME_2;
-            return 0;
-        } catch (...) {
-            throw;
-        }
-    }
     case S_RESUME_2: {  // after: yield 0
         std::cout << "exc resume" << " " << (*caught).msg << "\n";
         __state = S_JOIN_1;
@@ -486,6 +474,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
     }
+    case S_RESUME_1:  // after: yield raiser(i)
     case S_JOIN_1: {
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
@@ -537,23 +526,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding_for::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield raiser(i)
-        try {
-            __state = S_JOIN_1;
-            continue;
-        } catch (const Boom& err) {
-            std::cout << "caught" << " " << caught.emplace(err).msg << "\n";
-            __state = S_RESUME_2;
-            return 0;
-        } catch (...) {
-            throw;
-        }
-    }
     case S_RESUME_2: {  // after: yield 0
         std::cout << "exc resume" << " " << (*caught).msg << "\n";
         __state = S_JOIN_1;
         continue;
     }
+    case S_RESUME_1:  // after: yield raiser(i)
+    case S_JOIN_1:
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
@@ -561,10 +540,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding_for::__next__() {
         }
         i = ((*__for_i_0))++;
         __state = S_JOIN_2;
-        continue;
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {

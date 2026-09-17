@@ -94,10 +94,6 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
 //         print("caught, locked:", lock.locked())
 ::tpystd::tpy::Poll<::std::monostate> __coro_raise_holding::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: async with lock:
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -139,27 +135,17 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
             throw;
         }
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             __with_ctx_0 = &(lock);
             __sub_0.emplace((*__with_ctx_0));
             __state = S_RESUME_0;
-            continue;
-        } catch (const ::tpy::ValueError&) {
-            std::cout << "caught, locked:" << " " << ::tpy::print_bool(lock.locked()) << "\n";
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            throw;
-        }
-    }
-    case S_JOIN_2: {
-        try {
-            __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught, locked:" << " " << ::tpy::print_bool(lock.locked()) << "\n";

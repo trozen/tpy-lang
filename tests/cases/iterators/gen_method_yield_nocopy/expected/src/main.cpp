@@ -42,10 +42,7 @@ std::expected<::tpy::val_or_ref<Handle>, ::tpy::StopIteration> __gen_Box_each::_
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield h
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield h
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

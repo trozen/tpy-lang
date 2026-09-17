@@ -126,10 +126,6 @@ __gen_gen_local gen_local() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_try::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield a
         try {
             b->n = ::tpy::add_check<int32_t>(b->n, 1000);
@@ -158,6 +154,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_try::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_1: {
         try {
             auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(pairs, 0));

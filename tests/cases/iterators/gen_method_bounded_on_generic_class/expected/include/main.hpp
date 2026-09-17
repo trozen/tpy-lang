@@ -128,10 +128,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_each_doubled<T>::__nex
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 2));
     }
-    case S_RESUME_1: {  // after: yield x * 2
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x * 2
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __self.items));
         if (!(*__for_r_0).has_value()) {

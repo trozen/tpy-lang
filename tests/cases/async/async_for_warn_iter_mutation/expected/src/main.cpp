@@ -98,6 +98,7 @@ __coro_runner runner() {
             throw;
         }
     }
+    case S_JOIN_1:
     case S_JOIN_0: {
         try {
             __sub_0.emplace(*__for_itr_0);
@@ -109,10 +110,6 @@ __coro_runner runner() {
         } catch (...) {
             throw;
         }
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_JOIN_2: {
         (*src).push(9);

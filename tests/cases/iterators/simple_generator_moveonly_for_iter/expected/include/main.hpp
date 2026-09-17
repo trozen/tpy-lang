@@ -100,14 +100,8 @@ struct __gen_make_toks : public ::tpy::next_iter_mixin<__gen_make_toks<T_src>, T
 template <::tpystd::typing::Iterator<int32_t> T_src>
 std::expected<Tok, ::tpy::StopIteration> __gen_make_toks<T_src>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield Tok(n * 10)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield Tok(n * 10)
     case S_JOIN_0: {
         __for_r_0.emplace(src.__next__());
         if (!(*__for_r_0).has_value()) {

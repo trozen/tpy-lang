@@ -438,10 +438,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_outer_for::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -480,10 +477,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -534,10 +528,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -593,10 +584,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__()
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -635,10 +623,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__next__()
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -769,10 +754,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield v
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_DONE;
@@ -784,6 +765,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next__() {
         __state = S_JOIN_1;
         continue;
     }
+    case S_RESUME_0:  // after: yield v
     case S_JOIN_1: {
         __for_r_1.emplace((*__for_src_1).__next__());
         if (!(*__for_r_1).has_value()) {
@@ -1685,10 +1667,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield self.prefix + v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield self.prefix + v
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
@@ -1723,10 +1702,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Outer_run_recv::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield v + len(self.prefix)
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield v + len(self.prefix)
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {

@@ -71,14 +71,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_items::__next__() {
         __state = S_RESUME_1;
         return 20;
     }
-    case S_RESUME_1: {  // after: yield 20
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield 30
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield 20
+    case S_RESUME_2:  // after: yield 30
     case S_JOIN_0: {
         __self.n = 99;
         __state = S_DONE;

@@ -78,15 +78,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__next__() 
             return (::tpy::str_concat("ro-pet:", __self._name));
         }
     }
-    case S_RESUME_0: {  // after: yield "ro-dog:" + self._name
-        const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield "ro-pet:" + self._name
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield "ro-dog:" + self._name
+    case S_RESUME_1:  // after: yield "ro-pet:" + self._name
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -124,15 +117,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Pet_counts::__next__() 
         __state = S_RESUME_1;
         return __self_narrowed._n;
     }
-    case S_RESUME_1: {  // after: yield self._n
-        Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield -1
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield self._n
+    case S_RESUME_2:  // after: yield -1
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

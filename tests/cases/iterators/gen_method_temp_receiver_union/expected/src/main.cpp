@@ -66,14 +66,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield "dog"
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield "cat"
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield "dog"
+    case S_RESUME_2:  // after: yield "cat"
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

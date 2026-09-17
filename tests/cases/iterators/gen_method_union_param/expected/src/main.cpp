@@ -76,16 +76,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield a.speak()
-        auto& __a = *std::get<Dog*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield a.speak()
-        auto& __a = *std::get<Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield a.speak()
+    case S_RESUME_2:  // after: yield a.speak()
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -130,16 +122,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_names::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield "dog"
-        auto& __a = *std::get<const Dog*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield "cat"
-        auto& __a = *std::get<const Cat*>(a);
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield "dog"
+    case S_RESUME_2:  // after: yield "cat"
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

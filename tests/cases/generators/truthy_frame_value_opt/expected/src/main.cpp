@@ -20,14 +20,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -90,14 +87,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_not_form::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;
@@ -122,10 +116,6 @@ __gen_not_form not_form(std::optional<int32_t> v) {
 //     yield 2                                                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         v = std::nullopt;
         __state = S_JOIN_0;
@@ -135,6 +125,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         if (::tpy::is_truthy(v)) {
             __state = S_RESUME_0;
@@ -163,15 +154,12 @@ __gen_while_suspends while_suspends(std::optional<int32_t> v) {
 //         v = None
 std::expected<int32_t, ::tpy::StopIteration> __gen_peephole_while::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: yield 1
         v = std::nullopt;
         __state = S_JOIN_0;
         continue;
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         if (::tpy::is_truthy(v)) {
             __state = S_RESUME_0;
@@ -210,14 +198,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield 1
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         __state = S_RESUME_1;
         return 2;

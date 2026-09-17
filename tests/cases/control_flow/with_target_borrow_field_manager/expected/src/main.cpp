@@ -66,14 +66,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_2;
         return (*h).box.n;
     }
-    case S_RESUME_2: {  // after: yield h.box.n
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_3: {  // after: yield len(label)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_2:  // after: yield h.box.n
     case S_JOIN_0: {
         std::cout << label << "\n";
         __state = S_RESUME_3;

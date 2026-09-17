@@ -21,14 +21,6 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_pairs::__next__() 
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield (items[i], items[i + 1])
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield (items[i], None)
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_JOIN_0: {
         if ((i < n)) {
             if (((::tpy::add_check<int32_t>(i, 1)) < n)) {
@@ -43,6 +35,8 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_pairs::__next__() 
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
     }
+    case S_RESUME_0:  // after: yield (items[i], items[i + 1])
+    case S_RESUME_1:  // after: yield (items[i], None)
     case S_JOIN_1: {
         i = ::tpy::add_check<int32_t>(i, 2);
         __state = S_JOIN_0;

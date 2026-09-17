@@ -60,10 +60,6 @@ __coro_fail fail() {
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_0: {  // after: x = await fail()
         bool __fin_ran_1 = false;
         try {
@@ -131,15 +127,8 @@ __coro_fail fail() {
     case S_JOIN_0: {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
-    case S_JOIN_1: {
-        try {
-            __state = S_JOIN_2;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
-    }
+    case S_INITIAL:  // entry
+    case S_JOIN_1:
     case S_JOIN_2: {
         __sub_0.emplace();
         __state = S_RESUME_0;

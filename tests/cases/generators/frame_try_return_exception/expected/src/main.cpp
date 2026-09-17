@@ -29,10 +29,7 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_walk::__next_
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield node
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield node
     case S_JOIN_0: {
         if (true) {
             i = ::tpyapp::main::pull((*src));
@@ -81,17 +78,8 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_pass::__
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield node
-        try {
-            __state = S_JOIN_1;
-            continue;
-        } catch (const ::tpy::StopIteration&) {
-            __state = S_JOIN_1;
-            continue;
-        } catch (...) {
-            throw;
-        }
-    }
+    case S_RESUME_0:  // after: yield node
+    case S_JOIN_1:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -99,10 +87,6 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_pass::__
         }
         node = &(*((*__for_it_0))++);
         __state = S_JOIN_2;
-        continue;
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
@@ -135,17 +119,8 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_break::_
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield node
-        try {
-            __state = S_JOIN_2;
-            continue;
-        } catch (const ::tpy::StopIteration&) {
-            __state = S_JOIN_1;
-            continue;
-        } catch (...) {
-            throw;
-        }
-    }
+    case S_RESUME_0:  // after: yield node
+    case S_JOIN_2:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_JOIN_1;
@@ -158,10 +133,6 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_break::_
     case S_JOIN_1: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_JOIN_3: {
         __state = S_RESUME_0;
@@ -193,17 +164,8 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_return::
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield node
-        try {
-            __state = S_JOIN_1;
-            continue;
-        } catch (const ::tpy::StopIteration&) {
-            __state = S_DONE;
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        } catch (...) {
-            throw;
-        }
-    }
+    case S_RESUME_0:  // after: yield node
+    case S_JOIN_1:
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -211,10 +173,6 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_return::
         }
         node = &(*((*__for_it_0))++);
         __state = S_JOIN_2;
-        continue;
-    }
-    case S_JOIN_1: {
-        __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
@@ -269,6 +227,7 @@ __gen_dead_return dead_return(std::vector<Node>& items) {
             throw;
         }
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_JOIN_1;
@@ -282,10 +241,6 @@ __gen_dead_return dead_return(std::vector<Node>& items) {
         __state = S_DONE;
         int32_t __tpy_async_ret = acc;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_JOIN_3: {
         try {

@@ -20,6 +20,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import io
+import re
 from dataclasses import dataclass, fields, is_dataclass
 from enum import IntEnum
 from functools import partial
@@ -253,6 +254,21 @@ class _CoroParam:
             # nullable forms copy the inner only when present).
             return f"{self.cpp_name}({self.owned_copy_init})"
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"
+
+
+_BARE_STATE_JUMP = re.compile(r"\s*__state = (S_\w+);\n\s*continue;\n")
+
+
+def _state_jump(indent: str, label: str) -> str:
+    """A re-dispatch to `label`; `_bare_state_jump` recognizes this text."""
+    return f"{indent}__state = {label};\n{indent}continue;\n"
+
+
+def _bare_state_jump(case_body: str) -> 'str | None':
+    """The target label when a rendered case body only re-dispatches
+    (`__state = S_X; continue;`), else None."""
+    m = _BARE_STATE_JUMP.fullmatch(case_body)
+    return m.group(1) if m else None
 
 
 class _StateKind(IntEnum):
@@ -4171,20 +4187,49 @@ class AsyncCoroCodegen:
             out.write(f"{inner}while (true) switch (__state) {{\n")
         else:
             out.write(f"{inner}switch (__state) {{\n")
-        # Case-label order matches the enum in gen_coro_struct.
+        # Case-label order matches the enum in gen_coro_struct. Every body is
+        # rendered once, in that order, before any is written: a body that
+        # only re-dispatches shares its target's case instead, so a loop pays
+        # one dispatch per element rather than one per empty join/resume hop.
         order = sorted(case_entries.items(), key=lambda kv: kv[1])
         after = self._resume_sources(cfg)
-        for bb_id, label in order:
-            note = ""
-            if self.ctx.options.emit_source_comments:
-                if label.kind is _StateKind.INITIAL:
-                    note = "  // entry"
-                elif label.kind is _StateKind.RESUME and label.idx in after:
-                    note = f"  // after: {after[label.idx]}"
-            out.write(f"{inner}case {label.cpp_name()}: {{{note}\n")
+        bodies: dict[int, str] = {}
+        for bb_id, _label in order:
+            buf = io.StringIO()
             self.ctx.indent_level = 2
-            self._emit_case(out, cfg, bb_id, case_entries, func)
+            self._emit_case(buf, cfg, bb_id, case_entries, func)
             self.ctx.indent_level = 1
+            bodies[bb_id] = buf.getvalue()
+        by_label = {label.cpp_name(): bb_id for bb_id, label in case_entries.items()}
+        jumps = {bb_id: by_label.get(_bare_state_jump(body) or "")
+                 for bb_id, body in bodies.items()}
+        stacked: dict[int, list[_StateLabel]] = {}
+        forwarded: set[int] = set()
+        for bb_id, label in order:
+            seen = {bb_id}
+            cur = jumps[bb_id]
+            while cur is not None and cur not in seen and jumps[cur] is not None:
+                seen.add(cur)
+                cur = jumps[cur]
+            if cur is not None and cur not in seen:
+                forwarded.add(bb_id)
+                stacked.setdefault(cur, []).append(label)
+
+        def note_for(label: _StateLabel) -> str:
+            if not self.ctx.options.emit_source_comments:
+                return ""
+            if label.kind is _StateKind.INITIAL:
+                return "  // entry"
+            if label.kind is _StateKind.RESUME and label.idx in after:
+                return f"  // after: {after[label.idx]}"
+            return ""
+        for bb_id, label in order:
+            if bb_id in forwarded:
+                continue
+            for alias in stacked.get(bb_id, ()):
+                out.write(f"{inner}case {alias.cpp_name()}:{note_for(alias)}\n")
+            out.write(f"{inner}case {label.cpp_name()}: {{{note_for(label)}\n")
+            out.write(bodies[bb_id])
             out.write(f"{inner}}}\n")
         self._emit_resumable_done_case(out, inner)
         out.write(f"{inner}}}\n")
@@ -4339,6 +4384,11 @@ class AsyncCoroCodegen:
             body_buf = io.StringIO()
             self._emit_case_body(body_buf, cfg, entry_bb, case_entries, func)
             self.ctx.indent_level -= len(tryctx_stack)
+            # A body that only re-dispatches cannot throw: no region try.
+            jump = _bare_state_jump(body_buf.getvalue())
+            if jump is not None and tryctx_stack:
+                tryctx_stack = []
+                body_buf = io.StringIO(_state_jump(body_indent, jump))
 
             for region, extras in tryctx_stack:
                 guard = self._active_region_guard(region)
@@ -4912,10 +4962,16 @@ class AsyncCoroCodegen:
         # entry before walking, so post-suspension member access sees the
         # narrowed type rather than the raw frame field.
         entry = cfg.blocks[entry_bb].entry_narrowings
-        tok = self._emit_resume_narrowings(out, entry)
-        self._walk_inline(out, cfg, entry_bb, case_entries, func,
+        narrow_buf = io.StringIO()
+        tok = self._emit_resume_narrowings(narrow_buf, entry)
+        walk_buf = io.StringIO()
+        self._walk_inline(walk_buf, cfg, entry_bb, case_entries, func,
                           chain_entry=entry)
         self._restore_resume_narrowings(tok)
+        # A body that only re-dispatches reads none of the re-established aliases.
+        if _bare_state_jump(walk_buf.getvalue()) is None:
+            out.write(narrow_buf.getvalue())
+        out.write(walk_buf.getvalue())
 
     def _emit_exit_region_finallies(self, out: "TextIO", indent: str,
                                      from_regions: tuple,
@@ -5074,9 +5130,8 @@ class AsyncCoroCodegen:
                         out, body_indent,
                         cfg.blocks[cur].region_stack,
                         cfg.blocks[t.next_bb].region_stack)
-                    out.write(f"{body_indent}__state = "
-                              f"{case_entries[t.next_bb].cpp_name()};\n")
-                    out.write(f"{body_indent}continue;\n")
+                    out.write(_state_jump(
+                        body_indent, case_entries[t.next_bb].cpp_name()))
                     return
                 cur = t.next_bb
                 continue
@@ -5177,9 +5232,8 @@ class AsyncCoroCodegen:
                 out, body_indent,
                 cfg.blocks[from_bb].region_stack,
                 cfg.blocks[target_bb].region_stack)
-            out.write(f"{body_indent}__state = "
-                      f"{case_entries[target_bb].cpp_name()};\n")
-            out.write(f"{body_indent}continue;\n")
+            out.write(_state_jump(body_indent,
+                                  case_entries[target_bb].cpp_name()))
         else:
             entry = cfg.blocks[target_bb].entry_narrowings
             tok = self._emit_resume_narrowings(out, entry,

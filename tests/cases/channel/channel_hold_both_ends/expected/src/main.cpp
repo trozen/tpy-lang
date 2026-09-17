@@ -63,6 +63,7 @@ namespace tpyapp::main {
             throw;
         }
     }
+    case S_JOIN_2:
     case S_JOIN_0: {
         if (true) {
             __state = S_JOIN_3;
@@ -76,10 +77,6 @@ namespace tpyapp::main {
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(total);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
-    }
-    case S_JOIN_2: {
-        __state = S_JOIN_0;
-        continue;
     }
     case S_JOIN_3: {
         try {

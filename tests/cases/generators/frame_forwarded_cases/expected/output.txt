@@ -1,0 +1,19 @@
+filtered [4, 6, 10]
+in_try finally
+in_try [2, 3, 4, 5]
+enter w
+exit w
+in_with [1, 3, 4, 5]
+in_match [10, 3, 4, 5]
+bc finally 1
+bc finally 2
+bc finally 3
+bc finally 4
+break_continue [1, 3]
+return_in_finally [1, 2]
+abandoned finally
+abandoned 1
+stop_in_region [1, 3, 4, 5, 10, 20]
+async_loop 6
+async_try_loop finally
+async_try_loop 9

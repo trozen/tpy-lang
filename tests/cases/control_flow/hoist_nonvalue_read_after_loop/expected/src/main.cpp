@@ -496,10 +496,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield p.n
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield p.n
         p = &*(__ptr_slot_f1 = Pic(9));
         __state = S_RESUME_2;
@@ -509,6 +505,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield p.n
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             p->n = ::tpy::add_check<int32_t>(p->n, 10);
@@ -603,14 +600,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_for_single::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield f.n + x
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield f.n + x
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield f.n + x
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             (*f).n = ::tpy::add_check<int32_t>((*f).n, 100);
@@ -1481,18 +1475,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_sibling::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield p.n
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield k + 50
-        __state = S_JOIN_1;
-        continue;
-    }
     case S_RESUME_2: {  // after: yield p.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield p.n
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __for_i_1.emplace(int32_t(0));
@@ -1505,6 +1492,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_sibling::__next__() {
         __state = S_RESUME_0;
         return p->n;
     }
+    case S_RESUME_1:  // after: yield k + 50
     case S_JOIN_1: {
         if (!((*__for_i_1) < (*__for_stop_1))) {
             p->n = ::tpy::add_check<int32_t>(p->n, 100);
@@ -1553,14 +1541,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_blk_if::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {  // after: yield p.n
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_RESUME_1: {  // after: yield p.n + 10
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_RESUME_2: {  // after: yield p.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -1570,6 +1550,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_blk_if::__next__() {
         __state = S_RESUME_2;
         return p->n;
     }
+    case S_RESUME_0:  // after: yield p.n
     case S_JOIN_1: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_JOIN_0;
@@ -1580,6 +1561,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_blk_if::__next__() {
         __state = S_RESUME_0;
         return p->n;
     }
+    case S_RESUME_1:  // after: yield p.n + 10
     case S_JOIN_2: {
         if (!((*__for_i_1) < (*__for_stop_1))) {
             __state = S_JOIN_0;

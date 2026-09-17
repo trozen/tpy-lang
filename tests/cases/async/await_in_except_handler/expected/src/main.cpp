@@ -53,10 +53,6 @@ __coro_fail fail() {
 //         return y
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: x = await fail()
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -85,6 +81,7 @@ __coro_fail fail() {
         int32_t __tpy_async_ret = y;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         __sub_0.emplace();
         __state = S_RESUME_0;

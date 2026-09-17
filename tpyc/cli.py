@@ -281,8 +281,9 @@ def _build_variant(args: argparse.Namespace) -> str:
 
 def _opt_flags(args: argparse.Namespace) -> list[str]:
     """C++ optimization flags per variant. The default carries no -DNDEBUG:
-    the runtime's NDEBUG-gated checks guard compiler invariants (dead
-    frame slots, storage lifecycle) and measured as free at -O3."""
+    the runtime's NDEBUG-gated checks (dead frame slots, storage lifecycle)
+    stay on, since eliding them must be a named opt-in. They are not all free
+    at -O3; see the TODO.md generator-frame perf entry."""
     return ["-g", "-O0"] if args.debug else ["-O3"]
 
 

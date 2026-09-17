@@ -116,10 +116,6 @@ __coro_chained chained(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_0: {  // after: return await chained(n)  # tpyc: ok
         bool __fin_ran_1 = false;
         try {
@@ -139,6 +135,7 @@ __coro_chained chained(::tpy::BigInt n) {
             throw;
         }
     }
+    case S_INITIAL:  // entry
     case S_JOIN_0: {
         __sub_0.emplace(n);
         __state = S_RESUME_0;

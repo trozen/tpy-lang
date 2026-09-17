@@ -17,10 +17,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield k
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield k
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;
@@ -58,10 +55,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_pairs::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield kv[0]
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield kv[0]
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

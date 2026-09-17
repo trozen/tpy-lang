@@ -82,10 +82,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_double_x<T_items>::
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield p.x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield p.x
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, items));
         if (!(*__for_r_0).has_value()) {

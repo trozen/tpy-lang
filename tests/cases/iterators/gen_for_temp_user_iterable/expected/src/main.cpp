@@ -21,10 +21,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_simple::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
         if (!(*__for_r_0).has_value()) {
@@ -62,10 +59,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield x
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
         if (!(*__for_r_0).has_value()) {
@@ -126,10 +120,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder___iter__::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield x
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_DONE;

@@ -234,14 +234,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield len(patches)
-        __state = S_JOIN_0;
-        continue;
-    }
     case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    case S_RESUME_0:  // after: yield len(patches)
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             ::tpyapp::main::bump_all((*patches));

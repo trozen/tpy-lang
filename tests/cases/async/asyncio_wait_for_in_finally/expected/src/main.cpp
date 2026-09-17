@@ -42,10 +42,6 @@ __coro_quick quick() {
 //         print("cleanup:", v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_JOIN_2;
-        continue;
-    }
     case S_RESUME_0: {  // after: await asyncio.sleep(60.0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -84,6 +80,7 @@ __coro_quick quick() {
         __state = S_RESUME_1;
         continue;
     }
+    case S_INITIAL:  // entry
     case S_JOIN_2: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));

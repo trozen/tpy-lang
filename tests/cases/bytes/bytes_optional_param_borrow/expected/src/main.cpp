@@ -78,10 +78,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {  // after: yield int(b[0])           # reads buffer after a yield -> needs owned capture
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield int(b[0])           # reads buffer after a yield -> needs owned capture
     case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

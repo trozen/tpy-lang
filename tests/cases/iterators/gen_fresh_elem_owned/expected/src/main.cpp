@@ -20,10 +20,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
         __state = S_RESUME_1;
         return (*node).v;
     }
-    case S_RESUME_1: {  // after: yield node.v
-        __state = S_JOIN_0;
-        continue;
-    }
+    case S_RESUME_1:  // after: yield node.v
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, src));
         if (!(*__for_r_0).has_value()) {
