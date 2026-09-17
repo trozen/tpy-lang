@@ -1,7 +1,6 @@
 """MIR semantics and topology over emitted THIR from unit-owned source."""
 
 from dataclasses import replace
-import operator
 
 import pytest
 
@@ -11,9 +10,9 @@ from ..typesys import BOOL, INT32
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRBranch, MIRCompare, MIRConstant, MIRGoto,
-    MIRFunction, MIRNot, MIRNotCovered, MIRRead, MIRReturn, MIRSlotKind,
+    MIRBodyId, MIRBodyKind, MIRBranch, MIRFunction, MIRNotCovered, MIRPlace,
 )
+from .testutil import execute
 
 SOURCE = """\
 from tpy import int32
@@ -96,42 +95,6 @@ def lower(fn: th.THIRFunction, name: str = "fixture") -> MIRFunction:
     return result
 
 
-def execute(fn: MIRFunction, *args: int | bool) -> int | bool | None:
-    """A bounded interpreter checks paths independently of THIR lowering."""
-    params = [s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
-    assert len(params) == len(args)
-    values = dict(zip(params, args))
-    blocks = {b.id: b for b in fn.blocks}
-    bid = fn.entry
-    comparisons = {"<": operator.lt, "<=": operator.le, ">": operator.gt,
-                   ">=": operator.ge, "==": operator.eq, "!=": operator.ne}
-    for _ in range(100):
-        block = blocks[bid]
-        for stmt in block.statements:
-            rhs = stmt.value
-            if isinstance(rhs, MIRConstant):
-                value = rhs.value
-            elif isinstance(rhs, MIRRead):
-                value = values[rhs.source]
-            elif isinstance(rhs, MIRCompare):
-                value = comparisons[rhs.op](values[rhs.left], values[rhs.right])
-            elif isinstance(rhs, MIRNot):
-                value = not values[rhs.operand]
-            else:
-                raise AssertionError(rhs)
-            values[stmt.target] = value
-        term = block.terminator
-        if isinstance(term, MIRReturn):
-            return values[term.value] if term.value is not None else None
-        if isinstance(term, MIRBranch):
-            bid = term.then if values[term.condition] else term.otherwise
-        elif isinstance(term, MIRGoto):
-            bid = term.target
-        else:
-            raise AssertionError(term)
-    raise AssertionError("unexpected nontermination")
-
-
 @pytest.mark.parametrize("name,args,expected", [
     ("choose", (True, 3), 1), ("choose", (True, -2), 2), ("choose", (False, 7), 2),
     ("lazy_and", (True,), 1), ("lazy_and", (False,), 2),
@@ -163,11 +126,11 @@ def test_lazy_write_is_behind_branch(functions: dict[str, th.THIRFunction]) -> N
     n = next(s.id for s in fn.slots if s.name == "n")
     entry = next(b for b in fn.blocks if b.id == fn.entry)
     assert isinstance(entry.terminator, MIRBranch)
-    assert len([s for s in entry.statements if s.target == n]) == 1
+    assert len([s for s in entry.statements if s.target == MIRPlace(n)]) == 1
     right = next(b for b in fn.blocks if b.id == entry.terminator.then)
     bypass = next(b for b in fn.blocks if b.id == entry.terminator.otherwise)
-    assert any(s.target == n for s in right.statements)
-    assert not any(s.target == n for s in bypass.statements)
+    assert any(s.target == MIRPlace(n) for s in right.statements)
+    assert not any(s.target == MIRPlace(n) for s in bypass.statements)
 
 
 @pytest.mark.parametrize("op,flag,expected", [("&&", False, 0), ("&&", True, 1),

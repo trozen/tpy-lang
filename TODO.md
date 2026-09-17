@@ -1624,8 +1624,11 @@ alongside related feature work; only the big-rock deferrals live here.
   (MIR Design; Phasing and Dependencies, phase 2). Active plan:
   `docs/MIR_ANALYSIS_PLAN.md`, analysis-first sequence approved 2026-09-17,
   with the internal scalar CFG, verifier and dump now in `tpyc/mir/`.
-  Remaining work starts at M2; there is no borrow checker yet. The excluded cells
-  are filed in that plan's scope matrix: M2 semantic identities, storage/forms,
+  M2.1 adds borrowed record holders, alias/reseat operations and direct scalar
+  fields. Remaining work starts with the rest of M2; there is no borrow checker
+  yet and current provenance checks remain authoritative.
+  Owning storage and the other M2 cells remain separate work. All excluded
+  cells are filed in that plan's scope matrix: M2 identities, storage/forms,
   methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
   comprehension/match, binding scopes and holder propagation; M4 summaries,
   generic forms and ownership/native-trait decisions; M5 admission and authority.

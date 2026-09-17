@@ -1,11 +1,11 @@
-"""Immutable scalar MIR with body-scoped identities and mutable slots."""
+"""Immutable MIR with body-scoped holders and logical storage projections."""
 
 from dataclasses import dataclass
 from enum import Enum, auto
 
 from ..parse import SourceLocation
 from ..thir.nodes import Form
-from ..typesys import TpyType
+from ..typesys import NominalType, TpyType
 
 
 @dataclass(frozen=True)
@@ -43,6 +43,11 @@ class MIRSlotKind(Enum):
     TEMPORARY = auto()
 
 
+class MIRValueKind(Enum):
+    SCALAR = auto()
+    BORROWED_RECORD = auto()
+
+
 @dataclass(frozen=True)
 class MIRSlot:
     id: MIRSlotId
@@ -50,6 +55,31 @@ class MIRSlot:
     kind: MIRSlotKind
     name: str | None = None
     form: Form = Form.VALUE
+    value_kind: MIRValueKind = MIRValueKind.SCALAR
+    readonly: bool = False
+
+
+@dataclass(frozen=True)
+class MIRDeref:
+    pass
+
+
+@dataclass(frozen=True)
+class MIRFieldId:
+    owner: NominalType
+    name: str
+
+
+@dataclass(frozen=True)
+class MIRField:
+    id: MIRFieldId
+    type: TpyType
+
+
+@dataclass(frozen=True)
+class MIRPlace:
+    root: MIRSlotId
+    projections: tuple[MIRDeref | MIRField, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -59,6 +89,11 @@ class MIRConstant:
 
 @dataclass(frozen=True)
 class MIRRead:
+    source: MIRPlace
+
+
+@dataclass(frozen=True)
+class MIRAlias:
     source: MIRSlotId
 
 
@@ -74,12 +109,12 @@ class MIRNot:
     operand: MIRSlotId
 
 
-MIRRvalue = MIRConstant | MIRRead | MIRCompare | MIRNot
+MIRRvalue = MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias
 
 
 @dataclass(frozen=True)
 class MIRAssign:
-    target: MIRSlotId
+    target: MIRPlace
     value: MIRRvalue
     loc: SourceLocation | None = None
 

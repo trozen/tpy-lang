@@ -8142,8 +8142,11 @@ conventions and their existing limitations; the full callable result contract
 `CALLABLE_CONTRACT_DESIGN.md`.
 The initial compatibility findings are in `CALLABLE_CONTRACT_FEASIBILITY.md`.
 Analysis-only MIR first is the approved sequence; `MIR_ANALYSIS_PLAN.md` records
-the implemented internal scalar CFG foundation. It has no normal compilation
-hook or borrow checker yet. Callable admission remains planned, with no new
+the implemented internal scalar CFG and borrowed-record alias/field foundation.
+M2.1 adds entry-declared aliases, name reseats and direct bool/int32 fields of
+borrowed plain records, including readonly access, for ordinary free functions.
+It has no normal compilation hook or borrow checker yet. Current provenance
+checks remain authoritative. Callable admission remains planned, with no new
 acceptance rule or diagnostic enabled by this foundation.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.

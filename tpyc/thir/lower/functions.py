@@ -5,6 +5,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
+from .storage import borrowed_record
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
@@ -139,6 +140,7 @@ from ..nodes import (
 )
 from ...value_category import is_rvalue_source
 from .predicates import (
+    _param_is_const,
     _peel_coerce,
     _str_literal_value_opt_arg,
     _IDENTITY_STR_COERCIONS,
@@ -1026,7 +1028,11 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     src_params = (func.params if stub is None or literal_group
                   else stub.params)
     src_rt = func.return_type if stub is None else stub.return_type
-    params = tuple(THIRParam(name=n, type=t) for n, t in src_params)
+    params = tuple(THIRParam(
+        name=n, type=t,
+        borrowed_record=borrowed_record(t, _param_is_const(n, func, analyzer, record_name),
+                                        analyzer),
+    ) for n, t in src_params)
     rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
     # Seeded with params (and `self`): a write to such a name is a reassignment.
     declared: dict[str, TpyType] = dict(params_set)

@@ -52,7 +52,7 @@ from ..type_def_registry import (
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
 )
 from ..typesys import (
-    AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
+    BOOL, INT32, AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
     UnionType,
     TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
@@ -64,7 +64,7 @@ from .nodes import (
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
     THIRIfExpr, THIRMethodCall,
-    THIRNode, THIRInplaceContainerOp, THIRWhile,
+    THIRNode, THIRName, THIRInplaceContainerOp, THIRWhile,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRSubscript,
     THIRFrameSlotWrite,
@@ -102,6 +102,32 @@ def _fail(owner: str, node: THIRNode, why: str) -> None:
 
 
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
+        fact = node.alias_binding
+        if fact is not None:
+            source = node.init if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else node.value
+            if isinstance(source, THIRFormConvert):
+                if (source.form is not Form.BORROW or source.move
+                        or source.materialize is not None or source.generic_return
+                        or source.is_const != fact.reference.readonly
+                        or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.reference.type):
+                    _fail(owner, node, "alias binding has a non-borrow conversion")
+                source = source.value
+            if (not isinstance(source, THIRName) or fact.source != source.name
+                    or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.reference.type
+                    or type(fact.reference.readonly) is not bool):
+                _fail(owner, node, "alias binding disagrees with its source")
+            if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)):
+                if (unwrap_readonly(unwrap_ref_type(node.resolved_type)) != fact.reference.type
+                        or node.is_const != fact.reference.readonly):
+                    _fail(owner, node, "alias binding disagrees with its destination")
+    if isinstance(node, THIRFieldAccess) and node.field_identity is not None:
+        fact = node.field_identity
+        if (not isinstance(node.receiver, THIRName) or not fact.name
+                or unwrap_readonly(unwrap_ref_type(node.receiver.result_type)) != fact.owner
+                or fact.type not in (BOOL, INT32) or node.result_type != fact.type
+                or node.form is not Form.VALUE):
+            _fail(owner, node, "field identity disagrees with its access")
     if isinstance(node, (THIRFieldAccess, THIRMethodCall)):
         # A plain method's receiver read carries its own value-position
         # deref (`(*this)`), so the member reached THROUGH the pointer must
@@ -571,6 +597,12 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
 
 
 def validate_function(fn: THIRFunction) -> None:
+    for param in fn.params:
+        fact = param.borrowed_record
+        if fact is not None and (
+                unwrap_readonly(unwrap_ref_type(param.type)) != fact.type
+                or type(fact.readonly) is not bool):
+            _fail(fn.name, param, "borrowed record fact disagrees with parameter")
     for stmt in fn.body:
         _walk(fn.name, stmt, fn.return_type)
 

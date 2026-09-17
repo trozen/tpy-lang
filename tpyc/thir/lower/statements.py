@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
+from .storage import alias_binding
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -4040,6 +4041,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             src = _lower_field_source(stmt.init, lc, declared)
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
+            alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if binding is LocalBinding.POINTER and isinstance(stmt.init, TpyCoerce):
@@ -4072,6 +4074,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
                 _witness("decl.ptr_name_addr")
                 return THIRPtrLocalDecl(
                     name=stmt.name, resolved_type=vtype,
+                    alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
                     kind=PtrSlotKind.PTR_ADDR, init=src,
                     cpp_type=lc.render_type(vtype),
                     is_const=is_const, loc=loc)
@@ -4089,6 +4092,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             form=Form.BORROW, is_const=is_const, loc=loc)
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=convert,
+            alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if binding is LocalBinding.POINTER and isinstance(stmt.init, TpySubscript):
@@ -9648,11 +9652,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and stmt.init.name in lc.pointers
                     and stmt.init.name not in lc.narrow.narrowed):
                 _witness("reseat.ptr_copy")
+                source = THIRName(result_type=vtype, name=stmt.init.name, loc=loc)
                 return THIRAssign(
+                    alias_binding=alias_binding(source, vtype,
+                                                stmt.name in lc.const_locals, analyzer),
                     target=THIRName(result_type=vtype, name=stmt.name,
                                     loc=loc),
-                    value=THIRName(result_type=vtype, name=stmt.init.name,
-                                   loc=loc),
+                    value=source,
                     loc=loc)
             # A bare record PARAM reseat (`x = b;` -> `x = &(b);`), the sibling
             # of the F1-record field reseat below.
@@ -9672,6 +9678,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         # convert below.)
                         _witness("reseat.param_name")
                         return THIRPtrLocalRebind(
+                            alias_binding=alias_binding(src_name, vtype,
+                                                        stmt.name in lc.const_locals, analyzer),
                             name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
                             value=src_name, loc=loc)
                     note_detail("decl.reseat_param_source")
@@ -9703,9 +9711,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # Pointer-form, const, and narrowed sources stay on their
                 # own rungs.
                 _witness("reseat.storage_name")
+                source = _lower_expr(stmt.init, lc, declared)
                 return THIRPtrLocalRebind(
+                    alias_binding=alias_binding(source, vtype,
+                                                stmt.name in lc.const_locals, analyzer),
                     name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
-                    value=_lower_expr(stmt.init, lc, declared), loc=loc)
+                    value=source, loc=loc)
             elif (isinstance(stmt.init, (TpyCall, TpyMethodCall))
                   and call_returns_cpp_ref(
                       analyzer, stmt.init.resolved_function_info)
@@ -9810,6 +9821,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 is_const=stmt.name in lc.const_locals, loc=loc)
             return THIRAssign(
                 target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
+                alias_binding=alias_binding(src_name, vtype,
+                                            stmt.name in lc.const_locals, analyzer),
                 value=convert, loc=loc)
         # F4 U2: a pointer-variant union local -- first decl or reseat. A
         # same-union name copies bare (borrow -> borrow); a value-variant

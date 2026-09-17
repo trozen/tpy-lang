@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from ..identity_map import IdentityMap
 from ..parse import RebindStorage, SourceLocation, TryTier
-from ..typesys import ResolvedBinop, TpyType
+from ..typesys import NominalType, ResolvedBinop, TpyType
 
 if TYPE_CHECKING:
     # Compatibility metadata only (cpp_local_representation); imported under
@@ -55,6 +55,27 @@ class TruthinessMode(Enum):
     RECORD_LEN = auto()
     ALWAYS_TRUE = auto()
     PTR_TRUTHY = auto()
+
+
+@dataclass(frozen=True)
+class THIRBorrowedRecord:
+    """A reference to existing record storage, with per-reference access."""
+    type: NominalType
+    readonly: bool
+
+
+@dataclass(frozen=True)
+class THIRAliasBinding:
+    """The destination receives the source binding's current referent."""
+    source: str
+    reference: THIRBorrowedRecord
+
+
+@dataclass(frozen=True)
+class THIRFieldIdentity:
+    owner: NominalType
+    name: str
+    type: TpyType
 
 
 @dataclass(frozen=True)
@@ -1383,6 +1404,7 @@ class THIRFieldAccess(THIRExpr):
     (`r->__deref__().x`), like the method twin."""
     receiver: THIRExpr
     field_cpp: str
+    field_identity: THIRFieldIdentity | None = field(default=None, kw_only=True)
     is_arrow: bool = False
     deref_check: bool = False
     narrowed_deref: bool = False
@@ -1644,6 +1666,7 @@ class THIRVarDecl(THIRStmt):
     may depend on it."""
     name: str
     resolved_type: TpyType
+    alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     init: THIRExpr | None = None
     cpp_type: str | None = None
     form: Form = Form.VALUE
@@ -1827,6 +1850,7 @@ class THIRPtrLocalDecl(THIRStmt):
     the decl pre-declares no rebind slot."""
     name: str
     resolved_type: TpyType
+    alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     init: THIRExpr | None = None
     cpp_type: str | None = None
@@ -1852,6 +1876,7 @@ class THIRPtrLocalRebind(THIRStmt):
     slot of the site's own + `to_ptr_variant(*slot)` re-lift). `val_cpp` is
     the union value-variant spelling (unused by the OPT_NONE kind)."""
     name: str
+    alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     value: THIRExpr | None = None
     val_cpp: str | None = None
@@ -1889,6 +1914,7 @@ class THIRAssign(THIRStmt):
     lvalue (a statement-expression wrap would be an rvalue)."""
     target: THIRExpr
     value: THIRExpr
+    alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     recv_eval: 'THIRExpr | None' = None
     recv_wrap: 'str | None' = None
     # A borrow-tuple reseat from an OWNING tuple call (`t = make_pair(9)`
@@ -3320,6 +3346,7 @@ class THIRExprStmt(THIRStmt):
 class THIRParam:
     name: str
     type: TpyType
+    borrowed_record: THIRBorrowedRecord | None = None
 
 
 @dataclass(frozen=True)

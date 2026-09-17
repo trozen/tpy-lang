@@ -190,6 +190,215 @@ including branch intersections and loop back edges. `MIRBodyKind` is mandatory
 input: a `THIRFunction` alone cannot distinguish a free function from all its
 sibling body kinds, so the caller must supply the declaration classification.
 
+## M2.1: borrowed record holders and scalar fields
+
+Status: approved and implemented, 2026-09-17.
+This is the first bounded part of M2, not completion of storage/provenance
+analysis. M1 is merged. Current provenance checks remain authoritative.
+
+### Observable example and invariant
+
+Given a plain reference record `Cell` with an `int32` field `value`:
+
+```python
+def inspect(a: Cell, b: Cell, flag: bool) -> int32:
+    current = a
+    saved = current
+    if flag:
+        current = b
+    current.value = 7
+    return saved.value
+```
+
+With distinct incoming objects containing 1 and 2, `inspect(a, b, True)`
+returns 1 and changes only `b.value` to 7. With the same object passed twice,
+it returns 7. The current C++ already expresses this correctly:
+
+```cpp
+Cell* current = &(a);
+Cell& saved = (*current);
+if (flag) current = &(b);
+current->value = 7;
+return saved.value;
+```
+
+M2.1 makes those facts explicit in MIR; emitted C++ stays unchanged.
+**Invariant:** every admitted reference binding identifies the current
+referent transferred between holders, and every field operation identifies
+the logical field of that referent. No admitted operation creates, copies,
+moves, destroys or replaces a record's owned storage.
+
+A holder is a variable containing a reference, not the referenced object.
+Distinct parameter IDs do not establish disjoint objects. Reseating `current`
+does not redirect `saved`. Readonly limits access through a holder, not writes
+through other aliases; a readonly field read must still observe those writes.
+A scalar field load captures a value immediately, as M1 scalar reads do.
+
+### Evidence and reusable authorities
+
+The source probes for local alias mutation, conditional reseating, shared and
+distinct arguments, scalar snapshots and explicit readonly aliases all matched
+between native TPy and CPython. The selected functions' real emitted THIR uses
+`THIRVarDecl`, `THIRPtrLocalDecl`, `THIRPtrLocalRebind`, `THIRAssign` and
+`THIRFieldAccess`. This establishes the existing semantics and producer paths,
+not completion of the broader M2 work package.
+
+| Existing authority | Reuse / missing fact |
+|---|---|
+| `MIRBodyId`, `MIRSlotId`; lowering's local binding map | Keep deterministic body-scoped holder IDs and the one-binding-per-name restriction; no new symbol resolver |
+| `NominalType` qualified identity and structured type arguments (`typesys.py`) | Reuse canonical type identity, never short record names or rendered C++ types |
+| `_lower_borrow_local` and name-reseat arms in `thir/lower/statements.py` | These already choose reference alias / pointer bind / pointer reseat; attach the semantic operation at these construction sites |
+| `THIRParam` construction in `thir/lower/functions.py`; `_param_is_const` and finalized `FunctionInfo.const_borrow_params` | Project the admitted parameter's borrowed-reference category and access capability; do not parse its emitted signature |
+| Direct field lowering and `_field_cpp` in `thir/lower/expressions.py` | Carry declaring nominal owner, source field name and field type before the source name becomes presentation spelling |
+| `BindKind` / `ctx.func.bind_kinds` in `sema/alias_rebind.py` | Not an input to MIR: the per-function table is reset before lowering; do not resurrect a stale analyzer lookup |
+| `RebindStorage`, `THIRCopy`, `THIRMove`, `THIRFormConvert` | Existing facts for later owning/storage slices, not permission to admit their semantics in M2.1 |
+
+`THIRVarDecl.cpp_local_representation` is expressly compatibility metadata.
+`Form.BORROW` also does not establish ownership, alias roots or access policy.
+The new semantic facts must be stamped beside the existing lowering decision,
+not calculated afterward by inspecting either tag or a C++ string. Scalar
+writes, alias binds and reference reseats remain distinct facts.
+
+### Representation and boundary
+
+1. **A small semantic THIR bridge.** Attach immutable facts to the existing
+   nodes: borrowed-record parameter/access facts; local alias/reseat facts
+   naming the source binding; and direct-field identity/type facts. Stamp
+   only the supported, positively identified producer paths. A missing fact
+   means unsupported analysis, never an implicit copy or an empty effect.
+   Existing emission metadata remains available to the C++ renderer. The
+   bridge carries no analyzer, AST node, registry object or mutable binding
+   cell. Keep the bridge operation-centric; it is not a second THIR body.
+2. **Places extend M1 slots.** Introduce `MIRPlace` rooted at a `MIRSlotId`,
+   with typed dereference and field projections. An unprojected place is the
+   existing local slot. A borrowed record holder's scalar field is
+   `Field(Deref(holder), field_id)`. A field ID uses canonical nominal owner
+   plus source field identity, not `field_cpp`. Only this direct projection
+   path is admitted now; globals, indices and backing-store regions follow
+   in later M2 slices.
+3. **Explicit held values and operations.** Keep parameter/local/temporary
+   roles separate from whether a slot holds a scalar or a borrowed record
+   reference. Carry access capability explicitly. Generalize `MIRAssign`
+   targets and scalar `MIRRead` operands to places. Add an explicit alias
+   operation which reads a source holder's current reference into another
+   holder; use it for both initial binding and reseating. Do not copy the
+   record, defer the source read, or use a scalar load as a reference copy.
+   Record copy, move, owning construction and borrow-from-owned-storage
+   operations remain later work, rather than unused enum cases now.
+4. **Verifier and dump.** Extend existing structural/type/definite-assignment
+   checks to holder categories, initialized reference bases, field owner/type
+   compatibility, and access capability. A scalar store through a readonly
+   reference is malformed MIR; alias transfer may reduce access but may not
+   increase it. Reseating a readonly-reference holder is distinct from
+   writing its referent. A projected store reads its initialized holder;
+   writing a field never establishes assignment of that holder. Verify
+   scalar returns only. External record field
+   initialization, referent lifetime, disjointness and loan legality are not
+   proved by this verifier. Dump aliases and field loads/stores explicitly.
+5. **Whole-body coverage stays mandatory.** Extend the current coverage walk
+   and builder together, preserving checks for unsupported metadata and
+   unreachable unsupported nodes. No producer stamp alone makes a body
+   covered. M1's eager-effect ordering restriction remains in force; this
+   slice adds no effectful receiver expressions or reference-valued walrus.
+
+There is no new parser rule, type inference rule, sema provenance authority,
+runtime support, stdlib implementation, language diagnostic or default
+compilation hook. THIR construction/validation, MIR lowering/validation/dump
+and their unit tests change. No C++ output or existing snapshot should change.
+
+### Exact scope and sibling matrix
+
+Admit ordinary monomorphic synchronous free functions. Parameters are the M1
+scalars or borrowed plain, non-generic reference records; scalar/void returns
+remain as in M1. Reference locals are initialized in the entry declaration
+prefix from an existing parameter/local of the same nominal record type.
+Subsequent name-to-name reseats may occur on M1 branches and loops. Parameters
+themselves are not reseated. Fields are direct, non-native instance fields of
+these holders, with `bool` or `int32` payloads. Preserve explicit readonly and
+inferred const access; record selection/coercion is not added.
+
+Do not admit inherited/subobject field selection, properties, class variables,
+user dereference, native records, reference-valued fields or field receivers
+with calls/side effects. These need their own semantic facts; a field's C++
+spelling is never evidence for treating it as direct storage.
+
+The following factors intersect; every factor must be covered for a cell to
+be admitted. Deferred cells remain filed by the broader M2-M5 matrix below
+and the MIR entry in `TODO.md`.
+
+| Axis | Covered by M2.1 tests | Not covered / filed stage |
+|---|---|---|
+| Position | ordinary free function; M1 if/while/else/break/continue/early return within it | M2 remainder: methods/static methods, constructors, module bodies, closures; M3: generator, async, comprehension, context-manager body, try/finally, error-return body, match arm |
+| Shape | bool/int32; plain borrowed record; readonly access to that record | M2 remainder: other scalars, tuple/singleton, Optional, union, str/bytes/views, Own, Ptr/Span, Box/Rc, concrete generic records; M4: open generics and per-instantiation obligations |
+| Slot | parameters, entry-declared local holders, scalar temporaries, scalar returns, direct scalar fields | M2 remainder: record/aggregate returns, globals, captures, nested/reference fields, container elements and backing storage; M3: branch/loop-created bindings and frame slots |
+| Operation | scalar read/write, reference alias bind/reseat, scalar field load/store, M1 control flow | M2 remainder: record copy/move/creation, calls and additional projections; M3: drop/del, cleanup, suspension and liveness; M4: call summary/effect application |
+
+### Tests, implementation order and exit gate
+
+Use unit-owned source fixtures compiled with `generate_code_and_thir()`, plus
+small hand-built THIR/MIR inputs for malformed or absent metadata. Do not add
+a special executable case or read source from `tests/cases/`. The eventual
+general harness integration remains separate.
+
+Extend the bounded MIR test interpreter with explicit reference values and
+an object store. Test callers must be able to bind two parameters to the same
+object identity. Check final object fields as well as function results:
+
+- Write through an original holder and read through its alias, and vice versa.
+- Reseat one alias while another retains the old referent; exercise distinct
+  and identical parameter referents, branches and a terminating loop.
+- Read through inferred-const and explicit-readonly aliases after another
+  holder mutates the same object; readonly must not freeze the object.
+- Save a scalar field value, mutate the field, then return the saved value.
+- Distinguish two fields of one record and same-named fields of distinct
+  nominal records. Include a Python field name needing C++ escaping; changing
+  presentation metadata must not change the MIR field identity.
+- Inspect real THIR semantic stamps and exact MIR operations. Missing stamps,
+  unknown sources and unsupported sibling shapes produce whole-body
+  `MIRNotCovered`; inconsistent MIR types/access/IDs fail verification.
+  Include a field store through an uninitialized holder in verifier negatives.
+- Keep M1 tests green; preserve deterministic dumps and source locations.
+  Ordinary case tests remain byte-for-byte codegen/diagnostic regression
+  checks, not claims that the case harness executes MIR.
+
+Implementation and exit gates for this work unit:
+
+1. Add and test semantic THIR facts at the existing producers; verify the
+   renderer remains unchanged. Reuse the current const decision reader.
+2. Extend MIR places/held values, lowering, verifier and dump together, with
+   the semantic and malformed-input tests above.
+3. Review scope boundaries and run the final full suite. Update this plan,
+   `ARCHITECTURE.md` and `LANGUAGE_FEATURES.md` to mark actual coverage, then
+   prepare one squashed implementation commit; do not merge or push.
+
+The implementation lives in `thir/lower/storage.py`, the existing THIR
+producer arms and `mir/`. `mir/test_storage.py` compiles its own source and
+checks shared/distinct referents, all alias producer node kinds, branches,
+loops, explicit/inferred readonly access, scalar snapshots and field identity.
+It also guards against stamping method/constructor `self` aliases as ordinary
+name bindings, and rejects properties, class constants, native fields and
+user-dereference accesses as direct MIR fields.
+Readonly name binds that use a `THIRFormConvert` carry the alias fact on the
+binding itself; MIR admits only its non-moving borrowed conversion.
+`mir/test_storage_validate.py` checks malformed places, access upgrades,
+uninitialized field bases and join/loop definite assignment. Existing scalar
+tests share the bounded interpreter in `mir/testutil.py`.
+
+Pitfall checks: shared mutation tests expose alias-versus-copy mistakes;
+scalar loads pin evaluation time; readonly alias tests prevent an immutability
+assumption. Tuple/Optional/union and generic twins are explicit negative
+coverage, not silently treated as records. Reference returns, view/owned
+materialization, iteration and destruction are deferred, so this slice adds
+no copy warnings, hidden allocations or lifetime verdicts. Generated C++ and
+diagnostics must be unchanged. Internal MIR coverage is never a new rejection
+or warning for valid Python. Existing documented language gaps stay open.
+
+Confidence: high for this bounded slice after inspecting its actual producers
+and native/CPython probes. The architectural risk is drift between the new
+semantic stamps and emitted operations; direct producer tests and unchanged
+codegen are the gate. M2.1 does not solve the later owning-storage, cleanup,
+capture, container-region, summary or authority-transition problems.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

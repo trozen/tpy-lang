@@ -7,6 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
+from .storage import direct_field
 from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -6129,21 +6130,18 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 form=_viewfam_result_form(fa_str),
                 loc=loc,
             ))
+        # A call-shaped receiver's own arg temps flush at the enclosing
+        # statement; the receiver borrow form is independent of arrow/deref hops.
+        receiver = _lower_expr(
+            e.obj, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                         allow_temps=use.allow_temps,
+                         pos=SinkPos.RECEIVER, forms=_ONLY_FIELD_RECV_BORROW),
+            subscript_prechecked=isinstance(e.obj, TpySubscript))
         return _self_recv_positioned(THIRFieldAccess(
             result_type=rtype,
-            # A call-shaped receiver's own arg temps flush at the enclosing
-            # statement (`Holder(__tmp_1).kind`), so allow_temps rides
-            # through; inert for every non-call receiver shape.
-            # Outside `_recv_forms`: this slice's verdict is the one fixed
-            # render the FIELD-READ arm performs, on an axis that does not
-            # combine with the two the helper carries (the arrow / deref
-            # hops ride `is_arrow` and `deref_chain` here, not the form).
-            receiver=_lower_expr(
-                e.obj, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.RECEIVER,
-                             allow_temps=use.allow_temps,
-                             pos=SinkPos.RECEIVER, forms=_ONLY_FIELD_RECV_BORROW),
-                subscript_prechecked=isinstance(e.obj, TpySubscript)),
+            field_identity=direct_field(e, analyzer) if isinstance(receiver, THIRName) else None,
+            receiver=receiver,
             field_cpp=_field_cpp(e),
             is_arrow=_field_is_arrow(e, lc),
             narrowed_deref=narrowed_opt,

@@ -9,7 +9,7 @@ from ..typesys import BOOL, INT32
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRCompare,
     MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRRead, MIRReturn, MIRSlot,
-    MIRSlotId, MIRSlotKind,
+    MIRSlotId, MIRSlotKind, MIRPlace,
 )
 from .validate import MIRValidationError, validate_function
 
@@ -19,7 +19,7 @@ A, C, D, E = (MIRBlockId(B, i) for i in range(4))
 SLOTS = (MIRSlot(P, BOOL, MIRSlotKind.PARAMETER, "flag"),
          MIRSlot(X, INT32, MIRSlotKind.LOCAL, "x"), MIRSlot(Y, INT32, MIRSlotKind.TEMPORARY))
 GOOD = MIRFunction(B, INT32, SLOTS,
-                   (MIRBlock(A, (MIRAssign(X, MIRConstant(1)), MIRAssign(Y, MIRRead(X))), MIRReturn(Y)),), A)
+                   (MIRBlock(A, (MIRAssign(MIRPlace(X), MIRConstant(1)), MIRAssign(MIRPlace(Y), MIRRead(MIRPlace(X)))), MIRReturn(Y)),), A)
 
 
 def invalid(fn: MIRFunction, message: str) -> None:
@@ -38,13 +38,13 @@ def invalid(fn: MIRFunction, message: str) -> None:
     ({"blocks": (MIRBlock(A, (), MIRReturn()),)}, "missing return value"),
     ({"blocks": (MIRBlock(A, (), MIRReturn(P)),)}, "return type mismatch"),
     ({"blocks": (MIRBlock(A, (), MIRReturn(Y)),)}, "definite assignment"),
-    ({"blocks": (MIRBlock(A, (MIRAssign(X, MIRConstant(True)),), MIRReturn(X)),)}, "constant type"),
-    ({"blocks": (MIRBlock(A, (MIRAssign(X, MIRConstant(2**31)),), MIRReturn(X)),)}, "constant type"),
-    ({"blocks": (MIRBlock(A, (MIRAssign(X, MIRRead(P)),), MIRReturn(X)),)}, "read type"),
-    ({"blocks": (MIRBlock(A, (MIRAssign(X, MIRNot(P)),), MIRReturn(X)),)}, "not operand or result"),
-    ({"blocks": (MIRBlock(A, (MIRAssign(P, MIRCompare("+", P, P)),), MIRReturn(X)),)}, "comparison"),
-    ({"blocks": (MIRBlock(A, (MIRAssign(P, MIRRead(MIRSlotId(B, 99))),), MIRReturn(X)),)}, "undeclared"),
-    ({"blocks": (MIRBlock(A, (MIRAssign(MIRSlotId(B, 99), MIRConstant(1)),), MIRReturn(X)),)}, "undeclared"),
+    ({"blocks": (MIRBlock(A, (MIRAssign(MIRPlace(X), MIRConstant(True)),), MIRReturn(X)),)}, "constant type"),
+    ({"blocks": (MIRBlock(A, (MIRAssign(MIRPlace(X), MIRConstant(2**31)),), MIRReturn(X)),)}, "constant type"),
+    ({"blocks": (MIRBlock(A, (MIRAssign(MIRPlace(X), MIRRead(MIRPlace(P))),), MIRReturn(X)),)}, "read type"),
+    ({"blocks": (MIRBlock(A, (MIRAssign(MIRPlace(X), MIRNot(P)),), MIRReturn(X)),)}, "not operand or result"),
+    ({"blocks": (MIRBlock(A, (MIRAssign(MIRPlace(P), MIRCompare("+", P, P)),), MIRReturn(X)),)}, "comparison"),
+    ({"blocks": (MIRBlock(A, (MIRAssign(MIRPlace(P), MIRRead(MIRPlace(MIRSlotId(B, 99)))),), MIRReturn(X)),)}, "undeclared"),
+    ({"blocks": (MIRBlock(A, (MIRAssign(MIRPlace(MIRSlotId(B, 99)), MIRConstant(1)),), MIRReturn(X)),)}, "undeclared"),
     ({"blocks": (MIRBlock(A, (), MIRBranch(X, A, A)),)}, "branch condition"),
 ])
 def test_malformed_graphs(change: dict[str, object], message: str) -> None:
@@ -53,29 +53,29 @@ def test_malformed_graphs(change: dict[str, object], message: str) -> None:
 
 def test_merges_intersect_predecessor_assignments() -> None:
     blocks = (MIRBlock(A, (), MIRBranch(P, C, D)),
-              MIRBlock(C, (MIRAssign(X, MIRConstant(1)),), MIRGoto(E)),
+              MIRBlock(C, (MIRAssign(MIRPlace(X), MIRConstant(1)),), MIRGoto(E)),
               MIRBlock(D, (), MIRGoto(E)), MIRBlock(E, (), MIRReturn(X)))
     invalid(replace(GOOD, blocks=blocks), "definite assignment")
-    fixed = (*blocks[:2], replace(blocks[2], statements=(MIRAssign(X, MIRConstant(2)),)), blocks[3])
+    fixed = (*blocks[:2], replace(blocks[2], statements=(MIRAssign(MIRPlace(X), MIRConstant(2)),)), blocks[3])
     validate_function(replace(GOOD, blocks=fixed))
 
 
 def test_loop_backedge_cannot_initialize_first_iteration() -> None:
     blocks = (MIRBlock(A, (), MIRGoto(C)),
-              MIRBlock(C, (MIRAssign(Y, MIRRead(X)), MIRAssign(X, MIRConstant(1))), MIRBranch(P, C, D)),
+              MIRBlock(C, (MIRAssign(MIRPlace(Y), MIRRead(MIRPlace(X))), MIRAssign(MIRPlace(X), MIRConstant(1))), MIRBranch(P, C, D)),
               MIRBlock(D, (), MIRReturn(Y)))
     invalid(replace(GOOD, blocks=blocks), "definite assignment")
-    validate_function(replace(GOOD, blocks=(replace(blocks[0], statements=(MIRAssign(X, MIRConstant(0)),)),
+    validate_function(replace(GOOD, blocks=(replace(blocks[0], statements=(MIRAssign(MIRPlace(X), MIRConstant(0)),)),
                                            *blocks[1:])))
 
 
 def test_entry_backedge_keeps_parameter_only_boundary() -> None:
-    fn = replace(GOOD, blocks=(MIRBlock(A, (MIRAssign(Y, MIRRead(X)), MIRAssign(X, MIRConstant(1))), MIRGoto(A)),))
+    fn = replace(GOOD, blocks=(MIRBlock(A, (MIRAssign(MIRPlace(Y), MIRRead(MIRPlace(X))), MIRAssign(MIRPlace(X), MIRConstant(1))), MIRGoto(A)),))
     invalid(fn, "definite assignment")
 
 
 def test_unreachable_predecessor_does_not_poison_definite_assignment() -> None:
-    blocks = (MIRBlock(A, (MIRAssign(X, MIRConstant(1)),), MIRGoto(C)),
+    blocks = (MIRBlock(A, (MIRAssign(MIRPlace(X), MIRConstant(1)),), MIRGoto(C)),
               MIRBlock(C, (), MIRReturn(X)), MIRBlock(D, (), MIRGoto(C)))
     validate_function(replace(GOOD, blocks=blocks))
 

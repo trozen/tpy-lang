@@ -26,7 +26,14 @@ drivers, frames at their leaf seams, type rendering). There is no second body
 emitter: a body THIR cannot lower is a compile error (`ThirRejectError`), not a
 reroute. The landed half of the IR direction in `docs/IR_DESIGN.md`.
 
-`tpyc/mir/` provides an internal scalar CFG builder, verifier and dump. Tests
+`tpyc/mir/` provides an internal CFG builder, verifier and dump for bool/int32
+scalars and borrowed plain records. THIR carries immutable borrowed-parameter,
+alias-binding and direct-field facts from the existing lowering decisions.
+MIR uses body-scoped reference holders and explicit alias transfers; scalar
+field places contain dereference and qualified field projections. Distinct
+holders can reference the same object, and readonly access does not imply
+an immutable referent. The verifier checks access and definite assignment,
+including initialized bases for field stores, but proves no lifetimes. Tests
 feed it the exact THIR returned by `Compiler.generate_code_and_thir()`, together
 with body identity and declaration kind. It does not run during normal
 compilation or affect emission. Unsupported bodies return `MIRNotCovered`, which

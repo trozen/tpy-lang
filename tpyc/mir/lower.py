@@ -1,15 +1,19 @@
-"""All-or-nothing lowering of the approved scalar THIR subset."""
+"""All-or-nothing lowering of scalar and borrowed-record THIR operations."""
 
 from dataclasses import MISSING, dataclass, field, fields
 
 from ..identity_map import IdentityMap
 from ..parse import SourceLocation
 from ..thir import nodes as th
-from ..typesys import BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, TpyType, VoidType
+from ..typesys import (
+    BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, NominalType, TpyType,
+    VoidType, unwrap_readonly, unwrap_ref_type,
+)
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
     MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered,
-    MIRRead, MIRReturn, MIRRvalue, MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator,
+    MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind,
 )
 from .validate import successors, validate_function
 
@@ -25,7 +29,7 @@ def _require(node: object, condition: bool, reason: str) -> None:
         raise _Unsupported(node, reason)
 
 
-def _plain(node: th.THIRNode, allowed: set[str]) -> None:
+def _plain(node: th.THIRNode | th.THIRParam, allowed: set[str]) -> None:
     # New non-default metadata must not silently acquire scalar semantics.
     for f in fields(node):
         if f.name in allowed | {"loc", "result_type", "form"}:
@@ -46,6 +50,8 @@ class _Coverage:
     def __init__(self, fn: th.THIRFunction) -> None:
         self.fn = fn
         self.bindings: dict[str, TpyType] = {}
+        self.references: dict[str, th.THIRBorrowedRecord] = {}
+        self.parameters = {p.name for p in fn.params}
         self.writes: IdentityMap[th.THIRExpr, bool] = IdentityMap()
 
     def check(self) -> None:
@@ -55,13 +61,24 @@ class _Coverage:
         _require(fn, fn.return_type in (BOOL, INT32) or isinstance(fn.return_type, VoidType),
                  "unsupported return type")
         for p in fn.params:
-            _require(fn, p.type in (BOOL, INT32), "unsupported parameter type")
+            _plain(p, {"name", "type", "borrowed_record"})
             _require(fn, p.name not in self.bindings, "duplicate binding")
-            self.bindings[p.name] = p.type
+            if p.borrowed_record is not None:
+                self.reference(p, p.borrowed_record, p.type)
+                self.references[p.name] = p.borrowed_record
+                self.bindings[p.name] = p.borrowed_record.type
+            else:
+                _require(fn, p.type in (BOOL, INT32), "unsupported parameter type")
+                self.bindings[p.name] = p.type
         prefix = True
         for stmt in fn.body:
-            if isinstance(stmt, th.THIRVarDecl):
+            if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
                 _require(stmt, prefix, "declaration outside entry prefix")
+                _require(stmt, stmt.name not in self.bindings, "duplicate binding")
+                if stmt.alias_binding is not None:
+                    self.alias(stmt, declaration=True)
+                    continue
+                _require(stmt, isinstance(stmt, th.THIRVarDecl), "missing alias binding")
                 _plain(stmt, {"name", "resolved_type", "init", "is_const"})
                 _require(stmt, stmt.form is th.Form.VALUE and stmt.resolved_type in (BOOL, INT32),
                          "unsupported local type or form")
@@ -74,6 +91,77 @@ class _Coverage:
                 if not isinstance(stmt, th.THIRNoOpStmt):
                     prefix = False
                 self.stmt(stmt, 0)
+
+    def reference(self, node: object, ref: th.THIRBorrowedRecord, typ: TpyType) -> None:
+        _require(node, isinstance(ref, th.THIRBorrowedRecord), "invalid reference fact")
+        _require(node, isinstance(ref.type, NominalType) and ref.type.qualified_name() is not None
+                 and ref.type not in (BOOL, INT32)
+                 and not ref.type.type_args and not ref.type.is_protocol
+                 and type(ref.readonly) is bool, "unsupported reference fact")
+        _require(node, unwrap_readonly(unwrap_ref_type(typ)) == ref.type,
+                 "reference type mismatch")
+
+    def reference_name(self, expr: th.THIRExpr) -> str:
+        _require(expr, isinstance(expr, th.THIRName), "reference needs local name")
+        _plain(expr, {"name", "is_last_use", "is_movable", "deref"})
+        _require(expr, expr.name in self.references, "unknown reference source")
+        self.reference(expr, self.references[expr.name], expr.result_type)
+        return expr.name
+
+    def alias(self, stmt: th.THIRStmt, *, declaration: bool = False) -> None:
+        fact = stmt.alias_binding
+        _require(stmt, isinstance(fact, th.THIRAliasBinding), "missing alias binding")
+        if declaration:
+            allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", "alias_binding"}
+            if isinstance(stmt, th.THIRVarDecl):
+                allowed.add("cpp_local_representation")
+                _require(stmt, stmt.form is th.Form.BORROW, "alias declaration form")
+            else:
+                allowed.add("kind")
+                _require(stmt, stmt.kind is th.PtrSlotKind.PTR_ADDR, "unsupported alias declaration")
+            _plain(stmt, allowed)
+            name, source = stmt.name, stmt.init
+            self.reference(stmt, fact.reference, stmt.resolved_type)
+            _require(stmt, stmt.is_const == fact.reference.readonly, "alias access mismatch")
+        elif isinstance(stmt, th.THIRAssign):
+            _plain(stmt, {"target", "value", "alias_binding"})
+            name = self.reference_name(stmt.target)
+            source = stmt.value
+        else:
+            _plain(stmt, {"name", "kind", "value", "alias_binding"})
+            _require(stmt, stmt.kind is th.PtrSlotKind.PTR_ADDR, "unsupported alias reseat")
+            name, source = stmt.name, stmt.value
+        _require(stmt, name not in self.parameters, "reference parameter reseat")
+        _require(stmt, source is not None, "missing alias source")
+        if isinstance(source, th.THIRFormConvert):
+            _plain(source, {"value", "is_const"})
+            _require(source, source.form is th.Form.BORROW
+                     and source.is_const == fact.reference.readonly,
+                     "unsupported alias conversion")
+            self.reference(source, fact.reference, source.result_type)
+            source = source.value
+        source_name = self.reference_name(source)
+        _require(stmt, fact.source == source_name, "alias source mismatch")
+        self.reference(stmt, fact.reference, self.bindings[source_name])
+        _require(stmt, not self.references[source_name].readonly or fact.reference.readonly,
+                 "alias increases access")
+        if declaration:
+            self.bindings[name] = fact.reference.type
+            self.references[name] = fact.reference
+        else:
+            _require(stmt, self.references.get(name) == fact.reference, "alias destination mismatch")
+
+    def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> TpyType:
+        _plain(expr, {"receiver", "field_cpp", "field_identity", "is_arrow"})
+        name = self.reference_name(expr.receiver)
+        fact = expr.field_identity
+        _require(expr, isinstance(fact, th.THIRFieldIdentity), "missing field identity")
+        _require(expr, fact.owner == self.references[name].type and bool(fact.name),
+                 "field owner mismatch")
+        _require(expr, fact.type in (BOOL, INT32) and expr.result_type == fact.type
+                 and expr.form is th.Form.VALUE, "unsupported field type or form")
+        _require(expr, not (write and self.references[name].readonly), "readonly field store")
+        return fact.type
 
     def expr(self, expr: th.THIRExpr) -> TpyType:
         _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
@@ -92,6 +180,8 @@ class _Coverage:
             _plain(expr, {"name", "is_last_use", "is_movable"})
             _require(expr, expr.name in self.bindings, "non-local name")
             _require(expr, self.bindings[expr.name] == typ, "name type mismatch")
+        elif isinstance(expr, th.THIRFieldAccess):
+            self.field(expr)
         elif isinstance(expr, th.THIRCoerce):
             _plain(expr, {"expr", "coercion_name"})
             _require(expr, typ == INT32
@@ -151,12 +241,17 @@ class _Coverage:
         return typ
 
     def stmt(self, stmt: th.THIRStmt, loops: int) -> None:
-        if isinstance(stmt, th.THIRNoOpStmt):
+        if isinstance(stmt, (th.THIRAssign, th.THIRPtrLocalRebind)) and stmt.alias_binding is not None:
+            self.alias(stmt)
+        elif isinstance(stmt, th.THIRNoOpStmt):
             _plain(stmt, set())
         elif isinstance(stmt, th.THIRAssign):
             _plain(stmt, {"target", "value"})
-            _require(stmt, isinstance(stmt.target, th.THIRName), "assignment needs local target")
-            _require(stmt, self.expr(stmt.target) == self.expr(stmt.value), "assignment type mismatch")
+            _require(stmt, isinstance(stmt.target, (th.THIRName, th.THIRFieldAccess)),
+                     "assignment needs local or field target")
+            target_type = (self.field(stmt.target, write=True) if isinstance(stmt.target, th.THIRFieldAccess)
+                           else self.expr(stmt.target))
+            _require(stmt, target_type == self.expr(stmt.value), "assignment type mismatch")
         elif isinstance(stmt, th.THIRExprStmt):
             _plain(stmt, {"expr", "void_cast"})
             self.expr(stmt.expr)
@@ -209,14 +304,26 @@ class _Builder:
         return block
 
     def slot(self, typ: TpyType, kind: MIRSlotKind = MIRSlotKind.TEMPORARY,
-             name: str | None = None) -> MIRSlotId:
+             name: str | None = None, reference: th.THIRBorrowedRecord | None = None) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
-        self.slots.append(MIRSlot(sid, typ, kind, name))
+        self.slots.append(MIRSlot(sid, reference.type if reference else typ, kind, name,
+                                  form=th.Form.BORROW if reference else th.Form.VALUE,
+                                  value_kind=MIRValueKind.BORROWED_RECORD if reference else MIRValueKind.SCALAR,
+                                  readonly=reference.readonly if reference else False))
         return sid
 
-    def write(self, dest: MIRSlotId, value: MIRRvalue, loc: SourceLocation | None) -> None:
+    def write(self, dest: MIRSlotId | MIRPlace, value: MIRRvalue, loc: SourceLocation | None) -> None:
         assert self.current is not None
-        self.current.statements.append(MIRAssign(dest, value, loc))
+        target = MIRPlace(dest) if isinstance(dest, MIRSlotId) else dest
+        self.current.statements.append(MIRAssign(target, value, loc))
+
+    def place(self, expr: th.THIRExpr) -> MIRPlace:
+        if isinstance(expr, th.THIRName):
+            return MIRPlace(self.bindings[expr.name])
+        assert isinstance(expr, th.THIRFieldAccess) and expr.field_identity is not None
+        member = expr.field_identity
+        return MIRPlace(self.bindings[expr.receiver.name],
+                        (MIRDeref(), MIRField(MIRFieldId(member.owner, member.name), member.type)))
 
     def end(self, term: MIRTerminator) -> None:
         assert self.current is not None and self.current.terminator is None
@@ -237,7 +344,7 @@ class _Builder:
         for block, arm in ((yes, then), (no, otherwise)):
             self.current = block
             value = arm if isinstance(arm, MIRSlotId) else self.expr(arm)
-            self.write(dest, MIRRead(value), loc)
+            self.write(dest, MIRRead(MIRPlace(value)), loc)
             self.end(MIRGoto(join.id, loc))
         self.current = join
         return dest
@@ -249,11 +356,11 @@ class _Builder:
             return self.result(typ, MIRConstant(expr.value), loc)
         if isinstance(expr, th.THIRCoerce):
             return self.result(INT32, MIRConstant(expr.expr.value), loc)
-        if isinstance(expr, th.THIRName):
-            return self.result(typ, MIRRead(self.bindings[expr.name]), loc)
+        if isinstance(expr, (th.THIRName, th.THIRFieldAccess)):
+            return self.result(typ, MIRRead(self.place(expr)), loc)
         if isinstance(expr, th.THIRWalrus):
             value = self.expr(expr.value)
-            self.write(self.bindings[expr.name], MIRRead(value), loc)
+            self.write(self.bindings[expr.name], MIRRead(MIRPlace(value)), loc)
             return value
         if isinstance(expr, th.THIRUnaryNot):
             return self.result(BOOL, MIRNot(self.expr(expr.operand)), loc)
@@ -280,13 +387,22 @@ class _Builder:
             loc = stmt.loc
             if isinstance(stmt, th.THIRNoOpStmt):
                 continue
-            if isinstance(stmt, th.THIRVarDecl):
+            if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl, th.THIRAssign,
+                                 th.THIRPtrLocalRebind)) and stmt.alias_binding is not None:
+                fact = stmt.alias_binding
+                source = self.bindings[fact.source]
+                name = stmt.target.name if isinstance(stmt, th.THIRAssign) else stmt.name
+                if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
+                    self.bindings[name] = self.slot(fact.reference.type, MIRSlotKind.LOCAL,
+                                                    name, fact.reference)
+                self.write(self.bindings[name], MIRAlias(source), loc)
+            elif isinstance(stmt, th.THIRVarDecl):
                 dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name)
                 if stmt.init is not None:
-                    self.write(dest, MIRRead(self.expr(stmt.init)), loc)
+                    self.write(dest, MIRRead(MIRPlace(self.expr(stmt.init))), loc)
                 self.bindings[stmt.name] = dest
             elif isinstance(stmt, th.THIRAssign):
-                self.write(self.bindings[stmt.target.name], MIRRead(self.expr(stmt.value)), loc)
+                self.write(self.place(stmt.target), MIRRead(MIRPlace(self.expr(stmt.value))), loc)
             elif isinstance(stmt, th.THIRExprStmt):
                 self.expr(stmt.expr)
             elif isinstance(stmt, th.THIRReturn):
@@ -334,7 +450,8 @@ class _Builder:
 
     def build(self) -> MIRFunction:
         for p in self.fn.params:
-            self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name)
+            self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
+                                               p.borrowed_record)
         self.stmts(self.fn.body)
         reachable: set[MIRBlockId] = set()
         pending = [self.blocks[0].id]
@@ -366,7 +483,8 @@ def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
     """The caller supplies declaration kind; THIRFunction alone loses it."""
     try:
         _require(fn, kind is MIRBodyKind.FREE_FUNCTION, "unsupported body kind")
-        _Coverage(fn).check()
+        coverage = _Coverage(fn)
+        coverage.check()
         return _Builder(body, fn).build()
     except _Unsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,
