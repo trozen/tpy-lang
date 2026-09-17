@@ -2354,6 +2354,67 @@ def unwrap_ref_type(t: 'TpyType') -> 'TpyType':
 
 
 
+class ResultPosition(Enum):
+    SYNC_CALL = "sync_call"
+    ASYNC_PAYLOAD = "async_payload"
+    ERASED_CALLABLE = "erased_callable"
+
+
+class ResultRepresentation(Enum):
+    """Existing reader decisions, not ownership or contained-borrow facts.
+
+    STORAGE only selects the async storage path or a negative sync-reference
+    answer. It does not prove that the result is fresh or contains no borrows.
+    """
+    STORAGE = "storage"
+    CPP_REFERENCE = "cpp_reference"
+    ASYNC_POINTER = "async_pointer"
+    ASYNC_TRAIT = "async_trait"
+    ERASED_VOID = "erased_void"
+    ERASED_DECLARED_TYPE = "erased_declared_type"
+
+
+def classify_result_representation(
+        ret_type: TpyType | None, *, position: ResultPosition,
+        fi: FunctionInfo | None = None) -> ResultRepresentation:
+    """Read the current return convention at one specific consuming position.
+
+    Normalization is position-specific: erasure renders the declared type
+    verbatim, sync strips Ref only, and async also strips outer markers and
+    readonly. Keep render-time type/permission handling at the consumer.
+    """
+    if position is ResultPosition.ERASED_CALLABLE:
+        return (ResultRepresentation.ERASED_VOID if isinstance(ret_type, VoidType)
+                else ResultRepresentation.ERASED_DECLARED_TYPE)
+    if position is ResultPosition.SYNC_CALL:
+        if fi is None or fi.is_constructor:
+            return ResultRepresentation.STORAGE
+        # Free native declarations do not establish the C++ reference ABI.
+        if fi.is_native_import and not fi.is_method:
+            return ResultRepresentation.STORAGE
+        rt = unwrap_ref_type(ret_type)
+        if (rt is not None and not rt.is_value_type()
+                and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType))
+                and not is_protocol_type(rt)):
+            return ResultRepresentation.CPP_REFERENCE
+        return ResultRepresentation.STORAGE
+    if position is ResultPosition.ASYNC_PAYLOAD:
+        rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
+              if ret_type is not None else None)
+        if rt is None or isinstance(rt, (VoidType, OwnType)):
+            return ResultRepresentation.STORAGE
+        if isinstance(rt, TypeParamRef):
+            return ResultRepresentation.ASYNC_TRAIT
+        if isinstance(rt, OptionalType):
+            return (ResultRepresentation.ASYNC_POINTER if rt.uses_pointer_repr()
+                    else ResultRepresentation.STORAGE)
+        if (isinstance(rt, UnionType) or rt.is_value_type()
+                or is_protocol_type(rt) or rt.needs_wrapper()):
+            return ResultRepresentation.STORAGE
+        return ResultRepresentation.ASYNC_POINTER
+    raise AssertionError(f"Unknown result position: {position}")
+
+
 def is_open_type_param_return(ret: 'TpyType') -> bool:
     """A declared return that is a bare, still-unresolved type parameter.
 
@@ -4564,7 +4625,10 @@ class CallableType(TpyType):
         return cpp
 
     def _std_function_sig(self) -> str:
-        ret = "void" if isinstance(self.return_type, VoidType) else self.return_type.to_cpp()
+        representation = classify_result_representation(
+            self.return_type, position=ResultPosition.ERASED_CALLABLE)
+        ret = ("void" if representation is ResultRepresentation.ERASED_VOID
+               else self.return_type.to_cpp())
         params = ", ".join(self._callable_param_cpp(t) for t in self.param_types)
         return f"std::function<{ret}({params})>"
 

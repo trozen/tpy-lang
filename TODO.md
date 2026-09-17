@@ -1567,6 +1567,11 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
   `map` stays in C++ until this lands).
   The implementation plan (steps in landing order, files and lines, the five
   independently mergeable steps first) lives in the design document only.
+  Its shared-reader checkpoint extracts existing representation decisions only;
+  designing permission and contained-borrow analysis remains part of the
+  feasibility checkpoint, and the complete semantic result descriptor lands
+  with the coupled implementation. A storage representation is not proof that
+  its payload contains no borrows.
   Its "Compatibility gate" first measures programs newly rejected by A1-A12,
   separating actual lifetime violations from safe false positives, including
   scalar callbacks under ordinary loans. Contract-first is conditional on an

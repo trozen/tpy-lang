@@ -8135,6 +8135,12 @@ add_item(data, 4) # Warning: add_item mutates param 0, borrow of 'data' active
 
 ### Return-Value Borrow Contracts (Working)
 
+The synchronous-call, async-payload and erased-callable representation readers
+share a position-aware classifier. This refactor preserves current return
+conventions and their existing limitations; the full callable result contract
+(including permission and contained-borrow analysis) remains planned in
+`CALLABLE_CONTRACT_DESIGN.md`.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

@@ -144,6 +144,11 @@ body, `match` arm.
 
 **(a) Form: one classifier.**
 
+The descriptor below is the target contract, not the representation reader
+extracted in checkpoint 2. That checkpoint preserves existing decisions;
+permission and contained-borrow analysis are designed in checkpoint 3 and
+implemented with the coupled contract in checkpoint 4.
+
 1. **Form spelling, the def rule, uniformly** (*implemented-now*): in
    `Fn[[A...], R]`, `Callable[[A...], R]` and `def ... -> R` alike the form is
    read off `R` as above, and erasure into `Callable` does not change it.
@@ -664,13 +669,14 @@ an answer that needs no place model.
 
 1. **Classifier signature.** `classify_result(ret_type, *, position, fi=None) ->
    ResultDescriptor`; `call_returns_cpp_ref` degrades to a one-liner over it and
-   `async_return_form` to a second.
+   `async_return_form` to a second. This is the target semantic API; checkpoint 2
+   uses `classify_result_representation` without inventing the missing facts.
 2. **Where its halves live.** The WHOLE descriptor lives in `typesys`;
    `value_category` keeps only the analyzer-dependent predicates. `_std_function_sig`
    needs the permission and contained-borrows dimensions, so a reduced second
    reader is exactly the drift rule 3 exists to prevent.
-3. **`AsyncReturnForm`.** Deleted. It is the neutral row under another name,
-   expressed as the descriptor plus a pointer-vs-reference render flag.
+3. **`AsyncReturnForm`.** Deleted when the full descriptor lands. Checkpoint 2
+   retains it as a compatibility adapter over the shared representation reader.
 4. **`Place`'s degenerate form.** Not applicable: this half introduces no `Place`.
    Loans keep today's string storage keys.
 5. **One loan table or two.** Neither is re-keyed and no second table is added.
@@ -869,9 +875,9 @@ language restrictions discovered during implementation.
 | Checkpoint | Work and acceptance condition | Status |
 |---|---|---|
 | 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | Complete; all three landed |
-| 2. Shared type decisions | Unify const-inference readers and extract the result descriptor/classifier. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Const-reader extraction implemented and tested; classifier pending |
-| 3. Feasibility and generic forms | Design and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Pending |
-| 4. Coupled contract implementation | Admission, conversion checks, lambda result stamps, runtime slots, THIR, erasure, native annotations and stubs land together after checkpoint 3 passes. | Gated |
+| 2. Shared type decisions | Unify const-inference readers and extract existing result-representation decisions. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Both extractions implemented and verified |
+| 3. Feasibility and generic forms | Design the full descriptor's permission and contained-borrow analysis and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Pending |
+| 4. Coupled contract implementation | Full semantic descriptor, admission, conversion checks, lambda result stamps, runtime slots, THIR, erasure, native annotations and stubs land together after checkpoint 3 passes. | Gated |
 | 5. Precise provenance | Implement the MIR requirements and remove measured interim restrictions as their proofs become available. | Deferred |
 
 Checkpoint 1 starts with **P0.1 only**. Its invariant is that a lambda rejection
@@ -993,6 +999,46 @@ focused run. The full remote `--force-exec` run passed **8,054 tests, 23 skipped
 with all **4,136 executable cases** rebuilt and run. All existing diagnostic
 and generated-code snapshots remained byte-identical.
 
+**Result-representation extraction.** `classify_result_representation` in
+`typesys` reads the existing synchronous-call, async-payload and erased-callable
+decisions at an explicit `ResultPosition`. Its enum records representation
+choices only; it is not a reduced semantic `ResultDescriptor`. In particular,
+STORAGE does not mean FRESH or borrow-free. No permission or contained-borrow
+field is filled with a placeholder. The complete descriptor remains required
+before contract checking and rendering adopt the target rules.
+
+Synchronous calls retain constructor and free-native exclusions and strip only
+`Ref`; async payloads retain their marker/Ref/readonly normalization order and
+generic trait path. Erasure retains the raw declared type's `to_cpp()` spelling,
+including explicit references and tuple elements. Async renderers still read
+their original types for pointer spelling and constness. Existing discrepancies
+for void, wrappers, unions, native functions and erased reference results are
+preserved, not presented as newly approved language rules.
+
+The scope matrix for this extraction is:
+
+| Axis | Coverage or exclusion |
+|---|---|
+| Scalar, reference, tuple (single and mixed), Optional, Union, recursive wrapper, generic, Own, readonly, markers, str/bytes, Ptr/Span, protocols | Consumer decision matrix pins all three positions without normalizing away their differences. |
+| Box/Rc and other library nominals | Their existing TypeDef/value classification is delegated unchanged; the full pointer/library corpus pins their rendered uses. No new traversal into fields is introduced. |
+| Free functions, methods, constructors and native calls | Metadata cases pin exclusions; existing field-return and generic function/method cases mutate returned aliases. |
+| Async, including `try`/`finally` and generic/value twins | Existing async borrow, nocopy, optional and suspended-finally cases pin payload emission and shared mutations. |
+| Globals, generator bodies, comprehensions, closures, context managers, `@error_return`, `match` | Calls use the same reader regardless of enclosing body; existing callable-field cases cover invocation in each. Generator yield and error-return slot classifiers are separate policies and are not extracted here. |
+| Local, parameter, return, field, container element and global slots | The decision follows the callee/result type, not the destination slot. Existing alias, tuple-return and callable-container cases cover consumption; no slot/coercion logic changes. |
+
+The pitfalls checks preserve existing acceptance, diagnostics, evaluation order,
+copy/view/allocation choices and constness through byte-identical snapshots.
+Mutation-sensitive execution cases and nocopy payloads distinguish aliases from
+copies; decision checks pin generic and monomorphic shapes without claiming
+their existing differences are fixed. No diagnostic strings or formatting rules
+change. The existing callable-result copying and async-union defects remain
+tracked in `BUGS.md`; fixing them requires the later contract/consumer work.
+
+Validation: **49 consumer checks** and **15 existing cases** passed in the
+focused run (14 executable cases rebuilt and run). The full remote
+`--force-exec` run passed **8,103 tests, 23 skipped**, with all **4,136 executable
+cases** rebuilt and run. Existing sources and expected snapshots were unchanged.
+
 ### Detailed work inventory
 
 The execution checkpoints above determine the landing order. Items 1-5 are
@@ -1026,12 +1072,15 @@ above is satisfied.
    invocation. Reuse `analyze_callable_value_call` and computed-call lowering,
    including argument coercion and opaque-call mutation invalidation, while
    preserving generic-method resolution and single receiver analysis.
-5. **The descriptor and the one classifier.** `ResultForm` / `ResultDescriptor` in
-   `tpyc/typesys.py` beside `make_ref` (`:2308`) / `RefType` (`:2232`);
-   `async_return_form` (`tpyc/value_category.py:55`) and `call_returns_cpp_ref`
-   (`:127`) become thin consumers; `_std_function_sig` (`typesys.py:4529`) reads the
-   same decider. Nothing is persisted -- a pure function over a `TpyType`.
-   Acceptance test: byte-identical snapshots.
+5. **The existing representation decisions.** `ResultPosition`,
+   `ResultRepresentation` and `classify_result_representation` live in
+   `tpyc/typesys.py` beside the Ref helpers. `async_return_form` and
+   `call_returns_cpp_ref` in `value_category` are thin consumers;
+   `CallableType._std_function_sig` reads the same decider. Nothing is persisted
+   or inferred beyond existing type/declaration facts. Acceptance test:
+   byte-identical snapshots. The full `ResultForm` / `ResultDescriptor`, including
+   permission and contained-borrow analysis, is designed at checkpoint 3 and
+   implemented with the coupled branch after that gate passes.
 6. **`@native_borrow` plumbing WITHOUT annotating a stub.** The decorator stub
    (`lib/tpy/tpy/_bootstrap/_extern.py:31`), the qname (`tpyc/qnames.py:157`), the
    parse field (`tpyc/parse/nodes.py:1454`), the decorator branch in BOTH parser

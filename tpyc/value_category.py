@@ -17,8 +17,8 @@ from typing import Any, Protocol
 
 from .typesys import (
     FunctionInfo, NominalType, PtrType, TpyType, TypeParamRef, OwnType,
-    OptionalType, UnionType,
-    VoidType, is_open_type_param_return, is_primitive_type, is_protocol_type,
+    OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
+    is_open_type_param_return, is_primitive_type, is_protocol_type,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .parse import (
@@ -53,28 +53,14 @@ class AsyncReturnForm(Enum):
 
 
 def async_return_form(ret_type: 'TpyType | None') -> AsyncReturnForm:
-    """Classify an async def's declared return into its Poll-payload form.
-
-    Kept beside `call_returns_cpp_ref` so the async and sync return
-    conventions can't drift: the same type kinds that make a sync return
-    `T&` make the async payload `T*`. Unions and recursive-union wrappers
-    stay storage form (their borrow-consumer side is not built -- see the
-    pointer-variant Union entry in BUGS.md); protocol returns are
-    value-shaped concrete structs.
-    """
-    rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
-          if ret_type is not None else None)
-    if rt is None or isinstance(rt, (VoidType, OwnType)):
-        return AsyncReturnForm.STORAGE
-    if isinstance(rt, TypeParamRef):
+    """Adapt the shared representation decision to the Poll-payload API."""
+    representation = classify_result_representation(
+        ret_type, position=ResultPosition.ASYNC_PAYLOAD)
+    if representation is ResultRepresentation.ASYNC_POINTER:
+        return AsyncReturnForm.BORROW
+    if representation is ResultRepresentation.ASYNC_TRAIT:
         return AsyncReturnForm.TRAIT
-    if isinstance(rt, OptionalType):
-        return (AsyncReturnForm.BORROW if rt.uses_pointer_repr()
-                else AsyncReturnForm.STORAGE)
-    if (isinstance(rt, UnionType) or rt.is_value_type()
-            or is_protocol_type(rt) or rt.needs_wrapper()):
-        return AsyncReturnForm.STORAGE
-    return AsyncReturnForm.BORROW
+    return AsyncReturnForm.STORAGE
 
 
 def async_result_aliases(declared_return: 'TpyType | None',
@@ -142,23 +128,10 @@ def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | No
     fall through to the shape check (so dict.setdefault / items aliasing
     holds).
     """
-    if fi is None:
-        return False
-    # Free native functions default to value semantics (unknown C++ return
-    # convention). Native METHODS are excluded: they honor the `-> V` /
-    # `Own[V]` contract via the shape check below, like user methods -- so the
-    # `not is_method` gate, not `is_native_import` alone, is what keeps
-    # native-method aliasing.
-    if fi.is_native_import and not fi.is_method:
-        return False
-    # Record constructors return rvalue temporaries, never C++ T&.
-    if fi.is_constructor:
-        return False
-    rt = unwrap_ref_type(fi.return_type)
-    return (rt is not None
-            and not rt.is_value_type()
-            and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType))
-            and not is_protocol_type(rt))
+    return classify_result_representation(
+        fi.return_type if fi is not None else None,
+        position=ResultPosition.SYNC_CALL, fi=fi,
+    ) is ResultRepresentation.CPP_REFERENCE
 
 
 def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:

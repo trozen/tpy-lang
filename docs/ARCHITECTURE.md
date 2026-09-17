@@ -96,6 +96,13 @@ inherently-const-view exception; const-method parameter emission subtracts
 the recorded roots from mutation facts. These are distinct policies over
 the same body-analysis facts, not a second provenance analysis.
 
+Result-representation readers share `typesys.classify_result_representation`.
+An explicit position selects synchronous call classification, async payload
+classification or the erased callable's declared return spelling. The reader
+preserves each position's wrapper handling and exclusions; `value_category`
+adapts its answers and `CallableType` renders the erased result. These are
+representation decisions, not ownership, access-permission or provenance proofs.
+
 Parsing is mostly syntactic: the parser emits `TypeRefNode` (see
 `parse/nodes.py`) for every annotation site and a dedicated resolve
 phase binds them to `TpyType`. The parser's few remaining typesys
