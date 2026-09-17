@@ -8,6 +8,7 @@ from .nodes import (
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind,
     MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
+    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
 )
 
 
@@ -21,7 +22,12 @@ class TupleValue:
     elements: tuple[int | bool | Reference, ...]
 
 
-Value = int | bool | Reference | TupleValue
+@dataclass(frozen=True)
+class OptionalValue:
+    payload: int | bool | Reference | None = None
+
+
+Value = int | bool | Reference | TupleValue | OptionalValue
 Heap = dict[int, dict[MIRFieldId, int | bool]]
 
 
@@ -48,7 +54,10 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
     def read(place: MIRPlace) -> Value:
         value = values[place.root]
         for projection in place.projections:
-            if isinstance(projection, MIRTupleIndex):
+            if isinstance(projection, MIROptionalPayload):
+                assert isinstance(value, OptionalValue) and value.payload is not None
+                value = value.payload
+            elif isinstance(projection, MIRTupleIndex):
                 assert isinstance(value, TupleValue)
                 value = value.elements[projection.index]
             elif isinstance(projection, MIRDeref):
@@ -75,6 +84,16 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
                 source = values[rhs.source]
                 assert isinstance(source, TupleValue)
                 value = TupleValue(source.elements)
+            elif isinstance(rhs, MIROptionalConstruct):
+                value = OptionalValue(values[rhs.source] if rhs.source is not None else None)
+            elif isinstance(rhs, MIROptionalCopy):
+                source = values[rhs.source]
+                assert isinstance(source, OptionalValue)
+                value = OptionalValue(source.payload)
+            elif isinstance(rhs, MIRIsPresent):
+                source = values[rhs.source]
+                assert isinstance(source, OptionalValue)
+                value = source.payload is not None
             elif isinstance(rhs, MIRConstruct):
                 layout = records[slots[stmt.target.root].type]
                 value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}

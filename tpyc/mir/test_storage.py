@@ -274,7 +274,7 @@ def test_semantic_facts_are_required(functions: dict[str, th.THIRFunction]) -> N
 
 
 @pytest.mark.parametrize("annotation", [
-    "Own[Cell]", "Cell | None", "Cell | Other", "tuple[Cell]", "list[Cell]",
+    "Own[Cell]", "Cell | Other", "tuple[Cell]", "list[Cell]",
     "GenericCell[int32]", "Child",
 ])
 def test_excluded_parameter_shapes(annotation: str) -> None:

@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, tuple_layout
+from .storage import alias_binding, borrowed_record, optional_layout, tuple_layout
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -537,6 +537,7 @@ from .checks import (
     _user_iterator_iterable,
 )
 from .expressions import (
+    _whole_optional_bare,
     _is_own_param,
     _lower_module_var,
     _module_var_access_pair,
@@ -5571,6 +5572,26 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
             raise
         raise ThirUnsupported(stmt_reject_reason(stmt, ex.reason),
                               loc=ex.loc) from None
+    if isinstance(result, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind)):
+        name = result.name
+    elif isinstance(result, THIRAssign) and isinstance(result.target, THIRName):
+        name = result.target.name
+    else:
+        return result
+    typ = declared.get(name)
+    if typ is not None:
+        pointer = name in lc.pointers
+        layout = optional_layout(typ, lc.analyzer, borrow=pointer,
+                                 readonly=name in lc.const_locals or getattr(result, "is_const", False))
+        if layout is not None and (pointer or _value_opt_scalar_binding(name, lc)):
+            result = replace(result, optional_layout=layout)
+            # A bare name at an Optional destination copies the whole payload.
+            attr = "init" if isinstance(result, (THIRVarDecl, THIRPtrLocalDecl)) else "value"
+            value = getattr(result, attr)
+            if (isinstance(value, THIRName) and value.optional_read is not None
+                    and not value.deref):
+                result = replace(result, **{attr: replace(value, optional_read=replace(
+                    value.optional_read, extract=False))})
     return result
 
 
@@ -11168,7 +11189,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and (_value_opt_scalar_binding(stmt.init.name, lc)
                          or _value_opt_view_binding(stmt.init.name, lc))
                     and _value_opt_target_binding(stmt.name, lc)):
-                init = replace(init, deref=False)
+                init = _whole_optional_bare(init)
             # An owned-BYTES target fed a view source takes the family's
             # view->owned construction: `std::vector<uint8_t>` has no
             # `operator=` from a span. The TARGET's declared storage asks --

@@ -71,6 +71,18 @@ class THIRTupleLayout:
 
 
 @dataclass(frozen=True)
+class THIROptionalLayout:
+    """An absent value or one scalar snapshot / borrowed record identity."""
+    payload: TpyType | THIRBorrowedRecord
+
+
+@dataclass(frozen=True)
+class THIROptionalRead:
+    layout: THIROptionalLayout
+    extract: bool
+
+
+@dataclass(frozen=True)
 class THIRAliasBinding:
     """The destination receives the source binding's current referent."""
     source: str
@@ -269,6 +281,7 @@ class THIRName(THIRExpr):
     verbatim by emit; `name` keeps the Python name for the gate/scope
     bookkeeping."""
     name: str
+    optional_read: THIROptionalRead | None = field(default=None, kw_only=True)
     is_last_use: bool = False
     is_movable: bool = False
     deref: bool = False
@@ -1687,6 +1700,7 @@ class THIRVarDecl(THIRStmt):
     C++ slot shape (REF_ALIAS `T&` vs OPTIONAL_TO_PTR `T*`); no other node
     may depend on it."""
     name: str
+    optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
@@ -1873,6 +1887,7 @@ class THIRPtrLocalDecl(THIRStmt):
     own storage (`THIRAssign.rebind_storage` / `THIRPtrLocalRebind`), so
     the decl pre-declares no rebind slot."""
     name: str
+    optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
@@ -1901,6 +1916,7 @@ class THIRPtrLocalRebind(THIRStmt):
     slot of the site's own + `to_ptr_variant(*slot)` re-lift). `val_cpp` is
     the union value-variant spelling (unused by the OPT_NONE kind)."""
     name: str
+    optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     value: THIRExpr | None = None
@@ -1938,6 +1954,7 @@ class THIRAssign(THIRStmt):
     statement so the qualified name stays a real
     lvalue (a statement-expression wrap would be an rvalue)."""
     target: THIRExpr
+    optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     value: THIRExpr
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     recv_eval: 'THIRExpr | None' = None
@@ -3372,6 +3389,7 @@ class THIRParam:
     name: str
     type: TpyType
     borrowed_record: THIRBorrowedRecord | None = None
+    optional_layout: THIROptionalLayout | None = None
 
 
 @dataclass(frozen=True)

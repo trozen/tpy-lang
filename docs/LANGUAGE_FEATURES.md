@@ -8288,8 +8288,17 @@ identities: construct/copy/reseat, constant-index scalar reads and record-field
 access. Tuple copies preserve shared mutations without following later holder
 reseats. Empty tuples and readonly-source captures have internal IR tests only;
 existing parser/THIR source rejections are unchanged. Nested/owned tuple elements,
-tuple parameters/returns/unpacking and tagged wrappers remain deferred.
-Owning operations in loops, arbitrary constructor effects, containers/wrappers
+tuple parameters/returns/unpacking and nested wrappers remain deferred.
+M2.4 adds Optional bool/int32 snapshots and nullable borrowed plain records:
+whole-value copies, supported local reseats/clears, None tests and guarded
+scalar or record-field access. Copied wrappers retain their value/referent;
+holder writes invalidate old presence tests, joins intersect the remaining
+facts, and loops converge conservatively. Readonly payload access stays readonly.
+This is internal payload-selection verification, not a new source acceptance
+rule or lifetime proof. Existing nullable-record reseat source gates remain;
+general unions, owned/nested wrappers, Optional calls/results and unproven
+runtime-checked extraction are deferred.
+Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance
 checks remain authoritative. Callable admission remains planned, with no new

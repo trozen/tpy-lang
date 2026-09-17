@@ -19,6 +19,44 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 
 ## Compiler bugs
 
+- **[LOW small] (latent THIR metadata) Optional record tuple-unpack reads lose the selected readonly capability.** [`optional-tuple-unpack-readonly-fact`]
+  Unpacking an Optional record from a const tuple emits `const Cell*`, but
+  subsequent `THIRName.optional_read` facts describe a mutable
+  `THIRBorrowedRecord` (`readonly=False`). Minimal source:
+
+  ```python
+  from tpy import int32
+
+  class Cell:
+      value: int32
+
+      def __init__(self, value: int32):
+          self.value = value
+
+  def read(pair: tuple[int32, Cell | None]) -> int32:
+      n, item = pair
+      if item is not None:
+          return item.value
+      return n
+  ```
+
+  The tuple parameter is inferred const; both the presence-test read and
+  the narrowed field-receiver read of `item` carry the wrong capability.
+  A chained source also reproduces it: `n, item = holders[0].pair` with
+  `holders: readonly[list[Holder]]` and
+  `Holder.pair: tuple[int32, Cell | None]`.
+  Tuple-unpack lowering in `tpyc/thir/lower/statements.py` records the target
+  in `lc.pointers` and selects `const Cell*` in `target_cpps`, without
+  recording that constness in `lc.const_locals`. Optional read-fact
+  production in `tpyc/thir/lower/expressions.py` consequently loses it.
+  Generated C++ remains correct, and MIR currently rejects tuple unpack
+  for the whole body, so these facts do not admit an unsafe MIR body.
+  Fix and test capability propagation before admitting this shape to MIR;
+  audit sibling unpack paths and existing consumers of `lc.const_locals`
+  before changing the shared context. Confirmed before and after the
+  master merge (`3d041b21d8`, `b4f5d1e8a9`); recorded for a separate fix
+  with user approval. Needs `/tpy-fix-bug`.
+
 - **[MED small] (rejects valid, toolchain-caught) Immediate field access through a walrus tuple uses value access on a pointer.** [`walrus-tuple-immediate-field-access`]
   With a record `Cell` holding `value: int32`,
   `print((saved := (current,))[0].value)` emits `.value` on the `Cell*`

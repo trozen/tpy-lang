@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 
 from ...parse.nodes import TpyFieldAccess, TpyName, TpySubscript, TupleElemCapture
 from ...typesys import (
-    BOOL, INT32, NominalType, ReadonlyType, TupleType, TpyType,
+    BOOL, INT32, NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
     unwrap_readonly, unwrap_ref_type,
 )
 from ..nodes import (
     THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldIdentity, THIRName,
-    THIRRecordLayout, THIRSubscript, THIRTupleLayout,
+    THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout,
 )
 
 if TYPE_CHECKING:
@@ -80,6 +80,22 @@ def tuple_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
                 return None
             elements.append(reference)
     return THIRTupleLayout(tuple(elements))
+
+
+def optional_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
+                    borrow: bool, readonly: bool = False) -> THIROptionalLayout | None:
+    outer_readonly = isinstance(unwrap_ref_type(typ), ReadonlyType)
+    typ = unwrap_readonly(unwrap_ref_type(typ))
+    if not isinstance(typ, OptionalType) or typ.force_pointer_repr:
+        return None
+    inner = unwrap_readonly(typ.inner)
+    if inner in (BOOL, INT32):
+        return THIROptionalLayout(inner) if not typ.uses_pointer_repr() else None
+    if not borrow:
+        return None
+    reference = borrowed_record(typ.inner, readonly or outer_readonly
+                                or isinstance(typ.inner, ReadonlyType), analyzer)
+    return THIROptionalLayout(reference) if reference is not None else None
 
 
 def direct_field(expr: TpyFieldAccess,

@@ -1638,6 +1638,12 @@ alongside related feature work; only the big-rock deferrals live here.
   those shapes have internal IR tests only, with frontend admission deferred.
   Nested/owned tuple elements, tuple params/returns/unpacking, globals/fields,
   standalone record extraction and effectful tuple elements remain deferred.
+  M2.4 adds Optional bool/int32 snapshots and nullable borrowed records with
+  verified current presence at extraction; holder writes invalidate stale tests.
+  Nullable local reseats from plain record parameters retain their existing
+  source gate; internal IR support does not widen frontend admission. General
+  unions need typed alternative/narrowing facts next; owned/nested wrappers and
+  backing-storage lifetimes remain separate scope decisions.
   All excluded cells are filed there: M2 identities, storage/forms,
   methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
   comprehension/match, binding scopes and holder propagation; M4 summaries,

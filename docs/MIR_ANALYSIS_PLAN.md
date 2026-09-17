@@ -827,6 +827,172 @@ accepted the producer facts, typed projections and bounded coverage. This
 increment remains analysis infrastructure, with no production MIR consumer or
 lifetime proof.
 
+## M2.4: Optional payloads and presence checks
+
+Status: implemented, reviewed and verified. This is an
+architectural increment, following M2.3 at `adce74b35b`. Keep normal compilation,
+source acceptance, diagnostics, emission and provenance authority unchanged.
+Working branch: `mir-optional-payloads`.
+
+```python
+def example(a: Cell | None, other: Cell) -> int32:
+    current = a
+    saved = current
+    current = None
+    if saved is not None:
+        saved.value = 9
+    return other.value
+```
+
+With an existing plain `Cell` record, this source emits two pointer copies,
+clears only `current`, tests `saved` against null and writes its referent. If
+`a` and `other` are the same object, the result is 9; if distinct or `a` is None,
+`other` is unchanged. The scalar Optional twin copies the contained value, not
+the source binding. Readonly restricts the reference, not other aliases' writes.
+
+Design-time runtime probes matched CPython for absent/shared/distinct records,
+scalar None/zero/nonzero, bool None/False/True and mutation through a mutable
+alias observed by a readonly nullable alias. The type/identity contract needs
+no new diagnostic or escape hatch. Check both int32 bounds in implementation
+tests as well; general Optional truthiness is outside this proposal.
+
+**Invariant:** an Optional value carries absence or the selected scalar value /
+borrowed record identity and capability; payload access requires a presence
+fact valid for that exact value, and holder replacement cannot retarget copies
+or preserve a stale presence fact.
+
+### Representation survey and split from unions
+
+The existing producer decisions, not `Form` or C++ spelling, must establish:
+
+| Family | Existing representation | Consequence for analysis |
+|---|---|---|
+| Optional bool/int32 | `std::optional<T>` | Copy presence and scalar snapshot |
+| Optional borrowed record | Nullable `T*` / `const T*` | Copy presence and referent identity/capability |
+| Owned Optional record | `std::optional<Record>` and explicit borrow conversions | Needs owned payload/backing-storage identity; deferred |
+| Optional tuple | Optional containing a tuple, including borrowed tuple members | Needs nested presence plus tuple layout; deferred |
+| All-value union | Inline value alternatives | Typed alternative tests and wrapper payload places are needed |
+| Reference or mixed union | Pointers for every non-None alternative, even scalar alternatives | Pointer copies are not scalar snapshots; backing storage may be required |
+| Recursive union | A wrapper whose layout overrides ordinary union representation | Needs frozen wrapper identity/layout; deferred |
+
+Precedent: extend `thir/lower/storage.py`'s positive immutable facts and the MIR
+tuple payload / typed-place verifier pattern. Reuse plain-record identities and
+access capabilities. Do not introduce a generic union representation before its
+alternative-specific facts exist; Optional is the first two-state payload.
+
+Producer seams identified in the survey:
+
+- `thir/lower/functions.py`: parameter payload representation and capability.
+- `thir/lower/statements.py`: Optional declarations and pointer rebinds; the
+  whole-Optional assignment path distinguishes copying a wrapper from extracting
+  its narrowed payload. A narrowed target's expression type is not its slot type.
+- `thir/lower/expressions.py`: `THIRIsNone`, narrowed names and optional field
+  receivers; `deref` alone also serves ordinary indirect names and is not a
+  sufficient semantic fact. Unproven accesses retain separate runtime checks.
+- For the later union increment, `_make_narrow_alias`, `THIRIsinstance` and
+  `THIRNarrowedRead` currently retain C++ subject/member strings. Typed original
+  wrapper and selected-alternative facts must be added together, including
+  branch-entry, early-return and compound-condition extraction paths.
+
+### Bounded scope and verification
+
+| Axis | Proposed M2.4 coverage | Deferred scope |
+|---|---|---|
+| Position | Ordinary monomorphic free functions, prefix locals, existing if/while/short-circuit CFG | Methods/constructors/globals/closures: remaining M2; new branch/loop bindings, generators/async, comprehensions, with, try/finally, error-return and match: M3 |
+| Shape | Optional bool/int32 or borrowed plain record, mutable/readonly; existing unwrapped M1-M2.3 shapes | Union, nested Optional/tuple payloads, owned Optional records, other scalars, str/bytes/views, Own/Ptr/Span/Box/Rc, containers/protocols/recursive aliases; generic forms: M4 |
+| Slot | Parameters, entry-declared local holders, expression temporaries; scalar record fields after guarded extraction | Optional results/calls, fields/globals/containers/captures holding Optional, backing storage, parameter reseats |
+| Operation | None/member assembly, whole-value name copy and supported reseats, None tests, guarded scalar extraction or record-field read/write | Ownership conversions, effectful constructors/calls, unchecked/unproven access, general truthiness/equality, standalone extracted-record bindings |
+
+1. Add typed THIR facts for Optional layout, whole-value transfers, presence
+   tests and payload-source identity. Stamp them where representation and
+   access are selected. Preserve existing emitter fields. Missing or contradictory
+   facts and unsupported bodies continue to yield whole-body `MIRNotCovered`.
+2. Extend MIR slots and operations for absent/present construction, payload
+   copying and presence tests. Add a typed payload projection composing with
+   existing dereference/field projections. Scalar extraction reads a value;
+   reference extraction preserves referent identity and capability.
+3. Verify presence at payload access. Track the relationship between a test's
+   boolean result and the tested holder/value; overwriting either must not leave
+   a usable stale guard. Writes invalidate holder facts, joins retain only facts
+   true on every incoming edge, and loops converge conservatively. A successful
+   check establishes valid payload selection, not borrow/lifetime safety.
+   Runtime-checked unproven accesses remain uncovered until failure edges exist.
+4. Test actual emitted THIR from compiler-unit-owned sources. Required witnesses:
+   None and present values (including False/zero), scalar snapshots, shared and
+   distinct record identities, copied holder cleared/reseated independently,
+   readonly aliases observing mutation, guard/early-return/loop exits, stale
+   boolean tests after reseat, branch joins, and malformed layout/capability facts.
+   Producer tests include methods/constructors without admitting those MIR bodies.
+5. Add explicit negative coverage for the deferred families and slot positions;
+   reuse the existing bool/int32/record/tuple witnesses beside their Optional
+   twins. Run targeted tests, specialist review and readiness gates, then a full
+   forced suite; prepare one squash commit on the branch, without merging/pushing.
+
+The presence work is deliberately a small prerequisite for tagged payloads,
+not the M3 liveness/loan analysis. Its dataflow should use finite per-slot facts
+and a worklist, never enumerate paths. Preserve test provenance through admitted
+boolean operations or conservatively decline coverage when it cannot be verified.
+
+### Source admission, risks and follow-on work
+
+Producer probes confirm the example above, scalar Optional copies/reseats,
+readonly nullable-record reads after mutation through another alias, and a loop
+that clears a nullable holder already emit. Some other source forms still stop
+before MIR: reseating a nullable local from a plain record parameter hits
+`decl.reseat_param_source`, and the analogous union example hits
+`decl.union_reseat_source`. Keep those rejections and pin them; where necessary,
+test the corresponding admitted IR operation directly. Do not claim that an IR
+operation makes every source spelling available.
+
+Risk: stale narrowing after holder replacement or a join is more serious than
+a missing shape. Require verifier-negative tests that still fail when lowering
+facts falsely claim a payload is present. Do not relax a check or reinterpret a
+record borrow as a copy to fit existing THIR metadata.
+
+Pitfall audit: mutation witnesses cover alias/copy semantics; singleton/mixed
+tuple and Optional-of-tuple twins are explicit exclusions; shared producer facts
+cover position symmetry without widening body coverage; tests retain conditional
+evaluation; generic twins remain unsupported. No new owned views, allocations,
+copy warnings, C++ formatting or user diagnostics are intended. Readonly flows
+through every payload operation; iteration slots and cleanup remain M3 work.
+Thus no new Python rejection or warning is justified by partial MIR coverage.
+
+Actual coverage is recorded in `LANGUAGE_FEATURES.md` and `ARCHITECTURE.md`;
+`TODO.md` retains the excluded cells. Source-owned compiler unit tests use the
+emitted THIR directly, including method/constructor producer checks without
+admitting those body kinds to MIR. Direct IR tests cover record-member assembly
+behind the existing source gate, capability transfer directions and malformed
+operations. No compiler test reads the snippet-test corpus.
+
+The implementation records `THIROptionalLayout` on parameters and selected
+holder writes, and `THIROptionalRead` on whole-wrapper or extracted name reads.
+MIR construction, copy and presence-test operations share the same payload
+layout. Payload places compose with record dereference/field projections.
+Presence verification uses a finite worklist domain with unconditional holder
+facts and sparse boolean implications. Joins reconstruct each predecessor's
+full outcome before intersection; holder writes invalidate old implications.
+This avoids duplicating unrelated unconditional facts in every boolean result;
+it does not claim linear complexity for arbitrary CFGs.
+
+The initial specialist review found a scaling issue in duplicated presence
+facts and two coverage gaps: narrowed whole-wrapper reassignment and readonly
+construction/copy directions. All three are addressed, with regression tests
+for sparse state, predecessor-derived join proofs and both transfer directions.
+Targeted verification passed 668 MIR/THIR tests. Independent codegen probes
+emitted byte-identical C++ at base and head and matched CPython at runtime.
+Closing review is clean across architecture, safety, codegen, CPython parity,
+tests, docs and conventions, including the final union source-gate test. An
+independent retrospective accepted the design and its explicit coverage limits.
+The final forced suite passed 8,465 tests with 23 skips and rebuilt/ran all
+4,138 native cases; no existing source, diagnostics or generated-code snapshots
+changed. Normal compilation and provenance authority remain unchanged.
+
+Proposed M2.5: nonrecursive unions, with typed alternative tests and extraction
+aliases in one increment. Audit value-payload aliases into the wrapper separately
+from borrowed-record identities, and mixed unions' scalar backing storage before
+choosing its exact subset. Nullable tuples and owned wrappers remain separate
+scope decisions; M2.4 approval does not approve their implementation.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

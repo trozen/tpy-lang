@@ -5,7 +5,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
-from .storage import borrowed_record, record_layout
+from .storage import borrowed_record, optional_layout, record_layout
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
@@ -1032,6 +1032,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         name=n, type=t,
         borrowed_record=borrowed_record(t, _param_is_const(n, func, analyzer, record_name),
                                         analyzer),
+        optional_layout=optional_layout(t, analyzer, borrow=True,
+                                       readonly=_param_is_const(n, func, analyzer, record_name)),
     ) for n, t in src_params)
     rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
     # Seeded with params (and `self`): a write to such a name is a reassignment.
@@ -1999,7 +2001,11 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         ctor = THIRConstructor(
             record_name=record.name,
             record_layout=layout,
-            params=tuple(THIRParam(name=n, type=t) for n, t in init_method.params),
+            params=tuple(THIRParam(
+                name=n, type=t, optional_layout=optional_layout(
+                    t, analyzer, borrow=True,
+                    readonly=_param_is_const(n, init_method, analyzer, record.name)),
+            ) for n, t in init_method.params),
             mil_inits=tuple(field_inits),
             base_inits=tuple(base_inits),
             body=_lower_stmts(body_stmts, lc, body_declared),

@@ -48,6 +48,7 @@ class MIRValueKind(Enum):
     BORROWED_RECORD = auto()
     RECORD_STORAGE = auto()
     TUPLE = auto()
+    OPTIONAL = auto()
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,13 @@ class MIRTupleLayout:
 
 
 @dataclass(frozen=True)
+class MIROptionalLayout:
+    type: TpyType
+    kind: MIRValueKind = MIRValueKind.SCALAR
+    readonly: bool = False
+
+
+@dataclass(frozen=True)
 class MIRSlot:
     id: MIRSlotId
     type: TpyType
@@ -72,6 +80,7 @@ class MIRSlot:
     value_kind: MIRValueKind = MIRValueKind.SCALAR
     readonly: bool = False
     tuple_layout: MIRTupleLayout | None = None
+    optional_layout: MIROptionalLayout | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +91,11 @@ class MIRDeref:
 @dataclass(frozen=True)
 class MIRTupleIndex:
     index: int
+
+
+@dataclass(frozen=True)
+class MIROptionalPayload:
+    pass
 
 
 @dataclass(frozen=True)
@@ -107,7 +121,7 @@ class MIRRecordLayout:
 @dataclass(frozen=True)
 class MIRPlace:
     root: MIRSlotId
-    projections: tuple[MIRDeref | MIRField | MIRTupleIndex, ...] = ()
+    projections: tuple[MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -146,6 +160,21 @@ class MIRTupleCopy:
 
 
 @dataclass(frozen=True)
+class MIROptionalConstruct:
+    source: MIRSlotId | None = None
+
+
+@dataclass(frozen=True)
+class MIROptionalCopy:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
+class MIRIsPresent:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
 class MIRCopy:
     source: MIRPlace
 
@@ -168,7 +197,8 @@ class MIRNot:
 
 
 MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
-             | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy)
+             | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy
+             | MIROptionalConstruct | MIROptionalCopy | MIRIsPresent)
 
 
 @dataclass(frozen=True)

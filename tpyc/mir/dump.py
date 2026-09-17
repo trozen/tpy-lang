@@ -6,6 +6,7 @@ from .nodes import (
     MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
+    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
 )
 from .validate import validate_function
 
@@ -23,6 +24,8 @@ def _place(place: MIRPlace) -> str:
             text += f".{projection.id.owner.qualified_name()}::{projection.id.name}"
         elif isinstance(projection, MIRTupleIndex):
             text += f"[{projection.index}]"
+        elif isinstance(projection, MIROptionalPayload):
+            text += ".payload"
     return text
 
 
@@ -41,6 +44,10 @@ def dump_function(fn: MIRFunction) -> str:
                 ("readonly-ref" if e.readonly else "mutable-ref")
                 if e.kind is MIRValueKind.BORROWED_RECORD else "value"
                 for e in slot.tuple_layout.elements) + ")"
+        elif slot.value_kind is MIRValueKind.OPTIONAL:
+            member = slot.optional_layout
+            access = " optional(" + (("readonly-ref" if member.readonly else "mutable-ref")
+                                      if member.kind is MIRValueKind.BORROWED_RECORD else "value") + ")"
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}")
     for block in fn.blocks:
         lines.append(f"bb{block.id.index}:")
@@ -60,6 +67,12 @@ def dump_function(fn: MIRFunction) -> str:
                 rhs = "tuple (" + ", ".join(f"%{s.index}" for s in value.elements) + ")"
             elif isinstance(value, MIRTupleCopy):
                 rhs = f"tuple-copy %{value.source.index}"
+            elif isinstance(value, MIROptionalConstruct):
+                rhs = "absent" if value.source is None else f"present %{value.source.index}"
+            elif isinstance(value, MIROptionalCopy):
+                rhs = f"optional-copy %{value.source.index}"
+            elif isinstance(value, MIRIsPresent):
+                rhs = f"is-present %{value.source.index}"
             elif isinstance(value, MIRCopy):
                 rhs = f"copy {_place(value.source)}"
             elif isinstance(value, MIRMove):

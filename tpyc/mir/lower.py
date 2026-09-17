@@ -7,7 +7,7 @@ from ..parse import RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..typesys import (
     BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, NominalType, TpyType,
-    TupleType, VoidType, unwrap_readonly, unwrap_ref_type,
+    NoneType, OptionalType, TupleType, VoidType, unwrap_readonly, unwrap_ref_type,
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
@@ -16,10 +16,11 @@ from .nodes import (
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
+    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
 )
 from .coverage import Unsupported as _Unsupported, plain as _plain, require as _require
 from .definitions import MIRConstructorDefinition, MIRDefinitions
-from .validate import successors, validate_function
+from .validate import MIRPresenceError, successors, validate_function
 
 
 def _literal(expr: th.THIRExpr) -> bool:
@@ -39,6 +40,7 @@ class _Coverage:
         self.fixed_owned: set[str] = set()
         self.tuples: dict[str, th.THIRTupleLayout] = {}
         self.tuple_exprs: IdentityMap[th.THIRExpr, th.THIRTupleLayout] = IdentityMap()
+        self.optionals: dict[str, th.THIROptionalLayout] = {}
 
     def check(self) -> None:
         fn = self.fn
@@ -47,9 +49,14 @@ class _Coverage:
         _require(fn, fn.return_type in (BOOL, INT32) or isinstance(fn.return_type, VoidType),
                  "unsupported return type")
         for p in fn.params:
-            _plain(p, {"name", "type", "borrowed_record"})
+            _plain(p, {"name", "type", "borrowed_record", "optional_layout"})
             _require(fn, p.name not in self.bindings, "duplicate binding")
-            if p.borrowed_record is not None:
+            if p.optional_layout is not None:
+                _require(p, p.borrowed_record is None, "conflicting parameter facts")
+                self.optional_layout(p, p.optional_layout, p.type)
+                self.optionals[p.name] = p.optional_layout
+                self.bindings[p.name] = unwrap_readonly(unwrap_ref_type(p.type))
+            elif p.borrowed_record is not None:
                 self.reference(p, p.borrowed_record, p.type)
                 self.references[p.name] = p.borrowed_record
                 self.bindings[p.name] = p.borrowed_record.type
@@ -61,6 +68,26 @@ class _Coverage:
             if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
                 _require(stmt, prefix, "declaration outside entry prefix")
                 _require(stmt, stmt.name not in self.bindings, "duplicate binding")
+                if stmt.optional_layout is not None:
+                    allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", "optional_layout"}
+                    if isinstance(stmt, th.THIRVarDecl):
+                        reference = isinstance(stmt.optional_layout.payload, th.THIRBorrowedRecord)
+                        if reference:
+                            allowed |= {"cpp_local_representation"}
+                        _require(stmt, stmt.form is (th.Form.BORROW if reference else th.Form.VALUE)
+                                 and stmt.init is not None, "optional declaration form or initializer")
+                        _require(stmt, not reference or stmt.is_const == stmt.optional_layout.payload.readonly,
+                                 "optional declaration access mismatch")
+                    else:
+                        allowed |= {"kind"}
+                        _require(stmt, stmt.kind is th.PtrSlotKind.OPT_NONE and stmt.init is None,
+                                 "optional backing storage")
+                    _plain(stmt, allowed)
+                    self.optional_layout(stmt, stmt.optional_layout, stmt.resolved_type)
+                    self.optional_source(stmt.init, stmt.optional_layout)
+                    self.optionals[stmt.name] = stmt.optional_layout
+                    self.bindings[stmt.name] = unwrap_readonly(unwrap_ref_type(stmt.resolved_type))
+                    continue
                 if isinstance(stmt, th.THIRVarDecl) and isinstance(stmt.resolved_type, TupleType):
                     _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const", "tuple_layout"})
                     _require(stmt, stmt.form in (th.Form.VALUE, th.Form.BORROW)
@@ -212,6 +239,60 @@ class _Coverage:
             _require(stmt, self.references.get(name) == fact.reference, "alias destination mismatch")
             self.fixed_owned.discard(name)
 
+    def optional_layout(self, node: object, layout: th.THIROptionalLayout, typ: TpyType) -> None:
+        outer_readonly = unwrap_readonly(unwrap_ref_type(typ)) != unwrap_ref_type(typ)
+        typ = unwrap_readonly(unwrap_ref_type(typ))
+        _require(node, isinstance(layout, th.THIROptionalLayout)
+                 and isinstance(typ, OptionalType) and not typ.force_pointer_repr,
+                 "unsupported optional layout")
+        member = layout.payload
+        if isinstance(member, th.THIRBorrowedRecord):
+            self.reference(node, member, typ.inner)
+            _require(node, (not outer_readonly and unwrap_readonly(typ.inner) == typ.inner) or member.readonly,
+                     "optional layout increases access")
+        else:
+            _require(node, member in (BOOL, INT32) and unwrap_readonly(typ.inner) == member,
+                     "unsupported optional payload")
+
+    def optional_name(self, expr: th.THIRName, *, extract: bool) -> th.THIROptionalLayout:
+        _plain(expr, {"name", "is_last_use", "is_movable", "deref", "optional_read"})
+        fact = expr.optional_read
+        _require(expr, isinstance(fact, th.THIROptionalRead) and fact.extract is extract
+                 and expr.name in self.optionals and fact.layout == self.optionals[expr.name],
+                 "missing or inconsistent optional read")
+        layout = fact.layout
+        reference = isinstance(layout.payload, th.THIRBorrowedRecord)
+        typ = layout.payload.type if reference else layout.payload
+        actual = unwrap_readonly(unwrap_ref_type(expr.result_type))
+        _require(expr, actual == typ if extract else (
+            actual in (typ, self.bindings[expr.name]) or isinstance(actual, VoidType)),
+            "optional read type mismatch")
+        _require(expr, expr.form is (th.Form.BORROW if reference else th.Form.VALUE)
+                 and (reference or expr.deref is extract), "optional read form mismatch")
+        return layout
+
+    def optional_source(self, expr: th.THIRExpr | None, target: th.THIROptionalLayout) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, th.THIRLiteral) and expr.value is None:
+            _plain(expr, {"value", "none_cpp"})
+            if isinstance(expr.result_type, OptionalType):
+                self.optional_layout(expr, target, expr.result_type)
+            else:
+                _require(expr, isinstance(expr.result_type, (NoneType, VoidType)),
+                         "optional absence type")
+        elif isinstance(expr, th.THIRName) and expr.name in self.optionals and (
+                expr.optional_read is not None and not expr.optional_read.extract):
+            source = self.optional_name(expr, extract=False)
+            self.payload_compatible(expr, source.payload, target.payload)
+        elif isinstance(target.payload, th.THIRBorrowedRecord):
+            source = self.references[self.reference_name(expr)]
+            _require(expr, source.type == target.payload.type
+                     and (not source.readonly or target.payload.readonly), "optional capture access mismatch")
+        else:
+            _require(expr, self.expr(expr) == target.payload and not self.writes[expr],
+                     "effectful or mistyped optional payload")
+
     def tuple_layout(self, node: object, layout: th.THIRTupleLayout | None,
                      typ: TpyType) -> None:
         _require(node, isinstance(layout, th.THIRTupleLayout) and isinstance(typ, TupleType),
@@ -230,11 +311,15 @@ class _Coverage:
                          target: th.THIRTupleLayout) -> None:
         _require(node, len(source.elements) == len(target.elements), "tuple copy arity")
         for src, dst in zip(source.elements, target.elements):
-            if isinstance(src, th.THIRBorrowedRecord) and isinstance(dst, th.THIRBorrowedRecord):
-                _require(node, src.type == dst.type and (not src.readonly or dst.readonly),
-                         "tuple copy type or access mismatch")
-            else:
-                _require(node, src == dst, "tuple copy type mismatch")
+            self.payload_compatible(node, src, dst)
+
+    def payload_compatible(self, node: object, source: TpyType | th.THIRBorrowedRecord,
+                           target: TpyType | th.THIRBorrowedRecord) -> None:
+        if isinstance(source, th.THIRBorrowedRecord) and isinstance(target, th.THIRBorrowedRecord):
+            _require(node, source.type == target.type and (not source.readonly or target.readonly),
+                     "payload copy type or access mismatch")
+        else:
+            _require(node, source == target, "payload copy type mismatch")
 
     def tuple_expr(self, expr: th.THIRExpr) -> th.THIRTupleLayout:
         _require(expr, expr.form in (th.Form.VALUE, th.Form.BORROW), "unsupported tuple form")
@@ -289,7 +374,10 @@ class _Coverage:
 
     def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> TpyType:
         _plain(expr, {"receiver", "field_cpp", "field_identity", "is_arrow"})
-        if isinstance(expr.receiver, th.THIRSubscript):
+        if isinstance(expr.receiver, th.THIRName) and expr.receiver.name in self.optionals:
+            reference = self.optional_name(expr.receiver, extract=True).payload
+            _require(expr, isinstance(reference, th.THIRBorrowedRecord), "field needs optional record")
+        elif isinstance(expr.receiver, th.THIRSubscript):
             reference = self.projection(expr.receiver)
             _require(expr, isinstance(reference, th.THIRBorrowedRecord), "field needs tuple reference")
         else:
@@ -317,6 +405,11 @@ class _Coverage:
                          and INT32_MIN <= expr.value <= INT32_MAX),
                      "unsupported literal value")
         elif isinstance(expr, th.THIRName):
+            if expr.name in self.optionals:
+                _require(expr, self.optional_name(expr, extract=True).payload == typ,
+                         "optional scalar extraction required")
+                self.writes[expr] = False
+                return typ
             _plain(expr, {"name", "is_last_use", "is_movable"})
             _require(expr, expr.name in self.bindings, "non-local name")
             _require(expr, self.bindings[expr.name] == typ, "name type mismatch")
@@ -324,6 +417,13 @@ class _Coverage:
             self.field(expr)
         elif isinstance(expr, th.THIRSubscript):
             _require(expr, self.projection(expr) == typ, "scalar tuple projection required")
+        elif isinstance(expr, th.THIRIsNone):
+            _plain(expr, {"operand", "negate", "value_repr"})
+            _require(expr, typ == BOOL and type(expr.negate) is bool
+                     and isinstance(expr.operand, th.THIRName), "unsupported optional test")
+            layout = self.optional_name(expr.operand, extract=False)
+            _require(expr, expr.value_repr is (not isinstance(layout.payload, th.THIRBorrowedRecord)),
+                     "optional test representation mismatch")
         elif isinstance(expr, th.THIRCoerce):
             _plain(expr, {"expr", "coercion_name"})
             _require(expr, typ == INT32
@@ -383,7 +483,26 @@ class _Coverage:
         return typ
 
     def stmt(self, stmt: th.THIRStmt, loops: int) -> None:
-        if isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is not None:
+        if isinstance(stmt, (th.THIRAssign, th.THIRPtrLocalRebind)) and stmt.optional_layout is not None:
+            if isinstance(stmt, th.THIRAssign):
+                _plain(stmt, {"target", "value", "optional_layout"})
+                _require(stmt, isinstance(stmt.target, th.THIRName), "optional assignment needs local")
+                _plain(stmt.target, {"name", "is_last_use", "is_movable"})
+                name = stmt.target.name
+            else:
+                _plain(stmt, {"name", "kind", "optional_layout"})
+                _require(stmt, stmt.kind is th.PtrSlotKind.OPT_NONE, "unsupported optional reseat")
+                name = stmt.name
+            _require(stmt, name in self.optionals and name not in self.parameters
+                     and stmt.optional_layout == self.optionals[name], "optional destination mismatch")
+            if isinstance(stmt, th.THIRAssign):
+                member = stmt.optional_layout.payload
+                typ = member.type if isinstance(member, th.THIRBorrowedRecord) else member
+                actual = unwrap_readonly(unwrap_ref_type(stmt.target.result_type))
+                _require(stmt, actual in (typ, self.bindings[name]) or isinstance(actual, NoneType),
+                         "optional destination type mismatch")
+            self.optional_source(stmt.value, stmt.optional_layout)
+        elif isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is not None:
             self.replacement(stmt, loops)
         elif isinstance(stmt, (th.THIRAssign, th.THIRPtrLocalRebind)) and stmt.alias_binding is not None:
             self.alias(stmt)
@@ -458,16 +577,36 @@ class _Builder:
 
     def slot(self, typ: TpyType, kind: MIRSlotKind = MIRSlotKind.TEMPORARY,
              name: str | None = None, reference: th.THIRBorrowedRecord | None = None,
-             *, storage: bool = False, tuple_layout: th.THIRTupleLayout | None = None) -> MIRSlotId:
+             *, storage: bool = False, tuple_layout: th.THIRTupleLayout | None = None,
+             optional_layout: th.THIROptionalLayout | None = None) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
-        self.slots.append(MIRSlot(sid, reference.type if reference else typ, kind, name,
+        self.slots.append(MIRSlot(sid, reference.type if reference else (
+            unwrap_readonly(unwrap_ref_type(typ)) if optional_layout is not None else typ), kind, name,
                                   form=th.Form.STORAGE if storage else th.Form.BORROW if reference else th.Form.VALUE,
                                   value_kind=(MIRValueKind.RECORD_STORAGE if storage else
                                               MIRValueKind.BORROWED_RECORD if reference else
-                                              MIRValueKind.TUPLE if tuple_layout is not None else MIRValueKind.SCALAR),
+                                              MIRValueKind.TUPLE if tuple_layout is not None else
+                                              MIRValueKind.OPTIONAL if optional_layout is not None else MIRValueKind.SCALAR),
                                   readonly=reference.readonly if reference else False,
-                                  tuple_layout=self.layout(tuple_layout) if tuple_layout is not None else None))
+                                  tuple_layout=self.layout(tuple_layout) if tuple_layout is not None else None,
+                                  optional_layout=self.optional_layout(optional_layout)
+                                  if optional_layout is not None else None))
         return sid
+
+    @staticmethod
+    def optional_layout(layout: th.THIROptionalLayout) -> MIROptionalLayout:
+        member = layout.payload
+        return (MIROptionalLayout(member.type, MIRValueKind.BORROWED_RECORD, member.readonly)
+                if isinstance(member, th.THIRBorrowedRecord) else MIROptionalLayout(member))
+
+    def optional_value(self, expr: th.THIRExpr | None) -> MIRRvalue:
+        if expr is None or isinstance(expr, th.THIRLiteral) and expr.value is None:
+            return MIROptionalConstruct()
+        if isinstance(expr, th.THIRName) and expr.optional_read is not None and not expr.optional_read.extract:
+            return MIROptionalCopy(self.bindings[expr.name])
+        if isinstance(expr, th.THIRName) and expr.result_type not in (BOOL, INT32):
+            return MIROptionalConstruct(self.bindings[expr.name])
+        return MIROptionalConstruct(self.expr(expr))
 
     @staticmethod
     def layout(layout: th.THIRTupleLayout) -> MIRTupleLayout:
@@ -494,6 +633,8 @@ class _Builder:
 
     def place(self, expr: th.THIRExpr) -> MIRPlace:
         if isinstance(expr, th.THIRName):
+            if expr.optional_read is not None and expr.optional_read.extract:
+                return MIRPlace(self.bindings[expr.name], (MIROptionalPayload(),))
             return MIRPlace(self.bindings[expr.name])
         if isinstance(expr, th.THIRSubscript):
             root = (self.bindings[expr.receiver.name] if isinstance(expr.receiver, th.THIRName)
@@ -544,6 +685,9 @@ class _Builder:
             return value
         if isinstance(expr, th.THIRUnaryNot):
             return self.result(BOOL, MIRNot(self.expr(expr.operand)), loc)
+        if isinstance(expr, th.THIRIsNone):
+            present = self.result(BOOL, MIRIsPresent(self.bindings[expr.operand.name]), loc)
+            return present if expr.negate else self.result(BOOL, MIRNot(present), loc)
         if isinstance(expr, th.THIRBinOp):
             left = self.expr(expr.left)
             if expr.op in ("&&", "||"):
@@ -582,7 +726,15 @@ class _Builder:
             loc = stmt.loc
             if isinstance(stmt, th.THIRNoOpStmt):
                 continue
-            if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)) and stmt.owned_storage is not None:
+            if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)) and stmt.optional_layout is not None:
+                dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,
+                                 optional_layout=stmt.optional_layout)
+                self.write(dest, self.optional_value(stmt.init), loc)
+                self.bindings[stmt.name] = dest
+            elif isinstance(stmt, (th.THIRAssign, th.THIRPtrLocalRebind)) and stmt.optional_layout is not None:
+                name = stmt.target.name if isinstance(stmt, th.THIRAssign) else stmt.name
+                self.write(self.bindings[name], self.optional_value(stmt.value), loc)
+            elif isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)) and stmt.owned_storage is not None:
                 fact = stmt.owned_storage
                 storage = self.slot(fact.type, storage=True)
                 self.write(storage, self.record_value(stmt.init), loc)
@@ -671,7 +823,7 @@ class _Builder:
     def build(self) -> MIRFunction:
         for p in self.fn.params:
             self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
-                                               p.borrowed_record)
+                                               p.borrowed_record, optional_layout=p.optional_layout)
         self.stmts(self.fn.body)
         reachable: set[MIRBlockId] = set()
         pending = [self.blocks[0].id]
@@ -705,7 +857,10 @@ def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
         _require(fn, kind is MIRBodyKind.FREE_FUNCTION, "unsupported body kind")
         coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions())
         coverage.check()
-        return _Builder(body, fn, coverage).build()
+        try:
+            return _Builder(body, fn, coverage).build()
+        except MIRPresenceError as failure:
+            raise _Unsupported(fn, str(failure)) from failure
     except _Unsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,
                              getattr(failure.node, "loc", None))

@@ -4,7 +4,7 @@ from collections import deque
 
 from ..thir.nodes import Form
 from ..typesys import (
-    BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, TupleType, TpyType, VoidType,
+    BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, OptionalType, TupleType, TpyType, VoidType,
     unwrap_readonly,
 )
 from .nodes import (
@@ -13,11 +13,17 @@ from .nodes import (
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
+    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
 )
+from .presence import presence_error
 
 
 class MIRValidationError(ValueError):
     """A producer supplied malformed MIR, rather than unsupported source."""
+
+
+class MIRPresenceError(MIRValidationError):
+    """A payload access lacks a valid presence proof at its CFG position."""
 
 
 def _require(condition: bool, message: str) -> None:
@@ -29,8 +35,10 @@ def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
     if isinstance(value, (MIRRead, MIRCopy)):
         _require(isinstance(value.source, MIRPlace), "invalid read place")
         return (value.source.root,)
-    if isinstance(value, (MIRAlias, MIRBorrow, MIRMove, MIRTupleCopy)):
+    if isinstance(value, (MIRAlias, MIRBorrow, MIRMove, MIRTupleCopy, MIROptionalCopy, MIRIsPresent)):
         return (value.source,)
+    if isinstance(value, MIROptionalConstruct):
+        return () if value.source is None else (value.source,)
     if isinstance(value, MIRConstruct):
         return value.fields
     if isinstance(value, MIRTupleConstruct):
@@ -115,7 +123,21 @@ def validate_function(fn: MIRFunction) -> None:
             field_types[member.id] = member.type
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
-        if slot.value_kind is MIRValueKind.TUPLE:
+        if slot.value_kind is MIRValueKind.OPTIONAL:
+            layout = slot.optional_layout
+            _require(isinstance(slot.type, OptionalType) and not slot.type.force_pointer_repr
+                     and isinstance(layout, MIROptionalLayout) and slot.form is Form.VALUE
+                     and not slot.readonly and type(layout.readonly) is bool, "unsupported optional slot")
+            _require(unwrap_readonly(slot.type.inner) == layout.type, "optional payload type mismatch")
+            if layout.kind is MIRValueKind.SCALAR:
+                _require(layout.type in (BOOL, INT32) and not layout.readonly, "unsupported optional scalar")
+            else:
+                _require(layout.kind is MIRValueKind.BORROWED_RECORD
+                         and isinstance(layout.type, NominalType) and layout.type.qualified_name() is not None
+                         and layout.type not in (BOOL, INT32) and not layout.type.type_args
+                         and not layout.type.is_protocol
+                         and (slot.type.inner == layout.type or layout.readonly), "unsupported optional reference")
+        elif slot.value_kind is MIRValueKind.TUPLE:
             layout = slot.tuple_layout
             _require(isinstance(slot.type, TupleType) and isinstance(layout, MIRTupleLayout)
                      and slot.form is Form.VALUE and not slot.readonly
@@ -150,6 +172,8 @@ def validate_function(fn: MIRFunction) -> None:
         _require(type(slot.readonly) is bool, "invalid access capability")
         _require(slot.value_kind is MIRValueKind.TUPLE or slot.tuple_layout is None,
                  "tuple layout on non-tuple slot")
+        _require(slot.value_kind is MIRValueKind.OPTIONAL or slot.optional_layout is None,
+                 "optional layout on non-optional slot")
         _require(isinstance(slot.kind, MIRSlotKind), "invalid slot kind")
 
     def slot_type(slot: MIRSlotId) -> TpyType:
@@ -164,8 +188,15 @@ def validate_function(fn: MIRFunction) -> None:
         slot = slots[place.root]
         kind, readonly = slot.value_kind, slot.readonly
         tuple_member = False
+        optional_member = False
         for projection in place.projections:
-            if isinstance(projection, MIRTupleIndex):
+            if isinstance(projection, MIROptionalPayload):
+                _require(kind is MIRValueKind.OPTIONAL and slot.optional_layout is not None,
+                         "optional projection needs optional payload")
+                member = slot.optional_layout
+                typ, kind, readonly = member.type, member.kind, member.readonly
+                optional_member = True
+            elif isinstance(projection, MIRTupleIndex):
                 _require(kind is MIRValueKind.TUPLE and slot.tuple_layout is not None,
                          "tuple projection needs tuple payload")
                 _require(type(projection.index) is int
@@ -178,6 +209,7 @@ def validate_function(fn: MIRFunction) -> None:
                 _require(not (write and readonly), "store through readonly reference")
                 kind = MIRValueKind.RECORD_STORAGE
                 tuple_member = False
+                optional_member = False
             elif isinstance(projection, MIRField):
                 _require(kind is MIRValueKind.RECORD_STORAGE, "field needs record storage")
                 _require(not (write and readonly), "store through readonly storage")
@@ -192,11 +224,13 @@ def validate_function(fn: MIRFunction) -> None:
             else:
                 raise MIRValidationError("unsupported place projections")
         _require(not (write and tuple_member), "tuple element replacement is forbidden")
+        _require(not (write and optional_member), "optional payload replacement is forbidden")
         if kind is MIRValueKind.RECORD_STORAGE:
             _require(typ in records, "record place needs layout")
         return typ
 
-    def compatible_element(source: MIRTupleElement, target: MIRTupleElement) -> bool:
+    def compatible_element(source: MIRTupleElement | MIROptionalLayout,
+                           target: MIRTupleElement | MIROptionalLayout) -> bool:
         return (source.type == target.type and source.kind is target.kind
                 and (not source.readonly or target.readonly))
 
@@ -212,7 +246,24 @@ def validate_function(fn: MIRFunction) -> None:
             value = stmt.value
             for operand in operands(value):
                 slot_type(operand)
-            if isinstance(value, (MIRTupleConstruct, MIRTupleCopy)):
+            if isinstance(value, (MIROptionalConstruct, MIROptionalCopy)):
+                target = slots[stmt.target.root]
+                _require(not stmt.target.projections and target.value_kind is MIRValueKind.OPTIONAL
+                         and target.kind is not MIRSlotKind.PARAMETER, "optional operation needs local destination")
+                if isinstance(value, MIROptionalCopy):
+                    source = slots[value.source]
+                    _require(source.value_kind is MIRValueKind.OPTIONAL, "optional copy needs optional source")
+                    member = source.optional_layout
+                elif value.source is not None:
+                    source = slots[value.source]
+                    member = MIROptionalLayout(source.type, source.value_kind, source.readonly)
+                else:
+                    member = target.optional_layout
+                _require(compatible_element(member, target.optional_layout), "optional payload type or access mismatch")
+            elif isinstance(value, MIRIsPresent):
+                _require(target_type == BOOL and slots[value.source].value_kind is MIRValueKind.OPTIONAL,
+                         "presence test needs optional source and bool destination")
+            elif isinstance(value, (MIRTupleConstruct, MIRTupleCopy)):
                 target = slots[stmt.target.root]
                 _require(not stmt.target.projections and target.value_kind is MIRValueKind.TUPLE,
                          "tuple operation needs tuple destination")
@@ -350,3 +401,6 @@ def validate_function(fn: MIRFunction) -> None:
             _require(term.condition in assigned, "branch before definite assignment")
         elif isinstance(term, MIRReturn) and term.value is not None:
             _require(term.value in assigned, "return before definite assignment")
+    failure = presence_error(fn)
+    if failure is not None:
+        raise MIRPresenceError(failure)

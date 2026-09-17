@@ -53,7 +53,7 @@ from ..type_def_registry import (
 )
 from ..typesys import (
     BOOL, INT32, AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
-    UnionType,
+    UnionType, TpyType,
     TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
@@ -71,6 +71,7 @@ from .nodes import (
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
+    THIROptionalLayout, THIROptionalRead,
 )
 
 
@@ -102,7 +103,44 @@ def _fail(owner: str, node: THIRNode, why: str) -> None:
         f"{owner}: {type(node).__name__}{where}: {why}")
 
 
+def _check_optional(owner: str, node: THIRNode, layout: THIROptionalLayout,
+                    typ: TpyType | None = None) -> None:
+    if not isinstance(layout, THIROptionalLayout):
+        _fail(owner, node, "invalid optional layout")
+    payload = layout.payload
+    if isinstance(payload, THIRBorrowedRecord):
+        valid = (isinstance(payload.type, NominalType) and payload.type.qualified_name() is not None
+                 and not payload.type.type_args and not payload.type.is_protocol
+                 and payload.type not in (BOOL, INT32) and type(payload.readonly) is bool)
+        inner = payload.type
+    else:
+        valid = payload in (BOOL, INT32)
+        inner = payload
+    if not valid:
+        _fail(owner, node, "invalid optional payload")
+    if typ is not None:
+        outer_readonly = unwrap_readonly(unwrap_ref_type(typ)) != unwrap_ref_type(typ)
+        typ = unwrap_readonly(unwrap_ref_type(typ))
+        if (not isinstance(typ, OptionalType) or typ.force_pointer_repr
+                or unwrap_readonly(typ.inner) != inner):
+            _fail(owner, node, "optional layout disagrees with type")
+        if (isinstance(payload, THIRBorrowedRecord) and not payload.readonly
+                and (outer_readonly or unwrap_readonly(typ.inner) != typ.inner)):
+            _fail(owner, node, "optional layout increases access")
+
+
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
+        if node.optional_layout is not None:
+            _check_optional(owner, node, node.optional_layout,
+                            node.resolved_type if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else None)
+    if isinstance(node, THIRName) and node.optional_read is not None:
+        read = node.optional_read
+        if not isinstance(read, THIROptionalRead) or type(read.extract) is not bool:
+            _fail(owner, node, "invalid optional read")
+        _check_optional(owner, node, read.layout)
+        if node.opt_deref_check:
+            _fail(owner, node, "checked optional read cannot claim plain extraction")
     if isinstance(node, (THIRVarDecl, THIRTupleLiteral, THIRBorrowTupleLiteral)):
         layout = node.tuple_layout
         if layout is not None:
@@ -635,6 +673,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
 
 def validate_function(fn: THIRFunction) -> None:
     for param in fn.params:
+        if param.optional_layout is not None:
+            _check_optional(fn.name, param, param.optional_layout, param.type)
         fact = param.borrowed_record
         if fact is not None and (
                 unwrap_readonly(unwrap_ref_type(param.type)) != fact.type
@@ -646,6 +686,9 @@ def validate_function(fn: THIRFunction) -> None:
 
 def validate_constructor(ctor: THIRConstructor) -> None:
     owner = f"{ctor.record_name}.__init__"
+    for param in ctor.params:
+        if param.optional_layout is not None:
+            _check_optional(owner, param, param.optional_layout, param.type)
     for mil in ctor.mil_inits:
         if mil.field_identity is not None and (
                 ctor.record_layout is None

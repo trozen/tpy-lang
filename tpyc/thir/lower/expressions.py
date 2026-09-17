@@ -7,7 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
-from .storage import direct_field, tuple_layout
+from .storage import direct_field, optional_layout, tuple_layout
 from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -199,6 +199,7 @@ from ..nodes import (
     THIRDecayCopy,
     THIRMove,
     THIRName,
+    THIROptionalRead,
     THIRWalrus,
     THIRValueSelect,
     THIRNarrowedRead,
@@ -2638,7 +2639,9 @@ def _whole_optional_bare(x: THIRExpr) -> THIRExpr:
     into a matching optional slot. Scoped to THIRName so it cannot strip
     another node kind's deref -- a THIRSelf's deref is the receiver's own
     pointer read, not a narrowing artifact."""
-    return replace(x, deref=False) if isinstance(x, THIRName) else x
+    return replace(x, deref=False, optional_read=(
+        replace(x.optional_read, extract=False) if x.optional_read is not None else None
+    )) if isinstance(x, THIRName) else x
 
 
 def _raw_pointer_slot(x: THIRExpr) -> THIRExpr:
@@ -5214,6 +5217,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     lowered subtree once, so the grant sites (the logical RHS, ternary
     scalar arms, chained comparators i>=2) need no per-row threading."""
     lowered = _lower_expr_impl(e, lc, declared, use=use, **kwargs)
+    if (isinstance(e, TpyName) and isinstance(lowered, THIRName)
+            and lowered.cpp is None and not lowered.opt_deref_check):
+        binding = declared.get(e.name)
+        scalar = _value_opt_scalar_binding(e.name, lc)
+        pointer = (e.name in lc.pointers or e.name in lc.prescan.param_names)
+        layout = optional_layout(binding, lc.analyzer, borrow=pointer,
+                                 readonly=e.name in lc.const_locals or _param_is_const(
+                                     e.name, lc.func, lc.analyzer, lc.record_name)) if binding is not None else None
+        if layout is not None and (scalar or pointer):
+            extract = (lowered.deref if scalar else
+                       not kwargs.get("allow_whole_optional", False)
+                       and not isinstance(unwrap_readonly(unwrap_ref_type(lowered.result_type)), OptionalType))
+            lowered = replace(lowered, optional_read=THIROptionalRead(layout, extract))
     if cond_eager:
         _check_cond_eager_temps(lowered)
     return lowered
