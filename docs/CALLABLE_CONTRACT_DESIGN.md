@@ -6,7 +6,7 @@ owns 9-23, 25, 28, 29 and 33-36. A rule number never moves between the two.
 
 ## Purpose
 
-This document is the proposed contract-first half of the callable result design:
+This document describes the result-contract half of the callable result design:
 what a callable's RESULT means, how it is spelled, which bindings are legal, and what the compiler
 emits for each. A callable's result carries a FORM -- does the call hand back a
 borrow of storage the caller can name, or a fresh value the caller owns? -- and
@@ -14,7 +14,9 @@ that fact is read off the spelled return type by exactly the rule a `def` return
 already obeys. The contract is decidable from types and declarations. Shipping it
 before MIR also requires a conservative admission check; whether that check can
 remain syntactically bounded, without substantial new flow analysis, is a gate
-on this sequencing (see "Compatibility gate"). Without a result contract, a call
+on that sequencing (see "Compatibility gate"). The approved sequence now brings
+analysis-only MIR first; A1-A12 remain a proposed interim policy, not rules to
+ship ahead of analysis. Without a result contract, a call
 through a callable value reads as an rvalue at every owning slot, so an `Fn`
 bound to a borrow-returning function
 copies where CPython aliases, silently
@@ -832,9 +834,10 @@ slot render of every body that binds a NEUTRAL callable result to a local; **261
 
 The checkpoint 3 investigation is recorded in
 [`CALLABLE_CONTRACT_FEASIBILITY.md`](CALLABLE_CONTRACT_FEASIBILITY.md).
-Its focused baseline and code audit recommend bringing shared analysis forward;
-that sequencing decision is pending. The gate has not passed and the coupled
-implementation remains gated.
+Its focused baseline and code audit led to the approved 2026-09-17 decision to
+bring shared analysis-only MIR forward. See `MIR_ANALYSIS_PLAN.md` for the
+proposed first increment. The gate has not passed and the coupled implementation
+remains gated; this decision does not approve A1-A12 as language restrictions.
 
 Before committing to the coupled implementation branch, establish the admission
 layer's feasibility and its effect on programs accepted today. Contract-first is
@@ -882,9 +885,10 @@ language restrictions discovered during implementation.
 |---|---|---|
 | 1. Callable prerequisites | P0.1 located lambda diagnostics; P0.2 contextual lambda parameters at container bindings; P0.3 invocation through a dict field. Separate changes with focused regressions; preserve acceptance and generated code for P0.1. | Complete; all three landed |
 | 2. Shared type decisions | Unify const-inference readers and extract existing result-representation decisions. Preserve current behavior, including native and erased callable differences, with byte-identical generated-code snapshots. | Both extractions implemented and verified |
-| 3. Feasibility and generic forms | Design the full descriptor's permission and contained-borrow analysis and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Initial descriptor survey, form model and focused compatibility baseline complete; sequencing decision pending, gate not passed |
+| 3. Feasibility and generic forms | Design the full descriptor's permission and contained-borrow analysis and validate the per-instantiation form channel required by rules 26/27. Measure admission against ordinary callback programs, including safe false rejections. Decide contract-first versus analysis-only MIR first at the compatibility gate. | Initial survey/model/baseline complete; analysis-first approved 2026-09-17; compatibility gate not passed |
+| 3a. Shared analysis foundation | Build analysis-only MIR before the coupled contract; proposed increments and coverage gates in `MIR_ANALYSIS_PLAN.md`. | M1 implementation scope awaiting approval |
 | 4. Coupled contract implementation | Full semantic descriptor, admission, conversion checks, lambda result stamps, runtime slots, THIR, erasure, native annotations and stubs land together after checkpoint 3 passes. | Gated |
-| 5. Precise provenance | Implement the MIR requirements and remove measured interim restrictions as their proofs become available. | Deferred |
+| 5. Precise provenance | Deliver the callable requirements on the shared analysis substrate before approving admission; further precision can follow as proofs become available. | Foundation moved forward to 3a; consumer remains gated |
 
 Checkpoint 1 starts with **P0.1 only**. Its invariant is that a lambda rejection
 identifies the actual rejecting lambda and blocking construct, preserving both

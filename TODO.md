@@ -1575,9 +1575,9 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
   The initial checkpoint-3 findings are in
   `docs/CALLABLE_CONTRACT_FEASIBILITY.md`: generic forms are feasible but need a
   new channel, and the proposed admission layer needs substantial provenance /
-  effect propagation while rejecting ordinary safe callbacks. Recommendation:
-  bring shared analysis-only MIR forward. Sequencing awaits a user decision;
-  the coupled contract remains gated.
+  effect propagation while rejecting ordinary safe callbacks. Analysis-only MIR
+  first was approved on 2026-09-17; `docs/MIR_ANALYSIS_PLAN.md` proposes the first
+  implementation increment. The coupled contract remains gated.
   Its "Compatibility gate" first measures programs newly rejected by A1-A12,
   separating actual lifetime violations from safe false positives, including
   scalar callbacks under ordinary loans. Contract-first is conditional on an
@@ -1621,7 +1621,16 @@ carries some THIR-aligned *cleanups* that are cheap to do opportunistically
 alongside related feature work; only the big-rock deferrals live here.
 
 - **MIR (analysis-only): the place / loan model.** Design: `docs/IR_DESIGN.md`
-  (MIR Design; Phasing and Dependencies, phase 2). THIR has landed and is the
+  (MIR Design; Phasing and Dependencies, phase 2). Active plan:
+  `docs/MIR_ANALYSIS_PLAN.md`, analysis-first sequence approved 2026-09-17,
+  M1 scope awaiting implementation approval. M1 is an internal scalar CFG,
+  verifier and dump over actual THIR, not a borrow checker. Its excluded cells
+  are filed in that plan's scope matrix: M2 semantic identities, storage/forms,
+  methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
+  comprehension/match, binding scopes and holder propagation; M4 summaries,
+  generic forms and ownership/native-trait decisions; M5 admission and authority.
+  No missing cell may silently become a successful safety proof.
+  THIR has landed and is the
   sema->codegen boundary; MIR has not. The FIRST stage worth building is
   analysis-only -- no optimization passes, no MIR-backed C++ emission -- and it
   needs six provisions: stable place identities (locals, temporaries, captures,

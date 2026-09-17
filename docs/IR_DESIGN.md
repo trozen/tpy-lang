@@ -20,6 +20,12 @@
 | MIR-backed codegen | Not started |
 | Retirement of old sema/codegen ownership logic | Not started |
 
+**Active MIR sequence (approved 2026-09-17):** analysis-only MIR precedes the
+coupled callable contract. `MIR_ANALYSIS_PLAN.md` proposes the first bounded
+increment and its coverage gates; implementation approval is pending. The
+historical phase lists below are not an instruction to implement move
+optimization or switch emission before the callable analysis consumer.
+
 A throwaway Phase-1 spike (2026-06) validated the THIR boundary -- byte-identical
 codegen from THIR with no analyzer reference, on an arithmetic slice; see Rollout
 Plan -> "Phase-1 spike validation".
@@ -220,8 +226,9 @@ in the current model.
   that cost before the coupled implementation; if the admission layer requires
   substantial new flow analysis or rejects common safe callback idioms, bring
   analysis-only MIR forward. The focused measurements and code audit in
-  `docs/CALLABLE_CONTRACT_FEASIBILITY.md` recommend doing so; the sequencing
-  decision remains pending and no admission rule has been implemented.
+  `docs/CALLABLE_CONTRACT_FEASIBILITY.md` led to the approved 2026-09-17 decision
+  to do so. `docs/MIR_ANALYSIS_PLAN.md` proposes the first increment; no admission
+  rule has been implemented.
   Six provisions are load-bearing for it:
   (1) stable place identities covering locals, temporaries, captures, qualified
   globals, fields, derefs and summarized container elements; (2) explicit
@@ -1551,6 +1558,12 @@ operations. Enables path-sensitive borrow checking, precise liveness, and compos
 optimization passes.
 
 ### Design Principles
+
+For the active analysis-only rollout, `MIR_ANALYSIS_PLAN.md` defines the smaller
+increments. The sketches below include later emission/optimization work; in
+particular, last-use hints do not authorize new Move/Copy decisions during the
+analysis-only foundation, and C++ RAII does not remove the analysis obligation
+to represent cleanup and storage lifetimes before lifetime checking.
 
 - **Not SSA.** Variables are mutable places, like Rust's MIR. SSA would add phi-node
   complexity without proportional benefit given TPy's ownership model.

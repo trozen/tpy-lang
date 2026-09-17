@@ -4,8 +4,10 @@ Measured on 2026-09-17 at `d9c5173358`, after the two representation-reader
 refactors. This is a design investigation, not an implementation of A1-A12.
 No compiler, runtime, library, acceptance rule or expected snapshot changed.
 
-**Recommendation, awaiting a sequencing decision:** bring the shared
-analysis-only MIR work forward before the coupled callable contract. The
+**Decision, approved 2026-09-17:** bring the shared analysis-only MIR work forward
+before the coupled callable contract. The proposed first increment is in
+[`MIR_ANALYSIS_PLAN.md`](MIR_ANALYSIS_PLAN.md); its implementation scope awaits
+approval. The
 representation/form machinery is feasible, but the proposed admission layer
 needs substantial new provenance/effect propagation and rejects ordinary safe
 callback code. Those are the exit conditions in the contract document's
@@ -275,7 +277,7 @@ rejection, allocation rule or diagnostic remedy ships in this investigation.
 The proposed layer's diagnostic remedies have not been validated by an
 implementation of that layer and remain part of its gate.
 
-Suggested next work, subject to the sequencing decision:
+Next work under the approved analysis-first sequence:
 
 1. Design the smallest shared analysis substrate from `IR_DESIGN.md`'s six
    callable-provenance provisions: stable places, explicit operations and CFG,
@@ -287,6 +289,6 @@ Suggested next work, subject to the sequencing decision:
    traits explicitly; then integrate descriptor and generic-form producers.
 4. Revisit callable admission and its compatibility corpus on that substrate.
 
-Checkpoint 3 has produced evidence and a recommendation; the compatibility gate
-has **not passed**. Proceeding with the current contract-first restrictions or
-changing the sequence to analysis-first both require the user's decision.
+Checkpoint 3 has produced evidence and an approved analysis-first sequence; the
+compatibility gate has **not passed**. No proposed admission restriction becomes
+an approved language rule through this sequencing decision.

@@ -19,8 +19,9 @@ or new loan propagation must be established by the compatibility gate.
 Some restricted programs compile today and are safe under the intended semantics;
 others expose actual dangling references. The contract document's "Compatibility
 gate" requires these groups to be measured separately before choosing the
-contract-first rollout. The requirements here describe the intended behavior even
-if that gate brings analysis-only MIR forward. A temporary lack of proof must not
+contract-first rollout. The 2026-09-17 decision brings analysis-only MIR forward;
+`MIR_ANALYSIS_PLAN.md` records the proposed implementation increments. These
+requirements remain the intended behavior. A temporary lack of proof must not
 become a permanent language restriction by default.
 
 This document states what has to exist before each restriction lifts. It is a
