@@ -1068,14 +1068,12 @@ __coro_async_main async_main() {
 //     s = A(130)
 //     ret = pick_isinstance(s)
 //     # A post-return mutation must remain visible through the returned alias.
-//     # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
-//     s.n = s.n + 1  # tpyc: warning(/Mutation of 's' while borrowed/)
+//     s.n = s.n + 1  # tpyc: ok
 //     if isinstance(ret, A):
 //         print("return-isinstance", ret.n, s.n)
 //     ret2 = pick_match(s)
 //     # The match return must preserve the same shared object.
-//     # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
-//     s.n = s.n + 1  # tpyc: warning(/Mutation of 's' while borrowed/)
+//     s.n = s.n + 1  # tpyc: ok
 //     if isinstance(ret2, A):
 //         print("return-match", ret2.n, s.n)
 //

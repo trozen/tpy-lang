@@ -1,4 +1,0 @@
-main.py:29: warning: Mutation of 'a' while borrowed (field assignment may invalidate references)
-main.py:37: warning: Mutation of 'b' while borrowed (field assignment may invalidate references)
-main.py:44: warning: Mutation of 'a' while borrowed (field assignment may invalidate references)
-main.py:51: warning: Mutation of 'a' while borrowed (field assignment may invalidate references)

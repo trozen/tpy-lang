@@ -26,7 +26,7 @@ from ..typesys import (
     qualify_exception_name, is_return_exception, is_exception_type, error_return_matches,
     FunctionInfo, ParamInfo, RecordInfo, MutationCallEdge,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
-    is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
+    is_integer_type, is_any_int_type, is_numeric_type, is_primitive_type, is_readonly_span,
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
     yield_uses_borrow_slot, GenExprType,
@@ -163,6 +163,8 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
     When a function has return_borrows_from facts, the result variable
     borrows from the indicated argument(s). None means unanalyzed -- skip.
     """
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
     if isinstance(expr, TpyAwait):
         # A borrow-returning await aliases the awaited call's receiver /
         # borrowed args exactly like the sync call it wraps -- recurse so
@@ -243,6 +245,40 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                     expr,
                 )
 
+
+
+def _register_tuple_binding_borrows(
+        ctx: SemanticContext, borrower: str, value: TpyExpr,
+        target_type: TpyType) -> None:
+    """Keep the loans carried by a local tuple's selected borrow payload."""
+    bare = unwrap_readonly(target_type)
+    if isinstance(bare, OptionalType):
+        bare = unwrap_readonly(bare.inner)
+    if not isinstance(bare, TupleType) or not bare.has_pointer_repr_element():
+        return
+    inner = value
+    while isinstance(inner, TpyCoerce):
+        inner = inner.expr
+    if isinstance(inner, TpyTupleLiteral):
+        for index, element in enumerate(inner.elements):
+            if index >= len(bare.element_types):
+                break
+            # Unannotated walrus literals use the target's borrow form;
+            # annotated locals may instead move an element into owned storage.
+            borrows = (inner.elem_capture[index] in (
+                TupleElemCapture.REF, TupleElemCapture.CONST_REF)
+                if index < len(inner.elem_capture)
+                else TupleType._element_is_pointer_repr(bare.element_types[index]))
+            if borrows:
+                register_binding_borrow(ctx, borrower, element)
+                _register_call_result_borrow(ctx, borrower, element)
+    elif isinstance(inner, TpyIfExpr):
+        _register_tuple_binding_borrows(ctx, borrower, inner.then_expr, bare)
+        _register_tuple_binding_borrows(ctx, borrower, inner.else_expr, bare)
+    else:
+        if isinstance(inner, (TpyName, TpySubscript, TpyFieldAccess)):
+            register_binding_borrow(ctx, borrower, inner)
+        _register_call_result_borrow(ctx, borrower, inner)
 
 
 def _format_aug_target(target: TpyExpr) -> str:
@@ -4803,8 +4839,7 @@ class StatementAnalyzer:
         bt = self.ctx.func.borrow_tracker
         stamp_bind_kind(self.ctx, stmt, stmt.name, stmt.init, var_type,
                         rebind=existing_type is not None)
-        bt.retarget_storage_borrows(stmt.name)
-        bt.remove_borrower(stmt.name)
+        bt.rebind_borrower(stmt.name, stmt.init)
         # Bound async-METHOD coroutine: stable-lvalue receiver + borrow
         # registration. Keyed on the init shape alone so every binding
         # form (fresh, annotated-erased, rebind) is covered, and placed
@@ -4825,28 +4860,9 @@ class StatementAnalyzer:
         # retarget logic above keeps the chain valid across reassignments.
         if (stmt.init is not None
                 and var_type is not None):
-            # A pointer-repr tuple is a value type, but binding it from an
-            # lvalue source ALIASES the source's non-value elements (codegen
-            # binds a reference / copies element pointers), so it needs the
-            # same borrow registration and deferred mutation-marking as a
-            # scalar element borrow. Literal/call inits stay unregistered:
-            # literals own their captures, calls return owning rvalues.
-            init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
-            var_bare = unwrap_readonly(var_type)
-            # A nullable borrow-form tuple (`tuple[..., T] | None`) aliases its
-            # source's reference elements just like the bare tuple form, so it
-            # needs the same borrow registration -- a later write through the
-            # narrowed local (`t[1].val = ...`) must propagate to the source.
-            is_ptr_repr_tuple_var = (
-                (isinstance(var_bare, TupleType) and var_bare.has_pointer_repr_element())
-                or (isinstance(var_bare, OptionalType)
-                    and var_bare.wraps_pointer_repr_tuple()))
-            borrow_tuple_alias = (
-                var_type.is_value_type()
-                and is_ptr_repr_tuple_var
-                and isinstance(init_unwrapped,
-                               (TpyName, TpySubscript, TpyFieldAccess)))
-            if not var_type.is_value_type() or borrow_tuple_alias:
+            _register_tuple_binding_borrows(
+                self.ctx, stmt.name, stmt.init, var_type)
+            if not var_type.is_value_type():
                 # Non-value lvalue: y = x, v = items[i], v = obj.field
                 register_binding_borrow(self.ctx, stmt.name, stmt.init)
             elif isinstance(var_type, PtrType):
@@ -5619,8 +5635,7 @@ class StatementAnalyzer:
             bt = self.ctx.func.borrow_tracker
             stamp_bind_kind(self.ctx, stmt, stmt.target.name, stmt.value,
                             target_type, rebind=True)
-            bt.retarget_storage_borrows(stmt.target.name)
-            bt.remove_borrower(stmt.target.name)
+            bt.rebind_borrower(stmt.target.name, stmt.value)
             # Rebinding a non-value pointer-local generates local = &(source) in C++,
             # requiring source param to be T& (not const T&).
             if not inner_target.is_value_type() and self.compat.is_lvalue(stmt.value):
@@ -5725,7 +5740,10 @@ class StatementAnalyzer:
             if not has_conflict and field_storage is not None and bt.has_borrow_of_kinds(field_storage, _BORROW_KINDS):
                 storage = field_storage
                 has_conflict = True
-            if has_conflict:
+            # Scalar writes preserve the storage of the record and its fields.
+            if has_conflict and (stmt.target.is_property_access
+                                 or not (is_primitive_type(target_type)
+                                         or is_big_int_type(target_type))):
                 msg = (f"Mutation of '{storage}' while borrowed"
                        " (field assignment may invalidate references)")
                 self.ctx.warning(msg, stmt)
@@ -5774,6 +5792,9 @@ class StatementAnalyzer:
                                if isinstance(stmt.target, TpySubscript)
                                else "owned storage"))
         # Residual copy warning: reassigned vars without OwnType in scope
+        if isinstance(stmt.target, TpyName):
+            _register_tuple_binding_borrows(
+                self.ctx, stmt.target.name, stmt.value, target_type)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             if stmt.loc is not None and not copy_warning_fired:
                 if self._is_non_owned_var_copy(stmt.value, target_type):
@@ -6210,7 +6231,8 @@ class StatementAnalyzer:
             if not has_conflict and field_storage is not None and bt.has_borrow_of_kinds(field_storage, _BORROW_KINDS):
                 storage = field_storage
                 has_conflict = True
-            if has_conflict:
+            if has_conflict and not (is_primitive_type(target_type)
+                                     or is_big_int_type(target_type)):
                 self.ctx.warning(
                     f"Mutation of '{storage}' while borrowed"
                     " (field assignment may invalidate references)",

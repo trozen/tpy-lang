@@ -48,6 +48,15 @@ compilation or affect emission. Unsupported bodies return `MIRNotCovered`, which
 is distinct from malformed MIR and never constitutes a safety proof. Broader
 place/loan analysis remains planned in `docs/MIR_ANALYSIS_PLAN.md`.
 
+Tuple local bindings register their borrowed payloads with the existing sema
+`BorrowTracker`, including its statement records consumed by alias-rebind
+analysis. Declaration/reassignment capture modes distinguish borrowed elements
+from last-use owned captures; walrus literals retain their target borrow form.
+Tuple-returning calls use the existing return-borrow contracts. Consequently a
+record replacement preserves storage retained by a tuple, while copying scalar
+tuple members does not create loans. This is production sema behavior and does
+not depend on MIR coverage.
+
 The sema half runs as a workspace-wide two-pass loop: every module
 finalizes declarations first, then bodies run as a second sweep.
 Inside each module, sema is factored into five publicly callable

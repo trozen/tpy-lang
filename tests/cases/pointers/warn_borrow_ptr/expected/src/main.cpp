@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // def test_ptr_borrow_field_write() -> None:
-//     """Ptr borrow + field write on storage = warn."""
+//     """A scalar field write preserves the object and its pointer aliases."""
 //     p = Point(int32(1), int32(2))
 //     ptr = take_ptr(p)
-//     p.x = int32(10)  # tpyc: warning(/Mutation of 'p'.*field assignment/)
+//     p.x = int32(10)  # tpyc: ok
 //     print(p.x)
 void test_ptr_borrow_field_write() {
     Point p = Point(1, 2);

@@ -484,7 +484,7 @@ class _Replay:
         # a copied Ptr, an alias of an alias, a view read off a pointer.
         if not self.carries_no_borrow(value):
             for n in _read_names(inner):
-                if n != holder and n in st.loans:
+                if n in st.loans:
                     out |= st.loans[n]
         # A generator or coroutine object keeps its reference arguments
         # and receiver for as long as it lives.

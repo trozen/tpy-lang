@@ -26,7 +26,7 @@ def test_binary_alias():
     b = Acc(1)
     c = a + b
     print(c.n)
-    a.n = 99  # tpyc: warning(/while borrowed/)
+    a.n = 99  # tpyc: ok
     print(c.n)
 
 
@@ -34,21 +34,21 @@ def test_binary_operand_alias():
     a = Acc(1)
     b = Acc(5)
     c = a + b
-    b.n = 42  # tpyc: warning(/while borrowed/)
+    b.n = 42  # tpyc: ok
     print(c.n)
 
 
 def test_reflected_alias():
     a = Acc(4)
     c = 7 + a
-    a.n = 11  # tpyc: warning(/while borrowed/)
+    a.n = 11  # tpyc: ok
     print(c.n)
 
 
 def test_unary_alias():
     a = Acc(6)
     c = -a
-    a.n = 8  # tpyc: warning(/while borrowed/)
+    a.n = 8  # tpyc: ok
     print(c.n)
 
 

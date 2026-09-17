@@ -2842,12 +2842,11 @@ class ExpressionAnalyzer:
                            and res_bare.has_pointer_repr_element())
         if is_borrow_tuple:
             bt = self.ctx.func.borrow_tracker
-            bt.retarget_storage_borrows(name)
-            bt.remove_borrower(name)
-            val_inner = (expr.value.expr if isinstance(expr.value, TpyCoerce)
-                         else expr.value)
-            if isinstance(val_inner, (TpyName, TpySubscript, TpyFieldAccess)):
-                register_binding_borrow(self.ctx, name, expr.value)
+            bt.rebind_borrower(name, expr.value)
+            # Local import avoids the statements <-> expressions cycle.
+            from .statements import _register_tuple_binding_borrows
+            _register_tuple_binding_borrows(
+                self.ctx, name, expr.value, facts_type)
         # An alias of an ephemeral borrow is the same stale-slot borrow under
         # another name (mirrors the VarDecl _update_ephemeral_alias_fact).
         eph = self.ctx.func.ephemeral_borrow_vars

@@ -1,3 +1,1 @@
 main.py:293: warning: Own[A | B] param 'u' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:586: warning: Mutation of 's' while borrowed (field assignment may invalidate references)
-main.py:592: warning: Mutation of 's' while borrowed (field assignment may invalidate references)

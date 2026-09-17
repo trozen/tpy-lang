@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     b = Acc(1)
 //     c = a + b
 //     print(c.n)
-//     a.n = 21  # tpyc: warning(/while borrowed/)
+//     a.n = 21  # tpyc: ok
 //     print(c.n)
 void test_binary() {
     Acc a = Acc(3);
@@ -23,7 +23,7 @@ void test_binary() {
 // def test_unary():
 //     a = Acc(2)
 //     c = -a
-//     a.n = 5  # tpyc: warning(/while borrowed/)
+//     a.n = 5  # tpyc: ok
 //     print(c.n)
 void test_unary() {
     Acc a = Acc(2);

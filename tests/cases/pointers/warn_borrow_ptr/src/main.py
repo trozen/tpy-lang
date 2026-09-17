@@ -1,4 +1,4 @@
-# Warn on mutation of storage while a pointer borrows into it
+# Warn when mutation can invalidate a pointer; scalar field writes stay valid.
 from tpy import int32, Ptr, take_ptr
 
 class Point:
@@ -9,10 +9,10 @@ class Point:
         self.y = y
 
 def test_ptr_borrow_field_write() -> None:
-    """Ptr borrow + field write on storage = warn."""
+    """A scalar field write preserves the object and its pointer aliases."""
     p = Point(int32(1), int32(2))
     ptr = take_ptr(p)
-    p.x = int32(10)  # tpyc: warning(/Mutation of 'p'.*field assignment/)
+    p.x = int32(10)  # tpyc: ok
     print(p.x)
 
 def test_ptr_borrow_append() -> None:

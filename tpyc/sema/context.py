@@ -288,6 +288,13 @@ class BorrowTracker:
         for storage in to_clean:
             del self.loans[storage]
 
+    def rebind_borrower(self, borrower: str, value: TpyExpr | None) -> None:
+        """Release old binding loans unless the binding retains itself."""
+        if isinstance(value, TpyName) and value.name == borrower:
+            return
+        self.retarget_storage_borrows(borrower)
+        self.remove_borrower(borrower)
+
     def retarget_storage_borrows(self, storage: str) -> None:
         """Reassignment of ``storage``: retarget its borrowers to the upstream source.
 

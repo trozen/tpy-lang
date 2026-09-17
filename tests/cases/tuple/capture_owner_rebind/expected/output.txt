@@ -1,0 +1,19 @@
+literal before 4 2 1
+literal after 9 2 1
+singleton 9 2
+copies 9 5 2
+reassigned 9 2 5
+self 9 2
+call 9 2
+branch True 9 2
+branch False 9 3
+scalar 1 2
+walrus scalar 1
+walrus 9 2
+moved 9 2
+method 9 2 2
+generic 1 9 2
+generator 4
+generator 2
+async 2
+closure 2

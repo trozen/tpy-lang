@@ -611,6 +611,195 @@ check. `test_owned.py` uses actual emitted THIR; `test_owned_validate.py` checks
 malformed MIR. The shared bounded interpreter observes both the returned scalar
 and mutations of distinct/shared storage. No compiler unit test reads case files.
 
+## M2.3 proposal: flat tuple payloads
+
+Status: investigated after M2.2 merged; **implementation awaits approval**.
+This is architectural work. Split aggregate products (tuples) from tagged sums
+(Optional/unions): the latter additionally require presence/alternative facts,
+checked payload projections and narrowing identities. Existing provenance
+remains authoritative throughout both increments.
+
+### Prerequisite: tuple-held aliases missing from rebind analysis
+
+Investigation found a pre-existing silent divergence in ordinary local code:
+
+```python
+from tpy import int32
+
+class Cell:
+    value: int32
+
+    def __init__(self, value: int32):
+        self.value = value
+
+def example() -> int32:
+    current = Cell(1)
+    saved = (current,)
+    current.value = 4
+    current = Cell(2)
+    saved[0].value = 9
+    return current.value
+```
+
+At M2.2's merged revision `37f49a38bc`, native execution returns **9**;
+CPython returns **2**, with no compiler diagnostic. The write of 4 is essential:
+it keeps `current` live after capture, selecting a borrowed tuple member instead
+of a last-use move into owned tuple storage. Emission then has the shape:
+
+```cpp
+auto saved = std::tuple<Cell*>(current);
+current->value = 4;
+(*current) = Cell(2);
+std::get<0>(saved)->value = 9;
+```
+
+The violated invariant is that every borrowed tuple member must keep a loan on
+the storage it actually captured. Tuple provenance records the relationship,
+but tuple-literal bindings do not register it with `BorrowTracker`, whose
+statement records feed `alias_rebind`. Consequently the replay wrongly proves
+IN_PLACE replacement safe. This is a production semantic defect, not a missing
+MIR instruction; teaching MIR to reproduce the overwrite would not fix it.
+
+Recommended prerequisite: restore loan registration at the shared tuple-binding
+boundary, after capture modes are final. Reuse `register_binding_borrow`,
+`_register_source_borrow` and the existing call-result borrow contracts as
+appropriate, feeding `BorrowTracker` rather than adding another provenance
+model. Expose each borrowed element source to those helpers: passing the whole
+literal to the existing root helper does not register its element loans.
+REF/CONST_REF elements carry loans; VALUE captures must not manufacture
+loans merely because their source type is a reference type. Owning reseats must
+preserve still-borrowed old storage, using the existing storage strategy.
+
+The user approved this prerequisite fix. Implementation uses one tuple-binding
+registration helper after capture selection and old-loan removal, including
+the existing unannotated walrus borrow form and tuple-call return contracts.
+Self-assignment retains existing loans in both the tracker and replay without
+creating a self-edge.
+It also prevents numeric/character stored-field writes from spuriously warning about
+invalidation; numeric property setters retain the check because their bodies
+can replace borrowed storage. M2.3 MIR implementation remains unapproved.
+
+Audit declaration, reassignment and walrus producers together: they currently
+update capture/provenance and remove prior loans at different points. Whole
+borrowed-tuple payload/name copies must retain captured element loans, while
+reseating the tuple must clear
+only that holder's former loans. Audit call/method/property results against
+their actual return-borrow contracts, and Optional borrowing tuples against
+their selected representation. These are required sibling checks, not claims
+that all paths have already been reproduced. Do not patch IN_PLACE selection
+with a tuple-specific exception or infer local capture from escape roots alone.
+
+The existing `resumable-alias-identity` and `tuple-unpack-view-outlives-reseat`
+entries in BUGS.md concern different ownership directions/producers; neither
+tracks this literal-capture defect. It is an active prerequisite here, not a
+deferred backlog entry.
+
+An independent mixed-tuple probe confirms both lost identities: before mutation
+through the saved reference, TPy observes old/new values `2, 2` versus CPython's
+`4, 2`; afterward it observes `9, 9` versus `9, 2`. The scalar member remains
+unchanged in both. Preserving the old storage matches Python's aliasing and
+binding behavior; no new warning or rejection of this program is warranted.
+
+The condensed `tuple/capture_owner_rebind` regression checks both mutation
+directions, singleton/mixed/duplicate references, copies, reseats, self-binding,
+call results, walrus bindings, branches and inverse VALUE/scalar captures.
+It includes method, constructor, instantiated generic, nested-function,
+generator and async sections. Unit-owned source additionally pins OWN versus
+IN_PLACE decisions, release of replaced holder loans, readonly/nullable and
+conditional tuple facts, borrowed call members, and the scalar-field/property
+diagnostic distinction. These broader tuple checks are sema-only where current
+THIR admission is narrower. No compiler unit test reads the case source.
+
+Scope audit: the change repairs local binding registration, not tuple ownership
+at every boundary. Module/global storage, fields and container sinks retain
+their existing storage-form rules; return/parameter contracts are inputs to
+local binding registration. Nested owning elements, string/bytes view forms,
+Own/Ptr/Span/Box/Rc payloads and union storage are not reclassified by this fix.
+Shared statement dispatch covers bindings under match, try/finally, context
+managers and error-return bodies; this patch adds no cleanup or invalidation
+rule for those constructs. A comprehension is not a statement-binding position;
+its supported walrus producer shares the expression registration helper.
+The unrelated immediate walrus field-access defect is tracked separately as
+`BUGS.md#walrus-tuple-immediate-field-access`, with user approval.
+
+### Proposed MIR contract
+
+```python
+def example(a: Cell, b: Cell) -> int32:
+    pair = (a, 1)
+    saved = pair
+    pair = (b, 2)
+    saved[0].value = 9
+    return saved[1]
+```
+
+The saved scalar is 1; the write reaches `a`, regardless of `pair`'s later
+reseat. Existing C++ copies a `std::tuple<Cell*, int32_t>` payload. MIR must
+snapshot scalar values and reference identities; it must not alias the tuple
+holder itself or deep-copy the referenced record.
+
+Reuse MIR slots, places, record field identities and access capabilities. Add
+a typed tuple payload/layout and element projection, plus explicit aggregate
+construction/copy operations. A record field reached through a tuple composes
+element selection, dereference and field selection. Extend place verification
+to walk this typed chain; do not assume dereference is always the first step.
+
+THIR producers must record the selected per-element scalar/reference capture
+and readonly capability before reducing it to C++ spelling. Neither
+`TupleType.is_value_type()` nor `THIRBorrowTupleLiteral` proves borrowing:
+the latter can also contain owned VALUE record captures. Record normalized
+constant-index projections explicitly and extend the existing direct-field
+fact boundary for verified tuple projections, preserving its current filters.
+Do not recover semantic facts from emitter strings or rerun sema inside MIR.
+
+The following intersecting axes define the proposed first implementation:
+
+| Axis | Proposed coverage | Deferred scope |
+|---|---|---|
+| Position | Existing ordinary free-function bodies and prefix bindings; M1 branches/loops subject to M2.2 owning-operation limits | Other bodies remain later M2/M3; no new binding lifetime model |
+| Shape | Flat empty/singleton/mixed tuples of bool/int32 and borrowed plain records, including readonly access | Nested/owned tuple elements, Optional, union, str/bytes, Own, Ptr/Span, Box/Rc, containers and generic forms remain later M2/M4 |
+| Slot | Local tuple payloads and expression temporaries; record members reached by constant tuple index | Tuple parameters, tuple returns, unpack targets, globals, captures, fields storing tuples and container elements remain later M2 |
+| Operation | Literal assembly, name copy, whole-tuple reseat, constant-index scalar read, selected record-field read/write | Standalone record extraction bindings, unpacking, tuple calls/returns, owning conversions and backing temporaries remain later M2 |
+
+Element expressions initially use side-effect-free existing scalar operations
+or record names; no walrus/call/property evaluation is newly admitted inside
+tuple literals. Once the prerequisite is fixed, include borrowed tuple members
+pointing at M2.2 owned storage and verify preservation across owning reseats.
+Missing or contradictory facts and unsupported nodes anywhere in a body still
+produce whole-body `MIRNotCovered`, without rejecting the source program.
+
+Pitfall checks: mutate references after tuple construction/copy; compare scalar,
+singleton and mixed forms; preserve readonly access and exact copy/move facts.
+New producer facts need method/constructor regression guards despite limited
+MIR body admission. Unsupported generic twins remain explicit negative coverage.
+Pure operands avoid evaluation-order expansion. No allocation, destruction,
+iteration, exception, warning or source-acceptance rule is introduced by MIR.
+
+### Implementation and subsequent wrapper work
+
+1. Fix and fully review tuple-capture loan registration as a separate commit.
+2. Add positive THIR capture/projection facts with producer tests, then MIR
+   tuple payloads/places/operations, verifier and bounded interpreter together.
+3. Use compiler-unit-owned source for semantic tests; never read case files
+   from compiler unit tests. Check copies/reseats, duplicate aliases, snapshots,
+   access restrictions, branch joins, malformed facts and deferred shapes.
+4. Run targeted tests and one final full forced suite, complete defect review
+   and readiness gates, update actual coverage docs, and prepare one squashed
+   M2.3 implementation commit on the same branch. Do not merge or push.
+
+Optional/unions follow in a separately approved design: model presence or an
+active alternative before exposing payloads. Borrowed record Optional values,
+owning Optional storage, nullable tuples, pointer-based union alternatives and
+recursive union wrappers are distinct representations. Narrowing aliases must
+retain the original wrapper/alternative identity; current C++ spellings are
+insufficient. Construction, extraction, reassignment and invalidation must use
+the same facts. No flat-tuple rule implicitly covers any of these tagged forms.
+
+Confidence: high in the observed tuple payload behavior. The prerequisite's
+cross-producer audit is complete and its registration fix is implemented;
+M2.3 MIR implementation still needs approval. Its coverage must include the
+owned-local example above, using the corrected production storage decision.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

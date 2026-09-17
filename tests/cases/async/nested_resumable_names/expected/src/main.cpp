@@ -472,8 +472,8 @@ __coro_async_sections async_sections() {
 //     # Delegated generator: the embedded source observes each receiver mutation.
 //     for value in delegated(inner):  # tpyc: ok
 //         print("delegated:", value)
-//         # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
-//         inner.value += 10  # tpyc: warning(/Mutation of 'inner' while borrowed/)
+//         # A scalar field write preserves the record retained by the frame.
+//         inner.value += 10  # tpyc: ok
 //     print("delegated receiver:", inner.value)
 //
 //     asyncio.run(async_sections())

@@ -256,9 +256,8 @@ def main() -> None:
     for v in read_pack(c, d):
         print("record-ro:", v)
         # Mutate the source between two pulls: a copying frame would keep 2.
-        # The pack borrow now reaches every element, so the mutation-while-
-        # borrowed net fires here exactly as it does for a plain param.
-        d.x = 20  # tpyc: warning(/while borrowed/)
+        # A scalar field write preserves the object retained by the frame.
+        d.x = 20  # tpyc: ok
 
     # Own lists per suspending section: each grows its second element between
     # two pulls, so a frame that COPIED the element would print the stale

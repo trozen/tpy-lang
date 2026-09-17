@@ -1,2 +1,1 @@
 main.py:26: warning: copies Point | None into field (tuple element 0); use copy() to make this explicit
-main.py:37: warning: Mutation of 'tg' while borrowed (field assignment may invalidate references)

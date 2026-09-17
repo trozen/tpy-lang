@@ -1790,6 +1790,14 @@ def drop() -> None:
 
 A holder counts while it is bound, read again or not, because that is what keeps the object alive under CPython. The decision is flow-sensitive and loops iterate to a fixpoint, so a loan taken after the rebind on the previous iteration, or a borrow arriving over the back edge, is seen. The same rule applies in every position: sync functions and methods, generator and async frames (a local with an own-storage rebind becomes a pointer over per-site frame fields), nested defs, module level, `@error_return` bodies.
 
+Borrowed tuple elements also count as holders. After `saved = (p,)`, a later
+replacement of `p` preserves the object captured by `saved` if that element was
+captured by reference. Tuple copies retain those references; scalar elements
+are snapshots and last-use owning captures do not create a loan. The same
+tracking applies to supported walrus bindings and tuple-returning calls.
+Writes to ordinary numeric/character fields preserve storage and do not warn about
+borrow invalidation; property setters can still invalidate storage.
+
 One clobber remains, and it warns: a loan taken from a rebind site's own storage that is still read after that site runs again on the next iteration -- one slot per site cannot hold two iterations' objects:
 
 ```python
