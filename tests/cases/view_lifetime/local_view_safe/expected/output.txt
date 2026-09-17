@@ -1,3 +1,8 @@
 trimmed
 kept
 abc
+a padded value long enough to show
+b'123456789abcdefghijklmnop'
+nested_def: a padded value long enough to show b'0123456789abcdef'
+gen_nested_def step: 0
+gen_nested_def: another padded value, long too

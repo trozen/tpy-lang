@@ -32,6 +32,7 @@ class InitTracker:
     def save(self) -> FlowFacts:
         return FlowFacts(
             definitely_assigned=frozenset(self.ctx.func.definitely_assigned),
+            loop_bound_assigned=frozenset(self.ctx.func.loop_bound_assigned),
             init_terminated=self.ctx.func.init_terminated,
             rvalue_vars=frozenset(self.ctx.func.rvalue_vars),
             non_null_ptr_vars=frozenset(self.ctx.func.non_null_ptr_vars),
@@ -44,6 +45,7 @@ class InitTracker:
 
     def restore(self, state: FlowFacts) -> None:
         self.ctx.func.definitely_assigned = set(state.definitely_assigned)
+        self.ctx.func.loop_bound_assigned = set(state.loop_bound_assigned)
         self.ctx.func.init_terminated = state.init_terminated
         self.ctx.func.rvalue_vars = set(state.rvalue_vars)
         self.ctx.func.non_null_ptr_vars = set(state.non_null_ptr_vars)
@@ -166,6 +168,7 @@ class InitTracker:
         condition is re-proven on every iteration.
         """
         self.ctx.func.definitely_assigned = set(before.definitely_assigned)
+        self.ctx.func.loop_bound_assigned = set(before.loop_bound_assigned)
         self.ctx.func.init_terminated = False
         self.ctx.func.rvalue_vars = set(before.rvalue_vars)
         self.ctx.func.non_null_ptr_vars = set(before.non_null_ptr_vars)
@@ -182,7 +185,8 @@ class InitTracker:
     def merge_branches(self, then_state: FlowFacts, else_state: FlowFacts) -> None:
         self.restore(FlowFacts.merge(then_state, else_state))
 
-    def apply_loop_exit_facts(self, before: FlowFacts) -> None:
+    def apply_loop_exit_facts(self, before: FlowFacts, *,
+                              runs_once: bool = True) -> None:
         """Apply post-loop state for a may-execute-zero-times loop.
 
         Call with live post-body state still in ``ctx.func.*``. Monotone
@@ -198,7 +202,13 @@ class InitTracker:
         body_end_narrowed = frozenset(self.ctx.func.narrowed_types.items())
         body_end_bp = frozenset(self.ctx.func.binding_provenance.items())
         body_end_borrows = self.ctx.func.borrow_tracker.freeze()
+        body_end_loop_bound = frozenset(self.ctx.func.loop_bound_assigned)
         self.restore(before)
+        # A local a NESTED loop body bound is function-scoped, so the fact
+        # that it is assigned outlives this loop -- but only past a head this
+        # loop provably ran.
+        if runs_once:
+            self.ctx.func.loop_bound_assigned |= body_end_loop_bound
         self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
         self.ctx.func.narrowed_types = dict(body_end_narrowed & before.narrowed_types)
         self._merge_loop_body_loans(before, body_end_borrows)

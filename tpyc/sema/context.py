@@ -6,7 +6,7 @@ Contains the shared state that is passed to all semantic analysis components.
 
 from __future__ import annotations
 from contextlib import contextmanager
-from copy import deepcopy
+from copy import copy, deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any, Iterator, TYPE_CHECKING
@@ -781,6 +781,13 @@ class FunctionTrackingState:
     current_function: TpyFunction | _ModuleInitSentinel | None = None
     current_ns: Namespace | None = None
     loop_depth: int = 0
+    # Enclosing compound statements (if/while/for/with/try/match), outermost
+    # first, while their bodies are analyzed. A loop-body-first local is
+    # function-scoped in Python, so the binding's stack and the read's are
+    # what place its single C++ declaration (see `_pending_decl_anchor`):
+    # anchored on the loop itself it lands inside an enclosing block's scope,
+    # or before an unrelated sibling loop that then redeclares the name.
+    compound_stack: list[TpyStmt] = field(default_factory=list)
 
     # --- try/except control flow (per-function: a nested def must not
     #     inherit the enclosing function's handler context, or its
@@ -853,12 +860,12 @@ class FunctionTrackingState:
     # --- Control flow ---
     super_init_call: TpyMethodCall | None = None
     super_del_call: TpyMethodCall | None = None
-    # name -> (type, loop stmt, loop-var stmt or None, proven): a loop body's
-    # bindings, promoted into scope by the first read after the loop. `proven`
-    # is whether every loop on the way out provably ran; a read after a
-    # `while` sema could not prove promotes the name but leaves it unassigned,
-    # so the read is the definite-assignment reject.
-    pending_loop_vars: dict[str, tuple[TpyType, TpyStmt, TpyStmt | None, bool]] = field(default_factory=dict)
+    # name -> (type, enclosing-statement stack at the binding, loop-var stmt
+    # or None): a loop body's bindings, promoted into scope by the first read
+    # after the loop. The stack is what the promotion anchors the C++
+    # pre-declaration against -- the read's own stack says how far out the
+    # declaration has to go to reach both sites.
+    pending_loop_vars: dict[str, tuple[TpyType, tuple[TpyStmt, ...], TpyStmt | None]] = field(default_factory=dict)
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
     consumed_loop_vars: set[str] = field(default_factory=set)
@@ -944,6 +951,11 @@ class FunctionTrackingState:
 
     # --- Definite-assignment tracking ---
     definitely_assigned: set[str] = field(default_factory=set)
+    # Assigned, but by a loop body whose local is still pending (not in scope
+    # yet, so not spellable in `definitely_assigned`). Same lattice: it merges
+    # with `definitely_assigned` at every branch join, so a loop in only one
+    # arm leaves the name maybe-unassigned and the promoting read rejects.
+    loop_bound_assigned: set[str] = field(default_factory=set)
     init_terminated: bool = False
     narrowed_types: dict[str, TpyType] = field(default_factory=dict)
 
@@ -1018,6 +1030,15 @@ class FunctionTrackingState:
     # check runs during body analysis, before the frame-local set exists.
     # Entries are (yielded_expr, elem_type, loc).
     pending_yield_root_checks: list[tuple[TpyExpr, TpyType, 'SourceLocation | None']] = field(default_factory=list)
+    # Return/yield dangling checks over a str/bytes local whose storage the
+    # deduction has not settled yet. A use must not be what decides the
+    # storage, so the check waits for the post-body drain
+    # (`TypeCompatibility.drain_deferred_escape_checks`) and then asks
+    # `view_storage_verdict` for the settled answer.
+    # Entries are (returned_expr, return_type, loc, source_type, for_yield).
+    pending_view_storage_checks: list[
+        tuple[TpyExpr, TpyType, 'SourceLocation | None', TpyType, bool]
+    ] = field(default_factory=list)
     non_null_ptr_vars: set[str] = field(default_factory=set)
     # Narrowing accumulated during a single statement's expression analysis;
     # flushed into non_null_ptr_vars at the statement boundary. Deferred so
@@ -1039,10 +1060,6 @@ class FunctionTrackingState:
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
-    # Resolved type of each name's FIRST declaration, kept even after the
-    # declaring block's scope is gone -- a later assignment in an enclosing
-    # scope is the same Python local and must still satisfy the one-type rule.
-    first_decl_types: dict[str, TpyType] = field(default_factory=dict)
 
     # --- Integer value range tracking ---
     value_ranges: dict[str, 'ValueRange'] = field(default_factory=dict)
@@ -1075,6 +1092,22 @@ class FunctionTrackingState:
     # (sema/frame_traits.py). A None entry is an await whose operand frame sema
     # cannot classify (Task / structural awaitable) -- forces non-Send.
     current_awaited_subframes: list = field(default_factory=list)
+
+    def __deepcopy__(self, memo: dict) -> 'FunctionTrackingState':
+        # `AST_IDENTITY_FIELDS` hold AST nodes as VALUES, carried over BY
+        # IDENTITY: a snapshot is what a restore installs, so clones would
+        # leave every consumer that compares against the live node (the
+        # pending anchor's `is` walk over the compound stack,
+        # `record_branch_decls`' identity-keyed map) silently missing. The
+        # same argument `IdentityMap.__deepcopy__` makes for identity KEYS.
+        # Every other field still copies deeply, so a nested def's mutations
+        # stay isolated.
+        new = self.__class__.__new__(self.__class__)
+        memo[id(self)] = new
+        for name, value in vars(self).items():
+            setattr(new, name, copy(value) if name in AST_IDENTITY_FIELDS
+                    else deepcopy(value, memo))
+        return new
 
     # --- BindingProvenance accessors ---
     # Reads default-fill from an absent name; writes go through _bp_update,
@@ -1160,6 +1193,11 @@ class FunctionTrackingState:
     def bp_borrow_source_roots(self, name: str) -> frozenset[str]:
         bp = self.binding_provenance.get(name)
         return bp.borrow_source_roots if bp is not None else frozenset()
+
+
+# FunctionTrackingState fields whose contents are AST nodes consumers compare
+# by identity. `FunctionTrackingState.__deepcopy__` copies them shallow.
+AST_IDENTITY_FIELDS = frozenset(('compound_stack', 'pending_loop_vars'))
 
 
 @dataclass
@@ -1928,11 +1966,11 @@ class SemanticContext:
     def save_function_state(self) -> FunctionTrackingState:
         """Snapshot per-function state (for nested def isolation).
 
-        The deep copy carries identity-keyed fields (`IdentityMap` /
-        `IdentitySet`, e.g. `pre_analyzed_method_args`) over by key
-        identity -- their `__deepcopy__` says why. The restore installs the
-        SNAPSHOT, so cloned keys would leave every later lookup, made with
-        the live AST node, missing.
+        The deep copy carries fields holding AST nodes -- as identity KEYS
+        (`IdentityMap` / `IdentitySet`, e.g. `pre_analyzed_method_args`) or as
+        VALUES (`AST_IDENTITY_FIELDS`) -- over by identity; each
+        `__deepcopy__` says why. The restore installs the SNAPSHOT, so a
+        cloned node would leave every later identity comparison missing.
         """
         return deepcopy(self.func)
 
@@ -2218,6 +2256,83 @@ class SemanticContext:
         if family.pending_type_class is PendingStrType:
             return self.str_vars
         return self.bytes_vars
+
+    def view_needs_owned(self, info: ViewVarInfo) -> bool:
+        """Whether the facts recorded so far force this view local to OWN.
+
+        The one predicate behind every storage answer for a str/bytes local;
+        `_resolve_pending_view_types` and `view_storage_verdict` both read it,
+        so a use site and the resolution can never disagree on what the facts
+        say.
+
+        A generator/async body hoists every local into the resumable frame,
+        which outlives the case-block temps and suspensions the sync
+        view-safety judgment assumes the binding shares scope with -- so a
+        non-static source forces owned storage there. Locals side of the param
+        doctrine in `is_owned_in_coro_frame`; explicit StrView/BytesView
+        annotations never enter Pending resolution, so the user's view
+        contract is untouched.
+        """
+        func = self.func.current_function
+        in_resumable = (isinstance(func, TpyFunction)
+                        and (func.is_generator or func.is_async))
+        return bool(
+            info.initialized_from_owned
+            or info.used_in_augassign
+            or info.passed_to_promote_param
+            or info.reassigned_from_owned
+            or info.source_mutated
+            or (in_resumable and info.frame_unsafe_source)
+        )
+
+    def view_storage_verdict(self, typ: 'TpyType | None') -> 'TpyType | None':
+        """The storage the deduction has decided for an undecided str/bytes
+        local -- the ONE answer every consumer of that storage asks for.
+
+        `typ` is the local's binding type; anything that is not a pending view
+        gets None, so a caller can spell `verdict(t) or t` and keep its own
+        answer for a type that already states its storage. Once
+        `_resolve_pending_view_types` has run the settled type is returned
+        (`view_storage_settled` says so); before that it is the verdict the
+        facts recorded so far imply, walking the alias chain because a source
+        that owns forces its aliases to own. A later fact can only promote a
+        view to owned, never the reverse, so a consumer that must act during
+        body analysis reads a verdict that only gets stricter, and one that
+        can wait defers until the answer is settled.
+        """
+        if not isinstance(typ, PendingViewType):
+            return None
+        family = typ.family
+        registry = self.view_vars(family)
+        root = registry.get(typ.var_id)
+        if root is None:
+            return None
+        if root.resolved_type is not None:
+            return root.resolved_type
+        seen: set[int] = set()
+        stack = [typ.var_id]
+        while stack:
+            var_id = stack.pop()
+            if var_id in seen:
+                continue
+            seen.add(var_id)
+            info = registry.get(var_id)
+            if info is None:
+                continue
+            if (info.resolved_type == family.owned_type
+                    or (info.resolved_type is None
+                        and self.view_needs_owned(info))):
+                return family.owned_type
+            stack.extend(info.source_var_ids)
+        return family.view_type
+
+    def view_storage_settled(self, typ: 'TpyType | None') -> bool:
+        """Whether `view_storage_verdict` for this local is final -- i.e. the
+        resolution pass has run and no further binding can change it."""
+        if not isinstance(typ, PendingViewType):
+            return False
+        info = self.view_vars(typ.family).get(typ.var_id)
+        return info is not None and info.resolved_type is not None
 
     def next_view_var_id(self, family: ViewTypeFamily) -> int:
         """Allocate and return the next var_id for the given family."""

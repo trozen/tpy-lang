@@ -22,11 +22,12 @@ namespace tpyapp::main {
     std::optional<Point> __slot_3;
     Point __slot_1 = Point(::tpy::BigInt(0));
     Point* saved = &__slot_1;
+    Point* p;
     for (int32_t i = 0; i < 3; ++i) {
-        Point* p = &*(__slot_2 = Point(::tpy::BigInt(i)));
+        p = &*(__slot_2 = Point(::tpy::BigInt(i)));
         saved = p;
     }
-    Point* p = &*(__slot_3 = Point(::tpy::BigInt(9)));
+    p = &*(__slot_3 = Point(::tpy::BigInt(9)));
     return ((((saved->x) * (::tpy::BigInt(100)))) + (p->x));
 }
 
@@ -40,12 +41,13 @@ namespace tpyapp::main {
 //     q.x = 55
 //     return p.x
 ::tpy::BigInt mutate_through_alias() {
+    std::optional<Point> __slot_1;
+    std::optional<Point> __slot_2;
+    Point* p;
     for (int32_t i = 0; i < 2; ++i) {
-        Point __slot_1 = Point(::tpy::BigInt(i));
-        Point* p = &__slot_1;
+        p = &*(__slot_1 = Point(::tpy::BigInt(i)));
     }
-    Point __slot_2 = Point(::tpy::BigInt(9));
-    Point* p = &__slot_2;
+    p = &*(__slot_2 = Point(::tpy::BigInt(9)));
     Point& q = (*p);
     q.x = ::tpy::BigInt(55);
     return p->x;

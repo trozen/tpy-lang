@@ -10,9 +10,15 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_tails;
+struct __gen_owned_local;
+struct __gen_slice_of_ref_param;
 
 // def tails(s: str) -> Iterator[StrView]:
 __gen_tails tails(std::string_view s);
+// def owned_local(s: str) -> Iterator[StrView]:
+__gen_owned_local owned_local(std::string_view s);
+// def slice_of_ref_param(ba: bytearray) -> Iterator[int32]:
+__gen_slice_of_ref_param slice_of_ref_param(const ::tpy::ByteArray& ba);
 // def main() -> None:
 void main();
 
@@ -36,6 +42,53 @@ struct __gen_tails : public ::tpy::next_iter_mixin<__gen_tails, std::string_view
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_tails&) {
         return os << "<generator tails>";
+    }
+};
+
+// def owned_local(s: str) -> Iterator[StrView]:
+struct __gen_owned_local : public ::tpy::next_iter_mixin<__gen_owned_local, std::string_view> {
+    int32_t __state;
+    std::string s;
+    std::string v;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_owned_local(std::string_view s_)
+        : __state(S_INITIAL), s(std::string(s_)) {}
+
+    std::expected<std::string_view, ::tpy::StopIteration> __next__();
+    __gen_owned_local& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_owned_local&) {
+        return os << "<generator owned_local>";
+    }
+};
+
+// def slice_of_ref_param(ba: bytearray) -> Iterator[int32]:
+struct __gen_slice_of_ref_param : public ::tpy::next_iter_mixin<__gen_slice_of_ref_param, int32_t> {
+    int32_t __state;
+    const ::tpy::ByteArray& ba;
+    ::tpy::Bytes c;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_slice_of_ref_param(const ::tpy::ByteArray& ba)
+        : __state(S_INITIAL), ba(ba) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_slice_of_ref_param& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_slice_of_ref_param&) {
+        return os << "<generator slice_of_ref_param>";
     }
 };
 

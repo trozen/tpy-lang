@@ -41,7 +41,6 @@ from .calls import (
 from .type_ops import seeded_arg_hint
 from .statements import (
     _root_name_of_expr, _is_self_call_deferred, _local_traces_to_self,
-    _view_source_is_temporary,
 )
 
 if TYPE_CHECKING:
@@ -55,7 +54,7 @@ if TYPE_CHECKING:
     from ..typesys import PendingGenericInstanceInfo
 
 from .context import _storage_key
-from .local_deduction import mark_pending_list_mutated
+from .local_deduction import mark_pending_list_mutated, view_source_is_temporary
 
 
 # Single-element container inserts and the arg index that lands in element
@@ -851,7 +850,7 @@ class MethodAnalyzer:
             if (elem_t is not None and is_borrowing_view_type(unwrap_readonly(elem_t))
                     and ai < len(expr.args)):
                 arg = expr.args[ai]
-                if _view_source_is_temporary(
+                if view_source_is_temporary(
                         arg.expr if isinstance(arg, TpyCoerce) else arg):
                     raise self.ctx.error(
                         f"Cannot store a temporary in '{expr.method}' on a "

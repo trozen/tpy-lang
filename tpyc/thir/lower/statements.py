@@ -2819,6 +2819,13 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
     plain value render."""
     hoist_decls: list[tuple[str, str]] = []
     for name, raw in hoists.items():
+        # This predecl IS the sema hoist's declaration, so it settles the
+        # residue ledger for the name -- including one already declared
+        # further out, which needs no second declaration. Drained here, at
+        # the shared emitter, rather than only in the callers that remember
+        # to: the loop ladders did not, and rejected bodies whose hoist they
+        # had in fact emitted.
+        lc.unhandled_hoists.discard(name)
         if name in declared:
             continue
         vtype = unwrap_ref_type(raw)
@@ -7462,6 +7469,14 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
             isinstance(init, TpyFieldAccess)
             and _resolved_viewfam_value(declared[stmt.name],
                                         lc.analyzer) is not None))
+    # An owned-BYTES frame field fed a view source takes the family's
+    # view->owned construction, the same wrap the sync reassign arm threads:
+    # `std::vector<uint8_t>` has no `operator=` from a span. The FIELD's
+    # declared storage asks -- a slice result arrives here as a plain value.
+    # `std::string` does take a string_view, so the str twin stays bare.
+    tgt_bytes = _resolved_bytes_value(declared[stmt.name], lc.analyzer)
+    if tgt_bytes is not None and is_bytes_type(tgt_bytes):
+        value = _wrap_view_owned_sink(value, tgt_bytes, stmt.loc)
     _witness("res.decl_assign")
     return THIRAssign(
         target=THIRName(name=stmt.name, result_type=declared[stmt.name],
@@ -10932,12 +10947,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                          or _value_opt_view_binding(stmt.init.name, lc))
                     and _value_opt_target_binding(stmt.name, lc)):
                 init = replace(init, deref=False)
-            # No view->owned wrap on a plain reassignment: std::string has an
-            # implicit operator=(string_view), so the bare `t = s;` is right
-            # here (the wrap is a decl-init/return-boundary shape). The same
-            # bare assign for an owned-BYTES target fed a view source is
-            # invalid C++ (vector has no span operator=) -- a filed defect,
-            # see BUGS.md.
+            # An owned-BYTES target fed a view source takes the family's
+            # view->owned construction: `std::vector<uint8_t>` has no
+            # `operator=` from a span. The TARGET's declared storage asks --
+            # the source's own shape does not decide it, and a slice result or
+            # a view local arrives here as a plain value. `std::string` does
+            # take a string_view, so the str twin stays the bare `t = s;` --
+            # wrapping it would build a temporary the assignment does not need.
+            tgt_bytes = _resolved_bytes_value(declared[stmt.name], analyzer)
+            if tgt_bytes is not None and is_bytes_type(tgt_bytes):
+                init = _wrap_view_owned_sink(init, tgt_bytes, loc)
             # A write-seeded native-linkage global's target spells the BARE
             # C name (`g_counter = val;` -- the global-write arm's
             # native_global_names target).
@@ -16017,7 +16036,6 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         # so no THIRTry field is needed), or the const borrow-decl pointer.
         try_flavors[name] = _admit_nonvalue_hoist(name, var_type, lc, stmt,
                                                   "try.hoist")
-    lc.unhandled_hoists.difference_update(hoists)
     for handler in stmt.handlers:
         if (handler.binding
                 and _handler_binding_type(handler, lc.analyzer) is None):
@@ -16231,7 +16249,6 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         # through the BRANCH_RVALUE arm, so no THIRWith field is needed.
         with_flavors[name] = _admit_nonvalue_hoist(name, bare, lc, stmt,
                                                    "with.hoist")
-    lc.unhandled_hoists.difference_update(hoists)
     items: list[THIRWithItem] = []
     for item_idx, item in enumerate(stmt.items):
         ctx = item.context_expr

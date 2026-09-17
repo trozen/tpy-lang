@@ -15,11 +15,12 @@ namespace tpyapp::main {
 //     n = 9
 //     return n
 ::tpy::BigInt in_for() {
+    int32_t n;
     for (int32_t i = 0; i < 3; ++i) {
-        int32_t n = (::tpy::add_check<int32_t>(i, 1));
+        n = (::tpy::add_check<int32_t>(i, 1));
         std::cout << n << "\n";
     }
-    int32_t n = 9;
+    n = 9;
     return ::tpy::BigInt(n);
 }
 
@@ -33,12 +34,13 @@ namespace tpyapp::main {
 //     return n
 ::tpy::BigInt in_while() {
     int32_t c = 2;
+    int32_t n;
     while ((c > 0)) {
-        int32_t n = c;
+        n = c;
         std::cout << n << "\n";
         c = ::tpy::sub_check<int32_t>(c, 1);
     }
-    int32_t n = 9;
+    n = 9;
     return ::tpy::BigInt(n);
 }
 
@@ -164,15 +166,16 @@ namespace tpyapp::main {
 //     v = "nine"
 //     return v
 std::string optional_local(bool flag) {
+    std::optional<std::string> v;
     for (int32_t i = 0; i < 2; ++i) {
-        std::optional<std::string> v = std::nullopt;
+        v = std::nullopt;
         if (flag) {
             v = ::tpy::fixed_to_str<int32_t>(i);
         }
         std::cout << ::tpy::print_bool((!v.has_value())) << "\n";
     }
-    std::string_view v = "nine";
-    return std::string(v);
+    v = "nine";
+    return (*v);
 }
 
 // def str_local() -> str:
@@ -182,12 +185,13 @@ std::string optional_local(bool flag) {
 //     s = "after"
 //     return s
 std::string str_local() {
+    std::string s;
     for (int32_t i = 0; i < 2; ++i) {
-        std::string s = ::tpy::fixed_to_str<int32_t>(i);
+        s = ::tpy::fixed_to_str<int32_t>(i);
         std::cout << s << "\n";
     }
-    std::string_view s = "after";
-    return std::string(s);
+    s = "after";
+    return s;
 }
 
 // def list_local() -> int:
@@ -197,14 +201,15 @@ std::string str_local() {
 //     xs = [9, 9]
 //     return xs[0]
 ::tpy::BigInt list_local() {
+    std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
+    std::vector<int32_t>* xs;
     for (int32_t i = 0; i < 2; ++i) {
-        std::array<int32_t, 2> __slot_1 = {i, i};
-        std::array<int32_t, 2>* xs = &__slot_1;
+        xs = &*(__slot_1 = {i, i});
         std::cout << ::tpy::__getitem__((*xs), 0) << "\n";
     }
-    std::array<int32_t, 2> __slot_2 = {9, 9};
-    std::array<int32_t, 2>* xs = &__slot_2;
-    return ::tpy::__getitem__((*xs), 0);
+    xs = &*(__slot_2 = {9, 9});
+    return ::tpy::BigInt(::tpy::__getitem__((*xs), 0));
 }
 
 // def nested_blocks(flag: bool) -> int:
@@ -216,13 +221,14 @@ std::string str_local() {
 //     n = 9
 //     return n
 ::tpy::BigInt nested_blocks(bool flag) {
+    int32_t n;
     if (flag) {
         for (int32_t i = 0; i < 2; ++i) {
-            int32_t n = (::tpy::add_check<int32_t>(i, 5));
+            n = (::tpy::add_check<int32_t>(i, 5));
             std::cout << n << "\n";
         }
     }
-    int32_t n = 9;
+    n = 9;
     return ::tpy::BigInt(n);
 }
 

@@ -1,2 +1,4 @@
 ello
 llo
+owned_local: padded value long enough to reallocate
+slice_of_ref_param: b'0123'

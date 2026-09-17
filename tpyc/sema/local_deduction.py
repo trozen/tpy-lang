@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING, Callable
 
 from ..coercions import CoercionContext, resolve_coercion
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
-from ..parse.nodes import TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr
+from ..parse.nodes import (TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess,
+                           TpyBinOp, TpyIfExpr, TpyNamedExpr)
 from ..typesys import (
 
     collapse_tuple_own_elements,
@@ -59,6 +60,7 @@ from .numeric_lattice import (
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
+    is_borrowing_view_type,
 )
 
 if TYPE_CHECKING:
@@ -93,6 +95,58 @@ def walk_view_source_leaves(expr: 'TpyExpr', leaf_fn: 'Callable[[TpyExpr], list]
         return (walk_view_source_leaves(expr.then_expr, leaf_fn)
                 + walk_view_source_leaves(expr.else_expr, leaf_fn))
     return leaf_fn(expr)
+
+
+def view_source_is_temporary(expr: TpyExpr) -> bool:
+    """True if a view bound to `expr` would reference end-of-statement temporary
+    storage (no durable lvalue/static root).
+
+    Unlike is_dangling_return, a local name/field is treated as STABLE -- it
+    outlives a same-scope binding -- so only genuine temporaries (fresh calls,
+    f-strings, binops, and views borrowing them) lack durable storage. Used to
+    reject an explicit `StrView`/`BytesView` annotation bound to a temporary,
+    while leaving pinned-view aliases of stable locals/fields valid.
+    """
+    if isinstance(expr, TpyCoerce):
+        return view_source_is_temporary(expr.expr)
+    # A walrus hands out its wrapped value: provenance follows it.
+    if isinstance(expr, TpyNamedExpr):
+        return view_source_is_temporary(expr.value)
+    if isinstance(expr, (TpyName, TpyFieldAccess, TpyStrLiteral, TpyBytesLiteral)):
+        return False
+    # A slice borrows its container: temp iff the container is temp.
+    if isinstance(expr, TpySubscript):
+        return view_source_is_temporary(expr.obj)
+    # A view-returning method borrows its receiver (str.strip etc.); an owned
+    # return is a fresh temporary regardless of receiver.
+    if isinstance(expr, TpyMethodCall):
+        fi = expr.resolved_function_info
+        ret = fi.return_type if fi is not None else None
+        if ret is not None and is_borrowing_view_type(unwrap_readonly(ret)):
+            return view_source_is_temporary(expr.obj)
+        return True
+    if isinstance(expr, TpyCall):
+        # View/pointer constructor borrows its argument (StrView("lit") is static).
+        if expr.call_type is not None and (
+                is_borrowing_view_type(expr.call_type) or expr.call_type.is_pointer()):
+            return not expr.args or view_source_is_temporary(expr.args[0])
+        fi = expr.resolved_function_info
+        # A view-returning free function that borrows specific args dangles only
+        # if a borrowed arg is temporary (pick_view(StrView("lit")) is safe).
+        if fi is not None and fi.return_borrows_from:
+            return any(0 <= i < len(expr.args) and view_source_is_temporary(expr.args[i])
+                       for i in fi.return_borrows_from if i >= 0)
+        # Otherwise: a view return is the callee's responsibility (durable),
+        # an owned return is a fresh temporary that dangles as a view.
+        ret = fi.return_type if fi is not None else None
+        if ret is not None and is_borrowing_view_type(unwrap_readonly(ret)):
+            return False
+        return True
+    if isinstance(expr, TpyIfExpr):
+        return (view_source_is_temporary(expr.then_expr)
+                or view_source_is_temporary(expr.else_expr))
+    # f-string / binop / unknown -> temporary (fail closed).
+    return True
 
 
 def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'list[TpyType]':
@@ -411,7 +465,7 @@ class LocalTypeDeduction:
         info = self.ctx.list_literals.get(literal_id)
         if info is None:
             return
-        self._update_list_element_type(info, value_type)
+        self.update_list_element_type(info, value_type)
         # Propagate up the entire alias chain (zs = ys = xs; zs.append(v))
         visited: set[int] = {info.literal_id}
         current = info
@@ -422,7 +476,7 @@ class LocalTypeDeduction:
             source = self.ctx.list_literals.get(current.source_literal_id)
             if source is None:
                 break
-            self._update_list_element_type(source, value_type)
+            self.update_list_element_type(source, value_type)
             current = source
 
     @staticmethod
@@ -451,7 +505,7 @@ class LocalTypeDeduction:
             return None  # keep existing concrete type
         return None  # incompatible -- let normal type checking catch it
 
-    def _update_list_element_type(self, info: ListLiteralInfo, value_type: TpyType) -> None:
+    def update_list_element_type(self, info: ListLiteralInfo, value_type: TpyType) -> None:
         """Update element type for a ListLiteralInfo, widening if needed."""
         result = self._widen_inferred_type(info.element_type, value_type)
         if result is not None:
@@ -1069,6 +1123,15 @@ class LocalTypeDeduction:
             return (self.is_view_compatible_source(init_expr.then_expr, then_type)
                     and self.is_view_compatible_source(init_expr.else_expr, else_type))
 
+        # Fail closed: a source shape no arm above recognises gets the OWNED
+        # copy. Durability alone (`view_source_is_temporary`, which the
+        # declaration of a view-typed local seeds from) is too weak a question
+        # here -- it calls a name stable without asking what that name's own
+        # binding borrows, and answering it at this site put `urllib.parse`
+        # locals into views over dead storage. A local whose bindings disagree
+        # therefore takes the strictest binding's answer, which is the join a
+        # single storage needs; what it costs is that the JOIN is the strictest
+        # demand rather than one uniform verdict per source shape.
         return False
 
     # --- View-type local tracking (generic across str/bytes families) ---
@@ -1084,7 +1147,9 @@ class LocalTypeDeduction:
         the frame lifetime, so an un-annotated alias of it must not silently
         inherit the view. A pending-view name also counts: its safety is
         inherited through `source_var_ids` (the second resolution pass
-        promotes the chain when the source resolves owned).
+        promotes the chain when the source resolves owned). A slice of an
+        owning str/bytes name this body binds counts too -- see
+        `_frame_resident_slice`.
 
         Deliberately a SEPARATE, narrower classifier than
         `is_view_compatible_source` (which answers sync view-SAFETY, not
@@ -1114,7 +1179,50 @@ class LocalTypeDeduction:
         if isinstance(e, (TpyCall, TpyMethodCall)):
             t = self.ctx.get_expr_type(e)
             return isinstance(t, LiteralType) and t.is_str_base()
-        return False
+        return self._frame_resident_slice(e)
+
+    def _frame_resident_slice(self, e: TpyExpr) -> bool:
+        """A slice of an owning str/bytes NAME bound by this body.
+
+        A resumable body hoists its params and locals into the frame, so such
+        a name is a frame FIELD and its buffer lives exactly as long as the
+        frame: the suspension the staticness question guards against cannot
+        end it, and the view is the same one the sync body gets. Rebinding or
+        mutating the name still demotes the view -- through the source-storage
+        tracking both bodies share -- so this gives up no demotion, only the
+        blanket copy.
+
+        A loop variable is excluded: its binding can be a borrow of another
+        producer's frame slot, which the next step overwrites.
+        """
+        if not (isinstance(e, TpySubscript) and isinstance(e.obj, TpyName)):
+            return False
+        name = e.obj.name
+        if name in self.ctx.func.loop_vars:
+            return False
+        bound = None
+        func = self.ctx.func.current_function
+        if isinstance(func, TpyFunction):
+            for pname, ptype in func.params:
+                if pname == name:
+                    bound = ptype
+                    break
+        if bound is None and self.ctx.func.current_scope is not None:
+            bound = self.ctx.func.current_scope.lookup(name)
+        if bound is None:
+            return False
+        bound = unwrap_readonly(unwrap_ref_type(unwrap_own(bound)))
+        # A root that is itself an undecided str/bytes local answers through
+        # the deduction, not through its "undecided" spelling; one that will
+        # be a VIEW is not owning storage and fails closed here.
+        bound = self.ctx.view_storage_verdict(bound) or bound
+        # The frame field must OWN the buffer the slice points into. A value
+        # type (str / bytes / String) is copied into the frame, so it does;
+        # a reference type (bytearray) is held as a reference to the CALLER's
+        # object, which can reallocate across a suspension.
+        if not bound.is_value_type() or is_borrowing_view_type(bound):
+            return False
+        return any(fam.is_any_member(bound) for fam in VIEW_TYPE_FAMILIES)
 
     def has_nonstatic_view_source(self, expr: TpyExpr | None) -> bool:
         """True when any view-source leaf of `expr` is not static-lifetime
@@ -1159,6 +1267,14 @@ class LocalTypeDeduction:
         if var_id is not None and var_id in self.ctx.view_vars(family):
             self.ctx.view_vars(family)[var_id].reassigned_from_owned = True
 
+    def _add_view_source(self, family: ViewTypeFamily, var_id: int,
+                         source_var_id: int) -> None:
+        """Record that view local `var_id` shares storage with `source_var_id`,
+        so the alias pass promotes it when the source resolves owned."""
+        info = self.ctx.view_vars(family).get(var_id)
+        if info is not None and source_var_id not in info.source_var_ids:
+            info.source_var_ids.append(source_var_id)
+
     def tuple_target_view_family(self, name: str) -> ViewTypeFamily | None:
         """The pending str/bytes view family of tuple-unpack target `name`, or
         None if it is not a pending-view local."""
@@ -1184,14 +1300,12 @@ class LocalTypeDeduction:
         if not isinstance(source_type, family.pending_type_class):
             return
         var_id = self.ctx.view_var_map(family).get(var_name)
-        if var_id is not None and var_id in self.ctx.view_vars(family):
+        if var_id is not None:
             # Append, don't replace: a view local that aliased one source and is
             # later rebound to another must keep BOTH -- if either source resolves
             # to owned (or is mutated), the alias must promote too. Replacing here
             # would drop the earlier source and leave a dangling view.
-            info = self.ctx.view_vars(family)[var_id]
-            if source_type.var_id not in info.source_var_ids:
-                info.source_var_ids.append(source_type.var_id)
+            self._add_view_source(family, var_id, source_type.var_id)
 
     def _resolve_pending_view_types(self, family: ViewTypeFamily) -> None:
         """Resolve all pending view types for the given family.
@@ -1207,34 +1321,18 @@ class LocalTypeDeduction:
         pending = self.ctx.view_pending_resolutions(family)
         vars_reg = self.ctx.view_vars(family)
 
-        # A generator/async body hoists every local into the resumable frame,
-        # which outlives the case-block
-        # temps and suspensions the sync view-safety judgment assumes the
-        # binding shares scope with -- so a non-static source forces owned
-        # storage. Locals side of the param doctrine in
-        # `is_owned_in_coro_frame`; explicit StrView/BytesView annotations
-        # never enter Pending resolution, so the user's view contract is
-        # untouched.
-        func = self.ctx.func.current_function
-        in_resumable = (isinstance(func, TpyFunction)
-                        and (func.is_generator or func.is_async))
-
-        # First pass: resolve based on direct usage flags
+        # First pass: resolve based on direct usage flags. `view_needs_owned`
+        # is the shared predicate a mid-body consumer reads through
+        # `view_storage_verdict`, so the settled answer and the verdict a use
+        # site saw can only differ by facts recorded after that use.
         for var_id in pending:
             info = vars_reg.get(var_id)
             if info is None:
                 continue
 
-            needs_owned = (
-                info.initialized_from_owned
-                or info.used_in_augassign
-                or info.passed_to_promote_param
-                or info.reassigned_from_owned
-                or info.source_mutated
-                or (in_resumable and info.frame_unsafe_source)
-            )
-
-            info.resolved_type = family.owned_type if needs_owned else family.view_type
+            info.resolved_type = (family.owned_type
+                                  if self.ctx.view_needs_owned(info)
+                                  else family.view_type)
 
         # Second pass: promote aliases whose source resolved to owned.
         # An or/ternary result may have multiple sources; if ANY resolves to

@@ -111,8 +111,8 @@ int32_t hoisted() {
     std::optional<std::vector<int32_t>> __slot_2;
     int32_t i = 0;
     int32_t total = 0;
+    std::vector<int32_t>* items;
     while ((i < 2)) {
-        std::vector<int32_t>* items;
         {
             try {
                 items = &*(__slot_1 = ::tpyapp::main::mk_list());
@@ -123,7 +123,7 @@ int32_t hoisted() {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*items)));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::vector<int32_t>* items = &*(__slot_2 = ::tpyapp::main::mk_list());
+    items = &*(__slot_2 = ::tpyapp::main::mk_list());
     items->push_back(5);
     return (::tpy::add_check<int32_t>(total, ::tpy::__len__((*items))));
 }

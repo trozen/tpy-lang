@@ -213,6 +213,11 @@ class FlowFacts:
     """Immutable snapshot of flow-sensitive analysis state."""
 
     definitely_assigned: frozenset[str] = frozenset()
+    # Names a loop body bound, which are not in scope until a read promotes
+    # them (see FunctionTrackingState.loop_bound_assigned). The merge keeps
+    # this set and `definitely_assigned` disjoint; between merges a promoted
+    # name is in both, which reads the same either way.
+    loop_bound_assigned: frozenset[str] = frozenset()
     init_terminated: bool = False
     rvalue_vars: frozenset[str] = frozenset()
     non_null_ptr_vars: frozenset[str] = frozenset()
@@ -231,11 +236,22 @@ class FlowFacts:
         """Merge flow facts from then/else branches."""
         then_term = then.init_terminated
         else_term = else_.init_terminated
+        merged_assigned = _merge_sets(
+            then.definitely_assigned, else_.definitely_assigned,
+            then_term, else_term, _MergePolicy.INTERSECT,
+        )
+        # One fact, two spellings: a name a loop body bound on one side and a
+        # plain assignment bound on the other IS assigned at the join, so the
+        # two sets merge as their union and split back by which side of the
+        # promotion the name is on.
+        merged_any = _merge_sets(
+            then.definitely_assigned | then.loop_bound_assigned,
+            else_.definitely_assigned | else_.loop_bound_assigned,
+            then_term, else_term, _MergePolicy.INTERSECT,
+        )
         return FlowFacts(
-            definitely_assigned=_merge_sets(
-                then.definitely_assigned, else_.definitely_assigned,
-                then_term, else_term, _MergePolicy.INTERSECT,
-            ),
+            definitely_assigned=merged_assigned,
+            loop_bound_assigned=merged_any - merged_assigned,
             init_terminated=then_term and else_term,
             rvalue_vars=_merge_sets(
                 then.rvalue_vars, else_.rvalue_vars,

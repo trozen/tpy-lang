@@ -742,17 +742,38 @@ class ExpressionAnalyzer:
             raise self.ctx.error(
                 f"variable '{expr.name}' may not be assigned at this point", expr)
 
+    def _pending_decl_anchor(self, bind_stack: tuple[TpyStmt, ...]) -> TpyStmt:
+        """The statement a loop-body-first local pre-declares in front of.
+
+        Python locals are function-scoped, so the one declaration has to
+        stand in a C++ scope enclosing BOTH the loop that binds the name and
+        this read. That is the first enclosing statement the two do not
+        share: inside the shared part they are in one block already, and
+        anchoring on the loop itself would put the declaration inside a
+        block the read is not in -- or, for a sibling loop, leave the first
+        loop free to declare the name a second time.
+        """
+        read_stack = self.ctx.func.compound_stack
+        shared = 0
+        while (shared < len(bind_stack) and shared < len(read_stack)
+               and bind_stack[shared] is read_stack[shared]):
+            shared += 1
+        return bind_stack[shared] if shared < len(bind_stack) else bind_stack[-1]
+
     def _promote_pending_loop_var(self, name: str) -> bool:
         """Promote a pending loop-scoped variable if present.
 
         Returns True if the variable was promoted: added to scope and
-        registered for codegen pre-declaration, and marked assigned when
-        every loop on the way out provably ran.
+        registered for codegen pre-declaration. Whether it counts as
+        assigned is not this read's call -- the binding site recorded that
+        (when the loop provably ran) and the branch merges in between have
+        already taken it back if only some arms bound it.
         """
         pending = self.ctx.func.pending_loop_vars.get(name)
         if pending is None:
             return False
-        var_type, loop_stmt, orig_stmt, proven = pending
+        var_type, bind_stack, orig_stmt = pending
+        decl_stmt = self._pending_decl_anchor(bind_stack)
         # A body-declared local stays in the table: the promotion defines
         # it in the scope only, and the table is what the frame-local hoist
         # and its resolution sinks read -- popped, a local read after a
@@ -763,12 +784,17 @@ class ExpressionAnalyzer:
         if orig_stmt is not None:
             del self.ctx.func.pending_loop_vars[name]
         self.ctx.func.current_scope.define(name, var_type)
-        # Bound under a `while` sema could not prove ran: visible, but the
-        # read is the definite-assignment reject.
-        if proven:
+        # The one declaration stands at the anchor, which encloses this scope,
+        # so the name's storage is no longer the loop body's: an alias taken
+        # here does not outlive what it binds, and the escape check must not
+        # read the binding's original depth and say it does.
+        self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
+        # Bound by a loop body that provably ran: the name is assigned here,
+        # in the spelling the rest of sema reads.
+        if name in self.ctx.func.loop_bound_assigned:
             self.ctx.func.definitely_assigned.add(name)
-        # Register for codegen pre-declaration
-        self.ctx.record_branch_decls(loop_stmt, {name: var_type})
+        # Register for codegen pre-declaration at the binding's anchor
+        self.ctx.record_branch_decls(decl_stmt, {name: var_type})
         # NB: a str/bytes view target first-declared in a loop BODY from an
         # owned-temp source, hoisted here and used after the loop, dangles into
         # the dead per-iteration `__tup` -- but we cannot blanket-own here, as
@@ -779,6 +805,23 @@ class ExpressionAnalyzer:
         if isinstance(orig_stmt, TpyForEach) and name == orig_stmt.var:
             orig_stmt.hoist_loop_var = True
         return True
+
+    def sync_pending_loop_var_type(self, name: str, var_type: TpyType) -> None:
+        """Write a promoted loop-body local's JOINED type back to the pending
+        table and to its pre-declaration.
+
+        The table is the authority every later promotion reads -- the block
+        that did the joining binding hands its scope back at its end -- so a
+        binding that widened the local has to leave the widened type there,
+        or the next block (or the read after it) would promote the stale
+        first type and the one declaration would render two types.
+        """
+        pending = self.ctx.func.pending_loop_vars.get(name)
+        if pending is None or pending[2] is not None or pending[0] == var_type:
+            return
+        self.ctx.func.pending_loop_vars[name] = (var_type, pending[1], None)
+        self.ctx.record_branch_decls(self._pending_decl_anchor(pending[1]),
+                                     {name: var_type})
 
     def _normalize_pending_container(self, t: TpyType) -> TpyType:
         """Normalize a pending container type to a concrete type with resolved IntLiteralType elements.

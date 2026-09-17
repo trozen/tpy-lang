@@ -28,14 +28,110 @@ void slice_of_param(std::string_view s) {
     std::cout << v << "\n";
 }
 
+// def return_inferred_strview(s: str) -> StrView:
+//     v = s.strip()           # tpyc: ok
+//     return v
+std::string_view return_inferred_strview(std::string_view s) {
+    std::string_view v = ::tpy::str_strip(s);
+    return v;
+}
+
+// def return_inferred_bytesview(ba: bytearray) -> BytesView:
+//     v = ba[1:]              # tpyc: ok
+//     return v
+::tpy::BytesView return_inferred_bytesview(const ::tpy::ByteArray& ba) {
+    ::tpy::BytesView v = ::tpy::bytes_slice(ba, ::tpy::BasicSlice{1, std::nullopt});
+    return v;
+}
+
+// # nested def: same return, one level in
+// def nested_def_return(s: str) -> None:
+//     def inner_str(t: str) -> StrView:
+//         v = t.strip()       # tpyc: ok
+//         return v
+//
+//     def inner_bytes(b: bytes) -> BytesView:
+//         v = b[0:16]         # tpyc: ok
+//         return v
+//
+//     print("nested_def:", inner_str(s),
+//           bytes(inner_bytes(b"0123456789abcdefghijklmnop")))
+void nested_def_return(std::string_view s) {
+    auto inner_str = [](std::string_view t) -> std::string_view {
+        std::string_view v = ::tpy::str_strip(t);
+        return v;
+    };
+    auto inner_bytes = [](::tpy::BytesView b) -> ::tpy::BytesView {
+        ::tpy::BytesView v = ::tpy::bytes_slice(b, ::tpy::BasicSlice{0, 16});
+        return v;
+    };
+    std::cout << "nested_def:" << " " << inner_str(s) << " " << ::tpy::BytesPrinter(::tpy::Bytes(inner_bytes(::tpy::bytes_literal("0123456789abcdefghijklmnop", 26)))) << "\n";
+}
+
+// # generator: the nested def inside it is still a body of its own
+// def gen_nested_def_return(s: str) -> Iterator[int32]:
+//     def inner(t: str) -> StrView:
+//         v = t.strip()       # tpyc: ok
+//         return v
+//
+//     yield 0                                            # -> S_RESUME_0
+//     print("gen_nested_def:", inner(s))
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_nested_def_return::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        // def inner: frame member
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        std::cout << "gen_nested_def:" << " " << inner(s) << "\n";
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+std::string_view __gen_gen_nested_def_return::inner(std::string_view t) {
+    std::string_view v = ::tpy::str_strip(t);
+    return v;
+}
+
+// def gen_nested_def_return(s: str) -> Iterator[int32]:
+__gen_gen_nested_def_return gen_nested_def_return(std::string_view s) {
+    return __gen_gen_nested_def_return(s);
+}
+
 // def main() -> None:
 //     view_of_param("  trimmed  ")
 //     explicit_view_of_param("kept")
 //     slice_of_param("abcdef")
+//     print(return_inferred_strview("  a padded value long enough to show  "))
+//     buf = bytearray(b"0123456789abcdefghijklmnop")
+//     print(bytes(return_inferred_bytesview(buf)))
+//     nested_def_return("  a padded value long enough to show  ")
+//     for step in gen_nested_def_return("  another padded value, long too  "):
+//         print("gen_nested_def step:", step)
 void main() {
     ::tpyapp::main::view_of_param("  trimmed  ");
     ::tpyapp::main::explicit_view_of_param("kept");
     ::tpyapp::main::slice_of_param("abcdef");
+    std::cout << ::tpyapp::main::return_inferred_strview("  a padded value long enough to show  ") << "\n";
+    ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("0123456789abcdefghijklmnop", 26));
+    std::cout << ::tpy::BytesPrinter(::tpy::Bytes(::tpyapp::main::return_inferred_bytesview(buf))) << "\n";
+    ::tpyapp::main::nested_def_return("  a padded value long enough to show  ");
+    {
+        std::string __tmp_1 = "  another padded value, long too  ";
+        auto __src_0 = ::tpyapp::main::gen_nested_def_return(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t step = ::tpy::unwrap_ref(*__r_1);
+        std::cout << "gen_nested_def step:" << " " << step << "\n";
+        }
+    }
 }
 
 // main()

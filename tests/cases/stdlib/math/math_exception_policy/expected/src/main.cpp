@@ -378,6 +378,7 @@ double binary(std::string_view name, double x, double y) {
 //     assert math.ldexp(1.5, 3) == 12.0  # tpyc: ok
 //     print("free function: ldexp finite overflow, underflow and nonfinite inputs")
 void binary_policy() {
+    std::string actual;
     auto __obj_0 = {std::tuple<std::string, double, double, std::string>{"pow", -(2.0), 0.5, "domain"}, std::tuple<std::string, double, double, std::string>{"pow", 0.0, -(1.0), "domain"}, std::tuple<std::string, double, double, std::string>{"pow", -(0.0), -(3.0), "domain"}, std::tuple<std::string, double, double, std::string>{"pow", 1e+308, 2.0, "overflow"}, std::tuple<std::string, double, double, std::string>{"pow", -(1e+308), 3.0, "overflow"}, std::tuple<std::string, double, double, std::string>{"pow", ::tpystd::math::nan, 0.0, "finite"}, std::tuple<std::string, double, double, std::string>{"pow", 1.0, ::tpystd::math::nan, "finite"}, std::tuple<std::string, double, double, std::string>{"pow", -(1.0), ::tpystd::math::inf, "finite"}, std::tuple<std::string, double, double, std::string>{"pow", -(::tpystd::math::inf), 0.5, "+inf"}, std::tuple<std::string, double, double, std::string>{"pow", -(::tpystd::math::inf), -(3.0), "-zero"}, std::tuple<std::string, double, double, std::string>{"pow", -(0.0), -(::tpystd::math::inf), "+inf"}, std::tuple<std::string, double, double, std::string>{"pow", 0.0, -(::tpystd::math::inf), "+inf"}, std::tuple<std::string, double, double, std::string>{"pow", -(0.0), 3.0, "-zero"}, std::tuple<std::string, double, double, std::string>{"pow", -(1e-300), 3.0, "-zero"}, std::tuple<std::string, double, double, std::string>{"pow", 1e-300, 2.0, "+zero"}, std::tuple<std::string, double, double, std::string>{"pow", ::tpystd::math::nan, 2.0, "nan"}, std::tuple<std::string, double, double, std::string>{"pow", 2.0, ::tpystd::math::nan, "nan"}, std::tuple<std::string, double, double, std::string>{"fmod", 1.0, 0.0, "domain"}, std::tuple<std::string, double, double, std::string>{"fmod", ::tpystd::math::inf, 2.0, "domain"}, std::tuple<std::string, double, double, std::string>{"fmod", -(::tpystd::math::inf), 2.0, "domain"}, std::tuple<std::string, double, double, std::string>{"fmod", ::tpystd::math::nan, 0.0, "nan"}, std::tuple<std::string, double, double, std::string>{"fmod", ::tpystd::math::inf, ::tpystd::math::nan, "nan"}, std::tuple<std::string, double, double, std::string>{"fmod", 2.0, ::tpystd::math::inf, "finite"}, std::tuple<std::string, double, double, std::string>{"fmod", -(0.0), 2.0, "-zero"}, std::tuple<std::string, double, double, std::string>{"remainder", 1.0, 0.0, "domain"}, std::tuple<std::string, double, double, std::string>{"remainder", ::tpystd::math::inf, 2.0, "domain"}, std::tuple<std::string, double, double, std::string>{"remainder", -(::tpystd::math::inf), 2.0, "domain"}, std::tuple<std::string, double, double, std::string>{"remainder", ::tpystd::math::nan, 0.0, "nan"}, std::tuple<std::string, double, double, std::string>{"remainder", ::tpystd::math::inf, ::tpystd::math::nan, "nan"}, std::tuple<std::string, double, double, std::string>{"remainder", 2.0, ::tpystd::math::inf, "finite"}, std::tuple<std::string, double, double, std::string>{"remainder", -(0.0), 2.0, "-zero"}, std::tuple<std::string, double, double, std::string>{"log", -(1.0), 2.0, "domain"}, std::tuple<std::string, double, double, std::string>{"log", 2.0, -(1.0), "domain"}, std::tuple<std::string, double, double, std::string>{"log", 0.0, 2.0, "domain"}, std::tuple<std::string, double, double, std::string>{"log", 2.0, 0.0, "domain"}, std::tuple<std::string, double, double, std::string>{"log", -(1.0), ::tpystd::math::nan, "domain"}, std::tuple<std::string, double, double, std::string>{"log", ::tpystd::math::nan, -(1.0), "domain"}, std::tuple<std::string, double, double, std::string>{"log", 2.0, 1.0, "division"}, std::tuple<std::string, double, double, std::string>{"log", ::tpystd::math::nan, 2.0, "nan"}, std::tuple<std::string, double, double, std::string>{"log", 2.0, ::tpystd::math::nan, "nan"}};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -388,7 +389,7 @@ void binary_policy() {
         double x = std::get<1>(__tup_1);
         double y = std::get<2>(__tup_1);
         std::string_view expected = std::get<3>(__tup_1);
-        std::string actual = "missing";
+        actual = "missing";
         {
             try {
                 actual = ::tpyapp::main::category(::tpyapp::main::binary(name, x, y));
@@ -423,7 +424,7 @@ void binary_policy() {
         double x = std::get<0>(__tup_2);
         int32_t exponent = std::get<1>(__tup_2);
         std::string_view expected = std::get<2>(__tup_2);
-        std::string actual = "missing";
+        actual = "missing";
         {
             try {
                 actual = ::tpyapp::main::category(::tpy::stdlib::math::checked_ldexp(x, exponent));

@@ -1413,9 +1413,15 @@ class TypeOperations:
             # @value_ptr_coercion: Ptr[T] params accept T values, so match
             # the arg against the pointee type for inference purposes.
             match_type = ptype
+            arg_t = arg_types[arg_idx]
             if func.value_ptr_coercion and isinstance(ptype, PtrType):
                 match_type = ptype.pointee
-            if not self.match_type_with_inference(match_type, arg_types[arg_idx], inferred):
+                # A pointer names the STORAGE it points at, so a str/bytes
+                # local whose storage the deduction has not spelled out yet
+                # contributes the storage it decided on -- never the
+                # "undecided" binding type, whose display is the owned name.
+                arg_t = self.ctx.view_storage_verdict(arg_t) or arg_t
+            if not self.match_type_with_inference(match_type, arg_t, inferred):
                 return None
             arg_idx += 1
 

@@ -1328,7 +1328,7 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
         return;
     }
     std::string_view value = ::tpy::str_strip(::tpy::str_slice(first, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(eq, 1)), std::nullopt}));
-    std::string_view domain_attr = "";
+    std::string domain_attr = "";
     std::string_view path = "/";
     bool secure = false;
     bool max_age_set = false;
@@ -1350,7 +1350,7 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
         std::string an = ::tpy::str_lower(::tpy::str_strip(::tpy::str_slice(attr, ::tpy::BasicSlice{std::nullopt, aeq})));
         std::string_view av = ::tpy::str_strip(::tpy::str_slice(attr, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(aeq, 1)), std::nullopt}));
         if ((an == "domain")) {
-            std::string_view d = av;
+            std::string d = std::string(av);
             if (::tpy::str_startswith(d, ".")) {
                 d = ::tpy::str_slice(d, ::tpy::BasicSlice{1, std::nullopt});
             }

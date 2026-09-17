@@ -38,10 +38,10 @@ void pinned_view() {
 //     a = make()
 //     v = a[3:9]
 //     print(v)
-//     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
+//     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: ok
 void slice_view() {
     std::string a = ::tpyapp::main::make();
-    std::string_view v = ::tpy::str_slice(a, ::tpy::BasicSlice{3, 9});
+    std::string v = std::string(::tpy::str_slice(a, ::tpy::BasicSlice{3, 9}));
     std::cout << v << "\n";
     a += " appended text that forces the std::string buffer to reallocate";
 }
@@ -50,10 +50,10 @@ void slice_view() {
 //     ba = bytearray(b"   padded long bytes that dodge the small buffer here   ")
 //     v = ba[3:9]
 //     print(len(v))
-//     ba.append(33)  # tpyc: warning(/while borrowed/)
+//     ba.append(33)  # tpyc: ok
 void bytearray_slice_view() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("   padded long bytes that dodge the small buffer here   ", 56));
-    ::tpy::BytesView v = ::tpy::bytes_slice(ba, ::tpy::BasicSlice{3, 9});
+    ::tpy::Bytes v = ::tpy::Bytes(::tpy::bytes_slice(ba, ::tpy::BasicSlice{3, 9}));
     std::cout << ::tpy::__len__(v) << "\n";
     ba.push_back(33);
 }

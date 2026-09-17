@@ -9,14 +9,47 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen_nested_def_return;
+
 // def view_of_param(s: str) -> None:
 void view_of_param(std::string_view s);
 // def explicit_view_of_param(s: str) -> None:
 void explicit_view_of_param(std::string_view s);
 // def slice_of_param(s: str) -> None:
 void slice_of_param(std::string_view s);
+// def return_inferred_strview(s: str) -> StrView:
+std::string_view return_inferred_strview(std::string_view s);
+// def return_inferred_bytesview(ba: bytearray) -> BytesView:
+::tpy::BytesView return_inferred_bytesview(const ::tpy::ByteArray& ba);
+// def nested_def_return(s: str) -> None:
+void nested_def_return(std::string_view s);
+// def gen_nested_def_return(s: str) -> Iterator[int32]:
+__gen_gen_nested_def_return gen_nested_def_return(std::string_view s);
 // def main() -> None:
 void main();
+
+// def gen_nested_def_return(s: str) -> Iterator[int32]:
+struct __gen_gen_nested_def_return : public ::tpy::next_iter_mixin<__gen_gen_nested_def_return, int32_t> {
+    int32_t __state;
+    std::string s;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_nested_def_return(std::string_view s_)
+        : __state(S_INITIAL), s(std::string(s_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_nested_def_return& __iter__() { return *this; }
+    std::string_view inner(std::string_view t);
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_nested_def_return&) {
+        return os << "<generator gen_nested_def_return>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

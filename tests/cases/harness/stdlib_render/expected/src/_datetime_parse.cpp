@@ -851,9 +851,10 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
 //             st.has_gmtoff, off_us, zname)
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, bool, ::tpy::BigInt, std::string> _strptime_impl(std::string_view data, std::string_view fmt) {
     std::string scan;
+    int32_t i;
     if ((((fmt.find("%c") != std::string::npos) || (fmt.find("%x") != std::string::npos)) || (fmt.find("%X") != std::string::npos))) {
         std::string expanded = "";
-        int32_t i = 0;
+        i = 0;
         int32_t n = ::tpy::__len__(fmt);
         while ((i < n)) {
             char c = ::tpy::__getitem__(fmt, i);
@@ -879,7 +880,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
         scan = fmt;
     }
     _ParseState st = _ParseState();
-    int32_t i = 0;
+    i = 0;
     ::tpy::BigInt p = ::tpy::BigInt(0);
     int32_t n = ::tpy::__len__(scan);
     int32_t m = ::tpy::__len__(data);

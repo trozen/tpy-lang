@@ -575,7 +575,7 @@ SplitResult urlsplit(std::string_view url) {
         rest = ::tpy::str_slice(rest, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), std::nullopt});
     }
     if (::tpy::str_startswith(rest, "//")) {
-        std::string_view body = ::tpy::str_slice(rest, ::tpy::BasicSlice{2, std::nullopt});
+        std::string body = std::string(::tpy::str_slice(rest, ::tpy::BasicSlice{2, std::nullopt}));
         int32_t end = ::tpystd::urllib::parse::_netloc_end(body);
         netloc = ::tpy::str_slice(body, ::tpy::BasicSlice{std::nullopt, end});
         rest = ::tpy::str_slice(body, ::tpy::BasicSlice{end, std::nullopt});

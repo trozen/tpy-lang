@@ -30,7 +30,7 @@ std::string basename(std::string_view p) {
 //     return head
 std::string dirname(std::string_view p) {
     int32_t i = (::tpy::add_check<int32_t>(::tpy::str_rfind(p, "/"), 1));
-    std::string_view head = ::tpy::str_slice(p, ::tpy::BasicSlice{std::nullopt, i});
+    std::string head = std::string(::tpy::str_slice(p, ::tpy::BasicSlice{std::nullopt, i}));
     int32_t j = ::tpy::__len__(head);
     while (((j > 0) && (::tpy::__getitem__(head, (::tpy::sub_check<int32_t>(j, 1))) == '/'))) {
         j = ::tpy::sub_check<int32_t>(j, 1);
@@ -38,7 +38,7 @@ std::string dirname(std::string_view p) {
     if ((j > 0)) {
         head = ::tpy::str_slice(head, ::tpy::BasicSlice{std::nullopt, j});
     }
-    return std::string(head);
+    return head;
 }
 
 // def split(p: str) -> tuple[str, str]:
@@ -483,7 +483,7 @@ std::string expandvars(std::string_view p) {
                 res += ::tpy::str_slice(p, ::tpy::BasicSlice{i, std::nullopt});
                 i = n;
             } else {
-                std::string_view name = ::tpy::str_slice(p, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 2)), close});
+                std::string name = std::string(::tpy::str_slice(p, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 2)), close}));
                 if (((*::tpystd::os::_environ::environ).__contains__(name))) {
                     res += (*::tpystd::os::_environ::environ)[name];
                 } else {

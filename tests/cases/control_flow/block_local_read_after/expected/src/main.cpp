@@ -107,8 +107,9 @@ namespace tpyapp::main {
 }
 
 // def sibling_loops_reuse_name() -> int:
-//     # Two sibling loops each declaring the same name are independent locals;
-//     # the second must still be able to declare it.
+//     # Two sibling loops binding the same name bind ONE function-scoped local
+//     # (Python has no block scope), so the single pre-declaration stands before
+//     # the FIRST loop and both bodies assign into it.
 //     for i in range(2):
 //         n = i + 1
 //         print(n)
@@ -117,11 +118,11 @@ namespace tpyapp::main {
 //         print(n)
 //     return n
 ::tpy::BigInt sibling_loops_reuse_name() {
+    int32_t n;
     for (int32_t i = 0; i < 2; ++i) {
-        int32_t n = (::tpy::add_check<int32_t>(i, 1));
+        n = (::tpy::add_check<int32_t>(i, 1));
         std::cout << n << "\n";
     }
-    int32_t n;
     for (int32_t i = 0; i < 2; ++i) {
         n = (::tpy::add_check<int32_t>(i, 10));
         std::cout << n << "\n";

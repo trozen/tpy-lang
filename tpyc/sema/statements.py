@@ -40,11 +40,11 @@ from ..parse import (
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith, TryTier,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
-    TpySubscript, TpySlice, TpyStrLiteral, TpyBytesLiteral, TpyName, TpyTupleLiteral,
+    TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
-    TpyMatch, TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyFString, TpyAwait,
+    TpyMatch, TpyBinOp, TpyIfExpr, TpyFString, TpyAwait,
     is_stable_address_lvalue,
 )
 from ..coercions import CoercionContext
@@ -87,7 +87,7 @@ from ..value_category import (
 from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
-    walk_view_source_leaves,
+    view_source_is_temporary, walk_view_source_leaves,
 )
 from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
 from tpyc import modules as builtin_modules
@@ -155,58 +155,6 @@ def _frame_temp_arg_hoisted(fi, idx: int, arg: TpyExpr, ctx) -> bool:
     if not frame_factory_callee(fi) or idx < 0 or idx >= len(fi.params):
         return False
     return frame_temp_arg_source(arg, fi.params[idx].type, ctx) is not None
-
-
-def _view_source_is_temporary(expr: TpyExpr) -> bool:
-    """True if a view bound to `expr` would reference end-of-statement temporary
-    storage (no durable lvalue/static root).
-
-    Unlike is_dangling_return, a local name/field is treated as STABLE -- it
-    outlives a same-scope binding -- so only genuine temporaries (fresh calls,
-    f-strings, binops, and views borrowing them) lack durable storage. Used to
-    reject an explicit `StrView`/`BytesView` annotation bound to a temporary,
-    while leaving pinned-view aliases of stable locals/fields valid.
-    """
-    if isinstance(expr, TpyCoerce):
-        return _view_source_is_temporary(expr.expr)
-    # A walrus hands out its wrapped value: provenance follows it.
-    if isinstance(expr, TpyNamedExpr):
-        return _view_source_is_temporary(expr.value)
-    if isinstance(expr, (TpyName, TpyFieldAccess, TpyStrLiteral, TpyBytesLiteral)):
-        return False
-    # A slice borrows its container: temp iff the container is temp.
-    if isinstance(expr, TpySubscript):
-        return _view_source_is_temporary(expr.obj)
-    # A view-returning method borrows its receiver (str.strip etc.); an owned
-    # return is a fresh temporary regardless of receiver.
-    if isinstance(expr, TpyMethodCall):
-        fi = expr.resolved_function_info
-        ret = fi.return_type if fi is not None else None
-        if ret is not None and is_borrowing_view_type(unwrap_readonly(ret)):
-            return _view_source_is_temporary(expr.obj)
-        return True
-    if isinstance(expr, TpyCall):
-        # View/pointer constructor borrows its argument (StrView("lit") is static).
-        if expr.call_type is not None and (
-                is_borrowing_view_type(expr.call_type) or expr.call_type.is_pointer()):
-            return not expr.args or _view_source_is_temporary(expr.args[0])
-        fi = expr.resolved_function_info
-        # A view-returning free function that borrows specific args dangles only
-        # if a borrowed arg is temporary (pick_view(StrView("lit")) is safe).
-        if fi is not None and fi.return_borrows_from:
-            return any(0 <= i < len(expr.args) and _view_source_is_temporary(expr.args[i])
-                       for i in fi.return_borrows_from if i >= 0)
-        # Otherwise: a view return is the callee's responsibility (durable),
-        # an owned return is a fresh temporary that dangles as a view.
-        ret = fi.return_type if fi is not None else None
-        if ret is not None and is_borrowing_view_type(unwrap_readonly(ret)):
-            return False
-        return True
-    if isinstance(expr, TpyIfExpr):
-        return (_view_source_is_temporary(expr.then_expr)
-                or _view_source_is_temporary(expr.else_expr))
-    # f-string / binop / unknown -> temporary (fail closed).
-    return True
 
 
 def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyExpr) -> None:
@@ -1042,6 +990,13 @@ class StatementAnalyzer:
             if canonical is None:
                 continue
             current = self.ctx.func.current_scope.lookup(name)
+            if current is None:
+                # Out of scope here: a block-declared local whose one
+                # declaration is promoted -- with its anchor and its
+                # assigned-ness -- by the first read or binding after the
+                # block. Defining it here would bypass that promotion and
+                # leave the name in scope but never recorded as assigned.
+                continue
             # Preserve ReadonlyType from branch merge: var_types stores
             # unwrapped types, so re-wrap with ReadonlyType if the merge
             # determined this variable should be readonly.
@@ -1289,9 +1244,15 @@ class StatementAnalyzer:
         bt = self.ctx.func.borrow_tracker
         prev_stmt = bt.current_stmt
         bt.current_stmt = stmt
+        is_compound = isinstance(stmt, (TpyForEach, TpyWhile, TpyIf, TpyWith,
+                                        TpyTry, TpyMatch))
+        if is_compound:
+            self.ctx.func.compound_stack.append(stmt)
         try:
             self._analyze_stmt_dispatch(stmt)
         finally:
+            if is_compound:
+                self.ctx.func.compound_stack.pop()
             bt.current_stmt = prev_stmt
             # Flush post-access ptr narrowing queued during expression analysis.
             # See FunctionTrackingState.pending_non_null_ptr_vars for rationale
@@ -1487,6 +1448,7 @@ class StatementAnalyzer:
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             stmt.else_type_facts = self._filter_union_codegen_facts(else_type_facts)
             scope_before = set(self.ctx.func.current_scope.bindings.keys())
+            pending_before = set(self.ctx.func.pending_loop_vars)
             assigned_before = frozenset(self.ctx.func.definitely_assigned)
             before = self.init.save()
             consumed_before = self.ctx.func.current_consumed_own_params.copy()
@@ -1505,8 +1467,18 @@ class StatementAnalyzer:
             consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
             then_terminated = self.ctx.func.init_terminated
             bindings_after_then = dict(self.ctx.func.current_scope.bindings)
-            # Restore bindings for else branch
+            pending_after_then = set(self.ctx.func.pending_loop_vars)
+            # Restore bindings for else branch. An arm's own binding leaks into
+            # the enclosing scope on purpose (that is the two-arm hoist), but a
+            # name the arm only PROMOTED is not the arm's to leak: left in
+            # scope it hides the promotion path from the other arm, which then
+            # reads a local whose assigned-ness only the promotion spells out.
+            # `_unbind_names` keeps the names that HAVE a pending entry, which
+            # is the live table -- a loop inside the then-arm makes its body
+            # local pending there, so pinning this on "pending before the `if`"
+            # would leak exactly that promotion.
             self.ctx.func.current_scope.bindings.update(bindings_before)
+            self._unbind_names(set(bindings_after_then) - scope_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
             # Else-body: condition was false -> || operands all evaluated,
@@ -1552,6 +1524,9 @@ class StatementAnalyzer:
             self._sync_promoted_var_types(
                 set(bindings_after_then) | set(bindings_after_else)
             )
+            self._unbind_branch_pending(
+                scope_before, pending_before, pending_after_then,
+                set(bindings_after_then), set(bindings_after_else))
             # Detect variables first declared inside branches that need
             # pre-declaration. Skip when both branches terminate (no code
             # after the if needs the variable).
@@ -1609,7 +1584,7 @@ class StatementAnalyzer:
                 self._apply_range_facts(range_true)
                 for s in stmt.body:
                     self.analyze_stmt(s)
-            self.init.apply_loop_exit_facts(before)
+            self.init.apply_loop_exit_facts(before, runs_once=runs_once)
             # Re-add all walrus vars (condition always evaluates fully)
             self.ctx.func.definitely_assigned |= all_walrus_w
             # Loop might not execute — consumption inside is not definite
@@ -3382,6 +3357,14 @@ class StatementAnalyzer:
 
             self._prescan_and_analyze_body(func, params, inner_scope, self.ctx.func.current_ns)
 
+            # The nested def has its own tracking state, which the scope exit
+            # discards -- the deductions it accumulated have to be resolved
+            # and the checks it deferred have to run before that, or they
+            # never run at all. Same order as a top-level body: the drain
+            # reads the storage the resolution settles.
+            self.deduction.resolve_all()
+            self.compat.drain_deferred_escape_checks()
+
             # Use the authoritative nonlocal set from body analysis
             # (covers nonlocal declarations at any nesting depth)
             nonlocal_names = self.ctx.func.current_nonlocal_names.copy()
@@ -3538,6 +3521,45 @@ class StatementAnalyzer:
                 f"the types", stmt)
         stmt.hoist_loop_var = True
 
+    def _unbind_branch_pending(self, scope_before: set[str],
+                               pending_before: set[str],
+                               pending_after_then: set[str],
+                               bindings_after_then: set[str],
+                               bindings_after_else: set[str]) -> None:
+        """Take an arm's binding back out when a loop body elsewhere owns it.
+
+        A name one arm assigns directly while ANOTHER arm's loop body (or a
+        loop before the statement) binds it is not function-scoped from the
+        arm's assignment -- that one declares inside the arm's C++ block, so
+        a read after the `if` would not see it. Dropping it from the
+        enclosing scope leaves the pending entry as the sole authority: the
+        read promotes it, and the single declaration lands where it reaches
+        both arms. A name one arm both binds and makes pending crosses no
+        arm boundary and is left alone.
+        """
+        pending = self.ctx.func.pending_loop_vars
+        if not pending:
+            return
+        then_pending_new = pending_after_then - pending_before
+        else_pending_new = set(pending) - pending_after_then
+        then_scope_new = bindings_after_then - scope_before
+        else_scope_new = bindings_after_else - scope_before
+        cross_arm = ((then_pending_new & else_scope_new)
+                     | (else_pending_new & then_scope_new)
+                     | ((then_scope_new | else_scope_new) & pending_before))
+        self._unbind_names(cross_arm)
+
+    def _unbind_names(self, names: set[str]) -> None:
+        """Drop names from the current scope, leaving their pending entry the
+        sole authority. Only a name that HAS one is dropped: the pending table
+        is what a later read (or binding) promotes the one declaration from."""
+        pending = self.ctx.func.pending_loop_vars
+        bindings = self.ctx.func.current_scope.bindings
+        for name in [n for n in names if n in bindings and n in pending]:
+            del bindings[name]
+            if self.ctx.func.current_ns is not None:
+                self.ctx.func.current_ns.unbind(name)
+
     def _propagate_loop_body_vars(self, stmt: TpyStmt,
                                    inner_scope: 'Scope',
                                    skip_var: str | None = None, *,
@@ -3545,14 +3567,17 @@ class StatementAnalyzer:
         """Store a loop body's declared variables as pending.
 
         Both loop kinds call this. Variables are lazily promoted to the
-        parent scope when first referenced after the loop. `runs_once` is
+        parent scope when first referenced after the loop, pre-declared
+        against the enclosing-statement stack recorded here. `runs_once` is
         whether the body provably ran: a `while` head sema cannot prove
-        leaves its names unproven, so the promotion does not mark them
-        assigned. (A `for` over an iterable no fact proves non-empty is
-        taken as run -- BUGS.md#zero-trip-loop-body-local-read.)
+        leaves its names unassigned, so the read after the loop is the
+        definite-assignment reject. (A `for` over an iterable no fact proves
+        non-empty is taken as run -- BUGS.md#zero-trip-loop-body-local-read.)
 
         skip_var: loop variable name to exclude (already handled by caller).
         """
+        # Always non-empty: the dispatcher pushed `stmt` before the body walk.
+        stack = tuple(self.ctx.func.compound_stack)
         body_bindings = dict(inner_scope.bindings)
         if inner_scope.namespace is not None:
             # A name the body binds in the namespace alone (a walrus target,
@@ -3565,18 +3590,22 @@ class StatementAnalyzer:
             if name in self.ctx.func.global_declarations:
                 continue
             resolved = self._resolve_literal_type(var_type)
-            self.ctx.func.pending_loop_vars[name] = (resolved, stmt, None,
-                                                     runs_once)
-
-        # Re-parent any pending vars from nested loops to this (outer) loop,
-        # so they get pre-declared before this loop if referenced after it.
-        # A name whose inner loop ran is still unproven past an outer loop
-        # that may not have.
-        for name, (vtype, loop_stmt, orig_stmt, proven) in list(
-                self.ctx.func.pending_loop_vars.items()):
-            if loop_stmt is not stmt and name not in inner_scope.bindings:
-                self.ctx.func.pending_loop_vars[name] = (
-                    vtype, stmt, orig_stmt, proven and runs_once)
+            existing = self.ctx.func.pending_loop_vars.get(name)
+            # Two loops binding one name share ONE local, so the entry keeps
+            # the FIRST binding's stack: that stack is what the shared
+            # declaration has to reach, and re-recording the later binding
+            # would move the anchor past the first loop and declare the name
+            # twice. The TYPE is this body's, already joined with the earlier
+            # binding by the reassignment path (the second body's binding
+            # promotes the pending entry before it declares anything).
+            name_stack = existing[1] if existing is not None else stack
+            self.ctx.func.pending_loop_vars[name] = (resolved, name_stack,
+                                                     None)
+            if runs_once:
+                # Assigned past the loop, recorded on the flow state so the
+                # branch merges intersect it like any other binding -- a loop
+                # in ONE arm leaves the name maybe-unassigned.
+                self.ctx.func.loop_bound_assigned.add(name)
 
     def _propagate_for_loop_scope(self, stmt: TpyForEach,
                                    inner_scope: 'Scope',
@@ -3590,8 +3619,12 @@ class StatementAnalyzer:
         if ((not stmt.is_tuple_unpack or is_generator)
                 and var_name not in self.ctx.func.global_declarations):
             resolved = self._resolve_literal_type(elem_type)
-            self.ctx.func.pending_loop_vars[var_name] = (resolved, stmt, stmt,
-                                                         True)
+            stack = tuple(self.ctx.func.compound_stack)
+            self.ctx.func.pending_loop_vars[var_name] = (resolved, stack, stmt)
+            # Assigned past the loop like a body binding (same zero-trip
+            # assumption), and on the same flow state, so a branch merge can
+            # take it back when only one arm runs the loop.
+            self.ctx.func.loop_bound_assigned.add(var_name)
 
         self._propagate_loop_body_vars(stmt, inner_scope, skip_var=var_name)
 
@@ -3759,10 +3792,17 @@ class StatementAnalyzer:
                                    and self.deduction.has_nonstatic_view_source(init_expr)))
         else:
             # Fresh from owned type (str or bytes)
-            if init_expr is not None:
-                is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
-            else:
+            if init_expr is None:
                 is_owned = False
+            elif is_borrowing_view_type(var_type):
+                # The local's own type is already the view, so its source is a
+                # borrow by construction; the only thing forcing an owned copy
+                # is a source whose storage dies at end-of-statement.
+                is_owned = view_source_is_temporary(
+                    init_expr.expr if isinstance(init_expr, TpyCoerce)
+                    else init_expr)
+            else:
+                is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
             # Track source storage for subscript/field views so that
             # mutations on a source root fall the view back to the owned type.
             # A compound source (ternary / and-or) borrows every owned-storage
@@ -3824,16 +3864,16 @@ class StatementAnalyzer:
         # OOS rejection / dispatch / narrowing keep seeing the annotation.
         family = view_family_for_type(var_type)
         # An inferred (un-annotated) local whose type is itself a borrowing view
-        # (e.g. `s = make().strip()`) is not caught by view_family_for_type
-        # (that keys on owned/pending types). Route it through the same machinery
-        # so a view of a temporary/unsafe source promotes to an owned copy
-        # (matches CPython) instead of dangling. An explicit `StrView`/`BytesView`
-        # annotation keeps the user's view contract -- temp sources are rejected
-        # at the decl site, not promoted.
+        # (`s = p[1:]`, `s = make().strip()`) is not caught by
+        # view_family_for_type (that keys on the owned/pending types). It is the
+        # same local as `s = p` -- one type and one storage, joined over every
+        # binding -- so route it through the same deduction machinery: the first
+        # binding's TYPE SPELLING must not decide whether a later owned rebind
+        # copies or rejects. An explicit `StrView`/`BytesView` annotation is a
+        # promise not to copy and keeps its own contract (a temporary source is
+        # rejected at the decl site, never promoted).
         if (family is None and not annotated and init_expr is not None
-                and is_borrowing_view_type(var_type)
-                and _view_source_is_temporary(
-                    init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr)):
+                and is_borrowing_view_type(var_type)):
             for fam in VIEW_TYPE_FAMILIES:
                 if fam.is_any_member(var_type):
                     family = fam
@@ -4015,7 +4055,8 @@ class StatementAnalyzer:
             self.ctx.func.pending_yield_root_checks.append(
                 (stmt.value, elem_type, stmt.loc))
         else:
-            self.compat.check_view_return_dangle(stmt.value, elem_type, stmt.loc)
+            self.compat.check_view_return_dangle(stmt.value, elem_type, stmt.loc,
+                                                 for_yield=True)
         # A mutable borrow yield hands the consumer a writable reference into the
         # frame's source storage (a self field, param, ...), exactly like returning
         # a mutable borrow (see the TpyReturn branch above). Mark the source roots
@@ -4321,7 +4362,6 @@ class StatementAnalyzer:
                 return
 
         # Handle `global x` declarations: treat as reassignment of the global variable
-        prior_block_type: TpyType | None = None
         is_global_declared = stmt.name in self.ctx.func.global_declarations
         if is_global_declared:
             existing_type = self.ctx.global_scope.lookup(stmt.name)
@@ -4356,24 +4396,20 @@ class StatementAnalyzer:
                 # history. Same rule as the tuple-unpack arm.
                 existing_type = None
             if existing_type is None:
-                # A local first declared inside a block (loop body, and any
-                # block whose scope is gone by now) is not in the enclosing
-                # scope, so this reads as a fresh declaration -- but it is the
-                # SAME Python local, and one local carries one type. Capture
-                # the earlier type for that check ONLY; adopting it as
-                # `existing_type` would route this decl down the reassignment
-                # path, whose escape analysis then hoists storage the fresh
-                # binding does not need. `match` arms and `try` bodies get the
-                # check for free, since their branch-decls do enter the scope.
+                # A local first declared inside a loop BODY is out of the
+                # enclosing scope here, so this reads as a fresh declaration --
+                # but it is the SAME Python local, which carries ONE type and
+                # ONE storage: the join of every binding, wherever it stands.
+                # Promote it exactly as a READ after the loop does (same
+                # declaration anchor, same assigned-ness rule) so this binding
+                # goes down the ordinary reassignment path and joins there.
+                # A loop VARIABLE is excluded: its type comes from the iterable
+                # rather than from the user, so a later assignment must not be
+                # forced to adopt the element type.
                 pending = self.ctx.func.pending_loop_vars.get(stmt.name)
-                if pending is not None and pending[2] is None:
-                    # Body-declared only: a loop VARIABLE's type comes from the
-                    # iterable rather than the user, so a later assignment must
-                    # not be forced to adopt the element type.
-                    prior_block_type = pending[0]
-                else:
-                    prior_block_type = self.ctx.func.first_decl_types.get(
-                        stmt.name)
+                if (pending is not None and pending[2] is None
+                        and self.expr._promote_pending_loop_var(stmt.name)):
+                    existing_type = self.ctx.func.current_scope.lookup(stmt.name)
 
         # Block reassignment of Final globals at module level
         # (inside functions, local shadowing is allowed)
@@ -4719,12 +4755,6 @@ class StatementAnalyzer:
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
 
-        if (prior_block_type is not None and init_type is not None
-                and not self.compat.is_type_compatible(init_type, prior_block_type)):
-            raise self.ctx.error(
-                f"Type mismatch in reassignment to '{stmt.name}': expected "
-                f"{prior_block_type}, got {init_type}", stmt)
-
         # Deferred type inference for new locals (PendingViewType, list alias, etc.)
         if not is_global_declared and existing_type is None:
             var_type = self._infer_new_local_type(
@@ -4857,7 +4887,7 @@ class StatementAnalyzer:
                 # Locals only: a module global outlives the function, and a
                 # Final[str] constant is constexpr/static view storage.
                 if (not self.ctx.is_top_level and not stmt.is_final
-                        and _view_source_is_temporary(init_inner)):
+                        and view_source_is_temporary(init_inner)):
                     raise self.ctx.error(
                         f"Cannot bind {var_type} '{stmt.name}' to a temporary view "
                         f"source; the backing storage is destroyed at "
@@ -4889,10 +4919,17 @@ class StatementAnalyzer:
         # local does -- include them so `v = a.strip()` registers the receiver
         # borrow (drives the temp-receiver warning and the mutate-while-borrowed
         # check on a later `a += ...`).
+        # A str/bytes local's storage is the deduction's answer, not this
+        # site's: one that will be a VIEW borrows its source exactly as a
+        # spelled `StrView` does, and one that will OWN copies and borrows
+        # nothing. `view_storage_verdict` is None for every other type, which
+        # then answers for itself.
+        borrow_storage = (self.ctx.view_storage_verdict(unwrap_readonly(var_type))
+                          or var_type) if var_type is not None else None
         if (stmt.init is not None
-                and var_type is not None
-                and (not var_type.is_value_type()
-                     or is_borrowing_view_type(unwrap_readonly(var_type)))):
+                and borrow_storage is not None
+                and (not borrow_storage.is_value_type()
+                     or is_borrowing_view_type(unwrap_readonly(borrow_storage)))):
             init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             _register_call_result_borrow(self.ctx, stmt.name, init_unwrapped)
             # A non-const local alias of an @auto_readonly accessor result needs a
@@ -5014,8 +5051,8 @@ class StatementAnalyzer:
         # Track first var_decl for later type updates on reassignment-driven inference.
         if existing_type is None:
             self.ctx.func.var_decl_by_name[stmt.name] = stmt
-            if var_type is not None:
-                self.ctx.func.first_decl_types.setdefault(stmt.name, var_type)
+        elif var_type is not None:
+            self.expr.sync_pending_loop_var_type(stmt.name, var_type)
         # Record declared type for test type-annotation validation.
         # Strip Own[T] and Ref[T] for display -- internal annotations, not user-facing.
         if stmt.loc:

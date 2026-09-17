@@ -1882,13 +1882,25 @@ class TypeCompatibility:
         The display-typed message avoids leaking the internal PendingList repr.
         """
         loc = getattr(value_expr, "loc", None)
+        info = self.ctx.list_literals.get(existing_pl.literal_id)
+        # The literal's info is the authority on the element type: an empty `[]`
+        # carries UNKNOWN_ELEMENT in the type and learns from its uses.
+        existing_raw = (info.element_type if info is not None
+                        else existing_pl.element_type)
         new_elem_raw = self._list_like_element(value_type)
         if new_elem_raw is None:
             return CompatError(
                 f"Type mismatch in {context}: expected "
-                f"list[{self._default_resolve_element(existing_pl.element_type)}], "
+                f"list[{self._default_resolve_element(existing_raw)}], "
                 f"got {value_type}", loc)
-        existing_elem = self._default_resolve_element(existing_pl.element_type)
+        if isinstance(existing_raw, UnknownElementType):
+            # `xs = []` then `xs = [1, 2]`: one local, one element type -- the
+            # binding that knows it teaches the one that does not, exactly as
+            # an `xs.append(1)` would.
+            if info is not None:
+                self.deduction.update_list_element_type(info, new_elem_raw)
+            return None
+        existing_elem = self._default_resolve_element(existing_raw)
         new_elem = self._default_resolve_element(new_elem_raw)
         if existing_elem == new_elem:
             return None
@@ -2934,14 +2946,28 @@ class TypeCompatibility:
             return False
         return any(n == name for n, _ in fn.generator_locals)
 
-    def _local_has_borrowable_storage(self, expr: TpyName) -> bool:
+    def _local_has_borrowable_storage(self, expr: TpyName, *,
+                                      view_source: bool = False) -> bool:
         """True if a frame-resident local's own storage is a reference object
         that can be handed out by borrow. A value-typed local (array, tuple of
         values, primitive) has no such storage -- yielding it as a reference
         type is a representation-changing copy, i.e. a fresh temporary.
+
+        `view_source`: the local is the BACKING STORAGE of a yielded view, not
+        the yielded value. An owning str/bytes local is value-typed but holds a
+        buffer, and the frame field owns that buffer for the frame's whole
+        lifetime -- the view points into it, nothing is copied.
         """
         t = self.ctx.get_expr_type(expr)
-        return t is not None and not unwrap_readonly(t).is_value_type()
+        if t is None:
+            return False
+        t = unwrap_readonly(t)
+        if not t.is_value_type():
+            return True
+        if not view_source:
+            return False
+        storage = self.ctx.view_storage_verdict(t) or t
+        return view_family_for_type(storage) is not None
 
     def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False,
                            gen_yield: bool = False) -> bool:
@@ -3093,12 +3119,13 @@ class TypeCompatibility:
                 return False
             # A yielded frame-resident local roots in stable frame-slot storage
             # that outlives the suspension (see gen_yield in the docstring).
-            # Gated on the local being a non-value type: only a reference-typed
-            # local has borrowable storage. A value-typed local (array, tuple of
-            # values) yielded as a reference is a representation-changing copy --
-            # a fresh temporary -- so it stays dangling.
+            # Gated on the local having storage to lend: a reference-typed local
+            # always does; a value-typed one only as the owning BUFFER of a
+            # yielded view (str/bytes), since yielding the value itself as a
+            # reference is a representation-changing copy -- a fresh temporary.
             if (gen_yield and self._is_frame_resident_local(expr.name)
-                    and self._local_has_borrowable_storage(expr)):
+                    and self._local_has_borrowable_storage(
+                        expr, view_source=view_source)):
                 return False
             return True
 
@@ -3175,7 +3202,8 @@ class TypeCompatibility:
         return False
 
     def check_view_return_dangle(self, expr: TpyExpr, return_type: TpyType,
-                                 loc: SourceLocation | None) -> None:
+                                 loc: SourceLocation | None,
+                                 *, for_yield: bool = False) -> None:
         """Variant of check_dangling_reference for value-return contexts
         (lambda bodies, yield values). The full check_dangling_reference
         rejects local/temporary returns when the return type is a non-value
@@ -3190,7 +3218,8 @@ class TypeCompatibility:
             # being rejected as owned storage behind a view.
             self.check_dangling_reference(
                 expr, return_type, loc,
-                source_type=self.ctx.get_expr_type(expr))
+                source_type=self.ctx.get_expr_type(expr),
+                for_yield=for_yield)
 
     def _check_rebound_global_borrow(self, expr: TpyExpr,
                                      return_type: TpyType, verb: str) -> None:
@@ -3230,10 +3259,36 @@ class TypeCompatibility:
             expr
         )
 
+    def drain_deferred_escape_checks(self) -> None:
+        """Run the return/yield rooting checks deferred during body analysis.
+
+        Both lists are drained from this one place, at the END of a body and
+        after `func.generator_locals` is populated, because both answers need
+        the post-body state: a yielded frame-resident local is a valid borrow
+        root only once the frame-local set exists, and a str/bytes local's
+        storage is what the deduction settled. Yield-rooting runs first -- its
+        checks can themselves defer a view-storage entry.
+
+        Nothing is dropped: the view-storage pass is final, so a check that
+        deferred during analysis either passes or raises here.
+        """
+        roots = self.ctx.func.pending_yield_root_checks
+        self.ctx.func.pending_yield_root_checks = []
+        for value, elem_type, loc in roots:
+            self.check_dangling_reference(value, elem_type, loc, for_yield=True)
+
+        checks = self.ctx.func.pending_view_storage_checks
+        self.ctx.func.pending_view_storage_checks = []
+        for expr, return_type, loc, source_type, for_yield in checks:
+            self.check_dangling_reference(
+                expr, return_type, loc, source_type=source_type,
+                for_yield=for_yield, view_storage_final=True)
+
     def check_dangling_reference(self, expr: TpyExpr, return_type: TpyType,
                                  loc: SourceLocation | None,
                                  source_type: TpyType | None = None,
-                                 *, for_yield: bool = False) -> None:
+                                 *, for_yield: bool = False,
+                                 view_storage_final: bool = False) -> None:
         """Check if returning (or yielding) expr as a reference would dangle.
 
         Reference types are returned/yielded by reference. A local variable or
@@ -3288,8 +3343,24 @@ class TypeCompatibility:
                 # owned storage coerced into a view (a `bytearray`/`list` local
                 # returned as BytesView/Span), the storage dies at the return,
                 # so use the strict view-source check.
-                src_is_view = (source_type is not None
-                               and _dangling_view_message(source_type) is not None)
+                # A str/bytes local whose storage the deduction has not settled
+                # cannot answer this yet -- its type says "undecided", and a
+                # USE must not be what decides the storage. Wait for the
+                # verdict and re-run against it: a VIEW then follows the
+                # binding provenance this branch consults, an OWNED local is
+                # dead-on-return storage rejected exactly as an annotated
+                # `str`/`bytes` local is.
+                bare_src = (unwrap_readonly(source_type)
+                            if source_type is not None else None)
+                decided = self.ctx.view_storage_verdict(bare_src)
+                if (decided is not None and not view_storage_final
+                        and not self.ctx.view_storage_settled(bare_src)):
+                    self.ctx.func.pending_view_storage_checks.append(
+                        (expr, return_type, loc, source_type, for_yield))
+                    return
+                effective_src = decided if decided is not None else source_type
+                src_is_view = (effective_src is not None
+                               and _dangling_view_message(effective_src) is not None)
                 if self.is_dangling_return(expr, view_source=not src_is_view,
                                            gen_yield=for_yield):
                     raise self.ctx.error(view_msg, expr)

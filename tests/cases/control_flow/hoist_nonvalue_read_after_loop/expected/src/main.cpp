@@ -10,6 +10,12 @@ std::tuple<int32_t, int32_t> halves(int32_t n) {
     return std::tuple<int32_t, int32_t>{(::tpy::div_floor<int32_t>(n, 2)), (::tpy::sub_check<int32_t>(n, (::tpy::div_floor<int32_t>(n, 2))))};
 }
 
+// def take_ptr(p: Pic) -> Ptr[Pic]:
+//     return p
+Pic* take_ptr(Pic& p) {
+    return &p;
+}
+
 // # Free function: the record bound in both arms, read and mutated after the loop.
 // def free_two_arms() -> None:
 //     for i in range(3):  # tpyc: ok
@@ -629,6 +635,49 @@ __gen_gen_for_single gen_for_single() {
     return __gen_gen_for_single();
 }
 
+// # ... and a str local sliced out of another local in a generator's loop body:
+// # the source is a frame FIELD, so it outlives every suspension and the slice
+// # keeps the view a free function gets (`std::string_view c`, not a copy per
+// # character). The source is long enough that a dangling view would show.
+// def gen_slice_view(line: str) -> Iterator[int32]:
+//     i = 0
+//     while i < len(line):
+//         c = line[i:i + 2]  # tpyc: ok
+//         yield int32(len(c))                        # -> S_RESUME_0
+//         i += 2
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slice_view::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield int32(len(c))
+        i = ::tpy::add_check<int32_t>(i, 2);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < ::tpy::__len__(line))) {
+            c = ::tpy::str_slice(line, ::tpy::BasicSlice{i, (::tpy::add_check<int32_t>(i, 2))});
+            __state = S_RESUME_0;
+            return ::tpy::__len__(c);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_slice_view(line: str) -> Iterator[int32]:
+__gen_gen_slice_view gen_slice_view(std::string_view line) {
+    return __gen_gen_slice_view(line);
+}
+
 // def pair(i: int32) -> tuple[int32, str]:
 //     return (i, "v")
 std::tuple<int32_t, std::string> pair(int32_t i) {
@@ -713,6 +762,62 @@ void nested_def_section() {
         std::cout << "nested_def" << " " << f->n << "\n";
     };
     inner();
+}
+
+// # ... a nested `def` INSIDE the binding loop: the enclosing-statement stack
+// # the anchor is taken from has to come back from the nested-def state save
+// # holding the SAME statement objects, or the read anchors against a clone
+// # and codegen never sees the pre-declaration.
+// # The record binding comes from the caller's list, so the post-loop mutation
+// # is observed on `pics` itself -- a frame-slot copy would leave it at 0.
+// def nested_def_in_loop(pics: list[Pic]) -> None:
+//     for i in range(3):
+//         def double(k: int32) -> int32:
+//             return k * 2
+//
+//         x = double(i)  # tpyc: ok
+//         xs = [x]
+//         held = pics[i % 2]
+//     xs.append(9)
+//     held.n += 100
+//     print("nested_def_in_loop", x, xs, held.n, pics[0].n)
+void nested_def_in_loop(std::vector<Pic>& pics) {
+    std::optional<std::vector<int32_t>> xs;
+    Pic* held;
+    int32_t x;
+    for (int32_t i = 0; i < 3; ++i) {
+        auto double_ = [](int32_t k) -> int32_t {
+            return (::tpy::mul_check<int32_t>(k, 2));
+        };
+        x = double_(i);
+        xs = {x};
+        held = &(::tpy::__getitem__(pics, (::tpy::mod_floor<int32_t>(i, 2))));
+    }
+    xs->push_back(9);
+    held->n = ::tpy::add_check<int32_t>(held->n, 100);
+    std::cout << "nested_def_in_loop" << " " << x << " " << ::tpy::ListPrinter((*xs)) << " " << held->n << " " << ::tpy::__getitem__(pics, 0).n << "\n";
+}
+
+// # ... and a nested `def` between the binding loop and the read.
+// def nested_def_after_loop() -> None:
+//     for i in range(3):
+//         f = Flat(i)  # tpyc: ok
+//
+//     def bump(k: int32) -> int32:
+//         return k + 1
+//
+//     f.n = bump(f.n)
+//     print("nested_def_after_loop", f.n)
+void nested_def_after_loop() {
+    std::optional<Flat> f;
+    for (int32_t i = 0; i < 3; ++i) {
+        f = Flat(i);
+    }
+    auto bump = [](int32_t k) -> int32_t {
+        return (::tpy::add_check<int32_t>(k, 1));
+    };
+    f->n = bump(f->n);
+    std::cout << "nested_def_after_loop" << " " << f->n << "\n";
 }
 
 // # Context-manager body: the with hoists the name first; the loop's binds are
@@ -852,6 +957,1197 @@ void match_section(int32_t n) {
     }
 }
 
+// # Free function, scalar: the second loop binds nothing of the name.
+// def sib_scalar() -> None:
+//     for i in range(2):
+//         v = i + 1  # tpyc: ok
+//     for k in range(2):
+//         print("sib_scalar", k)
+//     v = v + 1
+//     print("sib_scalar", v)
+void sib_scalar() {
+    int32_t v;
+    for (int32_t i = 0; i < 2; ++i) {
+        v = (::tpy::add_check<int32_t>(i, 1));
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_scalar" << " " << k << "\n";
+    }
+    v = (::tpy::add_check<int32_t>(v, 1));
+    std::cout << "sib_scalar" << " " << v << "\n";
+}
+
+// # Free function, @nocopy record mutated through the hoisted name after the
+// # sibling loop; the alias taken in the body observes the mutation.
+// def sib_record() -> None:
+//     for i in range(2):
+//         f = Flat(i)  # tpyc: ok
+//         saved = f
+//     for k in range(2):
+//         print("sib_record", k)
+//     f.n += 100
+//     print("sib_record", f.n, saved.n)
+void sib_record() {
+    std::optional<Flat> f;
+    Flat* saved;
+    for (int32_t i = 0; i < 2; ++i) {
+        f = Flat(i);
+        saved = ::tpy::optional_to_ptr(f);
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_record" << " " << k << "\n";
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 100);
+    std::cout << "sib_record" << " " << f->n << " " << saved->n << "\n";
+}
+
+// # Free function, Ptr[T] taken in the body: the pointer local must not be the
+// # uninitialized second declaration (that one panics on the deref).
+// def sib_ptr() -> None:
+//     pics = [Pic(100), Pic(101)]
+//     for p in pics:
+//         q = take_ptr(p)  # tpyc: ok
+//     for k in range(2):
+//         print("sib_ptr", k)
+//     q.bump()
+//     print("sib_ptr", q.n, pics[1].n)
+void sib_ptr() {
+    std::array<Pic, 2> pics = {Pic(100), Pic(101)};
+    Pic* q;
+    auto& __obj_0 = pics;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        q = ::tpyapp::main::take_ptr(p);
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_ptr" << " " << k << "\n";
+    }
+    ::tpy::deref_check(q).bump();
+    std::cout << "sib_ptr" << " " << q->n << " " << ::tpy::__getitem__(pics, 1).n << "\n";
+}
+
+// # Free function, a tuple-unpack target and the tuple itself (value elements:
+// # a str view target would dangle into the per-iteration tuple either way,
+// # BUGS.md#loop-body-view-unpack-target-dangles).
+// def sib_unpack() -> None:
+//     n = 40
+//     for i in range(2):
+//         n, kept = halves(n)  # tpyc: ok
+//         t = (n, kept)
+//     for k in range(2):
+//         print("sib_unpack", k)
+//     print("sib_unpack", kept, n, t)
+void sib_unpack() {
+    int32_t n = 40;
+    int32_t kept;
+    std::tuple<int32_t, int32_t> t;
+    for (int32_t i = 0; i < 2; ++i) {
+        auto __tup_1 = ::tpyapp::main::halves(n);
+        n = std::get<0>(__tup_1);
+        kept = std::get<1>(__tup_1);
+        t = std::tuple<int32_t, int32_t>{n, kept};
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_unpack" << " " << k << "\n";
+    }
+    std::cout << "sib_unpack" << " " << kept << " " << n << " " << ::tpy::TuplePrinter(t) << "\n";
+}
+
+// # Free function, Box[T] (@nocopy, so a silent copy would not compile).
+// def sib_box() -> None:
+//     for i in range(2):
+//         b = Box(Pic(i))  # tpyc: ok
+//     for k in range(2):
+//         print("sib_box", k)
+//     print("sib_box", b.n)
+void sib_box() {
+    std::optional<::tpystd::tplib::box::Box<Pic>> b;
+    for (int32_t i = 0; i < 2; ++i) {
+        b = ::tpystd::tplib::box::Box<Pic>(Pic(i));
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_box" << " " << k << "\n";
+    }
+    std::cout << "sib_box" << " " << b->__deref__().n << "\n";
+}
+
+// # Free function, pointer-repr Optional and value-repr Optional. The pointer
+// # one binds a PRE-EXISTING element, so the post-loop mutation through it is
+// # observable on the source -- a copy would leave `base[1]` at 1.
+// def sib_optional() -> None:
+//     base = [Pic(0), Pic(1)]
+//     for i in range(2):
+//         p: Optional[Pic] = base[i]  # tpyc: ok
+//         m: Optional[int32] = i * 10
+//     for k in range(2):
+//         print("sib_optional", k)
+//     if p is not None:
+//         p.n += 1
+//         print("sib_optional", p.n, m, base[1].n)
+void sib_optional() {
+    std::array<Pic, 2> base = {Pic(0), Pic(1)};
+    Pic* p;
+    std::optional<int32_t> m;
+    for (int32_t i = 0; i < 2; ++i) {
+        p = &(::tpy::__getitem__(base, i));
+        m = (::tpy::mul_check<int32_t>(i, 10));
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_optional" << " " << k << "\n";
+    }
+    if ((p != nullptr)) {
+        p->n = ::tpy::add_check<int32_t>(p->n, 1);
+        std::cout << "sib_optional" << " " << p->n << " " << ::tpy::print_optional_val(m) << " " << ::tpy::__getitem__(base, 1).n << "\n";
+    }
+}
+
+// # Free function, a readonly alias in both arms: the const-pointer flavor.
+// # Parity-blind by construction -- see the top-of-file comment.
+// def sib_readonly(a: readonly[Pic], b: readonly[Pic]) -> None:
+//     for i in range(2):
+//         if i == 0:
+//             v = a  # tpyc: ok
+//         else:
+//             v = b
+//     for k in range(2):
+//         print("sib_readonly", k)
+//     print("sib_readonly", v.n)
+void sib_readonly(const Pic& a, const Pic& b) {
+    const Pic* v;
+    for (int32_t i = 0; i < 2; ++i) {
+        if ((i == 0)) {
+            v = &(a);
+        } else {
+            v = &(b);
+        }
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_readonly" << " " << k << "\n";
+    }
+    std::cout << "sib_readonly" << " " << v->n << "\n";
+}
+
+// # Free function, a container element borrowed in the body and grown after the
+// # sibling loop -- the growth lands in the container, not in a copy.
+// def sib_container_elem() -> None:
+//     xs = [[0], [1]]
+//     for i in range(2):
+//         e = xs[i]  # tpyc: ok
+//     for k in range(2):
+//         print("sib_container_elem", k)
+//     e.append(9)
+//     print("sib_container_elem", xs)
+void sib_container_elem() {
+    std::array<std::vector<int32_t>, 2> xs = {{{0}, {1}}};
+    std::vector<int32_t>* e;
+    for (int32_t i = 0; i < 2; ++i) {
+        e = &(::tpy::__getitem__(xs, i));
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_container_elem" << " " << k << "\n";
+    }
+    e->push_back(9);
+    std::cout << "sib_container_elem" << " " << ::tpy::ListPrinter(xs) << "\n";
+}
+
+// # Flat sibling loops; the second runs zero times on the first call.
+// def two_loop_list_sibling(n: int32) -> None:
+//     for j in range(2):
+//         xs = [j]  # tpyc: ok
+//         held = xs
+//     for i in range(n):
+//         xs = [i, i]
+//     xs.append(9)
+//     print("two_loop_list_sibling", xs, held)
+void two_loop_list_sibling(int32_t n) {
+    std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
+    std::vector<int32_t>* xs;
+    std::vector<int32_t>* held;
+    for (int32_t j = 0; j < 2; ++j) {
+        xs = &*(__slot_1 = {j});
+        held = xs;
+    }
+    int32_t __stop_1 = n;
+    for (int32_t i = 0; i < __stop_1; ++i) {
+        xs = &*(__slot_2 = {i, i});
+    }
+    xs->push_back(9);
+    std::cout << "two_loop_list_sibling" << " " << ::tpy::ListPrinter((*xs)) << " " << ::tpy::ListPrinter((*held)) << "\n";
+}
+
+// # ... the same two-loop shape over str/bytes, where the ONE declaration also
+// # has to agree on the STORAGE: a view slot holding the second loop's owned
+// # concatenation would dangle past it, so the join takes the strictest binding
+// # and the slot owns whenever any binding does. `two_loop_str_views` renders
+// # `std::string t` -- an owning slot copying each slice -- although BOTH its
+// # bindings slice the live parameter: a slice is one of the shapes the rebind
+// # check fails closed on, BUGS.md#view-storage-join-stricter-after-first-binding.
+// # The values are long enough that a dangling read would not survive in an SSO
+// # buffer.
+// def two_loop_str_views(s: str, n: int32) -> None:
+//     for j in range(2):
+//         t = s[j:]  # tpyc: ok
+//     for i in range(n):
+//         t = s[i + 1:]
+//     print("two_loop_str_views", t)
+void two_loop_str_views(std::string_view s, int32_t n) {
+    std::string t;
+    for (int32_t j = 0; j < 2; ++j) {
+        t = ::tpy::str_slice(s, ::tpy::BasicSlice{j, std::nullopt});
+    }
+    int32_t __stop_1 = n;
+    for (int32_t i = 0; i < __stop_1; ++i) {
+        t = ::tpy::str_slice(s, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), std::nullopt});
+    }
+    std::cout << "two_loop_str_views" << " " << t << "\n";
+}
+
+// def two_loop_str_owned(s: str, n: int32) -> None:
+//     for j in range(2):
+//         t = "a literal long enough to outrun any small-string buffer"  # tpyc: ok
+//     for i in range(n):
+//         t = s + str(i)
+//     print("two_loop_str_owned", t)
+void two_loop_str_owned(std::string_view s, int32_t n) {
+    std::string t;
+    for (int32_t j = 0; j < 2; ++j) {
+        t = "a literal long enough to outrun any small-string buffer";
+    }
+    int32_t __stop_1 = n;
+    for (int32_t i = 0; i < __stop_1; ++i) {
+        t = (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(i)));
+    }
+    std::cout << "two_loop_str_owned" << " " << t << "\n";
+}
+
+// def two_loop_bytes_owned(b: bytes, n: int32) -> None:
+//     for j in range(2):
+//         v = b"a literal long enough to outrun any small buffer"  # tpyc: ok
+//     for i in range(n):
+//         v = b + b"0123456789012345678901234567890123456789"
+//     print("two_loop_bytes_owned", v)
+void two_loop_bytes_owned(::tpy::BytesView b, int32_t n) {
+    ::tpy::Bytes v;
+    for (int32_t j = 0; j < 2; ++j) {
+        v = ::tpy::bytes_literal_owned("a literal long enough to outrun any small buffer", 48);
+    }
+    int32_t __stop_1 = n;
+    for (int32_t i = 0; i < __stop_1; ++i) {
+        v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
+    }
+    std::cout << "two_loop_bytes_owned" << " " << ::tpy::BytesPrinter(v) << "\n";
+}
+
+// # ... and the MIXED pair: the first loop's binding is a slice (a view of the
+// # live parameter), the second's is a concatenation that owns. One local, one
+// # storage -- the join owns, so the slice binding copies into it rather than
+// # leaving a view over the concatenation's dead temporary.
+// def two_loop_str_view_then_owned(s: str, n: int32) -> None:
+//     for i in range(2):
+//         t = s[i:]  # tpyc: ok
+//     for j in range(n):
+//         t = s + str(j)
+//     print("two_loop_str_view_then_owned", t)
+void two_loop_str_view_then_owned(std::string_view s, int32_t n) {
+    std::string t;
+    for (int32_t i = 0; i < 2; ++i) {
+        t = ::tpy::str_slice(s, ::tpy::BasicSlice{i, std::nullopt});
+    }
+    int32_t __stop_1 = n;
+    for (int32_t j = 0; j < __stop_1; ++j) {
+        t = (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(j)));
+    }
+    std::cout << "two_loop_str_view_then_owned" << " " << t << "\n";
+}
+
+// def two_loop_bytes_view_then_owned(b: bytes, n: int32) -> None:
+//     for i in range(2):
+//         v = b[i:]  # tpyc: ok
+//     for j in range(n):
+//         v = b + b"0123456789012345678901234567890123456789"
+//     print("two_loop_bytes_view_then_owned", v)
+void two_loop_bytes_view_then_owned(::tpy::BytesView b, int32_t n) {
+    ::tpy::Bytes v;
+    for (int32_t i = 0; i < 2; ++i) {
+        v = ::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{i, std::nullopt}));
+    }
+    int32_t __stop_1 = n;
+    for (int32_t j = 0; j < __stop_1; ++j) {
+        v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
+    }
+    std::cout << "two_loop_bytes_view_then_owned" << " " << ::tpy::BytesPrinter(v) << "\n";
+}
+
+// # ... and the same join with no loop, at the two faces a rebind into an
+// # already-owning bytes slot can take: a slice EXPRESSION and a view LOCAL.
+// # Both need the family's view->owned construction -- `::tpy::Bytes` has no
+// # `operator=` from a span, so a bare assign would not compile.
+// def flat_bytes_owned_from_view(b: bytes) -> None:
+//     t = b + b"0123456789012345678901234567890123456789"
+//     t = b[0:2]  # tpyc: ok
+//     v = b + b"0123456789012345678901234567890123456789"
+//     w = b[1:]
+//     v = w  # tpyc: ok
+//     print("flat_bytes_owned_from_view", t, v)
+void flat_bytes_owned_from_view(::tpy::BytesView b) {
+    ::tpy::Bytes t = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
+    t = ::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{0, 2}));
+    ::tpy::Bytes v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
+    ::tpy::BytesView w = ::tpy::bytes_slice(b, ::tpy::BasicSlice{1, std::nullopt});
+    v = ::tpy::Bytes(w);
+    std::cout << "flat_bytes_owned_from_view" << " " << ::tpy::BytesPrinter(t) << " " << ::tpy::BytesPrinter(v) << "\n";
+}
+
+// # ... the int-literal join: the second loop's value does not fit the first
+// # binding's default width, so the one local is the wider type.
+// def two_loop_int_widths(n: int32) -> None:
+//     for i in range(2):
+//         x = 1  # tpyc: ok
+//     for j in range(n):
+//         # tpyc: warning(/outside default int32 range/)
+//         x = 1099511627776
+//     print("two_loop_int_widths", x)
+void two_loop_int_widths(int32_t n) {
+    ::tpy::BigInt x;
+    for (int32_t i = 0; i < 2; ++i) {
+        x = ::tpy::BigInt(1);
+    }
+    int32_t __stop_1 = n;
+    for (int32_t j = 0; j < __stop_1; ++j) {
+        x = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
+    }
+    std::cout << "two_loop_int_widths" << " " << x << "\n";
+}
+
+// # ... the same over two spelled widths.
+// def two_loop_int_widen(n: int32) -> None:
+//     for i in range(2):
+//         x = int32(1)  # tpyc: ok
+//     for j in range(n):
+//         x = int64(1099511627776)
+//     print("two_loop_int_widen", x)
+void two_loop_int_widen(int32_t n) {
+    int64_t x;
+    for (int32_t i = 0; i < 2; ++i) {
+        x = 1;
+    }
+    int32_t __stop_1 = n;
+    for (int32_t j = 0; j < __stop_1; ++j) {
+        x = static_cast<int64_t>(1099511627776);
+    }
+    std::cout << "two_loop_int_widen" << " " << x << "\n";
+}
+
+// # ... an EMPTY list literal in the first loop: the element type comes from the
+// # binding that has one. The alias taken in the second body shows the append
+// # after the loops lands in the one list, not in a copy.
+// def two_loop_empty_list(n: int32) -> None:
+//     for i in range(2):
+//         xs = []  # tpyc: ok
+//     for j in range(n):
+//         xs = [1, 2]
+//         held = xs
+//     xs.append(9)
+//     print("two_loop_empty_list", xs, held)
+void two_loop_empty_list(int32_t n) {
+    std::optional<std::vector<int32_t>> __slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
+    std::vector<int32_t>* xs;
+    for (int32_t i = 0; i < 2; ++i) {
+        xs = &*(__slot_1 = std::vector<int32_t>{});
+    }
+    std::vector<int32_t>* held;
+    int32_t __stop_1 = n;
+    for (int32_t j = 0; j < __stop_1; ++j) {
+        xs = &*(__slot_2 = {1, 2});
+        held = xs;
+    }
+    xs->push_back(9);
+    std::cout << "two_loop_empty_list" << " " << ::tpy::ListPrinter((*xs)) << " " << ::tpy::ListPrinter((*held)) << "\n";
+}
+
+// # ... the same join with no loop at all: position does not change the answer.
+// def flat_empty_list() -> None:
+//     xs = []  # tpyc: ok
+//     xs = [1, 2]
+//     xs.append(9)
+//     print("flat_empty_list", xs)
+void flat_empty_list() {
+    std::vector<int32_t> __slot_1 = std::vector<int32_t>{};
+    std::vector<int32_t>* xs = &__slot_1;
+    (*xs) = {1, 2};
+    xs->push_back(9);
+    std::cout << "flat_empty_list" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+}
+
+// # ... and with the empty binding in an `if` arm, the second at function level.
+// def arm_empty_list(flag: bool) -> None:
+//     if flag:
+//         xs = []  # tpyc: ok
+//     xs = [1, 2]
+//     xs.append(9)
+//     print("arm_empty_list", xs)
+void arm_empty_list(bool flag) {
+    if (flag) {
+        std::vector<int32_t> __slot_1 = std::vector<int32_t>{};
+        std::vector<int32_t>* xs = &__slot_1;
+    }
+    std::vector<int32_t> __slot_2 = {1, 2};
+    std::vector<int32_t>* xs = &__slot_2;
+    xs->push_back(9);
+    std::cout << "arm_empty_list" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+}
+
+// # ... `None` then a record: the join is the Optional. The alias taken in the
+// # body is mutated after the loops and read through the other name.
+// def two_loop_none_then_record(n: int32) -> None:
+//     for i in range(2):
+//         p = None  # tpyc: ok
+//     for j in range(n):
+//         p = Pic(j)
+//         saved = p
+//     if p is not None:
+//         saved.n += 100
+//         print("two_loop_none_then_record", p.n, saved.n)
+//     else:
+//         print("two_loop_none_then_record none")
+void two_loop_none_then_record(int32_t n) {
+    std::optional<Pic> __slot_1;
+    Pic* p;
+    for (int32_t i = 0; i < 2; ++i) {
+        p = nullptr;
+    }
+    Pic* saved;
+    int32_t __stop_1 = n;
+    for (int32_t j = 0; j < __stop_1; ++j) {
+        p = &*(__slot_1 = Pic(j));
+        saved = p;
+    }
+    if ((p != nullptr)) {
+        saved->n = ::tpy::add_check<int32_t>(saved->n, 100);
+        std::cout << "two_loop_none_then_record" << " " << p->n << " " << saved->n << "\n";
+    } else {
+        std::cout << "two_loop_none_then_record none" << "\n";
+    }
+}
+
+// # ... the second loop nested in an `if` arm, over a dict.
+// def two_loop_dict_arm(flag: bool) -> None:
+//     for j in range(2):
+//         d = {j: j}  # tpyc: ok
+//         held = d
+//     if flag:
+//         for i in range(2):
+//             d = {i: i * 10}
+//     d[7] = 7
+//     print("two_loop_dict_arm", sorted(d.items()), sorted(held.items()))
+void two_loop_dict_arm(bool flag) {
+    std::optional<::tpy::ordered_map<int32_t, int32_t>> __slot_1;
+    std::optional<::tpy::ordered_map<int32_t, int32_t>> __slot_2;
+    ::tpy::ordered_map<int32_t, int32_t>* d;
+    ::tpy::ordered_map<int32_t, int32_t>* held;
+    for (int32_t j = 0; j < 2; ++j) {
+        d = &*(__slot_1 = ::tpy::ordered_map<int32_t, int32_t>({{j, j}}));
+        held = d;
+    }
+    if (flag) {
+        for (int32_t i = 0; i < 2; ++i) {
+            d = &*(__slot_2 = ::tpy::ordered_map<int32_t, int32_t>({{i, (::tpy::mul_check<int32_t>(i, 10))}}));
+        }
+    }
+    ::tpy::__setitem__((*d), 7, 7);
+    std::cout << "two_loop_dict_arm" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*d)))) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*held)))) << "\n";
+}
+
+// # Generator, sibling loop between the binding loop and the read. The name binds
+// # the CALLER's element, so the post-loop mutation is observed on `pics` -- a
+// # frame-slot copy would leave it behind.
+// def gen_sibling(pics: list[Pic]) -> Iterator[int32]:
+//     for i in range(2):
+//         p = pics[i]  # tpyc: ok
+//         yield p.n                                     # -> S_RESUME_0
+//     for k in range(2):
+//         yield k + 50                                  # -> S_RESUME_1
+//     p.n += 100
+//     yield p.n                                         # -> S_RESUME_2
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_sibling::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(2));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield p.n
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: yield k + 50
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_2: {  // after: yield p.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __for_i_1.emplace(int32_t(0));
+            __for_stop_1.emplace(static_cast<int32_t>(2));
+            __state = S_JOIN_1;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        p = &(::tpy::__getitem__(pics, i));
+        __state = S_RESUME_0;
+        return p->n;
+    }
+    case S_JOIN_1: {
+        if (!((*__for_i_1) < (*__for_stop_1))) {
+            p->n = ::tpy::add_check<int32_t>(p->n, 100);
+            __state = S_RESUME_2;
+            return p->n;
+        }
+        k = ((*__for_i_1))++;
+        __state = S_RESUME_1;
+        return (::tpy::add_check<int32_t>(k, 50));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_sibling(pics: list[Pic]) -> Iterator[int32]:
+__gen_gen_sibling gen_sibling(std::vector<Pic>& pics) {
+    return __gen_gen_sibling(pics);
+}
+
+// # Generator, binding loop in an `if` arm.
+// def gen_blk_if(flag: bool, pics: list[Pic]) -> Iterator[int32]:
+//     if flag:
+//         for i in range(2):
+//             p = pics[i]  # tpyc: ok
+//             yield p.n                                            # -> S_RESUME_0
+//     else:
+//         for j in range(2):
+//             p = pics[j]
+//             yield p.n + 10                                       # -> S_RESUME_1
+//     p.n += 100
+//     yield p.n                                                    # -> S_RESUME_2
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_blk_if::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        if (flag) {
+            __for_i_0.emplace(int32_t(0));
+            __for_stop_0.emplace(static_cast<int32_t>(2));
+            __state = S_JOIN_1;
+            continue;
+        } else {
+            __for_i_1.emplace(int32_t(0));
+            __for_stop_1.emplace(static_cast<int32_t>(2));
+            __state = S_JOIN_2;
+            continue;
+        }
+    }
+    case S_RESUME_0: {  // after: yield p.n
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: yield p.n + 10
+        __state = S_JOIN_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: yield p.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        p->n = ::tpy::add_check<int32_t>(p->n, 100);
+        __state = S_RESUME_2;
+        return p->n;
+    }
+    case S_JOIN_1: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        p = &(::tpy::__getitem__(pics, i));
+        __state = S_RESUME_0;
+        return p->n;
+    }
+    case S_JOIN_2: {
+        if (!((*__for_i_1) < (*__for_stop_1))) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        j = ((*__for_i_1))++;
+        p = &(::tpy::__getitem__(pics, j));
+        __state = S_RESUME_1;
+        return (::tpy::add_check<int32_t>(p->n, 10));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_blk_if(flag: bool, pics: list[Pic]) -> Iterator[int32]:
+__gen_gen_blk_if gen_blk_if(bool flag, std::vector<Pic>& pics) {
+    return __gen_gen_blk_if(flag, pics);
+}
+
+// # async, sibling loop.
+// async def async_sibling(pics: list[Pic]) -> int32:
+//     for i in range(2):
+//         p = pics[i]  # tpyc: ok
+//         await asyncio.sleep(0)                      # -> S_RESUME_0
+//     for k in range(2):
+//         await asyncio.sleep(0)                      # -> S_RESUME_1
+//     p.n += 100
+//     return p.n
+::tpystd::tpy::Poll<int32_t> __coro_async_sibling::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(2));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __for_i_1.emplace(int32_t(0));
+            __for_stop_1.emplace(static_cast<int32_t>(2));
+            __state = S_JOIN_1;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        p = &(::tpy::__getitem__(pics, i));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_JOIN_1: {
+        if (!((*__for_i_1) < (*__for_stop_1))) {
+            p->n = ::tpy::add_check<int32_t>(p->n, 100);
+            __state = S_DONE;
+            int32_t __tpy_async_ret = p->n;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        }
+        k = ((*__for_i_1))++;
+        __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def async_sibling(pics: list[Pic]) -> int32:
+__coro_async_sibling async_sibling(std::vector<Pic>& pics) {
+    return __coro_async_sibling(pics);
+}
+
+// # async, binding loop in an `if` arm.
+// async def async_blk_if(flag: bool, pics: list[Pic]) -> int32:
+//     if flag:
+//         for i in range(2):
+//             p = pics[i]  # tpyc: ok
+//             await asyncio.sleep(0)                             # -> S_RESUME_0
+//     else:
+//         for j in range(2):
+//             p = pics[j]
+//             await asyncio.sleep(0)                             # -> S_RESUME_1
+//     p.n += 100
+//     return p.n
+::tpystd::tpy::Poll<int32_t> __coro_async_blk_if::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        if (flag) {
+            __for_i_0.emplace(int32_t(0));
+            __for_stop_0.emplace(static_cast<int32_t>(2));
+            __state = S_JOIN_1;
+            continue;
+        } else {
+            __for_i_1.emplace(int32_t(0));
+            __for_stop_1.emplace(static_cast<int32_t>(2));
+            __state = S_JOIN_2;
+            continue;
+        }
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        __state = S_JOIN_2;
+        continue;
+    }
+    case S_JOIN_0: {
+        p->n = ::tpy::add_check<int32_t>(p->n, 100);
+        __state = S_DONE;
+        int32_t __tpy_async_ret = p->n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_1: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        p = &(::tpy::__getitem__(pics, i));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        if (!((*__for_i_1) < (*__for_stop_1))) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        j = ((*__for_i_1))++;
+        p = &(::tpy::__getitem__(pics, j));
+        __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def async_blk_if(flag: bool, pics: list[Pic]) -> int32:
+__coro_async_blk_if async_blk_if(bool flag, std::vector<Pic>& pics) {
+    return __coro_async_blk_if(flag, pics);
+}
+
+// async def async_all() -> None:
+//     pics = [Pic(0), Pic(1)]
+//     print("async_sibling", await async_sibling(pics), pics[1].n)         # -> S_RESUME_0
+//     pics2 = [Pic(0), Pic(1)]
+//     print("async_blk_if", await async_blk_if(True, pics2), pics2[1].n)   # -> S_RESUME_1
+//     pics3 = [Pic(0), Pic(1)]
+//     print("async_blk_if", await async_blk_if(False, pics3), pics3[1].n)  # -> S_RESUME_2
+::tpystd::tpy::Poll<::std::monostate> __coro_async_all::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        pics.emplace(std::vector<Pic>{Pic(0), Pic(1)});
+        __sub_0.emplace((*pics));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: print("async_sibling", await async_sibling(pics), pics[1].n)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_0 = std::move(__r0).value();
+        __sub_0.reset();
+        std::cout << "async_sibling" << " " << __await_lift_0 << " " << ::tpy::__getitem__((*pics), 1).n << "\n";
+        pics2.emplace(std::vector<Pic>{Pic(0), Pic(1)});
+        __sub_1.emplace(true, (*pics2));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: print("async_blk_if", await async_blk_if(True, pics2), pics2[1].n)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_1 = std::move(__r1).value();
+        __sub_1.reset();
+        std::cout << "async_blk_if" << " " << __await_lift_1 << " " << ::tpy::__getitem__((*pics2), 1).n << "\n";
+        pics3.emplace(std::vector<Pic>{Pic(0), Pic(1)});
+        __sub_2.emplace(false, (*pics3));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: print("async_blk_if", await async_blk_if(False, pics3), pics3[1].n)
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_2 = std::move(__r2).value();
+        __sub_2.reset();
+        std::cout << "async_blk_if" << " " << __await_lift_2 << " " << ::tpy::__getitem__((*pics3), 1).n << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def async_all() -> None:
+__coro_async_all async_all() {
+    return __coro_async_all();
+}
+
+// # `for` in both arms of an `if`.
+// def blk_if(flag: bool) -> None:
+//     if flag:
+//         for i in range(2):
+//             f = Flat(i)  # tpyc: ok
+//     else:
+//         for j in range(2):
+//             f = Flat(j + 70)
+//     f.n += 1
+//     print("blk_if", f.n)
+void blk_if(bool flag) {
+    std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
+    Flat* f;
+    if (flag) {
+        for (int32_t i = 0; i < 2; ++i) {
+            f = &*(__slot_1 = Flat(i));
+        }
+    } else {
+        for (int32_t j = 0; j < 2; ++j) {
+            f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(j, 70))));
+        }
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    std::cout << "blk_if" << " " << f->n << "\n";
+}
+
+// # ... with the other arm assigning the name directly: the arm's binding is
+// # block-local, so the loop's pending one is what the read declares.
+// def blk_if_mixed(flag: bool) -> None:
+//     if flag:
+//         for i in range(2):
+//             f = Flat(i)  # tpyc: ok
+//     else:
+//         f = Flat(99)
+//     f.n += 1
+//     print("blk_if_mixed", f.n)
+void blk_if_mixed(bool flag) {
+    std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
+    Flat* f;
+    if (flag) {
+        for (int32_t i = 0; i < 2; ++i) {
+            f = &*(__slot_1 = Flat(i));
+        }
+    } else {
+        f = &*(__slot_2 = Flat(99));
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    std::cout << "blk_if_mixed" << " " << f->n << "\n";
+}
+
+// # ... the mirror, with the direct assignment in the FIRST arm: the cross-arm
+// # unbind has to be symmetric.
+// def blk_if_mixed_rev(flag: bool) -> None:
+//     if flag:
+//         f = Flat(99)
+//     else:
+//         for j in range(2):
+//             f = Flat(j + 70)  # tpyc: ok
+//     f.n += 1
+//     print("blk_if_mixed_rev", f.n)
+void blk_if_mixed_rev(bool flag) {
+    std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
+    Flat* f;
+    if (flag) {
+        f = &*(__slot_1 = Flat(99));
+    } else {
+        for (int32_t j = 0; j < 2; ++j) {
+            f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(j, 70))));
+        }
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    std::cout << "blk_if_mixed_rev" << " " << f->n << "\n";
+}
+
+// # ... and a loop BEFORE the `if` making the name pending, with one arm then
+// # assigning it directly: the pending entry stays the authority, so the arm's
+// # binding is the one taken back out of the scope.
+// def blk_pre_loop_arm(flag: bool) -> None:
+//     for i in range(2):
+//         f = Flat(i)  # tpyc: ok
+//     if flag:
+//         f = Flat(99)
+//     f.n += 1
+//     print("blk_pre_loop_arm", f.n)
+void blk_pre_loop_arm(bool flag) {
+    std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
+    Flat* f;
+    for (int32_t i = 0; i < 2; ++i) {
+        f = &*(__slot_1 = Flat(i));
+    }
+    if (flag) {
+        f = &*(__slot_2 = Flat(99));
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    std::cout << "blk_pre_loop_arm" << " " << f->n << "\n";
+}
+
+// # ... the binding loop BEFORE the `if`, with the arm rebinding the name from
+// # an owning source: the one local owns, so the loop's slice binding copies.
+// def blk_loop_then_arm(s: str, flag: bool) -> None:
+//     for i in range(2):
+//         t = s[i:]  # tpyc: ok
+//     if flag:
+//         t = s + "tail"
+//     print("blk_loop_then_arm", t)
+void blk_loop_then_arm(std::string_view s, bool flag) {
+    std::string t;
+    for (int32_t i = 0; i < 2; ++i) {
+        t = ::tpy::str_slice(s, ::tpy::BasicSlice{i, std::nullopt});
+    }
+    if (flag) {
+        t = (::tpy::str_concat(s, "tail"));
+    }
+    std::cout << "blk_loop_then_arm" << " " << t << "\n";
+}
+
+// # ... and READ in both arms of a later `if`: the first arm's read promotes the
+// # one declaration, which is not the arm's to keep -- the second arm has to
+// # reach the same promotion rather than a local it cannot prove assigned.
+// def blk_read_in_both_arms(flag: bool) -> None:
+//     for i in range(2):
+//         p = Pic(i)  # tpyc: ok
+//     if flag:
+//         p.n += 1
+//     else:
+//         p.n += 2
+//     print("blk_read_in_both_arms", p.n)
+void blk_read_in_both_arms(bool flag) {
+    std::optional<Pic> p;
+    for (int32_t i = 0; i < 2; ++i) {
+        p = Pic(i);
+    }
+    if (flag) {
+        p->n = ::tpy::add_check<int32_t>(p->n, 1);
+    } else {
+        p->n = ::tpy::add_check<int32_t>(p->n, 2);
+    }
+    std::cout << "blk_read_in_both_arms" << " " << p->n << "\n";
+}
+
+// # ... and the sibling of that shape where each arm has its OWN binding loop and
+// # reads the name inside the arm: the then-arm's promotion is no more the arm's
+// # to keep than a promotion of a name pending before the `if`, or the else-arm's
+// # loop rebinds a name already in scope and its read cannot prove it assigned.
+// def blk_loop_in_both_arms(flag: bool) -> None:
+//     if flag:
+//         for i in range(2):
+//             f = Flat(i)  # tpyc: ok
+//         f.n += 1
+//     else:
+//         for k in range(3):
+//             f = Flat(k + 10)
+//         f.n += 2
+//     f.n += 100
+//     print("blk_loop_in_both_arms", f.n)
+void blk_loop_in_both_arms(bool flag) {
+    std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
+    Flat* f;
+    if (flag) {
+        for (int32_t i = 0; i < 2; ++i) {
+            f = &*(__slot_1 = Flat(i));
+        }
+        f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    } else {
+        for (int32_t k = 0; k < 3; ++k) {
+            f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(k, 10))));
+        }
+        f->n = ::tpy::add_check<int32_t>(f->n, 2);
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 100);
+    std::cout << "blk_loop_in_both_arms" << " " << f->n << "\n";
+}
+
+// # ... and a `while` in the arm, which the direct spelling already accepted.
+// def blk_if_while(flag: bool) -> None:
+//     if flag:
+//         n = 0
+//         while n < 2:
+//             w = n  # tpyc: ok
+//             n += 1
+//     else:
+//         w = 9
+//     print("blk_if_while", w)
+void blk_if_while(bool flag) {
+    int32_t w;
+    if (flag) {
+        int32_t n = 0;
+        while ((n < 2)) {
+            w = n;
+            n = ::tpy::add_check<int32_t>(n, 1);
+        }
+    } else {
+        w = 9;
+    }
+    std::cout << "blk_if_while" << " " << w << "\n";
+}
+
+// # Context-manager body, read after the `with`.
+// def blk_with() -> None:
+//     with CM(4) as k:
+//         for i in range(2):
+//             f = Flat(i + k)  # tpyc: ok
+//     f.n += 1
+//     print("blk_with", f.n)
+void blk_with() {
+    std::optional<Flat> f;
+    auto __ctx_2 = CM(4);
+    auto k = __ctx_2.__enter__();
+    try {
+        for (int32_t i = 0; i < 2; ++i) {
+            f = Flat((::tpy::add_check<int32_t>(i, k)));
+        }
+        goto __with_exit_2;
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
+    } catch (...) {
+        __ctx_2.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
+    f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    std::cout << "blk_with" << " " << f->n << "\n";
+}
+
+// # try body and handler, read after the try.
+// def blk_try(n: int32) -> None:
+//     try:
+//         for i in range(2):
+//             f = Flat(i + n)  # tpyc: ok
+//     except ValueError:
+//         for j in range(2):
+//             f = Flat(j + 50)
+//     f.n += 1
+//     print("blk_try", f.n)
+void blk_try(int32_t n) {
+    std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
+    Flat* f;
+    {
+        try {
+            for (int32_t i = 0; i < 2; ++i) {
+                f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, n))));
+            }
+        } catch (const ::tpy::ValueError&) {
+            for (int32_t j = 0; j < 2; ++j) {
+                f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(j, 50))));
+            }
+        }
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    std::cout << "blk_try" << " " << f->n << "\n";
+}
+
+// # match arms, read after the match. Value local: a non-value hoist at a
+// # scalar-switch match is not an admitted flavor on that ladder
+// # (BUGS.md#match-nonvalue-hoist-unadmitted).
+// def blk_match(n: int32) -> None:
+//     match n:
+//         case 1:
+//             for i in range(2):
+//                 v = i + 1  # tpyc: ok
+//         case _:
+//             for j in range(2):
+//                 v = j + 80
+//     v += 1
+//     print("blk_match", v)
+void blk_match(int32_t n) {
+    int32_t v;
+    auto& __match_subject_1 = n;
+    switch (__match_subject_1) {
+    case 1: {
+        for (int32_t i = 0; i < 2; ++i) {
+            v = (::tpy::add_check<int32_t>(i, 1));
+        }
+        break;
+    }
+    default: {
+        for (int32_t j = 0; j < 2; ++j) {
+            v = (::tpy::add_check<int32_t>(j, 80));
+        }
+        break;
+    }
+    }
+    v = ::tpy::add_check<int32_t>(v, 1);
+    std::cout << "blk_match" << " " << v << "\n";
+}
+
+// # Closure position, sibling loop.
+// def sib_closure() -> None:
+//     def inner() -> None:
+//         for i in range(2):
+//             f = Flat(i + 30)  # tpyc: ok
+//         for k in range(2):
+//             pass
+//         f.n += 1
+//         print("sib_closure", f.n)
+//
+//     inner()
+void sib_closure() {
+    auto inner = []() {
+        std::optional<Flat> f;
+        for (int32_t i = 0; i < 2; ++i) {
+            f = Flat((::tpy::add_check<int32_t>(i, 30)));
+        }
+        for (int32_t k = 0; k < 2; ++k) {
+        }
+        f->n = ::tpy::add_check<int32_t>(f->n, 1);
+        std::cout << "sib_closure" << " " << f->n << "\n";
+    };
+    inner();
+}
+
+// # @error_return body, sibling loop.
+// @error_return(MyErr)
+// def sib_er(k: int32) -> int32:
+//     for i in range(2):
+//         f = Flat(i + k)  # tpyc: ok
+//     for j in range(2):
+//         pass
+//     f.n += 1
+//     return f.n
+std::expected<int32_t, MyErr> sib_er(int32_t k) {
+    std::optional<Flat> f;
+    for (int32_t i = 0; i < 2; ++i) {
+        f = Flat((::tpy::add_check<int32_t>(i, k)));
+    }
+    for (int32_t j = 0; j < 2; ++j) {
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    return f->n;
+}
+
 // def main() -> None:
 //     free_two_arms()
 //     free_rebind_after()
@@ -882,7 +2178,13 @@ void match_section(int32_t n) {
 //         print("gen_for_single", v)
 //     for t in gen_while_single():
 //         print("gen_while_single", t)
+//     slice_total = 0
+//     for v in gen_slice_view("a source long enough that a dangling view shows"):
+//         slice_total += v
+//     print("gen_slice_view", slice_total)
 //     nested_def_section()
+//     nested_def_in_loop([Pic(0), Pic(1)])
+//     nested_def_after_loop()
 //     with_section()
 //     try_section()
 //     try:
@@ -891,6 +2193,81 @@ void match_section(int32_t n) {
 //         print("error_return raised")
 //     match_section(1)
 //     match_section(2)
+//     sib_scalar()
+//     sib_record()
+//     sib_ptr()
+//     sib_unpack()
+//     sib_box()
+//     sib_optional()
+//     sib_readonly(Pic(1), Pic(2))
+//     sib_container_elem()
+//     two_loop_list_sibling(0)
+//     two_loop_list_sibling(2)
+//     two_loop_dict_arm(False)
+//     two_loop_dict_arm(True)
+//     long_s = "a parameter long enough that a dangling view would show, truly"
+//     two_loop_str_views(long_s, 0)
+//     two_loop_str_views(long_s, 2)
+//     two_loop_str_owned(long_s, 0)
+//     two_loop_str_owned(long_s, 2)
+//     long_b = b"a parameter long enough that a dangling view would show"
+//     two_loop_bytes_owned(long_b, 0)
+//     two_loop_bytes_owned(long_b, 2)
+//     two_loop_str_view_then_owned(long_s, 0)
+//     two_loop_str_view_then_owned(long_s, 2)
+//     two_loop_bytes_view_then_owned(long_b, 0)
+//     two_loop_bytes_view_then_owned(long_b, 2)
+//     flat_bytes_owned_from_view(long_b)
+//     two_loop_int_widths(0)
+//     two_loop_int_widths(2)
+//     two_loop_int_widen(0)
+//     two_loop_int_widen(2)
+//     two_loop_empty_list(2)
+//     flat_empty_list()
+//     arm_empty_list(True)
+//     arm_empty_list(False)
+//     two_loop_none_then_record(0)
+//     two_loop_none_then_record(2)
+//     gen_pics = [Pic(0), Pic(1)]
+//     for v in gen_sibling(gen_pics):
+//         print("gen_sibling", v)
+//     print("gen_sibling", gen_pics[1].n)
+//     if_pics = [Pic(0), Pic(1)]
+//     for v in gen_blk_if(True, if_pics):
+//         print("gen_blk_if", v)
+//     print("gen_blk_if", if_pics[1].n)
+//     if_pics2 = [Pic(0), Pic(1)]
+//     for v in gen_blk_if(False, if_pics2):
+//         print("gen_blk_if", v)
+//     print("gen_blk_if", if_pics2[1].n)
+//     asyncio.run(async_all())
+//     blk_if(True)
+//     blk_if(False)
+//     blk_if_mixed(True)
+//     blk_if_mixed(False)
+//     blk_if_mixed_rev(True)
+//     blk_if_mixed_rev(False)
+//     blk_pre_loop_arm(True)
+//     blk_pre_loop_arm(False)
+//     blk_loop_then_arm(long_s, True)
+//     blk_loop_then_arm(long_s, False)
+//     blk_read_in_both_arms(True)
+//     blk_read_in_both_arms(False)
+//     blk_loop_in_both_arms(True)
+//     blk_loop_in_both_arms(False)
+//     blk_if_while(True)
+//     blk_if_while(False)
+//     blk_with()
+//     blk_try(3)
+//     blk_match(1)
+//     blk_match(2)
+//     SibHolder().run()
+//     print("sib_ctor", SibBuilt().v)
+//     sib_closure()
+//     try:
+//         print("sib_error_return", sib_er(50))
+//     except MyErr:
+//         print("sib_error_return raised")
 void main() {
     ::tpyapp::main::free_two_arms();
     ::tpyapp::main::free_rebind_after();
@@ -953,7 +2330,23 @@ void main() {
         std::cout << "gen_while_single" << " " << t << "\n";
         }
     }
+    int32_t slice_total = 0;
+    {
+        std::string __tmp_1 = "a source long enough that a dangling view shows";
+        auto __src_8 = ::tpyapp::main::gen_slice_view(__tmp_1);
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_9);
+        slice_total = ::tpy::add_check<int32_t>(slice_total, v);
+        }
+    }
+    std::cout << "gen_slice_view" << " " << slice_total << "\n";
     ::tpyapp::main::nested_def_section();
+    std::vector<Pic> __tmp_2 = {Pic(0), Pic(1)};
+    ::tpyapp::main::nested_def_in_loop(__tmp_2);
+    ::tpyapp::main::nested_def_after_loop();
     ::tpyapp::main::with_section();
     ::tpyapp::main::try_section();
     {
@@ -966,6 +2359,109 @@ void main() {
     }
     ::tpyapp::main::match_section(1);
     ::tpyapp::main::match_section(2);
+    ::tpyapp::main::sib_scalar();
+    ::tpyapp::main::sib_record();
+    ::tpyapp::main::sib_ptr();
+    ::tpyapp::main::sib_unpack();
+    ::tpyapp::main::sib_box();
+    ::tpyapp::main::sib_optional();
+    ::tpyapp::main::sib_readonly(Pic(1), Pic(2));
+    ::tpyapp::main::sib_container_elem();
+    ::tpyapp::main::two_loop_list_sibling(0);
+    ::tpyapp::main::two_loop_list_sibling(2);
+    ::tpyapp::main::two_loop_dict_arm(false);
+    ::tpyapp::main::two_loop_dict_arm(true);
+    std::string_view long_s = "a parameter long enough that a dangling view would show, truly";
+    ::tpyapp::main::two_loop_str_views(long_s, 0);
+    ::tpyapp::main::two_loop_str_views(long_s, 2);
+    ::tpyapp::main::two_loop_str_owned(long_s, 0);
+    ::tpyapp::main::two_loop_str_owned(long_s, 2);
+    ::tpy::BytesView long_b = ::tpy::bytes_literal("a parameter long enough that a dangling view would show", 55);
+    ::tpyapp::main::two_loop_bytes_owned(long_b, 0);
+    ::tpyapp::main::two_loop_bytes_owned(long_b, 2);
+    ::tpyapp::main::two_loop_str_view_then_owned(long_s, 0);
+    ::tpyapp::main::two_loop_str_view_then_owned(long_s, 2);
+    ::tpyapp::main::two_loop_bytes_view_then_owned(long_b, 0);
+    ::tpyapp::main::two_loop_bytes_view_then_owned(long_b, 2);
+    ::tpyapp::main::flat_bytes_owned_from_view(long_b);
+    ::tpyapp::main::two_loop_int_widths(0);
+    ::tpyapp::main::two_loop_int_widths(2);
+    ::tpyapp::main::two_loop_int_widen(0);
+    ::tpyapp::main::two_loop_int_widen(2);
+    ::tpyapp::main::two_loop_empty_list(2);
+    ::tpyapp::main::flat_empty_list();
+    ::tpyapp::main::arm_empty_list(true);
+    ::tpyapp::main::arm_empty_list(false);
+    ::tpyapp::main::two_loop_none_then_record(0);
+    ::tpyapp::main::two_loop_none_then_record(2);
+    std::vector<Pic> gen_pics = {Pic(0), Pic(1)};
+    {
+        auto __src_10 = ::tpyapp::main::gen_sibling(gen_pics);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_11);
+        std::cout << "gen_sibling" << " " << v << "\n";
+        }
+    }
+    std::cout << "gen_sibling" << " " << ::tpy::__getitem__(gen_pics, 1).n << "\n";
+    std::vector<Pic> if_pics = {Pic(0), Pic(1)};
+    {
+        auto __src_12 = ::tpyapp::main::gen_blk_if(true, if_pics);
+        auto&& __itr_12 = ::tpy::__iter__(__src_12);
+        for (;;) {
+            auto __r_13 = __itr_12.__next__();
+            if (!__r_13.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_13);
+        std::cout << "gen_blk_if" << " " << v << "\n";
+        }
+    }
+    std::cout << "gen_blk_if" << " " << ::tpy::__getitem__(if_pics, 1).n << "\n";
+    std::vector<Pic> if_pics2 = {Pic(0), Pic(1)};
+    {
+        auto __src_14 = ::tpyapp::main::gen_blk_if(false, if_pics2);
+        auto&& __itr_14 = ::tpy::__iter__(__src_14);
+        for (;;) {
+            auto __r_15 = __itr_14.__next__();
+            if (!__r_15.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_15);
+        std::cout << "gen_blk_if" << " " << v << "\n";
+        }
+    }
+    std::cout << "gen_blk_if" << " " << ::tpy::__getitem__(if_pics2, 1).n << "\n";
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_all()));
+    ::tpyapp::main::blk_if(true);
+    ::tpyapp::main::blk_if(false);
+    ::tpyapp::main::blk_if_mixed(true);
+    ::tpyapp::main::blk_if_mixed(false);
+    ::tpyapp::main::blk_if_mixed_rev(true);
+    ::tpyapp::main::blk_if_mixed_rev(false);
+    ::tpyapp::main::blk_pre_loop_arm(true);
+    ::tpyapp::main::blk_pre_loop_arm(false);
+    ::tpyapp::main::blk_loop_then_arm(long_s, true);
+    ::tpyapp::main::blk_loop_then_arm(long_s, false);
+    ::tpyapp::main::blk_read_in_both_arms(true);
+    ::tpyapp::main::blk_read_in_both_arms(false);
+    ::tpyapp::main::blk_loop_in_both_arms(true);
+    ::tpyapp::main::blk_loop_in_both_arms(false);
+    ::tpyapp::main::blk_if_while(true);
+    ::tpyapp::main::blk_if_while(false);
+    ::tpyapp::main::blk_with();
+    ::tpyapp::main::blk_try(3);
+    ::tpyapp::main::blk_match(1);
+    ::tpyapp::main::blk_match(2);
+    SibHolder().run();
+    std::cout << "sib_ctor" << " " << SibBuilt().v << "\n";
+    ::tpyapp::main::sib_closure();
+    {
+        std::cout << "sib_error_return" << " " << ({ auto __er_4 = ::tpyapp::main::sib_er(50); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        goto __after_try_3;
+        // except MyErr:
+        __except_3:;
+        std::cout << "sib_error_return raised" << "\n";
+        __after_try_3:;
+    }
 }
 
 
@@ -1001,15 +2497,34 @@ void Holder::run() const {
     std::cout << "method" << " " << p->n << " " << saved->n << "\n";
 }
 // from tplib import Box
+// import asyncio
 //
 // main()
+//
+// # Module level: the same sibling shape at top level, where the promoted name
+// # is a local of the module initializer.
+// for mi in range(2):
+//     mf = Flat(mi)  # tpyc: ok
+// for mk in range(2):
+//     pass
+// mf.n += 100
+// print("module_sibling", mf.n)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
+    ::tpystd::asyncio::__tpy_init();
     ::tpyapp::main::main();
+    std::optional<Flat> mf;
+    for (int32_t mi = 0; mi < 2; ++mi) {
+        mf = Flat(mi);
+    }
+    for (int32_t mk = 0; mk < 2; ++mk) {
+    }
+    mf->n = ::tpy::add_check<int32_t>(mf->n, 100);
+    std::cout << "module_sibling" << " " << mf->n << "\n";
 }
 
 } // namespace tpyapp::main

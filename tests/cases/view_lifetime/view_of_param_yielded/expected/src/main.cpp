@@ -32,9 +32,80 @@ __gen_tails tails(std::string_view s) {
     return __gen_tails(s);
 }
 
+// # generator, owned local: `strip()` returns a VIEW; a resumable body owns any
+// # non-static view source, so `v` is a frame field the yielded view can root in.
+// def owned_local(s: str) -> Iterator[StrView]:
+//     v = s.strip()
+//     yield v                  # tpyc: ok        # -> S_RESUME_0
+std::expected<std::string_view, ::tpy::StopIteration> __gen_owned_local::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        v = ::tpy::str_strip(s);
+        __state = S_RESUME_0;
+        return v;
+    }
+    case S_RESUME_0: {  // after: yield v                  # tpyc: ok
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def owned_local(s: str) -> Iterator[StrView]:
+__gen_owned_local owned_local(std::string_view s) {
+    return __gen_owned_local(s);
+}
+
+// # generator, reference-typed source: `ba` is the CALLER's bytearray (the frame
+// # holds a reference), so the slice must be an owned copy in the frame -- the
+// # caller grows `buf` across the yield below and `c` must still read b'0123'.
+// def slice_of_ref_param(ba: bytearray) -> Iterator[int32]:
+//     c = ba[0:4]              # tpyc: ok
+//     yield 0                                                # -> S_RESUME_0
+//     print("slice_of_ref_param:", bytes(c))
+//     yield 1                                                # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_slice_of_ref_param::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        c = ::tpy::Bytes(::tpy::bytes_slice(ba, ::tpy::BasicSlice{0, 4}));
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        std::cout << "slice_of_ref_param:" << " " << ::tpy::BytesPrinter(::tpy::Bytes(c)) << "\n";
+        __state = S_RESUME_1;
+        return 1;
+    }
+    case S_RESUME_1: {  // after: yield 1
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def slice_of_ref_param(ba: bytearray) -> Iterator[int32]:
+__gen_slice_of_ref_param slice_of_ref_param(const ::tpy::ByteArray& ba) {
+    return __gen_slice_of_ref_param(ba);
+}
+
 // def main() -> None:
 //     for t in tails("hello"):
 //         print(t)
+//
+//     for x in owned_local("  padded value long enough to reallocate  "):
+//         print("owned_local:", x)
+//
+//     buf = bytearray(b"0123456789")
+//     for step in slice_of_ref_param(buf):
+//         if step == 0:
+//             for _ in range(2000):
+//                 buf.append(65)  # tpyc: warning(/Mutation of 'buf' while iterating/)
 void main() {
     {
         std::string __tmp_1 = "hello";
@@ -45,6 +116,32 @@ void main() {
             if (!__r_1.has_value()) break;
             std::string_view t = ::tpy::unwrap_ref(*__r_1);
         std::cout << t << "\n";
+        }
+    }
+    {
+        std::string __tmp_2 = "  padded value long enough to reallocate  ";
+        auto __src_2 = ::tpyapp::main::owned_local(__tmp_2);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view x = ::tpy::unwrap_ref(*__r_3);
+        std::cout << "owned_local:" << " " << x << "\n";
+        }
+    }
+    ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("0123456789", 10));
+    {
+        auto __src_4 = ::tpyapp::main::slice_of_ref_param(buf);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t step = ::tpy::unwrap_ref(*__r_5);
+        if ((step == 0)) {
+            for (int32_t _ = 0; _ < 2000; ++_) {
+                buf.push_back(65);
+            }
+        }
         }
     }
 }

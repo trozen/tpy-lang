@@ -1499,24 +1499,13 @@ class SemanticAnalyzer:
         for name, binding in local_ns.all_bindings().items():
             if keep(name) and binding.type is not None and not binding.frame_exempt:
                 locals_dict[name] = binding.type
-        for name, (vtype, _, _, _) in self.ctx.func.pending_loop_vars.items():
+        for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
             if keep(name) and vtype is not None:
                 locals_dict[name] = vtype
         _assert_no_pending_locals(locals_dict, func.name)
         _extract_proto_param_forwarding(
             locals_dict, func, self.ctx.func.write_history)
         func.generator_locals = list(locals_dict.items())
-
-    def _drain_pending_yield_root_checks(self) -> None:
-        """Run borrow-yield rooting checks deferred during body analysis, now
-        that `func.generator_locals` is populated so a yielded frame-resident
-        local is recognized as a valid borrow root (see
-        `FunctionTrackingState.pending_yield_root_checks`).
-        """
-        for value, elem_type, loc in self.ctx.func.pending_yield_root_checks:
-            self.compat.check_dangling_reference(
-                value, elem_type, loc, for_yield=True)
-        self.ctx.func.pending_yield_root_checks.clear()
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
@@ -1594,7 +1583,7 @@ class SemanticAnalyzer:
         # the return-statement rewrite).
         if func.is_generator or func.is_async:
             self._collect_generator_locals(func, local_ns, exclude_self=False)
-            self._drain_pending_yield_root_checks()
+        self.compat.drain_deferred_escape_checks()
 
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
@@ -2948,7 +2937,7 @@ class SemanticAnalyzer:
 
             if method.is_generator or method.is_async:
                 self._collect_generator_locals(method, local_ns, exclude_self=True)
-                self._drain_pending_yield_root_checks()
+            self.compat.drain_deferred_escape_checks()
 
             # Store Phase 1 local mutation facts on method FunctionInfo.
             # For @overload methods, get_method() returns overloads[0] (the first
@@ -3477,6 +3466,7 @@ class SemanticAnalyzer:
             self.stmts.analyze_stmt(stmt)
         self.ctx.current_module_stmt = None
         self.deduction.resolve_all()
+        self.compat.drain_deferred_escape_checks()
         # A global some function rebinds through `global` can change between
         # two module-level statements: foreign storage for the replay.
         decide_rebind_storage(self.ctx, stmts, always_foreign=function_globals)

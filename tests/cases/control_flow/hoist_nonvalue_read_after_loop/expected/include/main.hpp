@@ -4,6 +4,9 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/box.hpp"
 
@@ -17,16 +20,26 @@ struct CM;
 struct MyErr;
 struct Holder;
 struct Built;
+struct SibHolder;
+struct SibBuilt;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_section;
 struct __gen_gen_while_section;
 struct __gen_gen_for_single;
+struct __gen_gen_slice_view;
 struct __gen_gen_while_single;
+struct __gen_gen_sibling;
+struct __gen_gen_blk_if;
+struct __coro_async_sibling;
+struct __coro_async_blk_if;
+struct __coro_async_all;
 
 // def halves(n: int32) -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> halves(int32_t n);
+// def take_ptr(p: Pic) -> Ptr[Pic]:
+Pic* take_ptr(Pic& p);
 // def free_two_arms() -> None:
 void free_two_arms();
 // def free_rebind_after() -> None:
@@ -71,12 +84,18 @@ __gen_gen_section gen_section();
 __gen_gen_while_section gen_while_section();
 // def gen_for_single() -> Iterator[int32]:
 __gen_gen_for_single gen_for_single();
+// def gen_slice_view(line: str) -> Iterator[int32]:
+__gen_gen_slice_view gen_slice_view(std::string_view line);
 // def pair(i: int32) -> tuple[int32, str]:
 std::tuple<int32_t, std::string> pair(int32_t i);
 // def gen_while_single() -> Iterator[str]:
 __gen_gen_while_single gen_while_single();
 // def nested_def_section() -> None:
 void nested_def_section();
+// def nested_def_in_loop(pics: list[Pic]) -> None:
+void nested_def_in_loop(std::vector<Pic>& pics);
+// def nested_def_after_loop() -> None:
+void nested_def_after_loop();
 // def with_section() -> None:
 void with_section();
 // def try_section() -> None:
@@ -86,6 +105,87 @@ void try_section();
 std::expected<int32_t, MyErr> er_section(int32_t k);
 // def match_section(n: int32) -> None:
 void match_section(int32_t n);
+// def sib_scalar() -> None:
+void sib_scalar();
+// def sib_record() -> None:
+void sib_record();
+// def sib_ptr() -> None:
+void sib_ptr();
+// def sib_unpack() -> None:
+void sib_unpack();
+// def sib_box() -> None:
+void sib_box();
+// def sib_optional() -> None:
+void sib_optional();
+// def sib_readonly(a: readonly[Pic], b: readonly[Pic]) -> None:
+void sib_readonly(const Pic& a, const Pic& b);
+// def sib_container_elem() -> None:
+void sib_container_elem();
+// def two_loop_list_sibling(n: int32) -> None:
+void two_loop_list_sibling(int32_t n);
+// def two_loop_str_views(s: str, n: int32) -> None:
+void two_loop_str_views(std::string_view s, int32_t n);
+// def two_loop_str_owned(s: str, n: int32) -> None:
+void two_loop_str_owned(std::string_view s, int32_t n);
+// def two_loop_bytes_owned(b: bytes, n: int32) -> None:
+void two_loop_bytes_owned(::tpy::BytesView b, int32_t n);
+// def two_loop_str_view_then_owned(s: str, n: int32) -> None:
+void two_loop_str_view_then_owned(std::string_view s, int32_t n);
+// def two_loop_bytes_view_then_owned(b: bytes, n: int32) -> None:
+void two_loop_bytes_view_then_owned(::tpy::BytesView b, int32_t n);
+// def flat_bytes_owned_from_view(b: bytes) -> None:
+void flat_bytes_owned_from_view(::tpy::BytesView b);
+// def two_loop_int_widths(n: int32) -> None:
+void two_loop_int_widths(int32_t n);
+// def two_loop_int_widen(n: int32) -> None:
+void two_loop_int_widen(int32_t n);
+// def two_loop_empty_list(n: int32) -> None:
+void two_loop_empty_list(int32_t n);
+// def flat_empty_list() -> None:
+void flat_empty_list();
+// def arm_empty_list(flag: bool) -> None:
+void arm_empty_list(bool flag);
+// def two_loop_none_then_record(n: int32) -> None:
+void two_loop_none_then_record(int32_t n);
+// def two_loop_dict_arm(flag: bool) -> None:
+void two_loop_dict_arm(bool flag);
+// def gen_sibling(pics: list[Pic]) -> Iterator[int32]:
+__gen_gen_sibling gen_sibling(std::vector<Pic>& pics);
+// def gen_blk_if(flag: bool, pics: list[Pic]) -> Iterator[int32]:
+__gen_gen_blk_if gen_blk_if(bool flag, std::vector<Pic>& pics);
+// async def async_sibling(pics: list[Pic]) -> int32:
+__coro_async_sibling async_sibling(std::vector<Pic>& pics);
+// async def async_blk_if(flag: bool, pics: list[Pic]) -> int32:
+__coro_async_blk_if async_blk_if(bool flag, std::vector<Pic>& pics);
+// async def async_all() -> None:
+__coro_async_all async_all();
+// def blk_if(flag: bool) -> None:
+void blk_if(bool flag);
+// def blk_if_mixed(flag: bool) -> None:
+void blk_if_mixed(bool flag);
+// def blk_if_mixed_rev(flag: bool) -> None:
+void blk_if_mixed_rev(bool flag);
+// def blk_pre_loop_arm(flag: bool) -> None:
+void blk_pre_loop_arm(bool flag);
+// def blk_loop_then_arm(s: str, flag: bool) -> None:
+void blk_loop_then_arm(std::string_view s, bool flag);
+// def blk_read_in_both_arms(flag: bool) -> None:
+void blk_read_in_both_arms(bool flag);
+// def blk_loop_in_both_arms(flag: bool) -> None:
+void blk_loop_in_both_arms(bool flag);
+// def blk_if_while(flag: bool) -> None:
+void blk_if_while(bool flag);
+// def blk_with() -> None:
+void blk_with();
+// def blk_try(n: int32) -> None:
+void blk_try(int32_t n);
+// def blk_match(n: int32) -> None:
+void blk_match(int32_t n);
+// def sib_closure() -> None:
+void sib_closure();
+// @error_return(MyErr)
+// def sib_er(k: int32) -> int32:
+std::expected<int32_t, MyErr> sib_er(int32_t k);
 // def main() -> None:
 void main();
 
@@ -119,6 +219,9 @@ struct Pic {
     // def __init__(self, n: int32) -> None:
     Pic() = default;
     explicit Pic(int32_t n);
+
+    // def bump(self) -> None:
+    void bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pic";
 };
 
@@ -193,6 +296,140 @@ inline std::ostream& operator<<(std::ostream& os, const Built& obj) {
     ::tpy::print_object_default(os, "Built", obj);
     return os;
 }
+
+// class SibHolder:
+struct SibHolder {
+
+
+    // def run(self) -> None:
+    void run() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SibHolder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SibHolder& obj) {
+    ::tpy::print_object_default(os, "SibHolder", obj);
+    return os;
+}
+
+// class SibBuilt:
+struct SibBuilt {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self) -> None:
+    SibBuilt();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SibBuilt";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SibBuilt& obj) {
+    ::tpy::print_object_default(os, "SibBuilt", obj);
+    return os;
+}
+
+// async def async_sibling(pics: list[Pic]) -> int32:
+struct __coro_async_sibling {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<Pic>& pics;
+    int32_t i;
+    Pic* p = nullptr;
+    int32_t k;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_slot<int32_t> __for_i_1;
+    ::tpy::frame_slot<int32_t> __for_stop_1;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_async_sibling(std::vector<Pic>& pics)
+        : __state(S_INITIAL), __cancel_pending(false), pics(pics) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_async_sibling&) {
+        return os << "<coroutine async_sibling>";
+    }
+};
+
+// async def async_blk_if(flag: bool, pics: list[Pic]) -> int32:
+struct __coro_async_blk_if {
+    int32_t __state;
+    bool __cancel_pending;
+    bool flag;
+    std::vector<Pic>& pics;
+    int32_t i;
+    Pic* p = nullptr;
+    int32_t j;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_slot<int32_t> __for_i_1;
+    ::tpy::frame_slot<int32_t> __for_stop_1;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_JOIN_2 = 5,
+        S_DONE = 6,
+    };
+
+    __coro_async_blk_if(bool flag_, std::vector<Pic>& pics)
+        : __state(S_INITIAL), __cancel_pending(false), flag(std::move(flag_)), pics(pics) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_async_blk_if&) {
+        return os << "<coroutine async_blk_if>";
+    }
+};
+
+// async def async_all() -> None:
+struct __coro_async_all {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<std::vector<Pic>> pics;
+    ::tpy::frame_slot<std::vector<Pic>> pics2;
+    ::tpy::frame_slot<std::vector<Pic>> pics3;
+    int32_t __await_lift_0;
+    int32_t __await_lift_1;
+    int32_t __await_lift_2;
+    std::optional<__coro_async_sibling> __sub_0;
+    std::optional<__coro_async_blk_if> __sub_1;
+    std::optional<__coro_async_blk_if> __sub_2;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_async_all()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_async_all&) {
+        return os << "<coroutine async_all>";
+    }
+};
 
 // def gen_section() -> Iterator[int32]:
 struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int32_t> {
@@ -280,6 +517,31 @@ struct __gen_gen_for_single : public ::tpy::next_iter_mixin<__gen_gen_for_single
     }
 };
 
+// def gen_slice_view(line: str) -> Iterator[int32]:
+struct __gen_gen_slice_view : public ::tpy::next_iter_mixin<__gen_gen_slice_view, int32_t> {
+    int32_t __state;
+    std::string line;
+    int32_t i;
+    std::string_view c;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_slice_view(std::string_view line_)
+        : __state(S_INITIAL), line(std::string(line_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_slice_view& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_slice_view&) {
+        return os << "<generator gen_slice_view>";
+    }
+};
+
 // def gen_while_single() -> Iterator[str]:
 struct __gen_gen_while_single : public ::tpy::next_iter_mixin<__gen_gen_while_single, std::string> {
     int32_t __state;
@@ -307,6 +569,74 @@ struct __gen_gen_while_single : public ::tpy::next_iter_mixin<__gen_gen_while_si
     }
 };
 
+// def gen_sibling(pics: list[Pic]) -> Iterator[int32]:
+struct __gen_gen_sibling : public ::tpy::next_iter_mixin<__gen_gen_sibling, int32_t> {
+    int32_t __state;
+    std::vector<Pic>& pics;
+    int32_t i;
+    Pic* p = nullptr;
+    int32_t k;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_slot<int32_t> __for_i_1;
+    ::tpy::frame_slot<int32_t> __for_stop_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_JOIN_0 = 4,
+        S_JOIN_1 = 5,
+        S_DONE = 6,
+    };
+
+    __gen_gen_sibling(std::vector<Pic>& pics)
+        : __state(S_INITIAL), pics(pics) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_sibling& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_sibling&) {
+        return os << "<generator gen_sibling>";
+    }
+};
+
+// def gen_blk_if(flag: bool, pics: list[Pic]) -> Iterator[int32]:
+struct __gen_gen_blk_if : public ::tpy::next_iter_mixin<__gen_gen_blk_if, int32_t> {
+    int32_t __state;
+    bool flag;
+    std::vector<Pic>& pics;
+    int32_t i;
+    Pic* p = nullptr;
+    int32_t j;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_slot<int32_t> __for_i_1;
+    ::tpy::frame_slot<int32_t> __for_stop_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_JOIN_0 = 4,
+        S_JOIN_1 = 5,
+        S_JOIN_2 = 6,
+        S_DONE = 7,
+    };
+
+    __gen_gen_blk_if(bool flag_, std::vector<Pic>& pics)
+        : __state(S_INITIAL), flag(std::move(flag_)), pics(pics) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_blk_if& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_blk_if&) {
+        return os << "<generator gen_blk_if>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -315,6 +645,12 @@ inline Flat::Flat(int32_t n) : n(n) {}
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline Pic::Pic(int32_t n) : n(n) {}
+
+// def bump(self) -> None:
+//     self.n += 1
+inline void Pic::bump() {
+    this->n = ::tpy::add_check<int32_t>(this->n, 1);
+}
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -353,6 +689,45 @@ inline Built::Built() {
     }
     p->n = ::tpy::add_check<int32_t>(p->n, 1);
     this->v = p->n;
+}
+
+// # Method position, sibling loop.
+// def run(self) -> None:
+//     for i in range(2):
+//         f = Flat(i)  # tpyc: ok
+//     for k in range(2):
+//         print("sib_method", k)
+//     f.n += 100
+//     print("sib_method", f.n)
+inline void SibHolder::run() const {
+    std::optional<Flat> f;
+    for (int32_t i = 0; i < 2; ++i) {
+        f = Flat(i);
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+        std::cout << "sib_method" << " " << k << "\n";
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 100);
+    std::cout << "sib_method" << " " << f->n << "\n";
+}
+
+// # Constructor position, sibling loop.
+// def __init__(self) -> None:
+//     for i in range(2):
+//         f = Flat(i + 20)  # tpyc: ok
+//     for k in range(2):
+//         pass
+//     f.n += 1
+//     self.v = f.n
+inline SibBuilt::SibBuilt() {
+    std::optional<Flat> f;
+    for (int32_t i = 0; i < 2; ++i) {
+        f = Flat((::tpy::add_check<int32_t>(i, 20)));
+    }
+    for (int32_t k = 0; k < 2; ++k) {
+    }
+    f->n = ::tpy::add_check<int32_t>(f->n, 1);
+    this->v = f->n;
 }
 void __tpy_init();
 } // namespace tpyapp::main

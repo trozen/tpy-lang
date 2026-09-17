@@ -58,8 +58,9 @@ def read_after_while() -> int:
 
 
 def sibling_loops_reuse_name() -> int:
-    # Two sibling loops each declaring the same name are independent locals;
-    # the second must still be able to declare it.
+    # Two sibling loops binding the same name bind ONE function-scoped local
+    # (Python has no block scope), so the single pre-declaration stands before
+    # the FIRST loop and both bodies assign into it.
     for i in range(2):
         n = i + 1
         print(n)

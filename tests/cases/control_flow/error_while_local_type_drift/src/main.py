@@ -1,7 +1,7 @@
-# The `while` sibling of error_block_local_type_drift. A while body's locals
-# never reach the pending-loop-var table, so the one-type-per-local check reads
-# the per-function record of the name's first declaration instead -- a separate
-# path that needs its own guard.
+# The `while` sibling of error_block_local_type_drift: one local has ONE type,
+# the join of every binding to it anywhere in the function, so a body binding
+# and a later one after the loop have to agree. `str` does not join `int32`,
+# and the mismatch is reported at the binding that broke it.
 
 
 def f(k: int) -> int:

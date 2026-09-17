@@ -856,6 +856,8 @@ struct _GatherSettledFuture {
     //         orig_i += 1
     //     return poll_ready(result)
     ::tpystd::tpy::Poll<std::vector<Settled<T>>> __poll__(::tpystd::coro::Waker waker) {
+        std::optional<Settled<T>> __slot_1;
+        std::optional<Settled<T>> __slot_2;
         int32_t n = ::tpy::__len__(this->_tasks);
         if ((n == 0)) {
             std::vector<Settled<T>> empty = std::vector<Settled<T>>{};
@@ -903,12 +905,12 @@ struct _GatherSettledFuture {
             bool settled_via_value = false;
             int32_t k = 0;
             int32_t kn = ::tpy::__len__(this->_result_indices);
+            Settled<T>* entry;
             while ((k < kn)) {
                 if ((::tpy::__getitem__(this->_result_indices, k) == orig_i)) {
                     ::tpy::list_pop_at(this->_result_indices, k);
                     ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_result_boxes, k);
-                    Settled<T> __slot_1 = Settled<T>();
-                    Settled<T>* entry = &__slot_1;
+                    entry = &*(__slot_1 = Settled<T>());
                     entry->value = std::move(box);
                     result.push_back(std::move((*entry)));
                     settled_via_value = true;
@@ -923,8 +925,7 @@ struct _GatherSettledFuture {
                     if ((::tpy::__getitem__(this->_exc_indices, k) == orig_i)) {
                         ::tpy::list_pop_at(this->_exc_indices, k);
                         ::tpystd::tplib::box::Box<::tpy::Throwable> ebox = ::tpy::list_pop_at(this->_exc_boxes, k);
-                        Settled<T> __slot_2 = Settled<T>();
-                        Settled<T>* entry = &__slot_2;
+                        entry = &*(__slot_2 = Settled<T>());
                         entry->exception = std::move(ebox);
                         result.push_back(std::move((*entry)));
                         break;

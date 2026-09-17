@@ -1,0 +1,1 @@
+main.py:11: error: variable 'v' may not be assigned at this point

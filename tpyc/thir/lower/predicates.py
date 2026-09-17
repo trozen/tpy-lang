@@ -466,19 +466,24 @@ def _wrap_view_owned_sink(value: 'THIRExpr | None',
                           slot_type: 'TpyType | None',
                           loc) -> 'THIRExpr | None':
     """An owned-str/bytes slot (std::string / std::vector<uint8_t> by value)
-    fed a view-form source copies explicitly -- `std::string(a)` /
+    fed a view source copies explicitly -- `std::string(a)` /
     `::tpy::Bytes(a)` -- the view->owned construction being explicit.
-    The single chokepoint for that copy, keyed on the lowered value's own
-    form fact; a literal (VALUE) or owned local / owned call result
-    (STORAGE) lands bare. Shared by the return sinks and the generator's
+    The single chokepoint for that copy. A borrow FORM is one way in; the
+    other is a value whose own TYPE is the family's view, which is how a view
+    local or a slice result arrives (views are value types, so the form tag
+    alone cannot see them). A literal or an owned local / call result lands
+    bare. Shared by the decl, reassign and return sinks and the generator's
     iterator slot.
     """
-    if value is None or value.form is not Form.BORROW or slot_type is None:
+    if value is None or slot_type is None:
         return value
-    if is_str_type(slot_type) or is_bytes_type(slot_type):
-        return THIRFormConvert(result_type=slot_type, value=value,
-                               form=Form.STORAGE, loc=loc)
-    return value
+    if not (is_str_type(slot_type) or is_bytes_type(slot_type)):
+        return value
+    view_typed = is_borrowing_view_type(unwrap_readonly(value.result_type))
+    if value.form is not Form.BORROW and not view_typed:
+        return value
+    return THIRFormConvert(result_type=slot_type, value=value,
+                           form=Form.STORAGE, loc=loc)
 
 
 def _owned_copy_sink(value: 'THIRExpr | None', slot_type: 'TpyType | None',
