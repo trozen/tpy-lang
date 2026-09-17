@@ -70,6 +70,7 @@ from .nodes import (
     THIRFrameSlotWrite,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
+    THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
 )
 
 
@@ -102,6 +103,34 @@ def _fail(owner: str, node: THIRNode, why: str) -> None:
 
 
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, (THIRVarDecl, THIRTupleLiteral, THIRBorrowTupleLiteral)):
+        layout = node.tuple_layout
+        if layout is not None:
+            typ = node.resolved_type if isinstance(node, THIRVarDecl) else node.result_type
+            if (not isinstance(layout, THIRTupleLayout) or not isinstance(typ, TupleType)
+                    or len(layout.elements) != len(typ.element_types)):
+                _fail(owner, node, "tuple layout disagrees with its type")
+            for member, element in zip(layout.elements, typ.element_types):
+                if isinstance(member, THIRBorrowedRecord):
+                    valid = (isinstance(member.type, NominalType)
+                             and member.type.qualified_name() is not None
+                             and not member.type.type_args and not member.type.is_protocol
+                             and member.type not in (BOOL, INT32)
+                             and type(member.readonly) is bool
+                             and unwrap_readonly(element) == member.type)
+                else:
+                    valid = member in (BOOL, INT32) and element == member
+                if not valid:
+                    _fail(owner, node, "invalid tuple member fact")
+            if not isinstance(node, THIRVarDecl) and len(node.elements) != len(layout.elements):
+                _fail(owner, node, "tuple capture arity mismatch")
+    if isinstance(node, THIRSubscript) and node.tuple_index is not None:
+        typ = unwrap_readonly(unwrap_ref_type(node.receiver.result_type))
+        if (not isinstance(typ, TupleType) or type(node.tuple_index) is not int
+                or not 0 <= node.tuple_index < len(typ.element_types)
+                or not isinstance(node.index, THIRLiteral)
+                or type(node.index.value) is not int or node.index.value != node.tuple_index):
+            _fail(owner, node, "invalid normalized tuple index")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) and node.owned_storage is not None:
         fact = node.owned_storage
         if (node.alias_binding is not None or node.init is None
@@ -129,7 +158,9 @@ def _check_node(owner: str, node: THIRNode) -> None:
                     _fail(owner, node, "alias binding disagrees with its destination")
     if isinstance(node, THIRFieldAccess) and node.field_identity is not None:
         fact = node.field_identity
-        if (not isinstance(node.receiver, THIRName) or not fact.name
+        direct = isinstance(node.receiver, THIRName) or (
+            isinstance(node.receiver, THIRSubscript) and node.receiver.tuple_index is not None)
+        if (not direct or not fact.name
                 or unwrap_readonly(unwrap_ref_type(node.receiver.result_type)) != fact.owner
                 or fact.type not in (BOOL, INT32) or node.result_type != fact.type
                 or node.form is not Form.VALUE):

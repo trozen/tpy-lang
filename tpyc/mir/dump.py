@@ -5,6 +5,7 @@ from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
 )
 from .validate import validate_function
 
@@ -20,6 +21,8 @@ def _place(place: MIRPlace) -> str:
             text = f"(*{text})"
         elif isinstance(projection, MIRField):
             text += f".{projection.id.owner.qualified_name()}::{projection.id.name}"
+        elif isinstance(projection, MIRTupleIndex):
+            text += f"[{projection.index}]"
     return text
 
 
@@ -33,6 +36,11 @@ def dump_function(fn: MIRFunction) -> str:
                   ) if slot.value_kind is MIRValueKind.BORROWED_RECORD else ""
         if slot.value_kind is MIRValueKind.RECORD_STORAGE:
             access = " owned-storage"
+        elif slot.value_kind is MIRValueKind.TUPLE:
+            access = " payload(" + ", ".join(
+                ("readonly-ref" if e.readonly else "mutable-ref")
+                if e.kind is MIRValueKind.BORROWED_RECORD else "value"
+                for e in slot.tuple_layout.elements) + ")"
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}")
     for block in fn.blocks:
         lines.append(f"bb{block.id.index}:")
@@ -48,6 +56,10 @@ def dump_function(fn: MIRFunction) -> str:
                 rhs = f"borrow %{value.source.index}"
             elif isinstance(value, MIRConstruct):
                 rhs = "construct (" + ", ".join(f"%{s.index}" for s in value.fields) + ")"
+            elif isinstance(value, MIRTupleConstruct):
+                rhs = "tuple (" + ", ".join(f"%{s.index}" for s in value.elements) + ")"
+            elif isinstance(value, MIRTupleCopy):
+                rhs = f"tuple-copy %{value.source.index}"
             elif isinstance(value, MIRCopy):
                 rhs = f"copy {_place(value.source)}"
             elif isinstance(value, MIRMove):

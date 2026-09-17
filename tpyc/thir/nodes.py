@@ -65,6 +65,12 @@ class THIRBorrowedRecord:
 
 
 @dataclass(frozen=True)
+class THIRTupleLayout:
+    """Selected scalar snapshots or borrowed record identities, in order."""
+    elements: tuple[TpyType | THIRBorrowedRecord, ...]
+
+
+@dataclass(frozen=True)
 class THIRAliasBinding:
     """The destination receives the source binding's current referent."""
     source: str
@@ -1073,6 +1079,7 @@ class THIRTupleLiteral(THIRExpr):
     (pointer-repr Optional / record refs), TypeParamRef elements, and
     target-less positions are gate-excluded."""
     elements: tuple[THIRExpr, ...]
+    tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -1095,6 +1102,7 @@ class THIRBorrowTupleLiteral(THIRExpr):
     elements: tuple[THIRExpr, ...]
     addr_of: tuple[bool, ...]
     elem_wraps: tuple[str | None, ...] = ()
+    tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         assert not any(w is not None and a
@@ -1491,6 +1499,7 @@ class THIRSubscript(THIRExpr):
     pin fires only for view-typed keys, which the gate excludes)."""
     receiver: THIRExpr
     index: THIRExpr
+    tuple_index: int | None = field(default=None, kw_only=True)
     bounds_safe: bool = False
     # A GENERIC tuple element read (`p[0]` on `tuple[T, T]`): the val_or_ptr
     # slot reads through `::tpy::tuple_elem_ref(std::get<N>(p))` (deref at
@@ -1681,6 +1690,7 @@ class THIRVarDecl(THIRStmt):
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
+    tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
     init: THIRExpr | None = None
     cpp_type: str | None = None
     form: Form = Form.VALUE

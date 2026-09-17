@@ -3,12 +3,16 @@
 from collections import deque
 
 from ..thir.nodes import Form
-from ..typesys import BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, TpyType, VoidType
+from ..typesys import (
+    BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, TupleType, TpyType, VoidType,
+    unwrap_readonly,
+)
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
 )
 
 
@@ -25,10 +29,12 @@ def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
     if isinstance(value, (MIRRead, MIRCopy)):
         _require(isinstance(value.source, MIRPlace), "invalid read place")
         return (value.source.root,)
-    if isinstance(value, (MIRAlias, MIRBorrow, MIRMove)):
+    if isinstance(value, (MIRAlias, MIRBorrow, MIRMove, MIRTupleCopy)):
         return (value.source,)
     if isinstance(value, MIRConstruct):
         return value.fields
+    if isinstance(value, MIRTupleConstruct):
+        return value.elements
     if isinstance(value, MIRCompare):
         return (value.left, value.right)
     if isinstance(value, MIRNot):
@@ -109,7 +115,26 @@ def validate_function(fn: MIRFunction) -> None:
             field_types[member.id] = member.type
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
-        if slot.value_kind is MIRValueKind.SCALAR:
+        if slot.value_kind is MIRValueKind.TUPLE:
+            layout = slot.tuple_layout
+            _require(isinstance(slot.type, TupleType) and isinstance(layout, MIRTupleLayout)
+                     and slot.form is Form.VALUE and not slot.readonly
+                     and slot.kind is not MIRSlotKind.PARAMETER, "unsupported tuple slot")
+            _require(len(layout.elements) == len(slot.type.element_types), "tuple layout arity")
+            for member, typ in zip(layout.elements, slot.type.element_types):
+                _require(isinstance(member, MIRTupleElement) and type(member.readonly) is bool,
+                         "invalid tuple element")
+                if member.kind is MIRValueKind.SCALAR:
+                    _require(member.type in (BOOL, INT32) and typ == member.type and not member.readonly,
+                             "invalid tuple scalar")
+                else:
+                    _require(member.kind is MIRValueKind.BORROWED_RECORD
+                             and isinstance(member.type, NominalType)
+                             and member.type.qualified_name() is not None
+                             and member.type not in (BOOL, INT32) and not member.type.type_args
+                             and not member.type.is_protocol and unwrap_readonly(typ) == member.type
+                             and (typ == member.type or member.readonly), "invalid tuple reference")
+        elif slot.value_kind is MIRValueKind.SCALAR:
             _require(slot.type in (INT32, BOOL) and slot.form is Form.VALUE and not slot.readonly,
                      "unsupported slot type or form")
         elif slot.value_kind is MIRValueKind.RECORD_STORAGE:
@@ -123,6 +148,8 @@ def validate_function(fn: MIRFunction) -> None:
                      and not slot.type.type_args and not slot.type.is_protocol
                      and slot.form is Form.BORROW, "unsupported reference slot type or form")
         _require(type(slot.readonly) is bool, "invalid access capability")
+        _require(slot.value_kind is MIRValueKind.TUPLE or slot.tuple_layout is None,
+                 "tuple layout on non-tuple slot")
         _require(isinstance(slot.kind, MIRSlotKind), "invalid slot kind")
 
     def slot_type(slot: MIRSlotId) -> TpyType:
@@ -135,28 +162,43 @@ def validate_function(fn: MIRFunction) -> None:
         if not place.projections:
             return typ
         slot = slots[place.root]
-        projections = place.projections
-        if isinstance(projections[0], MIRDeref):
-            _require(slot.value_kind is MIRValueKind.BORROWED_RECORD, "dereference needs reference holder")
-            _require(not (write and slot.readonly), "store through readonly reference")
-            projections = projections[1:]
-            if not projections:
-                _require(typ in records, "record place needs layout")
-                return typ
-        else:
-            _require(slot.value_kind is MIRValueKind.RECORD_STORAGE, "field needs record storage")
-            _require(not (write and slot.readonly), "store through readonly storage")
-        _require(len(projections) == 1 and isinstance(projections[0], MIRField),
-                 "unsupported place projections")
-        member = projections[0]
-        _require(isinstance(member.id, MIRFieldId) and member.id.owner == typ
-                 and bool(member.id.name), "field owner mismatch")
-        _require(member.type in (BOOL, INT32), "unsupported field type")
-        if typ in records:
-            _require(member.id in field_types, "field missing from record layout")
-        _require(field_types.setdefault(member.id, member.type) == member.type,
-                 "inconsistent field type")
-        return member.type
+        kind, readonly = slot.value_kind, slot.readonly
+        tuple_member = False
+        for projection in place.projections:
+            if isinstance(projection, MIRTupleIndex):
+                _require(kind is MIRValueKind.TUPLE and slot.tuple_layout is not None,
+                         "tuple projection needs tuple payload")
+                _require(type(projection.index) is int
+                         and 0 <= projection.index < len(slot.tuple_layout.elements), "tuple index out of range")
+                member = slot.tuple_layout.elements[projection.index]
+                typ, kind, readonly = member.type, member.kind, member.readonly
+                tuple_member = True
+            elif isinstance(projection, MIRDeref):
+                _require(kind is MIRValueKind.BORROWED_RECORD, "dereference needs reference holder")
+                _require(not (write and readonly), "store through readonly reference")
+                kind = MIRValueKind.RECORD_STORAGE
+                tuple_member = False
+            elif isinstance(projection, MIRField):
+                _require(kind is MIRValueKind.RECORD_STORAGE, "field needs record storage")
+                _require(not (write and readonly), "store through readonly storage")
+                _require(isinstance(projection.id, MIRFieldId) and projection.id.owner == typ
+                         and bool(projection.id.name), "field owner mismatch")
+                _require(projection.type in (BOOL, INT32), "unsupported field type")
+                if typ in records:
+                    _require(projection.id in field_types, "field missing from record layout")
+                _require(field_types.setdefault(projection.id, projection.type) == projection.type,
+                         "inconsistent field type")
+                typ, kind = projection.type, MIRValueKind.SCALAR
+            else:
+                raise MIRValidationError("unsupported place projections")
+        _require(not (write and tuple_member), "tuple element replacement is forbidden")
+        if kind is MIRValueKind.RECORD_STORAGE:
+            _require(typ in records, "record place needs layout")
+        return typ
+
+    def compatible_element(source: MIRTupleElement, target: MIRTupleElement) -> bool:
+        return (source.type == target.type and source.kind is target.kind
+                and (not source.readonly or target.readonly))
 
     pred: dict[MIRBlockId, set[MIRBlockId]] = {b: set() for b in blocks}
     initialized_storage: set[MIRSlotId] = set()
@@ -170,7 +212,22 @@ def validate_function(fn: MIRFunction) -> None:
             value = stmt.value
             for operand in operands(value):
                 slot_type(operand)
-            if isinstance(value, (MIRConstruct, MIRCopy, MIRMove)):
+            if isinstance(value, (MIRTupleConstruct, MIRTupleCopy)):
+                target = slots[stmt.target.root]
+                _require(not stmt.target.projections and target.value_kind is MIRValueKind.TUPLE,
+                         "tuple operation needs tuple destination")
+                if isinstance(value, MIRTupleConstruct):
+                    elements = tuple(MIRTupleElement(slots[s].type, slots[s].value_kind, slots[s].readonly)
+                                     for s in value.elements)
+                else:
+                    source = slots[value.source]
+                    _require(source.value_kind is MIRValueKind.TUPLE, "tuple copy needs tuple source")
+                    elements = source.tuple_layout.elements
+                _require(len(elements) == len(target.tuple_layout.elements)
+                         and all(compatible_element(src, dst)
+                                 for src, dst in zip(elements, target.tuple_layout.elements)),
+                         "tuple payload type or access mismatch")
+            elif isinstance(value, (MIRConstruct, MIRCopy, MIRMove)):
                 owning_blocks.add(block.id)
                 target = slots[stmt.target.root]
                 _require(target_type in records and (

@@ -7,7 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
-from .storage import direct_field
+from .storage import direct_field, tuple_layout
 from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -6140,7 +6140,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             subscript_prechecked=isinstance(e.obj, TpySubscript))
         return _self_recv_positioned(THIRFieldAccess(
             result_type=rtype,
-            field_identity=direct_field(e, analyzer) if isinstance(receiver, THIRName) else None,
+            field_identity=direct_field(e, analyzer, receiver)
+            if isinstance(receiver, (THIRName, THIRSubscript)) else None,
             receiver=receiver,
             field_cpp=_field_cpp(e),
             is_arrow=_field_is_arrow(e, lc),
@@ -6436,6 +6437,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     field_prechecked=isinstance(e.obj, TpyFieldAccess)),
                 index=THIRLiteral(result_type=analyzer.get_expr_type(e.index),
                                   value=idx, loc=loc),
+                tuple_index=idx,
                 form=form,
                 elem_ref=_gen_elem_ref,
                 loc=loc,
@@ -12003,6 +12005,7 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         # emit -- the spelling comes from the ELEMENTS' resolved types.
         result_type=_resolve_tuple_pending(slot, lc.analyzer),
         elements=tuple(lower_element(i) for i in range(len(e.elements))),
+        tuple_layout=tuple_layout(_resolve_tuple_pending(slot, lc.analyzer), lc.analyzer),
         loc=getattr(e, "loc", None))
 
 def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
@@ -12043,6 +12046,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
     # (`std::move(&(a))`), carried as a per-element wrap.
     wraps: list['str | None'] = []
     any_rvalue = False
+    captures: list[TupleElemCapture] = []
     for i in range(n):
         et = unwrap_ref_type(slot.element_types[i])
         et_bare = unwrap_readonly(unwrap_send_sync(et))
@@ -12088,6 +12092,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                         else TupleElemCapture.REF)
         elif target_readonly and mode == TupleElemCapture.REF:
             mode = TupleElemCapture.CONST_REF
+        captures.append(mode)
         if mode == TupleElemCapture.VALUE:
             # field_str_ok: a VALUE-mode element renders exactly as the
             # value-tuple builder's does -- the bare member read plus the
@@ -12363,6 +12368,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         result_type=slot, spelled_cpp=spelled,
         elements=tuple(lowered), addr_of=tuple(lifts),
         elem_wraps=elem_wraps or (),
+        tuple_layout=tuple_layout(slot, analyzer, captures=tuple(captures)),
         loc=getattr(e, "loc", None))
 
 

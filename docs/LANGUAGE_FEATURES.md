@@ -8189,6 +8189,12 @@ borrowed plain records, including readonly access, for ordinary free functions.
 M2.2 adds owned locals for plain bool/int32-field records, construction from
 verified emitted THIR definitions, explicit copy, selected move-through and
 acyclic replacements that preserve existing OWN versus IN_PLACE decisions.
+M2.3 adds flat local tuples of bool/int32 snapshots and borrowed plain-record
+identities: construct/copy/reseat, constant-index scalar reads and record-field
+access. Tuple copies preserve shared mutations without following later holder
+reseats. Empty tuples and readonly-source captures have internal IR tests only;
+existing parser/THIR source rejections are unchanged. Nested/owned tuple elements,
+tuple parameters/returns/unpacking and tagged wrappers remain deferred.
 Owning operations in loops, arbitrary constructor effects, containers/wrappers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

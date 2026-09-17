@@ -27,7 +27,7 @@ emitter: a body THIR cannot lower is a compile error (`ThirRejectError`), not a
 reroute. The landed half of the IR direction in `docs/IR_DESIGN.md`.
 
 `tpyc/mir/` provides an internal CFG builder, verifier and dump for bool/int32
-scalars and borrowed/owned plain records. THIR carries immutable borrowed-parameter,
+scalars, borrowed/owned plain records and flat tuple payloads. THIR carries immutable borrowed-parameter,
 alias-binding, owned-storage and direct-field facts from the existing lowering decisions.
 MIR uses body-scoped reference holders and explicit alias transfers; scalar
 field places contain dereference and qualified field projections. Distinct
@@ -41,7 +41,14 @@ checks the emitted `THIRConstructor` artifacts and their logical layout/member
 facts, without reaching back into sema. OWN replacements use distinct storage;
 IN_PLACE replacements preserve referent identity. Owning operations in CFG
 cycles remain uncovered; the verifier also rejects cyclic materialization.
-Tests
+Tuple construction/copy snapshots bool/int32 values and borrowed record identities;
+reseating one tuple holder leaves copies independent. THIR carries finalized
+element capture/capability layouts and normalized constant indices. Tuple field
+places compose index, dereference and field selection, checked by a typed
+projection walk. Empty payloads and readonly-source captures are tested at the
+internal IR boundary because their source forms still fail existing frontend
+gates. Tuple parameters, returns, unpacking, nested/owned elements and wrappers
+remain uncovered. Tests
 feed it the exact THIR returned by `Compiler.generate_code_and_thir()`, together
 with body identity and declaration kind. It does not run during normal
 compilation or affect emission. Unsupported bodies return `MIRNotCovered`, which

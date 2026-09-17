@@ -1631,6 +1631,12 @@ alongside related feature work; only the big-rock deferrals live here.
   M2.2 adds owned scalar-record storage, verified simple constructors,
   copy/move-through and acyclic replacements. The remaining constructor,
   wrapper, container, scope and effect work stays in that plan's scope matrix.
+  M2.3 adds flat local tuple payloads, copies/reseats and constant-index
+  projections of scalar snapshots and borrowed records. Empty tuple literals
+  and captures from explicit readonly parameters still hit frontend gates;
+  those shapes have internal IR tests only, with frontend admission deferred.
+  Nested/owned tuple elements, tuple params/returns/unpacking, globals/fields,
+  standalone record extraction and effectful tuple elements remain deferred.
   All excluded cells are filed there: M2 identities, storage/forms,
   methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
   comprehension/match, binding scopes and holder propagation; M4 summaries,

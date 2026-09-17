@@ -7,6 +7,7 @@ from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind,
+    MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
 )
 
 
@@ -15,7 +16,12 @@ class Reference:
     identity: int
 
 
-Value = int | bool | Reference
+@dataclass(frozen=True)
+class TupleValue:
+    elements: tuple[int | bool | Reference, ...]
+
+
+Value = int | bool | Reference | TupleValue
 Heap = dict[int, dict[MIRFieldId, int | bool]]
 
 
@@ -33,17 +39,24 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
                    ">=": operator.ge, "==": operator.eq, "!=": operator.ne}
 
     def field(place: MIRPlace) -> tuple[dict[MIRFieldId, int | bool], MIRFieldId]:
-        reference = values[place.root]
+        reference = read(MIRPlace(place.root, place.projections[:-1]))
         assert isinstance(reference, Reference)
         member = place.projections[-1]
         assert isinstance(member, MIRField)
         return objects[reference.identity], member.id
 
     def read(place: MIRPlace) -> Value:
-        if not place.projections:
-            return values[place.root]
-        obj, member = field(place)
-        return obj[member]
+        value = values[place.root]
+        for projection in place.projections:
+            if isinstance(projection, MIRTupleIndex):
+                assert isinstance(value, TupleValue)
+                value = value.elements[projection.index]
+            elif isinstance(projection, MIRDeref):
+                assert isinstance(value, Reference)
+            else:
+                assert isinstance(projection, MIRField) and isinstance(value, Reference)
+                value = objects[value.identity][projection.id]
+        return value
 
     for _ in range(100):
         block = blocks[bid]
@@ -56,6 +69,12 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
             elif isinstance(rhs, (MIRAlias, MIRBorrow)):
                 value = values[rhs.source]
                 assert isinstance(value, Reference)
+            elif isinstance(rhs, MIRTupleConstruct):
+                value = TupleValue(tuple(values[src] for src in rhs.elements))
+            elif isinstance(rhs, MIRTupleCopy):
+                source = values[rhs.source]
+                assert isinstance(source, TupleValue)
+                value = TupleValue(source.elements)
             elif isinstance(rhs, MIRConstruct):
                 layout = records[slots[stmt.target.root].type]
                 value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}

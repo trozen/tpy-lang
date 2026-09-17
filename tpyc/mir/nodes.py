@@ -47,6 +47,19 @@ class MIRValueKind(Enum):
     SCALAR = auto()
     BORROWED_RECORD = auto()
     RECORD_STORAGE = auto()
+    TUPLE = auto()
+
+
+@dataclass(frozen=True)
+class MIRTupleElement:
+    type: TpyType
+    kind: MIRValueKind = MIRValueKind.SCALAR
+    readonly: bool = False
+
+
+@dataclass(frozen=True)
+class MIRTupleLayout:
+    elements: tuple[MIRTupleElement, ...]
 
 
 @dataclass(frozen=True)
@@ -58,11 +71,17 @@ class MIRSlot:
     form: Form = Form.VALUE
     value_kind: MIRValueKind = MIRValueKind.SCALAR
     readonly: bool = False
+    tuple_layout: MIRTupleLayout | None = None
 
 
 @dataclass(frozen=True)
 class MIRDeref:
     pass
+
+
+@dataclass(frozen=True)
+class MIRTupleIndex:
+    index: int
 
 
 @dataclass(frozen=True)
@@ -88,7 +107,7 @@ class MIRRecordLayout:
 @dataclass(frozen=True)
 class MIRPlace:
     root: MIRSlotId
-    projections: tuple[MIRDeref | MIRField, ...] = ()
+    projections: tuple[MIRDeref | MIRField | MIRTupleIndex, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -117,6 +136,16 @@ class MIRConstruct:
 
 
 @dataclass(frozen=True)
+class MIRTupleConstruct:
+    elements: tuple[MIRSlotId, ...]
+
+
+@dataclass(frozen=True)
+class MIRTupleCopy:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
 class MIRCopy:
     source: MIRPlace
 
@@ -139,7 +168,7 @@ class MIRNot:
 
 
 MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
-             | MIRConstruct | MIRCopy | MIRMove)
+             | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy)
 
 
 @dataclass(frozen=True)

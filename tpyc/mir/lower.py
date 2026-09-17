@@ -7,7 +7,7 @@ from ..parse import RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..typesys import (
     BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, NominalType, TpyType,
-    VoidType, unwrap_readonly, unwrap_ref_type,
+    TupleType, VoidType, unwrap_readonly, unwrap_ref_type,
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
@@ -15,6 +15,7 @@ from .nodes import (
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
 )
 from .coverage import Unsupported as _Unsupported, plain as _plain, require as _require
 from .definitions import MIRConstructorDefinition, MIRDefinitions
@@ -36,6 +37,8 @@ class _Coverage:
         self.definitions = definitions
         self.records: dict[NominalType, MIRConstructorDefinition] = {}
         self.fixed_owned: set[str] = set()
+        self.tuples: dict[str, th.THIRTupleLayout] = {}
+        self.tuple_exprs: IdentityMap[th.THIRExpr, th.THIRTupleLayout] = IdentityMap()
 
     def check(self) -> None:
         fn = self.fn
@@ -58,6 +61,15 @@ class _Coverage:
             if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
                 _require(stmt, prefix, "declaration outside entry prefix")
                 _require(stmt, stmt.name not in self.bindings, "duplicate binding")
+                if isinstance(stmt, th.THIRVarDecl) and isinstance(stmt.resolved_type, TupleType):
+                    _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const", "tuple_layout"})
+                    _require(stmt, stmt.form in (th.Form.VALUE, th.Form.BORROW)
+                             and stmt.init is not None, "unsupported tuple declaration")
+                    self.tuple_layout(stmt, stmt.tuple_layout, stmt.resolved_type)
+                    self.tuple_compatible(stmt, self.tuple_expr(stmt.init), stmt.tuple_layout)
+                    self.tuples[stmt.name] = stmt.tuple_layout
+                    self.bindings[stmt.name] = stmt.resolved_type
+                    continue
                 if stmt.owned_storage is not None:
                     self.owned(stmt)
                     continue
@@ -200,16 +212,95 @@ class _Coverage:
             _require(stmt, self.references.get(name) == fact.reference, "alias destination mismatch")
             self.fixed_owned.discard(name)
 
+    def tuple_layout(self, node: object, layout: th.THIRTupleLayout | None,
+                     typ: TpyType) -> None:
+        _require(node, isinstance(layout, th.THIRTupleLayout) and isinstance(typ, TupleType),
+                 "missing tuple layout")
+        _require(node, len(layout.elements) == len(typ.element_types), "tuple layout arity")
+        for member, element in zip(layout.elements, typ.element_types):
+            if isinstance(member, th.THIRBorrowedRecord):
+                self.reference(node, member, element)
+                _require(node, unwrap_readonly(element) == element or member.readonly,
+                         "tuple layout increases access")
+            else:
+                _require(node, member in (BOOL, INT32) and member == element,
+                         "unsupported tuple scalar")
+
+    def tuple_compatible(self, node: object, source: th.THIRTupleLayout,
+                         target: th.THIRTupleLayout) -> None:
+        _require(node, len(source.elements) == len(target.elements), "tuple copy arity")
+        for src, dst in zip(source.elements, target.elements):
+            if isinstance(src, th.THIRBorrowedRecord) and isinstance(dst, th.THIRBorrowedRecord):
+                _require(node, src.type == dst.type and (not src.readonly or dst.readonly),
+                         "tuple copy type or access mismatch")
+            else:
+                _require(node, src == dst, "tuple copy type mismatch")
+
+    def tuple_expr(self, expr: th.THIRExpr) -> th.THIRTupleLayout:
+        _require(expr, expr.form in (th.Form.VALUE, th.Form.BORROW), "unsupported tuple form")
+        if isinstance(expr, th.THIRName):
+            _plain(expr, {"name", "is_last_use", "is_movable"})
+            _require(expr, expr.name in self.tuples, "tuple needs local payload")
+            layout = self.tuples[expr.name]
+            _require(expr, expr.result_type == self.bindings[expr.name], "tuple name type mismatch")
+        else:
+            _require(expr, isinstance(expr, (th.THIRTupleLiteral, th.THIRBorrowTupleLiteral)),
+                     "unsupported tuple expression")
+            allowed = {"elements", "tuple_layout"}
+            if isinstance(expr, th.THIRBorrowTupleLiteral):
+                allowed |= {"spelled_cpp", "addr_of"}
+                _require(expr, len(expr.addr_of) == len(expr.elements), "tuple address arity")
+            _plain(expr, allowed)
+            layout = expr.tuple_layout
+            self.tuple_layout(expr, layout, expr.result_type)
+            _require(expr, len(expr.elements) == len(layout.elements), "tuple capture arity")
+            for element, member in zip(expr.elements, layout.elements):
+                if isinstance(member, th.THIRBorrowedRecord):
+                    _require(expr, isinstance(expr, th.THIRBorrowTupleLiteral), "value tuple borrows record")
+                    name = self.reference_name(element)
+                    source = self.references[name]
+                    _require(element, source.type == member.type and (not source.readonly or member.readonly),
+                             "tuple capture type or access mismatch")
+                else:
+                    _require(element, self.expr(element) == member and not self.writes[element],
+                             "effectful or mistyped tuple element")
+        self.tuple_layout(expr, layout, expr.result_type)
+        self.tuple_exprs[expr] = layout
+        return layout
+
+    def projection(self, expr: th.THIRSubscript) -> TpyType | th.THIRBorrowedRecord:
+        _plain(expr, {"receiver", "index", "tuple_index"})
+        layout = self.tuple_expr(expr.receiver)
+        index = expr.tuple_index
+        _require(expr, type(index) is int and 0 <= index < len(layout.elements),
+                 "missing or invalid tuple index")
+        _require(expr, isinstance(expr.index, th.THIRLiteral)
+                 and type(expr.index.value) is int and expr.index.value == index,
+                 "tuple index disagreement")
+        _plain(expr.index, {"value", "int_cpp"})
+        member = layout.elements[index]
+        if isinstance(member, th.THIRBorrowedRecord):
+            self.reference(expr, member, expr.result_type)
+            _require(expr, expr.form is th.Form.BORROW, "tuple reference projection form")
+        else:
+            _require(expr, expr.result_type == member and expr.form is th.Form.VALUE,
+                     "tuple scalar projection type or form")
+        return member
+
     def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> TpyType:
         _plain(expr, {"receiver", "field_cpp", "field_identity", "is_arrow"})
-        name = self.reference_name(expr.receiver)
+        if isinstance(expr.receiver, th.THIRSubscript):
+            reference = self.projection(expr.receiver)
+            _require(expr, isinstance(reference, th.THIRBorrowedRecord), "field needs tuple reference")
+        else:
+            reference = self.references[self.reference_name(expr.receiver)]
         fact = expr.field_identity
         _require(expr, isinstance(fact, th.THIRFieldIdentity), "missing field identity")
-        _require(expr, fact.owner == self.references[name].type and bool(fact.name),
+        _require(expr, fact.owner == reference.type and bool(fact.name),
                  "field owner mismatch")
         _require(expr, fact.type in (BOOL, INT32) and expr.result_type == fact.type
                  and expr.form is th.Form.VALUE, "unsupported field type or form")
-        _require(expr, not (write and self.references[name].readonly), "readonly field store")
+        _require(expr, not (write and reference.readonly), "readonly field store")
         return fact.type
 
     def expr(self, expr: th.THIRExpr) -> TpyType:
@@ -231,6 +322,8 @@ class _Coverage:
             _require(expr, self.bindings[expr.name] == typ, "name type mismatch")
         elif isinstance(expr, th.THIRFieldAccess):
             self.field(expr)
+        elif isinstance(expr, th.THIRSubscript):
+            _require(expr, self.projection(expr) == typ, "scalar tuple projection required")
         elif isinstance(expr, th.THIRCoerce):
             _plain(expr, {"expr", "coercion_name"})
             _require(expr, typ == INT32
@@ -298,6 +391,12 @@ class _Coverage:
             _plain(stmt, set())
         elif isinstance(stmt, th.THIRAssign):
             _plain(stmt, {"target", "value"})
+            if isinstance(stmt.target, th.THIRName) and stmt.target.name in self.tuples:
+                _plain(stmt.target, {"name", "is_last_use", "is_movable"})
+                _require(stmt, stmt.target.result_type == self.bindings[stmt.target.name],
+                         "tuple destination type mismatch")
+                self.tuple_compatible(stmt, self.tuple_expr(stmt.value), self.tuples[stmt.target.name])
+                return
             _require(stmt, isinstance(stmt.target, (th.THIRName, th.THIRFieldAccess)),
                      "assignment needs local or field target")
             target_type = (self.field(stmt.target, write=True) if isinstance(stmt.target, th.THIRFieldAccess)
@@ -349,6 +448,7 @@ class _Builder:
         self.current: _Block | None = self.block()
         self.loops: list[tuple[MIRBlockId, MIRBlockId]] = []
         self.records = coverage.records
+        self.tuple_exprs = coverage.tuple_exprs
         self.storage: dict[str, MIRSlotId] = {}
 
     def block(self) -> _Block:
@@ -358,14 +458,34 @@ class _Builder:
 
     def slot(self, typ: TpyType, kind: MIRSlotKind = MIRSlotKind.TEMPORARY,
              name: str | None = None, reference: th.THIRBorrowedRecord | None = None,
-             *, storage: bool = False) -> MIRSlotId:
+             *, storage: bool = False, tuple_layout: th.THIRTupleLayout | None = None) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
         self.slots.append(MIRSlot(sid, reference.type if reference else typ, kind, name,
                                   form=th.Form.STORAGE if storage else th.Form.BORROW if reference else th.Form.VALUE,
                                   value_kind=(MIRValueKind.RECORD_STORAGE if storage else
-                                              MIRValueKind.BORROWED_RECORD if reference else MIRValueKind.SCALAR),
-                                  readonly=reference.readonly if reference else False))
+                                              MIRValueKind.BORROWED_RECORD if reference else
+                                              MIRValueKind.TUPLE if tuple_layout is not None else MIRValueKind.SCALAR),
+                                  readonly=reference.readonly if reference else False,
+                                  tuple_layout=self.layout(tuple_layout) if tuple_layout is not None else None))
         return sid
+
+    @staticmethod
+    def layout(layout: th.THIRTupleLayout) -> MIRTupleLayout:
+        return MIRTupleLayout(tuple(
+            MIRTupleElement(e.type, MIRValueKind.BORROWED_RECORD, e.readonly)
+            if isinstance(e, th.THIRBorrowedRecord) else MIRTupleElement(e)
+            for e in layout.elements))
+
+    def tuple_expr(self, expr: th.THIRExpr) -> MIRSlotId:
+        dest = self.slot(expr.result_type, tuple_layout=self.tuple_exprs[expr])
+        if isinstance(expr, th.THIRName):
+            value = MIRTupleCopy(self.bindings[expr.name])
+        else:
+            value = MIRTupleConstruct(tuple(
+                self.bindings[e.name] if isinstance(member, th.THIRBorrowedRecord) else self.expr(e)
+                for e, member in zip(expr.elements, self.tuple_exprs[expr].elements)))
+        self.write(dest, value, expr.loc)
+        return dest
 
     def write(self, dest: MIRSlotId | MIRPlace, value: MIRRvalue, loc: SourceLocation | None) -> None:
         assert self.current is not None
@@ -375,10 +495,15 @@ class _Builder:
     def place(self, expr: th.THIRExpr) -> MIRPlace:
         if isinstance(expr, th.THIRName):
             return MIRPlace(self.bindings[expr.name])
+        if isinstance(expr, th.THIRSubscript):
+            root = (self.bindings[expr.receiver.name] if isinstance(expr.receiver, th.THIRName)
+                    else self.tuple_expr(expr.receiver))
+            return MIRPlace(root, (MIRTupleIndex(expr.tuple_index),))
         assert isinstance(expr, th.THIRFieldAccess) and expr.field_identity is not None
         member = expr.field_identity
-        return MIRPlace(self.bindings[expr.receiver.name],
-                        (MIRDeref(), MIRField(MIRFieldId(member.owner, member.name), member.type)))
+        base = self.place(expr.receiver)
+        return MIRPlace(base.root, base.projections + (
+            MIRDeref(), MIRField(MIRFieldId(member.owner, member.name), member.type)))
 
     def end(self, term: MIRTerminator) -> None:
         assert self.current is not None and self.current.terminator is None
@@ -411,7 +536,7 @@ class _Builder:
             return self.result(typ, MIRConstant(expr.value), loc)
         if isinstance(expr, th.THIRCoerce):
             return self.result(INT32, MIRConstant(expr.expr.value), loc)
-        if isinstance(expr, (th.THIRName, th.THIRFieldAccess)):
+        if isinstance(expr, (th.THIRName, th.THIRFieldAccess, th.THIRSubscript)):
             return self.result(typ, MIRRead(self.place(expr)), loc)
         if isinstance(expr, th.THIRWalrus):
             value = self.expr(expr.value)
@@ -483,13 +608,21 @@ class _Builder:
                     self.bindings[name] = self.slot(fact.reference.type, MIRSlotKind.LOCAL,
                                                     name, fact.reference)
                 self.write(self.bindings[name], MIRAlias(source), loc)
+            elif isinstance(stmt, th.THIRVarDecl) and stmt.tuple_layout is not None:
+                dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,
+                                 tuple_layout=stmt.tuple_layout)
+                self.write(dest, MIRTupleCopy(self.tuple_expr(stmt.init)), loc)
+                self.bindings[stmt.name] = dest
             elif isinstance(stmt, th.THIRVarDecl):
                 dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name)
                 if stmt.init is not None:
                     self.write(dest, MIRRead(MIRPlace(self.expr(stmt.init))), loc)
                 self.bindings[stmt.name] = dest
             elif isinstance(stmt, th.THIRAssign):
-                self.write(self.place(stmt.target), MIRRead(MIRPlace(self.expr(stmt.value))), loc)
+                if isinstance(stmt.target.result_type, TupleType):
+                    self.write(self.place(stmt.target), MIRTupleCopy(self.tuple_expr(stmt.value)), loc)
+                else:
+                    self.write(self.place(stmt.target), MIRRead(MIRPlace(self.expr(stmt.value))), loc)
             elif isinstance(stmt, th.THIRExprStmt):
                 self.expr(stmt.expr)
             elif isinstance(stmt, th.THIRReturn):

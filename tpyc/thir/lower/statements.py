@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record
+from .storage import alias_binding, borrowed_record, tuple_layout
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -10322,6 +10322,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         _witness("decl.btuple_literal")
                         return THIRVarDecl(
                             name=stmt.name, resolved_type=bt, init=binit,
+                            tuple_layout=tuple_layout(bt, analyzer, borrow=True, readonly=elem_const),
                             cpp_type=borrow_cpp, form=Form.BORROW, loc=loc)
                     if isinstance(stmt.init, TpyName):
                         # A borrow-form tuple NAME source (the loop var /
@@ -10334,6 +10335,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         _witness("decl.btuple_name_copy")
                         return THIRVarDecl(
                             name=stmt.name, resolved_type=bt, init=init,
+                            tuple_layout=tuple_layout(bt, analyzer, borrow=True, readonly=elem_const),
                             cpp_type=borrow_cpp, form=Form.BORROW, loc=loc)
                     # Field / subscript storage lvalue: the reseat_lift
                     # value split, at decl position; the lift targets the
@@ -10456,8 +10458,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                  allow_temps=from_call))
                 declared[stmt.name] = src_bt
                 _witness("decl.btuple_alias")
+                lc.ensure_borrow_tuple_const()
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=src_bt, init=init,
+                    tuple_layout=tuple_layout(src_bt, analyzer, borrow=True,
+                                              readonly=stmt.name in lc.const_borrow_tuple_locals),
                     cpp_type="auto", form=Form.BORROW, loc=loc)
         # A REASSIGNED ptr-repr tuple's first decl has one fixed C++ shape
         # across all its bindings: BORROW form (`std::tuple<..., T*>`),
@@ -10580,6 +10585,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _witness("btuple.decl")
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=slot_bt, init=binit,
+                    tuple_layout=binit.tuple_layout,
                     cpp_type="auto", form=Form.BORROW, loc=loc)
             if tuple_t is None and not is_reassign and (
                     not stmt.init.elem_capture
@@ -11057,6 +11063,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             cpp_type = None
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=init, cpp_type=cpp_type,
+            tuple_layout=tuple_layout(vtype, analyzer),
             loc=loc)
     if isinstance(stmt, TpyAssign):
         begin_stmt()

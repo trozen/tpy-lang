@@ -611,9 +611,12 @@ check. `test_owned.py` uses actual emitted THIR; `test_owned_validate.py` checks
 malformed MIR. The shared bounded interpreter observes both the returned scalar
 and mutations of distinct/shared storage. No compiler unit test reads case files.
 
-## M2.3 proposal: flat tuple payloads
+## M2.3: flat tuple payloads
 
-Status: investigated after M2.2 merged; **implementation awaits approval**.
+Status: implemented, reviewed and verified after the prerequisite fix landed as
+`334c182905`. The approved scope keeps source acceptance unchanged and tests
+empty/readonly payloads at the internal IR boundary where source admission is
+narrower.
 This is architectural work. Split aggregate products (tuples) from tagged sums
 (Optional/unions): the latter additionally require presence/alternative facts,
 checked payload projections and narrowing identities. Existing provenance
@@ -677,7 +680,8 @@ Self-assignment retains existing loans in both the tracker and replay without
 creating a self-edge.
 It also prevents numeric/character stored-field writes from spuriously warning about
 invalidation; numeric property setters retain the check because their bodies
-can replace borrowed storage. M2.3 MIR implementation remains unapproved.
+can replace borrowed storage. The prerequisite is merged; M2.3 is approved
+with the source-admission limits below.
 
 Audit declaration, reassignment and walrus producers together: they currently
 update capture/provenance and remove prior loans at different points. Whole
@@ -722,7 +726,7 @@ its supported walrus producer shares the expression registration helper.
 The unrelated immediate walrus field-access defect is tracked separately as
 `BUGS.md#walrus-tuple-immediate-field-access`, with user approval.
 
-### Proposed MIR contract
+### MIR contract
 
 ```python
 def example(a: Cell, b: Cell) -> int32:
@@ -752,9 +756,9 @@ constant-index projections explicitly and extend the existing direct-field
 fact boundary for verified tuple projections, preserving its current filters.
 Do not recover semantic facts from emitter strings or rerun sema inside MIR.
 
-The following intersecting axes define the proposed first implementation:
+The following intersecting axes define the first implementation:
 
-| Axis | Proposed coverage | Deferred scope |
+| Axis | Coverage | Deferred scope |
 |---|---|---|
 | Position | Existing ordinary free-function bodies and prefix bindings; M1 branches/loops subject to M2.2 owning-operation limits | Other bodies remain later M2/M3; no new binding lifetime model |
 | Shape | Flat empty/singleton/mixed tuples of bool/int32 and borrowed plain records, including readonly access | Nested/owned tuple elements, Optional, union, str/bytes, Own, Ptr/Span, Box/Rc, containers and generic forms remain later M2/M4 |
@@ -777,6 +781,20 @@ iteration, exception, warning or source-acceptance rule is introduced by MIR.
 
 ### Implementation and subsequent wrapper work
 
+Producer probes before implementation found two existing source-admission
+limits within the proposed shape list:
+
+- `pair = ()` fails in the parser with `Empty tuple literal is not supported`.
+- Given `a: readonly[Cell]`, `pair = (a, 1)` fails at THIR's
+  `decl.tuple_literal_shape` gate. The ordinary `a: Cell` twin compiles.
+  A readonly element annotation on a tuple capturing a mutable source also
+  compiles, but is not evidence that readonly sources work.
+
+The approved scope preserves these existing rejections and exercises
+empty/readonly payload invariants at the internal IR boundary. IR support for
+these shapes does not imply complete source-to-MIR support. Frontend acceptance
+is separate work; M2.3 introduces no new language rule.
+
 1. Fix and fully review tuple-capture loan registration as a separate commit.
 2. Add positive THIR capture/projection facts with producer tests, then MIR
    tuple payloads/places/operations, verifier and bounded interpreter together.
@@ -796,9 +814,18 @@ insufficient. Construction, extraction, reassignment and invalidation must use
 the same facts. No flat-tuple rule implicitly covers any of these tagged forms.
 
 Confidence: high in the observed tuple payload behavior. The prerequisite's
-cross-producer audit is complete and its registration fix is implemented;
-M2.3 MIR implementation still needs approval. Its coverage must include the
-owned-local example above, using the corrected production storage decision.
+cross-producer audit is complete and its registration fix is merged. The source
+limits above are explicitly retained. Tests include the owned-local example,
+using the corrected production storage decision.
+
+Validation: 598 MIR/THIR unit tests passed. The final full forced suite passed
+8,394 tests with 23 skips and rebuilt/ran all 4,138 native cases. No existing
+source cases, diagnostics or generated-code snapshots changed. Specialist
+review covered architecture, safety, codegen, CPython parity, tests, conventions
+and docs; closing review resolved all findings. An independent retrospective
+accepted the producer facts, typed projections and bounded coverage. This
+increment remains analysis infrastructure, with no production MIR consumer or
+lifetime proof.
 
 ## Scope matrix and remaining increments
 
