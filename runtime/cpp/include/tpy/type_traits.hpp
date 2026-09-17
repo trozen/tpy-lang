@@ -452,13 +452,42 @@ struct val_or_ref {
     // borrow contract as the T& ctor.
     val_or_ref(T* ptr) requires (!is_val) : data_(ptr) {}
 
+    // (data_): return a reference to the stored copy, never a prvalue --
+    // callers bind views (string_view/span) to the result, which would
+    // dangle at end of statement if a temporary were returned.
+    //
+    // Two overloads: a mutable wrapper lends a MUTABLE element -- the pointee
+    // at a reference payload, the wrapper's OWN copy at a value one -- which
+    // is what a for-loop variable over the slot binds
+    // (`T* x = &unwrap_ref(...)`). With only the const one, a value `T` came
+    // back `const T&` while a reference `T` came back `T&` -- an asymmetry
+    // invisible until a generic yield slot put both instantiations through the
+    // same `val_or_ref<T>`. The non-const overload is gated on a non-const `T`:
+    // the value storage drops the const (`storage_t` is `remove_const_t<T>`),
+    // so without the gate a `val_or_ref<const V>` would hand out a mutable
+    // `V&`.
+    decltype(auto) get() requires (!std::is_const_v<T>) {
+        if constexpr (is_val) return (data_);
+        else return (*data_);
+    }
+
     decltype(auto) get() const {
-        // (data_): return a reference to the stored copy, never a prvalue --
-        // callers bind views (string_view/span) to the result, which would
-        // dangle at end of statement if a temporary were returned.
         if constexpr (is_val) return (data_);
         else return (*data_);
     }
 };
+
+// The iterator/yield SLOT form of T -- `val_or_ref<T>`, except where T is
+// ALREADY a slot. A generic callee's type argument arrives pre-wrapped when
+// sema infers it as a borrow (`Ref[X]`, from a callable parameter's declared
+// return: `my_map<Point, val_or_ref<Point>>`), so a frame spelling the slot
+// over its open `T` would nest one wrapper inside another. Idempotent, so the
+// frame need not know which of the two forms its instantiation supplies.
+namespace detail {
+    template<typename T> struct yield_slot_impl { using type = val_or_ref<T>; };
+    template<typename T> struct yield_slot_impl<val_or_ref<T>> { using type = val_or_ref<T>; };
+    template<typename T> struct yield_slot_impl<const val_or_ref<T>> { using type = val_or_ref<const T>; };
+}
+template<typename T> using yield_slot_t = typename detail::yield_slot_impl<T>::type;
 
 } // namespace tpy

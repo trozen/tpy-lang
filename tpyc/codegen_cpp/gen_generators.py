@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from ..parse.nodes import (
     TpyFunction, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
 )
-from ..typesys import expand_fi_template, IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_uses_borrow_slot
+from ..typesys import expand_fi_template, IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_always_borrows, yield_borrow_slot_cpp, yield_slot_borrows
 from tpyc import modules as builtin_modules
 from ..compilation_context import get_current_compiler
 from ..symbol_binding import SymbolKind, lookup_imported
@@ -227,7 +227,8 @@ class GeneratorCodegen:
             tuple[str, str | None], TpyFunction] = {}
 
     @staticmethod
-    def _iter_slot_for_yield(elem_type: 'TpyType', cpp_elem: str) -> str:
+    def _iter_slot_for_yield(elem_type: 'TpyType', cpp_elem: str,
+                             generic_borrows: bool) -> str:
         """Pick the iterator slot type for a generator yield.
 
         Iterator yields hand out references like function returns (CPython
@@ -249,19 +250,47 @@ class GeneratorCodegen:
         the slot collapses to value form and copies the elements;
         `to_cpp_return()` on the readonly tuple still yields the const-borrow
         form (`std::tuple<const T&, ...>`).
+
+        `generic_borrows` is the producer's provenance verdict
+        (`TpyFunction.generic_yield_borrows`) and answers the one case the
+        element type alone cannot: an OPEN `T` spells the instantiation-
+        resolved `::tpy::yield_slot_t<T>` only when this generator's yield
+        sources all outlive a suspension; otherwise it keeps the value slot.
         """
-        unwrapped = unwrap_ref_type(unwrap_readonly(elem_type))
-        if isinstance(unwrapped, TupleType):
+        if isinstance(unwrap_ref_type(unwrap_readonly(elem_type)), TupleType):
             return elem_type.to_cpp_return()
         # A bare reference element is handed out by reference via val_or_ref<T>
         # (`val_or_ref<const T>` for a readonly one -- the const rides inside
         # the slot, so the pull still borrows instead of copying).
-        # yield_uses_borrow_slot excludes the forms with their own representation
-        # (Optional/Union pointer-or-storage, Own move, TypeParamRef already
-        # val_or_ref-substituted by the caller).
-        if yield_uses_borrow_slot(elem_type):
+        # yield_slot_borrows excludes the forms with their own representation
+        # (Optional/Union pointer-or-storage, Own move) and folds in the
+        # open-`T` verdict.
+        if yield_slot_borrows(elem_type, generic_borrows):
             return yield_borrow_slot_cpp(elem_type, cpp_elem)
         return cpp_elem
+
+    def _deduced_source_template(
+            self, stmt: TpyForEach, iterable_type: 'TpyType',
+            proto_param_names: frozenset[str],
+            proto_param_alias: dict[str, str] | None) -> str | None:
+        """The deduced template arg `T_<pname>` naming a static-protocol param's
+        frame-field type, or None when the source is not one.
+
+        A direct loop over such a param sources from that arg, not from
+        `type_to_cpp`, which renders the protocol as a C++ concept --
+        un-instantiable inside `std::declval`. The dual guard (name is a
+        classified param AND the resolved type is still a static protocol)
+        means a concrete-typed local that shadows the param name falls back to
+        the ordinary rendering.
+        """
+        if not isinstance(stmt.iterable, TpyName):
+            return None
+        subj_pname = (proto_param_alias or {}).get(
+            stmt.iterable.name, stmt.iterable.name)
+        if (subj_pname in proto_param_names
+                and self.functions.protocols.is_static_protocol_param(iterable_type)):
+            return protocol_param_template_name(subj_pname)
+        return None
 
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int,
                               proto_param_names: frozenset[str] = frozenset(),
@@ -335,20 +364,32 @@ class GeneratorCodegen:
                 fields.append((f"__for_src_{uid}", src_cpp))
                 result_type = f"::tpy::iter_next_t<{src_cpp}>"
             else:
-                # No source struct to read the slot off, so a CONCRETE
-                # reference element takes the producer's own slot spelling --
-                # the bare elem-type formula renders it `T&`, which
-                # std::expected cannot hold. The peel is off `Ref[T]`, which is
-                # how a for-head element type arrives. Every other element
-                # keeps the formula: a generic `T` already spells the
-                # instantiation-resolved `val_or_ref_t<T>` through it.
-                slot_elem = unwrap_ref_type(elem_type) if elem_type else None
-                slot_cpp = (
-                    yield_borrow_slot_cpp(slot_elem,
-                                          self.types.type_to_cpp(slot_elem))
-                    if slot_elem is not None
-                    and yield_uses_borrow_slot(slot_elem) else elem_cpp)
-                result_type = f"std::expected<{slot_cpp}, ::tpy::StopIteration>"
+                src_tmpl = self._deduced_source_template(
+                    stmt, iterable_type, proto_param_names, proto_param_alias)
+                if src_tmpl is not None:
+                    # A static-protocol param source: its deduced template arg
+                    # names the producer struct, so the slot comes off that
+                    # producer's own `__next__` -- the one spelling that cannot
+                    # disagree with it. Re-deriving the payload from the element
+                    # type would have this consumer answer a question
+                    # (does the producer LEND?) that only the producer's
+                    # per-generator provenance verdict settles.
+                    result_type = f"::tpy::iter_next_t<{src_tmpl}>"
+                else:
+                    # No source struct to read the slot off, so a CONCRETE
+                    # reference element takes the producer's own slot spelling
+                    # -- the bare elem-type formula renders it `T&`, which
+                    # std::expected cannot hold. The peel is off `Ref[T]`, which
+                    # is how a for-head element type arrives. An open `T` keeps
+                    # the formula's `val_or_ref_t<T>`: with no producer in hand
+                    # there is nothing to read the verdict off.
+                    slot_elem = unwrap_ref_type(elem_type) if elem_type else None
+                    slot_cpp = (
+                        yield_borrow_slot_cpp(slot_elem,
+                                              self.types.type_to_cpp(slot_elem))
+                        if slot_elem is not None
+                        and yield_always_borrows(slot_elem) else elem_cpp)
+                    result_type = f"std::expected<{slot_cpp}, ::tpy::StopIteration>"
             fields.append((f"__for_r_{uid}", result_type))
             # Non-value elements alias the producer's live yield slot (T*),
             # mirroring begin_end's pointer-form loop var -- a frame_slot
@@ -473,24 +514,9 @@ class GeneratorCodegen:
         # Universal default: ::tpy::__iter__() + __next__() loop.
         # Handles Iterable[T]/NativeIterable[T] protocol params, user types
         # with __iter__(), and any remaining iterable types.
-        #
-        # A direct loop over a static-protocol param sources from its deduced
-        # template arg `T_<pname>` (the param's frame-field type), not
-        # `type_to_cpp`, which renders the protocol as a C++ concept --
-        # un-instantiable inside `std::declval`. The dual guard (name is a
-        # classified param AND the resolved type is still a static protocol)
-        # means a concrete-typed local that shadows the param name falls back
-        # to the ordinary rendering.
-        subj_pname = None
-        if isinstance(stmt.iterable, TpyName):
-            subj_pname = (proto_param_alias or {}).get(
-                stmt.iterable.name, stmt.iterable.name)
-        if (subj_pname is not None
-                and subj_pname in proto_param_names
-                and self.functions.protocols.is_static_protocol_param(iterable_type)):
-            src_cpp = protocol_param_template_name(subj_pname)
-        else:
-            src_cpp = self.types.type_to_cpp(iterable_type)
+        src_cpp = (self._deduced_source_template(
+                       stmt, iterable_type, proto_param_names, proto_param_alias)
+                   or self.types.type_to_cpp(iterable_type))
         # Every trait below probes `__iter__` on an `S&`, so a const source has
         # to reach them as `const S` -- its `__iter__` is a different overload
         # returning a different iterator (`SpanIter<const T>`), which no

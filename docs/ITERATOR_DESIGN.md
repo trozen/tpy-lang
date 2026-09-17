@@ -292,9 +292,14 @@ Iterator yields hand out references like function returns -- mutations through t
 | `tuple[int32, Point]` | `std::tuple<int32_t, Point&>` |
 | `tuple[P \| None, P \| None]` | `std::tuple<P*, P*>` |
 | `tuple[int32, int32]` | `std::tuple<int32_t, int32_t>` (value form -- borrow=value for primitives) |
-| `T` (bare) | `T` (value form -- `T&` directly would make `std::optional<T&>` ill-formed pre-C++26) |
+| `Point` (bare reference type) | `::tpy::val_or_ref<Point>` (a pointer-holding value wrapper -- `Point&` directly would make `std::optional<T&>` ill-formed pre-C++26) |
+| `readonly[Point]` | `::tpy::val_or_ref<const Point>` |
+| `int32` (bare value type) | `int32_t` (value form -- copies are free) |
+| `T` (an unsubstituted type param) | `::tpy::yield_slot_t<T>` when this generator LENDS, else `T`. The trait is `val_or_ref<T>`, which holds a value `T` by value and a reference `T` by pointer, so the element's form is settled at INSTANTIATION and the generic frame renders what its monomorphic twin does; it is idempotent, since a call site that infers `T` as a borrow (`Ref[X]`) substitutes `val_or_ref<X>` already |
 
-The single decision point is `_iter_slot_for_yield(elem_type, cpp_elem)` in `tpyc/codegen_cpp/gen_generators.py`. The generator frame's `__next__()` return type routes through it.
+The single decision point is `_iter_slot_for_yield(elem_type, cpp_elem, generic_borrows)` in `tpyc/codegen_cpp/gen_generators.py`. The generator frame's `__next__()` return type routes through it.
+
+Whether an open `T` lends is ONE verdict per generator, since one slot type serves the whole frame: a generator lends what it yields when every yield source outlives a suspension, otherwise it hands out a value. Sema settles it AFTER every body in the module (`_settle_deferred_generic_yields`, `tpyc/sema/analyzer.py`) and records it on `TpyFunction.generic_yield_borrows`. Each source's provenance is the ordinary dangling walk read CLOSED-WORLD (`is_dangling_return(..., assume_unknown_calls_safe=False)`, `tpyc/sema/compatibility.py`): a slot CHOICE cannot trust a callee it cannot see through, so a call lends only where its resolved signature borrows from operands that themselves lend. The late settle is what makes the verdict order-independent -- a callee's `return_borrows_from` is filled when the CALLEE's body finishes, so a verdict taken during the generator's own body would differ depending on which of the two definitions came first. It is a verdict, never a diagnostic: an unrooted source picks the value slot rather than an error, because the same body also instantiates at value `T`s, which borrow nothing.
 
 When the yielded expression's natural form doesn't match the slot (e.g. `yield self.field` where the field is stored in storage form), `gen_yield_value` in `codegen_cpp/statements.py` bridges via `tuple_to_pointer`. Pointer-form sources (rvalue tuple literals, pointer-form locals) pass through unchanged.
 

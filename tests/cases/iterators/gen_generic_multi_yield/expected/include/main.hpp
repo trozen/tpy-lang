@@ -20,7 +20,7 @@ void main();
 
 // def two_yields[T](a: T, b: T) -> Iterator[T]:  # tpyc: ok
 template <typename T>
-struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, T> {
+struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
@@ -35,7 +35,7 @@ struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, T> 
     __gen_two_yields(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL), a(a_), b(b_) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_two_yields& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_two_yields<T>&) {
@@ -46,7 +46,7 @@ struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, T> 
 //     yield a                                                # -> S_RESUME_0
 //     yield b                                                # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_two_yields<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_two_yields<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;

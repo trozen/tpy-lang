@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from copy import copy, deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import Any, Iterator, TYPE_CHECKING
+from typing import Any, Iterator, NamedTuple, TYPE_CHECKING
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..macro_loader import MacroRegistry
@@ -763,27 +763,49 @@ class BorrowTracker:
             self.loans.setdefault(storage, {})[borrower] = loan
 
 
-def ephemeral_borrow_root(ephemeral_vars: set[str],
-                          expr: 'TpyExpr | None') -> str | None:
+class EphemeralKind(Enum):
+    """How strongly an ephemeral-borrow name is held.
+
+    HARD: the name borrows a producer step slot at EVERY instantiation, so
+    retaining it past the step is rejected outright.
+    GATE_ONLY: the name borrows only at the REFERENCE instantiations of an
+    open `T` (the step result is a copy at the value ones), so it cannot be
+    rejected -- it only feeds the generic-yield slot verdict, which answers
+    with a slot choice instead of a diagnostic.
+    """
+    HARD = "hard"
+    GATE_ONLY = "gate_only"
+
+
+def ephemeral_borrow_root(ephemeral_vars: 'dict[str, EphemeralKind]',
+                          expr: 'TpyExpr | None',
+                          kind: 'EphemeralKind | None' = None) -> str | None:
     """Return the ephemeral-borrow var name `expr` reads from, else None.
 
     A bare ephemeral name, a walrus handing one out, or a field/subscript
     chain rooted in one (storing `x.field` retains a borrow into the same
     stale slot). A `.clone()` / copy-producing call breaks the borrow, so
     calls are not roots.
+
+    `kind` restricts the match to names held that strongly; None matches
+    either kind (the generic-yield gate's question -- does this source
+    borrow at all).
     """
     if isinstance(expr, TpyCoerce):
-        return ephemeral_borrow_root(ephemeral_vars, expr.expr)
+        return ephemeral_borrow_root(ephemeral_vars, expr.expr, kind)
     if isinstance(expr, TpyNamedExpr):
-        return ephemeral_borrow_root(ephemeral_vars, expr.value)
+        return ephemeral_borrow_root(ephemeral_vars, expr.value, kind)
     # A ternary reads from whichever arm is taken -- ephemeral if either is.
     if isinstance(expr, TpyIfExpr):
-        return (ephemeral_borrow_root(ephemeral_vars, expr.then_expr)
-                or ephemeral_borrow_root(ephemeral_vars, expr.else_expr))
+        return (ephemeral_borrow_root(ephemeral_vars, expr.then_expr, kind)
+                or ephemeral_borrow_root(ephemeral_vars, expr.else_expr, kind))
     if isinstance(expr, TpyName):
-        return expr.name if expr.name in ephemeral_vars else None
+        held = ephemeral_vars.get(expr.name)
+        if held is None or (kind is not None and held is not kind):
+            return None
+        return expr.name
     if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-        return ephemeral_borrow_root(ephemeral_vars, expr.obj)
+        return ephemeral_borrow_root(ephemeral_vars, expr.obj, kind)
     return None
 
 
@@ -1036,6 +1058,21 @@ class BindingProvenance:
 
 
 _DEFAULT_PROVENANCE = BindingProvenance()
+
+
+class DeferredGenericYieldSettle(NamedTuple):
+    """One generator parked for the module-end generic-yield-slot verdict.
+
+    `scope` and `ns` are parked beside the state because the body-exit path
+    nulls them ON that state: the verdict walk asks whether a yield source is
+    rooted in durable storage, and with no scope a local that shadows a module
+    global reads as the global and is wrongly certified as durable.
+    """
+
+    func: Any
+    state: 'FunctionTrackingState'
+    scope: Scope | None
+    ns: Namespace | None
 
 
 @dataclass
@@ -1304,12 +1341,23 @@ class FunctionTrackingState:
     # These are kept OUT of the safe-to-return provenance and rejected at escape
     # sites (return / store / container insert / closure capture / yield onward).
     # Active only during the consuming loop body (added before, discarded after).
-    ephemeral_borrow_vars: set[str] = field(default_factory=set)
+    # A GATE_ONLY entry carries the same fact for an open-`T` source, which
+    # borrows only at its reference instantiations: too weak to reject an
+    # escape on, but it feeds the generic-yield slot verdict. ONE table, so
+    # alias and walrus propagation reaches both kinds.
+    ephemeral_borrow_vars: dict[str, EphemeralKind] = field(default_factory=dict)
     # Borrow-yield rooting checks deferred until `func.generator_locals` is
     # populated: a yielded frame-resident local is a valid borrow root, but the
     # check runs during body analysis, before the frame-local set exists.
     # Entries are (yielded_expr, elem_type, loc).
     pending_yield_root_checks: list[tuple[TpyExpr, TpyType, 'SourceLocation | None']] = field(default_factory=list)
+    # Yield sources of a generator whose element is an open `T`, recorded for
+    # the per-generator provenance gate (the slot borrows only if EVERY source
+    # outlives a suspension). Entries are (yielded_expr, source_is_ephemeral);
+    # the ephemeral half must be sampled at the yield, while the loop-body
+    # marking is live, and the rooting half is deferred exactly like
+    # `pending_yield_root_checks`.
+    pending_generic_yield_sources: list[tuple[TpyExpr, bool]] = field(default_factory=list)
     # Return/yield dangling checks over a str/bytes local whose storage the
     # deduction has not settled yet. A use must not be what decides the
     # storage, so the check waits for the post-body drain
@@ -1374,6 +1422,8 @@ class FunctionTrackingState:
     current_awaited_subframes: list = field(default_factory=list)
 
     def __deepcopy__(self, memo: dict) -> 'FunctionTrackingState':
+        # `LIVE_HANDLE_FIELDS` are the objects the enclosing analysis keeps
+        # using after the restore, carried over AS THEMSELVES.
         # `AST_IDENTITY_FIELDS` hold AST nodes as VALUES, carried over BY
         # IDENTITY: a snapshot is what a restore installs, so clones would
         # leave every consumer that compares against the live node (the
@@ -1385,8 +1435,12 @@ class FunctionTrackingState:
         new = self.__class__.__new__(self.__class__)
         memo[id(self)] = new
         for name, value in vars(self).items():
-            setattr(new, name, copy(value) if name in AST_IDENTITY_FIELDS
-                    else deepcopy(value, memo))
+            if name in LIVE_HANDLE_FIELDS:
+                setattr(new, name, value)
+            elif name in AST_IDENTITY_FIELDS:
+                setattr(new, name, copy(value))
+            else:
+                setattr(new, name, deepcopy(value, memo))
         return new
 
     # --- BindingProvenance accessors ---
@@ -1477,7 +1531,36 @@ class FunctionTrackingState:
 
 # FunctionTrackingState fields whose contents are AST nodes consumers compare
 # by identity. `FunctionTrackingState.__deepcopy__` copies them shallow.
-AST_IDENTITY_FIELDS = frozenset(('compound_stack', 'pending_loop_vars'))
+# The three `pending_*` lists park an expression for a POST-BODY consumer that
+# asks the identity-keyed `expr_types` for its type; a cloned node answers None
+# there, which reads as "no borrowable storage" and turns a valid borrow yield
+# into a rejection (or, at the generic slot, silently into a value slot).
+AST_IDENTITY_FIELDS = frozenset((
+    'compound_stack', 'pending_loop_vars', 'pending_yield_root_checks',
+    'pending_generic_yield_sources', 'pending_view_storage_checks',
+))
+
+
+# FunctionTrackingState fields holding the LIVE handles of the enclosing
+# analysis, which a restore has to hand back UNCHANGED -- so
+# `FunctionTrackingState.__deepcopy__` carries the objects themselves over,
+# not copies of them. A save/restore pair isolates what a nested def or a
+# trial WRITES, and neither ever binds into these: both open a child scope and
+# a child namespace first, and both install their own function node. A clone
+# instead becomes the live object at the restore, so every binding made AFTER
+# it lands where nothing else looks -- a local declared after a lambda trial
+# never reaches `_collect_generator_locals`' `local_ns`, and its frame slot is
+# never emitted -- and every consumer keying on the function NODE by identity
+# (the generic-yield settle's parked entry, `_is_frame_resident_local` reading
+# `generator_locals`) writes to or reads from a node sema and codegen do not
+# hold. `own_ns` belongs here for a further reason: `bound_in_own_scope`
+# recognizes the scope's own namespace level by IDENTITY along `current_ns`'s
+# parent chain, so a cloned one is never reached and the walk runs on out to
+# the enclosing function -- a read of a still-pending nested def then resolves
+# outward instead of being rejected.
+LIVE_HANDLE_FIELDS = frozenset((
+    'current_scope', 'current_ns', 'current_function', 'own_ns',
+))
 
 
 @dataclass
@@ -1688,6 +1771,18 @@ class SemanticContext:
     # the body is analyzed the fact becomes a frozenset and the set entry
     # is naturally inert (the None check short-circuits first).
     pending_borrow_fact_fis: IdentitySet = field(default_factory=IdentitySet)
+
+    # Per-function states of this module's generic generators whose yield-slot
+    # verdict is still owed. The verdict reads `return_borrows_from` of the
+    # callees behind its yield sources, and that fact is filled at the END of
+    # each callee's body analysis -- so a verdict settled during the
+    # generator's own body would answer differently depending on whether the
+    # callee happens to sit above or below it. The whole state is kept (not a
+    # copy) because the verdict walk asks this function's params, scope and
+    # frame locals; nothing mutates it once the body is done. The scope and
+    # namespace ride in the record rather than on the state, which the
+    # body-exit path nulls.
+    deferred_generic_yield_settles: list['DeferredGenericYieldSettle'] = field(default_factory=list)
 
     # --- Consuming method tracking ---
     in_consuming_method: bool = False
@@ -2263,13 +2358,16 @@ class SemanticContext:
         self.func = FunctionTrackingState()
 
     def save_function_state(self) -> FunctionTrackingState:
-        """Snapshot per-function state (for nested def isolation).
+        """Snapshot per-function state (for nested-def and trial isolation).
 
-        The deep copy carries fields holding AST nodes -- as identity KEYS
-        (`IdentityMap` / `IdentitySet`, e.g. `pre_analyzed_method_args`) or as
-        VALUES (`AST_IDENTITY_FIELDS`) -- over by identity; each
-        `__deepcopy__` says why. The restore installs the SNAPSHOT, so a
-        cloned node would leave every later identity comparison missing.
+        The restore installs the SNAPSHOT, so anything the enclosing analysis
+        goes on using must survive the round trip as ITSELF. Two groups do:
+        the live scope, namespaces and function node (`LIVE_HANDLE_FIELDS`),
+        and the fields holding AST nodes -- as identity KEYS (`IdentityMap` /
+        `IdentitySet`, e.g. `pre_analyzed_method_args`) or as VALUES
+        (`AST_IDENTITY_FIELDS`). Each `__deepcopy__` says why. Callers get
+        those handles back live from `restore_function_state` and must not
+        re-attach them themselves.
         """
         return deepcopy(self.func)
 
@@ -2290,7 +2388,10 @@ class SemanticContext:
         - Per-function state (FunctionTrackingState) -- includes call_edges,
           mutated/struct/addr-escape/returned param sets, self-mutation flags,
           borrow tracker, definitely_assigned, narrowed_types, etc. Deep-copied
-          since FunctionTrackingState contains nested mutable containers.
+          since FunctionTrackingState contains nested mutable containers. The
+          live scope, namespaces and function node are NOT part of the rollback
+          -- `save_function_state` hands them back as themselves; the trial
+          binds only into the lambda's own child scope/namespace.
         - Module-level type cache (``expr_types``) and the literal/view
           counters and registries (``literal_counter``, ``list_literals``,
           ``dict_literals``, ``set_literals``, ``pending_generic_counter``,

@@ -1946,19 +1946,63 @@ def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
     hands out a pointer -- a silent copy, and a divergence from CPython,
     which aliases.
 
+    An unsubstituted `TypeParamRef` is INCLUDED, spelling `val_or_ref<T>`:
+    `val_or_ref` stores a value `T` by value and a reference `T` by pointer,
+    so the element's value-vs-reference shape is settled at INSTANTIATION --
+    the generic frame then renders exactly what its monomorphic twin does.
+    A bare `T` slot assumed VALUE and copied the element out of the source,
+    losing a consumer's mutation where `Iterator[Point]` lends it. The
+    value-bounded (`T: ValueType`) and INT type params never reach here:
+    `is_value_type()` answers True for them above. Admission is not the whole
+    answer for an open `T` -- whether a given generator's yields may be lent
+    at all is the per-generator provenance verdict
+    (`TpyFunction.generic_yield_borrows`); this predicate only says the slot
+    CAN carry a borrow.
+
     Excluded (each keeps its existing slot): value-type elements (copied);
     `Own` (owned value slot, moved out); tuples (own borrow form via
     `to_cpp_return`); `Optional` / `Union` (pointer / storage-form machinery
-    -- `optional_to_ptr`, pointer variants); and `TypeParamRef` (already
-    substituted with `val_or_ref<ConcreteT>` by the caller -- wrapping again
-    would double-wrap).
+    -- `optional_to_ptr`, pointer variants).
     """
     if elem_type.is_value_type():
         return False
     if isinstance(unwrap_readonly(unwrap_ref_type(elem_type)), OwnType):
         return False
     bare = unwrap_ref_type(unwrap_readonly(elem_type))
-    return not isinstance(bare, (TupleType, OptionalType, UnionType, TypeParamRef))
+    return not isinstance(bare, (TupleType, OptionalType, UnionType))
+
+
+def yield_always_borrows(elem_type: 'TpyType') -> bool:
+    """Whether the borrow slot `yield_uses_borrow_slot` admits hands out a
+    borrow at EVERY instantiation -- the same question minus the open type
+    param, whose `val_or_ref<T>` holds a pointer at a reference `T` and a
+    plain value at a value `T`.
+
+    Sema rules that must answer at DEFINITION time read this one: a generic
+    body is analyzed once, before any instantiation, so a rule that treats
+    the open `T` as a borrow rejects the value instantiations too (a
+    `for x in it: yield x` relay of an `Iterator[T]` param is the shape that
+    showed it). The slot spelling has no such problem -- C++ resolves it per
+    instantiation -- so it reads the predicate above instead.
+    """
+    return (yield_uses_borrow_slot(elem_type)
+            and not isinstance(unwrap_ref_type(unwrap_readonly(elem_type)),
+                               TypeParamRef))
+
+
+def yield_slot_borrows(elem_type: 'TpyType', generic_borrows: bool) -> bool:
+    """Whether a generator's yield slot for `elem_type` hands out a borrow.
+
+    `yield_uses_borrow_slot` says the slot CAN carry one; an OPEN `T` also
+    needs the producer's per-generator provenance verdict
+    (`TpyFunction.generic_yield_borrows`), since one slot type serves the
+    whole frame. The open-`T` shape test lives here alone, so a consumer
+    re-deriving it cannot drift from the spelling `yield_borrow_slot_cpp`
+    picks for the same element.
+    """
+    if not yield_uses_borrow_slot(elem_type):
+        return False
+    return yield_always_borrows(elem_type) or generic_borrows
 
 
 def yield_borrow_slot_cpp(elem_type: 'TpyType', cpp_elem: str) -> str:
@@ -1966,8 +2010,17 @@ def yield_borrow_slot_cpp(elem_type: 'TpyType', cpp_elem: str) -> str:
     admits. ONE site, so the const half of the answer cannot drift from the
     predicate that decides the slot is a borrow at all: a `readonly` element
     stores a `const T*` -- the spelling `ReadonlyType.to_cpp_stored` already
-    uses for the same "a slot that cannot hold a reference" question."""
-    if isinstance(unwrap_ref_type(elem_type), ReadonlyType):
+    uses for the same "a slot that cannot hold a reference" question.
+
+    An OPEN type param takes the idempotent `yield_slot_t<T>` instead: a
+    generic callee's type argument is substituted with the slot form already
+    when sema infers it as a borrow (`Ref[X]` renders `val_or_ref<X>`), so a
+    bare wrap would nest at exactly those instantiations."""
+    is_const = isinstance(unwrap_ref_type(elem_type), ReadonlyType)
+    if isinstance(unwrap_ref_type(unwrap_readonly(elem_type)), TypeParamRef):
+        inner = f"const {cpp_elem}" if is_const else cpp_elem
+        return f"::tpy::yield_slot_t<{inner}>"
+    if is_const:
         return f"::tpy::val_or_ref<const {cpp_elem}>"
     return f"::tpy::val_or_ref<{cpp_elem}>"
 
@@ -5997,8 +6050,7 @@ class FunctionInfo:
         and is excluded.
         """
         return (self.is_auto_readonly_mutable_clone
-                and self.return_borrows_from is not None
-                and -1 in self.return_borrows_from)
+                and -1 in recorded_return_borrow_sources(self))
 
     def is_generic(self) -> bool:
         """Return True if this is a generic function with type parameters."""
@@ -6044,8 +6096,21 @@ class FunctionInfo:
 
 
 def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
-    """Recorded source indices; missing facts are not proof of an owning result."""
-    return fi.return_borrows_from or frozenset()
+    """Recorded source indices; missing facts are not proof of an owning result.
+
+    Read off the ROOT fi: a call site's `resolved_function_info` can be a
+    specialization synthesized before the callee's body facts landed, so the
+    copy still carries None (or a stale set) where the fact is now known --
+    two readers of the same call site would otherwise disagree. Every
+    PROVENANCE reader of the fact goes through here; a writer stamps the raw
+    fi. The readiness gate in `_register_call_result_borrow` is the one reader
+    that stays on the raw field on purpose: it pairs a None against
+    `ctx.pending_borrow_fact_fis`, which holds the registry FIs, so the
+    membership test and the None it qualifies must be about the same fi the
+    call site resolved to. That leaves a synthesized fi's None unqualified
+    (BUGS.md#pending-generic-receiver-call-borrow-unregistered).
+    """
+    return fi.root.return_borrows_from or frozenset()
 
 
 @dataclass

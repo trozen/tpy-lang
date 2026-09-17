@@ -235,7 +235,7 @@ struct __coro_async_main {
 
 // def repeat[T](value: T, count: int32) -> Iterator[T]:
 template <typename T>
-struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
+struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> value;
     int32_t count;
@@ -251,7 +251,7 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
     __gen_repeat(::tpy::param_val_or_ref_t<T> value_, int32_t count_)
         : __state(S_INITIAL), value(value_), count(std::move(count_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_repeat& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_repeat<T>&) {
@@ -267,7 +267,7 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
 //         yield value                                                           # -> S_RESUME_0
 //         i += 1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         i = 0;

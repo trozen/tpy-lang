@@ -478,7 +478,7 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
     T_it it;
     Box* b = nullptr;
     int32_t v;
-    ::tpy::frame_slot<std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration>> __for_r_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<T_it>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

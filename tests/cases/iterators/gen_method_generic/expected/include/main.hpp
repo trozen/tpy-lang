@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 // def items(self) -> Iterator[T]:  # tpyc: ok
 template <typename T>
-struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, T> {
+struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     Box<T>& __self;
 
@@ -54,7 +54,7 @@ struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, T> {
     __gen_Box_items(Box<T>& __self)
         : __state(S_INITIAL), __self(__self) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Box_items& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Box_items<T>&) {
@@ -66,7 +66,7 @@ struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, T> {
 //     yield self.value                         # -> S_RESUME_0
 //     yield self.value                         # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_Box_items<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Box_items<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;

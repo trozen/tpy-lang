@@ -23,7 +23,7 @@ void main();
 
 // def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
-struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
+struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
@@ -38,7 +38,7 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
     __gen_pair(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL), a(a_), b(b_) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_pair& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_pair<T>&) {
@@ -49,7 +49,7 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
 //     yield a                              # -> S_RESUME_0
 //     yield b                              # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_pair<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_pair<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;

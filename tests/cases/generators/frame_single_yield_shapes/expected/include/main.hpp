@@ -100,7 +100,7 @@ struct __gen_over_global : public ::tpy::next_iter_mixin<__gen_over_global, int3
 
 // def gen_it(self, v: T) -> Iterator[T]:
 template <typename T>
-struct __gen_Labels_gen_it : public ::tpy::next_iter_mixin<__gen_Labels_gen_it<T>, T> {
+struct __gen_Labels_gen_it : public ::tpy::next_iter_mixin<__gen_Labels_gen_it<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     Labels<T>& __self;
     ::tpy::val_or_ref_t<T> v;
@@ -115,7 +115,7 @@ struct __gen_Labels_gen_it : public ::tpy::next_iter_mixin<__gen_Labels_gen_it<T
     __gen_Labels_gen_it(Labels<T>& __self, ::tpy::param_val_or_ref_t<T> v_)
         : __state(S_INITIAL), __self(__self), v(v_) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Labels_gen_it& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Labels_gen_it<T>&) {
@@ -127,7 +127,7 @@ struct __gen_Labels_gen_it : public ::tpy::next_iter_mixin<__gen_Labels_gen_it<T
 //     yield self.first                    # -> S_RESUME_0
 //     yield v                             # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_Labels_gen_it<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Labels_gen_it<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;

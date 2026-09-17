@@ -81,7 +81,9 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
 
 
 from ..diagnostics import Scope, Diagnostic, SemanticError
-from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
+from .context import (
+    SemanticContext, RecordContext, DeferredGenericYieldSettle,
+    MODULE_INIT_CONTEXT)
 from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
@@ -890,6 +892,7 @@ class SemanticAnalyzer:
         # call-result binds from them register a conservative OPAQUE borrow
         # instead of silently assuming "borrows nothing".
         self._seed_pending_borrow_fact_fis(module)
+        self.ctx.deferred_generic_yield_settles.clear()
 
         # Sixth pass: analyze record methods (including nested records)
         for record in module.all_records():
@@ -905,6 +908,9 @@ class SemanticAnalyzer:
         # Drain post-sema deferred function macros now, while this module's
         # expr_types are populated -- they read inferred types Pass 7 just set.
         self._drain_deferred_sema_macros(module)
+        # Every callee's return-borrow fact is final now, so the generic
+        # yield-slot verdicts can be answered order-independently.
+        self._settle_deferred_generic_yields()
         self._advance_phase(
             self._PHASE_REGISTER_SIGNATURES,
             self._PHASE_ANALYZE_BODIES,
@@ -1513,6 +1519,56 @@ class SemanticAnalyzer:
             locals_dict, func, self.ctx.func.write_history)
         func.generator_locals = list(locals_dict.items())
 
+    def _enqueue_generic_yield_settle(self) -> None:
+        """Park a generator with open-`T` yield sources for the module-end
+        settle; runs after the post-body drain, once frame locals exist."""
+        if self.ctx.func.pending_generic_yield_sources:
+            self.ctx.deferred_generic_yield_settles.append(
+                DeferredGenericYieldSettle(
+                    self.ctx.func.current_function, self.ctx.func,
+                    self.ctx.func.current_scope, self.ctx.func.current_ns))
+
+    def _settle_deferred_generic_yields(self) -> None:
+        """Decide, once per generator, whether an open-`T` yield slot LENDS.
+
+        A generator lends what it yields when every yield source outlives a
+        suspension; otherwise it hands out a value. The slot is one type for
+        the whole frame, so the answer is per generator, not per yield -- and
+        it is a VERDICT, not a diagnostic: an unrooted source selects the value
+        slot (today's spelling) rather than an error, because the same body
+        also instantiates at value `T`s, which borrow nothing.
+
+        Runs after every body in the module, not at the end of the generator's
+        own body: the walk reads the callees' `return_borrows_from`, which is
+        filled when the CALLEE's body finishes, so an earlier verdict would
+        depend on the source order of the two definitions. Each generator's
+        own function state is re-installed for its walk, together with the
+        function node, scope and namespace parked at enqueue -- the rooting
+        half asks that function's params, scope and frame locals.
+        """
+        live = self.ctx.func
+        try:
+            for fn, state, scope, ns in self.ctx.deferred_generic_yield_settles:
+                if not isinstance(fn, TpyFunction):
+                    continue
+                self.ctx.restore_function_state(state)
+                # The body-exit path nulls the function node, the scope and the
+                # namespace; the walk asks the state for all three (params,
+                # frame locals, and the shadow lookup that keeps a local
+                # shadowing a global from reading as the durable global), so
+                # put back what was parked at enqueue.
+                state.current_function = fn
+                state.current_scope = scope
+                state.current_ns = ns
+                fn.generic_yield_borrows = all(
+                    not ephemeral and not self.compat.is_dangling_return(
+                        value, gen_yield=True, assume_unknown_calls_safe=False)
+                    for value, ephemeral in state.pending_generic_yield_sources)
+                state.pending_generic_yield_sources.clear()
+        finally:
+            self.ctx.restore_function_state(live)
+        self.ctx.deferred_generic_yield_settles.clear()
+
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
         # Stub functions (extern imports with ... body) have no body to analyze
@@ -1590,6 +1646,7 @@ class SemanticAnalyzer:
         if func.is_generator or func.is_async:
             self._collect_generator_locals(func, local_ns, exclude_self=False)
         self.compat.drain_deferred_escape_checks()
+        self._enqueue_generic_yield_settle()
 
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
@@ -2944,6 +3001,7 @@ class SemanticAnalyzer:
             if method.is_generator or method.is_async:
                 self._collect_generator_locals(method, local_ns, exclude_self=True)
             self.compat.drain_deferred_escape_checks()
+            self._enqueue_generic_yield_settle()
 
             # Store Phase 1 local mutation facts on method FunctionInfo.
             # For @overload methods, get_method() returns overloads[0] (the first

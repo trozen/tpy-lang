@@ -352,7 +352,7 @@ struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t>
 
 // def two(self) -> Iterator[T]:
 template <typename T>
-struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>, T> {
+struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     LocalBox<T>& __self;
 
@@ -366,7 +366,7 @@ struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>,
     __gen_LocalBox_two(LocalBox<T>& __self)
         : __state(S_INITIAL), __self(__self) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_LocalBox_two& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_LocalBox_two<T>&) {
@@ -378,7 +378,7 @@ struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>,
 //     yield self.items[0]        # -> S_RESUME_0
 //     yield self.items[1]        # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_LocalBox_two<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_LocalBox_two<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;

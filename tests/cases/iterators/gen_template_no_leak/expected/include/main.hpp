@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
 
 // def skip_first[T](it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it>, T> {
+struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     T_it it;
     bool started;
@@ -70,7 +70,7 @@ struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it
     __gen_skip_first(T_it&& it_)
         : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_skip_first& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_skip_first<T, T_it>&) {
@@ -85,7 +85,7 @@ struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it
 //             yield x                                 # -> S_RESUME_0
 //         started = True
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-std::expected<T, ::tpy::StopIteration> __gen_skip_first<T, T_it>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_skip_first<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         started = false;
@@ -128,7 +128,7 @@ __gen_skip_first<T, T_it> skip_first(T_it&& it) {
 
 // def gtakewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
-struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it, F_pred>, T> {
+struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it, F_pred>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     F_pred pred;
     T_it it;
@@ -147,7 +147,7 @@ struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it
     __gen_gtakewhile(F_pred&& pred_, T_it&& it_)
         : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(std::forward<T_it>(it_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gtakewhile& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gtakewhile<T, T_it, F_pred>&) {
@@ -164,7 +164,7 @@ struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it
 //             break
 //         yield x                                                          # -> S_RESUME_0
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
-std::expected<T, ::tpy::StopIteration> __gen_gtakewhile<T, T_it, F_pred>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gtakewhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, it);
@@ -232,7 +232,7 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
 
 // def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, T> {
+struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     T_it it;
     int32_t n;
@@ -252,7 +252,7 @@ struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, T> 
     __gen_first_n(T_it&& it_, int32_t n_)
         : __state(S_INITIAL), it(std::forward<T_it>(it_)), n(std::move(n_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_first_n& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_first_n<T, T_it>&) {
@@ -268,7 +268,7 @@ struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, T> 
 //         yield x                                            # -> S_RESUME_0
 //         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-std::expected<T, ::tpy::StopIteration> __gen_first_n<T, T_it>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_first_n<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         c = 0;

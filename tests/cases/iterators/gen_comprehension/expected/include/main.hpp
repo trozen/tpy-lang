@@ -95,7 +95,7 @@ struct __gen_two_then : public ::tpy::next_iter_mixin<__gen_two_then, int32_t> {
 
 // def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
+struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     T_it it;
     int32_t n;
@@ -115,7 +115,7 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
     __gen_head(T_it&& it_, int32_t n_)
         : __state(S_INITIAL), it(std::forward<T_it>(it_)), n(std::move(n_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_head& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_head<T, T_it>&) {
@@ -131,7 +131,7 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
 //         yield x                                         # -> S_RESUME_0
 //         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         c = 0;

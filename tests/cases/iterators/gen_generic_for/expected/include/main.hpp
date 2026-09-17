@@ -20,7 +20,7 @@ void main();
 
 // def doubled[T](xs: list[T]) -> Iterator[T]:  # tpyc: ok
 template <typename T>
-struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, T> {
+struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     std::vector<T>& xs;
     T* x = nullptr;
@@ -38,7 +38,7 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, T> {
     __gen_doubled(std::vector<T>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_doubled& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_doubled<T>&) {
@@ -50,7 +50,7 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, T> {
 //         yield x                                          # -> S_RESUME_0
 //         yield x                                          # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());

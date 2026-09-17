@@ -637,7 +637,7 @@ struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T
     const Point* p = nullptr;
     int32_t before;
     int32_t after;
-    ::tpy::frame_slot<std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration>> __for_r_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<T_it>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

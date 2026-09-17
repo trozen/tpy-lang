@@ -5,8 +5,7 @@
 # The `bump_each` section is what makes the REFERENCE half observable: the
 # write the body makes through the slot reaches the caller's object, exactly
 # as it does at the monomorphic twin. (What the consumer does to the YIELDED
-# value does not come back -- BUGS.md#generic-generator-yields-open-t-by-value
-# -- so no section here mutates one.)
+# value comes back too -- that half is pinned by gen_generic_yield_borrow.)
 from tpy import int32, readonly
 from typing import Iterable, Iterator, Protocol
 

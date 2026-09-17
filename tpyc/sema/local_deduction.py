@@ -14,6 +14,7 @@ from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce
 from ..parse.nodes import (TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess,
                            TpyBinOp, TpyIfExpr, TpyNamedExpr)
 from ..typesys import (
+    recorded_return_borrow_sources,
 
     collapse_tuple_own_elements,
     DictLiteralInfo,
@@ -157,9 +158,11 @@ def view_source_is_temporary(expr: TpyExpr) -> bool:
         fi = expr.resolved_function_info
         # A view-returning free function that borrows specific args dangles only
         # if a borrowed arg is temporary (pick_view(StrView("lit")) is safe).
-        if fi is not None and fi.return_borrows_from:
+        sources = (recorded_return_borrow_sources(fi)
+                   if fi is not None else frozenset())
+        if sources:
             return any(0 <= i < len(expr.args) and view_source_is_temporary(expr.args[i])
-                       for i in fi.return_borrows_from if i >= 0)
+                       for i in sources if i >= 0)
         # Otherwise: a view return is the callee's responsibility (durable),
         # an owned return is a fresh temporary that dangles as a view.
         ret = fi.return_type if fi is not None else None

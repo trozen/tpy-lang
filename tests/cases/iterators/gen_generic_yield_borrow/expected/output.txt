@@ -1,0 +1,39 @@
+ref 101 102
+nocopy 11 12
+ro 11
+ro 12
+value 6
+str a
+str bb
+bound 21
+nested 105 106
+subscript 101 102
+local 201 102
+method 107 108
+field 209
+property 309
+with 101 102
+try 101 102
+match 101 2
+local-container 101
+local-container 102
+local-container 201
+local-container 202
+trial-local-r 2
+trial-local 201 2
+nested-helper 2
+nested-def 101 102
+frame-local-src 102
+shadow-local 101 102
+shadow-global 30 31
+named-fn 101 102
+fn 1
+fn 2
+own-fn 1
+own-fn 2
+relay 1
+relay 2
+relay-src 1 2
+mixed 1
+mixed 2
+mixed 5

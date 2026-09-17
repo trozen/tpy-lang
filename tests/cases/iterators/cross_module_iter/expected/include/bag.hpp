@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
 
 // def __iter__(self) -> Iterator[T]:
 template <typename T>
-struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__<T>, T> {
+struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     Bag<T>& __self;
     T* x = nullptr;
@@ -64,7 +64,7 @@ struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__<T>,
     __gen_Bag___iter__(Bag<T>& __self)
         : __state(S_INITIAL), __self(__self) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Bag___iter__& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Bag___iter__<T>&) {
@@ -76,7 +76,7 @@ struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__<T>,
 //     for x in self._items:
 //         yield x                     # -> S_RESUME_0
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_Bag___iter__<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Bag___iter__<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __for_it_0.emplace((__self._items).begin());

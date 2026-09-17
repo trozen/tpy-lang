@@ -2301,7 +2301,8 @@ class AsyncCoroCodegen:
         next_iter_mixin element arg (`_generator_iter_base`); the two must stay
         identical, so they share this single source."""
         yt = func.generator_yield_type
-        return GeneratorCodegen._iter_slot_for_yield(yt, self.types.type_to_cpp(yt))
+        return GeneratorCodegen._iter_slot_for_yield(
+            yt, self.types.type_to_cpp(yt), func.generic_yield_borrows)
 
     def _generator_iter_base(self, func: TpyFunction,
                              record_name: str | None = None) -> str:

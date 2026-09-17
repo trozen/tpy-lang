@@ -71,7 +71,7 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_src>, std::tupl
     int32_t __state;
     T_src src;
     std::tuple<P*, P*> pair;
-    ::tpy::frame_slot<std::expected<std::tuple<P*, P*>, ::tpy::StopIteration>> __for_r_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<T_src>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

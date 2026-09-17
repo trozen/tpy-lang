@@ -20,7 +20,7 @@ void main();
 
 // def gen[T](a: T, b: T, tag: int) -> Iterator[T]:
 template <typename T>
-struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
@@ -38,7 +38,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
     __gen_gen(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_, ::tpy::BigInt tag_)
         : __state(S_INITIAL), a(a_), b(b_), tag(std::move(tag_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen<T>&) {
@@ -53,7 +53,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
 //         case _:
 //             yield a                               # -> S_RESUME_2
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gen<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         auto& __match_subject_1 = tag;

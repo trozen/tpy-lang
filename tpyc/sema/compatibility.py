@@ -6,7 +6,7 @@ Type compatibility checking, coercions, and lvalue analysis.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
@@ -22,7 +22,7 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
     unify_literal_types,
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
-    disambiguated_pair, ConcreteCoroType)
+    disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources)
 from .. import qnames
 from ..value_category import (
     async_result_aliases, peel_value_wrappers, returns_borrow)
@@ -2739,9 +2739,11 @@ class TypeCompatibility:
             return
         if isinstance(expr, (TpyCall, TpyMethodCall)):
             fi = expr.resolved_function_info
-            if fi is not None and fi.return_borrows_from:
+            sources = (recorded_return_borrow_sources(fi)
+                       if fi is not None else frozenset())
+            if sources:
                 obj = expr.obj if isinstance(expr, TpyMethodCall) else None
-                for idx in fi.return_borrows_from:
+                for idx in sources:
                     if idx == -1 and obj is not None:
                         self._borrow_root_names(obj, out)
                     elif 0 <= idx < len(expr.args):
@@ -2843,14 +2845,14 @@ class TypeCompatibility:
             return self.is_param_derived_expr(view_arg)
         # Function/method calls with return_borrows_from: result is param-derived if
         # the borrowed-from argument(s) are themselves param-derived.
-        # None = unanalyzed (skip); frozenset() = returns new value (loop body never
-        # runs, falls through to return False below -- correct).
+        # No recorded source (unanalyzed, or a new value) leaves the loop body
+        # unrun and falls through to return False below -- correct either way.
         if isinstance(expr, (TpyCall, TpyMethodCall)):
             fi = expr.resolved_function_info
-            if fi is not None and fi.return_borrows_from is not None:
+            if fi is not None:
                 args = expr.args
                 obj = expr.obj if isinstance(expr, TpyMethodCall) else None
-                for idx in fi.return_borrows_from:
+                for idx in recorded_return_borrow_sources(fi):
                     if idx == -1 and obj is not None:
                         if self.is_param_derived_expr(obj):
                             return True
@@ -2904,6 +2906,30 @@ class TypeCompatibility:
         # superset invariant.
         if isinstance(expr, (TpyCall, TpyMethodCall)):
             return not self.is_dangling_return(expr)
+        return False
+
+    def _call_borrow_operands_dangle(
+            self, expr: 'TpyCall | TpyMethodCall', fi: Any, *,
+            gen_yield: bool, assume_unknown_calls_safe: bool) -> bool:
+        """True if an operand the callee's return borrows from dangles.
+
+        Index -1 is the receiver (the 8b convention). An index naming no
+        operand leaves the result's provenance unknown: only the closed-world
+        reading calls that dangling -- the open-world one keeps the historical
+        skip, where a missing index is not evidence against the callee.
+        """
+        obj = expr.obj if isinstance(expr, TpyMethodCall) else None
+        for idx in recorded_return_borrow_sources(fi):
+            src = (obj if idx == -1
+                   else expr.args[idx] if 0 <= idx < len(expr.args) else None)
+            if src is None:
+                if assume_unknown_calls_safe:
+                    continue
+                return True
+            if self.is_dangling_return(
+                    src, gen_yield=gen_yield,
+                    assume_unknown_calls_safe=assume_unknown_calls_safe):
+                return True
         return False
 
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:
@@ -2970,7 +2996,8 @@ class TypeCompatibility:
         return view_family_for_type(storage) is not None
 
     def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False,
-                           gen_yield: bool = False) -> bool:
+                           gen_yield: bool = False,
+                           assume_unknown_calls_safe: bool = True) -> bool:
         """Check if returning this expression would create a dangling reference.
 
         `view_source`: the expression is the backing storage a returned *view*
@@ -2988,15 +3015,32 @@ class TypeCompatibility:
         a field/subscript chain bottoming out in one), never via a name inside
         a call -- calls reach their own provenance branches above, not the
         TpyName leaf.
+
+        `assume_unknown_calls_safe`: the DIAGNOSTIC reading (the default)
+        trusts a callee it cannot see through -- the callee is responsible for
+        not handing back a dangling reference, and rejecting every opaque call
+        would reject valid code. The generic yield-slot VERDICT reads the same
+        walk closed-world instead (False): an unproven source must fall to the
+        value slot rather than lend something the callee may have
+        materialized -- an erased `Fn` result carries no ownership at all (see
+        `docs/CALLABLE_CONTRACT_DESIGN.md`), and a callee whose body is not
+        analyzed yet has no fact to read. Closed-world, a call is non-dangling
+        only where its resolved signature borrows from operands that are
+        themselves non-dangling; those operands are then walked with
+        `gen_yield` in force, because a verdict follows provenance the whole
+        way down rather than stopping at the conservative call boundary.
         """
+        strict = not assume_unknown_calls_safe
         if isinstance(expr, TpyCoerce):
-            return self.is_dangling_return(expr.expr, view_source=view_source,
-                                           gen_yield=gen_yield)
+            return self.is_dangling_return(
+                expr.expr, view_source=view_source, gen_yield=gen_yield,
+                assume_unknown_calls_safe=assume_unknown_calls_safe)
         # A walrus hands out its value: `return (t := items[0])` returns the
         # subscript read, so provenance follows the wrapped expression.
         if isinstance(expr, TpyNamedExpr):
-            return self.is_dangling_return(expr.value, view_source=view_source,
-                                           gen_yield=gen_yield)
+            return self.is_dangling_return(
+                expr.value, view_source=view_source, gen_yield=gen_yield,
+                assume_unknown_calls_safe=assume_unknown_calls_safe)
         # Array/dict literal - creates temporary
         if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             return True
@@ -3027,14 +3071,12 @@ class TypeCompatibility:
             if isinstance(op, (TpyCall, TpyMethodCall)):
                 fi = op.resolved_function_info
                 obj = op.obj if isinstance(op, TpyMethodCall) else None
-                if fi is not None and fi.return_borrows_from:
-                    for idx in fi.return_borrows_from:
-                        src = (obj if idx == -1
-                               else op.args[idx]
-                               if 0 <= idx < len(op.args) else None)
-                        if src is not None and self.is_dangling_return(src):
-                            return True
-                    return False
+                if fi is not None and recorded_return_borrow_sources(fi):
+                    return self._call_borrow_operands_dangle(
+                        op, fi, gen_yield=gen_yield and strict,
+                        assume_unknown_calls_safe=assume_unknown_calls_safe)
+                if strict:
+                    return True
                 roots = ([obj] if obj is not None else []) + list(op.args)
                 return any(self.is_dangling_return(r) for r in roots)
             return True
@@ -3044,18 +3086,29 @@ class TypeCompatibility:
             # Pointer constructors: dangling depends on the argument, not the pointer itself
             if isinstance(expr.call_type, PtrType):
                 if not expr.args:
-                    return False  # Ptr[T]() -> nullptr, always safe
-                return self.is_dangling_return(expr.args[0])
+                    # A null pointer has no referent, so nothing it points at
+                    # can outlive anything -- it is a VALUE, not a borrow, and
+                    # the closed-world reading agrees: `Ptr[T]` is a value type,
+                    # so the generic yield slot stores this copy by value
+                    # (`val_or_ref<T>` at a value `T`) rather than lending it.
+                    return False
+                return self.is_dangling_return(
+                    expr.args[0],
+                    assume_unknown_calls_safe=assume_unknown_calls_safe)
 
             view_arg = self._view_constructor_arg(expr)
             if view_arg is not None:
-                return self.is_dangling_return(view_arg)
+                return self.is_dangling_return(
+                    view_arg,
+                    assume_unknown_calls_safe=assume_unknown_calls_safe)
 
             # @value_ptr_coercion functions (e.g. take_ptr): result borrows
             # from the arg value, so dangling depends on the arg.
             fi = expr.resolved_function_info
             if fi is not None and fi.value_ptr_coercion and expr.args:
-                return self.is_dangling_return(expr.args[0])
+                return self.is_dangling_return(
+                    expr.args[0],
+                    assume_unknown_calls_safe=assume_unknown_calls_safe)
 
             # Generic type constructor creates a temporary
             if expr.call_type is not None:
@@ -3080,11 +3133,15 @@ class TypeCompatibility:
 
             # Function whose return borrows from args (e.g. generators storing
             # non-value params as T& references): dangles if any borrowed arg dangles
-            if fi is not None and fi.return_borrows_from:
-                for idx in fi.return_borrows_from:
-                    if 0 <= idx < len(expr.args):
-                        if self.is_dangling_return(expr.args[idx]):
-                            return True
+            if fi is not None and recorded_return_borrow_sources(fi):
+                if self._call_borrow_operands_dangle(
+                        expr, fi, gen_yield=gen_yield and strict,
+                        assume_unknown_calls_safe=assume_unknown_calls_safe):
+                    return True
+            elif strict:
+                # Closed-world: no borrow fact means no proven provenance --
+                # an opaque stub, an erased callee, or a body not yet analyzed.
+                return True
 
             # A function returning owned str/String/bytes creates a temporary
             # that dangles if returned as a view (StrView/BytesView).
@@ -3137,16 +3194,25 @@ class TypeCompatibility:
         # temporary that dangles behind a view exactly as a method would.
         if isinstance(expr, TpyFieldAccess):
             if expr.is_property_access and expr.property_getter_call is not None:
-                return self.is_dangling_return(expr.property_getter_call,
-                                               view_source=view_source,
-                                               gen_yield=gen_yield)
-            return self.is_dangling_return(expr.obj, view_source=view_source,
-                                           gen_yield=gen_yield)
+                return self.is_dangling_return(
+                    expr.property_getter_call, view_source=view_source,
+                    gen_yield=gen_yield,
+                    assume_unknown_calls_safe=assume_unknown_calls_safe)
+            return self.is_dangling_return(
+                expr.obj, view_source=view_source, gen_yield=gen_yield,
+                assume_unknown_calls_safe=assume_unknown_calls_safe)
 
-        # Subscript - safe only if the container itself is safe
+        # Subscript - safe only if the container itself is safe. A user-record
+        # `__getitem__` is not routed through the method-call arm below: the
+        # node carries a resolved fi only for a pointer-repr Optional return
+        # (`_tag_record_getitem`), and that shape borrows its receiver, so the
+        # receiver recursion already gives the call arm's answer. An owned
+        # `__getitem__` return behind a view carries no fi to consult and
+        # escapes this walk (BUGS.md#record-getitem-owned-return-view-dangle).
         if isinstance(expr, TpySubscript):
-            return self.is_dangling_return(expr.obj, view_source=view_source,
-                                           gen_yield=gen_yield)
+            return self.is_dangling_return(
+                expr.obj, view_source=view_source, gen_yield=gen_yield,
+                assume_unknown_calls_safe=assume_unknown_calls_safe)
 
         # Method call returning owned str/String creates a temporary
         # std::string that dangles if returned as StrView.
@@ -3167,22 +3233,25 @@ class TypeCompatibility:
             # Method whose return borrows from its receiver/args: dangles if
             # the borrowed source dangles -- mirrors the free-function branch;
             # index -1 is the receiver (the 8b convention).
-            if fi is not None and fi.return_borrows_from:
-                for idx in fi.return_borrows_from:
-                    if idx == -1:
-                        if self.is_dangling_return(expr.obj):
-                            return True
-                    elif 0 <= idx < len(expr.args):
-                        if self.is_dangling_return(expr.args[idx]):
-                            return True
+            if fi is not None and recorded_return_borrow_sources(fi):
+                if self._call_borrow_operands_dangle(
+                        expr, fi, gen_yield=gen_yield and strict,
+                        assume_unknown_calls_safe=assume_unknown_calls_safe):
+                    return True
+            elif strict:
+                return True
             return False
 
         # Ternary - dangles if either branch dangles
         if isinstance(expr, TpyIfExpr):
-            return (self.is_dangling_return(expr.then_expr, view_source=view_source,
-                                            gen_yield=gen_yield)
-                    or self.is_dangling_return(expr.else_expr, view_source=view_source,
-                                               gen_yield=gen_yield))
+            return (self.is_dangling_return(
+                        expr.then_expr, view_source=view_source,
+                        gen_yield=gen_yield,
+                        assume_unknown_calls_safe=assume_unknown_calls_safe)
+                    or self.is_dangling_return(
+                        expr.else_expr, view_source=view_source,
+                        gen_yield=gen_yield,
+                        assume_unknown_calls_safe=assume_unknown_calls_safe))
 
         # Unary/Binary ops - might create temporaries, be conservative
         if isinstance(expr, (TpyUnaryOp, TpyBinOp)):
@@ -3198,8 +3267,9 @@ class TypeCompatibility:
         if expr_type is not None and is_borrowing_view_type(unwrap_readonly(expr_type)):
             return True
 
-        # Default: assume safe
-        return False
+        # Default: assume safe -- but closed-world, an expression form with no
+        # provenance arm above has nothing proving it outlives the frame.
+        return strict
 
     def check_view_return_dangle(self, expr: TpyExpr, return_type: TpyType,
                                  loc: SourceLocation | None,

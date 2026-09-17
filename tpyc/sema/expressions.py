@@ -27,7 +27,7 @@ from ..typesys import (
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
     unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, owned_tuple_storage_type,
     ConcreteCoroType,
-    yield_uses_borrow_slot,
+    yield_always_borrows,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -2857,11 +2857,13 @@ class ExpressionAnalyzer:
         # An alias of an ephemeral borrow is the same stale-slot borrow under
         # another name (mirrors the VarDecl _update_ephemeral_alias_fact).
         eph = self.ctx.func.ephemeral_borrow_vars
-        if ((not resolved.is_value_type() or is_borrow_tuple)
-                and ephemeral_borrow_root(eph, expr.value) is not None):
-            eph.add(name)
+        eph_root = (ephemeral_borrow_root(eph, expr.value)
+                    if (not resolved.is_value_type() or is_borrow_tuple)
+                    else None)
+        if eph_root is not None:
+            eph[name] = eph[eph_root]
         else:
-            eph.discard(name)
+            eph.pop(name, None)
 
         return result_type
 
@@ -3421,7 +3423,10 @@ class ExpressionAnalyzer:
         # Genexpr borrow ABI: a bare non-value (non-readonly) element is handed
         # out by reference (val_or_ref slot), zero-copy, like a def-generator's
         # Iterator[T]. readonly / value elements keep the value (copy) slot.
-        if yield_uses_borrow_slot(result_elem_type):
+        # `yield_always_borrows`, not the slot predicate: an open `T` element
+        # borrows only at its reference instantiations, and a genexpr's slot is
+        # settled here, at its definition, with no per-instantiation verdict.
+        if yield_always_borrows(result_elem_type):
             # A freshly-constructed element would dangle in the borrow slot.
             # Accept borrows of the captured iteration (the loop var / its
             # fields); reject fresh constructions and point at the

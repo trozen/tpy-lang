@@ -146,7 +146,7 @@ is TPy's default, so the declaration is the only place the contract can be state
 the twin -- see `docs/LANGUAGE_FEATURES.md`, "the copy contract of a generic body".
 (open: `BUGS.md#generic-own-slot-borrow-call-unwarned`,
 `BUGS.md#generic-optional-return-committed-to-pointer`,
-`BUGS.md#generic-generator-yields-open-t-by-value`)
+`BUGS.md#generic-yield-fn-result-copies`)
 
 **Check.** For a changed rule that a generic body can reach, write the monomorphic twin at the
 instantiation the case uses and diff the emitted C++ for the subject and the diagnostics; a

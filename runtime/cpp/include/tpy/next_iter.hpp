@@ -30,10 +30,18 @@ decltype(auto) unwrap_ref(T& v) {
 
 // Move-aware unwrap: moves plain values out (for expression-level unwrap
 // where the source is temporary), returns reference for val_or_ref.
+//
+// A val_or_ref over a VALUE payload owns its copy -- the step result is
+// consumed here and the wrapper dies with it -- so move that copy out: the
+// bare slot spelling hands back a `T&&`, and a slot that only lent an lvalue
+// would make every collect/list()/extend copy where the monomorphic twin
+// moved. A REFERENCE payload points at storage someone else owns, so it
+// stays an lvalue.
 template<typename T>
 decltype(auto) unwrap_ref_move(T& v) {
     if constexpr (requires { typename T::is_val_or_ref_tag; }) {
-        return v.get();
+        if constexpr (T::is_val) return std::move(v.get());
+        else return v.get();
     } else {
         return std::move(v);
     }

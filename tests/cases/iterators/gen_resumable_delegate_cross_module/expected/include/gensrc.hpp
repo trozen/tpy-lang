@@ -145,7 +145,7 @@ struct __gen_walk_once : public ::tpy::next_iter_mixin<__gen_walk_once, int32_t>
 
 // def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
-struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
+struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
@@ -160,7 +160,7 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
     __gen_pair(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL), a(a_), b(b_) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_pair& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_pair<T>&) {
@@ -171,7 +171,7 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
 //     yield a                              # -> S_RESUME_0
 //     yield b                              # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_pair<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_pair<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;
@@ -315,7 +315,7 @@ inline __gen_Bag_readings Bag::readings() const {
 
 // def two(self) -> Iterator[T]:
 template <typename T>
-struct __gen_Box_two : public ::tpy::next_iter_mixin<__gen_Box_two<T>, T> {
+struct __gen_Box_two : public ::tpy::next_iter_mixin<__gen_Box_two<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     Box<T>& __self;
 
@@ -329,7 +329,7 @@ struct __gen_Box_two : public ::tpy::next_iter_mixin<__gen_Box_two<T>, T> {
     __gen_Box_two(Box<T>& __self)
         : __state(S_INITIAL), __self(__self) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Box_two& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Box_two<T>&) {
@@ -341,7 +341,7 @@ struct __gen_Box_two : public ::tpy::next_iter_mixin<__gen_Box_two<T>, T> {
 //     yield self.items[0]        # -> S_RESUME_0
 //     yield self.items[1]        # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_Box_two<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Box_two<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;

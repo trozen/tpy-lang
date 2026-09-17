@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 
 // def items[U](self, x: U) -> Iterator[U]:
 template <typename U>
-struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, U> {
+struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, ::tpy::yield_slot_t<U>> {
     int32_t __state;
     const Foo& __self;
     ::tpy::val_or_ref_t<U> x;
@@ -48,7 +48,7 @@ struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, U> {
     __gen_Foo_items(const Foo& __self, ::tpy::param_val_or_ref_t<U> x_)
         : __state(S_INITIAL), __self(__self), x(x_) {}
 
-    std::expected<U, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __next__();
     __gen_Foo_items& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Foo_items<U>&) {
@@ -60,7 +60,7 @@ struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, U> {
 //     yield x                               # -> S_RESUME_0
 //     yield x                               # -> S_RESUME_1
 template <typename U>
-std::expected<U, ::tpy::StopIteration> __gen_Foo_items<U>::__next__() {
+std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __gen_Foo_items<U>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;

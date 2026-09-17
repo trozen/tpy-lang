@@ -187,7 +187,7 @@ struct __coro_async_frame {
 
 // def hold[T](x: T) -> Iterator[T]:
 template <typename T>
-struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, T> {
+struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> x;
     int32_t total;
@@ -202,7 +202,7 @@ struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, T> {
     __gen_hold(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL), x(x_) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_hold& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_hold<T>&) {
@@ -216,7 +216,7 @@ struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, T> {
 //         total += 1
 //     yield x                        # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_hold<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_hold<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_RESUME_0;

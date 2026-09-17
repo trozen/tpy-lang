@@ -1,0 +1,3 @@
+main.py:236: warning: may copy list[T] into field if not a value type; use copy() to make this explicit
+main.py:250: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:123: warning: may copy T into owned storage if not a value type; use copy() to make this explicit

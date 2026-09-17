@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<K, V>& obj) {
 
 // def stream(self, n: int) -> Iterator[V]:  # tpyc: ok
 template <typename K, typename V>
-struct __gen_Pair_stream : public ::tpy::next_iter_mixin<__gen_Pair_stream<K, V>, V> {
+struct __gen_Pair_stream : public ::tpy::next_iter_mixin<__gen_Pair_stream<K, V>, ::tpy::yield_slot_t<V>> {
     int32_t __state;
     Pair<K, V>& __self;
     ::tpy::BigInt n;
@@ -59,7 +59,7 @@ struct __gen_Pair_stream : public ::tpy::next_iter_mixin<__gen_Pair_stream<K, V>
     __gen_Pair_stream(Pair<K, V>& __self, ::tpy::BigInt n_)
         : __state(S_INITIAL), __self(__self), n(std::move(n_)) {}
 
-    std::expected<V, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<V>, ::tpy::StopIteration> __next__();
     __gen_Pair_stream& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Pair_stream<K, V>&) {
@@ -73,7 +73,7 @@ struct __gen_Pair_stream : public ::tpy::next_iter_mixin<__gen_Pair_stream<K, V>
 //         yield self.v                                  # -> S_RESUME_0
 //         i += 1
 template <typename K, typename V>
-std::expected<V, ::tpy::StopIteration> __gen_Pair_stream<K, V>::__next__() {
+std::expected<::tpy::yield_slot_t<V>, ::tpy::StopIteration> __gen_Pair_stream<K, V>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         i = 0;

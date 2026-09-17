@@ -26,6 +26,8 @@ _SELFCHECKS = [
     ("test_math_exception_policy.cpp", "math exceptions and IEEE special values"),
     ("test_seq_contains_identity.cpp", "containment's identity-before-== rule"),
     ("test_dict_default_args.cpp", "dict get/pop/setdefault default deduction"),
+    ("test_yield_slot_forms.cpp",
+     "the generic yield slot's spelling, const-ness and copy count"),
 ]
 
 

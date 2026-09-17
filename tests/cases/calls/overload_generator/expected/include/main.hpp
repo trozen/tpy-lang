@@ -22,7 +22,7 @@ void main();
 
 // def rep[T](obj: T, n: int32 = -1) -> Iterator[T]:
 template <typename T>
-struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, T> {
+struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> obj;
     int32_t n;
@@ -38,7 +38,7 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, T> {
     __gen_rep(::tpy::param_val_or_ref_t<T> obj_, int32_t n_ = -1)
         : __state(S_INITIAL), obj(obj_), n(std::move(n_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_rep& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_rep<T>&) {
@@ -51,7 +51,7 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, T> {
 //         yield obj  # tpyc: ok                      # -> S_RESUME_0
 //         i += 1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_rep<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         i = 0;

@@ -1,8 +1,8 @@
 # Generator Yield ABI: borrow vs owned (declaration-driven)
 
-Status: **Implemented** (def-generators + generator expressions; full suite green). Branch: `fix-generator-ref-yield-copy`.
+Status: **Implemented** (def-generators + generator expressions; full suite green).
 Single shared gate `typesys.yield_uses_borrow_slot` decides the `val_or_ref<T>` borrow slot (excludes
-`Optional`/`Union`/tuple/`Own`/`TypeParamRef`/value, which keep their own representation); a `readonly[T]`
+`Optional`/`Union`/tuple/`Own`/value, which keep their own representation); a `readonly[T]`
 element is INCLUDED and borrows too, spelled `val_or_ref<const T>` by `typesys.yield_borrow_slot_cpp`. See the
 "IMPLEMENTATION FINDING" notes inline for where reality narrowed the original plan.
 Fixes BUGS.md "Generator yields of a bare (non-tuple) non-value type are copied" (HIGH) and the
@@ -17,6 +17,17 @@ several places. Where this section and the prose below disagree, **this section 
 - **Single gate, no enum, no stamped fact.** There is no `YieldABI` enum, no `classify_yield_abi`, and
   no `TpyFunction.generator_yield_abi` field. The borrow-slot decision is one pure predicate
   `typesys.yield_uses_borrow_slot(elem_type) -> bool`, called directly by sema and both codegen paths.
+- **An OPEN `T` is admitted by the gate, and one per-generator verdict says whether it lends.**
+  `yield_uses_borrow_slot` admits an open `T` (a `TypeParamRef`), because `val_or_ref<T>`
+  holds a value `T` by value and a reference `T` by pointer, so the shape is settled at instantiation
+  and the generic frame renders what its monomorphic twin does. Admission is not the whole answer:
+  one slot type serves the whole frame, so sema settles a single VERDICT per generic generator
+  (`TpyFunction.generic_yield_borrows`) from the provenance of every yield source, and the frame
+  spells the idempotent `::tpy::yield_slot_t<T>` only when it says lend. Two companion predicates
+  keep that split honest: `yield_always_borrows` is what a DEFINITION-time sema rule reads (the open
+  `T` does not borrow at its value instantiations, so a rule that treated it as one would reject
+  them), and `yield_slot_borrows(elem, verdict)` is the single answer codegen asks. See
+  `docs/ITERATOR_DESIGN.md` for the verdict rule itself.
   (The enum/stamped-fact mechanism in "The single yield-ABI classifier" and the typesys section was
   built, then collapsed.) The two remaining VALUE/OWNED distinctions are expressed inline at their two
   sites (the copyable check in `registration.py`; the mutation-marking in `_analyze_yield`).

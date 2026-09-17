@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 
 // def walk(self) -> Iterator[T]:
 template <typename T>
-struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, T> {
+struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     Holder<T>& __self;
     T* x = nullptr;
@@ -57,7 +57,7 @@ struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, T
     __gen_Holder_walk(Holder<T>& __self)
         : __state(S_INITIAL), __self(__self) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Holder_walk& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Holder_walk<T>&) {
@@ -69,7 +69,7 @@ struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, T
 //     for x in self.items:
 //         yield x                 # -> S_RESUME_0
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_Holder_walk<T>::__next__() {
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Holder_walk<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __for_it_0.emplace((__self.items).begin());

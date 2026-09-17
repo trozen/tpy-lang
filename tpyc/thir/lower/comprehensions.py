@@ -34,8 +34,8 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
+    yield_always_borrows,
     yield_borrow_slot_cpp,
-    yield_uses_borrow_slot,
 )
 from ...type_def_registry import (
     is_array,
@@ -1599,7 +1599,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         body_declared[gen.var] = sema_elem
         comp_vars = {gen.var}
     elem_type = _comp_result_type(expr.result_elem_type, analyzer)
-    if yield_uses_borrow_slot(elem_type):
+    if yield_always_borrows(elem_type):
         # A record element yields through the reference-preserving
         # `::tpy::val_or_ref<T>` slot (`make_generator<val_or_ref<Node>>`,
         # `std::optional<val_or_ref<Node>>(n)`); the loop-var name feeds
@@ -1726,7 +1726,7 @@ def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',
     body_declared[gen.var] = sema_elem
     comp_vars = {gen.var}
     elem_type = _comp_result_type(expr.result_elem_type, analyzer)
-    if yield_uses_borrow_slot(elem_type):
+    if yield_always_borrows(elem_type):
         raise ThirUnsupported("genexpr.borrow_slot")
     slot_cpp = lc.render_type(elem_type)
     # allow_temps: the emit's yield_lines flushes element (and condition)

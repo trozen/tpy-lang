@@ -23,8 +23,10 @@ struct CopyIter {
     Inner inner;
 
     // Iterator protocol: copy each element from the inner iterator.
-    // unwrap_ref_move copies from val_or_ref (borrowed) and moves from
-    // owned values; the tuple overload handles nested val_or_ref elements.
+    // unwrap_ref_move copies from a val_or_ref that BORROWS and moves out of
+    // an owned value -- including a val_or_ref's own copy, which is already
+    // the copy this adapter exists to make; the tuple overload handles nested
+    // val_or_ref elements.
     std::expected<T, StopIteration> __next__() {
         auto r = inner.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});

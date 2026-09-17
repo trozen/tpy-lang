@@ -29,10 +29,10 @@ from ..typesys import (
     is_integer_type, is_any_int_type, is_numeric_type, is_primitive_type, is_readonly_span,
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
-    yield_uses_borrow_slot, GenExprType,
+    yield_uses_borrow_slot, yield_always_borrows, GenExprType,
     is_dyn_protocol, is_fn_type, coro_struct_owner,
     ConcreteCoroType, make_concrete_coro, make_cancellable,
-    bare_name)
+    bare_name, recorded_return_borrow_sources)
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
@@ -79,7 +79,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
 
 from .alias_rebind import decide_rebind_storage, stamp_bind_kind
-from .context import BorrowKind, INVALIDATING_BORROW_KINDS, ITER_BORROWER, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
+from .context import BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, ITER_BORROWER, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, frame_factory_callee,
@@ -225,7 +225,10 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         # name-rooted argument so the auto-move gate demotes a later
         # consume to the copy path. Opaque stubs (native, builtin,
         # cpp_template, bodyless overloads) are not in the pending set --
-        # for them None keeps meaning "borrows nothing".
+        # for them None keeps meaning "borrows nothing". This readiness
+        # question reads the RAW field, unlike the sources below: the pending
+        # set holds the registry FIs, so the membership test and the None it
+        # qualifies must be about the same fi the call site resolved to.
         if (fi in ctx.pending_borrow_fact_fis
                 and _signature_may_return_borrow(fi)):
             for src in ([obj] if obj is not None else []) + list(args):
@@ -233,7 +236,7 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                     if root != borrower:
                         bt.add_borrow(root, borrower, BorrowKind.OPAQUE)
         return
-    for idx in fi.return_borrows_from:
+    for idx in recorded_return_borrow_sources(fi):
         if idx == -1 and obj is not None:
             root = _borrow_storage_root(obj)
             if root is not None:
@@ -1508,10 +1511,13 @@ class StatementAnalyzer:
                         ret_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
                         if isinstance(ret_inner, (TpyCall, TpyMethodCall)):
                             fi_ret = ret_inner.resolved_function_info
-                            if fi_ret is not None and fi_ret.return_borrows_from:
+                            ret_sources = (
+                                recorded_return_borrow_sources(fi_ret)
+                                if fi_ret is not None else frozenset())
+                            if ret_sources:
                                 ret_args = ret_inner.args
                                 ret_obj = getattr(ret_inner, 'obj', None)
-                                for idx in fi_ret.return_borrows_from:
+                                for idx in ret_sources:
                                     # One argument position can hold many
                                     # operands (a `*args` pack), and each is
                                     # borrowed by the same contract.
@@ -1828,6 +1834,14 @@ class StatementAnalyzer:
                     # and escapes are rejected in the loop body. Container sources
                     # are durable and keep their normal provenance.
                     ephemeral_src = self._is_ephemeral_borrow_loop_source(inner_iterable_type)
+                    # The same question with an open `T` element counted as a
+                    # borrow -- input to the generic-yield provenance gate, not
+                    # to any diagnostic: at a value instantiation such a source
+                    # lends nothing, so the loop var must stay durable here.
+                    open_eph_src = (
+                        not ephemeral_src
+                        and self._is_ephemeral_borrow_loop_source(
+                            inner_iterable_type, open_param_borrows=True))
                     track_loop_prov = (
                         not ephemeral_src
                         and _needs_provenance_tracking(unwrap_readonly(elem_type))
@@ -1836,7 +1850,8 @@ class StatementAnalyzer:
                     )
                     if track_loop_prov:
                         self.init.add_loop_var_provenance(stmt.var)
-                    eph_added = self._mark_ephemeral_loop_targets(stmt, ephemeral_src)
+                    eph_added = self._mark_ephemeral_loop_targets(
+                        stmt, ephemeral_src, open_eph_src)
                     self.ctx.func.mutated_loop_vars.discard(stmt.var)
                     self.ctx.func.consumed_loop_vars.discard(stmt.var)
                     self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
@@ -1847,7 +1862,8 @@ class StatementAnalyzer:
                             self.analyze_stmt(s)
                     if track_loop_prov:
                         self.init.remove_loop_var_provenance(stmt.var)
-                    self.ctx.func.ephemeral_borrow_vars -= eph_added
+                    for name in eph_added:
+                        self.ctx.func.ephemeral_borrow_vars.pop(name, None)
                 # A mutated loop var lends a MUTABLE borrow of the storage it
                 # was iterated out of, so that storage cannot bind const
                 # either. Keyed on the iterable's ROOT rather than on the
@@ -2813,9 +2829,11 @@ class StatementAnalyzer:
             gc = stmt.iterable.property_getter_call
             if gc is not None:
                 fi_gc = gc.resolved_function_info
-                if fi_gc is not None and fi_gc.return_borrows_from:
+                gc_sources = (recorded_return_borrow_sources(fi_gc)
+                              if fi_gc is not None else frozenset())
+                if gc_sources:
                     iter_srcs: list[str] = []
-                    for idx in fi_gc.return_borrows_from:
+                    for idx in gc_sources:
                         if idx == -1 and gc.obj is not None:
                             srcs = _borrow_storage_roots(gc.obj)
                         elif idx >= 0 and idx < len(gc.args):
@@ -2832,11 +2850,13 @@ class StatementAnalyzer:
             # Register ITER borrow directly on those source containers so that
             # structural mutations during the loop generate conflict warnings.
             fi_iter = stmt.iterable.resolved_function_info
-            if fi_iter is not None and fi_iter.return_borrows_from:
+            iter_sources = (recorded_return_borrow_sources(fi_iter)
+                            if fi_iter is not None else frozenset())
+            if iter_sources:
                 call_args = stmt.iterable.args
                 call_obj = getattr(stmt.iterable, 'obj', None)
                 iter_srcs = []
-                for idx in fi_iter.return_borrows_from:
+                for idx in iter_sources:
                     arg = None
                     if idx == -1 and call_obj is not None:
                         srcs = _borrow_storage_roots(call_obj)
@@ -4083,7 +4103,8 @@ class StatementAnalyzer:
 
         return var_type
 
-    def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType) -> bool:
+    def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType, *,
+                                         open_param_borrows: bool = False) -> bool:
         """True if iterating this source hands out frame-slot-rooted borrows whose
         validity ends with the producer -- a generator / `Iterator[T]` value
         whose element is a non-value borrow (BORROW_REF) or a borrow-form tuple
@@ -4091,6 +4112,10 @@ class StatementAnalyzer:
         Container sources (list/dict/Span/user `__iter__`) are durable and
         excluded; so is `Iterator[Own[T]]` (owned, moved out) and value-type
         elements.
+
+        `open_param_borrows` forwards to `_elem_is_ephemeral_borrow`: an open
+        `T` element counts as a borrow, which only the generic-yield
+        provenance gate asks for.
         """
         inner = unwrap_readonly(unwrap_ref_type(iterable_type))
         # Ephemeral when the source hands out an element by BORROW: the plain
@@ -4099,39 +4124,59 @@ class StatementAnalyzer:
         # borrow tuple. Elements the slot copies out keep their own
         # representation and are not ephemeral.
         if isinstance(inner, GenExprType):
-            return self._elem_is_ephemeral_borrow(inner.element_type)
+            return self._elem_is_ephemeral_borrow(
+                inner.element_type, open_param_borrows=open_param_borrows)
         if not (is_protocol_type(inner) and isinstance(inner, NominalType)
                 and inner.qualified_name() == "typing.Iterator" and inner.type_args):
             return False
         raw_elem = inner.type_args[0]
         if not isinstance(raw_elem, TpyType):
             return False
-        return self._elem_is_ephemeral_borrow(raw_elem)
+        return self._elem_is_ephemeral_borrow(
+            raw_elem, open_param_borrows=open_param_borrows)
 
     @staticmethod
-    def _elem_is_ephemeral_borrow(elem_type: TpyType) -> bool:
+    def _elem_is_ephemeral_borrow(elem_type: TpyType, *,
+                                  open_param_borrows: bool = False) -> bool:
         """A yielded element whose representation borrows the producer's frame:
-        the scalar val_or_ref slot, or a pointer-element borrow tuple."""
-        if yield_uses_borrow_slot(elem_type):
+        the scalar val_or_ref slot, or a pointer-element borrow tuple.
+
+        `yield_always_borrows`, not the slot predicate: an open `T` element
+        borrows only at its reference instantiations, and this rule runs once
+        at the generic body's definition. `open_param_borrows` asks the same
+        question WITH the open `T` counted as a borrow -- the generic-yield
+        provenance gate's half, which drives a slot choice rather than a
+        diagnostic.
+        """
+        if (yield_uses_borrow_slot(elem_type) if open_param_borrows
+                else yield_always_borrows(elem_type)):
             return True
         peeled = unwrap_readonly(unwrap_ref_type(elem_type))
         return (isinstance(peeled, TupleType)
                 and peeled.has_pointer_repr_element())
 
-    def _mark_ephemeral_loop_targets(self, stmt: TpyForEach, ephemeral_src: bool) -> set[str]:
+    def _mark_ephemeral_loop_targets(self, stmt: TpyForEach, ephemeral_src: bool,
+                                     open_param_src: bool = False) -> set[str]:
         """Stamp the loop var of an ephemeral borrow yield -- and, for a
         tuple-unpack loop, the unpack target names (each aliases the producer's
         frame through the synthetic tuple var) -- returning the names added to
         ephemeral_borrow_vars (so the caller can drop them after the loop
-        body)."""
-        if not ephemeral_src:
+        body).
+
+        `open_param_src`: the source lends only at the reference
+        instantiations of an open `T`, so the names are held GATE_ONLY --
+        marking them HARD would reject the value instantiations, where
+        nothing is borrowed."""
+        if not ephemeral_src and not open_param_src:
             return set()
         added = {stmt.var}
         if stmt.is_tuple_unpack and stmt.body:
             unpack = stmt.body[0]
             if isinstance(unpack, TpyTupleUnpack):
                 added |= {t for t in unpack.targets if t is not None}
-        self.ctx.func.ephemeral_borrow_vars |= added
+        kind = EphemeralKind.HARD if ephemeral_src else EphemeralKind.GATE_ONLY
+        for name in added:
+            self.ctx.func.ephemeral_borrow_vars[name] = kind
         return added
 
     def _reject_ephemeral_escape(self, expr: 'TpyExpr | None', what: str) -> None:
@@ -4154,9 +4199,12 @@ class StatementAnalyzer:
         )
 
     def _ephemeral_root_name(self, expr: 'TpyExpr | None') -> 'str | None':
-        """Return the ephemeral-borrow var name `expr` reads from, else None
-        (see `sema.context.ephemeral_borrow_root`)."""
-        return ephemeral_borrow_root(self.ctx.func.ephemeral_borrow_vars, expr)
+        """Return the HARD ephemeral-borrow var name `expr` reads from, else
+        None (see `sema.context.ephemeral_borrow_root`). Only a HARD hold
+        rejects an escape; a GATE_ONLY one is not a borrow at the value
+        instantiations, so it answers the slot verdict alone."""
+        return ephemeral_borrow_root(self.ctx.func.ephemeral_borrow_vars, expr,
+                                     EphemeralKind.HARD)
 
     def _update_ephemeral_alias_fact(self, name: str,
                                      var_type: 'TpyType | None',
@@ -4166,8 +4214,11 @@ class StatementAnalyzer:
         ephemeral loop var is the same stale-slot borrow under another name,
         so escapes through the alias must reject like the direct form. Value
         bindings COPY and carry no fact; any other rebind clears it.
+
+        The alias inherits the root's KIND, so a GATE_ONLY hold reaches the
+        slot verdict through an alias exactly as the direct form does.
         """
-        is_alias = False
+        root = None
         if init_expr is not None and var_type is not None:
             var_bare = unwrap_readonly(var_type)
             aliasing_shape = (
@@ -4175,11 +4226,13 @@ class StatementAnalyzer:
                 or (isinstance(var_bare, TupleType)
                     and var_bare.has_pointer_repr_element()))
             if aliasing_shape:
-                is_alias = self._ephemeral_root_name(init_expr) is not None
-        if is_alias:
-            self.ctx.func.ephemeral_borrow_vars.add(name)
+                root = ephemeral_borrow_root(
+                    self.ctx.func.ephemeral_borrow_vars, init_expr)
+        if root is not None:
+            self.ctx.func.ephemeral_borrow_vars[name] = (
+                self.ctx.func.ephemeral_borrow_vars[root])
         else:
-            self.ctx.func.ephemeral_borrow_vars.discard(name)
+            self.ctx.func.ephemeral_borrow_vars.pop(name, None)
 
     def _analyze_yield(self, stmt: TpyYield) -> None:
         """Analyze a yield statement in a generator function."""
@@ -4215,7 +4268,8 @@ class StatementAnalyzer:
                      else stmt.value)
         is_direct_tuple_relay = (
             isinstance(inner_val, TpyName)
-            and inner_val.name in self.ctx.func.ephemeral_borrow_vars
+            and (self.ctx.func.ephemeral_borrow_vars.get(inner_val.name)
+                 is EphemeralKind.HARD)
             and isinstance(unwrap_readonly(unwrap_ref_type(
                 self.ctx.get_expr_type(inner_val) or elem_type)), TupleType)
         )
@@ -4228,14 +4282,14 @@ class StatementAnalyzer:
         # check_view_return_dangle misses bare non-value reference yields, so route
         # those through the full dangling check (Iterator[Own[T]]-flavored
         # diagnostic). Forms with their own representation (Optional/Union/tuple/
-        # Own/generic -- see `yield_uses_borrow_slot`) keep the view check; they
+        # Own -- see `yield_uses_borrow_slot`) keep the view check; they
         # don't use the borrow slot.
         # A tuple yield uses borrow form per-element (`std::tuple<int, Box*>`),
         # so a fresh non-value member dangles exactly like a bare borrow yield.
         # yield_uses_borrow_slot excludes tuples (they own their borrow form via
         # to_cpp_return), so route them through the full dangling check too -- its
         # per-element tuple branch is what catches the fresh member.
-        if yield_uses_borrow_slot(elem_type) or isinstance(unwrap_readonly(elem_type), TupleType):
+        if yield_always_borrows(elem_type) or isinstance(unwrap_readonly(elem_type), TupleType):
             # A borrow-yielded container literal must materialize as a real
             # list/dict/set (the val_or_ref<T> slot hands out a reference, and
             # the consumer may resize it), so force it off the Array
@@ -4247,6 +4301,17 @@ class StatementAnalyzer:
             # ephemeral re-yield is still caught before this point.
             self.ctx.func.pending_yield_root_checks.append(
                 (stmt.value, elem_type, stmt.loc))
+        elif yield_uses_borrow_slot(elem_type):
+            # An open `T`: whether the slot lends is not a per-yield question
+            # but a per-generator one (one slot type for the whole frame), and
+            # an unrooted source is not an error here -- it selects the VALUE
+            # slot, which copies. Record the two halves of the provenance
+            # verdict; the rooting half is answered at the drain, the ephemeral
+            # half only while the consuming loop body's marking is live.
+            self.ctx.func.pending_generic_yield_sources.append(
+                (stmt.value,
+                 ephemeral_borrow_root(self.ctx.func.ephemeral_borrow_vars,
+                                       stmt.value) is not None))
         else:
             self.compat.check_view_return_dangle(stmt.value, elem_type, stmt.loc,
                                                  for_yield=True)
