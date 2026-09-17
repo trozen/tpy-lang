@@ -32,6 +32,8 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_frame_view;
+
 // def owned_return(c: Color) -> str:
 std::string owned_return(Color c);
 // def owned_local(c: Color) -> str:
@@ -40,8 +42,33 @@ std::string owned_local(Color c);
 void view_positions(Color c);
 // def owned_slot(c: Color) -> None:
 void owned_slot(Color c);
+// def frame_view(c: Color) -> Iterator[int32]:
+__gen_frame_view frame_view(Color c);
 // def main() -> None:
 void main();
+
+// def frame_view(c: Color) -> Iterator[int32]:
+struct __gen_frame_view : public ::tpy::next_iter_mixin<__gen_frame_view, int32_t> {
+    int32_t __state;
+    Color c;
+    std::string_view label;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_frame_view(Color c_)
+        : __state(S_INITIAL), c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_frame_view& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_frame_view&) {
+        return os << "<generator frame_view>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

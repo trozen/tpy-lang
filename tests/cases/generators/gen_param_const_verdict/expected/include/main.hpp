@@ -12,12 +12,20 @@ namespace tpyapp::main {
 
 struct Rec;
 struct Box;
+struct Shelf;
+struct Depot;
 struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_ro;
 struct __gen_mut;
+struct __gen_sub_hop;
+struct __gen_chain_hop;
+struct __coro_achain_hop;
+struct __gen_alias_ro;
+struct __gen_alias_mut;
+struct __coro_aalias_mut;
 struct __gen_to_mut_callee;
 struct __gen_items_ro;
 struct __gen_values_ro;
@@ -32,6 +40,18 @@ __gen_ro ro(const std::vector<int32_t>& xs);
 int32_t drive_ro(const std::vector<int32_t>& xs);
 // def mut(recs: list[Rec]) -> Iterator[Rec]:  # tpyc: ok
 __gen_mut mut(std::vector<Rec>& recs);
+// def sub_hop(grid: list[list[list[Rec]]]) -> Iterator[int32]:  # tpyc: ok
+__gen_sub_hop sub_hop(std::vector<std::vector<std::vector<Rec>>>& grid);
+// def chain_hop(s: Shelf) -> Iterator[int32]:  # tpyc: ok
+__gen_chain_hop chain_hop(Shelf& s);
+// async def achain_hop(s: Shelf) -> int32:  # tpyc: ok
+__coro_achain_hop achain_hop(Shelf& s);
+// def alias_ro(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
+__gen_alias_ro alias_ro(const std::vector<Depot>& ds);
+// def alias_mut(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
+__gen_alias_mut alias_mut(std::vector<Depot>& ds);
+// async def aalias_mut(ds: list[Depot]) -> int32:  # tpyc: ok
+__coro_aalias_mut aalias_mut(std::vector<Depot>& ds);
 // def bump(xs: list[int32]) -> None:
 void bump(std::vector<int32_t>& xs);
 // def to_mut_callee(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
@@ -87,6 +107,36 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+// class Shelf:
+struct Shelf {
+    // rows: list[list[Rec]]
+    std::vector<std::vector<Rec>> rows;
+
+    // def __init__(self) -> None:
+    Shelf();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shelf";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
+    ::tpy::print_object_default(os, "Shelf", obj);
+    return os;
+}
+
+// class Depot:
+struct Depot {
+    // shelf: Shelf
+    Shelf shelf;
+
+    // def __init__(self) -> None:
+    Depot();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Depot";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Depot& obj) {
+    ::tpy::print_object_default(os, "Depot", obj);
+    return os;
+}
+
 // class Bag:
 struct Bag {
     // base: int32
@@ -104,6 +154,65 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     ::tpy::print_object_default(os, "Bag", obj);
     return os;
 }
+
+// async def achain_hop(s: Shelf) -> int32:  # tpyc: ok
+struct __coro_achain_hop {
+    int32_t __state;
+    bool __cancel_pending;
+    Shelf& s;
+    int32_t t;
+    Rec* r = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_achain_hop(Shelf& s)
+        : __state(S_INITIAL), __cancel_pending(false), s(s) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_achain_hop&) {
+        return os << "<coroutine achain_hop>";
+    }
+};
+
+// async def aalias_mut(ds: list[Depot]) -> int32:  # tpyc: ok
+struct __coro_aalias_mut {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<Depot>& ds;
+    int32_t t;
+    Depot* d = nullptr;
+    Shelf* sh = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Depot>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Depot>>> __for_end_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_aalias_mut(std::vector<Depot>& ds)
+        : __state(S_INITIAL), __cancel_pending(false), ds(ds) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_aalias_mut&) {
+        return os << "<coroutine aalias_mut>";
+    }
+};
 
 // async def aro(xs: list[int32]) -> int32:  # tpyc: ok
 struct __coro_aro {
@@ -207,6 +316,116 @@ struct __gen_mut : public ::tpy::next_iter_mixin<__gen_mut, ::tpy::val_or_ref<Re
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_mut&) {
         return os << "<generator mut>";
+    }
+};
+
+// def sub_hop(grid: list[list[list[Rec]]]) -> Iterator[int32]:  # tpyc: ok
+struct __gen_sub_hop : public ::tpy::next_iter_mixin<__gen_sub_hop, int32_t> {
+    int32_t __state;
+    std::vector<std::vector<std::vector<Rec>>>& grid;
+    Rec* r = nullptr;
+    std::vector<std::vector<Rec>>* rows = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<std::vector<Rec>>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<std::vector<Rec>>>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_1;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_sub_hop(std::vector<std::vector<std::vector<Rec>>>& grid)
+        : __state(S_INITIAL), grid(grid) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_sub_hop& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_sub_hop&) {
+        return os << "<generator sub_hop>";
+    }
+};
+
+// def chain_hop(s: Shelf) -> Iterator[int32]:  # tpyc: ok
+struct __gen_chain_hop : public ::tpy::next_iter_mixin<__gen_chain_hop, int32_t> {
+    int32_t __state;
+    Shelf& s;
+    Rec* r = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_chain_hop(Shelf& s)
+        : __state(S_INITIAL), s(s) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_chain_hop& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_chain_hop&) {
+        return os << "<generator chain_hop>";
+    }
+};
+
+// def alias_ro(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
+struct __gen_alias_ro : public ::tpy::next_iter_mixin<__gen_alias_ro, int32_t> {
+    int32_t __state;
+    const std::vector<Depot>& ds;
+    const Depot* d = nullptr;
+    const Shelf* sh = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Depot>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Depot>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_alias_ro(const std::vector<Depot>& ds)
+        : __state(S_INITIAL), ds(ds) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_alias_ro& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_alias_ro&) {
+        return os << "<generator alias_ro>";
+    }
+};
+
+// def alias_mut(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
+struct __gen_alias_mut : public ::tpy::next_iter_mixin<__gen_alias_mut, int32_t> {
+    int32_t __state;
+    std::vector<Depot>& ds;
+    Depot* d = nullptr;
+    Shelf* sh = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Depot>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Depot>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_alias_mut(std::vector<Depot>& ds)
+        : __state(S_INITIAL), ds(ds) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_alias_mut& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_alias_mut&) {
+        return os << "<generator alias_mut>";
     }
 };
 
@@ -364,6 +583,14 @@ inline Box::Box(int32_t n, bool has) : inner(std::nullopt) {
         this->inner = Rec(n);
     }
 }
+
+// def __init__(self) -> None:
+//     self.rows = [[Rec(1), Rec(2)]]
+inline Shelf::Shelf() : rows(std::vector<std::vector<Rec>>{{Rec(1), Rec(2)}}) {}
+
+// def __init__(self) -> None:
+//     self.shelf = Shelf()
+inline Depot::Depot() : shelf(Shelf()) {}
 
 // def __init__(self, base: int32) -> None:
 //     self.base = base

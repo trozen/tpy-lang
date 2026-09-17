@@ -3,6 +3,9 @@
 # view->owned machinery (previously ill-formed C++ -- a bare view render
 # into std::string). View-consuming positions stay copy-free.
 from enum import Enum
+from typing import Iterator
+
+from tpy import int32
 
 
 class Color(Enum):
@@ -39,11 +42,22 @@ def owned_slot(c: Color) -> None:
     print(xs)
 
 
+# Frame position: the member-name table is STATIC, so the slot stays a view
+# across the suspension where any other field-shaped source would resolve
+# owned (the frame outlives the case-block temps a sync body may borrow).
+def frame_view(c: Color) -> Iterator[int32]:
+    label: str = c.name  # tpyc: type(StrView)
+    yield len(label)
+    print("frame", label)
+
+
 def main() -> None:
     print(owned_return(Color.RED))
     print(owned_local(Color.GREEN))
     view_positions(Color.RED)
     owned_slot(Color.GREEN)
+    for n in frame_view(Color.RED):
+        print("frame yield", n)
 
 
 main()

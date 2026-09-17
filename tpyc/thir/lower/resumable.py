@@ -164,6 +164,7 @@ from .predicates import (
     _optional_ptr_borrow,
     _optional_ptr_borrow_wide,
     _own_declared_call_ret,
+    _by_value_property_iterable,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
     _record_class_binding,
@@ -2287,6 +2288,27 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # async flavor renders the whole iterable once (its `__aiter__`
                 # call is skeleton).
                 begin_stmt()
+                if _by_value_property_iterable(stmt.iterable_expr, analyzer):
+                    # The sync route's `foreach.by_value_property_iter` fence,
+                    # asked here too: the frame's `__for_it_N`/`__for_end_N`
+                    # are built off the getter read and kept across every
+                    # suspension, so a by-value getter result would leave
+                    # them pointing into a destroyed temporary -- and unlike
+                    # the sync render, this one compiles. Asked before the
+                    # placeability verdict so the depth a chain happens to
+                    # have does not decide which of the two reasons the
+                    # program is told. A value-typed getter reaches this
+                    # route only: the sync one stops at its container-family
+                    # gate first.
+                    raise ThirUnsupported("res.by_value_property_iter")
+                if stmt.iter_borrow_unplaceable:
+                    # Same rule as the sync for-each route, and for the async
+                    # flavor too: sema could file no loan for an lvalue chain
+                    # whose storage no loan key can spell, so every mutation
+                    # of what is iterated is invisible to the invalidation
+                    # check. (The range strategy never carries the flag --
+                    # its iterable is a call.)
+                    raise ThirUnsupported("res.for_iter_borrow_unplaceable")
                 if stmt.is_async:
                     # The async skeleton owns the indirect deref
                     # ((*(g)).__aiter__(), gen_async's is_indirect wrap)

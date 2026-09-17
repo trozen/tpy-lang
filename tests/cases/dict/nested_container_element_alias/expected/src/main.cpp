@@ -3,6 +3,7 @@
 
 namespace tpyapp::main {
 
+std::vector<std::vector<std::vector<int32_t>>>* MODULE_CUBE{};
 
 // def push(xs: list[int32], v: int32) -> None:
 //     xs.append(v)
@@ -30,7 +31,223 @@ int32_t read_elements(::tpy::ordered_map<std::string, std::vector<int32_t>>& g, 
     return (::tpy::add_check<int32_t>(::tpy::__len__(::tpy::__getitem__(g, "a")), ::tpy::__len__(::tpy::__getitem__(m, 1))));
 }
 
+// def deep_sinks(cube: list[list[list[int32]]], i: int32, j: int32) -> int32:
+//     # free function -- one line per value-position sink
+//     print("deep len", len(cube[i][j]))  # tpyc: ok
+//     print("deep cmp", len(cube[i][j]) > 0)  # tpyc: ok
+//     push(cube[i][j], 2)  # tpyc: ok
+//     cube[i][j].append(3)  # tpyc: ok
+//     row = cube[i][j]  # tpyc: ok
+//     row.append(4)
+//     cube[i][j][0] = 9  # tpyc: ok
+//     print("deep sub", cube[i][j][0])  # tpyc: ok
+//     # NOT a sink here: `for v in cube[i][j]` takes an iteration borrow the
+//     # tracker cannot key, so it is a located reject -- pinned by
+//     # iterators/error_foreach_unplaceable_chain_src. The local `row` above
+//     # is the workaround, and iterating IT is the same read.
+//     total = 0
+//     for v in row:  # tpyc: ok
+//         total += v
+//     return total
+int32_t deep_sinks(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i, int32_t j) {
+    std::cout << "deep len" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j)) << "\n";
+    std::cout << "deep cmp" << " " << ::tpy::print_bool((::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j)) > 0)) << "\n";
+    ::tpyapp::main::push(::tpy::__getitem__(::tpy::__getitem__(cube, i), j), 2);
+    ::tpy::__getitem__(::tpy::__getitem__(cube, i), j).push_back(3);
+    std::vector<int32_t>& row = ::tpy::__getitem__(::tpy::__getitem__(cube, i), j);
+    row.push_back(4);
+    ::tpy::__setitem__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j), 0, 9);
+    std::cout << "deep sub" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j), 0) << "\n";
+    int32_t total = 0;
+    auto& __obj_0 = row;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        total = ::tpy::add_check<int32_t>(total, v);
+    }
+    return total;
+}
+
+// def deep_dict_outer(g: dict[str, list[list[int32]]], k: str) -> int32:
+//     # the root is a dict whose VALUE is nested
+//     g[k][0].append(5)  # tpyc: ok
+//     return len(g[k][0])
+int32_t deep_dict_outer(::tpy::ordered_map<std::string, std::vector<std::vector<int32_t>>>& g, std::string_view k) {
+    ::tpy::__getitem__(::tpy::__getitem__(g, k), 0).push_back(5);
+    return ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(g, k), 0));
+}
+
+// def deep_dict_inner(m: list[dict[str, list[int32]]], k: str) -> int32:
+//     # the inner hop is the dict subscript
+//     m[0][k].append(6)  # tpyc: ok
+//     return len(m[0][k])
+int32_t deep_dict_inner(std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>>& m, std::string_view k) {
+    ::tpy::__getitem__(::tpy::__getitem__(m, 0), k).push_back(6);
+    return ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(m, 0), k));
+}
+
+// def deep_readonly(cube: readonly[list[list[list[int32]]]], i: int32) -> int32:
+//     # a readonly root: both hops read const, and nothing writes
+//     return len(cube[i][i])  # tpyc: ok
+int32_t deep_readonly(const std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i) {
+    return ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i));
+}
+
+// def deep_loop_root(cube: list[list[list[list[int32]]]]) -> int32:
+//     # the root is the LOOP VAR and the read is two hops off it
+//     t = 0
+//     for plane in cube:
+//         plane[0][0].append(7)  # tpyc: ok
+//         t += len(plane[0][0])
+//     return t
+int32_t deep_loop_root(std::vector<std::vector<std::vector<std::vector<int32_t>>>>& cube) {
+    int32_t t = 0;
+    auto& __obj_0 = cube;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& plane = *__beg_0;
+        ::tpy::__getitem__(::tpy::__getitem__(plane, 0), 0).push_back(7);
+        t = ::tpy::add_check<int32_t>(t, ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(plane, 0), 0)));
+    }
+    return t;
+}
+
+// def deep_control(cube: list[list[list[int32]]], i: int32, k: int32) -> int32:
+//     # `with` body, `try`/`finally` and a `match` arm each re-enter expression
+//     # lowering on their own
+//     with Guard() as g:
+//         cube[i][i].append(g)  # tpyc: ok
+//     try:
+//         cube[i][i].append(1)  # tpyc: ok
+//     finally:
+//         print("deep finally", len(cube[i][i]))  # tpyc: ok
+//     match k:
+//         case 0:
+//             return len(cube[i][i])  # tpyc: ok
+//         case _:
+//             return 0
+int32_t deep_control(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i, int32_t k) {
+    auto __ctx_1 = Guard();
+    auto g = __ctx_1.__enter__();
+    try {
+        ::tpy::__getitem__(::tpy::__getitem__(cube, i), i).push_back(g);
+        goto __with_exit_1;
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
+    } catch (...) {
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
+    {
+        try {
+            ::tpy::__getitem__(::tpy::__getitem__(cube, i), i).push_back(1);
+        } catch (...) {
+            std::cout << "deep finally" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i)) << "\n";
+            throw;
+        }
+        std::cout << "deep finally" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i)) << "\n";
+    }
+    auto& __match_subject_1 = k;
+    switch (__match_subject_1) {
+    case 0: {
+        return ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i));
+        break;
+    }
+    default: {
+        return 0;
+        break;
+    }
+    }
+    ::std::unreachable();
+}
+
+// def deep_gen(cube: list[list[list[int32]]], i: int32) -> Iterator[int32]:
+//     # generator -- the alias is a frame field, so the write after the
+//     # suspension still lands in the caller's cube
+//     row = cube[i][i]  # tpyc: ok
+//     yield len(row)                                                          # -> S_RESUME_0
+//     row.append(11)
+//     # iterating the nested element itself is a located reject here too, so
+//     # the loop runs over the alias (see deep_sinks)
+//     for v in row:  # tpyc: ok
+//         yield v                                                             # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_deep_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        row = &(::tpy::__getitem__(::tpy::__getitem__(cube, i), i));
+        __state = S_RESUME_0;
+        return ::tpy::__len__((*row));
+    }
+    case S_RESUME_0: {  // after: yield len(row)
+        row->push_back(11);
+        __for_it_0.emplace(((*row)).begin());
+        __for_end_0.emplace(((*row)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1:  // after: yield v
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = *((*__for_it_0))++;
+        __state = S_RESUME_1;
+        return v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def deep_gen(cube: list[list[list[int32]]], i: int32) -> Iterator[int32]:
+__gen_deep_gen deep_gen(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i) {
+    return __gen_deep_gen(cube, i);
+}
+
+// async def deep_async(cube: list[list[list[int32]]], i: int32) -> int32:
+//     # async twin of `deep_gen`
+//     row = cube[i][i]  # tpyc: ok
+//     await asyncio.sleep(0)                                               # -> S_RESUME_0
+//     row.append(12)
+//     return len(cube[i][i])  # tpyc: ok
+::tpystd::tpy::Poll<int32_t> __coro_deep_async::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        row = &(::tpy::__getitem__(::tpy::__getitem__(cube, i), i));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        row->push_back(12);
+        __state = S_DONE;
+        int32_t __tpy_async_ret = ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i));
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def deep_async(cube: list[list[list[int32]]], i: int32) -> int32:
+__coro_deep_async deep_async(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i) {
+    return __coro_deep_async(cube, i);
+}
+
 // def main() -> None:
+//     print("module cube", MODULE_CUBE[0][0])
 //     a: list[int32] = [1, 2]
 //     b: list[int32] = [3]
 //     g: dict[str, list[int32]] = {}
@@ -57,7 +274,51 @@ int32_t read_elements(::tpy::ordered_map<std::string, std::vector<int32_t>>& g, 
 //     m[1].append(4)
 //     print(len(m[1]))
 //     print(m[1])
+//
+//     # --- the doubly nested receiver ---
+//     # Each result is bound before the print: an argument that itself writes to
+//     # stdout interleaves ahead of the earlier arguments
+//     # (BUGS.md#print-arg-output-interleaves).
+//     cube: list[list[list[int32]]] = [[[1]]]
+//     n_free = deep_sinks(cube, 0, 0)
+//     print("deep free", n_free, cube[0][0])
+//
+//     grid = Grid()
+//     n_method = grid.fill(0, 0)
+//     print("deep method", n_method, grid.cells[0][0])
+//
+//     dg: dict[str, list[list[int32]]] = {}
+//     dg["a"] = [[1]]
+//     n_outer = deep_dict_outer(dg, "a")
+//     print("deep dict outer", n_outer, dg["a"][0])
+//
+//     di: list[dict[str, list[int32]]] = []
+//     d0: dict[str, list[int32]] = {}
+//     d0["a"] = [1]
+//     di.append(d0)
+//     n_inner = deep_dict_inner(di, "a")
+//     print("deep dict inner", n_inner, di[0]["a"])
+//
+//     print("deep readonly", deep_readonly(cube, 0))
+//
+//     hyper: list[list[list[list[int32]]]] = [[[[1]]]]
+//     n_loop = deep_loop_root(hyper)
+//     print("deep loop root", n_loop, hyper[0][0][0])
+//
+//     ctl: list[list[list[int32]]] = [[[1]]]
+//     n_ctl = deep_control(ctl, 0, 0)
+//     print("deep control", n_ctl, ctl[0][0])
+//
+//     gc: list[list[list[int32]]] = [[[1]]]
+//     for v in deep_gen(gc, 0):
+//         print("deep gen", v)
+//     print("deep gen after", gc[0][0])
+//
+//     ac: list[list[list[int32]]] = [[[1]]]
+//     n_async = asyncio.run(deep_async(ac, 0))
+//     print("deep async", n_async, ac[0][0])
 void main() {
+    std::cout << "module cube" << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__((*MODULE_CUBE), 0), 0)) << "\n";
     std::vector<int32_t> a = {1, 2};
     std::vector<int32_t> b = {3};
     ::tpy::ordered_map<std::string, std::vector<int32_t>> g = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
@@ -81,14 +342,67 @@ void main() {
     ::tpy::__getitem__(m, 1).push_back(4);
     std::cout << ::tpy::__len__(::tpy::__getitem__(m, 1)) << "\n";
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(m, 1)) << "\n";
+    std::vector<std::vector<std::vector<int32_t>>> cube = {{{1}}};
+    int32_t n_free = ::tpyapp::main::deep_sinks(cube, 0, 0);
+    std::cout << "deep free" << " " << n_free << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0)) << "\n";
+    Grid grid = Grid();
+    int32_t n_method = grid.fill(0, 0);
+    std::cout << "deep method" << " " << n_method << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(grid.cells, 0), 0)) << "\n";
+    ::tpy::ordered_map<std::string, std::vector<std::vector<int32_t>>> dg = ::tpy::ordered_map<std::string, std::vector<std::vector<int32_t>>>();
+    ::tpy::__setitem__(dg, "a", std::vector<std::vector<int32_t>>{{1}});
+    int32_t n_outer = ::tpyapp::main::deep_dict_outer(dg, "a");
+    std::cout << "deep dict outer" << " " << n_outer << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(dg, "a"), 0)) << "\n";
+    std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>> di = std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>>{};
+    ::tpy::ordered_map<std::string, std::vector<int32_t>> d0 = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
+    ::tpy::__setitem__(d0, "a", std::vector<int32_t>{1});
+    di.push_back(std::move(d0));
+    int32_t n_inner = ::tpyapp::main::deep_dict_inner(di, "a");
+    std::cout << "deep dict inner" << " " << n_inner << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(di, 0), "a")) << "\n";
+    std::cout << "deep readonly" << " " << ::tpyapp::main::deep_readonly(cube, 0) << "\n";
+    std::vector<std::vector<std::vector<std::vector<int32_t>>>> hyper = {{{{1}}}};
+    int32_t n_loop = ::tpyapp::main::deep_loop_root(hyper);
+    std::cout << "deep loop root" << " " << n_loop << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(hyper, 0), 0), 0)) << "\n";
+    std::vector<std::vector<std::vector<int32_t>>> ctl = {{{1}}};
+    int32_t n_ctl = ::tpyapp::main::deep_control(ctl, 0, 0);
+    std::cout << "deep control" << " " << n_ctl << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(ctl, 0), 0)) << "\n";
+    std::vector<std::vector<std::vector<int32_t>>> gc = {{{1}}};
+    {
+        auto __src_1 = ::tpyapp::main::deep_gen(gc, 0);
+        auto&& __itr_1 = ::tpy::__iter__(__src_1);
+        for (;;) {
+            auto __r_2 = __itr_1.__next__();
+            if (!__r_2.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_2);
+        std::cout << "deep gen" << " " << v << "\n";
+        }
+    }
+    std::cout << "deep gen after" << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(gc, 0), 0)) << "\n";
+    std::vector<std::vector<std::vector<int32_t>>> ac = {{{1}}};
+    int32_t n_async = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::deep_async(ac, 0)));
+    std::cout << "deep async" << " " << n_async << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(ac, 0), 0)) << "\n";
 }
 
+// import asyncio
+//
+// # module level: the root is a global pointer slot, so the nested read has to
+// # reach through it. Only the write face is here -- binding a local to a
+// # global's element is a located reject at module level for any depth,
+// # BUGS.md#global-alias-of-global-element-rejected.
+// MODULE_CUBE: list[list[list[int32]]] = [[[1]]]
+// MODULE_CUBE[0][0].append(21)  # tpyc: ok
+// MODULE_CUBE[0][0][0] = 20  # tpyc: ok
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    ::tpystd::asyncio::__tpy_init();
+    static std::vector<std::vector<std::vector<int32_t>>> __global_slot_1 = {{{1}}};
+    MODULE_CUBE = &__global_slot_1;
+    ::tpy::__getitem__(::tpy::__getitem__((*MODULE_CUBE), 0), 0).push_back(21);
+    ::tpy::__setitem__(::tpy::__getitem__(::tpy::__getitem__((*MODULE_CUBE), 0), 0), 0, 20);
     ::tpyapp::main::main();
 }
 

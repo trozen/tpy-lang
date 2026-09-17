@@ -4,17 +4,161 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
+struct Grid;
+struct Guard;
+
+extern std::vector<std::vector<std::vector<int32_t>>>* MODULE_CUBE;
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_deep_gen;
+struct __coro_deep_async;
 
 // def push(xs: list[int32], v: int32) -> None:
 void push(std::vector<int32_t>& xs, int32_t v);
 // def read_elements(g: dict[str, list[int32]], m: list[list[int32]]) -> int32:
 int32_t read_elements(::tpy::ordered_map<std::string, std::vector<int32_t>>& g, const std::vector<std::vector<int32_t>>& m);
+// def deep_sinks(cube: list[list[list[int32]]], i: int32, j: int32) -> int32:
+int32_t deep_sinks(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i, int32_t j);
+// def deep_dict_outer(g: dict[str, list[list[int32]]], k: str) -> int32:
+int32_t deep_dict_outer(::tpy::ordered_map<std::string, std::vector<std::vector<int32_t>>>& g, std::string_view k);
+// def deep_dict_inner(m: list[dict[str, list[int32]]], k: str) -> int32:
+int32_t deep_dict_inner(std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>>& m, std::string_view k);
+// def deep_readonly(cube: readonly[list[list[list[int32]]]], i: int32) -> int32:
+int32_t deep_readonly(const std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i);
+// def deep_loop_root(cube: list[list[list[list[int32]]]]) -> int32:
+int32_t deep_loop_root(std::vector<std::vector<std::vector<std::vector<int32_t>>>>& cube);
+// def deep_control(cube: list[list[list[int32]]], i: int32, k: int32) -> int32:
+int32_t deep_control(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i, int32_t k);
+// def deep_gen(cube: list[list[list[int32]]], i: int32) -> Iterator[int32]:
+__gen_deep_gen deep_gen(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i);
+// async def deep_async(cube: list[list[list[int32]]], i: int32) -> int32:
+__coro_deep_async deep_async(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i);
 // def main() -> None:
 void main();
 
+// class Grid:
+struct Grid {
+    // cells: list[list[list[int32]]]
+    std::vector<std::vector<std::vector<int32_t>>> cells;
+
+    // def __init__(self) -> None:
+    Grid();
+
+    // def fill(self, i: int32, j: int32) -> int32:
+    int32_t fill(int32_t i, int32_t j);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
+    ::tpy::print_object_default(os, "Grid", obj);
+    return os;
+}
+
+// class Guard:
+struct Guard {
+
+
+    // def __enter__(self) -> int32:
+    int32_t __enter__() const;
+
+    // def __exit__(self, kind, value, tb) -> None:
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Guard";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
+    ::tpy::print_object_default(os, "Guard", obj);
+    return os;
+}
+
+// async def deep_async(cube: list[list[list[int32]]], i: int32) -> int32:
+struct __coro_deep_async {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<std::vector<std::vector<int32_t>>>& cube;
+    int32_t i;
+    std::vector<int32_t>* row = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_deep_async(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i_)
+        : __state(S_INITIAL), __cancel_pending(false), cube(cube), i(std::move(i_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_deep_async&) {
+        return os << "<coroutine deep_async>";
+    }
+};
+
+// def deep_gen(cube: list[list[list[int32]]], i: int32) -> Iterator[int32]:
+struct __gen_deep_gen : public ::tpy::next_iter_mixin<__gen_deep_gen, int32_t> {
+    int32_t __state;
+    std::vector<std::vector<std::vector<int32_t>>>& cube;
+    int32_t i;
+    std::vector<int32_t>* row = nullptr;
+    int32_t v;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_deep_gen(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i_)
+        : __state(S_INITIAL), cube(cube), i(std::move(i_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_deep_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_deep_gen&) {
+        return os << "<generator deep_gen>";
+    }
+};
+
+
+// def __init__(self) -> None:
+//     self.cells = [[[1]]]
+inline Grid::Grid() : cells(std::vector<std::vector<std::vector<int32_t>>>{{{1}}}) {}
+
+// def fill(self, i: int32, j: int32) -> int32:
+//     # method rooted at `self`
+//     row = self.cells[i][j]  # tpyc: ok
+//     row.append(8)
+//     self.cells[i][j].append(9)  # tpyc: ok
+//     return len(self.cells[i][j])
+inline int32_t Grid::fill(int32_t i, int32_t j) {
+    std::vector<int32_t>& row = ::tpy::__getitem__(::tpy::__getitem__(this->cells, i), j);
+    row.push_back(8);
+    ::tpy::__getitem__(::tpy::__getitem__(this->cells, i), j).push_back(9);
+    return ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(this->cells, i), j));
+}
+
+// def __enter__(self) -> int32:
+//     return 7
+inline int32_t Guard::__enter__() const {
+    return 7;
+}
+
+// def __exit__(self, kind, value, tb) -> None:
+//     pass
+inline void Guard::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
+}
 void __tpy_init();
 } // namespace tpyapp::main

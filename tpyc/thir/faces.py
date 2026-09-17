@@ -1291,9 +1291,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "subscript.narrowed_ptr_opt_recv",  # subscript off a None-narrowed
                                     # ptr-repr Optional[container] name (read
                                     # or write target) -> the `(*recv)` deref
-    "subscript.narrowed_opt_nested",  # `rows[i][j]` off a None-narrowed
-                                    # ptr-repr Optional[container] name -> the
-                                    # nested __getitem__ over the `(*rows)` deref
     "subscript.bytearray_recv",     # `b[i]` off a bytearray name/field ->
                                     # the bytes @native dunder bytes_getitem
     "optptr.container_call_temp",   # container-returning rvalue CALL at an
@@ -1439,6 +1436,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.value_opt_view_materialize",  # a view->owned materializing coerce at
                                     # an OWNED inner: the coerce owns the
                                     # render, the optional's ctor absorbs it
+    # `return o.inner.tag` -- the view-family field RESULT row granted at the
+    # return sink off any receiver the field ladder admits
+    "ret.viewfam_field_recv",
 
     # Container-literal element families (lowering; the widened
     # THIRContainerLiteral slots) plus the make_vector/make_ordered_* switch
@@ -1798,9 +1798,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.dyn_getattr_builtin",     # 2-arg getattr(obj, name) delegated to
                                     # the dyn-attr read mirror (result-blind
                                     # bare dunder call)
-    "arg.bytes_owned_name",         # owned-form bytes name bound bare at an
-                                    # Own[bytes] element slot (the template
-                                    # callee binds the lvalue natively)
+    "arg.bytes_owned_lvalue",       # owned-form bytes name or member read
+                                    # bound bare at an Own[bytes] element slot
+                                    # (the template callee binds the lvalue
+                                    # natively)
     "arg.bytes_owned_call",         # owned-bytes call rvalue bound bare at any
                                     # Own[bytes] slot (a prvalue has nothing to
                                     # move from, and owes no view->owned copy)
@@ -2043,7 +2044,18 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.opt_record_call",
     "decl.view_inner_opt_call",     # `local = f()` at a VIEW-inner value-opt
                                     # slot: the plain spelled copy
-    "decl.optview_shim",           # `local: Optional[str] = s` off a
+    # `t: str | None = s` off a view-form str/bytes source: the OWNED inner
+    # is constructed explicitly (the optional's converting ctor from a view
+    # is explicit), the decl twin of ret.value_opt_view_materialize.
+    "decl.value_opt_view_materialize",
+    # The FIELD source of that same decl (`t: str | None = r.name`): the bare
+    # member read admitted at the STORAGE decl sink one unwrap deeper.
+    "decl.viewfam_field_at_opt_slot",
+    # `tg = r.tag` at a BARE bytes slot -- the bytes half of the str field
+    # source the decl sink already admits; the view->owned convert below is
+    # the same chokepoint for both families.
+    "decl.bytes_field",
+    "decl.optview_shim",         # `local: Optional[str] = s` off a
                                     # borrow-form value-opt view param
     "decl.opt_value_record",        # Optional[value-record] slot: plain spelled copy
     # A registered owned-optional record local's NARROWED read -- the
@@ -2092,6 +2104,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # Rvalue reseat by sema's storage verdict: `(*x) = <rvalue>;` or
     # `x = &*(__slot_N = <rvalue>);` (THIRAssign's rebind arm).
     "reseat.opt_rvalue",
+    # ... with a container LITERAL as that rvalue, its element types resolved
+    # against the slot's inner (`xs = &*(__slot_N = {1, 2, 3});`).
+    "reseat.opt_container_literal",
     # ... with an Own-returning user dunder operator as the rvalue
     # (`v = v + inc` -> `v = &*(__slot_N = (((*v)) + (inc)));`).
     "reseat.rvalue_op",
@@ -2771,6 +2786,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # assigning through the pointer (IN_PLACE)
     "reseat.opt_frame_storage_call",  # ... and the Own-opt-call sibling:
                                     # field fill + optional_to_ptr re-lift
+    "reseat.opt_frame_storage_field",  # ... and the storage-opt FIELD off an
+                                    # rvalue receiver: same field, then lift
+    "reseat.opt_frame_container_literal",  # ... and the container-LITERAL
+                                    # rvalue: same prescanned frame field
+    "reseat.opt_frame_literal_in_place",  # ... that literal written through
+                                    # the pointer instead (IN_PLACE)
     "genexpr.range",                # the range-source counter lambda
                                     # (1/2/3-arg, step checks on 3-arg)
     "genexpr.filter",               # &&-joined filter conditions wrapping

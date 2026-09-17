@@ -18,3 +18,35 @@ call container 57
 readonly 70
 readonly 71
 async 123 63
+pack 1
+pack 90
+pack bump 1
+pack bump 100
+pack container 100
+chain 1
+chain 83
+chain container 83
+alias 1
+alias 94
+alias container 94
+loop 1
+loop 105
+loop 1
+loop 115
+loop container 105 115
+ptr_ro 1
+ptr_ro 140
+loop_ro 1
+loop_ro 150
+loop_ro 1
+loop_ro 160
+loop_ptr_ro 1
+loop_ptr_ro 150
+loop_ptr_ro 1
+loop_ptr_ro 160
+gen_ro 1
+gen_ro 130
+gen_bump 1
+gen_bump 135
+gen_bump container 135
+async chain 127 126

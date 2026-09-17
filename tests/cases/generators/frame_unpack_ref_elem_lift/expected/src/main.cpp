@@ -299,6 +299,352 @@ __gen_gen_readonly gen_readonly(const std::vector<std::tuple<int32_t, Box>>& pai
     return __gen_gen_readonly(pairs);
 }
 
+// # generator, CHAINED source: a field off a subscript -- any number of hops
+// # lift off the chain, so the root need not be the immediate receiver
+// def gen_pack(*hs: Holder) -> Iterator[int32]:
+//     # `*args` PACK root: an unmutated pack is captured `varargs<const Holder>`,
+//     # so the lift off it spells `const Box*` -- the pack's const-ness is its
+//     # element flip, which no param verdict records
+//     a, b = hs[0].pair  # tpyc: ok
+//     yield a                                                                      # -> S_RESUME_0
+//     yield b.n                                                                    # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_pack::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(hs, 0).pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_RESUME_0: {  // after: yield a
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1: {  // after: yield b.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_pack(*hs: Holder) -> Iterator[int32]:
+__gen_gen_pack gen_pack(::tpy::varargs<const Holder> hs) {
+    return __gen_gen_pack(hs);
+}
+
+// def gen_pack_bump(*hs: Holder) -> Iterator[int32]:
+//     # the mutating twin keeps `varargs<Holder>`, and the write through the
+//     # alias after the suspension reaches the caller's Box
+//     a, b = hs[0].pair  # tpyc: ok
+//     yield a                                                                 # -> S_RESUME_0
+//     b.n += 10
+//     yield b.n                                                               # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_pack_bump::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_RESUME_0: {  // after: yield a
+        b->n = ::tpy::add_check<int32_t>(b->n, 10);
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1: {  // after: yield b.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_pack_bump(*hs: Holder) -> Iterator[int32]:
+__gen_gen_pack_bump gen_pack_bump(::tpy::varargs<Holder> hs) {
+    return __gen_gen_pack_bump(hs);
+}
+
+// def gen_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
+//     a, b = p.rows[0].pair  # tpyc: ok
+//     yield a                                                 # -> S_RESUME_0
+//     yield b.n                                               # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ptr_ro::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(::tpy::deref_check(p).rows, 0).pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_RESUME_0: {  // after: yield a
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1: {  // after: yield b.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
+__gen_gen_ptr_ro gen_ptr_ro(const Grid* p) {
+    return __gen_gen_ptr_ro(p);
+}
+
+// # generator, const LOOP VAR: the binding's const-ness comes from the
+// # ITERABLE's capture, which lives in neither param-verdict set -- the frame
+// # classifies its own captures, so the loop var and the lift off it must come
+// # out `const Holder*` / `const Box*` on both readonly spellings or the C++
+// # build fails on the lift alone
+// def gen_loop_ro(g: readonly[Grid]) -> Iterator[int32]:
+//     for h in g.rows:
+//         a, b = h.pair  # tpyc: ok
+//         yield a                                         # -> S_RESUME_0
+//         yield b.n                                       # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ro::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((g.rows).begin());
+        __for_end_0.emplace((g.rows).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield a
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1:  // after: yield b.n
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        h = &(*((*__for_it_0))++);
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h->pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_loop_ro(g: readonly[Grid]) -> Iterator[int32]:
+__gen_gen_loop_ro gen_loop_ro(const Grid& g) {
+    return __gen_gen_loop_ro(g);
+}
+
+// def gen_loop_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
+//     for h in p.rows:
+//         a, b = h.pair  # tpyc: ok
+//         yield a                                                  # -> S_RESUME_0
+//         yield b.n                                                # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ptr_ro::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((::tpy::deref_check(p).rows).begin());
+        __for_end_0.emplace((::tpy::deref_check(p).rows).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield a
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1:  // after: yield b.n
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        h = &(*((*__for_it_0))++);
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h->pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_loop_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
+__gen_gen_loop_ptr_ro gen_loop_ptr_ro(const Grid* p) {
+    return __gen_gen_loop_ptr_ro(p);
+}
+
+// def gen_chain(hs: list[Holder]) -> Iterator[int32]:
+//     a, b = hs[0].pair  # tpyc: ok
+//     yield a                                          # -> S_RESUME_0
+//     b.n += 3
+//     yield b.n                                        # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_chain::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_RESUME_0: {  // after: yield a
+        b->n = ::tpy::add_check<int32_t>(b->n, 3);
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1: {  // after: yield b.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_chain(hs: list[Holder]) -> Iterator[int32]:
+__gen_gen_chain gen_chain(std::vector<Holder>& hs) {
+    return __gen_gen_chain(hs);
+}
+
+// # generator, POINTER-FORM alias local root: `h` is a `Holder*` frame field,
+// # so the chain roots at storage the frame holds across the suspension
+// def gen_alias_root(hs: list[Holder]) -> Iterator[int32]:
+//     h = hs[0]
+//     a, b = h.pair  # tpyc: ok
+//     yield a                                               # -> S_RESUME_0
+//     b.n += 4
+//     yield b.n                                             # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_alias_root::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        h = &(::tpy::__getitem__(hs, 0));
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h->pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_RESUME_0: {  // after: yield a
+        b->n = ::tpy::add_check<int32_t>(b->n, 4);
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1: {  // after: yield b.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_alias_root(hs: list[Holder]) -> Iterator[int32]:
+__gen_gen_alias_root gen_alias_root(std::vector<Holder>& hs) {
+    return __gen_gen_alias_root(hs);
+}
+
+// # generator, LOOP VAR root: the loop var is the same pointer-form frame
+// # binding, re-pointed per iteration
+// def gen_loop_root(hs: list[Holder]) -> Iterator[int32]:
+//     for h in hs:
+//         a, b = h.pair  # tpyc: ok
+//         yield a                                          # -> S_RESUME_0
+//         b.n += 5
+//         yield b.n                                        # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_root::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((hs).begin());
+        __for_end_0.emplace((hs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield a
+        b->n = ::tpy::add_check<int32_t>(b->n, 5);
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1:  // after: yield b.n
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        h = &(*((*__for_it_0))++);
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h->pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_loop_root(hs: list[Holder]) -> Iterator[int32]:
+__gen_gen_loop_root gen_loop_root(std::vector<Holder>& hs) {
+    return __gen_gen_loop_root(hs);
+}
+
+// # async twin of the chained source
+// async def coro_chain(hs: list[Holder]) -> int32:
+//     a, b = hs[0].pair  # tpyc: ok
+//     await asyncio.sleep(0)                        # -> S_RESUME_0
+//     b.n += 6
+//     return a + b.n
+::tpystd::tpy::Poll<int32_t> __coro_coro_chain::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        b->n = ::tpy::add_check<int32_t>(b->n, 6);
+        __state = S_DONE;
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(a, b->n));
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def coro_chain(hs: list[Holder]) -> int32:
+__coro_coro_chain coro_chain(std::vector<Holder>& hs) {
+    return __coro_coro_chain(hs);
+}
+
 // # async, container-element source: the alias must survive the await
 // async def coro_subscript(pairs: list[tuple[int32, Box]]) -> int32:
 //     a, b = pairs[0]  # tpyc: ok
@@ -365,6 +711,35 @@ __coro_main_coro main_coro(std::vector<std::tuple<int32_t, Box>>& pairs) {
     return __coro_main_coro(pairs);
 }
 
+// async def main_coro_chain(hs: list[Holder]) -> None:
+//     print("async chain", await coro_chain(hs), hs[0].pair[1].n)  # -> S_RESUME_0
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro_chain::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __sub_0.emplace(hs);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: print("async chain", await coro_chain(hs), hs[0].pair[1].n)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_0 = std::move(__r0).value();
+        __sub_0.reset();
+        std::cout << "async chain" << " " << __await_lift_0 << " " << std::get<1>(::tpy::__getitem__(hs, 0).pair).n << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def main_coro_chain(hs: list[Holder]) -> None:
+__coro_main_coro_chain main_coro_chain(std::vector<Holder>& hs) {
+    return __coro_main_coro_chain(hs);
+}
+
 // def main() -> None:
 //     xs = [(1, Box(2))]
 //     for v in gen_subscript(xs):
@@ -397,6 +772,49 @@ __coro_main_coro main_coro(std::vector<std::tuple<int32_t, Box>>& pairs) {
 //
 //     zs = [(60, Box(61))]
 //     asyncio.run(main_coro(zs))
+//
+//     ph = Holder(Box(90))
+//     for v in gen_pack(ph):
+//         print("pack", v)
+//     for v in gen_pack_bump(ph):
+//         print("pack bump", v)
+//     print("pack container", ph.pair[1].n)
+//
+//     chain: list[Holder] = [Holder(Box(80))]
+//     for v in gen_chain(chain):
+//         print("chain", v)
+//     print("chain container", chain[0].pair[1].n)
+//
+//     alias: list[Holder] = [Holder(Box(90))]
+//     for v in gen_alias_root(alias):
+//         print("alias", v)
+//     print("alias container", alias[0].pair[1].n)
+//
+//     loop: list[Holder] = [Holder(Box(100)), Holder(Box(110))]
+//     for v in gen_loop_root(loop):
+//         print("loop", v)
+//     print("loop container", loop[0].pair[1].n, loop[1].pair[1].n)
+//
+//     pro = Grid(Box(140))
+//     for v in gen_ptr_ro(pro):
+//         print("ptr_ro", v)
+//
+//     gro = Grid(Box(150))
+//     gro.rows.append(Holder(Box(160)))
+//     for v in gen_loop_ro(gro):
+//         print("loop_ro", v)
+//     for v in gen_loop_ptr_ro(gro):
+//         print("loop_ptr_ro", v)
+//
+//     k = Keeper(Box(130))
+//     for v in k.gen_ro():
+//         print("gen_ro", v)
+//     for v in k.gen_bump():
+//         print("gen_bump", v)
+//     print("gen_bump container", k.h.pair[1].n)
+//
+//     ws: list[Holder] = [Holder(Box(120))]
+//     asyncio.run(main_coro_chain(ws))
 void main() {
     std::vector<std::tuple<int32_t, Box>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)})};
     {
@@ -480,19 +898,203 @@ void main() {
     }
     std::vector<std::tuple<int32_t, Box>> zs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{60, Box(61)})};
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro(zs)));
+    Holder ph = Holder(Box(90));
+    {
+        std::array<const Holder*, 1> __tmp_3{&ph};
+        auto __src_14 = ::tpyapp::main::gen_pack(::tpy::varargs<const Holder>(__tmp_3));
+        auto&& __itr_14 = ::tpy::__iter__(__src_14);
+        for (;;) {
+            auto __r_15 = __itr_14.__next__();
+            if (!__r_15.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_15);
+        std::cout << "pack" << " " << v << "\n";
+        }
+    }
+    {
+        std::array<Holder*, 1> __tmp_4{&ph};
+        auto __src_16 = ::tpyapp::main::gen_pack_bump(::tpy::varargs<Holder>(__tmp_4));
+        auto&& __itr_16 = ::tpy::__iter__(__src_16);
+        for (;;) {
+            auto __r_17 = __itr_16.__next__();
+            if (!__r_17.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_17);
+        std::cout << "pack bump" << " " << v << "\n";
+        }
+    }
+    std::cout << "pack container" << " " << std::get<1>(ph.pair).n << "\n";
+    std::vector<Holder> chain = {Holder(Box(80))};
+    {
+        auto __src_18 = ::tpyapp::main::gen_chain(chain);
+        auto&& __itr_18 = ::tpy::__iter__(__src_18);
+        for (;;) {
+            auto __r_19 = __itr_18.__next__();
+            if (!__r_19.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_19);
+        std::cout << "chain" << " " << v << "\n";
+        }
+    }
+    std::cout << "chain container" << " " << std::get<1>(::tpy::__getitem__(chain, 0).pair).n << "\n";
+    std::vector<Holder> alias = {Holder(Box(90))};
+    {
+        auto __src_20 = ::tpyapp::main::gen_alias_root(alias);
+        auto&& __itr_20 = ::tpy::__iter__(__src_20);
+        for (;;) {
+            auto __r_21 = __itr_20.__next__();
+            if (!__r_21.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_21);
+        std::cout << "alias" << " " << v << "\n";
+        }
+    }
+    std::cout << "alias container" << " " << std::get<1>(::tpy::__getitem__(alias, 0).pair).n << "\n";
+    std::vector<Holder> loop = {Holder(Box(100)), Holder(Box(110))};
+    {
+        auto __src_22 = ::tpyapp::main::gen_loop_root(loop);
+        auto&& __itr_22 = ::tpy::__iter__(__src_22);
+        for (;;) {
+            auto __r_23 = __itr_22.__next__();
+            if (!__r_23.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_23);
+        std::cout << "loop" << " " << v << "\n";
+        }
+    }
+    std::cout << "loop container" << " " << std::get<1>(::tpy::__getitem__(loop, 0).pair).n << " " << std::get<1>(::tpy::__getitem__(loop, 1).pair).n << "\n";
+    Grid pro = Grid(Box(140));
+    {
+        auto __src_24 = ::tpyapp::main::gen_ptr_ro(&pro);
+        auto&& __itr_24 = ::tpy::__iter__(__src_24);
+        for (;;) {
+            auto __r_25 = __itr_24.__next__();
+            if (!__r_25.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_25);
+        std::cout << "ptr_ro" << " " << v << "\n";
+        }
+    }
+    Grid gro = Grid(Box(150));
+    gro.rows.push_back(Holder(Box(160)));
+    {
+        auto __src_26 = ::tpyapp::main::gen_loop_ro(gro);
+        auto&& __itr_26 = ::tpy::__iter__(__src_26);
+        for (;;) {
+            auto __r_27 = __itr_26.__next__();
+            if (!__r_27.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_27);
+        std::cout << "loop_ro" << " " << v << "\n";
+        }
+    }
+    {
+        auto __src_28 = ::tpyapp::main::gen_loop_ptr_ro(&gro);
+        auto&& __itr_28 = ::tpy::__iter__(__src_28);
+        for (;;) {
+            auto __r_29 = __itr_28.__next__();
+            if (!__r_29.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_29);
+        std::cout << "loop_ptr_ro" << " " << v << "\n";
+        }
+    }
+    Keeper k = Keeper(Box(130));
+    {
+        auto __src_30 = k.gen_ro();
+        auto&& __itr_30 = ::tpy::__iter__(__src_30);
+        for (;;) {
+            auto __r_31 = __itr_30.__next__();
+            if (!__r_31.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_31);
+        std::cout << "gen_ro" << " " << v << "\n";
+        }
+    }
+    {
+        auto __src_32 = k.gen_bump();
+        auto&& __itr_32 = ::tpy::__iter__(__src_32);
+        for (;;) {
+            auto __r_33 = __itr_32.__next__();
+            if (!__r_33.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_33);
+        std::cout << "gen_bump" << " " << v << "\n";
+        }
+    }
+    std::cout << "gen_bump container" << " " << std::get<1>(k.h.pair).n << "\n";
+    std::vector<Holder> ws = {Holder(Box(120))};
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro_chain(ws)));
 }
 
-// # `a, b = <container element>` / `= <field>` inside a RESUMABLE body, where
-// # the tuple has a reference element the target aliases as a frame field: the
-// # tuple must lift through `tuple_to_pointer` off the source lvalue, never
+// @readonly
+// def gen_ro(self) -> Iterator[int32]:
+//     # a `@readonly` generator METHOD: the receiver's const lives on the
+//     # method, in neither param-verdict set, so the frame's lifted field
+//     # spells `const Box*` -- and the section only reads through it
+//     a, b = self.h.pair  # tpyc: ok
+//     yield a                                                              # -> S_RESUME_0
+//     yield b.n                                                            # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_Keeper_gen_ro::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(__self.h.pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_RESUME_0: {  // after: yield a
+        __state = S_RESUME_1;
+        return b->n;
+    }
+    case S_RESUME_1: {  // after: yield b.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_bump(self) -> Iterator[int32]:
+//     # the mutating twin in a non-readonly method: the write after the
+//     # suspension reaches the object the receiver names
+//     a, b = self.h.pair  # tpyc: ok
+//     yield a                                                            # -> S_RESUME_0
+//     b.n += 5
+//     yield self.h.pair[1].n                                             # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_Keeper_gen_bump::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__self.h.pair);
+        a = std::get<0>(__tup_1);
+        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        __state = S_RESUME_0;
+        return a;
+    }
+    case S_RESUME_0: {  // after: yield a
+        b->n = ::tpy::add_check<int32_t>(b->n, 5);
+        __state = S_RESUME_1;
+        return std::get<1>(__self.h.pair).n;
+    }
+    case S_RESUME_1: {  // after: yield self.h.pair[1].n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// # `a, b = <lvalue>` inside a RESUMABLE body, where the tuple has a reference
+// # element the target aliases as a frame field: the tuple must lift through
+// # `tuple_to_pointer` off the source lvalue, never
 // # into a by-value `auto` holder -- that holder copies the reference element
 // # (so a write through the alias misses the caller's object) and dies at the
 // # end of its case block (so every post-suspension read through the alias is
-// # use-after-scope). Each section mutates through the alias AFTER a
+// # use-after-scope). The source may be any field / subscript chain bottoming
+// # out in storage the FRAME holds -- a captured param, a frame-resident local,
+// # a pointer-form alias local, a loop var -- so the last four sections root the
+// # lift one or more hops out. Each section mutates through the alias AFTER a
 // # suspension and reads the change back through the container, which a copy
-// # cannot produce -- except the last section, which writes nothing and so
+// # cannot produce -- except `gen_readonly`, which writes nothing and so
 // # takes the CONST half of the same lift (`const Box*` element pointers off a
-// # const-borrow capture). The mutating sections are the COPY half only: the
+// # const-borrow capture), and `gen_pack`, whose root is an unmutated `*args`
+// # pack -- a frame binding whose const-ness is the pack's ELEMENT flip, not a
+// # param verdict. The mutating sections are the COPY half only: the
 // # use-after-scope half has no runtime witness here -- reading a destroyed
 // # holder is UB, so what pins it is the COMMITTED RENDER (the lift is off the
 // # source lvalue, never into an `auto` holder); ASAN is the only other way to

@@ -222,9 +222,11 @@ initialization sources are safe for `string_view` (no risk of dangling):
 | `Final[str]` global | Yes | `constexpr string_view` |
 | Function returning `StrView` | Yes | Caller knows it's a view |
 | Tuple subscript `t[0]` (lvalue) | Yes | Immutable, stable storage |
-| Array subscript `arr[0]` | **No** | Mutation could invalidate |
-| Record field `obj.name` | **No** | Mutation could invalidate |
-| List/dict subscript | **No** | Mutation + reallocation could invalidate |
+| Array / list / dict subscript | Until the source is mutated | The view is registered against the container's storage, and a mutation of it falls the view back to the owned type |
+| An enum member's `.name` | Yes | A view of `EnumUtil`'s static member-name table, not of the receiver -- the one source a resumable frame may keep too |
+| Record field `obj.name`, ONE hop off a NAME receiver, `str` only | Until the source is mutated | Same registration, with four write paths to the field: a write to it, a mutating method on the record, an alias bind of the record, and handing the record to a non-`readonly` parameter. The escapes that list still misses -- a callee writing a module global, a `*args` pack element, a nested-def closure capture, and a write through a second name over the same container element -- are `BUGS.md#field-view-escape-needs-place` |
+| Record field through two or more hops, or off a temporary / `@property` receiver | **No** | The source has no storage key a later write could be resolved to, so no demotion could fire |
+| Record field of the `bytes` family, at any depth | **No** | The read did not compile at all before the field arm existed, so a `::tpy::BytesView` here would open a dangle class rather than preserve one; the owned `::tpy::Bytes` copy admits the same programs |
 
 A two-pass resolution then finalizes types:
 1. Direct usage flags (`+=` forces `std::string`, passed-to-string-param forces it, etc.)
@@ -471,15 +473,71 @@ iterables (`self.items`) and aliased mutation are Phase 2 (cross-function infere
 
 **Current limitations** (6a implementation):
 
-- Only method calls known to invalidate iterators (`LIST_ITER_INVALIDATING`,
-  `DICT_MUTATION_METHODS`) and `del` are detected. Subscript assignment
-  (`d[k] = v`) is not warned -- it is element replacement for sequences but may
-  insert new keys for mappings. Distinguishing structural mutation from element
-  replacement generically (without hardcoding types) requires the general borrow
-  infrastructure (Phase 2).
+- Beside method calls known to invalidate iterators (`LIST_ITER_INVALIDATING`,
+  `DICT_MUTATION_METHODS`) and `del`, a subscript assignment (`rows[j] = v`) is
+  warned only when the live loan sits on an ELEMENT of that container --
+  `LoanInfo.on_element`, the hop the string key cannot spell -- since replacing
+  an element destroys what such a loan points into. Under a plain container
+  iteration (`for row in rows: rows[j] = ...`) it stays deliberately quiet: list
+  element replacement does not reallocate and `ordered_map` is node-based, so
+  the outer iteration is still valid. The element check compares the two
+  indices (`LoanInfo.elem_index` against the mutated subscript's
+  `element_index_key`, resolved by `IndexRelation`), so the warning claims
+  only what was proved: two int or str LITERALS that differ are DISTINCT and
+  are not warned at all (`for v in rows[0]: rows[1].append(v)` compiles
+  clean); the identical literal or the identical name is SAME and warns as
+  certain; everything else -- a literal against a name, two different names,
+  a negative literal (`rows[-1]` is `rows[0]` in a one-element list), an
+  arithmetic index -- is UNKNOWN and still warns, worded as possible
+  ("may hit the element being iterated").
+- The element check's kind is the loan's, not the statement's, so a MERGED
+  loan takes the fourth wording. Rebinding the name a loop iterates
+  (`mid = outer[0]` / `for x in mid[0]:` / `mid = outer[1]`) retargets the
+  ITER loan onto `outer` and merges it with `mid`'s own element loan: the
+  merged loan keeps `on_element`, takes the higher-ranked ELEMENT kind and
+  loses `elem_index`. A write through `outer[j]` is then neither an
+  iteration (the kind is no longer ITER) nor certain (no index to compare),
+  so it is reported as "may hit a borrowed element (... may invalidate
+  references)" -- the wording that must exist because a merge can drop both
+  facts at once. Pinned by
+  `tests/cases/list/warn_iter_mutation::test_merged_element_loan_unknown_index`,
+  which compiles and runs at CPython parity, and by
+  `tests/cases/list/error_elem_loan_merge_rebind`, whose own decl rejects
+  (BUGS.md#rebound-element-borrow-local-rejects).
 - Passing a borrowed iterable to a non-`@pure` function is not yet detected.
-- Only simple `TpyName` iterables are tracked (not `self.items`, `obj.field`,
-  or aliased names).
+- An iterable one hop from a spellable storage key is tracked (`self.items`,
+  `rows[i]`, `row.cells[i]`, `table[k]`); a deeper chain has no key a mutating
+  receiver could be resolved to, so it is REJECTED rather than tracked
+  (`foreach.iter_borrow_unplaceable`, `BUGS.md#iter-borrow-place-needs-hops`).
+  Aliased names are resolved through the borrow graph. All three for-each
+  routes share the registration, so a generator and an `async for` take the
+  same verdict on the same iterable (`res.for_iter_borrow_unplaceable`).
+  A chain whose TAIL is a `@property` is keyed like a stored field -- one
+  hop keys, deeper does not -- so the stamp is the same question for it;
+  what differs is which ROUTE reads the stamp. The sync route's property
+  arm admits the chain before reaching the stamp, so `for b in
+  o.inner.items:` compiles in a plain body; the resumable route reads the
+  stamp ahead of every arm, so the same loop rejects there. Which route a
+  loop takes is decided per LOOP, by whether its BODY suspends: the same
+  chain inside a generator or an `async def` whose loop body has no
+  `yield` or `await` lowers on the sync route and compiles. That asymmetry
+  is deliberate and not an oversight: the frame holds its iterators across
+  suspensions, where even the loan the provenance arm DOES file cannot
+  help -- it is intra-procedural, and the invalidating mutation may sit in
+  the caller (`BUGS.md#frame-iter-loan-blind-to-caller`).
+  They share the second registration too -- the one that files the loan from
+  a CALL's or a `@property` getter's borrow provenance rather than from a key
+  over the iterable. It is LIVE on the sync route: `for b in pick(rows):`
+  files the loan on `rows` and warns on a `rows.append` in the body. The
+  async route reaches it only for a call whose callee carries no borrow
+  provenance (`async for v in Countdown(3)`), because a BORROW-returning
+  call or property iterable is a located reject at lowering there
+  (`call.ret_type.record_borrow` for a free function, `method.ret_type` for
+  a method or a property getter; the sync property twin is
+  `iter.user_iterator.field_access`, which fires only for a property
+  whose getter return is a USER-ITERATOR type -- a container-returning
+  property iterable compiles on the sync route). Sharing it is what keeps the row
+  lifting those rejects from leaving one route filing no loan.
 
 #### 6b. For-Loop Const-Ref Binding
 

@@ -806,6 +806,10 @@ class AsyncForIterSetup:
     # Loop element type, used by the range strategy's counter init (the
     # emitter needs the C++ element type for the counter/stop casts).
     elem_type: 'TpyType | None' = None
+    # Carried from the source loop's `iter_borrow_unplaceable`: sema could
+    # file no ITER loan for this iterable, so the lowering refuses it here
+    # exactly as the sync for-each route does.
+    iter_borrow_unplaceable: bool = False
 
 
 @dataclass(frozen=True)
@@ -1401,8 +1405,10 @@ class CFGBuilder:
         self._finish(cur, Fall(next_bb=iter_init_bb))
         # iter_init_bb: setup, fall to cond.
         self._blocks[iter_init_bb].stmts.append(
-            AsyncForIterSetup(uid=uid, iterable_expr=stmt.iterable,
-                              elem_type=stmt.elem_type))
+            AsyncForIterSetup(
+                uid=uid, iterable_expr=stmt.iterable,
+                elem_type=stmt.elem_type,
+                iter_borrow_unplaceable=stmt.iter_borrow_unplaceable))
         self._finish(iter_init_bb, Fall(next_bb=cond_bb))
         # cond_bb: AsyncForAdvance terminator (advance + branch).
         self._finish(cond_bb, AsyncForAdvance(
@@ -1469,8 +1475,9 @@ class CFGBuilder:
 
         self._finish(cur, Fall(next_bb=iter_init_bb))
         self._blocks[iter_init_bb].stmts.append(
-            AsyncForIterSetup(uid=uid, iterable_expr=stmt.iterable,
-                              is_async=True))
+            AsyncForIterSetup(
+                uid=uid, iterable_expr=stmt.iterable, is_async=True,
+                iter_borrow_unplaceable=stmt.iter_borrow_unplaceable))
 
         # The handler body is a synthesized TpyBreak -- _build_block
         # routes it through _loop_stack to the loop's break_bb, so

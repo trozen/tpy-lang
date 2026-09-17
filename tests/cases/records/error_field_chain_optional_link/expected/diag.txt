@@ -1,2 +1,0 @@
-main.py:24: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:24: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.expr_stmt:subscript.recv.field_chain)

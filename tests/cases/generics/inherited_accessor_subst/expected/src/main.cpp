@@ -4,6 +4,56 @@
 namespace tpyapp::main {
 
 
+// # free function: a bare-T getter at a CONTAINER argument returns `list<Rec>&`,
+// # so the loop aliases the holder's storage
+// def bump_all(h: Holder[int32, list[Rec]]) -> None:
+//     for r in h.val:
+//         r.x += 1
+void bump_all(Holder<int32_t, std::vector<Rec>>& h) {
+    auto& __obj_0 = h.val();
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& r = *__beg_0;
+        r.x = ::tpy::add_check<int32_t>(r.x, 1);
+    }
+}
+
+// # generator: the same getter on the frame route, the loop body suspends
+// def bump_gen(h: Holder[int32, list[Rec]]) -> Iterator[int32]:
+//     for r in h.val:
+//         r.x += 10
+//         yield r.x                                              # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_bump_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((h.val()).begin());
+        __for_end_0.emplace((h.val()).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield r.x
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        r = &(*((*__for_it_0))++);
+        r->x = ::tpy::add_check<int32_t>(r->x, 10);
+        __state = S_RESUME_0;
+        return r->x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def bump_gen(h: Holder[int32, list[Rec]]) -> Iterator[int32]:
+__gen_bump_gen bump_gen(Holder<int32_t, std::vector<Rec>>& h) {
+    return __gen_bump_gen(h);
+}
+
 // def main() -> None:
 //     h = Sub(5, Rec(7))
 //     print(h.key)          # inherited getter, K substituted to int32
@@ -16,6 +66,12 @@ namespace tpyapp::main {
 //         print(r.x)
 //     d = Holder(1, Rec(9)) # inverse: direct instantiation unchanged
 //     print(d.val.x)
+//     g = Holder(1, [Rec(1), Rec(2)])
+//     bump_all(g)
+//     print("sync:", g._v[0].x, g._v[1].x)
+//     for n in bump_gen(g):
+//         print("frame:", n)
+//     print("owner:", g._v[0].x, g._v[1].x)
 void main() {
     Sub h = Sub(5, Rec(7));
     std::cout << h.key() << "\n";
@@ -29,6 +85,20 @@ void main() {
     }
     Holder<int32_t, Rec> d = Holder<int32_t, Rec>(1, Rec(9));
     std::cout << d.val().x << "\n";
+    Holder<int32_t, std::vector<Rec>> g = Holder<int32_t, std::vector<Rec>>(1, {Rec(1), Rec(2)});
+    ::tpyapp::main::bump_all(g);
+    std::cout << "sync:" << " " << ::tpy::__getitem__(g._v, 0).x << " " << ::tpy::__getitem__(g._v, 1).x << "\n";
+    {
+        auto __src_0 = ::tpyapp::main::bump_gen(g);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t n = ::tpy::unwrap_ref(*__r_1);
+        std::cout << "frame:" << " " << n << "\n";
+        }
+    }
+    std::cout << "owner:" << " " << ::tpy::__getitem__(g._v, 0).x << " " << ::tpy::__getitem__(g._v, 1).x << "\n";
 }
 
 // main()

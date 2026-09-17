@@ -143,6 +143,10 @@ class ScopeTracker:
         # `__deepcopy__` keeps every key by identity already.
         outer_scope = self.ctx.func.current_scope
         outer_ns = self.ctx.func.current_ns
+        # `own_ns` is compared BY IDENTITY against the live namespace chain
+        # (the scope-ownership tests in SemanticContext), so it has to be
+        # re-attached with the other two rather than left as the clone.
+        outer_own_ns = self.ctx.func.own_ns
         saved = self.ctx.save_function_state()
         inner_scope = Scope(outer_scope)
         inner_ns = Namespace(parent=outer_ns) if outer_ns else None
@@ -160,6 +164,7 @@ class ScopeTracker:
             self.ctx.restore_function_state(saved)
             self.ctx.func.current_scope = outer_scope
             self.ctx.func.current_ns = outer_ns
+            self.ctx.func.own_ns = outer_own_ns
 
     @contextmanager
     def loop_var(self, scope: Scope, name: str, var_type: TpyType,

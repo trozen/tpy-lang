@@ -1,0 +1,11 @@
+imported write i1 imported
+imported nowrite i2 2
+imported readonly i3 2
+local write l1 local
+local nowrite l2 2
+local readonly l3 2
+method m1 imported
+gen yield 2
+gen g1 imported
+alias bind a1 2
+field f1 2

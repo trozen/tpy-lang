@@ -2374,6 +2374,20 @@ class ResultRepresentation(Enum):
     ERASED_DECLARED_TYPE = "erased_declared_type"
 
 
+def returns_cpp_reference_shape(ret_type: TpyType | None) -> bool:
+    """The SHAPE half of the sync call convention, callee facts aside.
+
+    Separate from the classifier because a caller can hold only a composed
+    return type -- a generic record's re-resolved signature carries the raw
+    `T`, which answers False here for a substitution that is in fact a
+    reference -- and must get the same answer the SYNC_CALL arm computes.
+    """
+    rt = unwrap_ref_type(ret_type)
+    return (rt is not None and not rt.is_value_type()
+            and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType))
+            and not is_protocol_type(rt))
+
+
 def classify_result_representation(
         ret_type: TpyType | None, *, position: ResultPosition,
         fi: FunctionInfo | None = None) -> ResultRepresentation:
@@ -2392,12 +2406,9 @@ def classify_result_representation(
         # Free native declarations do not establish the C++ reference ABI.
         if fi.is_native_import and not fi.is_method:
             return ResultRepresentation.STORAGE
-        rt = unwrap_ref_type(ret_type)
-        if (rt is not None and not rt.is_value_type()
-                and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType))
-                and not is_protocol_type(rt)):
-            return ResultRepresentation.CPP_REFERENCE
-        return ResultRepresentation.STORAGE
+        return (ResultRepresentation.CPP_REFERENCE
+                if returns_cpp_reference_shape(ret_type)
+                else ResultRepresentation.STORAGE)
     if position is ResultPosition.ASYNC_PAYLOAD:
         rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
               if ret_type is not None else None)
@@ -5136,6 +5147,34 @@ INT32_MAX = 2 ** 31 - 1
 def is_protocol_type(typ: TpyType) -> bool:
     """Check if a type is a protocol type."""
     return isinstance(typ, NominalType) and typ.is_protocol
+
+
+def is_ptr_variant_union(t: TpyType) -> bool:
+    """A non-value union lowered to `::tpy::Union<A*, B*>` (pointer variant).
+
+    Pure type query -- `CodeGenContext.is_ptr_variant_union`, the binding
+    classifier and the value-category rules all read this one definition. A
+    recursive-union alias uses a wrapper struct, which is a value type, so it
+    is not a pointer variant.
+    """
+    return (isinstance(t, UnionType) and t.uses_pointer_repr()
+            and not t.needs_wrapper())
+
+
+def property_getter_returns_storage_ref(rt: 'TpyType | None') -> bool:
+    """A property GETTER's return convention differs from a plain method's for
+    the two pointer-repr shapes: the getter hands back the FIELD'S STORAGE by
+    reference (`std::optional<T>&`, `::tpy::Union<A, B>&`) where a method
+    returns the borrow form by value (`T*`, `::tpy::Union<A*, B*>`).
+
+    The emitter that spells the return type and the value-category rule that
+    calls such a getter an lvalue must agree on WHICH shapes those are, or a
+    reference return reads as a temporary (or the reverse) at every hop off a
+    property.
+    """
+    rt = unwrap_ref_type(rt)
+    return ((isinstance(rt, OptionalType) and rt.uses_pointer_repr())
+            or (rt is not None and is_ptr_variant_union(rt)))
 
 
 def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:

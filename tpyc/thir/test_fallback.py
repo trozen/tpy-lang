@@ -1405,17 +1405,15 @@ def _reasons(src: str) -> list[str]:
 def test_native_arg_container_is_not_labelled_a_record():
     # Containers are NominalType, so without a guard they fall into the record
     # split and a whole family reads as blocked on the non-F1-record frontier.
-    # A DOUBLY nested element (`m[0][1]`) now resolves one receiver level
-    # deeper (the double-subscript receiver arm), so the reject moved to the
-    # inner subscript's own receiver frontier -- still a rejected container
-    # shape, never the record label.
+    # The vehicle is an element read off a SLICE receiver: the slice mints a
+    # fresh view, so the read keeps its located reject (a rooted receiver --
+    # `m[0][1]` included -- lowers).
     src = ("from tpy import int32\n"
            "def f(m: list[list[list[int32]]]) -> None:\n"
-           "    print(len(m[0][1]))\n"
+           "    print(len(m[0:2][0]))\n"
            "def main() -> None:\n    pass\nmain()\n")
     reasons = _reasons(src)
     assert any(k.endswith("call.native_arg.container")
-               or k.endswith("subscript.recv.subscript")
                for k in reasons), reasons
     assert not any("record_nonf1" in k for k in reasons), reasons
 

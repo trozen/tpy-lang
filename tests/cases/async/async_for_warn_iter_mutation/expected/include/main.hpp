@@ -6,18 +6,29 @@
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
 struct SrcIter;
 struct Source;
+struct Shelf;
+struct Feed;
+struct FeedIter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_runner;
 struct __coro_post_loop;
 struct __coro_nested;
+struct __coro_hop;
+struct __coro_field_hop;
+struct __coro_elem_distinct;
+struct __coro_elem_unknown;
+struct __coro_elem_container;
+struct __coro_ptr_iter;
 struct __coro_SrcIter___anext__;
+struct __coro_FeedIter___anext__;
 
 // async def runner() -> None:
 __coro_runner runner();
@@ -25,6 +36,18 @@ __coro_runner runner();
 __coro_post_loop post_loop();
 // async def nested() -> None:
 __coro_nested nested();
+// async def hop(sh: Shelf) -> None:
+__coro_hop hop(Shelf& sh);
+// async def field_hop(sh: Shelf) -> None:
+__coro_field_hop field_hop(Shelf& sh);
+// async def elem_distinct(rows: list[Source]) -> None:
+__coro_elem_distinct elem_distinct(std::vector<Source>& rows);
+// async def elem_unknown(rows: list[Source], i: int) -> None:
+__coro_elem_unknown elem_unknown(std::vector<Source>& rows, ::tpy::BigInt i);
+// async def elem_container(rows: list[Source]) -> None:
+__coro_elem_container elem_container(std::vector<Source>& rows);
+// async def ptr_iter(feeds: list[Feed]) -> None:
+__coro_ptr_iter ptr_iter(std::vector<Feed>& feeds);
 // def main() -> None:
 void main();
 
@@ -72,6 +95,67 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     return os;
 }
 
+// class Shelf:
+struct Shelf {
+    // rows: list[Source]
+    std::vector<Source> rows;
+    // one: Source
+    Source one;
+
+    // def __init__(self) -> None:
+    Shelf();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shelf";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
+    ::tpy::print_object_default(os, "Shelf", obj);
+    return os;
+}
+
+// class Feed:
+struct Feed {
+    // hits: list[int]
+    std::vector<::tpy::BigInt> hits;
+    // lim: int
+    ::tpy::BigInt lim;
+
+    // def __init__(self, lim: int) -> None:
+    Feed() = default;
+    explicit Feed(const ::tpy::BigInt& lim);
+
+    // def __aiter__(self) -> "Own[FeedIter]":
+    FeedIter __aiter__();
+
+    // def note(self, x: int) -> None:
+    void note(const ::tpy::BigInt& x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Feed";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Feed& obj) {
+    ::tpy::print_object_default(os, "Feed", obj);
+    return os;
+}
+
+// class FeedIter:
+struct FeedIter {
+    // p: Ptr[Feed]
+    Feed* p;
+    // cur: int
+    ::tpy::BigInt cur;
+
+    // def __init__(self, p: Ptr[Feed]) -> None:
+    FeedIter() = default;
+    explicit FeedIter(Feed* p);
+
+    __coro_FeedIter___anext__ __anext__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.FeedIter";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const FeedIter& obj) {
+    ::tpy::print_object_default(os, "FeedIter", obj);
+    return os;
+}
+
 // async def __anext__(self) -> int:
 struct __coro_SrcIter___anext__ {
     int32_t __state;
@@ -97,6 +181,33 @@ struct __coro_SrcIter___anext__ {
 
 inline __coro_SrcIter___anext__ SrcIter::__anext__() {
     return __coro_SrcIter___anext__(*this);
+}
+
+// async def __anext__(self) -> int:
+struct __coro_FeedIter___anext__ {
+    int32_t __state;
+    bool __cancel_pending;
+    FeedIter& __self;
+    ::tpy::BigInt v;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_DONE = 1,
+    };
+
+    __coro_FeedIter___anext__(FeedIter& __self)
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+
+    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_FeedIter___anext__&) {
+        return os << "<coroutine FeedIter.__anext__>";
+    }
+};
+
+inline __coro_FeedIter___anext__ FeedIter::__anext__() {
+    return __coro_FeedIter___anext__(*this);
 }
 
 // async def runner() -> None:
@@ -194,6 +305,183 @@ struct __coro_nested {
     }
 };
 
+// async def hop(sh: Shelf) -> None:
+struct __coro_hop {
+    int32_t __state;
+    bool __cancel_pending;
+    Shelf& sh;
+    ::tpy::BigInt x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    std::optional<__coro_SrcIter___anext__> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_JOIN_2 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_hop(Shelf& sh)
+        : __state(S_INITIAL), __cancel_pending(false), sh(sh) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_hop&) {
+        return os << "<coroutine hop>";
+    }
+};
+
+// async def field_hop(sh: Shelf) -> None:
+struct __coro_field_hop {
+    int32_t __state;
+    bool __cancel_pending;
+    Shelf& sh;
+    ::tpy::BigInt x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    std::optional<__coro_SrcIter___anext__> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_JOIN_2 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_field_hop(Shelf& sh)
+        : __state(S_INITIAL), __cancel_pending(false), sh(sh) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_field_hop&) {
+        return os << "<coroutine field_hop>";
+    }
+};
+
+// async def elem_distinct(rows: list[Source]) -> None:
+struct __coro_elem_distinct {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<Source>& rows;
+    ::tpy::BigInt x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    std::optional<__coro_SrcIter___anext__> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_JOIN_2 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_elem_distinct(std::vector<Source>& rows)
+        : __state(S_INITIAL), __cancel_pending(false), rows(rows) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_elem_distinct&) {
+        return os << "<coroutine elem_distinct>";
+    }
+};
+
+// async def elem_unknown(rows: list[Source], i: int) -> None:
+struct __coro_elem_unknown {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<Source>& rows;
+    ::tpy::BigInt i;
+    ::tpy::BigInt x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    std::optional<__coro_SrcIter___anext__> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_JOIN_2 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_elem_unknown(std::vector<Source>& rows, ::tpy::BigInt i_)
+        : __state(S_INITIAL), __cancel_pending(false), rows(rows), i(std::move(i_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_elem_unknown&) {
+        return os << "<coroutine elem_unknown>";
+    }
+};
+
+// async def elem_container(rows: list[Source]) -> None:
+struct __coro_elem_container {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<Source>& rows;
+    ::tpy::BigInt x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    std::optional<__coro_SrcIter___anext__> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_JOIN_2 = 5,
+        S_DONE = 6,
+    };
+
+    __coro_elem_container(std::vector<Source>& rows)
+        : __state(S_INITIAL), __cancel_pending(false), rows(rows) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_elem_container&) {
+        return os << "<coroutine elem_container>";
+    }
+};
+
+// async def ptr_iter(feeds: list[Feed]) -> None:
+struct __coro_ptr_iter {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<Feed>& feeds;
+    ::tpy::BigInt x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Feed>> __for_itr_0;
+    std::optional<__coro_FeedIter___anext__> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_JOIN_2 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_ptr_iter(std::vector<Feed>& feeds)
+        : __state(S_INITIAL), __cancel_pending(false), feeds(feeds) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_ptr_iter&) {
+        return os << "<coroutine ptr_iter>";
+    }
+};
+
 
 // def __init__(self, limit: int) -> None:
 //     self.cursor = 0
@@ -216,5 +504,35 @@ inline SrcIter Source::__aiter__() const {
 inline void Source::push(const ::tpy::BigInt& x) {
     this->seen.push_back(x);
 }
+
+// def __init__(self) -> None:
+//     self.rows = [Source(2), Source(1)]
+//     self.one = Source(2)
+inline Shelf::Shelf() : rows(std::vector<Source>{Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))}), one(Source(::tpy::BigInt(2))) {}
+
+// def __init__(self, lim: int) -> None:
+//     self.hits = []
+//     self.lim = lim
+inline Feed::Feed(const ::tpy::BigInt& lim) : hits(std::vector<::tpy::BigInt>{}), lim(lim) {}
+
+// # the iterator holds a POINTER back into the iterable, so the frame's
+// # iterator really does borrow it -- this is the shape that makes the loan
+// # necessary rather than merely symmetric
+// def __aiter__(self) -> "Own[FeedIter]":
+//     return FeedIter(take_ptr(self))
+inline FeedIter Feed::__aiter__() {
+    return FeedIter(&(*this));
+}
+
+// def note(self, x: int) -> None:
+//     self.hits.append(x)
+inline void Feed::note(const ::tpy::BigInt& x) {
+    this->hits.push_back(x);
+}
+
+// def __init__(self, p: Ptr[Feed]) -> None:
+//     self.p = p
+//     self.cur = 0
+inline FeedIter::FeedIter(Feed* p) : p(p), cur(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

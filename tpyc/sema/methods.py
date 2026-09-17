@@ -21,7 +21,7 @@ from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
     TpyLambda, TpyStarUnpack,
     is_docstring,
-    TpyFString, TpyExpr, TpyCoerce,
+    TpyFString, TpyExpr, TpyCoerce, TpySubscript,
     is_super_del_call,
 )
 from ..namespace import BindingKind
@@ -53,7 +53,8 @@ if TYPE_CHECKING:
     from .calls import CallAnalyzer
     from ..typesys import PendingGenericInstanceInfo
 
-from .context import _storage_key
+from .context import (element_index_key, element_loan_mutation_warning,
+                      loan_mutation_warning)
 from .local_deduction import mark_pending_list_mutated, view_source_is_temporary
 
 
@@ -861,23 +862,30 @@ class MethodAnalyzer:
 
         # Borrow conflict: structural mutation on a container with element-level borrows.
         # Resolves aliases so that alias.append() warns when items has element borrows.
-        # Also handles field-path receivers (self.items.append()) via _storage_key.
+        # Also handles field-path receivers (self.items.append()).
         bt = self.ctx.func.borrow_tracker
-        if isinstance(expr.obj, TpyName):
-            storage = bt.effective_storage(expr.obj.name)
-        else:
-            storage = _storage_key(expr.obj)
+        storage = bt.resolve_obj_storage(expr.obj)
         if storage is not None:
             if bt.has_element_borrow(storage):
                 is_mutation = self._is_invalidating_method(obj_type, expr.method)
                 if is_mutation:
-                    if bt.has_iter_borrow(storage):
-                        msg = (f"Mutation of '{storage}' while iterating over it"
-                               f" ('{expr.method}' invalidates the iterator)")
-                    else:
-                        msg = (f"Mutation of '{storage}' while borrowed"
-                               f" ('{expr.method}' may invalidate references)")
-                    self.ctx.warning(msg, expr)
+                    self.ctx.warning(loan_mutation_warning(
+                        storage, f"'{expr.method}'",
+                        iterating=bt.has_iter_borrow(storage)), expr)
+        elif isinstance(expr.obj, TpySubscript):
+            # The receiver is itself an element read, which no storage key can
+            # spell. A loan taken out of an element of the SAME container is
+            # clobbered by a reallocating method on any of its elements, so the
+            # conflict is asked of the container the receiver came out of.
+            inner = expr.obj.obj
+            elem_of = bt.resolve_obj_storage(inner)
+            hit = (bt.element_hop_loan(
+                       elem_of, element_index_key(expr.obj.index))
+                   if elem_of is not None else None)
+            if hit is not None and self._is_invalidating_method(
+                    obj_type, expr.method):
+                self.ctx.warning(element_loan_mutation_warning(
+                    f"{elem_of}[...]", f"'{expr.method}'", hit), expr)
 
         # Deref chain -- resolves through Ptr (mutable and readonly) and any Deref[T] type
         original_type = obj_type

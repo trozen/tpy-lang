@@ -236,14 +236,425 @@ __coro_nested nested() {
     return __coro_nested();
 }
 
+// # hop: a one-hop element iterable files the loan on the container the element
+// # came out of, so a mutating method on that element warns as certain
+// async def hop(sh: Shelf) -> None:
+//     async for x in sh.rows[0]:                                                                                                           # -> S_RESUME_0
+//         sh.rows[0].push(x)  # tpyc: warning(/Mutation of 'sh.rows\[\.\.\.\]' while iterating over it.*'push' invalidates the iterator/)
+//     print("hop:", sh.rows[0].seen)
+::tpystd::tpy::Poll<::std::monostate> __coro_hop::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_itr_0.emplace((::tpy::__getitem__(sh.rows, 0)).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: async for x in sh.rows[0]:
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        try {
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        ::tpy::__getitem__(sh.rows, 0).push(x);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        std::cout << "hop:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(sh.rows, 0).seen) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def hop(sh: Shelf) -> None:
+__coro_hop hop(Shelf& sh) {
+    return __coro_hop(sh);
+}
+
+// # field_hop: a one-hop FIELD iterable files the loan on that field's own
+// # storage, so a mutating method on it warns just as the NAME spelling does
+// async def field_hop(sh: Shelf) -> None:
+//     async for x in sh.one:                                                                                                # -> S_RESUME_0
+//         sh.one.push(x)  # tpyc: warning(/Mutation of 'sh.one' while iterating over it.*'push' invalidates the iterator/)
+//     # printed by length: a container read off a field is not yet an admitted
+//     # print argument (print.arg.container_field_access)
+//     print("field_hop:", len(sh.one.seen))
+::tpystd::tpy::Poll<::std::monostate> __coro_field_hop::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_itr_0.emplace((sh.one).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: async for x in sh.one:
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        try {
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        sh.one.push(x);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        std::cout << "field_hop:" << " " << ::tpy::__len__(sh.one.seen) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def field_hop(sh: Shelf) -> None:
+__coro_field_hop field_hop(Shelf& sh) {
+    return __coro_field_hop(sh);
+}
+
+// # elem_distinct: two int literals that differ cannot name one element, so this
+// # is valid Python and compiles clean
+// async def elem_distinct(rows: list[Source]) -> None:
+//     async for x in rows[0]:                           # -> S_RESUME_0
+//         rows[1].push(x)  # tpyc: ok
+//     print("elem_distinct:", rows[1].seen)
+::tpystd::tpy::Poll<::std::monostate> __coro_elem_distinct::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_itr_0.emplace((::tpy::__getitem__(rows, 0)).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: async for x in rows[0]:
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        try {
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        ::tpy::__getitem__(rows, 1).push(x);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        std::cout << "elem_distinct:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1).seen) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def elem_distinct(rows: list[Source]) -> None:
+__coro_elem_distinct elem_distinct(std::vector<Source>& rows) {
+    return __coro_elem_distinct(rows);
+}
+
+// # elem_unknown: a name may hold the literal's value, so the pair may alias and
+// # the warning says so rather than claiming a hit
+// async def elem_unknown(rows: list[Source], i: int) -> None:
+//     async for x in rows[0]:                                                                                                                      # -> S_RESUME_0
+//         rows[i].push(x)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' may hit the element being iterated.*'push' may invalidate the iterator/)
+//     print("elem_unknown:", rows[i].seen)
+::tpystd::tpy::Poll<::std::monostate> __coro_elem_unknown::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_itr_0.emplace((::tpy::__getitem__(rows, 0)).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: async for x in rows[0]:
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        try {
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        ::tpy::__getitem__(rows, i.to_fixed_check<int32_t>()).push(x);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        std::cout << "elem_unknown:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, i.to_fixed_check<int32_t>()).seen) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def elem_unknown(rows: list[Source], i: int) -> None:
+__coro_elem_unknown elem_unknown(std::vector<Source>& rows, ::tpy::BigInt i) {
+    return __coro_elem_unknown(rows, i);
+}
+
+// # elem_container: growing the container an element was iterated out of can
+// # reallocate the storage the iteration points into, whatever the index rule says
+// async def elem_container(rows: list[Source]) -> None:
+//     async for x in rows[0]:                                                                                                       # -> S_RESUME_0
+//         await asyncio.sleep(0)                                                                                                    # -> S_RESUME_1
+//         rows.append(Source(1))  # tpyc: warning(/Mutation of 'rows' while iterating over it.*'append' invalidates the iterator/)
+//         print("elem_container:", x)
+//     print("elem_container len:", len(rows))
+::tpystd::tpy::Poll<::std::monostate> __coro_elem_container::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_itr_0.emplace((::tpy::__getitem__(rows, 0)).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: async for x in rows[0]:
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        rows.push_back(Source(::tpy::BigInt(1)));
+        std::cout << "elem_container:" << " " << x << "\n";
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        try {
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_JOIN_2: {
+        std::cout << "elem_container len:" << " " << ::tpy::__len__(rows) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def elem_container(rows: list[Source]) -> None:
+__coro_elem_container elem_container(std::vector<Source>& rows) {
+    return __coro_elem_container(rows);
+}
+
+// # ptr_iter: the mutation is a method on the borrowed element itself, which the
+// # pointer survives; the warning is what stands between it and an append that
+// # would move the Feed out from under the iterator
+// async def ptr_iter(feeds: list[Feed]) -> None:
+//     async for x in feeds[0]:                                                                                                         # -> S_RESUME_0
+//         feeds[0].note(x)  # tpyc: warning(/Mutation of 'feeds\[\.\.\.\]' while iterating over it.*'note' invalidates the iterator/)
+//     print("ptr_iter:", feeds[0].hits)
+::tpystd::tpy::Poll<::std::monostate> __coro_ptr_iter::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_itr_0.emplace((::tpy::__getitem__(feeds, 0)).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: async for x in feeds[0]:
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        try {
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        ::tpy::__getitem__(feeds, 0).note(x);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        std::cout << "ptr_iter:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(feeds, 0).hits) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def ptr_iter(feeds: list[Feed]) -> None:
+__coro_ptr_iter ptr_iter(std::vector<Feed>& feeds) {
+    return __coro_ptr_iter(feeds);
+}
+
 // def main() -> None:
 //     asyncio.run(runner())
 //     asyncio.run(post_loop())
 //     asyncio.run(nested())
+//     asyncio.run(hop(Shelf()))
+//     asyncio.run(field_hop(Shelf()))
+//     asyncio.run(elem_distinct([Source(2), Source(1)]))
+//     asyncio.run(elem_unknown([Source(2), Source(1)], 1))
+//     asyncio.run(elem_container([Source(2)]))
+//     asyncio.run(ptr_iter([Feed(2)]))
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::runner()));
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::post_loop()));
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::nested()));
+    Shelf __tmp_1 = Shelf();
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::hop(__tmp_1)));
+    Shelf __tmp_2 = Shelf();
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::field_hop(__tmp_2)));
+    std::vector<Source> __tmp_3 = {Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))};
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::elem_distinct(__tmp_3)));
+    std::vector<Source> __tmp_4 = {Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))};
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::elem_unknown(__tmp_4, ::tpy::BigInt(1))));
+    std::vector<Source> __tmp_5 = {Source(::tpy::BigInt(2))};
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::elem_container(__tmp_5)));
+    std::vector<Feed> __tmp_6 = {Feed(::tpy::BigInt(2))};
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::ptr_iter(__tmp_6)));
 }
 
 // async def __anext__(self) -> int:
@@ -271,10 +682,41 @@ void main() {
 }
 
 
-// # Borrow-conflict warning when a mutating method on the async-iterable
-// # is called during iteration. Same machinery as the sync-for
-// # warn_iter_mutation tests: an ITER borrow on the named iterable
-// # rejects mutating-method calls inside the loop body.
+// async def __anext__(self) -> int:
+//     if self.cur >= self.p.lim:
+//         raise StopAsyncIteration
+//     v = self.cur
+//     self.cur += 1
+//     return v
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_FeedIter___anext__::__poll__(::tpystd::coro::Waker waker) {
+    (void)waker;
+    switch (__state) {
+    case S_INITIAL: {  // entry
+        if ((__self.cur >= ::tpy::deref_check(__self.p).lim)) {
+            throw ::tpy::StopAsyncIteration{};
+        }
+        v = __self.cur;
+        __self.cur = (__self.cur) + (::tpy::BigInt(1));
+        __state = S_DONE;
+        ::tpy::BigInt __tpy_async_ret = v;
+        return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// # Borrow-conflict warnings under `async for`. An iteration borrows the storage
+// # it iterates, and `async for` borrows it exactly as the sync for-each does:
+// # `__aiter__` is user code and may hand the frame an iterator holding a pointer
+// # into the iterable (the `ptr_iter` section), so the two routes file one loan
+// # through one registration and warn at the same granularity -- the container
+// # for a NAME iterable, the container plus the borrowed element for a one-hop
+// # element iterable, the field's own storage for a one-hop field iterable, with
+// # the two indices compared so a proven-distinct pair is silent. A deeper chain
+// # has no loan key and is rejected, pinned by
+// # `async/error_async_for_unplaceable_chain`.
 // import asyncio
 //
 // main()

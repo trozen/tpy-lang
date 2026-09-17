@@ -92,6 +92,7 @@ from ...typesys import (
     is_float_type,
     is_protocol_type,
     is_own_pointer_repr_optional,
+    is_readonly_ptr,
     is_readonly_span,
     is_void_like_type,
     resolve_int_literals,
@@ -100,6 +101,7 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
+    varargs_is_readonly,
     view_family_for_type,
 )
 from ...type_def_registry import (
@@ -139,6 +141,7 @@ from ...value_category import (
     is_rvalue_source,
     materializing_temp_source,
     peel_coerce,
+    property_access_returns_cpp_ref,
 )
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...codegen_cpp.forms import (
@@ -165,7 +168,7 @@ from ...codegen_cpp.protocols import (
 )
 from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
-from ...prescan import parse_deref_view_key
+from ...prescan import chain_root_name, parse_deref_view_key
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..faces import witness as _witness
 from ..nodes import (
@@ -6913,6 +6916,96 @@ def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bo
             or _own_storage_opt_param(declared.get(recv.name),
                                       analyzer) is not None)
 
+def _lvalue_chain_hop_ok(link: TpyExpr, declared: dict[str, TpyType],
+                         analyzer, pointers: 'AbstractSet[str]') -> bool:
+    """One hop of a rooted lvalue chain: it names storage the root outlives.
+
+    A stored member read and a container element read are lvalues; an ACCESSOR
+    hop -- a property getter, a user `__getitem__` -- is one exactly when the
+    accessor hands back a C++ reference (`-> T`, not `-> Own[T]`), which is
+    the value-category question `is_rvalue_source` already answers per node.
+    It is asked per HOP rather than once on the whole chain because its
+    subscript arm does not recurse into the RECEIVER: an element read off a
+    dying container is an lvalue expression that dangles all the same. A slice
+    is refused outright, resolved slice function or not -- it yields a fresh
+    view over the receiver. WHICH render each hop takes (a plain member read,
+    a getter call, a `deref_check`) is the hop's own arm's business.
+
+    A hop off a pointer-repr `Optional` NAME renders the BARE `(*recv)`
+    unwrap, keyed on the body's pointer BINDING set -- a representation fact,
+    not a proof -- so it is an lvalue hop only under sema's narrowing proof:
+    `needs_optional_runtime_check` cleared on the hop AND the name in that
+    set, which together is what `_narrowed_ptr_opt_recv` answers. Un-narrowed,
+    the walk must stop, or the chain consumer spells the unwrap with no null
+    check while sema warns one was added. An Optional reached any other way
+    (a FIELD link, `o.inner.items[0]`) renders its own `deref_optional_check`
+    inside the chain, so the hop stays an lvalue and is left to its own arm."""
+    if isinstance(link, TpySubscript) and isinstance(link.index, TpySlice):
+        return False
+    recv = link.obj
+    if isinstance(recv, TpyName):
+        rt = declared.get(recv.name)
+        rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+               if rt is not None else None)
+        if isinstance(rtu, OptionalType) and rtu.uses_pointer_repr():
+            if (link.needs_optional_runtime_check
+                    or _narrowed_ptr_opt_recv(recv, rt, pointers) is None):
+                return False
+    return not is_rvalue_source(analyzer, link)
+
+def _lvalue_chain_root(e: TpyExpr, declared: dict[str, TpyType], analyzer,
+                       pointers: 'AbstractSet[str]', *,
+                       resident: 'AbstractSet[str] | None' = None,
+                       ) -> 'str | None':
+    """The ROOT name of a rooted LVALUE chain -- any number of field /
+    subscript hops off a DECLARED name (`hs[0].pair`, `self.rows[i]`,
+    `cube[i][j]`, `self.grid.rows[i]`) -- or None when `e` is not that shape.
+
+    Every hop must name storage the root outlives; `_lvalue_chain_hop_ok`
+    asks that of each one, so the walk grows no list of node kinds of its own.
+
+    The root's own const verdict is the whole chain's (C++ const travels
+    through member and element access), so a caller reads constness at the
+    root rather than walking the chain a second time.
+
+    `pointers` is the body's pointer BINDING set: an Optional hop is only an
+    lvalue hop under the narrowing proof that set is half of (see
+    `_lvalue_chain_hop_ok`), so it is required rather than per-caller.
+
+    `resident` narrows the admitted roots to a set the caller requires (the
+    resumable frame passes its own field names: only storage the frame holds
+    outlives a case block)."""
+    if not isinstance(e, (TpyFieldAccess, TpySubscript)):
+        return None
+    link = e
+    while isinstance(link, (TpyFieldAccess, TpySubscript)):
+        if not _lvalue_chain_hop_ok(link, declared, analyzer, pointers):
+            return None
+        link = link.obj
+    root = chain_root_name(e)
+    if root is None or root not in declared:
+        return None
+    if resident is not None and root not in resident:
+        return None
+    return root
+
+def _chained_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
+                               analyzer,
+                               pointers: 'AbstractSet[str]') -> bool:
+    """`recv.field` whose RECEIVER is itself a field / subscript chain
+    bottoming out in a declared name (`hs[0].pair`, `o.h.pair`,
+    `self.o.h.pair`) -- the multi-hop sibling of `_field_receiver_ok`'s
+    single declared-name receiver. The markers on the outer access are
+    checked the same way; each hop lowers through its own arm, which gates
+    its own shape (an Optional or rvalue link rejects there). A chain that
+    bottoms out in anything else -- a call result, a literal -- is not an
+    lvalue and is not admitted."""
+    if not isinstance(e, TpyFieldAccess) or not _field_markers_clean(e):
+        return False
+    if not isinstance(e.obj, (TpyFieldAccess, TpySubscript)):
+        return False
+    return _lvalue_chain_root(e, declared, analyzer, pointers) is not None
+
 def _tparam_protocol_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
                                    bounds: 'dict | None') -> bool:
     """`item.value` off a protocol-BOUND type-param binding (`item: T` under
@@ -6966,19 +7059,13 @@ def _str_view_family_value(t: TpyType | None, analyzer) -> bool:
     st = _resolved_str_value(t, analyzer)
     return st is not None and (is_str_type(st) or is_str_view_type(st))
 
-def _bytes_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
-                            analyzer) -> bool:
-    """A value-position read of a bytes-family field off an admitted receiver
-    (`recv.field`, `_field_receiver_ok`) -- the bytes sibling of
-    `_str_field_value_read`. An owned `std::vector<uint8_t>` member reads bare
-    as STORAGE, a `BytesView` (span) member as BORROW; the render is bare
-    `.field` at every position that admits the read (print sink, compare/concat
-    operands, membership needle). An unbound-self `BaseN.field` read joins
-    the row like its str twin."""
-    if not (isinstance(e, TpyFieldAccess)
-            and _field_receiver_or_unbound_self_ok(e, declared, analyzer)):
-        return False
-    bt = _resolved_bytes_value(analyzer.get_expr_type(e), analyzer)
+def _bytes_view_family_value(t: TpyType | None, analyzer) -> bool:
+    """The bytes/BytesView slice of `_resolved_bytes_value` -- the bytes twin
+    of `_str_view_family_value`. An owned `::tpy::Bytes` member reads bare as
+    STORAGE, a `BytesView` (span) member as BORROW; the render is the bare
+    `.field` tail at every position that admits the read, so the RECEIVER is
+    the field ladder's question, not this row's."""
+    bt = _resolved_bytes_value(t, analyzer)
     return bt is not None and (is_bytes_type(bt) or is_bytes_view_type(bt))
 
 def _const_exact_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
@@ -7130,7 +7217,8 @@ def _field_markers_clean(e: TpyFieldAccess, *,
     `allow_optional_check` keeps `needs_optional_runtime_check` admissible for the
     Optional-element member path (which reproduces that runtime check)."""
     return not (e.module_var_access is not None or e.class_constant_owner is not None
-                or e.property_getter_call is not None or e.dyn_getattr_call is not None
+                or e.property_getter_call is not None
+                or e.dyn_getattr_call is not None
                 or e.property_setter_call is not None or e.dyn_setattr_call is not None
                 or e.unbound_self_parent_type is not None or e.deref_depth
                 or e.deref_narrowed_to is not None
@@ -7286,8 +7374,47 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
     return None
 
 
+def _chained_subscript_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
+                                 analyzer,
+                                 pointers: 'AbstractSet[str]',
+                                 ) -> 'TpyType | None':
+    """The container binding type of a subscript's RECEIVER, one hop wider
+    than `_subscript_container_recv_type`'s name / one-level-field slice: a
+    receiver that is itself a container-ELEMENT lvalue, either a field off a
+    record element (`a.bs[0].as_`) or a nested-container element (`cube[i]`).
+
+    Such a hop is a rooted lvalue -- no temporary is minted, so a borrow taken
+    out of the outer read points into storage the root outlives -- and it
+    renders as its own checked `__getitem__` / member nest off a receiver
+    whose own arm gates its shape, so its binding type is the hop's own
+    expression type. The no-temporary proof is `_lvalue_chain_root`'s, the one
+    rooted-lvalue walker (the for-each iterable and the tuple-unpack source
+    read the same one); the ELEMENT family check stays with the caller.
+
+    `pointers` is the body's pointer BINDING set -- the same one the deref
+    render keys on, and the only thing that tells a None-narrowed pointer-repr
+    `Optional[container]` receiver from an un-narrowed one. It is required,
+    not per-caller: a receiver whose narrowing sema has proven resolves to the
+    narrowed INNER here, so no caller re-applies `_narrowed_ptr_opt_recv`
+    itself and none can forget to."""
+    t = _subscript_container_recv_type(recv, locals_, analyzer,
+                                       narrowed_ok=True)
+    if t is None:
+        if _lvalue_chain_root(recv, locals_, analyzer, pointers) is None:
+            return None
+        if isinstance(recv, TpyFieldAccess):
+            t = _field_decl_type(recv, locals_, analyzer)
+        else:
+            rt = analyzer.get_expr_type(recv)
+            t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+                 if rt is not None else None)
+    nptr = _narrowed_ptr_opt_recv(recv, t, pointers)
+    return t if nptr is None else nptr
+
+
 def _container_elem_lvalue_subscript(e: TpyExpr, locals_: dict[str, TpyType],
-                                     analyzer) -> bool:
+                                     analyzer,
+                                     pointers: 'AbstractSet[str]') -> bool:
     """`e` is a plain container-ELEMENT subscript whose read is a live lvalue:
     a single index (no slice), no Optional runtime check pending on it, off a
     receiver shape `_subscript_container_recv_type` resolves, and an accessor
@@ -7307,7 +7434,7 @@ def _container_elem_lvalue_subscript(e: TpyExpr, locals_: dict[str, TpyType],
             and e.slice_function_info is None
             and not e.needs_optional_runtime_check):
         return False
-    recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
+    recv_t = _chained_subscript_recv_type(e.obj, locals_, analyzer, pointers)
     if recv_t is None or isinstance(unwrap_qualifiers(recv_t), TupleType):
         return False
     return (e.getitem_function_info is None
@@ -8113,6 +8240,30 @@ def _param_is_const(name: str, func: TpyFunction, analyzer,
     return _param_const_verdict(name, func, analyzer, record_name,
                                 "const_borrow_params")
 
+def _vararg_pack_is_const(name: str, func: TpyFunction) -> bool:
+    """Whether `name` is a `*args` pack whose ELEMENTS are const. A pack's
+    const-ness is not in `const_borrow_params`: sema flips an unmutated pack's
+    slot to `varargs[readonly[T]]`, and the pack's own spelling
+    (`varargs_elem_cpp` -> `varargs<const T>`) reads that flip. A consumer
+    asking `_param_is_const` alone reads False here and spells a mutable
+    borrow out of a const element."""
+    if func.vararg_name != name:
+        return False
+    ptype = next((t for n, t in func.params if n == name), None)
+    return ptype is not None and varargs_is_readonly(unwrap_ref_type(ptype))
+
+def _ptr_pointee_is_readonly(name: str, func: TpyFunction) -> bool:
+    """Whether `name` is a pointer param whose POINTEE is readonly. A
+    `Ptr[readonly[T]]` carries its const on the pointee (`const T*`), so
+    there is no top-level `ReadonlyType` and no param-index verdict for a
+    consumer to read -- the same shape `_poly_subject_const` answers off the
+    dispatch subject's expression type, asked here of the name."""
+    ptype = next((t for n, t in func.params if n == name), None)
+    if ptype is None:
+        return False
+    bare = unwrap_send_sync(unwrap_ref_type(ptype))
+    return is_readonly_ptr(bare)
+
 def _forced_const_dropped(name: str, func: TpyFunction, analyzer,
                           record_name: str | None) -> bool:
     """The slices `decide_param_const` drops const for even when the caller
@@ -8143,26 +8294,56 @@ def _forced_const_dropped(name: str, func: TpyFunction, analyzer,
     ).signature_const
 
 def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
-    """The const-borrow-source verdict for a bare name: a param under the
-    deep-const or const-borrow verdicts. The third arm
-    (ReadonlyType declared type) never fires for admitted subjects -- the
-    poly/dyn admission requires the declared entry fully unwrapped, so a
-    readonly-declared name rejects before const-ness is consulted.
+    """The const-borrow-source verdict for a bare name, and the ONLY one:
+    every site that asks whether a borrow rooted at `name` must spell
+    `const T` reads this, so a source family added here reaches all of them
+    (the tuple-unpack source, the for-each capture via
+    `_iteration_yields_const`, the polymorphic-dispatch subjects). A second
+    assembler is how the `*args` leg below reached the loop-var question and
+    not the standalone unpack, spelling `Box*` out of `varargs<const Holder>`.
+
+    The families: a const LOOP VAR (`lc.const_loop_vars`, where the for-each
+    head decides it -- it is in neither param set), an unmutated `*args` pack
+    (its const-ness is the element flip, not a param verdict), a `@readonly`
+    method's receiver (which never appears in the param-index verdict sets,
+    the const living on the method instead), a pointer param whose POINTEE is
+    readonly (`Ptr[readonly[T]]`, whose const is likewise outside the param
+    verdicts), and a param under the deep-const
+    or const-borrow verdicts. A ReadonlyType declared type needs no arm for
+    admitted subjects -- the poly/dyn admission requires the declared entry
+    fully unwrapped, so a readonly-declared name rejects before const-ness is
+    consulted.
 
     `const_locals=True` adds the locally declared readonly names -- the
     tuple-unpack RECEIVER asks it, because a `tuple_to_pointer` wrap off a
-    const local must spell `const T*` elements. It is the only extra
-    receiver family the body tracks: a const LOOP VAR is in neither set, so
-    the unpack off one still spells mutable element pointers
-    (BUGS.md#unpack-recv-const-misses-loop-var). The verdict cannot
-    disagree with an unpack target's use -- a body that writes through an
-    unpacked element marks the param mutated, which drops the const
-    verdict."""
+    const local must spell `const T*` elements; the for-each capture does
+    not, its const wrap being unresolved (see `_iteration_yields_const`).
+    The verdict cannot disagree with an unpack target's use -- a body that
+    writes through an unpacked element marks the param mutated, which drops
+    the const verdict."""
+    if name in lc.const_loop_vars:
+        return True
     if const_locals and name in lc.const_locals:
         return True
     f = _const_verdict_func(name, lc)
-    return (_param_is_deep_const(name, f, lc.analyzer, lc.record_name)
-            or _param_is_const(name, f, lc.analyzer, lc.record_name))
+    if (_param_is_deep_const(name, f, lc.analyzer, lc.record_name)
+            or _param_is_const(name, f, lc.analyzer, lc.record_name)
+            or _vararg_pack_is_const(name, f)
+            or _ptr_pointee_is_readonly(name, f)):
+        return True
+    return name == lc.self_receiver and _readonly_self(lc)
+
+def _readonly_self(lc) -> bool:
+    """Whether the enclosing method's receiver is const. A DECLARED-or-
+    INFERRED `@readonly` verdict lives on the method's own FunctionInfo, not
+    in the param-index sets -- `self` has no param index -- and the inferred
+    half is decided after the bodies are analyzed, so the overload set is the
+    only place that answers."""
+    if not lc.record_name or lc.func.is_nested_def:
+        return False
+    ri = lc.analyzer.registry.get_record(lc.record_name)
+    ovs = ri.get_method_overloads(lc.func.name) if ri is not None else None
+    return bool(ovs and ovs[-1].is_readonly)
 
 def _already_pointer_source(expr: TpyExpr, lc) -> bool:
     """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a
@@ -8195,7 +8376,7 @@ def _poly_subject_const(expr: TpyExpr, lc) -> bool:
     # `Ptr[readonly[T]]` carries the const on the POINTEE (`const T*`), so a
     # top-level ReadonlyType never appears -- the cast pair still has to
     # target `const Sub*` or the dynamic_cast casts away constness.
-    if isinstance(st, PtrType) and isinstance(st.pointee, ReadonlyType):
+    if is_readonly_ptr(st):
         return True
     while isinstance(expr, (TpyFieldAccess, TpySubscript)):
         expr = expr.obj
@@ -8205,8 +8386,7 @@ def _poly_subject_const(expr: TpyExpr, lc) -> bool:
     return False
 
 def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
-                 stmt: TpyVarDecl, func: TpyFunction, analyzer,
-                 const_locals: set[str], record_name: str | None = None) -> bool:
+                 stmt: TpyVarDecl, lc) -> bool:
     """The const-ness of an F1 borrow local's decl (`const T&` / `const T*`).
 
     A field source is const through the ReadonlyType reads (the optional
@@ -8220,21 +8400,20 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
     The arms that read only the init EXPRESSION live in
     `_expr_is_const_source`, shared with the walrus derivation; what stays
     here is what needs the decl node or the binding kind."""
+    func, analyzer = lc.func, lc.analyzer
+    record_name = lc.record_name
     if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
         return True
     svt = analyzer.var_types.get(stmt)
     if isinstance(svt, OptionalType) and isinstance(svt.inner, ReadonlyType):
         return True
-    if _expr_is_const_source(stmt.init, func, analyzer, const_locals,
-                             record_name):
+    if _expr_is_const_source(stmt.init, lc):
         return True
     if binding is LocalBinding.OPTIONAL_TO_PTR:
         if isinstance(stmt.init, TpyName):
             # The name-copy row: const-ness follows the SOURCE pointer
             # (`const Point* q = a;` off a const Optional param/local).
-            if (stmt.init.name in const_locals
-                    or _param_is_const(stmt.init.name, func, analyzer,
-                                       record_name)):
+            if _const_borrow_name(stmt.init.name, lc, const_locals=True):
                 return True
         elif isinstance(stmt.init, (TpyFieldAccess, TpySubscript)):
             # The storage-optional const bump reads the field/subscript
@@ -8244,9 +8423,7 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
             # for them).
             recv = stmt.init.obj
             if isinstance(recv, TpyName):
-                if (recv.name in const_locals
-                        or _param_is_const(recv.name, func, analyzer,
-                                           record_name)
+                if (_const_borrow_name(recv.name, lc, const_locals=True)
                         or _opt_ptr_param_deep_const(recv.name, func,
                                                      analyzer, record_name)):
                     return True
@@ -8264,42 +8441,34 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
     # const-ref param -> `const T* x = &(a);`) roots the same way -- the
     # bare-name branch.
     if binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER) \
-            and _f1_const_rooted_source(
-                stmt.init, func, analyzer, const_locals, record_name):
+            and _f1_const_rooted_source(stmt.init, lc):
         return True
     return False
 
-def _f1_const_rooted_source(expr: TpyExpr, func: TpyFunction, analyzer,
-                            const_locals: set[str],
-                            record_name: str | None) -> bool:
+def _f1_const_rooted_source(expr: TpyExpr, lc) -> bool:
     """Mirror of codegen's `is_const_union_source`: True when `expr` is an
-    lvalue rooted in a const source (param in `const_borrow_params` / const F1
-    local), recursing through chained field/subscript access to the base name."""
+    lvalue rooted in a const source, recursing through chained
+    field/subscript access to the base name. Which SOURCES are const is
+    `_const_borrow_name`'s to say and not re-listed here -- a const LOOP VAR
+    is one of them, and a borrow taken out of one (`x = h`, `x = h.b`) must
+    bind `const T&` or the C++ reference discards qualifiers."""
     if isinstance(expr, TpyCoerce):
-        return _f1_const_rooted_source(expr.expr, func, analyzer, const_locals, record_name)
+        return _f1_const_rooted_source(expr.expr, lc)
     if isinstance(expr, TpyName):
-        # A bare-name alias source (`w = v`): const iff the aliased name is a
-        # const F1 local or a const/deep-const borrow param -- the name branch
-        # of the indirect-const rule.
-        return (expr.name in const_locals
-                or _param_is_const(expr.name, func, analyzer, record_name)
-                or _param_is_deep_const(expr.name, func, analyzer, record_name))
+        return _const_borrow_name(expr.name, lc, const_locals=True)
     if isinstance(expr, (TpyFieldAccess, TpySubscript)):
         obj = expr.obj
         if isinstance(obj, TpyName):
             # The Optional-ptr param disjunct mirrors const_indirect_locals
             # membership (seed_param_locals' deep-const seeding); a const
             # OPTIONAL_TO_PTR local rides `const_locals` like any F1 local.
-            return (obj.name in const_locals
-                    or _param_is_const(obj.name, func, analyzer, record_name)
-                    or _opt_ptr_param_deep_const(obj.name, func, analyzer,
-                                                 record_name))
-        return _f1_const_rooted_source(obj, func, analyzer, const_locals, record_name)
+            return (_const_borrow_name(obj.name, lc, const_locals=True)
+                    or _opt_ptr_param_deep_const(obj.name, lc.func,
+                                                 lc.analyzer, lc.record_name))
+        return _f1_const_rooted_source(obj, lc)
     return False
 
-def _expr_is_const_source(src: TpyExpr, func: TpyFunction, analyzer,
-                          const_locals: set[str],
-                          record_name: str | None) -> bool:
+def _expr_is_const_source(src: TpyExpr, lc) -> bool:
     """The const-ness a borrow binding's SOURCE EXPRESSION carries on its own,
     independent of the binding kind and of any decl node: a readonly raw sema
     type, a readonly method / dunder whose borrow return is const-projected on
@@ -8307,6 +8476,7 @@ def _expr_is_const_source(src: TpyExpr, func: TpyFunction, analyzer,
 
     Shared by the decl (`_f1_is_const`) and walrus (`_walrus_src_is_const`)
     derivations so the two cannot drift; each adds the arms only it can see."""
+    analyzer = lc.analyzer
     if isinstance(analyzer.get_expr_type(src), ReadonlyType):  # raw sema type
         return True
     # A readonly method's ref return binds `const T&` -- the method-call
@@ -8336,12 +8506,9 @@ def _expr_is_const_source(src: TpyExpr, func: TpyFunction, analyzer,
     # twin regardless) -- the receiver-const arm of the indirect-const
     # rule.
     return (isinstance(src, (TpySubscript, TpyMethodCall))
-            and _f1_const_rooted_source(src.obj, func, analyzer,
-                                        const_locals, record_name))
+            and _f1_const_rooted_source(src.obj, lc))
 
-def _walrus_src_is_const(src: TpyExpr, func: TpyFunction, analyzer,
-                        const_locals: set[str],
-                        record_name: str | None) -> bool:
+def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
     """`const T*` for a walrus borrow-alias / pointer-Optional predecl: the
     source expression is const on its own (`_expr_is_const_source`), it is a
     select with a const arm, or its lvalue is rooted in a const param / const
@@ -8351,7 +8518,7 @@ def _walrus_src_is_const(src: TpyExpr, func: TpyFunction, analyzer,
     keys `var_types` and `stmt.init` off a TpyVarDecl node a walrus has not
     got. What the two share is the expression-keyed core; the rest of
     `_f1_is_const` reads a binding kind the walrus ladder decides for itself."""
-    if _expr_is_const_source(src, func, analyzer, const_locals, record_name):
+    if _expr_is_const_source(src, lc):
         return True
     if isinstance(src, TpyIfExpr):
         # A select is const-rooted iff EITHER arm is: the C++ `?:` over a const
@@ -8359,12 +8526,9 @@ def _walrus_src_is_const(src: TpyExpr, func: TpyFunction, analyzer,
         # here rather than in `_f1_const_rooted_source`, which deliberately
         # mirrors codegen's `is_const_union_source` and answers False for a
         # ternary.
-        return (_walrus_src_is_const(src.then_expr, func, analyzer,
-                                     const_locals, record_name)
-                or _walrus_src_is_const(src.else_expr, func, analyzer,
-                                        const_locals, record_name))
-    return _f1_const_rooted_source(src, func, analyzer, const_locals,
-                                   record_name)
+        return (_walrus_src_is_const(src.then_expr, lc)
+                or _walrus_src_is_const(src.else_expr, lc))
+    return _f1_const_rooted_source(src, lc)
 
 def _declared_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:
     # Codegen's `get_resolved_type` for a NAME: the tracked DECLARED type, not
@@ -9171,6 +9335,42 @@ def _nonvalue_container_ret(ret: TpyType | None) -> bool:
         return False
     t = unwrap_readonly(unwrap_send_sync(ret))
     return _f1_container_ref(t)
+
+def _by_value_property_iterable(it: 'TpyExpr', analyzer) -> bool:
+    """A @property for-each iterable whose getter hands its result back BY
+    VALUE -- an `Own[...]` return, or a value-typed one (`str`, `bytes`, a
+    view such as `StrView` / `Span[T]`): everything the getter's return
+    convention does not spell as a C++ reference. A value TUPLE is not on
+    the list: sema refuses iterating a tuple before this gate is asked.
+
+    Both for-each routes hold something that must outlive the setup
+    statement: the sync route binds `auto& __obj_N = c.items();`, the
+    resumable frame stores `__for_it_N` / `__for_end_N` off the same read.
+    A by-value getter result is a temporary destroyed at the end of that
+    statement, so neither shape is expressible -- the sync render is
+    ill-formed C++, the frame render compiles and dangles.
+
+    The convention is read from `property_access_returns_cpp_ref`, the one
+    home that already knows a getter spells the two pointer-repr shapes as
+    the FIELD's storage reference where a plain method returns them by
+    value, and that a bare type-param return is a reference or not per the
+    RECEIVER's instantiation; re-deriving it from the annotation would
+    answer Own-only and miss the value-typed getters. Asked of the getter,
+    not through `is_rvalue_source`: that also answers rvalue for a
+    REFERENCE-returning getter off a temporary receiver, which is a
+    different defect with its own conceded tier
+    (`BUGS.md#readonly-borrow-of-temporary-receiver`) and not this fence's
+    question.
+
+    One predicate for both routes on purpose: the frame keeps its
+    iterators across suspensions, so a shape the sync route cannot hold
+    for one statement is never safe there
+    (`BUGS.md#own-property-iterable-materialize`).
+    """
+    if not (isinstance(it, TpyFieldAccess)
+            and it.property_getter_call is not None):
+        return False
+    return not property_access_returns_cpp_ref(analyzer, it)
 
 def _resolve_literal_seeded(t: 'TpyType | None', analyzer) -> 'TpyType | None':
     """Resolve a literal-seeded analyzer type to its final form: a PENDING

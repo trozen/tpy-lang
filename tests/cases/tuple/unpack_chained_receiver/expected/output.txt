@@ -1,0 +1,34 @@
+subscript_field 1 7
+subscript_field caller 7
+field_field 3 11
+field_field caller 11
+loop_var 5 15
+loop_var 7 19
+loop_var caller 15 19
+nested_loop 13 31
+nested_loop 15 35
+nested_loop caller 31 35
+read_only 9 18
+readonly_loop 9 18
+value_elements h 9
+pack_read 31 62
+pack_read 33 66
+pack_bump 31 67
+pack_bump 33 71
+pack caller 67 71
+pack_direct 35 70
+pack_direct_bump 35 75
+pack_direct caller 75
+ptr_root_bump 41 87
+ptr_root_read 41 87
+ptr_root caller 87
+ptr_ro_read 43 86
+ptr_ro_loop 43 86
+ro_field_loop 43 86
+ref_getitem_hop 21 47
+ref_getitem_hop caller 47
+ref_property_hop 23 51
+ref_property_hop caller 51
+self_chain 11 27
+self_chain caller 27
+self_chain_readonly 11 27

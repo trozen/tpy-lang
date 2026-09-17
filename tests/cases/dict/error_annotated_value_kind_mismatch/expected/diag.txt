@@ -1,0 +1,1 @@
+main.py:8: error: Type mismatch in variable 'd': expected list[int32], got set[int32]

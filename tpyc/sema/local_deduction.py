@@ -50,7 +50,8 @@ from ..typesys import (
     unwrap_readonly,
     unwrap_ref_type,
 )
-from .context import PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT, contains_pending_leaf
+from .context import (PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT,
+                      contains_pending_leaf)
 from ..namespace import BindingKind
 from ..diagnostics import SemanticError
 from .numeric_lattice import (
@@ -60,6 +61,7 @@ from .numeric_lattice import (
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
+    is_enum_type,
     is_borrowing_view_type,
 )
 
@@ -77,6 +79,28 @@ def _contains_literal_type(typ: TpyType) -> bool:
             for e in typ.element_types
         )
     return False
+
+
+def is_enum_name_read(expr: 'TpyExpr', ctx: 'SemanticContext') -> bool:
+    """True for an enum member's `.name`.
+
+    Its value is a view of EnumUtil's STATIC member-name table, not of the
+    receiver (sema types it STRVIEW in `sema/expressions.py`), so it has the
+    static lifetime a `str` literal has. The fact belongs to the FIELD, not
+    to the receiver: `.value` off the same receiver is the underlying value
+    and borrows nothing static. Spelled once because both view classifiers
+    (`is_view_compatible_source` and `_is_static_view_leaf`) need it and a
+    second spelling could answer differently.
+
+    The read's own STRVIEW type is part of the question, not a caller's
+    precondition: the claim being made is about a view of that table, so a
+    read typed anything else cannot be answered True here and leave a
+    caller that forgot the guard asserting static lifetime for it.
+    """
+    return (isinstance(expr, TpyFieldAccess)
+            and expr.field == "name"
+            and is_str_view_type(ctx.get_expr_type(expr))
+            and is_enum_type(ctx.get_expr_type(expr.obj)))
 
 
 def walk_view_source_leaves(expr: 'TpyExpr', leaf_fn: 'Callable[[TpyExpr], list]') -> 'list':
@@ -990,6 +1014,13 @@ class LocalTypeDeduction:
         - A Final[str] constant (constexpr string_view)
         - A function returning a view type
         - Subscript on lvalue tuple (immutable, stable element storage)
+        - Subscript on a NAME container whose element storage is stable
+        - A one-hop read of a record field off a NAME receiver
+
+        The field read's remaining escapes -- a record handed out where a
+        write can reach it without the view being demoted -- are
+        BUGS.md#field-view-escape-needs-place, which also holds the design
+        for re-admitting the deeper chain this arm still copies.
 
         Note: bytes literals are NOT view-safe (temporary vectors, unlike string
         literals which have static storage).
@@ -1090,7 +1121,13 @@ class LocalTypeDeduction:
         if isinstance(init_expr, TpyFieldAccess) and self.compat.is_lvalue(init_expr):
             if init_expr.is_property_access and init_expr.property_getter_call is not None:
                 return not self.compat.is_dangling_return(init_expr.property_getter_call)
-            if isinstance(init_expr.obj, TpyName):
+            # `str` only. A `bytes` field read did not compile at all before
+            # this batch (a THIR reject), so admitting it as a VIEW would
+            # newly hand out a span that the escapes in
+            # BUGS.md#field-view-escape-needs-place can outlive -- a dangle
+            # class master does not have. The owned `::tpy::Bytes` copy
+            # admits the same programs with no such window.
+            if is_str and isinstance(init_expr.obj, TpyName):
                 return True
 
         # INVARIANT: the compound arms this predicate accepts (and/or, ternary
@@ -1140,7 +1177,8 @@ class LocalTypeDeduction:
         """A view-source leaf that stays safe across a resumable-frame
         suspension: static storage (str/bytes literal, `Literal[str]`-typed
         name or call -- every value a compile-time literal -- or a
-        `Final[str]` constant), or an explicit view-typed (StrView/BytesView)
+        `Final[str]` constant, or an enum member's `.name` -- see
+        `is_enum_name_read`), or an explicit view-typed (StrView/BytesView)
         PARAM -- the caller-side borrow check backs the user's view contract
         for the whole call, so the referent outlives the frame. An explicit
         view-typed LOCAL is NOT safe: its own borrow is unchecked against
@@ -1157,6 +1195,8 @@ class LocalTypeDeduction:
         `walk_view_source_leaves`; when adding a source shape to either,
         audit the other."""
         if isinstance(e, (TpyStrLiteral, TpyBytesLiteral)):
+            return True
+        if is_enum_name_read(e, self.ctx):
             return True
         if isinstance(e, TpyName):
             func = self.ctx.func.current_function

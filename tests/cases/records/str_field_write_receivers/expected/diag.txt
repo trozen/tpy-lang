@@ -1,0 +1,1 @@
+main.py:157: warning: Mutation of 'o.inner' while borrowed (field assignment may invalidate references)

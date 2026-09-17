@@ -1074,7 +1074,7 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
         # ordered_map render, pushed bare -- typed_brace no-ops on it.
         value = _lower_checked_container_elem(
             e, vt, lc, body_declared, threaded=True, forced=True,
-            allow_nested=True, field_str_ok=True)
+            allow_nested=True)
     elif isinstance(e, TpyListRepeat):
         # A list-REPEAT element (`[[0.0] * n for _ in range(k)]`): the slot is
         # its materialization target, so the repeat renders self-describing
@@ -1617,8 +1617,13 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
             # allow_temps: the emit's yield_lines flushes element temps
             # into the lambda body per iteration, so the element is a
             # flush position -- the range flavor's twin.
+            # field_owned_str_ok: a view-family FIELD element renders the
+            # bare member read and the yield slot's optional constructs
+            # from it, the same way it absorbs a view-form loop var.
             element = _lower_expr(expr.element_expr, lc, body_declared,
-                                  use=_ExprUse(allow_temps=True))
+                                  use=_ExprUse(allow_temps=True),
+                                  field_owned_str_ok=isinstance(
+                                      expr.element_expr, TpyFieldAccess))
             # Filter conditions render inside the lambda body against the
             # loop vars (the comp slice's truthy lowering; per-iteration
             # temps flush at emit).

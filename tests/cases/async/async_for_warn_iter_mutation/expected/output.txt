@@ -1,2 +1,10 @@
 post_loop: [9]
 nested: [0, 1] [0, 0]
+hop: [0, 1]
+field_hop: 2
+elem_distinct: [0, 1]
+elem_unknown: [0, 1]
+elem_container: 0
+elem_container: 1
+elem_container len: 3
+ptr_iter: [0, 1]

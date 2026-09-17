@@ -1,3 +1,4 @@
+module cube [20, 21]
 2
 [1, 2]
 6
@@ -5,3 +6,19 @@
 106
 3
 [2, 3, 4]
+deep len 1
+deep cmp True
+deep sub 9
+deep free 18 [9, 2, 3, 4]
+deep method 3 [1, 8, 9]
+deep dict outer 2 [1, 5]
+deep dict inner 2 [1, 6]
+deep readonly 4
+deep loop root 2 [1, 7]
+deep finally 3
+deep control 3 [1, 7, 1]
+deep gen 1
+deep gen 1
+deep gen 11
+deep gen after [1, 11]
+deep async 2 [1, 12]

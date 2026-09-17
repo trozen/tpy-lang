@@ -593,8 +593,10 @@ class _Replay:
                 self.warn(stmt, name, var_type, clobbered)
 
     def local_type(self, name: str, value: TpyExpr | None) -> TpyType | None:
-        decl = self.ctx.func.var_decl_by_name.get(name)
-        t = self.ctx.var_types.get(decl) if decl is not None else None
+        """The local's DECLARED slot type: a rebind's own rvalue answers the
+        narrower question "what is being stored", and `in_place_unrenderable`
+        asks the wider one -- what the slot may hold at the site."""
+        t = self.ctx.local_decl_type(name)
         if t is None and value is not None:
             t = self.ctx.get_expr_type(value)
         return t

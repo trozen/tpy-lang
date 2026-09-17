@@ -5,3 +5,5 @@ True
 <RED>
 RED
 ['GREEN']
+frame yield 3
+frame RED

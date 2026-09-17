@@ -1,0 +1,2 @@
+main.py:28: warning: Mutation of 'self.items' while iterating over it ('append' invalidates the iterator)
+main.py:27: error: in function 'grow': this construct is not yet supported by C++ code generation (stmt.for_each:foreach.field_parent)

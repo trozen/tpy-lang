@@ -13,6 +13,12 @@ struct Sub;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_bump_gen;
+
+// def bump_all(h: Holder[int32, list[Rec]]) -> None:
+void bump_all(Holder<int32_t, std::vector<Rec>>& h);
+// def bump_gen(h: Holder[int32, list[Rec]]) -> Iterator[int32]:
+__gen_bump_gen bump_gen(Holder<int32_t, std::vector<Rec>>& h);
 // def main() -> None:
 void main();
 
@@ -111,6 +117,32 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
     ::tpy::print_object_default(os, "Sub", obj);
     return os;
 }
+
+// def bump_gen(h: Holder[int32, list[Rec]]) -> Iterator[int32]:
+struct __gen_bump_gen : public ::tpy::next_iter_mixin<__gen_bump_gen, int32_t> {
+    int32_t __state;
+    Holder<int32_t, std::vector<Rec>>& h;
+    Rec* r = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_bump_gen(Holder<int32_t, std::vector<Rec>>& h)
+        : __state(S_INITIAL), h(h) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_bump_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_bump_gen&) {
+        return os << "<generator bump_gen>";
+    }
+};
 
 
 // def __init__(self, x: int32):

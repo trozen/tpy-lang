@@ -30,6 +30,7 @@ from ..typesys import (
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, error_return_uses_borrow_slot, unwrap_ref_type,
+    property_getter_returns_storage_ref,
     bare_name, recorded_return_borrow_sources,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
@@ -1546,20 +1547,19 @@ class FunctionGenerator:
             ret_type_class = cpp_record_qualified if is_def_mode else escape_cpp_name(rec_short)
             ret_type = f"{ret_type_class}&"
         elif method.is_property_getter:
-            # Property getters return references to fields. For pointer-repr types
-            # (Optional[non-value], Union[non-value]), use the storage type
-            # (std::optional<T>&, ::tpy::Union<A,B>&) instead of method convention
-            # (T*, variant<A*,B*>). Other types use normal _resolve_return_type.
+            # A property getter returns a reference to the field. Which shapes
+            # take the STORAGE spelling rather than the method convention is
+            # `property_getter_returns_storage_ref`'s call -- the same one the
+            # value-category rule reads to classify a call of this getter.
             inner = unwrap_ref_type(cpp_return_type)
-            if isinstance(inner, OptionalType) and inner.uses_pointer_repr():
-                storage = f"std::optional<{inner.inner.to_cpp()}>"
-                ret_type = f"const {storage}&" if const else f"{storage}&"
-            elif self.ctx.is_ptr_variant_union(inner):
-                # Read the storage type rather than spelling a head: a
-                # reference to the BASE variant binds to the field and then
-                # compares index-first, silently losing the storage form's
-                # comparison rule at every use of the property.
-                storage = self.types.type_to_cpp(inner)
+            if property_getter_returns_storage_ref(inner):
+                # The union storage type is READ rather than spelled from a
+                # head: a reference to the BASE variant binds to the field and
+                # then compares index-first, silently losing the storage
+                # form's comparison rule at every use of the property.
+                storage = (f"std::optional<{inner.inner.to_cpp()}>"
+                           if isinstance(inner, OptionalType)
+                           else self.types.type_to_cpp(inner))
                 ret_type = f"const {storage}&" if const else f"{storage}&"
             else:
                 ret_type = self._resolve_return_type(cpp_return_type, const=const,

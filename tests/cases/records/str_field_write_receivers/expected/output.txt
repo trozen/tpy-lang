@@ -1,0 +1,19 @@
+module: mod-nested 9 mod-hops
+free:
+  row: row0 4
+  tab: tab
+  nested: f-nested t2
+  hops: f-hops
+values: f-view mid!
+locals: a+ l-elem+ l-tag l-dict 3
+property: inner p-getter-replacement-long-enough-to-reallocate
+box: b-call 2
+demote nested: inner d-nested-replacement-long-enough-to-reallocate
+demote loop: held d-loop-replacement-long-enough-to-reallocate
+method: m-nested 5 m-hops
+ctor: c-nested
+gen: 0 g-nested 8
+with: w-nested
+try: t-elem t-hops
+match: match-one
+nested_def: n-nested

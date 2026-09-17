@@ -1,5 +1,15 @@
 ro 6
 mut 11 12 14
+sub hop 2
+sub hop 3
+sub hop after 2 3
+chain hop 2
+chain hop 3
+chain hop after 2 3
+async chain hop 5 2 3
+alias ro 1
+alias mut 2
+alias async 3 3
 callee 5
 callee 6
 callee 9

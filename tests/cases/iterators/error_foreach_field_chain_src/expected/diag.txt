@@ -1,0 +1,1 @@
+main.py:41: error: in function 'bump': this construct is not yet supported by C++ code generation (stmt.for_each:foreach.iter_borrow_unplaceable)

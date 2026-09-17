@@ -1498,7 +1498,13 @@ class SemanticAnalyzer:
         locals_dict: dict[str, 'TpyType'] = {}
         for name, binding in local_ns.all_bindings().items():
             if keep(name) and binding.type is not None and not binding.frame_exempt:
-                locals_dict[name] = binding.type
+                # The frame FIELD is the local's slot, so it is typed at the
+                # declaration: the binding carries what the body walk last
+                # stored, which a rebind to a narrower rvalue (a container
+                # literal at an `xs: list[T] | None` local) would otherwise
+                # impose on the field.
+                decl_type = self.ctx.local_decl_type(name)
+                locals_dict[name] = binding.type if decl_type is None else decl_type
         for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
             if keep(name) and vtype is not None:
                 locals_dict[name] = vtype

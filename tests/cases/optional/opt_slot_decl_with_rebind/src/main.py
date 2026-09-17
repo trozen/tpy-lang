@@ -4,9 +4,10 @@
 # one slot per name, so the rebind neither leaks the first binding nor
 # invalidates the pointer. A literal fills the slot, so the pointer is never
 # null; the sibling first binding that CAN leave it empty (an optional field
-# off a dying temporary) keeps rejecting, pinned by
-# `error_opt_slot_field_rebind`. The list bindings are mutated after they are
-# taken, so a copy would show up as a lost element.
+# off a dying temporary) takes the same slot and compiles too, with a pointer
+# that is null whenever the field was None -- one slot per name holds either
+# way (`optional/opt_slot_field_rebind`). The list bindings are mutated after
+# they are taken, so a copy would show up as a lost element.
 from tpy import int32, Own
 
 

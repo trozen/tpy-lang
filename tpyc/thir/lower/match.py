@@ -1113,7 +1113,7 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
     for name, raw in analyzer.if_branch_decls.get(stmt, {}).items():
         if name in declared:
             continue
-        if name in prescan.native_globals:
+        if prescan.binds_global(name):
             return None
         vtype = unwrap_ref_type(raw)
         # A plain-VALUE hoist decl (`T t;`) is position-neutral: the

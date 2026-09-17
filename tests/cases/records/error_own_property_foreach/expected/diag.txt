@@ -1,1 +1,1 @@
-main.py:21: error: in function 'use': this construct is not yet supported by C++ code generation (stmt.for_each:foreach.own_property_iter)
+main.py:26: error: in function 'use': this construct is not yet supported by C++ code generation (stmt.for_each:foreach.by_value_property_iter)

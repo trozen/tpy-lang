@@ -1,0 +1,1 @@
+main.py:34: error: in function 'gen': this construct is not yet supported by C++ code generation (res.for_iter_borrow_unplaceable)

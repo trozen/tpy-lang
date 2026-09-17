@@ -236,6 +236,229 @@ void match_capture_position() {
     std::cout << "match_capture:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
 }
 
+// def branch_body_position() -> None:
+//     # a nested def bound inside an `if` body: Python makes the name a local of
+//     # the WHOLE enclosing scope, so this read is the nested one, not the
+//     # module function. A read AFTER the block is an error whatever the paths
+//     # bound (nested_def/error_branch_local_read_after)
+//     flag = True
+//     if flag:
+//         def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//             xs.append(11)
+//             return len(xs)
+//
+//         data = [1]
+//         print("branch_body:", tally(data), data)
+void branch_body_position() {
+    bool flag = true;
+    if (flag) {
+        auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+            xs.push_back(11);
+            return ::tpy::__len__(xs);
+        };
+        std::vector<int32_t> data = {1};
+        std::cout << "branch_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    }
+}
+
+// def loop_body_position() -> None:
+//     # loop body: the same rule, and the binding does not outlive the loop --
+//     # which is why a read after the loop is rejected
+//     data = [2]
+//     for i in range(2):
+//         def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//             xs.append(12)
+//             return len(xs)
+//
+//         print("loop_body:", tally(data), data)
+void loop_body_position() {
+    std::vector<int32_t> data = {2};
+    for (int32_t i = 0; i < 2; ++i) {
+        auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+            xs.push_back(12);
+            return ::tpy::__len__(xs);
+        };
+        std::cout << "loop_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    }
+}
+
+// def while_body_position() -> None:
+//     # while body: the same rule as the `for` above, read inside the block
+//     data = [5]
+//     n = 0
+//     while n < 2:
+//         def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//             xs.append(15)
+//             return len(xs)
+//
+//         print("while_body:", tally(data), data)
+//         n += 1
+void while_body_position() {
+    std::vector<int32_t> data = {5};
+    int32_t n = 0;
+    while ((n < 2)) {
+        auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+            xs.push_back(15);
+            return ::tpy::__len__(xs);
+        };
+        std::cout << "while_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        n = ::tpy::add_check<int32_t>(n, 1);
+    }
+}
+
+// def with_body_position() -> None:
+//     # `with` body: the block always runs, so the read reaches the binding
+//     data = [6]
+//     with Guard():
+//         def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//             xs.append(16)
+//             return len(xs)
+//
+//         print("with_body:", tally(data), data)
+void with_body_position() {
+    std::vector<int32_t> data = {6};
+    auto __ctx_1 = Guard();
+    __ctx_1.__enter__();
+    try {
+        auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+            xs.push_back(16);
+            return ::tpy::__len__(xs);
+        };
+        std::cout << "with_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        goto __with_exit_1;
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
+    } catch (...) {
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
+}
+
+// def try_body_position() -> None:
+//     # try body: bound on the non-raising path only
+//     try:
+//         def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//             xs.append(13)
+//             return len(xs)
+//
+//         data = [3]
+//         print("try_body:", tally(data), data)
+//     except ValueError:
+//         pass
+void try_body_position() {
+    {
+        try {
+            auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+                xs.push_back(13);
+                return ::tpy::__len__(xs);
+            };
+            std::vector<int32_t> data = {3};
+            std::cout << "try_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        } catch (const ::tpy::ValueError&) {
+        }
+    }
+}
+
+// def match_arm_position() -> None:
+//     # match arm: bound on that arm only
+//     n = 1
+//     match n:
+//         case 1:
+//             def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//                 xs.append(14)
+//                 return len(xs)
+//
+//             data = [4]
+//             print("match_arm:", tally(data), data)
+//         case _:
+//             print("match_arm: other")
+void match_arm_position() {
+    int32_t n = 1;
+    auto& __match_subject_1 = n;
+    switch (__match_subject_1) {
+    case 1: {
+        auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+            xs.push_back(14);
+            return ::tpy::__len__(xs);
+        };
+        std::vector<int32_t> data = {4};
+        std::cout << "match_arm:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        break;
+    }
+    default: {
+        std::cout << "match_arm: other" << "\n";
+        break;
+    }
+    }
+}
+
+// def scope_above_block_position() -> None:
+//     # a SCOPE-level def above a block: the block binds nothing, so the read
+//     # after the block still resolves to the scope-level one
+//     def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//         xs.append(17)
+//         return len(xs)
+//
+//     flag = True
+//     if flag:
+//         inner = [7]
+//         print("scope_above_block inside:", tally(inner), inner)
+//     after = [8]
+//     print("scope_above_block:", tally(after), after)  # tpyc: ok
+void scope_above_block_position() {
+    auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+        xs.push_back(17);
+        return ::tpy::__len__(xs);
+    };
+    bool flag = true;
+    if (flag) {
+        std::vector<int32_t> inner = {7};
+        std::cout << "scope_above_block inside:" << " " << tally(inner) << " " << ::tpy::ListPrinter(inner) << "\n";
+    }
+    std::vector<int32_t> after = {8};
+    std::cout << "scope_above_block:" << " " << tally(after) << " " << ::tpy::ListPrinter(after) << "\n";
+}
+
+// def block_then_scope_position() -> None:
+//     # a block-bound def followed by a SCOPE-level one of the same name: the
+//     # scope-level binding supersedes the block entry, so the read after it is
+//     # the scope-level def and not a read-after-block error
+//     flag = True
+//     if flag:
+//         def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//             xs.append(18)
+//             return len(xs)
+//
+//         inner = [9]
+//         print("block_then_scope inside:", tally(inner), inner)
+//
+//     def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//         xs.append(19)
+//         return len(xs)
+//
+//     data = [10]
+//     print("block_then_scope:", tally(data), data)  # tpyc: ok
+void block_then_scope_position() {
+    bool flag = true;
+    if (flag) {
+        auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+            xs.push_back(18);
+            return ::tpy::__len__(xs);
+        };
+        std::vector<int32_t> inner = {9};
+        std::cout << "block_then_scope inside:" << " " << tally(inner) << " " << ::tpy::ListPrinter(inner) << "\n";
+    }
+    auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+        xs.push_back(19);
+        return ::tpy::__len__(xs);
+    };
+    std::vector<int32_t> data = {10};
+    std::cout << "block_then_scope:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+}
+
 // def method_position() -> None:
 //     c = Counter()
 //     m = [5]
@@ -258,6 +481,14 @@ void method_position() {
 //     comp_var_position()
 //     except_as_position()
 //     match_capture_position()
+//     branch_body_position()
+//     loop_body_position()
+//     while_body_position()
+//     with_body_position()
+//     try_body_position()
+//     match_arm_position()
+//     scope_above_block_position()
+//     block_then_scope_position()
 //     method_position()
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
@@ -271,6 +502,14 @@ void main() {
     ::tpyapp::main::comp_var_position();
     ::tpyapp::main::except_as_position();
     ::tpyapp::main::match_capture_position();
+    ::tpyapp::main::branch_body_position();
+    ::tpyapp::main::loop_body_position();
+    ::tpyapp::main::while_body_position();
+    ::tpyapp::main::with_body_position();
+    ::tpyapp::main::try_body_position();
+    ::tpyapp::main::match_arm_position();
+    ::tpyapp::main::scope_above_block_position();
+    ::tpyapp::main::block_then_scope_position();
     ::tpyapp::main::method_position();
 }
 

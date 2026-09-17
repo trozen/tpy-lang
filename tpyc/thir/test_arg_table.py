@@ -200,7 +200,7 @@ class TestMethodArgSinkShape:
             "bytes_owned_literal",
             "bytes_view_literal",
             "bytes_owned_slot",
-            "bytes_owned_name",
+            "bytes_owned_lvalue",
             "bytes_owned_call_rvalue",
             "bytes_pass_through",
             "char_pass_through",
@@ -430,7 +430,7 @@ class TestMethodArgSinkShape:
         # by-value `Own[T]` param does not have.
         assert [(r.row, r.extra.__name__) for r in _METHOD_ARG_SINK.rows
                 if r.extra is not None] == [
-            ("bytes_owned_name", "_x_insert_own_slot"),
+            ("bytes_owned_lvalue", "_x_insert_own_slot"),
             ("own_enum_elem", "_x_insert_own_slot"),
             ("own_lvalue", "_x_own_lvalue_flush"),
             ("container_comp", "_x_comp_slot_const"),
@@ -505,7 +505,7 @@ class TestMethodArgSinkShape:
             "str_pass_through",
             "bytes_owned_literal",
             "bytes_view_literal",
-            "bytes_owned_name",
+            "bytes_owned_lvalue",
             "bytes_pass_through",
             "char_pass_through",
             "enum_pass_through",

@@ -201,6 +201,198 @@ void test_subscript_assign_ok() {
     }
 }
 
+// def test_element_source_method_mutation(rows: list[list[int32]], i: int32) -> None:
+//     """Iterating rows[i] and appending to rows[i] invalidates the iteration."""
+//     for v in rows[i]:
+//         rows[i].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/)
+void test_element_source_method_mutation(std::vector<std::vector<int32_t>>& rows, int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(rows, i).push_back(v);
+    }
+}
+
+// def test_element_source_sibling_index(rows: list[list[int32]], i: int32,
+//                                       j: int32) -> None:
+//     """Two names may hold the same index: a possible hit, worded as one."""
+//     for v in rows[i]:
+//         rows[j].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' may hit the element being iterated.*'append' may invalidate the iterator/)
+void test_element_source_sibling_index(std::vector<std::vector<int32_t>>& rows, int32_t i, int32_t j) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(rows, j).push_back(v);
+    }
+}
+
+// def test_element_source_distinct_literals(rows: list[list[int32]]) -> None:
+//     """Valid Python: two int literals that differ cannot name one element."""
+//     for v in rows[0]:
+//         rows[1].append(v)  # tpyc: ok
+void test_element_source_distinct_literals(std::vector<std::vector<int32_t>>& rows) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(rows, 1).push_back(v);
+    }
+}
+
+// def test_element_source_same_literal(rows: list[list[int32]]) -> None:
+//     """The same literal twice is the everyday bug the warning exists for."""
+//     for v in rows[0]:
+//         rows[0].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/)
+void test_element_source_same_literal(std::vector<std::vector<int32_t>>& rows) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(rows, 0).push_back(v);
+    }
+}
+
+// def test_element_source_name_then_literal(rows: list[list[int32]],
+//                                           i: int32) -> None:
+//     """A name can hold the literal's value, so the pair may alias."""
+//     for v in rows[i]:
+//         rows[1].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' may hit the element being iterated.*'append' may invalidate the iterator/)
+void test_element_source_name_then_literal(std::vector<std::vector<int32_t>>& rows, int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(rows, 1).push_back(v);
+    }
+}
+
+// def test_element_source_literal_then_name(rows: list[list[int32]],
+//                                           i: int32) -> None:
+//     """Same the other way round."""
+//     for v in rows[0]:
+//         rows[i].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' may hit the element being iterated.*'append' may invalidate the iterator/)
+void test_element_source_literal_then_name(std::vector<std::vector<int32_t>>& rows, int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(rows, i).push_back(v);
+    }
+}
+
+// def test_element_source_negative_literal(rows: list[list[int32]]) -> None:
+//     """`rows[-1]` is `rows[0]` in a one-element list, so it is not distinct."""
+//     for v in rows[0]:
+//         rows[-1].append(v)  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]' may hit the element being iterated.*'append' may invalidate the iterator/)
+void test_element_source_negative_literal(std::vector<std::vector<int32_t>>& rows) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(rows, -1).push_back(v);
+    }
+}
+
+// def test_element_source_distinct_literal_setitem(rows: list[list[int32]]) -> None:
+//     """Element assignment takes the same index rule as a mutating method."""
+//     for v in rows[0]:
+//         rows[1] = [v]  # tpyc: ok
+void test_element_source_distinct_literal_setitem(std::vector<std::vector<int32_t>>& rows) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__setitem__(rows, 1, std::vector<int32_t>{v});
+    }
+}
+
+// def test_element_source_dict_distinct_keys(t: dict[str, list[int32]]) -> None:
+//     """Str keys that differ are distinct elements too."""
+//     for v in t["a"]:
+//         t["b"].append(v)  # tpyc: ok
+void test_element_source_dict_distinct_keys(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
+    auto& __obj_0 = ::tpy::__getitem__(t, "a");
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(t, "b").push_back(v);
+    }
+}
+
+// def test_element_source_dict_same_key(t: dict[str, list[int32]]) -> None:
+//     for v in t["a"]:
+//         t["a"].append(v)  # tpyc: warning(/Mutation of 't\[\.\.\.\]' while iterating over it.*'append' invalidates the iterator/)
+void test_element_source_dict_same_key(::tpy::ordered_map<std::string, std::vector<int32_t>>& t) {
+    auto& __obj_0 = ::tpy::__getitem__(t, "a");
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(t, "a").push_back(v);
+    }
+}
+
+// def test_element_source_setitem(rows: list[list[int32]], i: int32) -> None:
+//     """Replacing the element destroys the very list being iterated."""
+//     for v in rows[i]:
+//         rows[i] = [v]  # tpyc: warning(/Mutation of 'rows\[\.\.\.\]'.*element assignment/)
+void test_element_source_setitem(std::vector<std::vector<int32_t>>& rows, int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__setitem__(rows, i, std::vector<int32_t>{v});
+    }
+}
+
+// def test_element_source_outer_mutation(rows: list[list[int32]], i: int32) -> None:
+//     """The container the element lives in reallocates it away."""
+//     for v in rows[i]:
+//         rows.append([v])  # tpyc: warning(/Mutation of 'rows'.*'append'/)
+void test_element_source_outer_mutation(std::vector<std::vector<int32_t>>& rows, int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        rows.push_back({v});
+    }
+}
+
+// def test_container_source_element_mutation_ok(rows: list[list[int32]]) -> None:
+//     """Iterating the CONTAINER: mutating an element leaves the iteration valid.
+//
+//     Replacing an element (`rows[0] = [...]`) is deliberately not a section
+//     here: it is warning-free for the same reason, but it writes through a
+//     live element borrow (BUGS.md#setitem-write-under-live-element-borrow),
+//     so pinning it would pin that defect's current behaviour.
+//     """
+//     for row in rows:
+//         rows[0].append(1)  # tpyc: ok
+//         row.append(3)      # tpyc: ok
+void test_container_source_element_mutation_ok(std::vector<std::vector<int32_t>>& rows) {
+    auto& __obj_0 = rows;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& row = *__beg_0;
+        ::tpy::__getitem__(rows, 0).push_back(1);
+        row.push_back(3);
+    }
+}
+
 // def test_no_warn_after_loop() -> None:
 //     """Mutation after loop exit is fine."""
 //     items: list[int32] = [int32(1), int32(2)]
@@ -289,10 +481,63 @@ void test_else_clause_ok() {
     std::cout << "else_clause:" << " " << total << " " << ::tpy::__len__(items) << "\n";
 }
 
+// def test_slice_source_warns() -> None:
+//     """A slice iterates a SPAN into the list, so a growing append can still
+//     reallocate the storage the span names."""
+//     items: list[int32] = [1, 2, 3]
+//     total: int32 = 0
+//     for x in items[0:2]:
+//         total += x
+//         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
+void test_slice_source_warns() {
+    std::vector<int32_t> items = {1, 2, 3};
+    int32_t total = 0;
+    auto __obj_0 = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        total = ::tpy::add_check<int32_t>(total, x);
+        items.push_back(x);
+    }
+}
+
+// def test_merged_element_loan_unknown_index() -> None:
+//     """The fourth wording: a NON-iteration loan that is index-uncertain.
+//
+//     Rebinding the local the iteration borrows through merges the loans, and
+//     the merged loan keeps `on_element` while losing the index -- so the
+//     mutation is worded as possible, on the borrowed-element branch rather
+//     than the iterating one."""
+//     cube: list[list[list[int32]]] = [[[1, 2]], [[3, 4]], [[5, 6]]]
+//     rows: list[list[int32]] = []
+//     rows = cube[0]
+//     for v in rows[0]:
+//         rows = cube[1]
+//         cube[2].append([v])  # tpyc: warning(/Mutation of 'cube\[\.\.\.\]' may hit a borrowed element.*'append' may invalidate references/)
+//     print("merged loan:", len(cube), len(cube[2]))
+void test_merged_element_loan_unknown_index() {
+    std::vector<std::vector<std::vector<int32_t>>> cube = {{{1, 2}}, {{3, 4}}, {{5, 6}}};
+    std::vector<std::vector<int32_t>> __slot_1 = std::vector<std::vector<int32_t>>{};
+    std::vector<std::vector<int32_t>>* rows = &__slot_1;
+    rows = &(::tpy::__getitem__(cube, 0));
+    auto& __obj_0 = ::tpy::__getitem__((*rows), 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        rows = &(::tpy::__getitem__(cube, 1));
+        ::tpy::__getitem__(cube, 2).push_back({v});
+    }
+    std::cout << "merged loan:" << " " << ::tpy::__len__(cube) << " " << ::tpy::__len__(::tpy::__getitem__(cube, 2)) << "\n";
+}
+
 // def main() -> None:
 //     test_else_clause_ok()
+//     test_merged_element_loan_unknown_index()
 void main() {
     ::tpyapp::main::test_else_clause_ok();
+    ::tpyapp::main::test_merged_element_loan_unknown_index();
 }
 
 // main()

@@ -79,6 +79,7 @@ from ...typesys import (
     is_any_bytes_type,
     is_float_type,
     is_protocol_type,
+    is_readonly_ptr,
     is_void_like_type,
     polymorphic_subclass_into_optional,
     resolve_int_literals,
@@ -123,7 +124,7 @@ from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
 from ...value_category import (
-    call_returns_cpp_ref, is_rvalue_source,
+    call_returns_cpp_ref, is_rvalue_source, property_access_returns_cpp_ref,
 )
 from ...codegen_cpp.context import (
     escape_cpp_name,
@@ -226,7 +227,7 @@ from .predicates import (
     _field_decl_type,
     _unbound_self_field_decl_type,
     _field_markers_clean,
-    _str_view_family_value,
+    _chained_subscript_recv_type,
     _field_over_subscript_ok,
     _field_over_record_getitem_ok,
     _record_getitem_borrow_subscript,
@@ -648,6 +649,42 @@ def _container_literal_decl_ok(stmt: TpyVarDecl, declared: dict[str, TpyType],
     if t is None:
         return note_detail("container_lit.decl_type") if is_lit else False
     return _container_literal_shape_ok(stmt.init, t, analyzer, note=True)
+
+def _by_value_property_read(init: TpyExpr, analyzer) -> bool:
+    """A `@property` read whose getter hands its result back BY VALUE.
+
+    The read RENDERS as the getter call, so wherever a fresh call result is
+    the admitted rvalue this is the same shape one spelling over
+    (`BUGS.md#own-property-iterable-materialize`). The convention is the
+    value-category fact, not a re-read of the annotation, so a
+    borrow-returning getter answers False and keeps its alias cascade.
+
+    Asked of the getter alone, NOT through `is_rvalue_source`: that answers
+    rvalue for a borrow-returning getter off a TEMPORARY receiver too, and
+    that read owns nothing -- decling the value would silently copy what
+    the language says is an alias, where the shape has no render and must
+    keep rejecting (`BUGS.md#readonly-borrow-of-temporary-receiver`).
+    """
+    return (isinstance(init, TpyFieldAccess)
+            and init.property_getter_call is not None
+            and not property_access_returns_cpp_ref(analyzer, init))
+
+def _storage_decl_src(init: TpyExpr, analyzer) -> bool:
+    """The decl's initializer is a fresh value the local must OWN, so the
+    decl takes the storage-form init sink rather than the alias cascade.
+
+    Three spellings of one rule -- the init mints its result instead of
+    lending existing storage: a call or method call; a container SLICE read
+    (`sub = items[a:b:c]`, an owned `list[T]` out of list_slice); and a
+    by-value `@property` read (`auto snap = s.snapshot();`, the bind-first
+    workaround for `BUGS.md#own-property-iterable-materialize`).
+    """
+    if isinstance(init, (TpyCall, TpyMethodCall)):
+        return True
+    if isinstance(init, TpySubscript):
+        return (init.slice_function_info is not None
+                and isinstance(init.index, TpySlice))
+    return _by_value_property_read(init, analyzer)
 
 def _container_literal_shape_ok(init: TpyExpr, t: TpyType, analyzer, *,
                                 note: bool = False,
@@ -1300,7 +1337,8 @@ def _note_container_lit_reject(init: TpyExpr, t: TpyType, analyzer) -> bool:
     return note_detail("container_lit.slot_family")
 
 def _container_record_elem_subscript(e: TpyExpr, locals_: dict[str, TpyType],
-                                     analyzer) -> bool:
+                                     analyzer,
+                                     pointers: "AbstractSet[str]") -> bool:
     """A container subscript `c[i]` / `d[k]` whose element/value is a plain
     F1-record (`_container_record_elem`): `::tpy::__getitem__(c, k)` yields
     `T&` (or the bounds-safe operator[] lvalue) -- a borrow usable as a
@@ -1312,22 +1350,24 @@ def _container_record_elem_subscript(e: TpyExpr, locals_: dict[str, TpyType],
     `Optional`-element containers reject at `_f1_record` (an Optional element
     is not a plain `T&` borrow)."""
     return _borrow_elem_subscript_shape(e, locals_, analyzer,
-                                        _container_record_elem)
+                                        _container_record_elem, pointers)
 
 
 def _container_ref_alias_elem_subscript(e: TpyExpr,
                                         locals_: dict[str, TpyType],
-                                        analyzer) -> bool:
+                                        analyzer,
+                                        pointers: "AbstractSet[str]") -> bool:
     """A container subscript whose element/value is itself a plain list/dict/set
     (`row = matrix[0]`): the element lvalue (`T&`) binds a REF_ALIAS local. The
     nested-container analog of `_container_record_elem_subscript`."""
     return _borrow_elem_subscript_shape(e, locals_, analyzer,
-                                        _container_ref_alias_elem)
+                                        _container_ref_alias_elem, pointers)
 
 
 def _container_wrapper_elem_subscript(e: TpyExpr,
                                       locals_: dict[str, TpyType],
-                                      analyzer) -> bool:
+                                      analyzer,
+                                      pointers: "AbstractSet[str]") -> bool:
     """A container subscript whose element/value is a recursive-union WRAPPER
     (`v: JsonValue = d["rows"]`): the element lvalue binds the wrapper's `T&`
     REF_ALIAS. The wrapper-union analog of
@@ -1335,43 +1375,38 @@ def _container_wrapper_elem_subscript(e: TpyExpr,
     return _borrow_elem_subscript_shape(
         e, locals_, analyzer,
         lambda t, a: _container_elem_family(
-            t, a, lambda m: _eligible_wrapper_union(m, a) is not None))
+            t, a, lambda m: _eligible_wrapper_union(m, a) is not None),
+        pointers)
 
 
 def _borrow_elem_subscript_shape(e: TpyExpr, locals_: dict[str, TpyType],
-                                 analyzer, elem_family) -> bool:
+                                 analyzer, elem_family,
+                                 pointers: "AbstractSet[str]") -> bool:
     """Shared shell for the record-element / nested-container-element subscript
     borrow sources: a plain `c[i]` / `d[k]` (no optional-check, slice, or
     slice-function) off a subscript-container receiver whose element satisfies
-    `elem_family`, with a routable index."""
+    `elem_family`, with a routable index.
+
+    A None-NARROWED pointer-repr `Optional[container]` receiver (`d["k"]`
+    under `if d is not None`) resolves to its inner container: the element
+    read is the same `::tpy::__getitem__((*d), "k")` lvalue, so only the
+    receiver's type resolution differs. `pointers` is the body's pointer
+    BINDING set, which is what the deref render itself keys on; the
+    un-narrowed flavor carries `needs_optional_runtime_check` and rejects
+    above."""
     if not isinstance(e, TpySubscript) or e.needs_optional_runtime_check:
         return False
     if e.slice_function_info is not None or isinstance(e.index, TpySlice):
         return False
-    recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
-    if recv_t is None and isinstance(e.obj, TpyFieldAccess) \
-            and _field_over_container_subscript_ok(e.obj, locals_, analyzer):
-        # A CHAINED element receiver (`a.bs[0].as_[0]`): the inner
-        # `a.bs[0].as_` is itself a field over an admitted record-element
-        # subscript, so each level renders the same `__getitem__` / bare
-        # member nest. Recursion is on strictly smaller receivers.
-        recv_t = _field_decl_type(e.obj, locals_, analyzer)
-    if recv_t is None and isinstance(e.obj, TpySubscript) \
-            and _container_ref_alias_elem_subscript(e.obj, locals_, analyzer):
-        # A DOUBLE-subscript receiver (`nested[0][0].x`): the inner
-        # `nested[0]` is a nested-container element lvalue
-        # (`::tpy::__getitem__(nested, 0)` -- `T&`), indexed again -- the
-        # same __getitem__ nest at every level.
-        rt = analyzer.get_expr_type(e.obj)
-        recv_t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-                  if rt is not None else None)
+    recv_t = _chained_subscript_recv_type(e.obj, locals_, analyzer, pointers)
     if recv_t is None or not elem_family(recv_t, analyzer):
         return False
     return (_bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
                                       analyzer, locals_) != "reject")
 
 def _field_over_container_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
-                                       analyzer) -> bool:
+                                       analyzer,
+                                       pointers: "AbstractSet[str]") -> bool:
     """A field access off a record-element CONTAINER subscript (`ps[i].field`):
     the receiver `ps[i]` is a plain-record borrow lvalue, so the access renders
     `::tpy::__getitem__(ps, i).field` (`.` -- `_field_is_arrow`'s
@@ -1380,26 +1415,15 @@ def _field_over_container_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
     a scalar-field write target (LHS) render off the same receiver. Markers-
     clean excludes the Optional null-check / property / setattr shapes."""
     return (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
-            and _container_record_elem_subscript(e.obj, locals_, analyzer))
-
-def _str_field_over_container_subscript_read(e: TpyExpr,
-                                             locals_: dict[str, TpyType],
-                                             analyzer) -> bool:
-    """A str-family field read off a record-element container subscript
-    (`self._store[name].value`) -- the container-subscript receiver twin of
-    `_str_field_value_read`'s NAME receiver.
-
-    Both halves are already admitted independently: the field ladder's
-    receiver row renders `::tpy::__getitem__(store, k)` and its str result
-    row renders the bare member tail. This composes them for the sinks that
-    have to decide the owned-str grant BEFORE lowering reaches the ladder."""
-    return (_field_over_container_subscript_ok(e, locals_, analyzer)
-            and _str_view_family_value(analyzer.get_expr_type(e), analyzer))
+            and _container_record_elem_subscript(e.obj, locals_, analyzer,
+                                                 pointers))
 
 
 def _tuple_container_elem_over_subscript_ok(e: TpyExpr,
                                             locals_: dict[str, TpyType],
-                                            analyzer) -> bool:
+                                            analyzer,
+                                            pointers: "AbstractSet[str]"
+                                            ) -> bool:
     """A tuple-element read over a container-element subscript, as a METHOD
     receiver (`xs[i][j].append(v)` over `list[tuple[.., list[T]]]`): the inner
     `xs[i]` is a container-element borrow lvalue whose element is a TUPLE, and
@@ -1420,7 +1444,8 @@ def _tuple_container_elem_over_subscript_ok(e: TpyExpr,
                 resolve_pending_container(t, a) or t, a,
                 lambda m: isinstance(
                     unwrap_readonly(unwrap_ref_type(unwrap_send_sync(m))),
-                    TupleType))):
+                    TupleType)),
+            pointers):
         return False
     if _subscript_index_and_tuple(e, analyzer) is None:
         return False
@@ -1433,7 +1458,9 @@ def _tuple_container_elem_over_subscript_ok(e: TpyExpr,
 
 def _subscript_over_container_subscript_ok(e: TpyExpr,
                                            locals_: dict[str, TpyType],
-                                           analyzer) -> bool:
+                                           analyzer,
+                                           pointers: "AbstractSet[str]"
+                                           ) -> bool:
     """A subscript whose receiver is itself a container-element subscript
     yielding a container (`m[i][j]`): `m[i]` is a nested-container borrow
     lvalue (`::tpy::__getitem__(m, i)`), indexed again -> the nested
@@ -1447,39 +1474,8 @@ def _subscript_over_container_subscript_ok(e: TpyExpr,
             and not e.needs_optional_runtime_check
             and e.slice_function_info is None
             and not isinstance(e.index, TpySlice)
-            and _container_ref_alias_elem_subscript(e.obj, locals_, analyzer))
-
-def _subscript_over_narrowed_opt_subscript_ok(e: TpyExpr,
-                                              locals_: dict[str, TpyType],
-                                              analyzer,
-                                              pointers) -> bool:
-    """`rows[i][j]` where `rows` is a None-narrowed pointer-repr
-    `Optional[container]` NAME: the same nested `__getitem__` nest as
-    `_subscript_over_container_subscript_ok`, except the inner receiver
-    resolves through the `(*rows)` deref the name arm renders. Kept apart from
-    the shared `_borrow_elem_subscript_shape` because that shell has no access
-    to the pointer BINDING set the deref render keys on."""
-    if not (isinstance(e, TpySubscript)
-            and not e.needs_optional_runtime_check
-            and e.slice_function_info is None
-            and not isinstance(e.index, TpySlice)):
-        return False
-    inner = e.obj
-    if not (isinstance(inner, TpySubscript)
-            and not inner.needs_optional_runtime_check
-            and inner.slice_function_info is None
-            and not isinstance(inner.index, TpySlice)):
-        return False
-    recv_t = _narrowed_ptr_opt_recv(
-        inner.obj,
-        _subscript_container_recv_type(inner.obj, locals_, analyzer,
-                                       narrowed_ok=True),
-        pointers)
-    if recv_t is None or not _container_ref_alias_elem(recv_t, analyzer):
-        return False
-    return (_bigint_index_disposition(inner.index,
-                                      analyzer.get_expr_type(inner.obj),
-                                      analyzer, locals_) != "reject")
+            and _container_ref_alias_elem_subscript(e.obj, locals_, analyzer,
+                                                    pointers))
 
 def _field_over_field_ok(e: TpyExpr, locals_: dict[str, TpyType],
                          analyzer) -> bool:
@@ -1918,13 +1914,14 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and isinstance(stmt.init, TpyFieldAccess)
                 and isinstance(stmt.init.obj, TpyMethodCall)
                 and _indirect_field_receiver_ok(stmt.init, declared,
-                                                analyzer)):
+                                                analyzer, pointers)):
             return binding
         # An OPTIONAL_TO_PTR lift whose source is a @property read
         # (`n = w.node` -> `Node* n = ::tpy::optional_to_ptr(w.node());`):
-        # the getter call renders bare (the field arm delegates to the
-        # method-call lowering, whose own gates re-validate receiver/args)
-        # and the lift wraps it -- the property twin of the row above.
+        # the getter hands back the field's storage BY REFERENCE (the
+        # property return convention), so the lift points into the record --
+        # the field arm delegates to the method-call lowering, whose own
+        # gates re-validate receiver/args.
         if (binding is LocalBinding.OPTIONAL_TO_PTR
                 and isinstance(stmt.init, TpyFieldAccess)
                 and stmt.init.property_getter_call is not None):
@@ -1935,20 +1932,16 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # borrow-call REF_ALIAS row (the getter call's own gates
         # re-validate receiver/args; const rides the raw-sema readonly
         # read). REF_ALIAS only: the reassigned POINTER sibling needs the
-        # `&(c.items())` reseat lift, unwitnessed. An OWN-returning
-        # getter rejects (`decl.own_property_alias`): binding `T&` to the
-        # by-value getter result off a mutable receiver is ill-formed C++
-        # (see BUGS.md).
+        # `&(c.items())` reseat lift, unwitnessed. An OWN-returning getter
+        # never reaches here: its read is an rvalue, so the binding is not
+        # REF_ALIAS at all (binding `T&` to the by-value getter result off
+        # a mutable receiver would be ill-formed C++).
         if (binding is LocalBinding.REF_ALIAS
                 and isinstance(stmt.init, TpyFieldAccess)
                 and stmt.init.property_getter_call is not None
                 and (_alias_ref_container(target_type)
                      or _f1_record(target_type, analyzer))):
-            _pfi = stmt.init.property_getter_call.resolved_function_info
-            if not (_pfi is not None
-                    and isinstance(_pfi.return_type, OwnType)):
-                return binding
-            note_detail("decl.own_property_alias")
+            return binding
         # An OPTIONAL_TO_PTR lift whose field source hangs off a CONTAINER-
         # ELEMENT subscript (`box = self.slots[i].box` -> `Box<AnyTask>* box
         # = ::tpy::optional_to_ptr(::tpy::__getitem__(this->slots, i).box);`):
@@ -1958,7 +1951,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # value-position field-read arm's own receiver predicate.
         if (binding is LocalBinding.OPTIONAL_TO_PTR
                 and _field_over_container_subscript_ok(stmt.init, declared,
-                                                       analyzer)):
+                                                       analyzer, pointers)):
             return binding
         # A STORAGE-form Optional CONTAINER-subscript source (`a = d["a"]`
         # on `dict[str, P | None]`): the same optional_to_ptr lift over the
@@ -1978,7 +1971,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and _f1_record(target_type, analyzer)
                 and _container_record_elem_subscript(stmt.init, declared,
-                                                     analyzer)):
+                                                     analyzer, pointers)):
             return binding
         # A borrow-returning user-record `__getitem__` subscript (`r = e[k]`)
         # binds the single-assignment `T&` alias of the bare operator[]
@@ -2003,7 +1996,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         if (binding is LocalBinding.REF_ALIAS
                 and _alias_ref_container(target_type)
                 and _container_ref_alias_elem_subscript(stmt.init, declared,
-                                                        analyzer)):
+                                                        analyzer, pointers)):
             return binding
         # An open-T element subscript inside a generic body (`v =
         # self.items[self.pos]`) binds the per-instantiation `T&`, or the
@@ -2012,7 +2005,8 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and _is_type_param_slot(target_type)
                 and _borrow_elem_subscript_shape(stmt.init, declared, analyzer,
-                                                 _container_tparam_elem)):
+                                                 _container_tparam_elem,
+                                                 pointers)):
             return binding
         # A wrapper-union element subscript (`v: JsonValue = d["rows"]`)
         # binds the element lvalue as the wrapper's `T&` alias. LOCAL
@@ -2025,7 +2019,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and isinstance(stmt.init.obj, TpyName)
                 and stmt.init.obj.name not in prescan.param_names
                 and _container_wrapper_elem_subscript(stmt.init, declared,
-                                                      analyzer)):
+                                                      analyzer, pointers)):
             return binding
         # A bare non-value NAME alias (`y = x`, `alias = items`, `c = b`) binds
         # the single-assignment `T&` alias directly -- no field-receiver pin.
@@ -2194,26 +2188,32 @@ def _method_recv_field_write_ok(target: TpyExpr, declared: dict[str, TpyType],
     return _f1_record(analyzer.get_expr_type(recv), analyzer)
 
 
-def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                           analyzer,
-                           pointers: 'AbstractSet[str]' = frozenset()) -> bool:
-    """A scalar-field write `recv.field = <scalar>`: a value-scalar field off an
-    F1-record receiver (`_field_receiver_ok` also rejects the property-setter /
-    __setattr__ write target), written with an eligible scalar expression. The
-    scalar sibling of `_f2b_optional_field_write_ok` -- it emits the default
-    field assign (`recv.field = <value>;`, no borrow<->storage lift). The
-    target is a plain field off an F1-record receiver, or a record-element tuple
-    subscript (`t[N].field = <scalar>` -> `std::get<N>(t)->field = ...`, the write analog
-    of the record-element read); an Optional-element target is rejected by its
-    markers. A char field writes identically (`recv.c = z`); its
-    str-literal value guard is defensive -- sema type-errors a literal into a
-    char field, but the target-typed `'x'` render would otherwise diverge.
+def _field_write_receiver_ok(target: TpyExpr, declared: dict[str, TpyType],
+                             analyzer,
+                             pointers: 'AbstractSet[str]' = frozenset()
+                             ) -> bool:
+    """The receiver ladder the whole VALUE axis of the field write shares:
+    is `target` a rooted lvalue chain the assign can land in, whatever the
+    field's family is.
+
+    Every rung here answers one question -- does the receiver render as an
+    lvalue the store can be spelled against -- and none of them looks at the
+    value. That is why the ladder is ONE predicate: the scalar, `str` and
+    `bytes` writes differ only in how the VALUE reaches the slot (bare, or
+    the `bytes` view->storage copy), and `_lower_field_write_target` renders
+    the target for all three through the same path.
 
     An Optional-ptr-receiver target is admitted on both faces: proven ->
-    `p->field = <value>;` (arrow via _field_receiver_ok), unproven ->
-    `::tpy::deref_check(p).field = <value>;` (_optional_checked_field)."""
-    target = stmt.target
-    if not (_field_receiver_or_unbound_self_ok(target, declared, analyzer)
+    `p->field = <value>;` (arrow via `_field_receiver_ok`), unproven ->
+    `::tpy::deref_check(p).field = <value>;` (`_optional_checked_field`).
+
+    Two receiver shapes are deliberately NOT here. A USER-Deref receiver
+    (`rc.field = v`) needs the narrow set to decide its `__deref__()` hop,
+    so it keeps its own admission (`_user_deref_field_write_ok`), which also
+    pins its value set. A borrow-TUPLE element (`t[1].val = 99`) needs the
+    lowering context for the element's borrow verdict, so it stays in
+    `_btuple_elem_field_write_ok`."""
+    return (_field_receiver_or_unbound_self_ok(target, declared, analyzer)
             or _ptr_value_field_recv_ok(target, declared, analyzer)
             or _optional_checked_field(target, declared, analyzer)
             # The STORAGE sibling (`h.opt.x = 5` ->
@@ -2224,7 +2224,8 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             or _optional_checked_field_over_field_ok(target, declared,
                                                      analyzer)
             or _field_over_subscript_ok(target, declared, analyzer)
-            or _field_over_container_subscript_ok(target, declared, analyzer)
+            or _field_over_container_subscript_ok(target, declared, analyzer,
+                                                  pointers)
             or _field_over_record_getitem_ok(target, declared, analyzer,
                                              pointers)
             # `a.inner.count = v` -- the receiver is itself a field read. The
@@ -2235,7 +2236,75 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             # a borrow (`h.val().x = 8;`): the write chains the same
             # postfix member the read row admits.
             or _field_over_property_call_ok(target, analyzer)
+            or _method_recv_field_write_ok(target, declared, analyzer))
+
+
+def _viewfam_field_write_receiver_ok(target: TpyExpr,
+                                     declared: dict[str, TpyType],
+                                     analyzer,
+                                     pointers: 'AbstractSet[str]' = frozenset()
+                                     ) -> bool:
+    """The shared receiver ladder, minus the receivers through which a live
+    VIEW of the written `str`/`bytes` field cannot be demoted.
+
+    A one-hop field read of either family binds a view of the field's buffer
+    (`is_view_compatible_source`, `tpyc/sema/local_deduction.py`), and what
+    keeps that view valid is the demotion sema fires when the storage it
+    borrows is written (`_mark_field_write_views`). That demotion resolves a
+    write to a storage KEY -- a name, or a dotted field path rooted in one --
+    so a receiver that reaches the record through anything the tracker cannot
+    name keys nothing a view was registered under: the view survives the
+    write and reads freed memory, with no diagnostic. Five such receivers:
+
+      p.name = s          `p: Ptr[Inner]` (and `self.p.name = s`) -- a deref
+      t[0].name = s       a tuple element
+      rows[0].name = s    a container element (`d[k]`, and the `*args` pack
+                          subscript, share this shape)
+      b.get().name = s    a borrow-returning method call
+      h.val.name = s      a `@property` getter -- the chain spells
+                          `h.val.name`, which keys nothing, and the coarse
+                          receiver fallback never fires because a field path
+                          IS spellable (just the wrong one)
+
+    Each is rejected at the write on master; re-admitting them needs escape
+    to be a Place fact on the borrow tracker
+    (BUGS.md#field-view-escape-needs-place). The receivers that stay are a
+    name / `self` (master's own set), and three master rejects measured to
+    demote the held view instead: a nested field, an unproven Optional name,
+    and an unproven Optional over a field. One admitted receiver does NOT
+    demote -- a user `__getitem__` element (`b[0].name = s`) -- and it stays
+    because master's `str` write gate admits it too: the dangle there is
+    master's, filed under the same slug, not this gate's to decide.
+
+    The value-scalar rows beside this one keep the full ladder: no view
+    borrows an `int32` field, so the same receivers are safe there."""
+    if (_ptr_value_field_recv_ok(target, declared, analyzer)
+            or _field_over_subscript_ok(target, declared, analyzer)
+            or _field_over_container_subscript_ok(target, declared, analyzer,
+                                                  pointers)
+            or _field_over_property_call_ok(target, analyzer)
             or _method_recv_field_write_ok(target, declared, analyzer)):
+        return False
+    return _field_write_receiver_ok(target, declared, analyzer, pointers)
+
+
+def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
+                           analyzer,
+                           pointers: 'AbstractSet[str]' = frozenset()) -> bool:
+    """A scalar-field write `recv.field = <scalar>`: a value-scalar field at a
+    shared field-write receiver (`_field_receiver_ok` also rejects the
+    property-setter / __setattr__ write target), written with an eligible
+    scalar expression. The scalar sibling of `_f2b_optional_field_write_ok`
+    -- it emits the default field assign (`recv.field = <value>;`, no
+    borrow<->storage lift). A record-element tuple subscript target
+    (`t[N].field = <scalar>` -> `std::get<N>(t)->field = ...`, the write
+    analog of the record-element read) rides the shared ladder; an
+    Optional-element target is rejected by its markers. A char field writes
+    identically (`recv.c = z`); its str-literal value guard is defensive --
+    sema type-errors a literal into a char field, but the target-typed `'x'`
+    render would otherwise diverge."""
+    target = stmt.target
+    if not _field_write_receiver_ok(target, declared, analyzer, pointers):
         return False
     ftype = analyzer.get_expr_type(target)
     if _eligible_char(ftype):
@@ -2482,7 +2551,8 @@ def _ref_field_write_ok(
                 and analyzer.get_expr_type(v) == ftype
                 and _witness("field_write.field_copy"))
     if isinstance(v, TpySubscript):
-        return (_container_record_elem_subscript(v, declared, analyzer)
+        return (_container_record_elem_subscript(v, declared, analyzer,
+                                                pointers)
                 and analyzer.get_expr_type(v) == ftype
                 and _witness("field_write.subscript_copy"))
     # A POINTER-local source copies through the deref
@@ -2798,9 +2868,10 @@ def _container_prvalue_field_write_ok(stmt: TpyAssign,
 
 
 def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                        analyzer) -> bool:
-    """A str-family field write `recv.field = <str literal | str name>` off an
-    F1-record receiver: the default field assign renders the value BARE
+                        analyzer,
+                        pointers: 'AbstractSet[str]' = frozenset()) -> bool:
+    """A str-family field write `recv.field = <str literal | str name>` at a
+    shared field-write receiver: the default field assign renders the value BARE
     (`recv.field = s;` / `= "lit";`) -- `std::string::operator=(string_view)`
     absorbs a view source into an owned field, so unlike a decl init there is
     NO view->owned `std::string(...)` construction, and str names are never in
@@ -2821,14 +2892,16 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     (`this->s = std::move((*s));`) and this arm renders it bare. A str-typed
     call or method call of any other shape rides the same bare assign as
     well; `String`-typed fields/sources keep their own emit shapes (excluded
-    by `_resolved_str_value`)."""
-    if not (_field_receiver_or_unbound_self_ok(stmt.target, declared,
-                                               analyzer)
-            # A record-getitem element receiver (`moved[0].name = "s"` on
-            # ArrayList -- the `operator[]` lvalue): the same bare assign
-            # chains off the element read the scalar ladder admits.
-            or _field_over_record_getitem_ok(stmt.target, declared,
-                                             analyzer, frozenset())):
+    by `_resolved_str_value`).
+
+    The RECEIVER is the shared ladder's business, not this row's: a nested
+    or element receiver (`o.inner.name = "b"`, `rows[0].name = "b"`) renders
+    the same lvalue for a `str` field as for the `int32` beside it, so this
+    arm decides only the value side -- through the view-family gate, which
+    subtracts the receivers a live view of the field could not be demoted
+    through (`_viewfam_field_write_receiver_ok`)."""
+    if not _viewfam_field_write_receiver_ok(stmt.target, declared, analyzer,
+                                            pointers):
         return False
     if _resolved_str_value(analyzer.get_expr_type(stmt.target),
                            analyzer) is None:
@@ -2864,9 +2937,11 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             and _resolved_str_value(declared[v.name], analyzer) is not None)
 
 def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                          analyzer) -> bool:
+                          analyzer,
+                          pointers: 'AbstractSet[str]' = frozenset()) -> bool:
     """The bytes twin of `_str_field_write_ok`: an owned `bytes` field write
-    `recv.field = <bytes literal | bytes name>` off an F1-record receiver.
+    `recv.field = <bytes literal | bytes name>` at a shared field-write
+    receiver.
     Unlike str, `std::vector<uint8_t>` has no span ctor, so a view (span)
     source copies via the S6 `::tpy::Bytes(...)` STORAGE convert (the
     lowering picks it off the source form) -- an owned source (bytes literal /
@@ -2884,8 +2959,14 @@ def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     both land on the same rule as every other source here: the family's
     verdict is read off the lowered source's FORM, so an owned concat rvalue
     assigns bare and a view-returning call takes the `Bytes(x)` convert. The
-    two shapes need no row of their own beyond admission."""
-    if not _field_receiver_or_unbound_self_ok(stmt.target, declared, analyzer):
+    two shapes need no row of their own beyond admission.
+
+    The RECEIVER is the str twin's view-family gate, for the reason given
+    there: which lvalue the store lands in decides nothing about the
+    view->storage copy, but it does decide whether a live view of the field
+    can be demoted at all."""
+    if not _viewfam_field_write_receiver_ok(stmt.target, declared, analyzer,
+                                            pointers):
         return False
     ft = _resolved_bytes_value(analyzer.get_expr_type(stmt.target), analyzer)
     if ft is None or not is_bytes_type(ft):
@@ -2945,7 +3026,7 @@ def _class_const_write_target_ok(target, declared: dict[str, TpyType],
         # An effectful subscript receiver is lowered prechecked (like the
         # field-read twin), so admission owns the receiver shape here.
         return _container_record_elem_subscript(target.obj, declared,
-                                                analyzer)
+                                                analyzer, pointers)
     return True
 
 def _class_const_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
@@ -2965,7 +3046,7 @@ def _class_const_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
                                         analyzer)
 
 def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
-                          analyzer) -> bool:
+                          analyzer, pointers: "AbstractSet[str]") -> bool:
     """A scalar augmented assignment `x += y` / `recv.field += y` that renders
     exactly as `target = (target OP value)` -- the plain binop substitution,
     with every other aug-assign branch gated out:
@@ -2997,7 +3078,8 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     elif not (_field_receiver_or_unbound_self_ok(target, declared, analyzer)
               or _optional_checked_field(target, declared, analyzer)
               or _field_over_subscript_ok(target, declared, analyzer)
-              or _field_over_container_subscript_ok(target, declared, analyzer)
+              or _field_over_container_subscript_ok(target, declared,
+                                                   analyzer, pointers)
               or _field_over_field_ok(target, declared, analyzer)
               # A scalar field through a BORROW-returning call receiver
               # (`o.b.get().v += 1`): the receiver renders identically on
@@ -3255,7 +3337,7 @@ def _setitem_target_ok(
                 if isinstance(recv, TpySubscript) else None)
         if (isinstance(recv, TpySubscript)
                 and _container_ref_alias_elem_subscript(recv, declared,
-                                                        analyzer)):
+                                                        analyzer, pointers)):
             recv_t = analyzer.get_expr_type(recv)
         elif _tce is not None:
             recv_t = _tce
@@ -3263,7 +3345,7 @@ def _setitem_target_ok(
               and _field_markers_clean(recv)
               and isinstance(recv.obj, TpySubscript)
               and _container_record_elem_subscript(recv.obj, declared,
-                                                   analyzer)):
+                                                   analyzer, pointers)):
             # A container FIELD off a record-element borrow lvalue
             # (`root.kids["a"].kids["b"] = v`): the element read is the
             # checked `__getitem__` `T&`, the field chains `.` off it and
@@ -3640,7 +3722,8 @@ def _module_var_len_arg(arg: TpyFieldAccess, locals_: dict[str, TpyType],
             and _module_var_read_cpp(recv, arg.field, analyzer) is not None)
 
 
-def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
+def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer,
+                 pointers: "AbstractSet[str]") -> bool:
     """The eligible `len(name)` / `len(recv.field)` form: the builtin len over a
     single in-scope name -- or a one-level container/str/bytes field off an
     admitted receiver (`len(self.xs)`; the receiver renders as its own
@@ -3689,7 +3772,8 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
             return False
     elif (isinstance(arg, TpyFieldAccess)
           and (_field_receiver_ok(arg, locals_, analyzer)
-               or _field_over_container_subscript_ok(arg, locals_, analyzer))):
+               or _field_over_container_subscript_ok(arg, locals_, analyzer,
+                                                     pointers))):
         bt = _field_decl_type(arg, locals_, analyzer)
         if bt is None:
             return False
@@ -3730,7 +3814,8 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # An owned-bytes/str element (`len(out["k"])` on `dict[str, bytes]`)
         # is the same lvalue read; the vector/string __len__ overloads
         # accept it bare.
-        return (_container_ref_alias_elem_subscript(arg, locals_, analyzer)
+        return (_container_ref_alias_elem_subscript(arg, locals_, analyzer,
+                                                    pointers)
                 or _borrow_elem_subscript_shape(
                     arg, locals_, analyzer,
                     lambda t, a: _container_elem_family(
@@ -3738,7 +3823,8 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
                         lambda m: (((_lb := _resolved_bytes_value(m, a))
                                     is not None and is_bytes_type(_lb))
                                    or ((_ls := _resolved_str_value(m, a))
-                                       is not None and is_str_type(_ls))))))
+                                       is not None and is_str_type(_ls)))),
+                    pointers))
     elif isinstance(arg, TpyNamedExpr):
         # `len(v := h.view())` -- a container walrus arg: the comma form's
         # `*v` result is the same container lvalue a name renders; the
@@ -6503,7 +6589,7 @@ def _deref_coerce_borrow_slot(a: TpyExpr, slot: 'TpyType | None',
     # wrapped source cannot turn the `.pointee` read into an AttributeError
     # (which would escape as a crash instead of a reject).
     actual = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a.actual_type)))
-    if isinstance(actual, PtrType) and isinstance(actual.pointee, ReadonlyType):
+    if is_readonly_ptr(actual):
         return isinstance(a.expected_type, ReadonlyType)
     return True
 
@@ -7917,7 +8003,7 @@ def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
 def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
                         locals_: dict[str, TpyType],
                         param_names: 'set[str] | frozenset[str]',
-                        analyzer) -> bool:
+                        analyzer, pointers: "AbstractSet[str]") -> bool:
     """A str-slice arg into an `Own[str]` container element slot -- the
     `xs.append(s)` shape `_str_pass_through_arg` rejects (Own is its cutoff). A
     str LITERAL lands bare (const char[N] -> the vector's `std::string` ctor); a
@@ -7963,7 +8049,8 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
     # of the buffer says nothing about how an element reads.
     if (isinstance(a, TpySubscript)
             and _borrow_elem_subscript_shape(a, locals_, analyzer,
-                                             _own_peeled_container_str_elem)):
+                                             _own_peeled_container_str_elem,
+                                             pointers)):
         return True
     # ... and the value-TUPLE element read of the same owned form
     # (`out.append(self._store[lk][0])`): `std::get<N>(...)` yields the
@@ -8013,23 +8100,34 @@ def _bytes_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
                                      analyzer) is not None
     return False
 
-def _bytes_owned_name_arg(a: TpyExpr, ptype: TpyType | None,
-                          locals_: dict[str, TpyType],
-                          param_names: 'set[str] | frozenset[str]',
-                          analyzer) -> bool:
-    """An OWNED-form bytes NAME at an `Own[bytes]` element slot binds BARE
-    (`self._chunks.append(owned)` -> `push_back(owned)`): a cpp_template
-    callee takes the lvalue natively, so the inline_template Own
-    arm skips the copy+move temp. The str twin at the same slot KEEPS the
+def _bytes_owned_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
+                            locals_: dict[str, TpyType],
+                            param_names: 'set[str] | frozenset[str]',
+                            analyzer) -> bool:
+    """An OWNED-form bytes LVALUE at an `Own[bytes]` element slot binds BARE
+    (`self._chunks.append(owned)` -> `push_back(owned)`,
+    `acc.append(i.tag)` -> `push_back(i.tag)`): a cpp_template callee takes
+    the lvalue natively and the container copies on insert, so the Own
+    cascade owes no temp. The str twin at the same slot KEEPS the
     temp -- its copy is the view->owned conversion -- which is why the two
     families do not share a cell here. The movable last use is not this
     row either: `_maybe_move` fires ahead of the skip, and the shared move
-    slice decides that half before the sink is walked."""
+    slice decides that half before the sink is walked; a FIELD read is
+    never a move source, which is why the member face joins the bare row
+    and not `_owned_form_bytes_name`'s move-only slot.
+
+    The form is the shared resolved-value question, not a shape list: a
+    VIEW-form member (`BytesView`) owes the materialize convert and is
+    `_bytes_owned_slot_arg`'s row instead."""
     w = _plain_own_slot(ptype)
     if w is None or not is_bytes_type(unwrap_readonly(w)):
         return False
+    if isinstance(a, TpyFieldAccess):
+        at = _resolved_bytes_value(analyzer.get_expr_type(a), analyzer)
+        return bool(at is not None and is_bytes_type(at)
+                    and _witness("arg.bytes_owned_lvalue"))
     return bool(_owned_form_bytes_name(a, locals_, param_names, analyzer)
-                and _witness("arg.bytes_owned_name"))
+                and _witness("arg.bytes_owned_lvalue"))
 
 
 def _bytes_owned_call_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
@@ -8038,7 +8136,7 @@ def _bytes_owned_call_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     (`self._chunks.append(bytes(initial))` ->
     `push_back(::tpy::Bytes((*initial)))`): a prvalue has nothing to
     move from and needs no conversion, so the Own cascade emits
-    no temp -- the rvalue face of `_bytes_owned_name_arg`. A VIEW-returning
+    no temp -- the rvalue face of `_bytes_owned_lvalue_arg`. A VIEW-returning
     callee is excluded: that source still owes the view->owned materialize,
     which is `_bytes_owned_slot_arg`'s convert and a different render.
     Slot-keyed and position-blind, so the container-element and (substituted)
@@ -8245,7 +8343,8 @@ def _method_receiver_type(recv: TpyExpr, locals_: dict[str, TpyType],
     return resolve_pending_container(t, analyzer) or t
 
 def _indirect_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
-                                analyzer) -> bool:
+                                analyzer,
+                                pointers: "AbstractSet[str]") -> bool:
     """A one-level field access whose own RECEIVER is a call or subscript
     result (`root.get().children.append(x)`, `g.get().log.append(1)`,
     `::tpy::__getitem__(a.bs, 0).as_.push_back(...)`): the inner expression
@@ -8260,7 +8359,8 @@ def _indirect_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
     if isinstance(inner, TpyMethodCall):
         return _method_call_receiver_ok(inner, locals_, analyzer)
     if isinstance(inner, TpySubscript):
-        return _container_record_elem_subscript(inner, locals_, analyzer)
+        return _container_record_elem_subscript(inner, locals_, analyzer,
+                                                pointers)
     if isinstance(inner, TpyCall):
         rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             analyzer.get_expr_type(inner))))
@@ -8304,7 +8404,8 @@ def _chain_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
 
 
 def _method_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
-                              analyzer) -> bool:
+                              analyzer,
+                              pointers: "AbstractSet[str]") -> bool:
     """A one-level field-access method receiver `x.field.method(...)`: the field
     is a plain value F1-record off an F1-record receiver name (self / a record
     param / REF_ALIAS / F2 pointer-local, or a proven Optional-ptr borrow name
@@ -8362,7 +8463,7 @@ def _method_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
             # proof.
             return _witness("method.recv.container_property")
     if not (_field_receiver_ok(recv, locals_, analyzer)
-            or _indirect_field_receiver_ok(recv, locals_, analyzer)
+            or _indirect_field_receiver_ok(recv, locals_, analyzer, pointers)
             or _chain_field_receiver_ok(recv, locals_, analyzer)
             # A field off an explicit `Ptr[record]` binding: the pointer arm
             # renders the receiver itself (`p->field`, or
@@ -8496,7 +8597,8 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         # receiver with `.` access, and `_method_receiver_type` reads the
         # resolved element type so the outer call routes the record / container
         # method arm respectively.
-        return ((_container_record_elem_subscript(recv, locals_, analyzer)
+        return ((_container_record_elem_subscript(recv, locals_, analyzer,
+                                                  pointers)
                  # A user-record __getitem__ receiver returning a record
                  # borrow (`srv.sockets[0].getsockname()`): the raw
                  # operator[] lvalue takes `.` access -- the method arm's
@@ -8515,16 +8617,17 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
                      # route the bare render where a deref is required.
                      and _record_getitem_idx_recv_ok(recv, locals_, analyzer,
                                                      pointers))
-                 or _container_ref_alias_elem_subscript(recv, locals_, analyzer)
+                 or _container_ref_alias_elem_subscript(recv, locals_,
+                                                        analyzer, pointers)
                  or _subscript_over_container_subscript_ok(
-                     recv, locals_, analyzer)
+                     recv, locals_, analyzer, pointers)
                  or _tuple_container_elem_over_subscript_ok(
-                     recv, locals_, analyzer)
+                     recv, locals_, analyzer, pointers)
                  # A str-element read (`argv[i].startswith(...)`): the element
                  # lvalue feeds the native str view-method positionally, the
                  # subscript rendering as its own THIRSubscript.
                  or _borrow_elem_subscript_shape(recv, locals_, analyzer,
-                                                _container_str_elem)
+                                                _container_str_elem, pointers)
                  # A str/bytes SLICE receiver (`data[0:11].split(b" ")`):
                  # the slice renders its own view rvalue, and the view
                  # family gates the method over it.
@@ -8606,7 +8709,7 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
             return False
         return _witness("method.recv.free_call")
     if isinstance(recv, TpyFieldAccess):
-        return _method_field_receiver_ok(recv, locals_, analyzer)
+        return _method_field_receiver_ok(recv, locals_, analyzer, pointers)
     if isinstance(recv, (TpyIfExpr, TpyNamedExpr)):
         # A ternary / walrus over BARE value operands renders as the plain
         # C++ select / comma form with `.` access. An operand
@@ -10874,9 +10977,9 @@ def _r_str_pass_through(req: _ArgReq) -> bool:
                                  mutated=req.mutated_slots)
 
 
-def _r_bytes_owned_name(req: _ArgReq) -> bool:
-    return _bytes_owned_name_arg(req.a, req.ptype, req.locals_,
-                                 req.param_names, req.analyzer)
+def _r_bytes_owned_lvalue(req: _ArgReq) -> bool:
+    return _bytes_owned_lvalue_arg(req.a, req.ptype, req.locals_,
+                                   req.param_names, req.analyzer)
 
 
 def _r_bytes_owned_call_rvalue(req: _ArgReq) -> bool:
@@ -11052,7 +11155,7 @@ def _r_copy_iter_own_elem(req: _ArgReq) -> bool:
 
 def _r_str_owned_slot(req: _ArgReq) -> bool:
     return _str_owned_slot_arg(req.a, req.ptype, req.locals_,
-                               req.param_names, req.analyzer)
+                               req.param_names, req.analyzer, req.pointers)
 
 
 def _r_bytes_owned_literal(req: _ArgReq) -> bool:
@@ -12322,10 +12425,10 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # a bytes param / narrowed deref / view slice at the same slot
         # takes the `::tpy::Bytes(x)` materialize convert.
         _ArgRow("bytes_owned_slot", _r_bytes_owned_slot),
-        # ... and the OWNED-form source at the same slot, which needs no
-        # convert and no copy temp: the cpp_template callee binds the
-        # lvalue natively.
-        _ArgRow("bytes_owned_name", _r_bytes_owned_name,
+        # ... and the OWNED-form source at the same slot -- name or
+        # member read -- which needs no convert and no copy temp: the
+        # cpp_template callee binds the lvalue natively.
+        _ArgRow("bytes_owned_lvalue", _r_bytes_owned_lvalue,
                 extra=_x_insert_own_slot),
         # ... and its RVALUE face: a prvalue has nothing to move from, so
         # it binds the slot with no temp either.
@@ -14870,7 +14973,8 @@ def _print_tuple_opt_ternary(a: 'TpyTupleLiteral', rt: 'TpyType | None',
     return u if found else None
 
 def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
-                     analyzer) -> 'PrintForm | None':
+                     analyzer,
+                     pointers: "AbstractSet[str]") -> 'PrintForm | None':
     """The kind-keyed printer wrap for a container / value-tuple / F1-record
     NAME print arg, or None outside the slice -- the print emit's per-kind arms:
     `Dict/Set/ListPrinter` (Array shares ListPrinter), `TuplePrinter`, a
@@ -14999,7 +15103,8 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
         # A nested-container ELEMENT read (`print(groups["a"])` ->
         # `ListPrinter(::tpy::__getitem__(groups, "a"))`): the element lvalue
         # streams through the same kind-keyed wrap a container name does.
-        if _container_ref_alias_elem_subscript(a, declared, analyzer):
+        if _container_ref_alias_elem_subscript(a, declared, analyzer,
+                                               pointers):
             et = unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(analyzer.get_expr_type(a))))
             if is_dict(et):
@@ -15049,7 +15154,8 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
                      # (`print(gp.get().log)`) reads the same bare `.field`
                      # lvalue the printer wraps -- the receiver rows that
                      # admit it as a METHOD receiver admit it here.
-                     or _indirect_field_receiver_ok(a, declared, analyzer))):
+                     or _indirect_field_receiver_ok(a, declared, analyzer,
+                                                    pointers))):
             return None
         fdt = _field_decl_type(a, declared, analyzer)
         if (fdt is not None

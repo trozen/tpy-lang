@@ -1,0 +1,1 @@
+main.py:34: error: in function 'gen_deep_snapshot': this construct is not yet supported by C++ code generation (res.by_value_property_iter)

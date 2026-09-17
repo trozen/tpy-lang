@@ -19,6 +19,7 @@ from .typesys import (
     FunctionInfo, NominalType, PtrType, TpyType, TypeParamRef, OwnType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
     is_open_type_param_return, is_primitive_type, is_protocol_type,
+    property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .parse import (
@@ -134,6 +135,58 @@ def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | No
     ) is ResultRepresentation.CPP_REFERENCE
 
 
+def return_type_is_cpp_ref(rt: 'TpyType | None') -> bool:
+    """The return-SHAPE half of `call_returns_cpp_ref`, for a caller holding a
+    composed return type rather than the callee's `FunctionInfo` (a generic
+    record's re-resolved signature carries the raw `T`, which answers False
+    here for a substitution that is in fact a reference)."""
+    return returns_cpp_reference_shape(rt)
+
+
+def property_access_returns_cpp_ref(analyzer: ValueCategoryAnalyzer,
+                                    expr: TpyFieldAccess) -> bool:
+    """The return convention of ONE property read: does the getter hand its
+    result back as a C++ lvalue reference into live storage, or by value?
+
+    Two facts beyond the plain method convention. The storage-reference
+    shapes (`property_getter_returns_storage_ref`) are spelled as the
+    FIELD's storage reference where a method returns them by value. And a
+    bare type-param return is spelled `val_or_ref_t<T>` -- `T&` at a
+    reference argument, `T` by value at a value one -- so that convention is
+    decided at the INSTANTIATION: it reads the composed property type sema
+    substituted for this receiver (`get_expr_type` on the access node), not
+    the declared `T`. Every other declared shape spells the same C++ at
+    every instantiation and answers from the getter alone.
+
+    The instantiation arm agrees with the emitter on every substitution it
+    is asked about, but not by construction: the emitter spells
+    `val_or_ref_t<T>` for EVERY open-`T` return, while `return_type_is_cpp_ref`
+    subtracts Optional, Union and protocol. Nothing reaches the gap today:
+    the READ does not lower at such an instantiation -- it is a located
+    reject, `expr.method_call:method.record.<getter>` at a decl, the same
+    one its plain-METHOD twin takes, pinned by
+    `tests/cases/generics/error_open_t_property_optional_decl` -- and sema
+    refuses the iterable itself before any for-each gate is asked.
+
+    Whether the RECEIVER is a temporary is a separate question, and not this
+    predicate's: a reference-returning getter answers True here however its
+    receiver was obtained. `is_rvalue_source` asks both, which is what keeps
+    a read off a temporary from binding a reference into it
+    (`BUGS.md#readonly-borrow-of-temporary-receiver`).
+    """
+    getter = expr.property_getter_call
+    if getter is None:
+        return False
+    fi = getter.resolved_function_info
+    if fi is None:
+        return False
+    if property_getter_returns_storage_ref(fi.return_type):
+        return True
+    if is_open_type_param_return(fi.return_type):
+        return return_type_is_cpp_ref(analyzer.get_expr_type(expr))
+    return call_returns_cpp_ref(analyzer, fi)
+
+
 def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     """Check if an expression produces an rvalue (a fresh value / temporary).
 
@@ -145,8 +198,32 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     # Names are lvalues (either pointer-locals, params, or globals)
     if isinstance(expr, TpyName):
         return False
-    # Field access: rvalue iff the object is rvalue (member of temporary)
+    # Field access: rvalue iff the object is rvalue (member of temporary).
+    # A property / __getattr__ access keeps the field-access node kind but
+    # RENDERS as a method call, so the accessor's return CONVENTION is a
+    # SECOND way for it to be one -- the node kind alone reads as an inert
+    # member read. Both are asked: an accessor handing back a C++ reference
+    # still borrows from its RECEIVER, so off a temporary the read names
+    # storage that dies at the end of the statement exactly as a plain
+    # member read off one does. Asking only the convention would bind a
+    # reference into the temporary (`std::vector<int32_t>& p =
+    # mk().items();`); the METHOD spelling of the same read is a conceded
+    # warn-and-emit tier (`BUGS.md#readonly-borrow-of-temporary-receiver`)
+    # and is not this arm.
     if isinstance(expr, TpyFieldAccess):
+        if expr.property_getter_call is not None:
+            return (not property_access_returns_cpp_ref(analyzer, expr)
+                    or is_rvalue_source(analyzer, expr.obj))
+        # Same pair for the `__getattr__` face. The receiver disjunct is inert
+        # today -- sema admits only a value type, `Any` or `Own[T]` as a
+        # `__getattr__` return, so the convention never answers "reference"
+        # here -- and is kept so the two accessor arms cannot drift if it
+        # widens.
+        hidden = expr.hidden_call
+        if hidden is not None:
+            return (not call_returns_cpp_ref(analyzer,
+                                             hidden.resolved_function_info)
+                    or is_rvalue_source(analyzer, expr.obj))
         return is_rvalue_source(analyzer, expr.obj)
     # Subscript into containers is an lvalue (returns T&).
     # Exceptions: slice calls (e.g. list_stepped_slice) and user-record

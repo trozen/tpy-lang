@@ -1,0 +1,12 @@
+insert b'b3' b'b1' b'b2' v2 s1 b'ZZ' ZZ
+lit b'b1' b'b2' s1 v2 2 1 b'b1' b'ZZ' ZZ
+setitem b'b1' b'b2' 1 2 b'ZZ' ZZ
+method b'b2' s2 b'b2'
+ctor b'b2' s2
+gen yield 1
+gen b'b2' s2 7
+comp s1 s2 b'b1' 2 1 s1-s2 ZZ
+with b'b2' 2
+try s2
+match 1
+closure s2

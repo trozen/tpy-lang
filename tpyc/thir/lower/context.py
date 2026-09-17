@@ -984,6 +984,9 @@ _BRANCH_SCOPED_SETS = (
     "movable_locals", "storage_tuple_locals", "own_borrow_tuple_locals",
     "optional_borrow_tuple_locals",
     "const_storage_tuple_locals",
+    # The for-body registration of sema's `const_loop_var` binding: scoped to
+    # the loop body, like every other name the loop head registers.
+    "const_loop_vars",
     "frame_slots", "forbidden_reads", "forbidden_writes",
     # A `static __global_slot_N` allocated inside a branch is scoped to that
     # branch, so the "this global already has a reusable slot" fact must pop
@@ -1074,7 +1077,8 @@ class _LowerCtx:
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
                  "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
-                 "const_storage_tuple_locals", "frame_own_tuple_types",
+                 "const_storage_tuple_locals", "const_loop_vars",
+                 "frame_own_tuple_types",
                  "frame_slots",
                  "resumable_leaf_mode", "in_container_elem",
                  "nested_returns", "in_finally_helper",
@@ -1459,6 +1463,18 @@ class _LowerCtx:
         # owned elements out. Populated only by `lower_resumable`, empty
         # for every sync body.
         self.oneshot_lift_locals: frozenset = frozenset()
+        # For-each loop vars whose binding is const, from two deciders: SEMA
+        # (`TpyForEach.const_loop_var`, which chose `const auto&`) and this
+        # LOWERING (`_iteration_yields_const`, an `auto&&` over a const
+        # source deducing `const T&`). Both spell the same binding, and no
+        # consumer asks which decided an entry -- the sole reader
+        # (`_const_borrow_name`, which `_iteration_yields_const` asks in turn
+        # for a nested loop) only asks whether a borrow rooted here must be
+        # const -- so the set stays merged. Registered for the body only.
+        # No other set answers for a loop var: `const_locals` holds the DECL
+        # families and is read by ~30 unrelated predicates, so a loop var
+        # entered there would move all of them.
+        self.const_loop_vars: set[str] = set()
         # Pointer-alias frame locals (the skeleton's pointer_alias_locals,
         # minus the synthetic decomposition temps): `T*` fields aliasing
         # live storage. Reads ride lc.pointers; the unpack arm binds one

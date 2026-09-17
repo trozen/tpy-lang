@@ -1,0 +1,1 @@
+main.py:19: error: in function 'sizes': this construct is not yet supported by C++ code generation (res.local_storage)

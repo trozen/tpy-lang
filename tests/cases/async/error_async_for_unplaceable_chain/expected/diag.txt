@@ -1,0 +1,1 @@
+main.py:56: error: in function 'drain': this construct is not yet supported by C++ code generation (res.for_iter_borrow_unplaceable)

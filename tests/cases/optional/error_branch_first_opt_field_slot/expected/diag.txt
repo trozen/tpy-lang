@@ -1,0 +1,1 @@
+main.py:35: error: in function 'branch_first': this construct is not yet supported by C++ code generation (stmt.var_decl:reseat.branch_rvalue_source)

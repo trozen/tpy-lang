@@ -94,6 +94,267 @@ __gen_mut mut(std::vector<Rec>& recs) {
     return __gen_mut(recs);
 }
 
+// # the inner iterable is a SUBSCRIPT of the outer loop var -- the write through
+// # the element still credits the param, so it stays `T&` in the frame too
+// def sub_hop(grid: list[list[list[Rec]]]) -> Iterator[int32]:  # tpyc: ok
+//     for rows in grid:
+//         for r in rows[0]:
+//             r.n += 1
+//             yield r.n                                                     # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_sub_hop::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((grid).begin());
+        __for_end_0.emplace((grid).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        rows = &(*((*__for_it_0))++);
+        __for_it_1.emplace((::tpy::__getitem__((*rows), 0)).begin());
+        __for_end_1.emplace((::tpy::__getitem__((*rows), 0)).end());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield r.n
+    case S_JOIN_1: {
+        if ((*__for_it_1) == (*__for_end_1)) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        r = &(*((*__for_it_1))++);
+        r->n = ::tpy::add_check<int32_t>(r->n, 1);
+        __state = S_RESUME_0;
+        return r->n;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def sub_hop(grid: list[list[list[Rec]]]) -> Iterator[int32]:  # tpyc: ok
+__gen_sub_hop sub_hop(std::vector<std::vector<std::vector<Rec>>>& grid) {
+    return __gen_sub_hop(grid);
+}
+
+// # the iterable is a one-hop CHAIN off a param (a field, then a subscript) --
+// # the frame keeps the mutable borrow, as for a bare-name source. A deeper
+// # chain (`d.shelf.rows[0]`) rejects: the loan has no key for the invalidation
+// # check (BUGS.md#iter-borrow-place-needs-hops), so the param is a `Shelf`
+// def chain_hop(s: Shelf) -> Iterator[int32]:  # tpyc: ok
+//     for r in s.rows[0]:
+//         r.n += 1
+//         yield r.n                                        # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_chain_hop::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((::tpy::__getitem__(s.rows, 0)).begin());
+        __for_end_0.emplace((::tpy::__getitem__(s.rows, 0)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield r.n
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        r = &(*((*__for_it_0))++);
+        r->n = ::tpy::add_check<int32_t>(r->n, 1);
+        __state = S_RESUME_0;
+        return r->n;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def chain_hop(s: Shelf) -> Iterator[int32]:  # tpyc: ok
+__gen_chain_hop chain_hop(Shelf& s) {
+    return __gen_chain_hop(s);
+}
+
+// # async twin of `chain_hop`: the same chain source across a suspension
+// async def achain_hop(s: Shelf) -> int32:  # tpyc: ok
+//     t = 0
+//     for r in s.rows[0]:
+//         r.n += 1
+//         await asyncio.sleep(0)                        # -> S_RESUME_0
+//         t += r.n
+//     return t
+::tpystd::tpy::Poll<int32_t> __coro_achain_hop::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        t = 0;
+        __for_it_0.emplace((::tpy::__getitem__(s.rows, 0)).begin());
+        __for_end_0.emplace((::tpy::__getitem__(s.rows, 0)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        t = ::tpy::add_check<int32_t>(t, r->n);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            int32_t __tpy_async_ret = t;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        }
+        r = &(*((*__for_it_0))++);
+        r->n = ::tpy::add_check<int32_t>(r->n, 1);
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def achain_hop(s: Shelf) -> int32:  # tpyc: ok
+__coro_achain_hop achain_hop(Shelf& s) {
+    return __coro_achain_hop(s);
+}
+
+// # a non-value local bound off the LOOP VAR inside a frame: the alias's const
+// # spelling is the loop var's, which is the iteration's -- a read-only body
+// # leaves the param const, so the alias must be a const borrow
+// def alias_ro(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
+//     for d in ds:
+//         sh = d.shelf
+//         yield sh.rows[0][0].n                                  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_alias_ro::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((ds).begin());
+        __for_end_0.emplace((ds).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield sh.rows[0][0].n
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        d = &(*((*__for_it_0))++);
+        sh = &(d->shelf);
+        __state = S_RESUME_0;
+        return ::tpy::__getitem__(::tpy::__getitem__(sh->rows, 0), 0).n;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def alias_ro(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
+__gen_alias_ro alias_ro(const std::vector<Depot>& ds) {
+    return __gen_alias_ro(ds);
+}
+
+// # the write leg: the alias is written THROUGH, so the borrow is mutable, the
+// # param keeps `T&`, and the caller sees the change
+// def alias_mut(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
+//     for d in ds:
+//         sh = d.shelf
+//         sh.rows[0][0].n += 1
+//         yield sh.rows[0][0].n                                   # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __gen_alias_mut::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_it_0.emplace((ds).begin());
+        __for_end_0.emplace((ds).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield sh.rows[0][0].n
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        d = &(*((*__for_it_0))++);
+        sh = &(d->shelf);
+        ::tpy::__getitem__(::tpy::__getitem__(sh->rows, 0), 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(::tpy::__getitem__(sh->rows, 0), 0).n, 1);
+        __state = S_RESUME_0;
+        return ::tpy::__getitem__(::tpy::__getitem__(sh->rows, 0), 0).n;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def alias_mut(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
+__gen_alias_mut alias_mut(std::vector<Depot>& ds) {
+    return __gen_alias_mut(ds);
+}
+
+// # async twin of `alias_mut`: the alias spans a suspension
+// async def aalias_mut(ds: list[Depot]) -> int32:  # tpyc: ok
+//     t = 0
+//     for d in ds:
+//         sh = d.shelf
+//         sh.rows[0][0].n += 1
+//         await asyncio.sleep(0)                               # -> S_RESUME_0
+//         t += sh.rows[0][0].n
+//     return t
+::tpystd::tpy::Poll<int32_t> __coro_aalias_mut::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        t = 0;
+        __for_it_0.emplace((ds).begin());
+        __for_end_0.emplace((ds).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        t = ::tpy::add_check<int32_t>(t, ::tpy::__getitem__(::tpy::__getitem__(sh->rows, 0), 0).n);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            int32_t __tpy_async_ret = t;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        }
+        d = &(*((*__for_it_0))++);
+        sh = &(d->shelf);
+        ::tpy::__getitem__(::tpy::__getitem__(sh->rows, 0), 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(::tpy::__getitem__(sh->rows, 0), 0).n, 1);
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def aalias_mut(ds: list[Depot]) -> int32:  # tpyc: ok
+__coro_aalias_mut aalias_mut(std::vector<Depot>& ds) {
+    return __coro_aalias_mut(ds);
+}
+
 // def bump(xs: list[int32]) -> None:
 //     xs.append(9)
 void bump(std::vector<int32_t>& xs) {
@@ -412,6 +673,28 @@ int32_t drive_scan(Bag& g, const std::vector<int32_t>& ys) {
 //         r.n += 10
 //     print("mut", recs[0].n, recs[1].n, recs[2].n)
 //
+//     grid = [[[Rec(1)]], [[Rec(2)]]]
+//     for v in sub_hop(grid):
+//         print("sub hop", v)
+//     print("sub hop after", grid[0][0][0].n, grid[1][0][0].n)
+//
+//     d0 = Depot()
+//     for v in chain_hop(d0.shelf):
+//         print("chain hop", v)
+//     print("chain hop after", d0.shelf.rows[0][0].n, d0.shelf.rows[0][1].n)
+//
+//     d1 = Depot()
+//     print("async chain hop", asyncio.run(achain_hop(d1.shelf)),
+//           d1.shelf.rows[0][0].n, d1.shelf.rows[0][1].n)
+//
+//     ds: list[Depot] = [Depot()]
+//     for v in alias_ro(ds):
+//         print("alias ro", v)
+//     for v in alias_mut(ds):
+//         print("alias mut", v)
+//     print("alias async", asyncio.run(aalias_mut(ds)),
+//           ds[0].shelf.rows[0][0].n)
+//
 //     ys = [5, 6]
 //     for v in to_mut_callee(ys):
 //         print("callee", v)
@@ -439,14 +722,62 @@ void main() {
         }
     }
     std::cout << "mut" << " " << ::tpy::__getitem__(recs, 0).n << " " << ::tpy::__getitem__(recs, 1).n << " " << ::tpy::__getitem__(recs, 2).n << "\n";
-    std::vector<int32_t> ys = {5, 6};
+    std::vector<std::vector<std::vector<Rec>>> grid = {{{{Rec(1)}}}, {{{Rec(2)}}}};
     {
-        auto __src_2 = ::tpyapp::main::to_mut_callee(ys);
+        auto __src_2 = ::tpyapp::main::sub_hop(grid);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
+        std::cout << "sub hop" << " " << v << "\n";
+        }
+    }
+    std::cout << "sub hop after" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(grid, 0), 0), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(grid, 1), 0), 0).n << "\n";
+    Depot d0 = Depot();
+    {
+        auto __src_4 = ::tpyapp::main::chain_hop(d0.shelf);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_5);
+        std::cout << "chain hop" << " " << v << "\n";
+        }
+    }
+    std::cout << "chain hop after" << " " << ::tpy::__getitem__(::tpy::__getitem__(d0.shelf.rows, 0), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(d0.shelf.rows, 0), 1).n << "\n";
+    Depot d1 = Depot();
+    std::cout << "async chain hop" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::achain_hop(d1.shelf))) << " " << ::tpy::__getitem__(::tpy::__getitem__(d1.shelf.rows, 0), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(d1.shelf.rows, 0), 1).n << "\n";
+    std::vector<Depot> ds = {Depot()};
+    {
+        auto __src_6 = ::tpyapp::main::alias_ro(ds);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_7);
+        std::cout << "alias ro" << " " << v << "\n";
+        }
+    }
+    {
+        auto __src_8 = ::tpyapp::main::alias_mut(ds);
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_9);
+        std::cout << "alias mut" << " " << v << "\n";
+        }
+    }
+    std::cout << "alias async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::aalias_mut(ds))) << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(ds, 0).shelf.rows, 0), 0).n << "\n";
+    std::vector<int32_t> ys = {5, 6};
+    {
+        auto __src_10 = ::tpyapp::main::to_mut_callee(ys);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_11);
         std::cout << "callee" << " " << v << "\n";
         }
     }

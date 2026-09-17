@@ -4,6 +4,23 @@
 2
 99
 3
+nested mutate 6 8
+nested read 10
+sub nested 11 13
+sub param 6 20
+sub three 6
+sub dict 6
+sub slice 6 8
+sub return 106
+chain method 6 param 8
+chain deep 6 flat 10
+chain ctor 6 readonly 8
+chain elem field 10 loop var 6 6
+chain dict elem field 10
+chain alias 11 10
+chain ptr root 6 8
+chain try 101 6
+chain match+closure 16
 1 2
 5
 0
@@ -11,3 +28,4 @@
 42
 60
 101
+chain module level 6

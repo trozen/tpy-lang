@@ -1,0 +1,13 @@
+none then literal: 4 0
+call then literal: 4
+literal then literal: 4 2
+literal none literal: 5 5
+dict: 3 0
+branch hoisted: 4 3 4 0
+gen literal: 0
+gen literal: 4
+gen literal off: 0
+gen literal off: 0
+gen call then literal: 2
+gen call then literal: 4
+coro literal: 3 0

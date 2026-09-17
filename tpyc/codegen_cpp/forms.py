@@ -22,7 +22,7 @@ from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyName, TpyNoneLiteral,
                            TpySubscript)
 from ..typesys import (
     OptionalType, OwnType, TpyType, TupleType, UnionType,
-    unwrap_qualifiers, unwrap_readonly,
+    is_ptr_variant_union, unwrap_qualifiers, unwrap_readonly,
 )
 from ..value_category import call_returns_cpp_ref, is_rvalue_source
 
@@ -75,16 +75,6 @@ class LocalBinding(Enum):
     STORAGE_TUPLE_ALIAS = auto()
     PTR_VARIANT = auto()
     OTHER = auto()
-
-
-def is_ptr_variant_union(t: TpyType) -> bool:
-    """A non-value union lowered to `::tpy::Union<A*, B*>` (pointer variant).
-
-    Pure type query -- `CodeGenContext.is_ptr_variant_union` delegates here so the
-    binding classifier and codegen share one definition.
-    """
-    return (isinstance(t, UnionType) and t.uses_pointer_repr()
-            and not t.needs_wrapper())
 
 
 def is_plain_nonvalue(t: TpyType) -> bool:

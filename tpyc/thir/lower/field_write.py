@@ -283,7 +283,7 @@ def _classify_opt_none(stmt: TpyAssign, lc: _LowerCtx,
     if not (_field_receiver_ok(stmt.target, declared, lc.analyzer)
             or _field_over_subscript_ok(stmt.target, declared, lc.analyzer)
             or _field_over_container_subscript_ok(stmt.target, declared,
-                                                  lc.analyzer)):
+                                                  lc.analyzer, lc.pointers)):
         return None
     fdt = _field_decl_type(stmt.target, declared, lc.analyzer)
     if fdt is None:
@@ -411,8 +411,8 @@ def _classify_value(stmt: TpyAssign, lc: _LowerCtx,
     if not (_scalar_field_write_ok(stmt, declared, analyzer, pointers)
             or _user_deref_field_write_ok(stmt, declared, narrowed, analyzer,
                                           pointers)
-            or _str_field_write_ok(stmt, declared, analyzer)
-            or _bytes_field_write_ok(stmt, declared, analyzer)
+            or _str_field_write_ok(stmt, declared, analyzer, pointers)
+            or _bytes_field_write_ok(stmt, declared, analyzer, pointers)
             or _btuple_elem_field_write_ok(stmt, declared, lc, analyzer)):
         return None
     return plan

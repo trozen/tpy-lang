@@ -1,0 +1,21 @@
+plain {'a': [1, 2, 3]}
+record 5
+deep {'a': [[1, 2, 3]]}
+set 3
+tuple {'a': ([1, 2], 3)}
+array 1 2
+optional {'o': [1, 2, 3]}
+jagged {'a': [1, 2], 'b': [3, 4]}
+field {'a': [1, 2, 3]} 2
+global {'g': [1, 2]}
+return {'r': [1, 2, 3]}
+arg 3
+append [{'a': [1, 2, 3]}]
+setitem {'k': {'a': [1, 2, 3]}}
+with {'w': [1, 2]}
+ctor arg {'s': [1, 2, 3]}
+comp {0: [0, 9], 1: [1]}
+generator 3
+try {'t': [1, 2]}
+finally done
+match {'c': [1, 2]}

@@ -65,6 +65,16 @@ def gen(c: bool) -> Iterator[int32]:
     yield score + 1
 
 
+# match arm: the same shadow through the match hoist
+def routed(n: int32) -> int32:
+    match n:  # tpyc: ok
+        case 1:
+            score = 5
+        case _:
+            score = 6
+    return score
+
+
 # async: the coroutine sibling
 async def coro(c: bool) -> int32:
     if c:  # tpyc: ok
@@ -83,6 +93,7 @@ def main() -> None:
     for v in gen(True):
         print(v, end=" ")
     print()
+    print("match:", routed(1), routed(9))
     print("async:", asyncio.run(coro(True)))
 
 

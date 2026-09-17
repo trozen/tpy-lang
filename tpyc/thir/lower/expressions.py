@@ -424,7 +424,7 @@ from .predicates import (
     _str_compare_operand,
     _str_concat_operand,
     _strview_coerce_name,
-    _bytes_field_value_read,
+    _bytes_view_family_value,
     _str_name_form,
     _storage_call_container,
     _container_rebind_call_ret,
@@ -439,7 +439,6 @@ from .predicates import (
     _subscript_container_recv_type,
     _container_elem_lvalue_subscript,
     _narrowed_ptr_opt_name,
-    _narrowed_ptr_opt_recv,
     _template_init_call_fi,
     _view_ctor_bare_source,
     _array_literal_ctor_source,
@@ -667,12 +666,12 @@ from .checks import (
     _field_over_binop_ok,
     _field_over_walrus_ok,
     _field_over_container_subscript_ok,
+    _chained_subscript_recv_type,
     _func_ref_routable,
     _copy_own_arg,
     _copy_open_elem_arg,
     _lambda_reject_reason,
     _subscript_over_container_subscript_ok,
-    _subscript_over_narrowed_opt_subscript_ok,
     _field_over_field_ok,
     _free_callee_kind,
     _fstring_arg_wrap,
@@ -5810,8 +5809,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     or (field_owned_str_ok
                         and _resolved_str_value(rtype, analyzer) is not None
                         and _witness("fstr.str_field"))
+                    # The bytes twin, off the SAME receiver set: the row is
+                    # the value side only, so the ladder below answers the
+                    # receiver for both families alike.
                     or (field_owned_str_ok
-                        and _bytes_field_value_read(e, declared, analyzer)
+                        and _bytes_view_family_value(rtype, analyzer)
                         and _witness("print.bytes_field"))
                     # A WHOLE value-repr Optional field read into an optional
                     # sink (`flat = rec.key;` -- the bare member copy): only
@@ -5854,7 +5856,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         or _field_over_record_getitem_ok(
                             e, declared, analyzer, lc.pointers)
                         or _field_over_container_subscript_ok(
-                            e, declared, analyzer)
+                            e, declared, analyzer, lc.pointers)
                         or _field_over_field_ok(e, declared, analyzer)
                         or _field_over_property_call_ok(e, analyzer)
                         or _field_over_binop_ok(e, analyzer)
@@ -6524,15 +6526,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     record_getitem=True,
                     form=Form.BORROW if opt_ptr_ret else Form.VALUE,
                     loc=loc)
-            recv_t = _subscript_container_recv_type(
-                e.obj, declared, analyzer, narrowed_ok=True)
+            # A receiver that is itself a container-ELEMENT lvalue
+            # (`cube[i][j]`, `a.bs[0].as_[0]`) resolves through the chained
+            # resolver: the hop is rooted storage, so the outer read is an
+            # ordinary element read of the hop's own container type and every
+            # element-family row below reads it unchanged.
             # A None-narrowed ptr-repr Optional[container] NAME receiver reads
-            # through the `(*recv)` deref (_optrecv_deref below), so the family
-            # and element checks key on the narrowed INNER -- the setitem
-            # sibling's row, one sink over.
-            _nptr_recv = _narrowed_ptr_opt_recv(e.obj, recv_t, lc.pointers)
-            if _nptr_recv is not None:
-                recv_t = _nptr_recv
+            # through the `(*recv)` deref (_optrecv_deref below), so the
+            # resolver hands back the narrowed INNER the family and element
+            # checks key on.
+            recv_t = _chained_subscript_recv_type(
+                e.obj, declared, analyzer, lc.pointers)
             recv_peeled = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 recv_t))) if recv_t is not None else None)
             own_recv = isinstance(recv_peeled, OwnType)
@@ -6727,14 +6731,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # `m[i][j]`: the receiver `m[i]` is a nested-container borrow lvalue
             # (a subscript the one-level recv-type resolver rejects), indexed
             # again -> nested `__getitem__`. Emit lowers it prechecked below.
+            # The same nest off a None-narrowed ptr-repr `Optional[container]`
+            # name (`rows[-1][-1]`) rides this gate too: the chained receiver
+            # resolver hands back the narrowed inner.
             nested_ok = (
-                (_subscript_over_container_subscript_ok(e, declared, analyzer)
-                 # ... and the same nest off a None-narrowed ptr-repr
-                 # `Optional[container]` name (`rows[-1][-1]` -> the inner
-                 # read derefs `(*rows)`).
-                 or (_subscript_over_narrowed_opt_subscript_ok(
-                         e, declared, analyzer, lc.pointers)
-                     and bool(_witness("subscript.narrowed_opt_nested"))))
+                _subscript_over_container_subscript_ok(e, declared, analyzer,
+                                                       lc.pointers)
                 and ret_ok and index_ok)
             # An F1-record element read in a RECEIVER position (a member-access
             # receiver, or the inner of a `&c[i]` address-of coercion): the
@@ -7068,7 +7070,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             index=_retag_bytes_literal_view(
                 _narrow_bigint_index(
                     _lower_expr(e.index, lc, declared,
-                                use=_ExprUse(allow_temps=use.allow_temps)),
+                                use=_ExprUse(allow_temps=use.allow_temps),
+                                # A view-family FIELD key renders the bare
+                                # member read; the key slot binds a view of
+                                # it for the lookup, so no wrap is owed.
+                                field_owned_str_ok=isinstance(
+                                    e.index, TpyFieldAccess)),
                     e.index, idx_obj_type, analyzer, loc, declared),
                 (_ivk if (_ivk := view_key_target(unwrap_readonly(
                      unwrap_ref_type(unwrap_send_sync(idx_obj_type)))))
@@ -7328,9 +7335,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # borrow-decl verdict says: that verdict is keyed on the target's
             # USES and never sees the source's indirect const.
             is_const = (borrow_decls[e.target]
-                        or _walrus_src_is_const(src, lc.func, analyzer,
-                                                lc.const_locals,
-                                                lc.record_name))
+                        or _walrus_src_is_const(src, lc))
             declared[e.target] = vtu
             lc.pointers.add(e.target)
             if is_const:
@@ -7365,8 +7370,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             lc.pointers.add(e.target)
             # A const-rooted source lifts to `const T*`; sema's borrow-decl
             # verdict is keyed on the target's USES and does not see it.
-            opt_const = _walrus_src_is_const(e.value, lc.func, analyzer,
-                                             lc.const_locals, lc.record_name)
+            opt_const = _walrus_src_is_const(e.value, lc)
             if opt_const:
                 lc.const_locals.add(e.target)
             cpp_type = None
@@ -8789,7 +8793,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             error_return_ok=True,
             coro_factory_ok=use.admits(SinkForm.CORO_FACTORY),
             ret_cast_ok=True)
-        len_call = _is_len_call(e, declared, analyzer)
+        len_call = _is_len_call(e, declared, analyzer, lc.pointers)
         if not len_call:
             if k is None or fi is None:
                 raise ThirUnsupported(call_reject_reason("expr.call"))
@@ -9085,11 +9089,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             values=tuple(
                 _lower_checked_container_elem(
                     v, vslot, lc, declared, threaded=True, forced=True,
-                    allow_record=True, allow_nested=True, allow_optional=True,
-                    # The threaded value slot renders a str/bytes FIELD as
-                    # the bare member (+ view->owned wrap where the form
-                    # says so) -- the asdict expansion's `{{"n", p.name}}`.
-                    field_str_ok=True)
+                    allow_record=True, allow_nested=True,
+                    allow_optional=True)
                 for v in e.values),
             make_container=make,
             loc=loc,
@@ -10507,7 +10508,8 @@ def _walrus_opt_ptr_source(value: TpyExpr, vtu: TpyType, inner: TpyType,
             result_type=vtu,
             value=_lower_field_source(value, lc, declared),
             form=Form.BORROW, loc=loc)
-    if (_container_elem_lvalue_subscript(value, declared, analyzer)
+    if (_container_elem_lvalue_subscript(value, declared, analyzer,
+                                        lc.pointers)
             and isinstance(src_t, OptionalType)
             and unwrap_readonly(src_t.inner) == unwrap_readonly(inner)
             and reads_storage_form_optional(analyzer, value)):
@@ -11335,7 +11337,6 @@ def _lower_checked_container_elem(
         allow_optional: bool = False,
         retype_scalars: bool = True,
         suppress_move: bool = False,
-        field_str_ok: bool = False,
         tuple_elem: bool = False,
         frame_bare_tuple: bool = False,
         allow_temps: bool = False) -> THIRExpr:
@@ -11346,8 +11347,7 @@ def _lower_checked_container_elem(
         raise ThirUnsupported("expr.container_literal")
     return _lower_container_elem(
         e, slot, lc, declared, retype_scalars=retype_scalars,
-        suppress_move=suppress_move, field_str_ok=field_str_ok,
-        tuple_elem=tuple_elem,
+        suppress_move=suppress_move, tuple_elem=tuple_elem,
         frame_bare_tuple=frame_bare_tuple, allow_temps=allow_temps)
 
 
@@ -11433,7 +11433,6 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                                declared: dict[str, TpyType], *,
                                retype_scalars: bool = True,
                                suppress_move: bool = False,
-                               field_str_ok: bool = False,
                                tuple_elem: bool = False,
                                frame_bare_tuple: bool = False,
                                allow_temps: bool = False) -> THIRExpr:
@@ -11445,10 +11444,9 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
     positions. A literal (VALUE, const char[N]) and an owned source (STORAGE --
     an owned local, a String local, a concat/f-string rvalue) land bare as
     a brace-init pass-through; scalar slots never wrap.
-    `field_str_ok` threads the str/bytes FIELD-read admission
-    (`field_owned_str_ok`) for sinks whose element render is the same bare
-    member / view->owned wrap (the generic-tuple return builder); the
-    default keeps field elements gate-rejected."""
+    A str/bytes FIELD source is admitted here for EVERY element position:
+    its render is that same bare member read plus the form-keyed wrap, so
+    the verdict is this chokepoint's, not each sink's own row."""
     su0 = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
         if slot is not None else None
     if isinstance(su0, AnyType):
@@ -11848,8 +11846,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                            OptionalType)
             and not (isinstance(e, TpyName)
                      and _value_opt_view_param(e.name, lc))),
-        field_owned_str_ok=((field_str_ok or _vu_field)
-                            and isinstance(e, TpyFieldAccess)))
+        field_owned_str_ok=isinstance(e, TpyFieldAccess))
     if retype_scalars:
         el = _slot_literal_retype(el, slot, lc)
     # A value-`Optional[str]` slot (a widened value-tuple RETURN element) wraps
@@ -11992,12 +11989,9 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 _witness("ret.tuple_opt_str_elem")
             else:
                 _witness("ret.tuple_opt_elem")
-        # field_str_ok: a str/bytes FIELD element renders the bare member
-        # (+ the form-keyed owned wrap) -- the astuple expansion's
-        # `{p.name, p.age}`.
         return _lower_container_elem(
             e.elements[i], elem_slot, lc, declared, tuple_elem=True,
-            field_str_ok=True, allow_temps=use.allow_temps)
+            allow_temps=use.allow_temps)
 
     return THIRTupleLiteral(
         # The spelling resolves pending elements: `to_cpp` does not, so a
@@ -12094,13 +12088,9 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             mode = TupleElemCapture.CONST_REF
         captures.append(mode)
         if mode == TupleElemCapture.VALUE:
-            # field_str_ok: a VALUE-mode element renders exactly as the
-            # value-tuple builder's does -- the bare member read plus the
-            # form-keyed owned wrap -- so a str/bytes FIELD source is
-            # admitted on the same rule (`yield (item.path, dirs, files)`).
             lowered.append(_lower_container_elem(
                 e.elements[i], slot.element_types[i], lc, declared,
-                tuple_elem=True, field_str_ok=True))
+                tuple_elem=True))
             lifts.append(False)
             wraps.append(None)
             parts.append(lc.render_type(et_bare))
@@ -12190,7 +12180,8 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 elif (isinstance(elem, TpySubscript)
                       and not isinstance(elem.index, TpySlice)
                       and _container_record_elem_subscript(elem, declared,
-                                                           analyzer)):
+                                                           analyzer,
+                                                           lc.pointers)):
                     # A container-element lvalue (`(items[i], None)` at the
                     # yield slot): the element read's address lifts like
                     # the name row (`&(items[...])`).
@@ -12484,7 +12475,6 @@ def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             parts.append(lc.render_type(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(et)))))
             lowered.append(_lower_container_elem(elem, et, lc, declared,
-                                                 field_str_ok=True,
                                                  tuple_elem=True))
             wraps.append(None)
             continue
@@ -12904,7 +12894,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         # `::tpy::varargs<T>(__tmp_N)`) the same way for a @native callee,
         # and the temp hoists at the same enclosing flush point.
         return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args)
-    len_call = _is_len_call(e, declared, analyzer)
+    len_call = _is_len_call(e, declared, analyzer, lc.pointers)
     if not len_call:
         if kind is not None and kind[0] in ("native", "native_c", "template"):
             if _template_arg_unreferenced(kind, arg_index):
@@ -13242,9 +13232,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         return THIRFormConvert(
             result_type=bt_slot, value=field, form=Form.BORROW,
             is_const=(readonly_target or isinstance(ptype, ReadonlyType)
-                      or _f1_const_rooted_source(a, lc.func, analyzer,
-                                                 lc.const_locals,
-                                                 lc.record_name)),
+                      or _f1_const_rooted_source(a, lc)),
             loc=getattr(a, "loc", None))
     _ru_borrow_call = (_recursive_union_borrow_call_arg(a, ptype, analyzer)
                        if plain_kind else False)
@@ -14969,7 +14957,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     ow_str = _plain_own_slot(ptype)
     if (ow_str is not None and is_str_type(ow_str)
             and _str_owned_slot_arg(a, ptype, declared,
-                                    lc.prescan.param_names, lc.analyzer)):
+                                    lc.prescan.param_names, lc.analyzer,
+                                    lc.pointers)):
         # Re-checked here (not gate-trusted): the Own[str] copy+move temp row
         # below shares the slot, so this bare/convert render must fire only
         # for its own literal/view/element/rvalue faces.
@@ -16852,7 +16841,8 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
                 result_type=popt,
                 value=_lower_field_source(arm, lc, declared),
                 form=Form.BORROW, loc=loc)
-        if (_container_elem_lvalue_subscript(arm, declared, analyzer)
+        if (_container_elem_lvalue_subscript(arm, declared, analyzer,
+                                             lc.pointers)
                 and reads_storage_form_optional(analyzer, arm)):
             # An Optional container ELEMENT arm: the stored optional lifts
             # through the same convert the field arm takes.
@@ -16871,7 +16861,8 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
             return THIROptionalPtrArg(
                 result_type=popt, form=Form.BORROW,
                 value=_lower_expr(arm, lc, declared), addr_of=True, loc=loc)
-    elif (_container_elem_lvalue_subscript(arm, declared, analyzer)
+    elif (_container_elem_lvalue_subscript(arm, declared, analyzer,
+                                           lc.pointers)
           and _f1_record(at, analyzer)):
         # A plain record ELEMENT arm (`ns[0] if c else None`): the address of
         # the live element, the NAME arm's addr-of one receiver shape over.
@@ -17235,7 +17226,8 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                     # A container-ELEMENT subscript arm (`rs[0] if c else
                     # rs[1]`) is an lvalue too, so the `?:` stays one.
                     or _container_elem_lvalue_subscript(arm, declared,
-                                                        analyzer))
+                                                        analyzer,
+                                                        lc.pointers))
         if record_prvalue_ok:
             prv = [_lower_record_prvalue_arm(a, rec_t, lc, declared)
                    for a in (e.then_expr, e.else_expr)]

@@ -5,6 +5,8 @@ namespace tpyapp::main {
 
 std::vector<Point>* items_for_find{};
 Point* result{};
+Depot* depot_global{};
+Shelf* shelf_global{};
 
 // def mutate_point(p: Point) -> None:
 //     p.x = int32(0)
@@ -90,6 +92,562 @@ void test_nested_field_mutate_loop() {
         c.items.push_back(99);
     }
     std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0).items) << "\n";
+}
+
+// def test_nested_loop_mutate() -> None:
+//     """Inner loop var mutated -> the OUTER loop var binds auto&& too.
+//
+//     The element the inner loop lends comes out of the outer loop var's
+//     binding, so a const outer binding makes the write ill-formed.
+//     """
+//     grid: list[list[Point]] = [[Point(1, 2)], [Point(3, 4)]]
+//     for row in grid:
+//         for p in row:
+//             p.x += 5
+//     print("nested mutate", grid[0][0].x, grid[1][0].x)
+void test_nested_loop_mutate() {
+    std::vector<std::vector<Point>> grid = {{Point(1, 2)}, {Point(3, 4)}};
+    auto& __obj_0 = grid;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& row = *__beg_0;
+        auto& __obj_1 = row;
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            auto&& p = *__beg_1;
+            p.x = ::tpy::add_check<int32_t>(p.x, 5);
+        }
+    }
+    std::cout << "nested mutate" << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 1), 0).x << "\n";
+}
+
+// def test_nested_loop_read() -> None:
+//     """Read-only inner body -> BOTH bindings stay const auto&."""
+//     grid: list[list[Point]] = [[Point(1, 2)], [Point(3, 4)]]
+//     total = 0
+//     for row in grid:
+//         for p in row:
+//             total = total + p.value()
+//     print("nested read", total)
+void test_nested_loop_read() {
+    std::vector<std::vector<Point>> grid = {{Point(1, 2)}, {Point(3, 4)}};
+    int32_t total = 0;
+    auto& __obj_0 = grid;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& row = *__beg_0;
+        auto& __obj_1 = row;
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            const auto& p = *__beg_1;
+            total = (::tpy::add_check<int32_t>(total, p.value()));
+        }
+    }
+    std::cout << "nested read" << " " << total << "\n";
+}
+
+// def bump_field_nested(g: Grid) -> None:
+//     """The inner iterable is a SUBSCRIPT of the outer loop var: the element it
+//     lends still comes out of `g`, so the write credits the parameter (`Grid&`).
+//     """
+//     for row in g.rows:
+//         for p in row[0]:  # tpyc: ok
+//             p.x += 5
+void bump_field_nested(Grid& g) {
+    auto& __obj_0 = g.rows;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& row = *__beg_0;
+        auto& __obj_1 = ::tpy::__getitem__(row, 0);
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            auto&& p = *__beg_1;
+            p.x = ::tpy::add_check<int32_t>(p.x, 5);
+        }
+    }
+}
+
+// def bump_param_subscript(rows: list[list[Point]], i: int32) -> None:
+//     """Single loop straight off a subscript of the parameter."""
+//     for p in rows[i]:  # tpyc: ok
+//         p.x += 5
+void bump_param_subscript(std::vector<std::vector<Point>>& rows, int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def read_param_subscript(rows: readonly[list[list[Point]]], i: int32) -> int32:
+//     """Read-only body over a readonly root -- the binding STAYS const."""
+//     total = 0
+//     for p in rows[i]:  # tpyc: ok
+//         total = total + p.value()
+//     return total
+int32_t read_param_subscript(const std::vector<std::vector<Point>>& rows, int32_t i) {
+    int32_t total = 0;
+    auto& __obj_0 = ::tpy::__getitem__(rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& p = *__beg_0;
+        total = (::tpy::add_check<int32_t>(total, p.value()));
+    }
+    return total;
+}
+
+// def bump_three_levels(cube: list[list[list[list[Point]]]]) -> None:
+//     """Three nested loops: the credit composes outwards across the hop."""
+//     for plane in cube:
+//         for row in plane[0]:
+//             for p in row:  # tpyc: ok
+//                 p.x += 5
+void bump_three_levels(std::vector<std::vector<std::vector<std::vector<Point>>>>& cube) {
+    auto& __obj_0 = cube;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& plane = *__beg_0;
+        auto& __obj_1 = ::tpy::__getitem__(plane, 0);
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            auto&& row = *__beg_1;
+            auto& __obj_2 = row;
+            auto __beg_2 = __obj_2.begin();
+            auto __end_2 = __obj_2.end();
+            for (; __beg_2 != __end_2; ++__beg_2) {
+                auto&& p = *__beg_2;
+                p.x = ::tpy::add_check<int32_t>(p.x, 5);
+            }
+        }
+    }
+}
+
+// def bump_dict_subscript(table: dict[int32, list[Point]], k: int32) -> None:
+//     """A dict subscript is the same element borrow as a list subscript."""
+//     for p in table[k]:  # tpyc: ok
+//         p.x += 5
+void bump_dict_subscript(::tpy::ordered_map<int32_t, std::vector<Point>>& table, int32_t k) {
+    auto& __obj_0 = ::tpy::__getitem__(table, k);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def bump_slice_subscript(items: list[Point]) -> None:
+//     """A SLICE source shares its elements with the sliced container, as in
+//     CPython, so the write through it reaches the caller's points."""
+//     for p in items[0:2]:  # tpyc: ok
+//         p.x += 5
+void bump_slice_subscript(std::vector<Point>& items) {
+    auto __obj_0 = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def first_of_row(rows: list[list[Point]]) -> Point | None:
+//     """Returning the element borrows the param's storage through the subscript.
+//     """
+//     for p in rows[0]:  # tpyc: ok
+//         return p
+//     return None
+Point* first_of_row(std::vector<std::vector<Point>>& rows) {
+    auto& __obj_0 = ::tpy::__getitem__(rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        return &(p);
+    }
+    return nullptr;
+}
+
+// def test_subscript_source_loops() -> None:
+//     """A loop var iterated out of a SUBSCRIPT roots at the subscripted storage.
+//
+//     Every section mutates through the loop var and reads the change back out of
+//     the caller's container, so a silent copy would show as a stale value.
+//     """
+//     g = Grid()
+//     bump_field_nested(g)
+//     g.bump_own()
+//     print("sub nested", g.rows[0][0][0].x, g.rows[1][0][0].x)
+//
+//     rows: list[list[Point]] = [[Point(1, 2), Point(3, 4)]]
+//     bump_param_subscript(rows, 0)
+//     print("sub param", rows[0][0].x, read_param_subscript(rows, 0))
+//
+//     cube: list[list[list[list[Point]]]] = [[[[Point(1, 2)]]]]
+//     bump_three_levels(cube)
+//     print("sub three", cube[0][0][0][0].x)
+//
+//     table: dict[int32, list[Point]] = {}
+//     table[7] = [Point(1, 2)]
+//     bump_dict_subscript(table, 7)
+//     print("sub dict", table[7][0].x)
+//
+//     items: list[Point] = [Point(1, 2), Point(3, 4)]
+//     bump_slice_subscript(items)
+//     print("sub slice", items[0].x, items[1].x)
+//
+//     found = first_of_row(rows)
+//     if found is not None:
+//         found.x += 100
+//     print("sub return", rows[0][0].x)
+void test_subscript_source_loops() {
+    Grid g = Grid();
+    ::tpyapp::main::bump_field_nested(g);
+    g.bump_own();
+    std::cout << "sub nested" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(g.rows, 0), 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(g.rows, 1), 0), 0).x << "\n";
+    std::vector<std::vector<Point>> rows = {{Point(1, 2), Point(3, 4)}};
+    ::tpyapp::main::bump_param_subscript(rows, 0);
+    std::cout << "sub param" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0).x << " " << ::tpyapp::main::read_param_subscript(rows, 0) << "\n";
+    std::vector<std::vector<std::vector<std::vector<Point>>>> cube = {{{{Point(1, 2)}}}};
+    ::tpyapp::main::bump_three_levels(cube);
+    std::cout << "sub three" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0), 0), 0).x << "\n";
+    ::tpy::ordered_map<int32_t, std::vector<Point>> table = ::tpy::ordered_map<int32_t, std::vector<Point>>();
+    ::tpy::__setitem__(table, 7, std::vector<Point>{Point(1, 2)});
+    ::tpyapp::main::bump_dict_subscript(table, 7);
+    std::cout << "sub dict" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 7), 0).x << "\n";
+    std::vector<Point> items = {Point(1, 2), Point(3, 4)};
+    ::tpyapp::main::bump_slice_subscript(items);
+    std::cout << "sub slice" << " " << ::tpy::__getitem__(items, 0).x << " " << ::tpy::__getitem__(items, 1).x << "\n";
+    Point* found = ::tpyapp::main::first_of_row(rows);
+    if ((found != nullptr)) {
+        found->x = ::tpy::add_check<int32_t>(found->x, 100);
+    }
+    std::cout << "sub return" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0).x << "\n";
+}
+
+// def bump_param_field_sub(s: Shelf, i: int32) -> None:
+//     """FREE FUNCTION: a field of the parameter, then a subscript."""
+//     for p in s.rows[i]:  # tpyc: ok
+//         p.x += 5
+void bump_param_field_sub(Shelf& s, int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(s.rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def bump_elem_field(shelves: list[Shelf]) -> None:
+//     """A list ELEMENT as the field receiver, bound to a local first."""
+//     sh = shelves[0]
+//     for p in sh.flat:  # tpyc: ok
+//         p.x += 5
+void bump_elem_field(std::vector<Shelf>& shelves) {
+    Shelf& sh = ::tpy::__getitem__(shelves, 0);
+    auto& __obj_0 = sh.flat;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def bump_dict_elem_field(table: dict[int32, Shelf], k: int32) -> None:
+//     """Same, with a dict element as the field receiver."""
+//     sh = table[k]
+//     for p in sh.flat:  # tpyc: ok
+//         p.x += 5
+void bump_dict_elem_field(::tpy::ordered_map<int32_t, Shelf>& table, int32_t k) {
+    Shelf& sh = ::tpy::__getitem__(table, k);
+    auto& __obj_0 = sh.flat;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def bump_loop_var_root(shelves: list[Shelf]) -> None:
+//     """The chain is rooted at the outer LOOP VAR, not at a parameter name."""
+//     for s in shelves:
+//         for p in s.rows[0]:  # tpyc: ok
+//             p.x += 5
+void bump_loop_var_root(std::vector<Shelf>& shelves) {
+    auto& __obj_0 = shelves;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& s = *__beg_0;
+        auto& __obj_1 = ::tpy::__getitem__(s.rows, 0);
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            auto&& p = *__beg_1;
+            p.x = ::tpy::add_check<int32_t>(p.x, 5);
+        }
+    }
+}
+
+// def alias_read(ds: list[Depot]) -> int32:
+//     """A non-value local bound off a const LOOP VAR takes a CONST borrow.
+//
+//     The read-only body leaves the param const, so the loop var binds const
+//     too, and an alias out of it must be spelled `const Shelf&` -- a mutable
+//     one is ill-formed C++, not a stale read. The bare-name and chain-hop
+//     sources answer with the same verdict.
+//     """
+//     total = 0
+//     for d in ds:
+//         e = d  # tpyc: ok
+//         sh = d.shelf  # tpyc: ok
+//         total = total + e.shelf.flat[0].x + sh.rows[0][0].x
+//     return total
+int32_t alias_read(const std::vector<Depot>& ds) {
+    int32_t total = 0;
+    auto& __obj_0 = ds;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& d = *__beg_0;
+        const Depot& e = d;
+        const Shelf& sh = d.shelf;
+        total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, ::tpy::__getitem__(e.shelf.flat, 0).x)), ::tpy::__getitem__(::tpy::__getitem__(sh.rows, 0), 0).x));
+    }
+    return total;
+}
+
+// def alias_write(ds: list[Depot]) -> None:
+//     """The write leg: the alias is written THROUGH, so the borrow out of the
+//     loop var is mutable and the caller's depot sees the change."""
+//     for d in ds:
+//         sh = d.shelf  # tpyc: ok
+//         sh.flat[0].x += 5
+void alias_write(std::vector<Depot>& ds) {
+    auto& __obj_0 = ds;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& d = *__beg_0;
+        Shelf& sh = d.shelf;
+        ::tpy::__getitem__(sh.flat, 0).x = ::tpy::add_check<int32_t>(::tpy::__getitem__(sh.flat, 0).x, 5);
+    }
+}
+
+// def bump_ptr_root(g: Ptr[Shelf]) -> None:
+//     """A `Ptr[T]` param as the chain ROOT: the hop goes through the deref, the
+//     elements stay mutable, and the write reaches the caller's shelf."""
+//     for p in g.rows[0]:  # tpyc: ok
+//         p.x += 5
+void bump_ptr_root(Shelf* g) {
+    auto& __obj_0 = ::tpy::__getitem__(::tpy::deref_check(g).rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def read_ptr_root(g: Ptr[Shelf]) -> int32:
+//     """The read-only twin of the same `Ptr[T]` root."""
+//     total = 0
+//     for p in g.rows[0]:  # tpyc: ok
+//         total = total + p.value()
+//     return total
+int32_t read_ptr_root(Shelf* g) {
+    int32_t total = 0;
+    auto& __obj_0 = ::tpy::__getitem__(::tpy::deref_check(g).rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& p = *__beg_0;
+        total = (::tpy::add_check<int32_t>(total, p.value()));
+    }
+    return total;
+}
+
+// def read_ro_chain(s: readonly[Shelf]) -> int32:
+//     """A readonly root keeps the chain const across the hop.
+//
+//     Spelled one hop off the readonly PARAM rather than through a local: a
+//     `readonly[T]` container local is its own reject (`decl.slot_type`), so
+//     the deep chain has no readonly workaround.
+//     """
+//     total = 0
+//     for p in s.rows[0]:  # tpyc: ok
+//         total = total + p.value()
+//     return total
+int32_t read_ro_chain(const Shelf& s) {
+    int32_t total = 0;
+    auto& __obj_0 = ::tpy::__getitem__(s.rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& p = *__beg_0;
+        total = (::tpy::add_check<int32_t>(total, p.value()));
+    }
+    return total;
+}
+
+// def bump_in_try(s: Shelf) -> int32:
+//     """TRY/FINALLY body."""
+//     n = 0
+//     try:
+//         for p in s.rows[0]:  # tpyc: ok
+//             p.x += 5
+//             n = n + 1
+//     finally:
+//         n = n + 100
+//     return n
+int32_t bump_in_try(Shelf& s) {
+    int32_t n = 0;
+    {
+        try {
+            auto& __obj_0 = ::tpy::__getitem__(s.rows, 0);
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                auto&& p = *__beg_0;
+                p.x = ::tpy::add_check<int32_t>(p.x, 5);
+                n = (::tpy::add_check<int32_t>(n, 1));
+            }
+        } catch (...) {
+            n = (::tpy::add_check<int32_t>(n, 100));
+            throw;
+        }
+        n = (::tpy::add_check<int32_t>(n, 100));
+    }
+    return n;
+}
+
+// def bump_in_match(s: Shelf, k: int32) -> None:
+//     """MATCH arm body."""
+//     match k:
+//         case 0:
+//             for p in s.rows[0]:  # tpyc: ok
+//                 p.x += 5
+//         case _:
+//             pass
+void bump_in_match(Shelf& s, int32_t k) {
+    auto& __match_subject_1 = k;
+    switch (__match_subject_1) {
+    case 0: {
+        auto& __obj_0 = ::tpy::__getitem__(s.rows, 0);
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            auto&& p = *__beg_0;
+            p.x = ::tpy::add_check<int32_t>(p.x, 5);
+        }
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+}
+
+// def bump_in_closure(s: Shelf) -> None:
+//     """CLOSURE body -- the chain root is the captured parameter."""
+//     def inner() -> None:
+//         for p in s.rows[0]:  # tpyc: ok
+//             p.x += 5
+//     inner()
+void bump_in_closure(Shelf& s) {
+    auto inner = [&s]() {
+        auto& __obj_0 = ::tpy::__getitem__(s.rows, 0);
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            auto&& p = *__beg_0;
+            p.x = ::tpy::add_check<int32_t>(p.x, 5);
+        }
+    };
+    inner();
+}
+
+// def test_chain_source_loops() -> None:
+//     """A one-hop chain iterates exactly as a bare name does; a deeper one
+//     binds to a local first (BUGS.md#iter-borrow-place-needs-hops)."""
+//     s = Shelf()
+//     s.bump_row(0)
+//     bump_param_field_sub(s, 1)
+//     print("chain method", s.rows[0][0].x, "param", s.rows[1][0].x)
+//
+//     d = Depot()
+//     d.bump_deep(0)
+//     d.bump_flat()
+//     print("chain deep", d.shelf.rows[0][0].x, "flat", d.shelf.flat[0].x)
+//     print("chain ctor", Tally(d).total, "readonly", read_ro_chain(d.shelf))
+//
+//     shelves: list[Shelf] = [Shelf(), Shelf()]
+//     bump_elem_field(shelves)
+//     bump_loop_var_root(shelves)
+//     print("chain elem field", shelves[0].flat[0].x,
+//           "loop var", shelves[0].rows[0][0].x, shelves[1].rows[0][0].x)
+//
+//     table: dict[int32, Shelf] = {}
+//     table[7] = Shelf()
+//     bump_dict_elem_field(table, 7)
+//     print("chain dict elem field", table[7].flat[0].x)
+//
+//     ds: list[Depot] = [Depot()]
+//     alias_write(ds)
+//     print("chain alias", alias_read(ds), ds[0].shelf.flat[0].x)
+//
+//     s3 = Shelf()
+//     bump_ptr_root(s3)
+//     print("chain ptr root", s3.rows[0][0].x, read_ptr_root(s3))
+//
+//     s2 = Shelf()
+//     print("chain try", bump_in_try(s2), s2.rows[0][0].x)
+//     bump_in_match(s2, 0)
+//     bump_in_closure(s2)
+//     print("chain match+closure", s2.rows[0][0].x)
+void test_chain_source_loops() {
+    Shelf s = Shelf();
+    s.bump_row(0);
+    ::tpyapp::main::bump_param_field_sub(s, 1);
+    std::cout << "chain method" << " " << ::tpy::__getitem__(::tpy::__getitem__(s.rows, 0), 0).x << " " << "param" << " " << ::tpy::__getitem__(::tpy::__getitem__(s.rows, 1), 0).x << "\n";
+    Depot d = Depot();
+    d.bump_deep(0);
+    d.bump_flat();
+    std::cout << "chain deep" << " " << ::tpy::__getitem__(::tpy::__getitem__(d.shelf.rows, 0), 0).x << " " << "flat" << " " << ::tpy::__getitem__(d.shelf.flat, 0).x << "\n";
+    std::cout << "chain ctor" << " " << Tally(d).total << " " << "readonly" << " " << ::tpyapp::main::read_ro_chain(d.shelf) << "\n";
+    std::vector<Shelf> shelves = {Shelf(), Shelf()};
+    ::tpyapp::main::bump_elem_field(shelves);
+    ::tpyapp::main::bump_loop_var_root(shelves);
+    std::cout << "chain elem field" << " " << ::tpy::__getitem__(::tpy::__getitem__(shelves, 0).flat, 0).x << " " << "loop var" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(shelves, 0).rows, 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(shelves, 1).rows, 0), 0).x << "\n";
+    ::tpy::ordered_map<int32_t, Shelf> table = ::tpy::ordered_map<int32_t, Shelf>();
+    ::tpy::__setitem__(table, 7, Shelf());
+    ::tpyapp::main::bump_dict_elem_field(table, 7);
+    std::cout << "chain dict elem field" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 7).flat, 0).x << "\n";
+    std::vector<Depot> ds = {Depot()};
+    ::tpyapp::main::alias_write(ds);
+    std::cout << "chain alias" << " " << ::tpyapp::main::alias_read(ds) << " " << ::tpy::__getitem__(::tpy::__getitem__(ds, 0).shelf.flat, 0).x << "\n";
+    Shelf s3 = Shelf();
+    ::tpyapp::main::bump_ptr_root(&s3);
+    std::cout << "chain ptr root" << " " << ::tpy::__getitem__(::tpy::__getitem__(s3.rows, 0), 0).x << " " << ::tpyapp::main::read_ptr_root(&s3) << "\n";
+    Shelf s2 = Shelf();
+    std::cout << "chain try" << " " << ::tpyapp::main::bump_in_try(s2) << " " << ::tpy::__getitem__(::tpy::__getitem__(s2.rows, 0), 0).x << "\n";
+    ::tpyapp::main::bump_in_match(s2, 0);
+    ::tpyapp::main::bump_in_closure(s2);
+    std::cout << "chain match+closure" << " " << ::tpy::__getitem__(::tpy::__getitem__(s2.rows, 0), 0).x << "\n";
 }
 
 // def test_assign_to_local_loop() -> None:
@@ -287,6 +845,10 @@ void test_bigint_mutated() {
 // test_non_readonly_method_loop()
 // test_field_mutate_loop()
 // test_nested_field_mutate_loop()
+// test_nested_loop_mutate()
+// test_nested_loop_read()
+// test_subscript_source_loops()
+// test_chain_source_loops()
 // test_assign_to_local_loop()
 // items_for_find: list[Point] = [Point(int32(5), int32(6))]
 // result = find_point(items_for_find, int32(5))
@@ -297,6 +859,12 @@ void test_bigint_mutated() {
 // test_ptr_from_loop_var()
 // test_value_type_loop()
 // test_sequential_loops_same_var()
+// # MODULE-LEVEL position, chain rooted at a module global.
+// depot_global = Depot()
+// shelf_global = depot_global.shelf
+// for gp in shelf_global.rows[0]:  # tpyc: ok
+//     gp.x += 5
+// print("chain module level", depot_global.shelf.rows[0][0].x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -308,6 +876,10 @@ void __tpy_init() {
     ::tpyapp::main::test_non_readonly_method_loop();
     ::tpyapp::main::test_field_mutate_loop();
     ::tpyapp::main::test_nested_field_mutate_loop();
+    ::tpyapp::main::test_nested_loop_mutate();
+    ::tpyapp::main::test_nested_loop_read();
+    ::tpyapp::main::test_subscript_source_loops();
+    ::tpyapp::main::test_chain_source_loops();
     ::tpyapp::main::test_assign_to_local_loop();
     static std::vector<Point> __global_slot_1 = {Point(5, 6)};
     items_for_find = &__global_slot_1;
@@ -320,6 +892,17 @@ void __tpy_init() {
     ::tpyapp::main::test_ptr_from_loop_var();
     ::tpyapp::main::test_value_type_loop();
     ::tpyapp::main::test_sequential_loops_same_var();
+    static Depot __global_slot_2 = Depot();
+    depot_global = &__global_slot_2;
+    shelf_global = &(depot_global->shelf);
+    auto& __obj_0 = ::tpy::__getitem__(shelf_global->rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& gp = *__beg_0;
+        gp.x = ::tpy::add_check<int32_t>(gp.x, 5);
+    }
+    std::cout << "chain module level" << " " << ::tpy::__getitem__(::tpy::__getitem__(depot_global->shelf.rows, 0), 0).x << "\n";
 }
 
 } // namespace tpyapp::main

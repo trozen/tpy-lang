@@ -1,1 +1,0 @@
-main.py:21: error: in function 'total': this construct is not yet supported by C++ code generation (stmt.for_each:foreach.field_parent)

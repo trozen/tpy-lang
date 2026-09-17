@@ -89,6 +89,30 @@ __gen_gen gen(bool c) {
     return __gen_gen(c);
 }
 
+// # match arm: the same shadow through the match hoist
+// def routed(n: int32) -> int32:
+//     match n:  # tpyc: ok
+//         case 1:
+//             score = 5
+//         case _:
+//             score = 6
+//     return score
+int32_t routed(int32_t n) {
+    int32_t score;
+    auto& __match_subject_1 = n;
+    switch (__match_subject_1) {
+    case 1: {
+        score = 5;
+        break;
+    }
+    default: {
+        score = 6;
+        break;
+    }
+    }
+    return score;
+}
+
 // # async: the coroutine sibling
 // async def coro(c: bool) -> int32:
 //     if c:  # tpyc: ok
@@ -137,6 +161,7 @@ __coro_coro coro(bool c) {
 //     for v in gen(True):
 //         print(v, end=" ")
 //     print()
+//     print("match:", routed(1), routed(9))
 //     print("async:", asyncio.run(coro(True)))
 void main() {
     std::cout << "free:" << " " << ::tpyapp::main::pick(true) << " " << ::tpyapp::main::pick(false) << "\n";
@@ -154,6 +179,7 @@ void main() {
         }
     }
     std::cout << "\n";
+    std::cout << "match:" << " " << ::tpyapp::main::routed(1) << " " << ::tpyapp::main::routed(9) << "\n";
     std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(true))) << "\n";
 }
 

@@ -7,6 +7,8 @@
 
 namespace tpyapp::main {
 
+struct Grid;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def test_append() -> None:
@@ -33,6 +35,35 @@ void test_nested_loops();
 void test_conditional_mutation();
 // def test_subscript_assign_ok() -> None:
 void test_subscript_assign_ok();
+// def test_element_source_method_mutation(rows: list[list[int32]], i: int32) -> None:
+void test_element_source_method_mutation(std::vector<std::vector<int32_t>>& rows, int32_t i);
+// def test_element_source_sibling_index(rows: list[list[int32]], i: int32,
+//                                       j: int32) -> None:
+void test_element_source_sibling_index(std::vector<std::vector<int32_t>>& rows, int32_t i, int32_t j);
+// def test_element_source_distinct_literals(rows: list[list[int32]]) -> None:
+void test_element_source_distinct_literals(std::vector<std::vector<int32_t>>& rows);
+// def test_element_source_same_literal(rows: list[list[int32]]) -> None:
+void test_element_source_same_literal(std::vector<std::vector<int32_t>>& rows);
+// def test_element_source_name_then_literal(rows: list[list[int32]],
+//                                           i: int32) -> None:
+void test_element_source_name_then_literal(std::vector<std::vector<int32_t>>& rows, int32_t i);
+// def test_element_source_literal_then_name(rows: list[list[int32]],
+//                                           i: int32) -> None:
+void test_element_source_literal_then_name(std::vector<std::vector<int32_t>>& rows, int32_t i);
+// def test_element_source_negative_literal(rows: list[list[int32]]) -> None:
+void test_element_source_negative_literal(std::vector<std::vector<int32_t>>& rows);
+// def test_element_source_distinct_literal_setitem(rows: list[list[int32]]) -> None:
+void test_element_source_distinct_literal_setitem(std::vector<std::vector<int32_t>>& rows);
+// def test_element_source_dict_distinct_keys(t: dict[str, list[int32]]) -> None:
+void test_element_source_dict_distinct_keys(::tpy::ordered_map<std::string, std::vector<int32_t>>& t);
+// def test_element_source_dict_same_key(t: dict[str, list[int32]]) -> None:
+void test_element_source_dict_same_key(::tpy::ordered_map<std::string, std::vector<int32_t>>& t);
+// def test_element_source_setitem(rows: list[list[int32]], i: int32) -> None:
+void test_element_source_setitem(std::vector<std::vector<int32_t>>& rows, int32_t i);
+// def test_element_source_outer_mutation(rows: list[list[int32]], i: int32) -> None:
+void test_element_source_outer_mutation(std::vector<std::vector<int32_t>>& rows, int32_t i);
+// def test_container_source_element_mutation_ok(rows: list[list[int32]]) -> None:
+void test_container_source_element_mutation_ok(std::vector<std::vector<int32_t>>& rows);
 // def test_no_warn_after_loop() -> None:
 void test_no_warn_after_loop();
 // def test_read_only_ok() -> None:
@@ -41,8 +72,49 @@ void test_read_only_ok();
 void test_outer_loan_survives_inner_while();
 // def test_else_clause_ok() -> None:
 void test_else_clause_ok();
+// def test_slice_source_warns() -> None:
+void test_slice_source_warns();
+// def test_merged_element_loan_unknown_index() -> None:
+void test_merged_element_loan_unknown_index();
 // def main() -> None:
 void main();
 
+// class Grid:
+struct Grid {
+    // rows: list[list[int32]]
+    std::vector<std::vector<int32_t>> rows;
+
+    // def __init__(self) -> None:
+    Grid();
+
+    // def bump(self, i: int32) -> None:
+    void bump(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
+    ::tpy::print_object_default(os, "Grid", obj);
+    return os;
+}
+
+
+// def __init__(self) -> None:
+//     self.rows = [[1, 2]]
+inline Grid::Grid() : rows(std::vector<std::vector<int32_t>>{{1, 2}}) {}
+
+// # iterating an ELEMENT: a reallocating method on any element of the same
+// # container clobbers what the loop points into
+// def bump(self, i: int32) -> None:
+//     for v in self.rows[i]:
+//         self.rows[i].append(v)  # tpyc: warning(/Mutation of 'self.rows\[\.\.\.\]'.*'append'/)
+inline void Grid::bump(int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(this->rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        ::tpy::__getitem__(this->rows, i).push_back(v);
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

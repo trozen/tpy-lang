@@ -47,7 +47,7 @@ from ..modules import extract_type_params
 from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
-from .context import PENDING_CONTAINER_TYPES
+from .context import PENDING_CONTAINER_TYPES, field_chain_storage_key
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
 from .overloads import (
@@ -3231,10 +3231,11 @@ class CallAnalyzer:
             if i >= len(expr.args):
                 break
             arg = expr.args[i]
-            if not isinstance(arg, TpyName):
-                continue
             # readonly[T] param -- function promises not to mutate
             if isinstance(param.type, ReadonlyType):
+                continue
+            self._demote_views_at_mutable_arg(param, arg)
+            if not isinstance(arg, TpyName):
                 continue
             bt = self.ctx.func.borrow_tracker
             storage = bt.effective_storage(arg.name)
@@ -3266,6 +3267,36 @@ class CallAnalyzer:
                     expr,
                 )
             self.ctx.mark_all_view_borrowers_mutated(storage)
+
+    def _demote_views_at_mutable_arg(self, param: ParamInfo, arg: TpyExpr) -> None:
+        """Demote str/bytes views borrowed out of this argument's storage.
+
+        A view of a record field survives only while the field keeps its
+        buffer, and a callee that receives the record through a MUTABLE
+        borrow can replace it (`v = one.tag; bump(one)`).
+
+        The gate is the callee's SIGNATURE, not an analysis of its body:
+        mutation propagation is per module, so whether a cross-module callee
+        writes is not knowable here, and this body's view storage is decided
+        before Phase 2 finalizes even the intra-module facts. A parameter with
+        a mutable borrow surface that is not `readonly` is therefore treated
+        as a write, whatever the callee does; `readonly` is the one escape
+        hatch. Asking `const_borrow_params` here would answer differently for
+        an imported callee (verdict frozen) than for an intra-module one
+        (verdict still None in Phase 1), making the local's C++ form depend on
+        where its callee lives.
+
+        The argument's whole dotted path is the key, so `zap(i)` reaches the
+        view of `i.name` through the prefix match
+        `mark_view_borrowers_mutated` already does, while keying a deeper
+        argument by its path rather than by its root leaves a view borrowed
+        off a sibling of that path alone.
+        """
+        if not param_has_mutable_borrow_surface(param.type):
+            return
+        arg_key = field_chain_storage_key(arg)
+        if arg_key is not None:
+            self.ctx.mark_all_view_borrowers_mutated(arg_key)
 
     def _check_loop_var_arg_mutation(self, expr: TpyCall | TpyMethodCall) -> None:
         """Mark for-each loop variables as mutated when passed to non-readonly params."""

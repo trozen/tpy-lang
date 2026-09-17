@@ -12,6 +12,8 @@ namespace tpyapp::main {
 
 struct Box;
 struct Holder;
+struct Keeper;
+struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -22,8 +24,20 @@ struct __gen_gen_try;
 struct __gen_gen_value;
 struct __gen_gen_call;
 struct __gen_gen_readonly;
+struct __gen_gen_pack;
+struct __gen_gen_pack_bump;
+struct __gen_gen_ptr_ro;
+struct __gen_gen_loop_ro;
+struct __gen_gen_loop_ptr_ro;
+struct __gen_gen_chain;
+struct __gen_gen_alias_root;
+struct __gen_gen_loop_root;
+struct __coro_coro_chain;
 struct __coro_coro_subscript;
 struct __coro_main_coro;
+struct __coro_main_coro_chain;
+struct __gen_Keeper_gen_ro;
+struct __gen_Keeper_gen_bump;
 
 // def gen_subscript(pairs: list[tuple[int32, Box]]) -> Iterator[int32]:
 __gen_gen_subscript gen_subscript(std::vector<std::tuple<int32_t, Box>>& pairs);
@@ -41,10 +55,30 @@ std::tuple<int32_t, Box*> borrow_pair(Holder& h);
 __gen_gen_call gen_call(Holder& h);
 // def gen_readonly(pairs: list[tuple[int32, Box]]) -> Iterator[int32]:
 __gen_gen_readonly gen_readonly(const std::vector<std::tuple<int32_t, Box>>& pairs);
+// def gen_pack(*hs: Holder) -> Iterator[int32]:
+__gen_gen_pack gen_pack(::tpy::varargs<const Holder> hs);
+// def gen_pack_bump(*hs: Holder) -> Iterator[int32]:
+__gen_gen_pack_bump gen_pack_bump(::tpy::varargs<Holder> hs);
+// def gen_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
+__gen_gen_ptr_ro gen_ptr_ro(const Grid* p);
+// def gen_loop_ro(g: readonly[Grid]) -> Iterator[int32]:
+__gen_gen_loop_ro gen_loop_ro(const Grid& g);
+// def gen_loop_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
+__gen_gen_loop_ptr_ro gen_loop_ptr_ro(const Grid* p);
+// def gen_chain(hs: list[Holder]) -> Iterator[int32]:
+__gen_gen_chain gen_chain(std::vector<Holder>& hs);
+// def gen_alias_root(hs: list[Holder]) -> Iterator[int32]:
+__gen_gen_alias_root gen_alias_root(std::vector<Holder>& hs);
+// def gen_loop_root(hs: list[Holder]) -> Iterator[int32]:
+__gen_gen_loop_root gen_loop_root(std::vector<Holder>& hs);
+// async def coro_chain(hs: list[Holder]) -> int32:
+__coro_coro_chain coro_chain(std::vector<Holder>& hs);
 // async def coro_subscript(pairs: list[tuple[int32, Box]]) -> int32:
 __coro_coro_subscript coro_subscript(std::vector<std::tuple<int32_t, Box>>& pairs);
 // async def main_coro(pairs: list[tuple[int32, Box]]) -> None:
 __coro_main_coro main_coro(std::vector<std::tuple<int32_t, Box>>& pairs);
+// async def main_coro_chain(hs: list[Holder]) -> None:
+__coro_main_coro_chain main_coro_chain(std::vector<Holder>& hs);
 // def main() -> None:
 void main();
 
@@ -79,6 +113,68 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
+
+// class Keeper:
+struct Keeper {
+    // h: Holder
+    Holder h;
+
+    // def __init__(self, b: Box) -> None:
+    Keeper() = default;
+    explicit Keeper(const Box& b);
+
+    __gen_Keeper_gen_ro gen_ro() const;
+
+    __gen_Keeper_gen_bump gen_bump();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Keeper";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
+    ::tpy::print_object_default(os, "Keeper", obj);
+    return os;
+}
+
+// class Grid:
+struct Grid {
+    // rows: list[Holder]
+    std::vector<Holder> rows;
+
+    // def __init__(self, b: Box) -> None:
+    Grid() = default;
+    explicit Grid(const Box& b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
+    ::tpy::print_object_default(os, "Grid", obj);
+    return os;
+}
+
+// async def coro_chain(hs: list[Holder]) -> int32:
+struct __coro_coro_chain {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<Holder>& hs;
+    int32_t a;
+    Box* b = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_coro_chain(std::vector<Holder>& hs)
+        : __state(S_INITIAL), __cancel_pending(false), hs(hs) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_coro_chain&) {
+        return os << "<coroutine coro_chain>";
+    }
+};
 
 // async def coro_subscript(pairs: list[tuple[int32, Box]]) -> int32:
 struct __coro_coro_subscript {
@@ -128,6 +224,31 @@ struct __coro_main_coro {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";
+    }
+};
+
+// async def main_coro_chain(hs: list[Holder]) -> None:
+struct __coro_main_coro_chain {
+    int32_t __state;
+    bool __cancel_pending;
+    std::vector<Holder>& hs;
+    int32_t __await_lift_0;
+    std::optional<__coro_coro_chain> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_main_coro_chain(std::vector<Holder>& hs)
+        : __state(S_INITIAL), __cancel_pending(false), hs(hs) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro_chain&) {
+        return os << "<coroutine main_coro_chain>";
     }
 };
 
@@ -324,6 +445,278 @@ struct __gen_gen_readonly : public ::tpy::next_iter_mixin<__gen_gen_readonly, in
     }
 };
 
+// def gen_pack(*hs: Holder) -> Iterator[int32]:
+struct __gen_gen_pack : public ::tpy::next_iter_mixin<__gen_gen_pack, int32_t> {
+    int32_t __state;
+    ::tpy::varargs<const Holder> hs;
+    int32_t a;
+    const Box* b = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_pack(::tpy::varargs<const Holder> hs_)
+        : __state(S_INITIAL), hs(std::move(hs_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_pack& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_pack&) {
+        return os << "<generator gen_pack>";
+    }
+};
+
+// def gen_pack_bump(*hs: Holder) -> Iterator[int32]:
+struct __gen_gen_pack_bump : public ::tpy::next_iter_mixin<__gen_gen_pack_bump, int32_t> {
+    int32_t __state;
+    ::tpy::varargs<Holder> hs;
+    int32_t a;
+    Box* b = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_pack_bump(::tpy::varargs<Holder> hs_)
+        : __state(S_INITIAL), hs(std::move(hs_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_pack_bump& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_pack_bump&) {
+        return os << "<generator gen_pack_bump>";
+    }
+};
+
+// def gen_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
+struct __gen_gen_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_ptr_ro, int32_t> {
+    int32_t __state;
+    const Grid* p;
+    int32_t a;
+    const Box* b = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_ptr_ro(const Grid* p_)
+        : __state(S_INITIAL), p(std::move(p_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_ptr_ro& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_ptr_ro&) {
+        return os << "<generator gen_ptr_ro>";
+    }
+};
+
+// def gen_loop_ro(g: readonly[Grid]) -> Iterator[int32]:
+struct __gen_gen_loop_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ro, int32_t> {
+    int32_t __state;
+    const Grid& g;
+    const Holder* h = nullptr;
+    int32_t a;
+    const Box* b = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_loop_ro(const Grid& g)
+        : __state(S_INITIAL), g(g) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_loop_ro& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_loop_ro&) {
+        return os << "<generator gen_loop_ro>";
+    }
+};
+
+// def gen_loop_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
+struct __gen_gen_loop_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ptr_ro, int32_t> {
+    int32_t __state;
+    const Grid* p;
+    const Holder* h = nullptr;
+    int32_t a;
+    const Box* b = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_loop_ptr_ro(const Grid* p_)
+        : __state(S_INITIAL), p(std::move(p_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_loop_ptr_ro& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_loop_ptr_ro&) {
+        return os << "<generator gen_loop_ptr_ro>";
+    }
+};
+
+// def gen_chain(hs: list[Holder]) -> Iterator[int32]:
+struct __gen_gen_chain : public ::tpy::next_iter_mixin<__gen_gen_chain, int32_t> {
+    int32_t __state;
+    std::vector<Holder>& hs;
+    int32_t a;
+    Box* b = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_chain(std::vector<Holder>& hs)
+        : __state(S_INITIAL), hs(hs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_chain& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_chain&) {
+        return os << "<generator gen_chain>";
+    }
+};
+
+// def gen_alias_root(hs: list[Holder]) -> Iterator[int32]:
+struct __gen_gen_alias_root : public ::tpy::next_iter_mixin<__gen_gen_alias_root, int32_t> {
+    int32_t __state;
+    std::vector<Holder>& hs;
+    Holder* h = nullptr;
+    int32_t a;
+    Box* b = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_alias_root(std::vector<Holder>& hs)
+        : __state(S_INITIAL), hs(hs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_alias_root& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_alias_root&) {
+        return os << "<generator gen_alias_root>";
+    }
+};
+
+// def gen_loop_root(hs: list[Holder]) -> Iterator[int32]:
+struct __gen_gen_loop_root : public ::tpy::next_iter_mixin<__gen_gen_loop_root, int32_t> {
+    int32_t __state;
+    std::vector<Holder>& hs;
+    Holder* h = nullptr;
+    int32_t a;
+    Box* b = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Holder>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Holder>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_loop_root(std::vector<Holder>& hs)
+        : __state(S_INITIAL), hs(hs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_loop_root& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_loop_root&) {
+        return os << "<generator gen_loop_root>";
+    }
+};
+
+// @readonly
+// def gen_ro(self) -> Iterator[int32]:
+struct __gen_Keeper_gen_ro : public ::tpy::next_iter_mixin<__gen_Keeper_gen_ro, int32_t> {
+    int32_t __state;
+    const Keeper& __self;
+    int32_t a;
+    const Box* b = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Keeper_gen_ro(const Keeper& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Keeper_gen_ro& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Keeper_gen_ro&) {
+        return os << "<generator Keeper.gen_ro>";
+    }
+};
+
+inline __gen_Keeper_gen_ro Keeper::gen_ro() const {
+    return __gen_Keeper_gen_ro(*this);
+}
+
+// def gen_bump(self) -> Iterator[int32]:
+struct __gen_Keeper_gen_bump : public ::tpy::next_iter_mixin<__gen_Keeper_gen_bump, int32_t> {
+    int32_t __state;
+    Keeper& __self;
+    int32_t a;
+    Box* b = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Keeper_gen_bump(Keeper& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Keeper_gen_bump& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Keeper_gen_bump&) {
+        return os << "<generator Keeper.gen_bump>";
+    }
+};
+
+inline __gen_Keeper_gen_bump Keeper::gen_bump() {
+    return __gen_Keeper_gen_bump(*this);
+}
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -333,5 +726,13 @@ inline Box::Box(int32_t n) : n(n) {}
 //     # the field owns its element; the generator then aliases THAT Box
 //     self.pair = (1, b)  # tpyc: warning(/copies Box into field/)
 inline Holder::Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, b})) {}
+
+// def __init__(self, b: Box) -> None:
+//     self.h = Holder(b)
+inline Keeper::Keeper(const Box& b) : h(Holder(b)) {}
+
+// def __init__(self, b: Box) -> None:
+//     self.rows = [Holder(b)]
+inline Grid::Grid(const Box& b) : rows(std::vector<Holder>{Holder(b)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

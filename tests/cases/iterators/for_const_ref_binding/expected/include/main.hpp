@@ -9,9 +9,15 @@ namespace tpyapp::main {
 
 struct Point;
 struct Container;
+struct Grid;
+struct Shelf;
+struct Depot;
+struct Tally;
 
 extern std::vector<Point>* items_for_find;
 extern Point* result;
+extern Depot* depot_global;
+extern Shelf* shelf_global;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def mutate_point(p: Point) -> None:
@@ -26,6 +32,52 @@ void test_non_readonly_method_loop();
 void test_field_mutate_loop();
 // def test_nested_field_mutate_loop() -> None:
 void test_nested_field_mutate_loop();
+// def test_nested_loop_mutate() -> None:
+void test_nested_loop_mutate();
+// def test_nested_loop_read() -> None:
+void test_nested_loop_read();
+// def bump_field_nested(g: Grid) -> None:
+void bump_field_nested(Grid& g);
+// def bump_param_subscript(rows: list[list[Point]], i: int32) -> None:
+void bump_param_subscript(std::vector<std::vector<Point>>& rows, int32_t i);
+// def read_param_subscript(rows: readonly[list[list[Point]]], i: int32) -> int32:
+int32_t read_param_subscript(const std::vector<std::vector<Point>>& rows, int32_t i);
+// def bump_three_levels(cube: list[list[list[list[Point]]]]) -> None:
+void bump_three_levels(std::vector<std::vector<std::vector<std::vector<Point>>>>& cube);
+// def bump_dict_subscript(table: dict[int32, list[Point]], k: int32) -> None:
+void bump_dict_subscript(::tpy::ordered_map<int32_t, std::vector<Point>>& table, int32_t k);
+// def bump_slice_subscript(items: list[Point]) -> None:
+void bump_slice_subscript(std::vector<Point>& items);
+// def first_of_row(rows: list[list[Point]]) -> Point | None:
+Point* first_of_row(std::vector<std::vector<Point>>& rows);
+// def test_subscript_source_loops() -> None:
+void test_subscript_source_loops();
+// def bump_param_field_sub(s: Shelf, i: int32) -> None:
+void bump_param_field_sub(Shelf& s, int32_t i);
+// def bump_elem_field(shelves: list[Shelf]) -> None:
+void bump_elem_field(std::vector<Shelf>& shelves);
+// def bump_dict_elem_field(table: dict[int32, Shelf], k: int32) -> None:
+void bump_dict_elem_field(::tpy::ordered_map<int32_t, Shelf>& table, int32_t k);
+// def bump_loop_var_root(shelves: list[Shelf]) -> None:
+void bump_loop_var_root(std::vector<Shelf>& shelves);
+// def alias_read(ds: list[Depot]) -> int32:
+int32_t alias_read(const std::vector<Depot>& ds);
+// def alias_write(ds: list[Depot]) -> None:
+void alias_write(std::vector<Depot>& ds);
+// def bump_ptr_root(g: Ptr[Shelf]) -> None:
+void bump_ptr_root(Shelf* g);
+// def read_ptr_root(g: Ptr[Shelf]) -> int32:
+int32_t read_ptr_root(Shelf* g);
+// def read_ro_chain(s: readonly[Shelf]) -> int32:
+int32_t read_ro_chain(const Shelf& s);
+// def bump_in_try(s: Shelf) -> int32:
+int32_t bump_in_try(Shelf& s);
+// def bump_in_match(s: Shelf, k: int32) -> None:
+void bump_in_match(Shelf& s, int32_t k);
+// def bump_in_closure(s: Shelf) -> None:
+void bump_in_closure(Shelf& s);
+// def test_chain_source_loops() -> None:
+void test_chain_source_loops();
 // def test_assign_to_local_loop() -> None:
 void test_assign_to_local_loop();
 // def find_point(items: list[Point], target: int32) -> Point | None:
@@ -82,6 +134,81 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+// class Grid:
+struct Grid {
+    // rows: list[list[list[Point]]]
+    std::vector<std::vector<std::vector<Point>>> rows;
+
+    // def __init__(self) -> None:
+    Grid();
+
+    // def bump_own(self) -> None:
+    void bump_own();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
+    ::tpy::print_object_default(os, "Grid", obj);
+    return os;
+}
+
+// class Shelf:
+struct Shelf {
+    // rows: list[list[Point]]
+    std::vector<std::vector<Point>> rows;
+    // flat: list[Point]
+    std::vector<Point> flat;
+
+    // def __init__(self) -> None:
+    Shelf();
+
+    // def bump_row(self, i: int32) -> None:
+    void bump_row(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shelf";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
+    ::tpy::print_object_default(os, "Shelf", obj);
+    return os;
+}
+
+// class Depot:
+struct Depot {
+    // shelf: Shelf
+    Shelf shelf;
+
+    // def __init__(self) -> None:
+    Depot();
+
+    // def bump_deep(self, i: int32) -> None:
+    void bump_deep(int32_t i);
+
+    // def bump_flat(self) -> None:
+    void bump_flat();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Depot";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Depot& obj) {
+    ::tpy::print_object_default(os, "Depot", obj);
+    return os;
+}
+
+// class Tally:
+struct Tally {
+    // total: int32
+    int32_t total;
+
+    // def __init__(self, d: Depot) -> None:
+    Tally() = default;
+    explicit Tally(const Depot& d);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
+    ::tpy::print_object_default(os, "Tally", obj);
+    return os;
+}
+
 
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
@@ -98,5 +225,109 @@ inline int32_t Point::value() const {
 // def __init__(self) -> None:
 //     self.items = [int32(1), int32(2)]
 inline Container::Container() : items(std::vector<int32_t>{1, 2}) {}
+
+// def __init__(self) -> None:
+//     self.rows = [[[Point(1, 2)]], [[Point(3, 4)]]]
+inline Grid::Grid() : rows(std::vector<std::vector<std::vector<Point>>>{{{Point(1, 2)}}, {{Point(3, 4)}}}) {}
+
+// def bump_own(self) -> None:
+//     """METHOD position: the subscript hop roots at `self`, so the method
+//     must not be inferred readonly."""
+//     for row in self.rows:
+//         for p in row[0]:  # tpyc: ok
+//             p.x += 5
+inline void Grid::bump_own() {
+    auto& __obj_0 = this->rows;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& row = *__beg_0;
+        auto& __obj_1 = ::tpy::__getitem__(row, 0);
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            auto&& p = *__beg_1;
+            p.x = ::tpy::add_check<int32_t>(p.x, 5);
+        }
+    }
+}
+
+// def __init__(self) -> None:
+//     self.rows = [[Point(1, 2)], [Point(3, 4)]]
+//     self.flat = [Point(5, 6)]
+inline Shelf::Shelf() : rows(std::vector<std::vector<Point>>{{Point(1, 2)}, {Point(3, 4)}}), flat(std::vector<Point>{Point(5, 6)}) {}
+
+// def bump_row(self, i: int32) -> None:
+//     """METHOD position: one field hop off `self`, then a subscript."""
+//     for p in self.rows[i]:  # tpyc: ok
+//         p.x += 5
+inline void Shelf::bump_row(int32_t i) {
+    auto& __obj_0 = ::tpy::__getitem__(this->rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def __init__(self) -> None:
+//     self.shelf = Shelf()
+inline Depot::Depot() : shelf(Shelf()) {}
+
+// def bump_deep(self, i: int32) -> None:
+//     """A chain too deep to iterate directly, bound to a local first.
+//
+//     `for p in self.shelf.rows[i]` rejects -- the loan has no key
+//     (BUGS.md#iter-borrow-place-needs-hops) -- and binding the
+//     intermediate record is the workaround: `sh` aliases `self.shelf`,
+//     so the writes land in `self`.
+//     """
+//     sh = self.shelf
+//     for p in sh.rows[i]:  # tpyc: ok
+//         p.x += 5
+inline void Depot::bump_deep(int32_t i) {
+    Shelf& sh = this->shelf;
+    auto& __obj_0 = ::tpy::__getitem__(sh.rows, i);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def bump_flat(self) -> None:
+//     """The same workaround for a nested FIELD chain with no subscript."""
+//     sh = self.shelf
+//     for p in sh.flat:  # tpyc: ok
+//         p.x += 5
+inline void Depot::bump_flat() {
+    Shelf& sh = this->shelf;
+    auto& __obj_0 = sh.flat;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.x = ::tpy::add_check<int32_t>(p.x, 5);
+    }
+}
+
+// def __init__(self, d: Depot) -> None:
+//     """CONSTRUCTOR position."""
+//     self.total = 0
+//     sh = d.shelf
+//     for p in sh.rows[0]:  # tpyc: ok
+//         self.total = self.total + p.x
+inline Tally::Tally(const Depot& d) : total(0) {
+    const Shelf& sh = d.shelf;
+    auto& __obj_0 = ::tpy::__getitem__(sh.rows, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& p = *__beg_0;
+        this->total = (::tpy::add_check<int32_t>(this->total, p.x));
+    }
+}
 void __tpy_init();
 } // namespace tpyapp::main

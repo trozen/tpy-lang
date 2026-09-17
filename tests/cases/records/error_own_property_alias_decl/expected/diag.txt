@@ -1,1 +1,0 @@
-main.py:21: error: in function 'use': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.own_property_alias)

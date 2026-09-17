@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Guard;
 struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -31,10 +32,43 @@ void comp_var_position();
 void except_as_position();
 // def match_capture_position() -> None:
 void match_capture_position();
+// def branch_body_position() -> None:
+void branch_body_position();
+// def loop_body_position() -> None:
+void loop_body_position();
+// def while_body_position() -> None:
+void while_body_position();
+// def with_body_position() -> None:
+void with_body_position();
+// def try_body_position() -> None:
+void try_body_position();
+// def match_arm_position() -> None:
+void match_arm_position();
+// def scope_above_block_position() -> None:
+void scope_above_block_position();
+// def block_then_scope_position() -> None:
+void block_then_scope_position();
 // def method_position() -> None:
 void method_position();
 // def main() -> None:
 void main();
+
+// class Guard:
+struct Guard {
+
+
+    // def __enter__(self) -> None:
+    void __enter__() const;
+
+    // def __exit__(self, kind, value, tb) -> None:
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Guard";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
+    ::tpy::print_object_default(os, "Guard", obj);
+    return os;
+}
 
 // class Counter:
 struct Counter {
@@ -54,6 +88,16 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+
+// def __enter__(self) -> None:
+//     pass
+inline void Guard::__enter__() const {
+}
+
+// def __exit__(self, kind, value, tb) -> None:
+//     pass
+inline void Guard::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
+}
 
 // def __init__(self) -> None:
 //     self.n = 3

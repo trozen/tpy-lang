@@ -64,7 +64,7 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, is_dyn_protocol
+from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol
 from ..value_category import (async_return_form, AsyncReturnForm,
                               frame_factory_callee,
                               materializing_temp_source, peel_coerce)
@@ -397,10 +397,25 @@ class AsyncCoroCodegen:
         """
         const_ref: set[str] = set()
         deep: set[str] = set()
+        # A `*args` pack binds const storage without the CAPTURE being a const
+        # borrow: sema flips an unmutated pack to `varargs[readonly[T]]` and
+        # the pack's own spelling carries it, so the field stays as it was and
+        # only the lifts rooted at it turn const.
+        pack: set[str] = set()
         if func.is_readonly and (record_name is not None or func.is_method):
             const_ref.add("self")
         verdict = self._frame_deep_const_verdict(func, record_name)
         for pidx, (pname, ptype) in enumerate(func.params):
+            if varargs_is_readonly(unwrap_ref_type(ptype)):
+                pack.add(pname)
+                continue
+            outer = unwrap_send_sync(unwrap_ref_type(ptype))
+            if is_readonly_ptr(outer):
+                # `Ptr[readonly[T]]` captures as `const T*` whatever the param
+                # verdict says -- its const is on the POINTEE, so like the
+                # other pointer-repr forms it joins `deep` only.
+                deep.add(pname)
+                continue
             explicit = isinstance(unwrap_ref_type(ptype), ReadonlyType)
             if not explicit and (verdict is None or pidx not in verdict):
                 continue
@@ -413,7 +428,8 @@ class AsyncCoroCodegen:
             if ((isinstance(bare, TupleType) and bare.has_pointer_repr_element())
                     or self.ctx.is_ptr_variant_union(bare)):
                 deep.add(pname)
-        rcfg.mark_frame_const(rcfg.resumable_state(func), *const_ref, *deep)
+        rcfg.mark_frame_const(rcfg.resumable_state(func), *const_ref, *deep,
+                              *pack)
         return const_ref, deep
 
     def _classify_params(self, func: TpyFunction,

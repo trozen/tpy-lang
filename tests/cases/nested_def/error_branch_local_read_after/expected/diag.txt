@@ -1,0 +1,1 @@
+main.py:28: error: 'helper' is not readable after the 'if' block on line 20: the nested function 'helper' defined on line 21 is bound inside that block and does not outlive it, and a nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'helper' -- move the 'def' above the block, or rename it

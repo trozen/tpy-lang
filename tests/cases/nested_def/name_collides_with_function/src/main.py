@@ -1,10 +1,23 @@
 # A nested def whose name matches a module-level function or a method of the
 # enclosing record. The lambda shadows the outer name for the rest of the body,
 # exactly as Python rebinds it; the list params are mutated and re-read so a
-# copy at the lambda boundary would show up in the output.
+# copy at the lambda boundary would show up in the output. The last six
+# sections bind the shadowing name inside an `if` / `for` / `while` / `with` /
+# `try` / `match` body and read it THERE, while the block is still open; a
+# read after such a block is the error
+# (nested_def/error_branch_local_read_after) -- unless a SCOPE-level def of the
+# name is in effect there, which the last two sections cover from either side.
 from typing import Callable
 
 from tpy import int32
+
+
+class Guard:
+    def __enter__(self) -> None:
+        pass
+
+    def __exit__(self, kind, value, tb) -> None:
+        pass
 
 
 def tally(xs: list[int32]) -> int32:
@@ -147,6 +160,121 @@ def match_capture_position() -> None:
     print("match_capture:", tally(data), data)
 
 
+def branch_body_position() -> None:
+    # a nested def bound inside an `if` body: Python makes the name a local of
+    # the WHOLE enclosing scope, so this read is the nested one, not the
+    # module function. A read AFTER the block is an error whatever the paths
+    # bound (nested_def/error_branch_local_read_after)
+    flag = True
+    if flag:
+        def tally(xs: list[int32]) -> int32:  # tpyc: ok
+            xs.append(11)
+            return len(xs)
+
+        data = [1]
+        print("branch_body:", tally(data), data)
+
+
+def loop_body_position() -> None:
+    # loop body: the same rule, and the binding does not outlive the loop --
+    # which is why a read after the loop is rejected
+    data = [2]
+    for i in range(2):
+        def tally(xs: list[int32]) -> int32:  # tpyc: ok
+            xs.append(12)
+            return len(xs)
+
+        print("loop_body:", tally(data), data)
+
+
+def while_body_position() -> None:
+    # while body: the same rule as the `for` above, read inside the block
+    data = [5]
+    n = 0
+    while n < 2:
+        def tally(xs: list[int32]) -> int32:  # tpyc: ok
+            xs.append(15)
+            return len(xs)
+
+        print("while_body:", tally(data), data)
+        n += 1
+
+
+def with_body_position() -> None:
+    # `with` body: the block always runs, so the read reaches the binding
+    data = [6]
+    with Guard():
+        def tally(xs: list[int32]) -> int32:  # tpyc: ok
+            xs.append(16)
+            return len(xs)
+
+        print("with_body:", tally(data), data)
+
+
+def try_body_position() -> None:
+    # try body: bound on the non-raising path only
+    try:
+        def tally(xs: list[int32]) -> int32:  # tpyc: ok
+            xs.append(13)
+            return len(xs)
+
+        data = [3]
+        print("try_body:", tally(data), data)
+    except ValueError:
+        pass
+
+
+def match_arm_position() -> None:
+    # match arm: bound on that arm only
+    n = 1
+    match n:
+        case 1:
+            def tally(xs: list[int32]) -> int32:  # tpyc: ok
+                xs.append(14)
+                return len(xs)
+
+            data = [4]
+            print("match_arm:", tally(data), data)
+        case _:
+            print("match_arm: other")
+
+
+def scope_above_block_position() -> None:
+    # a SCOPE-level def above a block: the block binds nothing, so the read
+    # after the block still resolves to the scope-level one
+    def tally(xs: list[int32]) -> int32:  # tpyc: ok
+        xs.append(17)
+        return len(xs)
+
+    flag = True
+    if flag:
+        inner = [7]
+        print("scope_above_block inside:", tally(inner), inner)
+    after = [8]
+    print("scope_above_block:", tally(after), after)  # tpyc: ok
+
+
+def block_then_scope_position() -> None:
+    # a block-bound def followed by a SCOPE-level one of the same name: the
+    # scope-level binding supersedes the block entry, so the read after it is
+    # the scope-level def and not a read-after-block error
+    flag = True
+    if flag:
+        def tally(xs: list[int32]) -> int32:  # tpyc: ok
+            xs.append(18)
+            return len(xs)
+
+        inner = [9]
+        print("block_then_scope inside:", tally(inner), inner)
+
+    def tally(xs: list[int32]) -> int32:  # tpyc: ok
+        xs.append(19)
+        return len(xs)
+
+    data = [10]
+    print("block_then_scope:", tally(data), data)  # tpyc: ok
+
+
 def method_position() -> None:
     c = Counter()
     m = [5]
@@ -165,6 +293,14 @@ def main() -> None:
     comp_var_position()
     except_as_position()
     match_capture_position()
+    branch_body_position()
+    loop_body_position()
+    while_body_position()
+    with_body_position()
+    try_body_position()
+    match_arm_position()
+    scope_above_block_position()
+    block_then_scope_position()
     method_position()
 
 

@@ -37,7 +37,7 @@ from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
     TpyUnaryOp, TpyIfExpr, TpyTupleLiteral, TpyVarargPack, TpyStarUnpack,
-    TpyNestedDef, TpyNamedExpr,
+    TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import call_returns_cpp_ref
@@ -96,12 +96,110 @@ def _storage_key(expr: TpyExpr) -> str | None:
     Used by the borrow tracker as a dict key to identify storage that can be
     borrowed from or mutated.  Supports dotted paths so that ``self.items``
     and ``obj.field`` are tracked separately from ``self`` / ``obj``.
+
+    An unbound-self access (``Base.field``, the syntactic receiver being the
+    ancestor CLASS) keys at ``self``: the storage it names is this object's,
+    so a loan filed under the class name would never meet the mutation
+    through ``self.field`` that clobbers it.
     """
     if isinstance(expr, TpyName):
         return expr.name
-    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
-        return f"{expr.obj.name}.{expr.field}"
+    if isinstance(expr, TpyFieldAccess):
+        if expr.unbound_self_parent_type is not None:
+            return f"self.{expr.field}"
+        if isinstance(expr.obj, TpyName):
+            return f"{expr.obj.name}.{expr.field}"
     return None
+
+
+class IndexRelation(Enum):
+    """How the element two subscripts of one container name are related."""
+    SAME = "same"          # provably the same element
+    DISTINCT = "distinct"  # provably different elements
+    UNKNOWN = "unknown"    # may be either
+
+
+def element_index_key(expr: TpyExpr) -> tuple[str, int | str] | None:
+    """A comparable identity for a subscript index, or None when the index
+    has none (an arithmetic expression, a slice, a call).
+
+    Two forms answer: a non-negative int or a str LITERAL, whose values
+    settle both SAME and DISTINCT, and a bare NAME, whose spelling settles
+    SAME only (two different names may still hold one index). A negative int
+    literal deliberately has no key: `rows[-1]` and `rows[1]` are the same
+    element of a two-element list, so treating them as distinct would be
+    unsound.
+    """
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    if isinstance(expr, TpyIntLiteral):
+        return ("lit", expr.value) if expr.value >= 0 else None
+    if isinstance(expr, TpyStrLiteral):
+        return ("lit", expr.value)
+    if isinstance(expr, TpyName):
+        return ("name", expr.name)
+    return None
+
+
+def element_index_relation(a: 'tuple[str, int | str] | None',
+                           b: 'tuple[str, int | str] | None') -> IndexRelation:
+    """The relation between two `element_index_key` answers.
+
+    Equal keys are SAME whichever form they take; two literals that differ
+    are DISTINCT. Everything else -- a missing key, a literal against a name,
+    two different names -- is UNKNOWN, which warns but must say so.
+    """
+    if a is None or b is None:
+        return IndexRelation.UNKNOWN
+    if a == b:
+        return IndexRelation.SAME
+    if a[0] == "lit" and b[0] == "lit":
+        return IndexRelation.DISTINCT
+    return IndexRelation.UNKNOWN
+
+
+def field_chain_storage_key(expr: TpyExpr) -> str | None:
+    """The dotted storage key of a pure field CHAIN ('o.inner.tag'), or None.
+
+    Every caller is on the MUTATION side -- an alias bind, an argument at a
+    mutable parameter, a field write -- and a mutation is spelled at whatever
+    depth the program wrote it, while `_storage_key` stops at one hop because
+    that is all the borrow tracker's dict needs. Spelling the whole path is
+    what lets `mark_view_borrowers_mutated` relate the mutation to a view's
+    own key by prefix: `m = i` keys 'i' and so marks the view under 'i.name'.
+    A hop that dispatches to a method (`hidden_call` -- a property getter or
+    `__getattr__`) mints a temporary the path does not own, so such a chain
+    has no key here.
+
+    The BORROW side must not call it: a loan is looked up by the one-hop key,
+    so a view registered under a deeper dotted path would sit on a key no
+    mutation check ever asks about. A chain too deep to key registers no
+    borrow at all, which is what `_borrow_storage_root` answering None means.
+    """
+    parts: list[str] = []
+    while isinstance(expr, TpyFieldAccess):
+        if expr.hidden_call is not None:
+            return None
+        parts.append(expr.field)
+        expr = expr.obj
+    if not isinstance(expr, TpyName):
+        return None
+    parts.append(expr.name)
+    return ".".join(reversed(parts))
+
+
+def canonical_storage_key(bt: 'BorrowTracker', key: str) -> str:
+    """``key`` re-rooted at the storage its root borrows from.
+
+    One buffer must have ONE key. After ``m = o.mid``, ``m.inner.tag`` and
+    ``o.mid.inner.tag`` name the same field, and the prefix match that demotes
+    a view sees them as one only when both are spelled from real storage.
+    """
+    root = _storage_root(key)
+    for src in bt.all_storage_through_borrows(root):
+        if src != root:
+            return src + key[len(root):]
+    return key
 
 
 def _storage_root(key: str) -> str:
@@ -164,6 +262,28 @@ def _borrow_storage_root(expr: TpyExpr) -> str | None:
     return None
 
 
+def iter_borrow_storage(expr: TpyExpr) -> str | None:
+    """The storage an lvalue for-each iterable's ITER borrow is filed under,
+    or None when the iterable has no storage the invalidation check can ask
+    about.
+
+    One question, one walker: the for-each route in `thir/lower` admits an
+    iterable only when this answers, and the ITER registration files the loan
+    under what it answers, so the loan always sits on a key a mutating
+    receiver can be resolved to. A chain deeper than a loan key can be spelled
+    (`self.grid.rows[i]`, `table[k].cells`) answers None rather than falling
+    back to the chain root: a loan filed at the root is coarser than anything
+    the check looks up, so the iteration would hand out references into
+    storage nothing guards.
+
+    It forwards to the shared walker rather than adding one: the walker's
+    other callers ask a different question (which storage a local init or an
+    argument position borrows), so the contract above would have nowhere to
+    be stated if the for-each route called it directly.
+    """
+    return _borrow_storage_root(expr)
+
+
 def _borrow_storage_roots(expr: TpyExpr) -> list[str]:
     """Storage keys borrowed by ONE argument position.
 
@@ -214,13 +334,91 @@ BORROW_KIND_RANK: dict[BorrowKind, int] = {
     BorrowKind.PTR: 3,
 }
 
+# The kinds a STRUCTURAL mutation (reallocation, insertion, deletion) can
+# invalidate: they point INTO the storage, where ALIAS and FIELD name the
+# storage itself and survive. OPAQUE is out for its own reason (see its
+# definition above): its shape is unknown, so it carries no element or alias
+# semantics and must not feed an invalidation warning at all. Spelled once so
+# the questions asked of it -- "is anything invalidatable borrowed here"
+# (whole-container mutation, slice assignment) and "which element loan does
+# this write hit" -- cannot drift apart.
+INVALIDATING_BORROW_KINDS: tuple[BorrowKind, ...] = (
+    BorrowKind.ITER, BorrowKind.ELEMENT, BorrowKind.PTR)
+
 
 @dataclass(frozen=True, slots=True)
 class LoanInfo:
-    """One loan: what shape it has. Which storage generation it sits in is
-    not tracked here -- `sema.alias_rebind` replays the registrations in
-    program order and answers that itself."""
+    """One loan: what shape it has, and whether it is held on an ELEMENT of
+    the storage it is filed under rather than on that storage itself. Which
+    storage generation it sits in is not tracked here -- `sema.alias_rebind`
+    replays the registrations in program order and answers that itself.
+
+    `on_element` is the one hop of the borrowed place the key cannot spell.
+    It decides which mutations of the storage clobber the loan: a write into
+    a SIBLING element (`rows[j].append(x)`, `rows[j] = ...`) destroys what an
+    element loan points into, while a loan on the container itself survives
+    it -- `for row in rows: rows[0].append(x)` is sound and must stay quiet.
+
+    `elem_index` is which element, as `element_index_key` spells it. It
+    answers the one question the storage key cannot: could the mutated
+    element BE the borrowed one. `element_index_relation` decides; a
+    DISTINCT answer is no conflict, an UNKNOWN one is a conflict the
+    diagnostic must report as possible rather than certain.
+    """
     kind: BorrowKind
+    on_element: bool = False
+    elem_index: tuple[str, int | str] | None = None
+
+
+def loan_mutation_warning(place: str, cause: str, *, iterating: bool,
+                          certain: bool = True) -> str:
+    """The text of the borrow-invalidation warning for a mutation of ``place``.
+
+    One speller for every site (a mutating method on a container or on an
+    element receiver, element assignment, element and name aug-assign, slice
+    and field assignment, `del`), so the branches -- an iteration in progress
+    versus any other live borrow -- can only be worded one way. ``cause`` is
+    what performed the mutation, already quoted where it is a source spelling
+    ("'append'", "'+='", "element assignment").
+
+    ``certain`` is False when the mutated place only MAY be the borrowed one
+    (`IndexRelation.UNKNOWN`). The warning still fires -- the program may be
+    wrong -- but it may not claim the mutation hits the borrowed element,
+    since that is exactly what was not proven. Only the element-hop callers
+    pass it, and an element loan reaches them with any kind: the for-each ITER
+    registration is the only direct one, but `combine_loan_info` carries
+    `on_element` onto a higher-ranked ELEMENT/PTR winner (a rebind of the
+    iterated source retargets the loan upstream), so all four wordings are
+    live.
+    """
+    if iterating:
+        if certain:
+            return (f"Mutation of '{place}' while iterating over it"
+                    f" ({cause} invalidates the iterator)")
+        return (f"Mutation of '{place}' may hit the element being iterated"
+                f" ({cause} may invalidate the iterator)")
+    if certain:
+        return (f"Mutation of '{place}' while borrowed"
+                f" ({cause} may invalidate references)")
+    return (f"Mutation of '{place}' may hit a borrowed element"
+            f" ({cause} may invalidate references)")
+
+
+def element_loan_mutation_warning(
+        place: str, cause: str,
+        hit: 'tuple[LoanInfo, IndexRelation]') -> str:
+    """`loan_mutation_warning` worded from an `element_hop_loan` answer.
+
+    Which of the four wordings an element hop takes is a property of the
+    loan, not of the mutating statement, so the mapping lives next to the
+    speller instead of at each write site: a site that re-derived it could
+    claim an iteration for a non-ITER loan, or claim certainty the index
+    relation did not prove.
+    """
+    loan, rel = hit
+    return loan_mutation_warning(place, cause,
+                                 iterating=loan.kind is BorrowKind.ITER,
+                                 certain=rel is IndexRelation.SAME)
 
 
 # Borrower name of the implicit iterator borrow a for-loop registers. Not a
@@ -235,8 +433,21 @@ def combine_loan_info(a: LoanInfo, b: LoanInfo) -> LoanInfo:
     by BORROW_KIND_RANK. `a` wins a rank tie, which is what both callers --
     a branch-merge dedup and a retarget onto an existing loan -- want.
     """
-    return (b if BORROW_KIND_RANK[b.kind] > BORROW_KIND_RANK[a.kind]
-            else a)
+    winner = (b if BORROW_KIND_RANK[b.kind] > BORROW_KIND_RANK[a.kind]
+              else a)
+    # The element hop is a property of the PLACE, not of the kind, so it
+    # survives whichever kind wins: one of the two loans points into an
+    # element, and the merged loan is clobbered by everything either was.
+    # For the same reason the merged loan may name an element only when both
+    # legs named the same one; otherwise it stands for two places and must
+    # answer with no index at all. So a merged element loan can carry any
+    # kind and no index: every consumer of `on_element` must handle an
+    # UNKNOWN index relation whatever the kind says.
+    on_element = a.on_element or b.on_element
+    elem_index = a.elem_index if a.elem_index == b.elem_index else None
+    if on_element != winner.on_element or elem_index != winner.elem_index:
+        winner = replace(winner, on_element=on_element, elem_index=elem_index)
+    return winner
 
 
 class BorrowTracker:
@@ -272,9 +483,20 @@ class BorrowTracker:
         self.current_stmt = None
         self.stmt_loans.clear()
 
-    def add_borrow(self, storage: str, borrower: str, kind: BorrowKind = BorrowKind.ALIAS) -> None:
-        """Record that ``borrower`` borrows from ``storage``."""
-        self.loans.setdefault(storage, {})[borrower] = LoanInfo(kind)
+    def add_borrow(self, storage: str, borrower: str, kind: BorrowKind = BorrowKind.ALIAS,
+                   *, on_element: bool = False,
+                   elem_index: 'tuple[str, int | str] | None' = None) -> None:
+        """Record that ``borrower`` borrows from ``storage`` (or, with
+        ``on_element``, from the element ``elem_index`` of it).
+
+        The for-each ITER registration is the only site that sets
+        ``on_element`` directly, but it is not the only way a loan acquires
+        the hop: `combine_loan_info` carries it onto whichever kind wins a
+        merge, so an ELEMENT or PTR loan can be on an element too, and with
+        no index when the merged legs named different ones.
+        """
+        self.loans.setdefault(storage, {})[borrower] = LoanInfo(
+            kind, on_element, elem_index)
         if self.current_stmt is not None:
             self.stmt_loans.setdefault(self.current_stmt, []).append(
                 (storage, borrower, kind))
@@ -350,9 +572,32 @@ class BorrowTracker:
         mutations (reallocation, insertion, deletion). Returns False for
         whole-container alias borrows which are safe through mutations.
         """
-        _INVALIDATING = (BorrowKind.ITER, BorrowKind.ELEMENT, BorrowKind.PTR)
-        return any(loan.kind in _INVALIDATING
+        return any(loan.kind in INVALIDATING_BORROW_KINDS
                    for loan in self.loans.get(storage_name, {}).values())
+
+    def element_hop_loan(
+            self, storage: str,
+            index: 'tuple[str, int | str] | None' = None
+    ) -> 'tuple[LoanInfo, IndexRelation] | None':
+        """The invalidating loan held on an element of ``storage`` that the
+        element ``index`` may BE, with how sure that is.
+
+        A write into the borrowed element of ``storage`` -- replacing it, or
+        calling a reallocating method on it -- destroys what such a loan
+        points into. ``index`` is the mutated element's `element_index_key`;
+        a DISTINCT relation is no conflict and is skipped, and the returned
+        relation (SAME or UNKNOWN) is what the diagnostic must not overstate.
+        A loan on ``storage`` ITSELF is not returned; it survives an element
+        write, which is why the plain `has_element_borrow` answer cannot
+        stand in.
+        """
+        for loan in self.loans.get(storage, {}).values():
+            if loan.on_element and loan.kind in INVALIDATING_BORROW_KINDS:
+                rel = element_index_relation(loan.elem_index, index)
+                if rel is IndexRelation.DISTINCT:
+                    continue
+                return loan, rel
+        return None
 
     def has_borrow_of_kinds(self, storage: str, kinds: tuple[BorrowKind, ...]) -> bool:
         """Check if any borrower of storage has one of the given borrow kinds."""
@@ -402,6 +647,18 @@ class BorrowTracker:
                 return current
             visited.add(found)
             current = found
+
+    def resolve_obj_storage(self, obj: TpyExpr) -> str | None:
+        """The storage key a mutation target's OBJECT is filed under.
+
+        A bare name goes through the alias chain; a one-hop field path is its
+        own key, since field paths are never aliased in the tracker. One
+        answer for every caller that has to turn a receiver into a loan key --
+        a second spelling of it drifts from the alias resolution.
+        """
+        if isinstance(obj, TpyName):
+            return self.effective_storage(obj.name)
+        return _storage_key(obj)
 
     def borrow_kind_of(self, name: str) -> 'BorrowKind | None':
         """Return the kind of borrow that 'name' holds, or None if not a borrower."""
@@ -664,6 +921,13 @@ def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
     inner = init_expr
     while isinstance(inner, TpyCoerce):
         inner = inner.expr
+    # Binding a second name to a record hands out a second write path to its
+    # fields. Whether the alias is ever written through is a whole-body
+    # question this bind cannot answer, so a str/bytes view borrowed out of
+    # anything under the aliased storage falls back to an owned copy.
+    alias_key = field_chain_storage_key(inner)
+    if alias_key is not None:
+        ctx.mark_all_view_borrowers_mutated(alias_key)
     const = isinstance(ctx.get_expr_type(inner), ReadonlyType)
     if not const and isinstance(inner, TpyMethodCall):
         fi = inner.resolved_function_info
@@ -1008,6 +1272,15 @@ class FunctionTrackingState:
     # outward to the shadowed module entity
     # (see check_nested_def_shadowed_read).
     nested_def_pending: dict[str, 'SourceLocation | None'] = field(default_factory=dict)
+    # A nested `def` written inside a compound statement's body declares its
+    # callable for that block alone, so nothing past the block's end can
+    # name it -- even when every path through the block bound it. Live
+    # entries are name -> (the enclosing statement, a phrase naming it for
+    # diagnostics); `analyze_stmt` moves one into `nested_def_block_dead`
+    # when that statement's analysis ends, and a later `def` at the scope's
+    # own level takes the name out of both (it declares one that lasts).
+    nested_def_block_defs: dict[str, tuple['TpyStmt', str]] = field(default_factory=dict)
+    nested_def_block_dead: dict[str, str] = field(default_factory=dict)
     # The namespace level this scope's own bindings land in. `current_ns`
     # walks DOWN into a lambda/comprehension child and UP to the module, so
     # this is the boundary that says whether a name is bound HERE.
@@ -1866,6 +2139,25 @@ class SemanticContext:
         finally:
             self._evaluating_record_noncopyable.discard(typ)
 
+    def local_decl_type(self, name: str) -> TpyType | None:
+        """The local's DECLARED slot type -- what the slot may hold, which a
+        later rebind does not change.
+
+        `var_types` carries the deduction and OwnType overrides stamped on the
+        decl node (a pending literal resolved after the fact lands there), so
+        it wins over the raw annotation. Returns None for a name with no
+        declaration of its own -- a parameter, a loop variable, a global.
+        Every consumer that asks what a local's slot holds reads this: the
+        namespace binding answers the narrower "what was last stored".
+        """
+        decl = self.func.var_decl_by_name.get(name)
+        if decl is None:
+            return None
+        t = self.var_types.get(decl)
+        if t is None and isinstance(decl.type, TpyType):
+            t = decl.type
+        return t
+
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the cached type of an expression, stripping Ref and Own.
 
@@ -2061,24 +2353,40 @@ class SemanticContext:
         if name in self.func.loop_vars:
             self.func.consumed_loop_vars.add(name)
 
-    def bound_in_own_scope(self, name: str) -> bool:
-        """True when `name` is bound by THIS function scope -- its params,
-        its locals, or a sub-scope of it (lambda param, comprehension
-        variable, live `except ... as` / match capture). An enclosing
-        function's or the module's binding of the same name is NOT this
-        scope's, which is the whole point: Python resolves such a name
-        against this scope alone once this scope binds it anywhere."""
+    def own_scope_binding(self, name: str) -> tuple[bool, bool]:
+        """`(bound, reaches)` for `name` against THIS function scope, from
+        ONE namespace walk.
+
+        `bound`: the scope binds the name -- its params, its locals, or a
+        sub-scope of it (lambda param, comprehension variable, live
+        `except ... as` / match capture). An enclosing function's or the
+        module's binding of the same name is NOT this scope's, which is the
+        whole point: Python resolves such a name against this scope alone
+        once this scope binds it anywhere.
+
+        `reaches`: a binding of it reaches this read. A SUB-scope binding is
+        that scope's own and always reaches -- the enclosing scope's flow
+        says nothing about it. A binding at this scope's OWN level is the
+        definite-assignment question, and `definitely_assigned` is the fact
+        that answers it: the namespace entry a binding inside an `if` /
+        `for` / `while` / `try` / `with` / `match` body makes is never
+        withdrawn, but the branch merges drop the name from the assigned
+        set, which is exactly the path on which Python raises
+        UnboundLocalError."""
         ns = self.func.current_ns
         root = self.func.own_ns
         if ns is None or root is None:
-            return name in self.func.definitely_assigned
+            assigned = name in self.func.definitely_assigned
+            return assigned, assigned
         while ns is not None and ns is not self.global_ns:
             if ns.has_local(name):
-                return True
+                if ns is not root:
+                    return True, True
+                return True, name in self.func.definitely_assigned
             if ns is root:
-                return False
+                break
             ns = ns.parent
-        return False
+        return False, False
 
     def check_nested_def_shadowed_read(
             self, name: str, node: 'TpyExpr | TpyStmt | None') -> None:
@@ -2090,10 +2398,20 @@ class SemanticContext:
         without this, an earlier read silently reaches the shadowed module
         function / class / enum.
 
-        `bound_in_own_scope` is the "already bound here" test rather than
-        `definitely_assigned`: an `except ... as name` handler leaves the name
-        in the assigned set after unbinding it, and the read that follows is
-        exactly the one that must not resolve outward."""
+        `own_scope_binding` answers two of the three facts this needs.
+        Ownership is asked, rather than `definitely_assigned`, because an
+        `except ... as name` handler leaves the name in the assigned set
+        after unbinding it, and the read that follows is exactly the one
+        that must not resolve outward. Reachability is where a `def` inside
+        an `if` / loop / `try` / `with` / `match` body differs: the name is
+        this scope's local everywhere, but only the paths through the `def`
+        bind it, so the others are CPython's UnboundLocalError.
+
+        The third is `nested_def_block_dead`: such a `def` declares its
+        callable for its block only, so a read past the block's end has
+        nothing to reach even on the paths where the binding is definite --
+        the whole-scope local Python gives the name has no counterpart
+        here, and there is no outer `name` to fall back to."""
         # This runs on every bare-name read and every bare-name call, so the
         # two dict lookups that can possibly fire come before the namespace
         # walk. A nested def's own name is deliberately not seeded into
@@ -2102,7 +2420,13 @@ class SemanticContext:
                      and name == self.func.nested_def_name)
         if not recursive and name not in self.func.nested_def_pending:
             return
-        if self.bound_in_own_scope(name):
+        bound_here, reaches = self.own_scope_binding(name)
+        block = (None if recursive
+                 else self.func.nested_def_block_dead.get(name))
+        # The recursion leg is a restriction on the emitted lambda, not a
+        # definite-assignment question, so a binding of the name is enough
+        # there; the ordinary "may not be assigned" check covers the rest.
+        if bound_here and (recursive or (reaches and block is None)):
             return
         # A `global` / `nonlocal` declaration takes the name out of this
         # scope's binding set entirely, so nothing here shadows anything.
@@ -2115,6 +2439,29 @@ class SemanticContext:
                 f"'{name}' cannot call itself", node)
         loc = self.func.nested_def_pending[name]
         where = f" on line {loc.line}" if loc is not None else ""
+        if block is not None:
+            raise self.error(
+                f"'{name}' is not readable after {block}: the nested "
+                f"function '{name}' defined{where} is bound inside that "
+                f"block and does not outlive it, and a nested 'def' makes "
+                f"its name a local of the whole enclosing scope, so this "
+                f"read cannot reach an outer '{name}' -- move the 'def' "
+                f"above the block, or rename it",
+                node)
+        # Which of the two remaining ways the binding fails to reach this
+        # read is a source-order question, not a scope one: a `def` the walk
+        # has already passed bound the name on SOME path only (the other arm
+        # of the same branch), while one still ahead has bound it on none.
+        read_loc = getattr(node, "loc", None)
+        if (loc is not None and read_loc is not None
+                and loc.line <= read_loc.line):
+            raise self.error(
+                f"'{name}' may not be assigned at this point: the nested "
+                f"function '{name}' defined{where} binds it only on some "
+                f"paths, and a nested 'def' makes its name a local of the "
+                f"whole enclosing scope, so this read cannot reach an outer "
+                f"'{name}' -- move the 'def' above the block, or rename it",
+                node)
         raise self.error(
             f"'{name}' is read before the nested function '{name}' defined"
             f"{where} is bound. A nested 'def' makes its name a local of the "
@@ -2378,9 +2725,17 @@ class SemanticContext:
                     info.source_mutated = True
 
     def mark_all_view_borrowers_mutated(self, storage: str) -> None:
-        """Mark borrowers across all view-type families as source-mutated."""
-        for family in VIEW_TYPE_FAMILIES:
-            self.mark_view_borrowers_mutated(storage, family)
+        """Mark borrowers across all view-type families as source-mutated.
+
+        A key rooted at a borrowing local names the same storage as the key
+        rooted at what it borrows from (``m = i`` makes ``m.name`` and
+        ``i.name`` one buffer), and a view is registered under whichever
+        spelling its own source used, so the write marks both.
+        """
+        keys = {storage, canonical_storage_key(self.func.borrow_tracker, storage)}
+        for key in keys:
+            for family in VIEW_TYPE_FAMILIES:
+                self.mark_view_borrowers_mutated(key, family)
 
     # ------------------------------------------------------------------
     # Unified container literal lookup

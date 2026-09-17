@@ -1,0 +1,15 @@
+str param: 4
+bytes param: 3
+strview local: 6
+method: 7
+branch first: 3 -1
+self field: hello
+str field: hello
+chained field: hello
+field off subscript: hello
+bytes field: b'bb'
+strview field: vv
+call source: hello!
+branch str field: hello <none>
+branch bytes field: b'bb' b'<none>'
+branch strview field: vv <none>

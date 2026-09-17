@@ -1,0 +1,27 @@
+free b't1' b'e1' b'd1' b't2' n1
+free sinks True 2
+free copy b'Z1' b't1' b'e1' b't1'
+chain write b't2' n2 b'Z2' n3
+callee root b'c1' q1 b'Z3' n4
+callee deep b't1' b'Z6'
+callee readonly 2 b't1'
+callee plain 2 n1
+one hop s1 b'o1' b'Z7' 2
+global b'g1' b'Z8'
+alias b't2' n2 b'Z4' n5
+alias rev b't2' b'Z5'
+one hop alias u1 n7
+one hop alias rev u2 n8
+one hop method u3 n6
+hidden b'h1'
+readonly root b't1' n1
+method b't1' True
+method ret b't1'
+ctor b't1' b't2'
+gen yield 2
+gen b't1' True
+with b't1'
+try b't2'
+match b't1'
+closure 2
+comp [2, 2]

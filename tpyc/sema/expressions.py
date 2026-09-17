@@ -54,6 +54,7 @@ from ..type_def_registry import (
     int_traits_of,
     is_enum_type, is_int_enum_type, enum_info_of,
     find_factory_by_simple_name, protocol_info_of,
+    type_def_of,
 )
 from ..namespace import BindingKind, NameBinding
 from .frame_traits import build_closure_frame
@@ -61,8 +62,9 @@ from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
-from ..value_category import is_rvalue_source, async_result_aliases
+from .context import PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
+from ..value_category import (is_rvalue_source, async_result_aliases,
+                             return_type_is_cpp_ref)
 from .alias_rebind import bind_kind_of
 from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
@@ -587,6 +589,11 @@ class ExpressionAnalyzer:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
+            if isinstance(inner_hint, OptionalType) and is_dict(inner_hint.inner):
+                # A literal at an `Optional[dict]` slot is the dict member's:
+                # the None alternative cannot be written as a literal, so the
+                # member is the only annotation the key/value can take.
+                inner_hint = inner_hint.inner
             if is_dict(inner_hint):
                 result = self._analyze_dict_literal(expr, inner_hint.type_args[0], inner_hint.type_args[1])
                 self.ctx.set_expr_type(expr, result)
@@ -3046,9 +3053,10 @@ class ExpressionAnalyzer:
         )
 
     def _resolve_literals_with_hint(self, t: TpyType, hint: TpyType | None) -> TpyType:
-        """Resolve IntLiteralType / FloatLiteralType inside t using hint as a
-        structural guide. Recurses into TupleType. Falls back to default_int /
-        FLOAT when hint doesn't match the literal's family.
+        """Resolve IntLiteralType / FloatLiteralType and pending container types
+        inside t using hint as a structural guide. Recurses into TupleType.
+        Falls back to default_int / FLOAT when hint doesn't match the literal's
+        family, and leaves a pending container pending when it doesn't.
 
         Mirrors the asymmetric behavior of the bare-literal path: integer
         literals adopt the hint when present (compat-checked downstream),
@@ -3058,6 +3066,11 @@ class ExpressionAnalyzer:
             return hint if hint is not None else self.ctx.default_int_for_literal(t)
         if isinstance(t, FloatLiteralType):
             return hint if is_float_type(hint) else FLOAT
+        if hint is not None and self._pending_matches_hint(t, hint):
+            # The enclosing slot's annotation is the authority for a nested
+            # literal's type, one level at a time: the literal's own elements
+            # were already checked against the hint's when it was analyzed.
+            return hint
         if isinstance(t, TupleType):
             if isinstance(hint, TupleType) and len(t.element_types) == len(hint.element_types):
                 elems = tuple(
@@ -3071,6 +3084,25 @@ class ExpressionAnalyzer:
                 )
             return TupleType(elems)
         return t
+
+    def _pending_matches_hint(self, t: TpyType, hint: TpyType) -> bool:
+        """Whether an unresolved container literal `t` is the annotated `hint`
+        spelled as a literal: the same container category, or a fixed-size list
+        literal at an `Array` slot (the one kind mismatch a list literal is
+        allowed to resolve to).
+
+        Keyed on the TypeDef category rather than on the pending class, so a
+        pending kind and its concrete sibling are matched by the one fact that
+        distinguishes containers."""
+        if not isinstance(t, PENDING_CONTAINER_TYPES):
+            return False
+        if not isinstance(hint, NominalType):
+            return False
+        if isinstance(t, PendingListType) and is_array(hint):
+            return self.type_ops.pending_list_matches_array(t, hint)
+        td_t = type_def_of(t)
+        td_h = type_def_of(hint)
+        return td_t is not None and td_h is not None and td_t.category is td_h.category
 
     def _unify_literal_types(self, a: TpyType, b: TpyType) -> TpyType | None:
         """Unify two literal/pending element types (int/float literals, tuples,
@@ -3996,15 +4028,20 @@ class ExpressionAnalyzer:
         (substitution-composed, like a method call's resolved callee), so the
         borrow/storage and value-category classifiers can treat the read as a
         method CALL -- a pointer-repr Optional return is borrow-form T*, not a
-        storage `std::optional<T>` element lvalue.
+        storage `std::optional<T>` element lvalue, and a by-VALUE return is a
+        temporary where a container element read is an lvalue.
 
-        Tagged ONLY for pointer-repr Optional returns -- the one shape whose
-        consumption differs from a container element read; tagging every
-        record subscript would run the method lookup (and its module-usage
-        side effects) on cases whose codegen must stay byte-identical."""
+        Tagged exactly when the accessor's COMPOSED return is not a C++
+        reference -- the shapes whose consumption differs from a container
+        element read. A reference-returning accessor consumes identically, so
+        it stays untagged and its reads keep the container spelling (the
+        re-resolved signature below is unsubstituted, so a generic's `-> T`
+        cannot answer the question anyway)."""
         actual_ret = unwrap_readonly(ret_type)
-        if not (isinstance(actual_ret, OptionalType)
-                and actual_ret.uses_pointer_repr()):
+        if return_type_is_cpp_ref(actual_ret):
+            return
+        record = self.ctx.registry.get_record_for_type(record_type)
+        if record is None:
             return
         # The accessor hands back a borrow (`T*`) into the receiver, valid only
         # while the receiver lives. An rvalue receiver (a temporary) dies at the
@@ -4013,14 +4050,13 @@ class ExpressionAnalyzer:
         # there is no valid non-copying result to hand back. Reject loudly until
         # the general borrow/liveness pass (BUGS.md rvalue-subscript entry)
         # replaces this with scope-based reasoning.
-        if is_rvalue_source(self.ctx, expr.obj):
+        if (isinstance(actual_ret, OptionalType)
+                and actual_ret.uses_pointer_repr()
+                and is_rvalue_source(self.ctx, expr.obj)):
             raise self.ctx.error(
                 "subscript into a temporary would dangle: the accessor returns "
                 "a borrow into the receiver, which is freed at the end of this "
                 "expression -- bind the receiver to a local first", expr)
-        record = self.ctx.registry.get_record_for_type(record_type)
-        if record is None:
-            return
         # Re-resolved UNSUBSTITUTED: for a generic record this carries the raw
         # `V | None` signature, not the composed `Rec | None`. Safe only because
         # the sole consumer (call_returns_cpp_ref) keys on the return's outer

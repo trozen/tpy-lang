@@ -28,6 +28,8 @@ int32_t pick(bool c);
 int32_t guarded(int32_t n);
 // def gen(c: bool) -> Iterator[int32]:
 __gen_gen gen(bool c);
+// def routed(n: int32) -> int32:
+int32_t routed(int32_t n);
 // async def coro(c: bool) -> int32:
 __coro_coro coro(bool c);
 // def main() -> None:

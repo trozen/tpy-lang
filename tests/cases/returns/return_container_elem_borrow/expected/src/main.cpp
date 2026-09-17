@@ -11,6 +11,15 @@ std::vector<int32_t>& pick(std::vector<std::vector<int32_t>>& rows, int32_t k) {
     return ::tpy::__getitem__(rows, k);
 }
 
+// def pick_nested(cube: list[list[list[int32]]], i: int32,
+//                 j: int32) -> list[int32]:
+//     # The element's own RECEIVER is an element: a rooted lvalue chain, so the
+//     # borrow is still into the root and returns bare.
+//     return cube[i][j]  # tpyc: ok
+std::vector<int32_t>& pick_nested(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i, int32_t j) {
+    return ::tpy::__getitem__(::tpy::__getitem__(cube, i), j);
+}
+
 // def main() -> None:
 //     f = Flat([[1, 2], [3, 4]])
 //     row = f.get_data(1)
@@ -21,6 +30,11 @@ std::vector<int32_t>& pick(std::vector<std::vector<int32_t>>& rows, int32_t k) {
 //     got = pick(rows, 0)
 //     got[1] = 60
 //     print(rows[0][1])
+//     cube: list[list[list[int32]]] = [[[1, 2]]]
+//     inner = pick_nested(cube, 0, 0)
+//     inner[0] = 42
+//     # Two element hops and still the root's storage -- a copy would print 1.
+//     print(cube[0][0][0])
 void main() {
     Flat f = Flat({{1, 2}, {3, 4}});
     std::vector<int32_t>& row = f.get_data(1);
@@ -30,6 +44,10 @@ void main() {
     std::vector<int32_t>& got = ::tpyapp::main::pick(rows, 0);
     ::tpy::__setitem__(got, 1, 60);
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 1) << "\n";
+    std::vector<std::vector<std::vector<int32_t>>> cube = {{{1, 2}}};
+    std::vector<int32_t>& inner = ::tpyapp::main::pick_nested(cube, 0, 0);
+    ::tpy::__setitem__(inner, 0, 42);
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0), 0) << "\n";
 }
 
 // main()

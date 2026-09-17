@@ -13,6 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def pick(rows: list[list[int32]], k: int32) -> list[int32]:
 std::vector<int32_t>& pick(std::vector<std::vector<int32_t>>& rows, int32_t k);
+// def pick_nested(cube: list[list[list[int32]]], i: int32,
+//                 j: int32) -> list[int32]:
+std::vector<int32_t>& pick_nested(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i, int32_t j);
 // def main() -> None:
 void main();
 

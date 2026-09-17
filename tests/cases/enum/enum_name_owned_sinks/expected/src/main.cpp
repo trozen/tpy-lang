@@ -88,16 +88,58 @@ void owned_slot(Color c) {
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
+// # Frame position: the member-name table is STATIC, so the slot stays a view
+// # across the suspension where any other field-shaped source would resolve
+// # owned (the frame outlives the case-block temps a sync body may borrow).
+// def frame_view(c: Color) -> Iterator[int32]:
+//     label: str = c.name  # tpyc: type(StrView)
+//     yield len(label)                            # -> S_RESUME_0
+//     print("frame", label)
+std::expected<int32_t, ::tpy::StopIteration> __gen_frame_view::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        label = ::tpy::EnumUtil<Color>::name(c);
+        __state = S_RESUME_0;
+        return ::tpy::__len__(label);
+    }
+    case S_RESUME_0: {  // after: yield len(label)
+        std::cout << "frame" << " " << label << "\n";
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def frame_view(c: Color) -> Iterator[int32]:
+__gen_frame_view frame_view(Color c) {
+    return __gen_frame_view(c);
+}
+
 // def main() -> None:
 //     print(owned_return(Color.RED))
 //     print(owned_local(Color.GREEN))
 //     view_positions(Color.RED)
 //     owned_slot(Color.GREEN)
+//     for n in frame_view(Color.RED):
+//         print("frame yield", n)
 void main() {
     std::cout << ::tpyapp::main::owned_return(Color::RED) << "\n";
     std::cout << ::tpyapp::main::owned_local(Color::GREEN) << "\n";
     ::tpyapp::main::view_positions(Color::RED);
     ::tpyapp::main::owned_slot(Color::GREEN);
+    {
+        auto __src_0 = ::tpyapp::main::frame_view(Color::RED);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t n = ::tpy::unwrap_ref(*__r_1);
+        std::cout << "frame yield" << " " << n << "\n";
+        }
+    }
 }
 
 // # Enum .name feeding owned-str sinks: sema types .name as StrView (the value
