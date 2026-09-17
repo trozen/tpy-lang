@@ -1576,8 +1576,8 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
   `docs/CALLABLE_CONTRACT_FEASIBILITY.md`: generic forms are feasible but need a
   new channel, and the proposed admission layer needs substantial provenance /
   effect propagation while rejecting ordinary safe callbacks. Analysis-only MIR
-  first was approved on 2026-09-17; `docs/MIR_ANALYSIS_PLAN.md` proposes the first
-  implementation increment. The coupled contract remains gated.
+  first was approved on 2026-09-17; `docs/MIR_ANALYSIS_PLAN.md` records the scalar
+  foundation and remaining increments. The coupled contract remains gated.
   Its "Compatibility gate" first measures programs newly rejected by A1-A12,
   separating actual lifetime violations from safe false positives, including
   scalar callbacks under ordinary loans. Contract-first is conditional on an
@@ -1623,8 +1623,8 @@ alongside related feature work; only the big-rock deferrals live here.
 - **MIR (analysis-only): the place / loan model.** Design: `docs/IR_DESIGN.md`
   (MIR Design; Phasing and Dependencies, phase 2). Active plan:
   `docs/MIR_ANALYSIS_PLAN.md`, analysis-first sequence approved 2026-09-17,
-  M1 scope awaiting implementation approval. M1 is an internal scalar CFG,
-  verifier and dump over actual THIR, not a borrow checker. Its excluded cells
+  with the internal scalar CFG, verifier and dump now in `tpyc/mir/`.
+  Remaining work starts at M2; there is no borrow checker yet. The excluded cells
   are filed in that plan's scope matrix: M2 semantic identities, storage/forms,
   methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
   comprehension/match, binding scopes and holder propagation; M4 summaries,

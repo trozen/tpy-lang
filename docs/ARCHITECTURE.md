@@ -26,6 +26,13 @@ drivers, frames at their leaf seams, type rendering). There is no second body
 emitter: a body THIR cannot lower is a compile error (`ThirRejectError`), not a
 reroute. The landed half of the IR direction in `docs/IR_DESIGN.md`.
 
+`tpyc/mir/` provides an internal scalar CFG builder, verifier and dump. Tests
+feed it the exact THIR returned by `Compiler.generate_code_and_thir()`, together
+with body identity and declaration kind. It does not run during normal
+compilation or affect emission. Unsupported bodies return `MIRNotCovered`, which
+is distinct from malformed MIR and never constitutes a safety proof. Broader
+place/loan analysis remains planned in `docs/MIR_ANALYSIS_PLAN.md`.
+
 The sema half runs as a workspace-wide two-pass loop: every module
 finalizes declarations first, then bodies run as a second sweep.
 Inside each module, sema is factored into five publicly callable

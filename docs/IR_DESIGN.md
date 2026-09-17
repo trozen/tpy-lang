@@ -10,8 +10,8 @@
 | THIR-backed codegen context | The ONLY author, for every module (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | **DONE (2026-09-03).** The AST body emitters (`codegen_cpp/{expressions,statements,match,builtins}.py`) are deleted; `codegen_cpp` is the printer/skeleton layer |
 | THIR form fact (Open Q 9/11/12) | **Rungs F1-F3 landed as tabulated below; unions/generics/views route in practice, so the F4-F6 rows are stale as a status view -- read them as scope, not as remaining work. F-final (RefType removal + AST form-codegen retirement) has NOT happened: `RefType` is still live in `typesys.py`.** The per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
-| MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
-| THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
+| MIR node definitions (`tpyc/mir/nodes.py`) | M1 scalar CFG, body-scoped slots, validation and internal dump implemented |
+| THIR -> MIR lowering (`tpyc/mir/lower.py`) | M1 internal scalar free-function subset; explicit whole-body MIRNotCovered, no compilation hook |
 | `--dump-mir` debug output | Not started |
 | MIR liveness pass | Not started |
 | MIR move/copy lowering and move optimization | Not started |
@@ -21,8 +21,8 @@
 | Retirement of old sema/codegen ownership logic | Not started |
 
 **Active MIR sequence (approved 2026-09-17):** analysis-only MIR precedes the
-coupled callable contract. `MIR_ANALYSIS_PLAN.md` proposes the first bounded
-increment and its coverage gates; implementation approval is pending. The
+coupled callable contract. `MIR_ANALYSIS_PLAN.md` records the approved and
+implemented first bounded increment and the later coverage gates. The
 historical phase lists below are not an instruction to implement move
 optimization or switch emission before the callable analysis consumer.
 
@@ -227,7 +227,7 @@ in the current model.
   substantial new flow analysis or rejects common safe callback idioms, bring
   analysis-only MIR forward. The focused measurements and code audit in
   `docs/CALLABLE_CONTRACT_FEASIBILITY.md` led to the approved 2026-09-17 decision
-  to do so. `docs/MIR_ANALYSIS_PLAN.md` proposes the first increment; no admission
+  to do so. `docs/MIR_ANALYSIS_PLAN.md` records the first increment; no admission
   rule has been implemented.
   Six provisions are load-bearing for it:
   (1) stable place identities covering locals, temporaries, captures, qualified

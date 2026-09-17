@@ -129,7 +129,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | F7 | Decorator definitions in library code | M-L | 🚧 Phase 1 done | [V](#decorator-definitions-in-library-code) |
 | F8 | Compile-time conditional compilation / build profiles | M | 🆕 Not started | [V](#compile-time-conditional-compilation--build-profiles) |
 | F9 | Frontend plugin API (DSL / non-Python source) | XL | ✅ v1 shipped | [V](#frontend-plugin-api) |
-| F10 | IR migration (THIR / MIR) | XL | 🚧 THIR done; MIR not started | [V](#ir-migration-thir--mir) |
+| F10 | IR migration (THIR / MIR) | XL | 🚧 THIR done; internal scalar MIR foundation implemented | [V](#ir-migration-thir--mir) |
 | F11 | Compile-time module parameters (`compile_param`/`instantiate`) | L | 🚧 Phase 0 POC (CPython); sema/codegen not started | [V](#compile-time-module-parameters) |
 
 ### Phase G: Concurrency (Future)
@@ -2022,9 +2022,13 @@ sema->codegen boundary for every body in every module, the AST body emitters are
 deleted, and a body THIR cannot lower is a compile error (see CLAUDE.md "THIR and
 the codegen boundary"). See `docs/IR_DESIGN.md` for the full design -- THIR node
 set, lowering plan, MIR node set, liveness + move/copy + borrow passes, rollout
-phasing, and what *doesn't* change. The MIR half (MIR nodes, liveness, move
-lowering, borrow checker, opt-in safe mode, MIR-backed codegen, retirement of the
-remaining sema/codegen ownership logic) is not started.
+phasing, and what *doesn't* change. The internal scalar MIR foundation now has
+body-scoped slots, CFG lowering, verification and a dump; it has no normal
+compilation hook and changes no emitted code or acceptance rule. The remaining
+MIR work (broader places/regions, liveness, provenance/effects, move lowering,
+borrow checking, opt-in safe mode, MIR-backed codegen and retirement of old
+ownership logic) is pending. `docs/MIR_ANALYSIS_PLAN.md` records the active
+analysis-first sequence and coverage gates.
 
 **Dependencies**: None within tpyc (it's a self-contained refactor). Blocks:
 LSP target (per CLAUDE.md), incremental front-end caching, and any future
@@ -3585,4 +3589,3 @@ compile-time module parameters (F11) for the build-config surface.
 
 **Effort**: XL (CLI, project model, lockfile/reproducibility story, native
 dependency plane).
-

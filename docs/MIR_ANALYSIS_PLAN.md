@@ -5,8 +5,9 @@
 On 2026-09-17 the user approved bringing analysis-only MIR forward before the
 coupled callable contract, following `CALLABLE_CONTRACT_FEASIBILITY.md`.
 That approves the sequence, not the proposed admission restrictions or every
-implementation detail below. **M1 is proposed for implementation approval.**
-No compiler behavior changes with this document.
+implementation detail below. **M1's implementation scope was then approved and
+is implemented in `tpyc/mir/`.** It is an internal API used by tests; normal
+compilation, source acceptance and generated C++ are unchanged.
 
 The first increment builds and verifies a real control-flow graph from a small
 THIR subset. It does not check callable lifetimes yet. Later increments must
@@ -113,7 +114,7 @@ The existing evaluation-order policy is still open (`TODO.md`,
 `BUGS.md#subexpression-right-to-left-eval`). M1 must not model Python's preferred
 order as a fact about C++ that does not enforce it. For an eager comparison with
 a walrus anywhere in one operand, require the other operand to be a literal
-(possibly its admitted literal coercion); otherwise return `NotCovered`.
+(possibly its admitted literal coercion); otherwise return `MIRNotCovered`.
 Thus `(n := 1) > 0` is covered, but `x < (x := 0)` and
 `(x := 1) == (x := 2)` are not. Pure operands can be normalized left-to-right
 because their order is unobservable. Lazy boolean/conditional edges retain
@@ -122,12 +123,12 @@ general effect analysis or settling the open language policy in M1.
 
 ### Coverage and verification
 
-Lowering returns either a complete `MIRFunction` or `NotCovered` with a source
+Lowering returns either a complete `MIRFunction` or `MIRNotCovered` with a source
 location when available, node kind and reason. An unsupported node anywhere,
 including an unreachable branch, makes the entire body not covered. There is
 no partial-success graph, opaque no-op instruction or broad exception catch.
 This is internal analysis coverage, not a compiler diagnostic or rejection of
-the source. A future consumer must not interpret `NotCovered` as no effects,
+the source. A future consumer must not interpret `MIRNotCovered` as no effects,
 no loans, an empty summary or a passing safety check.
 
 Invalid IR is a separate programmer error. The verifier checks unique IDs,
@@ -138,22 +139,23 @@ and loop back edges). Unsupported input is not a verifier failure.
 
 ### Files and tests
 
-Proposed package: `tpyc/mir/{nodes,lower,validate,dump}.py` plus `__init__.py`
+Package: `tpyc/mir/{nodes,lower,validate,dump}.py` plus `__init__.py`
 and focused unit/integration tests in that directory. Parser, sema, typesys,
 runtime, stdlib and C++ emission need no behavior changes. If inspection during
 implementation finds that even this subset requires new semantic THIR metadata,
 revisit the boundary rather than reading C++ strings.
 
-1. Test graph structure from actual collected THIR: sequential writes, nested
-   branches, early returns, both loop exits, nested break/continue targets, and
-   short-circuit/conditional expressions. Dumps pin stable IDs and source
-   correspondence, not generated C++ details.
+1. Compile source fixtures owned by the MIR unit tests through the normal
+   emission path and test graph structure from the collected THIR: sequential
+   writes, nested branches, early returns, both loop exits, nested break/continue
+   targets, and short-circuit/conditional expressions. Dumps pin stable IDs and
+   source correspondence, not generated C++ details.
 2. Test lazy evaluation observably with an existing-local walrus:
    `n = 0; selected = flag and ((n := 1) > 0); return n if selected else 2`.
    Its CFG must place the write only on the right-operand edge. Cover `or` and
    conditional arms too. No calls are needed to expose evaluation order.
    Cover a walrus in a repeatedly evaluated loop condition. Pin the eager
-   competing-operand examples above as `NotCovered`, without asserting their
+   competing-operand examples above as `MIRNotCovered`, without asserting their
    toolchain-dependent native output.
 3. Negative coverage pins: put unsupported calls, arithmetic, globals, hoists,
    shapes and body kinds inside otherwise supported functions. Assert the
@@ -162,10 +164,11 @@ revisit the boundary rather than reading C++ strings.
 4. Malformed-IR tests exercise dangling IDs, wrong types, uninitialized merge
    results and malformed edges. Test distinct bodies with identical short names
    and repeated lowering for deterministic, non-colliding identities.
-5. Add one condensed executable case for scalar control flow and lazy writes,
-   with section names and subject-line comments. Compare CPython and native
-   execution. Generate snapshots for that new case only. Existing expected
-   output must remain byte-identical; unexpected churn requires investigation.
+5. Keep compiler unit tests independent of `tests/cases/`. Ordinary cases run
+   through the standard compile/exec/CPython harness, which does not exercise
+   MIR in M1. Existing expected output must remain byte-identical; unexpected
+   churn requires investigation. Future corpus-wide MIR validation belongs in
+   a general harness integration, not case-specific compiler tests.
 6. Run targeted tests during implementation, then the full forced-exec suite
    once via `rpytest`. Finish defect review, readiness and a single squashed M1
    commit on a branch. Do not merge master or push.
@@ -175,6 +178,17 @@ for `choose` and `1 2` for the lazy-write example. The real THIR dump contains
 `THIRWhile`, `THIRIf`, assignment, short-circuit binop, walrus, literal coercion
 and conditional return as expected. This validates the input seam and baseline,
 not the unimplemented MIR builder.
+
+The implementation's unit tests compile their own source fixtures and lower
+the exact THIR used for emission. They check CFG paths with a bounded test
+interpreter, inspect the lazy-write edge, and pin deterministic IDs/dumps.
+These assertions test MIR semantics directly; they do not execute generated
+C++ or compare MIR execution against CPython. Normal case-harness runs remain
+regression checks for the existing compiler, not MIR coverage.
+Separate negative tests cover unsupported input and malformed/undefined MIR,
+including branch intersections and loop back edges. `MIRBodyKind` is mandatory
+input: a `THIRFunction` alone cannot distinguish a free function from all its
+sibling body kinds, so the caller must supply the declaration classification.
 
 ## Scope matrix and remaining increments
 
@@ -214,7 +228,7 @@ not prerequisites for M5. Existing checkers remain authoritative until then.
 |---|---|
 | silent-copy-vs-alias; copy-warning-at-wrong-site | No reference boundaries or new copy verdicts in M1; M2/M3 tests must mutate shared values across each boundary |
 | tuple-equals-scalar | Tuple cells are explicitly M2, including singleton/mixed tuples; no scalar fallback for aggregates |
-| same-construct-every-position | Factored matrix above and whole-body NotCovered tests; no claim that free-function coverage covers sibling positions |
+| same-construct-every-position | Factored matrix above and whole-body MIRNotCovered tests; no claim that free-function coverage covers sibling positions |
 | conditional-operand-evaluates-in-place | Walrus effects on guarded CFG edges, once only; loop conditions re-evaluate |
 | generic-equals-monomorphic-twin | Open generics are not covered; M4 compares instantiations against concrete twins |
 | view-not-copy; hidden-allocation | No emitter changes; byte-identical existing C++; M2 carries view/ownership distinctions explicitly |

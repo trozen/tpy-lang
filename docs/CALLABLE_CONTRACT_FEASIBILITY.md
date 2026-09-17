@@ -5,9 +5,9 @@ refactors. This is a design investigation, not an implementation of A1-A12.
 No compiler, runtime, library, acceptance rule or expected snapshot changed.
 
 **Decision, approved 2026-09-17:** bring the shared analysis-only MIR work forward
-before the coupled callable contract. The proposed first increment is in
-[`MIR_ANALYSIS_PLAN.md`](MIR_ANALYSIS_PLAN.md); its implementation scope awaits
-approval. The
+before the coupled callable contract. The first increment is recorded in
+[`MIR_ANALYSIS_PLAN.md`](MIR_ANALYSIS_PLAN.md); its approved scalar CFG foundation
+is implemented, with provenance and effects still to follow. The
 representation/form machinery is feasible, but the proposed admission layer
 needs substantial new provenance/effect propagation and rejects ordinary safe
 callback code. Those are the exit conditions in the contract document's
