@@ -22,13 +22,8 @@ std::expected<int32_t, E> get_value(int32_t v);
 void main();
 
 // class E(Exception, ReturnException):
-struct E : ::tpy::Exception {
+struct E : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<E>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.E";
 };
 

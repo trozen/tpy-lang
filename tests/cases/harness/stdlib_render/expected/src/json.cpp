@@ -66,26 +66,26 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
         ::tpy::ordered_map<std::string, JsonValue> d = ::tpy::ordered_map<std::string, JsonValue>();
         {
             auto __try_tmp_1 = reader.read_object_start();
-            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
         }
         while (reader.has_next()) {
             std::string key;
             {
                 auto __try_tmp_2 = reader.read_key();
-                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
                 key = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
             JsonValue val;
             {
                 auto __try_tmp_3 = ::tpystd::json::_read_value(reader);
-                if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+                if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
                 val = ::tpy::unwrap_ref_move(*__try_tmp_3);
             }
             ::tpy::__setitem__(d, key, val);
         }
         {
             auto __try_tmp_4 = reader.read_object_end();
-            if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+            if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_4.error()));
         }
         return d;
     }
@@ -93,20 +93,20 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
         std::vector<JsonValue> a = std::vector<JsonValue>{};
         {
             auto __try_tmp_5 = reader.read_array_start();
-            if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+            if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_5.error()));
         }
         while (reader.has_next()) {
             JsonValue item;
             {
                 auto __try_tmp_6 = ::tpystd::json::_read_value(reader);
-                if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+                if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_6.error()));
                 item = ::tpy::unwrap_ref_move(*__try_tmp_6);
             }
             a.push_back(item);
         }
         {
             auto __try_tmp_7 = reader.read_array_end();
-            if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
+            if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_7.error()));
         }
         return a;
     }
@@ -117,7 +117,7 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
         std::string_view raw;
         {
             auto __try_tmp_8 = reader.read_number_raw();
-            if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
+            if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_8.error()));
             raw = ::tpy::unwrap_ref_move(*__try_tmp_8);
         }
         bool is_float = false;
@@ -139,21 +139,21 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::TRUE)) {
         {
             auto __try_tmp_9 = reader.read_bool();
-            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_9.error()));
         }
         return true;
     }
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::FALSE)) {
         {
             auto __try_tmp_10 = reader.read_bool();
-            if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+            if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_10.error()));
         }
         return false;
     }
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
         {
             auto __try_tmp_11 = reader.read_null();
-            if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+            if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_11.error()));
         }
         return std::monostate{};
     }

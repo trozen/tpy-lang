@@ -21,17 +21,13 @@ std::expected<int32_t, NotFound> outer(std::string_view key);
 void main();
 
 // class NotFound(Exception, ReturnException):
-struct NotFound : ::tpy::Exception {
+struct NotFound : ::tpy::ReturnException {
     // code: int32
     int32_t code;
 
     // def __init__(self, code: int32) -> None:
     NotFound() = default;
     explicit NotFound(int32_t code);
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<NotFound>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.NotFound";
 };
 

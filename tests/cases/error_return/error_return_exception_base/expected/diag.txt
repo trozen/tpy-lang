@@ -1,0 +1,1 @@
+main.py:7: error: ReturnException class 'Missing' must derive directly from Exception: 'class Missing(Exception, ReturnException)'

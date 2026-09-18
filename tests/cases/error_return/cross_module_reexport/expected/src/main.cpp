@@ -13,13 +13,13 @@ std::expected<::tpy::BigInt, ::tpyapp::errors_impl::ParseError> parse_pair(std::
     ::tpy::BigInt x;
     {
         auto __try_tmp_1 = ::tpyapp::errors_impl::parse_int(a);
-        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
         x = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
     ::tpy::BigInt y;
     {
         auto __try_tmp_2 = ::tpyapp::errors_impl::parse_int(b);
-        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
         y = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
     return ((x) + (y));

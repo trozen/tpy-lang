@@ -90,20 +90,65 @@ class NotFound(Exception, ReturnException):
     pass
 ```
 
-`Exception` and `BaseException` are registered as empty records in TPy. In C++
-they map to empty structs in `::tpy::` with real inheritance:
+A return-only exception is a **plain value**, not a thrown object. The Python
+source still lists `Exception` as a base, because CPython only raises
+`BaseException` subclasses and the same source runs under both. In C++ the class
+sits outside the `Throwable` / `std::exception` hierarchy: it derives from the
+EMPTY value base `::tpy::ReturnException` (nothing virtual, no members), so a
+class that declares nothing is an empty struct:
 
 ```cpp
-namespace tpy {
-struct BaseException {};
-struct Exception : BaseException {};
-}
-
 // User error type:
-struct NotFound : Exception {};
+struct NotFound : ::tpy::ReturnException {};
 ```
 
-`StopIteration` is a built-in type in the runtime (`::tpy::StopIteration`).
+`StopIteration` is a built-in return exception in the runtime
+(`::tpy::StopIteration`). It carries nothing, so it is an empty struct: a
+`std::expected<T, ::tpy::StopIteration>` over a scalar is passed in registers
+and an end-of-iteration return emits no construct/destroy code. That is what
+lets a consumer loop inline a generator's `__next__`; with the thrown-exception
+base (a vtable and a message string) the same loop ran about 2x slower.
+
+What follows from "plain value, never thrown":
+
+- The class must derive **directly** from `Exception`
+  (`class E(Exception, ReturnException)`); any other class parent would bring
+  the `Throwable` hierarchy back and is a compile error.
+- It **cannot be subclassed**, with or without the marker. Handling is by exact
+  type -- `except Base` never takes a `Sub` -- so a subclass would add no
+  dispatch, and one without the marker would be a thrown exception over a base
+  that is not one. It also keeps a bound error's static type equal to its
+  dynamic type. (Hierarchies of return exceptions compiled before this rule;
+  none existed in the corpus. Reopening it is a TODO.md entry.)
+- It carries **only the fields it declares**. The `message` field and the
+  `Exception(message)` constructor a thrown exception inherits are not part of
+  it: `raise NotFound("why")` on a `pass` class, and `super().__init__(msg)`
+  in its `__init__`, are compile errors (CPython accepts both; a bare
+  `super().__init__()` stays legal). A class that wants a message declares it like any other field --
+  `message: str` plus an `__init__` that stores it, which also runs under
+  CPython -- and only that class pays for the string. Of the 88 return
+  exceptions in the test corpus and stdlib when this was decided, 2 used one.
+- After `except E as e`, `e` supports `str(e)` (the declared `message` field,
+  or `""` without one), its own fields and methods, and a bare `raise` to pass
+  it on. It has no `clone()` / `__raise__()`. A declared `message` must be
+  `str`: codegen emits the `__str__` that reads it, and any other type would
+  print nothing where CPython prints the value. `str(e)` is that field and
+  nothing else -- CPython renders `args`, so a class whose `__init__` calls a
+  bare `super().__init__()` (legal here, it clears `args` there) prints `""`
+  under CPython and its message under TPy; a multi-argument `__init__` diverges
+  the same way on both tiers.
+- A caught return exception cannot yet be STORED as an owned value (a local
+  rebind, a field, a container element); copy the fields you need out of it.
+- It need not be copyable: the error is MOVED at every step (the `raise`, each
+  propagation out of a dying result, the handler's slot, a bare re-`raise`),
+  so a `@nocopy` class or one with `__del__` travels like any other.
+- Known divergences of `str(e)` / `print(e)` from CPython on this tier are
+  tracked in `BUGS.md#return-exception-str-reads-message-only`.
+- It is **not** usable where an `Exception`, `BaseException` or `Throwable` is
+  expected, and `except Exception:` does not handle an `@error_return` call.
+  CPython accepts both; TPy rejects them with a diagnostic naming the
+  return-only exception. To hand the error to code that wants an `Exception`,
+  build one: `RuntimeError(str(e))`.
 
 Exception types can have data fields. `raise E(args)` passes constructor arguments,
 and `except E as e` binds the error value for field access. See `EXCEPTION_DESIGN.md` E6.
@@ -467,6 +512,17 @@ never sees it -- no stub needed for that case.
 | `try/finally` (not yet supported) | `'finally' is not yet supported` |
 | Multiple except clauses | `only a single 'except' clause is supported` |
 | `except ReturnException as e` | `'except ReturnException as' binding is not supported` |
+| Return exception with a base other than `Exception` | `ReturnException class 'E' must derive directly from Exception` |
+| Subclassing a return exception (marker or not) | `'Sub' cannot subclass 'E': a return-only exception (ReturnException) is handled by exact type and cannot be subclassed` |
+| Return exception passed as `Exception` / `BaseException` / `Throwable` | `'E' is a return-only exception (ReturnException) and cannot be used as 'Exception'` |
+| `e.clone()` / `e.__raise__()` on a return exception | `'E' is a return-only exception (ReturnException): ... it has no 'clone()'` |
+| `raise E("why")` on a class that declares no message | `'raise E()' does not accept arguments: a return-only exception carries only the fields it declares` |
+| `super().__init__(msg)` in a return exception | `'E' is a return-only exception (ReturnException): ... has no Exception(message) constructor to call` |
+| Reading `e.message` when the class declares none | `Record 'E' has no field 'message': a return-only exception (ReturnException) carries only the fields it declares` |
+| `message` declared with a type other than `str` | `Field 'message' of return-only exception 'E' must be 'str'` |
+| Storing a caught return exception (`last = e`, a field, a container) | `cannot store the return-only exception 'E' as an owned value` |
+| Exported `__next__` ending with a user return exception | `'__next__' must end iteration with StopIteration, not 'E'` |
+| `@export` on a return exception | `a return-only exception (ReturnException) is a plain value that never crosses to Python -- remove @export` |
 
 ---
 

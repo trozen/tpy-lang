@@ -1,0 +1,2 @@
+main.py:25: warning: __next__() has no 'raise StopIteration' -- iterator will loop forever if caller exhausts it
+main.py:25: error: exposed class 'Counter': '__next__' must end iteration with StopIteration, not 'Done' -- a return-only exception cannot cross to Python

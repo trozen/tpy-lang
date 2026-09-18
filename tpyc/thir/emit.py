@@ -2325,8 +2325,10 @@ def _er_check_inline(tmp: str, state: _EmitState) -> str:
                     f"goto {state.try_except_label}; }}")
         return f"if (!{tmp}.has_value()) goto {state.try_except_label};"
     if state.error_return_cpp:
+        # `tmp` dies at this return, so the error is moved out of it: no copy
+        # of its payload per frame, and a non-copyable error propagates.
         return (f"if (!{tmp}.has_value()) "
-                f"return ::tpy::make_unexpected({tmp}.error());")
+                f"return ::tpy::make_unexpected(std::move({tmp}.error()));")
     return (f"if (!{tmp}.has_value()) "
             f'::tpy::tpy_panic("unhandled error return");')
 
@@ -2347,10 +2349,11 @@ def _er_check_stmt(tmp: str, indent: str, state: _EmitState) -> str:
     if state.error_return_cpp:
         if not state.finally_frames:
             return (f"{indent}if (!{tmp}.has_value()) "
-                    f"return ::tpy::make_unexpected({tmp}.error());\n")
+                    f"return ::tpy::make_unexpected(std::move({tmp}.error()));\n")
         body = io.StringIO()
-        _emit_finally_return(body, f"::tpy::make_unexpected({tmp}.error())",
-                             indent + INDENT, state)
+        _emit_finally_return(
+            body, f"::tpy::make_unexpected(std::move({tmp}.error()))",
+            indent + INDENT, state)
         return (f"{indent}if (!{tmp}.has_value()) {{\n"
                 f"{body.getvalue()}{indent}}}\n")
     return (f"{indent}if (!{tmp}.has_value()) "

@@ -71,6 +71,7 @@ void Py_DecRef(PyObject *o);
 void Py_IncRef(PyObject *o);
 PyObject *PyErr_Occurred(void);
 void PyErr_SetString(PyObject *type, const char *message);
+void PyErr_SetNone(PyObject *type);
 // Faithful data-carrying user exception crossing: construct an instance, set
 // each data field as an instance attribute (SetAttrString does not steal the
 // value ref), then raise it. SetObject normalizes a non-instance value, but the

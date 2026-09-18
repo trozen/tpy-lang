@@ -24,13 +24,8 @@ std::expected<int32_t, NotFound> lookup_sum(const std::vector<int32_t>& items, c
 void main();
 
 // class NotFound(Exception, ReturnException):
-struct NotFound : ::tpy::Exception {
+struct NotFound : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<NotFound>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.NotFound";
 };
 

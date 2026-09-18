@@ -2183,8 +2183,17 @@ class StatementAnalyzer:
                     f"add __init__ to use 'raise {stmt.exception_type}(...)'",
                     stmt)
             else:
+                hint = ""
+                if record.is_return_exception and not record.is_native:
+                    # CPython lets a `pass` exception take a message through the
+                    # inherited Exception(message); a return exception is a
+                    # plain value that carries only what it declares.
+                    hint = (f": a return-only exception carries only the fields "
+                            f"it declares; add 'message: str' and an __init__ "
+                            f"to '{stmt.exception_type}' to raise it with one")
                 raise self.ctx.error(
-                    f"'raise {stmt.exception_type}()' does not accept arguments",
+                    f"'raise {stmt.exception_type}()' does not accept arguments"
+                    f"{hint}",
                     stmt)
         # @virtual_raise classes dispatch in their C++ __raise__ (e.g.
         # OSError's ctor-time errno -> subclass mapping); the fresh

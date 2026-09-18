@@ -1,0 +1,1 @@
+main.py:24: error: 'Missing' is a return-only exception (ReturnException): it is a plain value that is never thrown, so it has no 'clone()'

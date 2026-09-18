@@ -81,13 +81,8 @@ __coro_amain amain(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Ca
 void main();
 
 // class Boom(Exception, ReturnException):
-struct Boom : ::tpy::Exception {
+struct Boom : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Boom>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boom";
 };
 

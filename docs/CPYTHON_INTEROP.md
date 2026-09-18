@@ -1405,8 +1405,16 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    default), so the compiled method returns `std::expected<T,
    StopIteration>` rather than throwing on exhaustion; the wrapper checks
    `.has_value()` and calls `set_py_err_from` on the `StopIteration` value
-   directly (no throw/catch needed for that path -- `StopIteration` is
-   already in the exception-bridge's built-in list). A borrow-form
+   directly (no throw/catch needed for that path -- `StopIteration` is a
+   plain value that is never thrown, so it is not in the exception-bridge's
+   thrown-type list; its own `set_py_err_from` overload sets
+   `PyExc_StopIteration` with no value). `StopIteration` is the ONLY end
+   signal an exported `__next__` may use: one carrying
+   `@error_return(UserDone)` is rejected ("must end iteration with
+   StopIteration"), because a user return-only exception is a plain value
+   with no Python type to raise. For the same reason `@export` on a
+   `ReturnException` class is refused -- unlike a thrown exception class,
+   which is exposed automatically, it never crosses at all. A borrow-form
    `__next__` return (`-> Cls` / `-> list[T]`) is stored through the
    `val_or_ref` borrow slot (`std::expected` can't hold `T&`); the wrapper
    unwraps it and then dispatches like every other marshalled-return

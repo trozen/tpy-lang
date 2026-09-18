@@ -3280,7 +3280,7 @@ class SemanticAnalyzer:
         in dict semantics, consistent with Python attribute shadowing).
         """
         result: dict[str, FieldInfo] = {}
-        for anc_rec in self.ctx.registry.iter_ancestor_records(record_info, reverse=True):
+        for anc_rec in self.ctx.registry.iter_field_ancestors(record_info, reverse=True):
             for f in anc_rec.fields:
                 result[f.name] = f
         for f in record_info.fields:

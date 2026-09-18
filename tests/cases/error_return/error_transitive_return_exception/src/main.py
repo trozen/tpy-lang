@@ -1,12 +1,11 @@
-# ReturnException does not propagate through inheritance -- each type must declare it explicitly
-from tpy import int32, error_return, ReturnException
+# A return-only exception cannot be subclassed: it is handled by exact type, so
+# a subclass adds no dispatch, and one without the marker would be a thrown
+# exception over a base that is not one. Each class declares
+# `(Exception, ReturnException)` on its own.
+from tpy import ReturnException
 
 class BaseError(Exception, ReturnException):
     pass
 
-class SpecificError(BaseError):
+class SpecificError(BaseError):  # tpyc: error(/cannot subclass 'BaseError'.*handled by exact type/)
     pass
-
-@error_return(SpecificError)
-def f() -> int32:  # tpyc: error(/not a ReturnException type/)
-    raise SpecificError

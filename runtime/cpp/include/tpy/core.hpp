@@ -151,7 +151,25 @@ struct RuntimeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRT
 struct RecursionError : RuntimeError { using RuntimeError::RuntimeError; TPY_THROWABLE_VIRTUALS(RecursionError) };
 struct EOFError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(EOFError) };
 struct MemoryError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(MemoryError) };
-struct StopIteration : Exception { TPY_THROWABLE_VIRTUALS(StopIteration) };
+// The C++ base of a user `ReturnException` class. Such a class is a plain
+// value carried in the error slot of a std::expected and never thrown, so it
+// stays outside the Throwable hierarchy: no vtable, no clone()/__raise__(), and
+// no `message` of its own -- an empty base keeps a class that declares nothing
+// as cheap as StopIteration. A class that declares `message` gets a generated
+// `__str__` that hides this one.
+struct ReturnException {
+    std::string_view __str__() const { return {}; }
+};
+
+// The builtin return-only exception: it travels in the error slot of `__next__`'s
+// std::expected and is never thrown, so it is a plain value outside the
+// Throwable hierarchy. Empty and trivially copyable keeps every step result
+// register-sized and the end-of-iteration return free of construct/destroy
+// code, which is what lets a consumer loop inline `__next__`.
+struct StopIteration {
+    std::string_view __str__() const { return {}; }
+    friend std::ostream& operator<<(std::ostream& os, const StopIteration&) { return os; }
+};
 struct StopAsyncIteration : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(StopAsyncIteration) };
 struct TimeoutError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(TimeoutError) };
 // Inherits BaseException (not Exception) like CPython, so `except
@@ -278,10 +296,6 @@ TPY_DEFINE_RAISE_HELPER(raise_runtime_error,         RuntimeError)
 TPY_DEFINE_RAISE_HELPER(raise_not_implemented_error, NotImplementedError)
 TPY_DEFINE_RAISE_HELPER(raise_memory_error,          MemoryError)
 TPY_DEFINE_RAISE_HELPER(raise_eof_error,             EOFError)
-
-[[noreturn]] inline void raise_stop_iteration() {
-    throw StopIteration{};
-}
 
 // Throw the OSError subclass for a pre-computed mapping kind. The shared
 // tail of raise_mapped_os_error (kind from a live errno) and

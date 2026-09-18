@@ -15,16 +15,16 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> parse_bad() {
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"name\": \"hello");
     {
         auto __try_tmp_1 = reader.read_object_start();
-        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
     }
     reader.has_next();
     {
         auto __try_tmp_2 = reader.read_key();
-        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
     }
     {
         auto __try_tmp_3 = reader.read_str();
-        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
     }
     return {};
 }

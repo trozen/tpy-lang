@@ -16,13 +16,8 @@ inline constexpr std::string_view __name__ = "errors";
 std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t target);
 
 // class NotFound(Exception, ReturnException):
-struct NotFound : ::tpy::Exception {
+struct NotFound : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<NotFound>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "errors.NotFound";
 };
 

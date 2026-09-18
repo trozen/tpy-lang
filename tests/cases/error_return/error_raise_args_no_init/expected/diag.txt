@@ -1,2 +1,1 @@
-main.py:6: warning: Field 'message' in 'MyError' shadows inherited field from 'BaseException'; use 'BaseException.message' to access the ancestor's
 main.py:10: error: 'MyError' has data fields but no __init__; add __init__ to use 'raise MyError(...)'

@@ -1,7 +1,7 @@
 # async + @error_return: mutually exclusive in v1 (await foo()? not yet designed).
 from tpy import error_return, ReturnException
 
-class Err(ReturnException):
+class Err(Exception, ReturnException):
     pass
 
 @error_return(Err)

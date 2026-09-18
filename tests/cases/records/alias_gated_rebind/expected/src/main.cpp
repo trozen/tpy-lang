@@ -462,13 +462,13 @@ std::expected<int32_t, Fail> error_return_body() {
     Point* p;
     {
         auto __try_tmp_1 = ::tpyapp::main::make_point(15);
-        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
         p = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_1));
     }
     Point& alias = (*p);
     {
         auto __try_tmp_2 = ::tpyapp::main::make_point(50);
-        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
         p = &*(__slot_2 = ::tpy::unwrap_ref_move(*__try_tmp_2));
     }
     alias.bump();

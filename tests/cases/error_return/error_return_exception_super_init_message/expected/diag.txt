@@ -1,0 +1,1 @@
+main.py:12: error: 'Failed' is a return-only exception (ReturnException): it carries only the fields it declares and has no Exception(message) constructor to call; store the message in a declared 'message: str' field instead

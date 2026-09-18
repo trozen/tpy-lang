@@ -380,6 +380,18 @@ class TypeCompatibility:
                 and self.ctx.func is not None
                 and source_expr.name in self.ctx.func.current_fresh_ctor_locals):
             return
+        # A return exception has neither `clone()` nor a `Box[Throwable]` form,
+        # so the exception remedy below would point at code that does not
+        # compile; it still has no owned storage form of its own.
+        src_info = self.ctx.registry.get_record_for_type(src_inner)
+        if src_info is not None and src_info.is_return_exception:
+            raise SemanticError(
+                f"cannot store the return-only exception '{src_inner.name}' as "
+                f"an owned value in {context}: keeping a caught return "
+                f"exception is not supported yet; copy the fields you need "
+                f"out of it instead",
+                loc,
+            )
         # Tailor the remediation: exception roots have the idiomatic
         # `Box[Throwable]` shared-base form; other polymorphic roots point at
         # their own `Box[Root]`.
@@ -551,6 +563,35 @@ class TypeCompatibility:
             return typ
         return typ.with_inner_types(new_inner)
 
+    def _return_exception_as_throwable(
+        self, actual: TpyType, expected: TpyType, context: str,
+        loc: SourceLocation | None,
+    ) -> CompatError | None:
+        """A ReturnException value offered where a thrown-exception type is
+        expected. It lists `Exception` among its Python bases, so CPython
+        accepts this; in TPy it is a plain value outside the Throwable
+        hierarchy, and the generic mismatch text would not say why."""
+        source = unwrap_readonly(unwrap_own(actual))
+        target = unwrap_readonly(unwrap_own(expected))
+        if isinstance(target, OptionalType):
+            target = unwrap_readonly(target.inner)
+        if not (isinstance(source, NominalType) and isinstance(target, NominalType)):
+            return None
+        source_info = self.ctx.registry.get_record_for_type(source)
+        if source_info is None or not source_info.is_return_exception:
+            return None
+        if target.qualified_name() != qnames.THROWABLE:
+            target_info = self.ctx.registry.get_record_for_type(target)
+            if (target_info is None or target_info.is_return_exception
+                    or not (target_info.inherits_base_exception
+                            or target_info.qualified_name() == qnames.BASE_EXCEPTION)):
+                return None
+        return CompatError(
+            f"Type mismatch in {context}: '{source}' is a return-only exception "
+            f"(ReturnException) and cannot be used as '{target}'; it is a plain "
+            f"value that is never thrown. Build a regular exception from it, "
+            f"e.g. RuntimeError(str(e))", loc)
+
     def _check_compat(
         self, actual: TpyType, expected: TpyType, context: str,
         loc: SourceLocation | None = None,
@@ -606,6 +647,10 @@ class TypeCompatibility:
                 or (isinstance(actual, TupleType) and actual.has_nested_own_element()))
             if not owning_name_source:
                 return None
+        ret_exc_error = self._return_exception_as_throwable(
+            actual, expected, context, loc)
+        if ret_exc_error is not None:
+            return ret_exc_error
         # Send[T] / Sync[T] marker wrappers. The wrapper has no C++
         # representation; the conversion into a marker-typed slot is the
         # assertion site (markers persist post-resolution only around

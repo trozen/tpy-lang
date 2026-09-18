@@ -1,0 +1,1 @@
+main.py:27: error: Type mismatch in argument 'e': 'Missing' is a return-only exception (ReturnException) and cannot be used as 'Exception'; it is a plain value that is never thrown. Build a regular exception from it, e.g. RuntimeError(str(e))

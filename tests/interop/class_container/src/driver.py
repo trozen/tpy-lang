@@ -23,8 +23,10 @@ print(next(it), next(it), next(it))   # 0 1 2
 try:
     next(it)
     raise AssertionError("expected StopIteration")
-except StopIteration:
-    print("stop iteration: PASS")
+except StopIteration as stop:
+    # Exhaustion crosses as a bare StopIteration, as a plain-Python iterator
+    # raises it: no message argument, no value.
+    print("stop iteration: PASS", stop.args, stop.value)
 
 total = 0
 for x in b:

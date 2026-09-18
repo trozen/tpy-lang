@@ -24,7 +24,7 @@ std::expected<Payload, E> chain(int32_t n) {
     Payload p;
     {
         auto __try_tmp_3 = ::tpyapp::main::make(n);
-        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
         p = ::tpy::unwrap_ref_move(*__try_tmp_3);
     }
     return p;

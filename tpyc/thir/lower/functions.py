@@ -59,6 +59,7 @@ from ...prescan import scan_reassigned_vars
 from ...typesys import (
     AnyType,
     IntLiteralType,
+    RecordInfo,
     RecursiveAliasInstanceType,
     is_dyn_protocol,
     is_fn_type,
@@ -100,6 +101,7 @@ from ...codegen_cpp.functions import (
 from ...codegen_cpp.forms import LocalBinding
 from ...type_def_registry import (
     is_array,
+    record_base_cpp,
     view_to_owned_conv,
     is_bytes_type,
     is_bytes_view_type,
@@ -2219,7 +2221,7 @@ def _lower_base_inits(init_method: TpyFunction, ri, declared: dict[str, TpyType]
     for src_idx, stmt in enumerate(init_method.body):
         if not is_base_init_call(stmt):
             continue
-        lowered = _lower_base_init(stmt, declared, lc)
+        lowered = _lower_base_init(stmt, ri, declared, lc)
         if lowered is None:
             return None
         bi, parent_type = lowered
@@ -2386,7 +2388,7 @@ def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
     # A value-opt param passes WHOLE into the base slot (bare name).
     return _lower_expr(a, lc, declared, allow_whole_optional=True)
 
-def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
+def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType],
                      lc: _LowerCtx) -> 'tuple[THIRBaseInit, TpyType] | None':
     """Lower one base-init call to `(THIRBaseInit, parent_type)`, or None outside the
     slice (the caller reuses `parent_type` for the parent-order rank). Renders
@@ -2423,7 +2425,7 @@ def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
         if not _eligible_scalar(analyzer.get_expr_type(a)):
             _witness("baseinit.nonscalar_arg")
         args.append(_lower_base_init_arg(a, lc, declared, none_cpp=none_cpp))
-    return (THIRBaseInit(base_cpp=parent_type.to_cpp(),
+    return (THIRBaseInit(base_cpp=record_base_cpp(ri, parent_type),
                          args=tuple(args)),
             parent_type)
 

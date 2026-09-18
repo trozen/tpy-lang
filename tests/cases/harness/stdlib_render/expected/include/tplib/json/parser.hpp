@@ -50,7 +50,9 @@ struct JsonReader;
 inline constexpr std::string_view __name__ = "tplib.json.parser";
 
 // class JsonError(Exception, ReturnException):
-struct JsonError : ::tpy::Exception {
+struct JsonError : ::tpy::ReturnException {
+    // self.message = message
+    std::string message;
     // pos: int32
     int32_t pos;
 
@@ -60,9 +62,7 @@ struct JsonError : ::tpy::Exception {
     // def describe(self, data: str) -> str:
     std::string describe(std::string_view data) const;
 
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<JsonError>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
+    std::string_view __str__() const { return message; }
     static constexpr std::string_view __tpy_class_name__ = "tplib.json.parser.JsonError";
 };
 
@@ -191,9 +191,7 @@ inline std::ostream& operator<<(std::ostream& os, const JsonReader& obj) {
 // def __init__(self, message: str = "", pos: int32 = -1) -> None:
 //     self.message = message
 //     self.pos = pos
-inline JsonError::JsonError(std::string_view message, int32_t pos) : pos(pos) {
-    this->message = message;
-}
+inline JsonError::JsonError(std::string_view message, int32_t pos) : message(message), pos(pos) {}
 
 // def __init__(self, data: str) -> None:
 //     self._data = data
@@ -296,7 +294,7 @@ inline std::expected<std::string, JsonError> JsonReader::read_key() {
     std::string result;
     {
         auto __try_tmp_1 = this->_read_raw_str();
-        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
         result = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
     this->_skip_ws();
@@ -322,7 +320,7 @@ inline std::expected<double, JsonError> JsonReader::read_float() {
     std::string_view raw;
     {
         auto __try_tmp_2 = this->_read_number_raw();
-        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
         raw = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
     return ::tpy::float_from_str(raw);

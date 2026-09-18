@@ -323,6 +323,9 @@ def _validate_exposed_class(compiled: 'CompiledModule',
     # Exception classes already cross via the PyErr_NewException path
     # (auto-exposed, no @export needed); the two type-creation paths are
     # disjoint, so @export on a throwable would double-create.
+    if info.is_return_exception:
+        reject("a return-only exception (ReturnException) is a plain value "
+               "that never crosses to Python -- remove @export")
     if info.inherits_base_exception or info.implements_throwable:
         reject("exception classes are exposed automatically -- remove @export")
     if info.type_params:

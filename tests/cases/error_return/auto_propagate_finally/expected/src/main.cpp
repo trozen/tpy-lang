@@ -32,7 +32,7 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
             {
                 auto __try_tmp_1 = ::tpyapp::main::fallible(x);
                 if (!__try_tmp_1.has_value()) {
-                    std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_1.error());
+                    std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
                     __fin_ran_1 = true;
                     std::cout << "cleanup-1" << "\n";
                     return __tpy_ret_0;
@@ -69,7 +69,7 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
             {
                 auto __try_tmp_2 = ::tpyapp::main::fallible(x);
                 if (!__try_tmp_2.has_value()) {
-                    std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_2.error());
+                    std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
                     __fin_ran_2 = true;
                     std::cout << "cleanup-2" << "\n";
                     return __tpy_ret_0;
@@ -103,7 +103,7 @@ std::expected<void, MyErr> caller_stmt(int32_t x) {
             {
                 auto __try_tmp_3 = ::tpyapp::main::fallible(x);
                 if (!__try_tmp_3.has_value()) {
-                    std::expected<void, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_3.error());
+                    std::expected<void, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
                     __fin_ran_3 = true;
                     std::cout << "cleanup-3" << "\n";
                     return __tpy_ret_0;

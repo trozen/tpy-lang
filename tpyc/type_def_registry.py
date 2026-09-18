@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
+from . import qnames
 from .compilation_context import get_current_compiler, require_current_compiler
 
 if TYPE_CHECKING:
@@ -853,6 +854,39 @@ def protocol_info_of(t: "TpyType") -> Optional["ProtocolInfo"]:
     """Return the ProtocolInfo payload attached to this type's TypeDef, if any."""
     td = type_def_of(t)
     return td.protocol if td is not None else None
+
+
+def return_exception_marker(record: "RecordInfo") -> "NominalType | None":
+    """The `ReturnException` marker among the protocols `record` itself lists,
+    or None. The one place that spells the test: the marker does not propagate
+    through inheritance, so only the record's OWN protocols count."""
+    for proto in record.implemented_protocols:
+        if proto.qualified_name() == qnames.RETURN_EXCEPTION:
+            return proto
+    return None
+
+
+def record_base_cpp(record: "RecordInfo", parent: "NominalType",
+                    render: "Callable[[NominalType], str] | None" = None) -> str:
+    """The C++ spelling of `parent` as a base class of `record`.
+
+    A return exception lists `Exception` among its Python bases because CPython
+    only raises BaseException subclasses, but its C++ struct derives from the
+    non-throwable value base the `ReturnException` marker names (`@native` on
+    the stub), so it stays a plain value outside the Throwable hierarchy.
+    `render` spells an ordinary parent where the caller has its own type
+    renderer; the default is the type's own `to_cpp()`.
+    """
+    if (record.is_return_exception and not record.is_native
+            and parent.qualified_name() == qnames.EXCEPTION):
+        marker = return_exception_marker(record)
+        info = protocol_info_of(marker) if marker is not None else None
+        # Falling back to `::tpy::Exception` here would silently make the
+        # struct a Throwable again.
+        assert info is not None and info.cpp_concept, (
+            f"ReturnException stub names no C++ value base for '{record.name}'")
+        return info.cpp_concept
+    return render(parent) if render is not None else parent.to_cpp()
 
 
 def is_subtype(sub: "RecordInfo | ProtocolInfo | None", supertype_name: str) -> bool:

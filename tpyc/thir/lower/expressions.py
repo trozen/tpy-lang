@@ -8116,7 +8116,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # spelling must not lean on that from afar).
                 ri = lc.analyzer.registry.get_record_for_type(rtype)
                 assert ri is not None, "lowered ctor has no record"
-                if ri.is_native and ri.implements_throwable:
+                if ri.is_native_exception_class:
                     # A native exception spells its `@native` name
                     # (`::tpy::OSError`) via to_cpp() / native_cpp_names --
                     # the module qualification would give the wrong

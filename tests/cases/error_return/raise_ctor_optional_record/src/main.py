@@ -14,7 +14,7 @@ class Failed(Exception, ReturnException):
     node: Node | None
 
     def __init__(self, n: Node | None) -> None:
-        super().__init__("failed")
+        super().__init__()
         self.node = n
 
 

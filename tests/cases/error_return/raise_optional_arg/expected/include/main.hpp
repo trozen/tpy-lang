@@ -18,17 +18,13 @@ std::expected<int32_t, Failed> run(bool ok);
 void main();
 
 // class Failed(Exception, ReturnException):
-struct Failed : ::tpy::Exception {
+struct Failed : ::tpy::ReturnException {
     // code: int32 | None
     std::optional<int32_t> code;
 
     // def __init__(self, code: int32 | None) -> None:
     Failed() = default;
     explicit Failed(std::optional<int32_t> code);
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Failed>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Failed";
 };
 
@@ -39,8 +35,8 @@ inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
 
 
 // def __init__(self, code: int32 | None) -> None:
-//     super().__init__("failed")
+//     super().__init__()
 //     self.code = code
-inline Failed::Failed(std::optional<int32_t> code) : ::tpy::Exception("failed"), code(code) {}
+inline Failed::Failed(std::optional<int32_t> code) : ::tpy::ReturnException(), code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

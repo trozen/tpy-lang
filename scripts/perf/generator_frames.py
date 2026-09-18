@@ -2,9 +2,9 @@
 # render) and as a `def` generator (resumable frame), under a builtin consumer
 # (`sum`), a user-defined Iterable consumer and a scanning `any`. Run with
 # `uv run tpy scripts/perf/generator_frames.py` (add `--cxx clang` for the
-# other toolchain). The goal is a `def` column close to the genexpr one; the
-# remaining gap is the TODO.md entry "Generator frames still lose to the genexpr
-# closure".
+# other toolchain). The goal is a `def` column close to the genexpr one.
+# `any` compares like with like: `genb` yields the tested bool itself, since
+# `any(v < 0 for v in gen(...))` would time a genexpr wrapped around a frame.
 import time
 from tpy import int32, int64
 from typing import Iterable, Iterator
@@ -14,6 +14,12 @@ def gen(xs: list[int32], k: int32) -> Iterator[int64]:
     for x in xs:
         if x % 3 != k:
             yield int64(x) * 2
+
+
+def genb(xs: list[int32], k: int32) -> Iterator[bool]:
+    for x in xs:
+        if x % 3 != k:
+            yield int64(x) * 2 < 0
 
 
 def total(it: Iterable[int64]) -> int64:
@@ -51,7 +57,7 @@ def main() -> None:
         t5 = time.perf_counter()
         f = 0
         for _ in range(50):
-            if any(v < 0 for v in gen(xs, k)):
+            if any(genb(xs, k)):
                 f += 1
         t6 = time.perf_counter()
         print("sum  genexpr", round((t1 - t0) * 1000), "def", round((t2 - t1) * 1000))

@@ -26,7 +26,7 @@
 | Generator functions (`yield`) | **Done** | Resumable-frame state-machine struct implementing `Iterator[T]` |
 | `yield from` | **Todo** | Delegation to sub-generators |
 | Generator `send()`/`throw()`/`close()` | **Todo** | Coroutine protocol |
-| `StopIteration` with value | **Todo** | Generator return values via `raise StopIteration(value)` |
+| `StopIteration` with value | **Todo** | Generator return values via `raise StopIteration(value)`. Needs a different carrier: `::tpy::StopIteration` is deliberately an EMPTY struct so a scalar step result is passed in registers (docs/ERROR_RETURN_DESIGN.md "Exception Type") |
 | `itertools` module | **Todo** | `chain`, `islice`, `count`, `cycle`, `repeat`, etc. |
 | Async iterators | **Todo** | `async for`, `__aiter__`, `__anext__` |
 

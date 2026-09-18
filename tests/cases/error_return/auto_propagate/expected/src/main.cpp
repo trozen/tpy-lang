@@ -41,18 +41,18 @@ std::expected<void, ParseError> validate(std::string_view s) {
 std::expected<int32_t, ParseError> parse_two_digits(std::string_view a, std::string_view b) {
     {
         auto __try_tmp_1 = ::tpyapp::main::validate(a);
-        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
     }
     int32_t x;
     {
         auto __try_tmp_2 = ::tpyapp::main::parse_digit(a);
-        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+        if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
         x = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
     int32_t y;
     {
         auto __try_tmp_3 = ::tpyapp::main::parse_digit(b);
-        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
         y = ::tpy::unwrap_ref_move(*__try_tmp_3);
     }
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 10)), y));

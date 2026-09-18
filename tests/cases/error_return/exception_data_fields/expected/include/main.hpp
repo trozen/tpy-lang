@@ -18,7 +18,7 @@ std::expected<int32_t, ParseError> parse(std::string_view s);
 void main();
 
 // class ParseError(Exception, ReturnException):
-struct ParseError : ::tpy::Exception {
+struct ParseError : ::tpy::ReturnException {
     // line: int32
     int32_t line;
     // column: int32
@@ -29,10 +29,6 @@ struct ParseError : ::tpy::Exception {
     // def __init__(self, line: int32, column: int32, detail: str) -> None:
     ParseError() = default;
     explicit ParseError(int32_t line, int32_t column, std::string_view detail);
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<ParseError>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.ParseError";
 };
 

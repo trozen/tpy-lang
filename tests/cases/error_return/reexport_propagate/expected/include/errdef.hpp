@@ -16,13 +16,8 @@ inline constexpr std::string_view __name__ = "errdef";
 std::expected<int32_t, AppError> check(int32_t n);
 
 // class AppError(Exception, ReturnException):
-struct AppError : ::tpy::Exception {
+struct AppError : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<AppError>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "errdef.AppError";
 };
 

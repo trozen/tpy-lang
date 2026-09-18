@@ -121,13 +121,8 @@ inline std::ostream& operator<<(std::ostream& os, const Unwind& obj) {
 }
 
 // class MarkerError(Exception, ReturnException):
-struct MarkerError : ::tpy::Exception {
+struct MarkerError : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<MarkerError>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MarkerError";
 };
 

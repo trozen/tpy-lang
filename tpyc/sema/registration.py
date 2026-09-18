@@ -64,7 +64,7 @@ from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of,
-    factory_qnames_in_module, protocol_info_of,
+    factory_qnames_in_module, protocol_info_of, return_exception_marker,
     is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
     is_varargs,
 )
@@ -2301,6 +2301,7 @@ class TypeRegistrar:
 
         # Needs MRO, so cannot run earlier.
         self._check_field_shadowing(record, record_info)
+        self._check_return_exception_fields(record, record_info)
 
         if len(record_info.parents) >= 2:
             self._check_multi_base_order(record, record_info)
@@ -2393,10 +2394,8 @@ class TypeRegistrar:
                 break
 
         # ReturnException marker: register exception type as return-only
-        for protocol in record_info.implemented_protocols:
-            if protocol.qualified_name() == qnames.RETURN_EXCEPTION:
-                register_return_exception(record.name)
-                break
+        if return_exception_marker(record_info) is not None:
+            register_return_exception(record.name)
 
         # Auto-derive Send/Sync based on field types.
         # A record is Send if all its fields are Send (safe to move across threads).
@@ -2540,8 +2539,14 @@ class TypeRegistrar:
                 inherits_base_exception = True
             if implements_throwable and inherits_base_exception:
                 break
-        record_info.implements_throwable = implements_throwable
+        is_return_exception = return_exception_marker(record_info) is not None
+        record_info.is_return_exception = is_return_exception
         record_info.inherits_base_exception = inherits_base_exception
+        self._check_no_return_exception_parent(record, record_info)
+        if is_return_exception:
+            self._check_return_exception_base(record, record_info)
+            implements_throwable = False
+        record_info.implements_throwable = implements_throwable
         if not implements_throwable:
             return
         qname = record_info.qualified_name()
@@ -2584,6 +2589,63 @@ class TypeRegistrar:
                         f"Remove this method to let the auto-emit provide it.",
                         method.loc or record.loc,
                     )
+
+    def _check_no_return_exception_parent(self, record: TpyRecord,
+                                          record_info: 'RecordInfo') -> None:
+        """A return exception is handled by EXACT type -- `except Base` never
+        takes a `Sub` -- so a subclass would add no dispatch, only a second
+        struct to keep in step; and one without the marker would be a thrown
+        exception over a base that is not Throwable. Read the parent's marker
+        off its protocols, not its flag: a parent declared later in the module
+        has not been through this pass yet."""
+        for parent in record_info.parents:
+            parent_info = self.ctx.registry.get_record_for_type(parent)
+            if parent_info is None:
+                continue
+            if return_exception_marker(parent_info) is not None:
+                raise SemanticError(
+                    f"'{record.name}' cannot subclass '{parent_info.name}': a "
+                    f"return-only exception (ReturnException) is handled by "
+                    f"exact type and cannot be subclassed; declare "
+                    f"'class {record.name}(Exception, ReturnException)' on its "
+                    f"own",
+                    record.loc)
+
+    def _check_return_exception_fields(self, record: TpyRecord,
+                                       record_info: 'RecordInfo') -> None:
+        """A field that re-declares one of the thrown ancestors' fields keeps
+        its type: `str(e)` is rendered from `message`, and a differently typed
+        one would silently print nothing where CPython prints the value."""
+        if not record_info.is_return_exception or record_info.is_native:
+            return
+        for anc in self.ctx.registry.iter_ancestor_records(record_info):
+            if self.ctx.registry.is_struct_base(record_info, anc):
+                continue
+            for inherited in anc.fields:
+                for fld in record.fields:
+                    if fld.name == inherited.name and fld.type != inherited.type:
+                        raise SemanticError(
+                            f"Field '{fld.name}' of return-only exception "
+                            f"'{record.name}' must be '{inherited.type}' "
+                            f"(str() reads it); got '{fld.type}'",
+                            fld.loc or record.loc)
+
+    def _check_return_exception_base(self, record: TpyRecord,
+                                     record_info: 'RecordInfo') -> None:
+        """A return exception's C++ struct swaps its one `Exception` base for
+        the non-throwable value base, so any other class parent -- a concrete
+        exception like `ValueError`, or a user exception class -- would drag
+        the Throwable hierarchy back in."""
+        if record_info.is_native:
+            return
+        parents = [p.qualified_name() for p in record_info.parents
+                   if isinstance(p, NominalType)]
+        if parents != [qnames.EXCEPTION]:
+            raise SemanticError(
+                f"ReturnException class '{record.name}' must derive directly "
+                f"from Exception: 'class {record.name}(Exception, "
+                f"ReturnException)'",
+                record.loc)
 
     def validate_method_error_returns(self, record: TpyRecord) -> None:
         """Validate @error_return(E) on methods references a ReturnException type.
@@ -2743,6 +2805,9 @@ class TypeRegistrar:
             parent_info = self.ctx.registry.get_record_for_type(parent)
             if parent_info is None or not parent_info.has_init:
                 continue
+            # No `Exception(message)` to inherit on a return exception.
+            if not self.ctx.registry.is_struct_base(record_info, parent_info):
+                continue
             # A generic parent is inheritable only as a concrete instantiation
             # (`class Sub(Base[14])`): the type args then substitute the init
             # params to concrete types at the copy site. A bare/unbound generic
@@ -2758,7 +2823,7 @@ class TypeRegistrar:
     def _check_field_shadowing(self, record: TpyRecord, record_info: RecordInfo) -> None:
         """Warn when the record's own field shadows an inherited one."""
         for fld in record.fields:
-            for anc_rec in self.ctx.registry.iter_ancestor_records(record_info):
+            for anc_rec in self.ctx.registry.iter_field_ancestors(record_info):
                 if any(af.name == fld.name for af in anc_rec.fields):
                     self.ctx.warning_from_loc(
                         f"Field '{fld.name}' in '{record.name}' shadows "
@@ -3030,6 +3095,10 @@ class TypeRegistrar:
     def _find_mro_ancestor_with_method(self, record_info: RecordInfo, method_name: str) -> str | None:
         """Find the nearest MRO ancestor (excluding record_info itself) that defines method_name."""
         for anc_rec in self.ctx.registry.iter_ancestor_records(record_info):
+            # No reference typed as a non-base ancestor can hold this record,
+            # so there is nothing for a same-named method to hide or override.
+            if not self.ctx.registry.is_struct_base(record_info, anc_rec):
+                continue
             if anc_rec.get_method(method_name) is not None:
                 return anc_rec.name
         return None

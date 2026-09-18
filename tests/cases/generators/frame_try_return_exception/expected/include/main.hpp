@@ -627,7 +627,7 @@ std::expected<int32_t, ::tpy::StopIteration> first_two(T_it& it) {
     int32_t a;
     {
         auto __try_tmp_9 = ::tpy::next(it);
-        if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+        if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_9.error()));
         a = ::tpy::unwrap_ref_move(*__try_tmp_9);
     }
     int32_t b;

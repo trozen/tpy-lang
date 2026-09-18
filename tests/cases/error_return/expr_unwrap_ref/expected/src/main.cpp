@@ -20,7 +20,7 @@ std::expected<::tpy::val_or_ref<Point>, E> positive(Point& p) {
 // def modify(p: Point) -> Point:
 //     return positive(p).updated()
 std::expected<::tpy::val_or_ref<Point>, E> modify(Point& p) {
-    return (*({ auto __er_1 = ::tpyapp::main::positive(p); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); &::tpy::unwrap_ref(*__er_1); })).updated();
+    return (*({ auto __er_1 = ::tpyapp::main::positive(p); if (!__er_1.has_value()) return ::tpy::make_unexpected(std::move(__er_1.error())); &::tpy::unwrap_ref(*__er_1); })).updated();
 }
 
 // def main() -> None:

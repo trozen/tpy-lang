@@ -21,7 +21,7 @@ std::expected<Data, E> make_data(const ::tpy::BigInt& v) {
 // def get_value(v: int) -> int:
 //     return make_data(v).value
 std::expected<::tpy::BigInt, E> get_value(const ::tpy::BigInt& v) {
-    return ({ auto __er_1 = ::tpyapp::main::make_data(v); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); }).value;
+    return ({ auto __er_1 = ::tpyapp::main::make_data(v); if (!__er_1.has_value()) return ::tpy::make_unexpected(std::move(__er_1.error())); ::tpy::unwrap_ref_move(*__er_1); }).value;
 }
 
 // def main() -> None:

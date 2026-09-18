@@ -51,7 +51,7 @@ namespace tpy::interop {
     X(OverflowError) X(FloatingPointError) X(ArithmeticError) X(RecursionError) \
     X(RuntimeError) X(ValueError) X(AttributeError) X(AssertionError) \
     X(TypeError) X(NotImplementedError) X(EOFError) X(MemoryError) \
-    X(StopIteration) X(StopAsyncIteration) X(GeneratorExit) \
+    X(StopAsyncIteration) X(GeneratorExit) \
     X(KeyboardInterrupt) X(Exception)
 
 // The per-type "raise this across the boundary" action: given the caught
@@ -106,6 +106,17 @@ inline cpy::PyObject *py_exc_by_name(std::string_view name) noexcept {
 // set yet and the mapped type+message must win.
 inline void set_py_err_from(const tpy::BaseException &e) noexcept {
     cpy::PyErr_SetString(py_exc_for(e), e.what());
+}
+
+// Iterator exhaustion arrives as the error value of `__next__`'s std::expected,
+// never as a thrown exception; the registry is accepted and ignored so the
+// glue's call site is the same with or without user exception types.
+inline void set_py_err_from(const tpy::StopIteration &) noexcept {
+    cpy::PyErr_SetNone(cpy::PyExc_StopIteration);
+}
+inline void set_py_err_from(const tpy::StopIteration &e,
+                            const ExcRegistry &) noexcept {
+    set_py_err_from(e);
 }
 
 // A user exception matches by EXACT dynamic type (typeid on the polymorphic

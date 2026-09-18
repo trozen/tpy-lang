@@ -101,13 +101,8 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 }
 
 // class Bad(Exception, ReturnException):
-struct Bad : ::tpy::Exception {
+struct Bad : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Bad>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bad";
 };
 

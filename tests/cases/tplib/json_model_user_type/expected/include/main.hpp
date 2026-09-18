@@ -175,7 +175,7 @@ inline std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> Seconds:
     int64_t raw;
     {
         auto __try_tmp_1 = reader.read_int();
-        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
         raw = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
     return Seconds(::tpy::int_cast_check<int32_t>(raw));

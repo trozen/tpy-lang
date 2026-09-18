@@ -1,0 +1,15 @@
+builtin: str empty True
+empty: str empty True
+message: no zz
+fields: 3 bad x
+propagate: 3 bad y
+reraise: saw line 3
+reraise: bad z
+dtor: 9
+dtor propagated: 4
+own str: labelled:x
+mutate: 99 bad m
+cross: level too low
+method: 7 -3 1
+generator: 10
+generator: 20

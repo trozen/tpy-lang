@@ -5673,6 +5673,18 @@ class RecordInfo:
     # one source of truth instead of re-walking the MRO each time.
     implements_throwable: bool = False
     inherits_base_exception: bool = False
+    # A `ReturnException` class is a plain value that travels in the error slot
+    # of a std::expected and is never thrown: it keeps `Exception` among its
+    # Python bases (CPython requires it) but is not a Throwable, so
+    # `implements_throwable` is False for it.
+    is_return_exception: bool = False
+
+    @property
+    def is_native_exception_class(self) -> bool:
+        """A runtime-defined exception class of either tier (`::tpy::OSError`,
+        `::tpy::StopIteration`): constructed by its `@native` C++ name."""
+        return self.is_native and (self.implements_throwable
+                                   or self.is_return_exception)
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
     is_native: bool = False       # True for @native or @native_c records
@@ -6663,6 +6675,22 @@ class TypeRegistry:
             return mod.records[name]
         return None
 
+    @staticmethod
+    def is_struct_base(record: RecordInfo, ancestor: RecordInfo) -> bool:
+        """True when `ancestor` is a base of `record`'s C++ struct. A return
+        exception names the thrown `Exception` classes among its Python bases
+        (CPython only raises BaseException subclasses) but its struct derives
+        from the empty value base instead, so their fields, constructors and
+        by-reference dispatch are not part of it."""
+        return not (record.is_return_exception and ancestor.implements_throwable)
+
+    def iter_field_ancestors(self, record: RecordInfo,
+                             reverse: bool = False) -> Iterator[RecordInfo]:
+        """The ancestors whose fields `record` really has (see `is_struct_base`)."""
+        for anc_rec in self.iter_ancestor_records(record, reverse=reverse):
+            if self.is_struct_base(record, anc_rec):
+                yield anc_rec
+
     def get_all_fields(self, record: RecordInfo) -> list[FieldInfo]:
         """Get all fields for a record including inherited, in base-first order.
 
@@ -6677,7 +6705,7 @@ class TypeRegistry:
         """
         if record.mro_ancestors:
             result: list[FieldInfo] = []
-            for anc_rec in self.iter_ancestor_records(record, reverse=True):
+            for anc_rec in self.iter_field_ancestors(record, reverse=True):
                 result.extend(anc_rec.fields)
             result.extend(record.fields)
             return result

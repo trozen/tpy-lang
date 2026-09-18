@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Callable
 
+from .. import qnames
 from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, PendingListType, PendingDictType, PendingSetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
@@ -1445,7 +1446,6 @@ class MethodAnalyzer:
             overloads = module_info.functions[expr.method]
             # asyncio.run / asyncio.create_task: ordinary module functions
             # plus the coroutine-only arg contract (CPython parity).
-            from .. import qnames
             _qname = f"{module_name}.{expr.method}"
             if _qname in (qnames.ASYNCIO_RUN, qnames.ASYNCIO_CREATE_TASK):
                 expr.user_module_call = module_name
@@ -1881,6 +1881,13 @@ class MethodAnalyzer:
             record_info, expr.method)
         if not overloads:
             return None
+        if (record_info.is_return_exception
+                and expr.method in qnames.THROWABLE_ABI_METHODS
+                and not record_info.get_method_overloads(expr.method)):
+            raise self.ctx.error(
+                f"'{record_info.name}' is a return-only exception "
+                f"(ReturnException): it is a plain value that is never thrown, "
+                f"so it has no '{expr.method}()'", expr)
         self._reject_inherited_classmethod(expr, record_info, overloads)
         instance_subst = self.type_ops.build_type_substitution(obj_type)
         if inherited_subst and instance_subst:
@@ -2301,6 +2308,22 @@ class MethodAnalyzer:
                 )
             # Track this call for later validation (must be first statement)
             self.ctx.func.super_init_call = expr
+
+            child_rec = self.ctx.registry.get_record(super_type.child_record_name)
+            if (child_rec is not None
+                    and not self.ctx.registry.is_struct_base(child_rec, parent_info)):
+                # The C++ struct derives from the empty value base, not from
+                # the thrown exception `super()` names, so there is no
+                # Exception(message) constructor behind this call.
+                if expr.args:
+                    raise self.ctx.error(
+                        f"'{child_rec.name}' is a return-only exception "
+                        f"(ReturnException): it carries only the fields it "
+                        f"declares and has no Exception(message) constructor to "
+                        f"call; store the message in a declared 'message: str' "
+                        f"field instead", expr)
+                expr.super_parent_type = parent_type
+                return VOID
 
             init_overloads = parent_info.get_method_overloads("__init__")
             if not init_overloads:

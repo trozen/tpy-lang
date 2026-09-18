@@ -7,7 +7,7 @@ class Failed(Exception, ReturnException):
     code: int32 | None
 
     def __init__(self, code: int32 | None) -> None:
-        super().__init__("failed")
+        super().__init__()
         self.code = code
 
 

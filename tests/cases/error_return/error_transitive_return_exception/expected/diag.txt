@@ -1,1 +1,1 @@
-main.py:11: error: 'SpecificError' is not a ReturnException type; @error_return requires a ReturnException exception
+main.py:10: error: 'SpecificError' cannot subclass 'BaseError': a return-only exception (ReturnException) is handled by exact type and cannot be subclassed; declare 'class SpecificError(Exception, ReturnException)' on its own

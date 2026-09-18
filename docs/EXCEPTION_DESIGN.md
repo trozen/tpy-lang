@@ -78,7 +78,6 @@ namespace tpy {
 [[noreturn]] void raise_overflow_error(std::string_view msg);
 [[noreturn]] void raise_runtime_error(std::string_view msg);
 [[noreturn]] void raise_assertion_error(std::string_view msg = "assertion failed");
-[[noreturn]] void raise_stop_iteration();
 // ... one per built-in exception class the runtime needs to raise
 }
 ```
@@ -196,6 +195,15 @@ class ParseError(Exception, ReturnException):
 | `except E` in `try/except` for throw | Compile error | Allowed (C++ `catch`) |
 
 This makes the tier visible at the exception class definition -- you know from the type alone whether it's zero-cost or stack-unwinding.
+
+The tier is also the C++ representation. A throw-tier class derives from
+`::tpy::Exception` (a `Throwable` over `std::exception`: vtable, `clone()`,
+`__raise__()`, `what()`). A return-tier class is a plain value outside that
+hierarchy -- it derives from the empty `::tpy::ReturnException` base and carries only the fields it declares, and
+`::tpy::StopIteration` is an empty struct -- so the error slot of a
+`std::expected` stays cheap and a return-tier value can never be thrown, cloned
+or passed where an `Exception` is expected. See `ERROR_RETURN_DESIGN.md`
+"Exception Type" for the rules and the CPython divergence this accepts.
 
 ### Auto-Propagation (E4)
 
@@ -687,7 +695,8 @@ struct ValueError : Exception {
     std::string message;
 };
 
-struct ParseError : Exception {
+// A ReturnException class is a plain value over the empty value base:
+struct ParseError : ::tpy::ReturnException {
     int32_t line;
     int32_t column;
     std::string detail;

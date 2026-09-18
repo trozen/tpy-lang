@@ -42,7 +42,7 @@ from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..type_def_registry import (
     is_span_iter, is_array,
     is_big_int_type, is_bytes_type, int_traits_of,
-    is_enum_type, enum_info_of, protocol_info_of,
+    is_enum_type, enum_info_of, protocol_info_of, record_base_cpp,
     is_set, is_dict,
 )
 
@@ -330,7 +330,7 @@ class RecordGenerator:
         bases = []
         if record_info:
             for p in record_info.parents:
-                bases.append(p.to_cpp())
+                bases.append(record_base_cpp(record_info, p))
             for proto in record_info.implemented_protocols:
                 proto_info = protocol_info_of(proto)
                 if proto_info and proto_info.is_dynamic:
@@ -713,6 +713,19 @@ class RecordGenerator:
             out.write(
                 f"{INDENT}const char* what() const noexcept override "
                 f"{{ return this->message.c_str(); }}\n"
+            )
+
+        # A return exception has no thrown base to supply `__str__` over its
+        # message, so a class that declares the field gets the accessor here;
+        # without the field the empty value base answers "".
+        if (record_info and record_info.is_return_exception
+                and not record_info.is_native
+                and not record_info.get_method_overloads("__str__")
+                and any(f.name == qnames.EXCEPTION_MESSAGE_FIELD
+                        for f in record.fields)):
+            out.write(
+                f"\n{INDENT}std::string_view __str__() const "
+                f"{{ return {qnames.EXCEPTION_MESSAGE_FIELD}; }}\n"
             )
 
         has_str_repr = self._record_has_str_repr(record_info)
@@ -1251,7 +1264,7 @@ class RecordGenerator:
                 vinit_parts = []
                 if record_info:
                     for p in record_info.parents:
-                        vinit_parts.append(f"{p.to_cpp()}()")
+                        vinit_parts.append(f"{record_base_cpp(record_info, p)}()")
                 for fld in record.fields:
                     vinit_parts.append(f"{escape_cpp_name(fld.name)}()")
                 vinit_list = (" : " + ", ".join(vinit_parts)) if vinit_parts else ""
@@ -1279,7 +1292,7 @@ class RecordGenerator:
             init_parts = []
             if record_info:
                 for p in record_info.parents:
-                    init_parts.append(f"{p.to_cpp()}(std::move(other))")
+                    init_parts.append(f"{record_base_cpp(record_info, p)}(std::move(other))")
             for fld in record.fields:
                 cpp_fld = escape_cpp_name(fld.name)
                 init_parts.append(f"{cpp_fld}(std::move(other.{cpp_fld}))")
@@ -1396,7 +1409,7 @@ class RecordGenerator:
         # Build member init list: transfer each field from __other
         init_parts = []
         for p in record_info.parents:
-            parent_cpp = self.types.type_to_cpp(p)
+            parent_cpp = record_base_cpp(record_info, p, self.types.type_to_cpp)
             init_parts.append(f"{parent_cpp}(std::move(__other))")
         for fld in record.fields:
             cpp_fld = escape_cpp_name(fld.name)

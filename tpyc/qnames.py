@@ -136,6 +136,10 @@ THROWABLE = "tpy.Throwable"
 # Sema rejects user-defined overrides of these names on Throwable
 # subclasses to prevent a C++ redefinition collision.
 THROWABLE_ABI_METHODS = ("clone", "__raise__", "what")
+# The BaseException field `str(e)` renders. A thrown exception inherits it
+# with its C++ `__str__`; a return exception declares its own, and codegen
+# emits the `__str__` that reads it.
+EXCEPTION_MESSAGE_FIELD = "message"
 HASHABLE = "tpy.Hashable"
 COMPARABLE = "tpy.Comparable"
 EQUATABLE = "tpy.Equatable"

@@ -13,7 +13,7 @@ std::expected<int32_t, E> propagate(H& h) {
     std::vector<int32_t>* v;
     {
         auto __try_tmp_1 = h.view();
-        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
         v = &(::tpy::unwrap_ref(*__try_tmp_1));
     }
     v->push_back(8);

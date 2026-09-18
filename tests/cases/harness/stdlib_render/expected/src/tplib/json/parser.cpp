@@ -440,11 +440,11 @@ std::expected<void, JsonError> JsonReader::skip_value() {
         while (this->has_next()) {
             {
                 auto __try_tmp_3 = this->_skip_key();
-                if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+                if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
             }
             {
                 auto __try_tmp_4 = this->skip_value();
-                if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+                if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_4.error()));
             }
         }
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
@@ -453,7 +453,7 @@ std::expected<void, JsonError> JsonReader::skip_value() {
         while (this->has_next()) {
             {
                 auto __try_tmp_5 = this->skip_value();
-                if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_5.error()));
             }
         }
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);

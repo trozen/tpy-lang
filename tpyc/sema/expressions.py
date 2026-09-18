@@ -2174,7 +2174,18 @@ class ExpressionAnalyzer:
             dyn_result = self._try_dyn_getattr(actual_type, expr)
             if dyn_result is not None:
                 return make_ref(dyn_result)
-            raise self.ctx.error(f"Record '{actual_type.name}' has no field '{expr.field}'", expr)
+            hint = ""
+            missing_in = self.ctx.registry.get_record_for_type(actual_type)
+            if (missing_in is not None and missing_in.is_return_exception
+                    and any(f.name == expr.field
+                            for anc in self.ctx.registry.iter_ancestor_records(missing_in)
+                            for f in anc.fields)):
+                # CPython reads it off the thrown Exception base.
+                hint = (f": a return-only exception (ReturnException) carries "
+                        f"only the fields it declares; declare '{expr.field}' "
+                        f"on '{actual_type.name}' to use it")
+            raise self.ctx.error(
+                f"Record '{actual_type.name}' has no field '{expr.field}'{hint}", expr)
         raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
 
     def _try_dyn_getattr(self, typ: NominalType, expr: TpyFieldAccess) -> TpyType | None:

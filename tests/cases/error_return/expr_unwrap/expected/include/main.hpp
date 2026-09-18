@@ -49,13 +49,8 @@ std::expected<::tpy::BigInt, ParseErr> checked_add(std::string_view a, std::stri
 void test_as_binding();
 
 // class E(Exception, ReturnException):
-struct E : ::tpy::Exception {
+struct E : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<E>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.E";
 };
 
@@ -65,17 +60,13 @@ inline std::ostream& operator<<(std::ostream& os, const E& obj) {
 }
 
 // class ParseErr(Exception, ReturnException):
-struct ParseErr : ::tpy::Exception {
+struct ParseErr : ::tpy::ReturnException {
     // code: int
     ::tpy::BigInt code;
 
     // def __init__(self, code: int) -> None:
     ParseErr() = default;
     explicit ParseErr(const ::tpy::BigInt& code);
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<ParseErr>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.ParseErr";
 };
 

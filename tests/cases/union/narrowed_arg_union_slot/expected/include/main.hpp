@@ -168,13 +168,8 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 }
 
 // class Err(Exception, ReturnException):
-struct Err : ::tpy::Exception {
+struct Err : ::tpy::ReturnException {
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Err>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Err";
 };
 

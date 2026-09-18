@@ -1033,6 +1033,8 @@ class ProtocolChecker:
             parent_info = self.ctx.registry.get_record_for_type(parent_type)
             if parent_info is None:
                 continue
+            if not self.ctx.registry.is_struct_base(record_info, parent_info):
+                continue
             inherited = self.lookup_record_field(parent_info, field_name)
             if inherited:
                 type_subst = self.get_parent_type_subst(parent_type, parent_info)

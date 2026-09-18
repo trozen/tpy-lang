@@ -16,14 +16,14 @@ void main() {
 std::expected<M, ::tpystd::tplib::json::parser::JsonError> M::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
     {
         auto __try_tmp_3 = __reader.read_object_start();
-        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
     }
     ::tpy::BigInt n = ::tpy::BigInt(0);
     while (__reader.has_next()) {
         std::string_view __key;
         {
             auto __try_tmp_4 = __reader.read_key_raw();
-            if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+            if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_4.error()));
             __key = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         auto& __match_subject_1 = __key;
@@ -31,7 +31,7 @@ std::expected<M, ::tpystd::tplib::json::parser::JsonError> M::__json_decode__(::
             std::string_view __raw_2;
             {
                 auto __try_tmp_5 = __reader.read_number_raw();
-                if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_5.error()));
                 __raw_2 = ::tpy::unwrap_ref_move(*__try_tmp_5);
             }
             ::tpy::BigInt __n_1 = ::tpy::BigInt::from_str(__raw_2);
@@ -39,13 +39,13 @@ std::expected<M, ::tpystd::tplib::json::parser::JsonError> M::__json_decode__(::
         } else {
             {
                 auto __try_tmp_6 = __reader.skip_value();
-                if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+                if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_6.error()));
             }
         }
     }
     {
         auto __try_tmp_7 = __reader.read_object_end();
-        if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
+        if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_7.error()));
     }
     return M(n);
 }

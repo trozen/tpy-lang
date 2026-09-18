@@ -5,7 +5,7 @@ False True
 [0, 1, 2]
 False
 0 1 2
-stop iteration: PASS
+stop iteration: PASS () None
 3
 1 7
 0

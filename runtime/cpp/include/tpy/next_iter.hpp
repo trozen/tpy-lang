@@ -13,6 +13,7 @@
 #include "core.hpp"
 
 #include <expected>
+#include <memory>
 #include <tuple>
 #include <optional>
 
@@ -63,17 +64,42 @@ struct NextSentinel {};
 
 template<typename Parent, typename T>
 struct NextIterator {
+    using step_t = decltype(std::declval<Parent&>().__next__());
+    // Only what `__next__` yields is stored, so the mixin's declared element
+    // type is checked against it here or nowhere.
+    static_assert(std::is_same_v<typename step_t::value_type, T>);
     Parent* parent;
-    std::optional<T> current;
+    // The step result itself, not a copy of its value: one engaged flag to
+    // test per element instead of two, and no move out of the result.
+    step_t current;
+
+    explicit NextIterator(Parent* p) : parent(p), current(p->__next__()) {}
 
     NextIterator& operator++() {
-        auto r = parent->__next__();
         // Destroy-then-construct, never assign: T may carry references
         // (zip/enumerate yield std::tuple<..., U&>), and assigning into an
-        // engaged optional would write the NEW element THROUGH the old
+        // engaged slot would write the NEW element THROUGH the old
         // element's reference, corrupting the source container.
-        current.reset();
-        if (r.has_value()) current.emplace(std::move(*r));
+        if constexpr (std::is_nothrow_move_constructible_v<step_t>) {
+            // Step first, so a throwing __next__ leaves `current` alive.
+            step_t next = parent->__next__();
+            std::destroy_at(&current);
+            std::construct_at(&current, std::move(next));
+        } else {
+            // A result that may throw on move cannot be stepped first, so this
+            // arm runs `__next__` with no live result; nothing a producer owns
+            // lives in `current` (a borrowed element is a trivially movable
+            // pointer slot and takes the arm above).
+            std::destroy_at(&current);
+            try {
+                ::new (static_cast<void*>(&current)) step_t(parent->__next__());
+            } catch (...) {
+                // `current` must hold a live object when the iterator dies.
+                ::new (static_cast<void*>(&current))
+                    step_t(std::unexpect, typename step_t::error_type{});
+                throw;
+            }
+        }
         return *this;
     }
     decltype(auto) operator*() { return unwrap_ref(*current); }
@@ -85,9 +111,7 @@ struct NextIterator {
 template<typename Derived, typename T>
 struct next_iter_mixin {
     NextIterator<Derived, T> begin() {
-        NextIterator<Derived, T> it{static_cast<Derived*>(this), std::nullopt};
-        ++it;  // prime with first element
-        return it;
+        return NextIterator<Derived, T>(static_cast<Derived*>(this));
     }
     NextSentinel end() { return {}; }
 };

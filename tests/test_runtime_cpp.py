@@ -28,6 +28,8 @@ _SELFCHECKS = [
     ("test_dict_default_args.cpp", "dict get/pop/setdefault default deduction"),
     ("test_yield_slot_forms.cpp",
      "the generic yield slot's spelling, const-ness and copy count"),
+    ("test_next_step_result.cpp",
+     "the iterator step result's size and the range-for adapter's stepping"),
 ]
 
 

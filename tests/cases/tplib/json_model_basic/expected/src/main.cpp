@@ -86,7 +86,7 @@ void test_pretty() {
 std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
     {
         auto __try_tmp_3 = __reader.read_object_start();
-        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
     }
     std::string name = "";
     int32_t age = 0;
@@ -96,7 +96,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
         std::string_view __key;
         {
             auto __try_tmp_4 = __reader.read_key_raw();
-            if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+            if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_4.error()));
             __key = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         auto& __match_subject_1 = __key;
@@ -104,7 +104,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             std::string __name_1;
             {
                 auto __try_tmp_5 = __reader.read_str();
-                if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_5.error()));
                 __name_1 = ::tpy::unwrap_ref_move(*__try_tmp_5);
             }
             name = __name_1;
@@ -112,7 +112,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             int64_t __raw_3;
             {
                 auto __try_tmp_6 = __reader.read_int();
-                if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+                if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_6.error()));
                 __raw_3 = ::tpy::unwrap_ref_move(*__try_tmp_6);
             }
             int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
@@ -121,7 +121,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             bool __active_4;
             {
                 auto __try_tmp_7 = __reader.read_bool();
-                if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
+                if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_7.error()));
                 __active_4 = ::tpy::unwrap_ref_move(*__try_tmp_7);
             }
             active = __active_4;
@@ -129,13 +129,13 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                 {
                     auto __try_tmp_8 = __reader.read_null();
-                    if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
+                    if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_8.error()));
                 }
             } else {
                 std::string __email_5;
                 {
                     auto __try_tmp_9 = __reader.read_str();
-                    if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+                    if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_9.error()));
                     __email_5 = ::tpy::unwrap_ref_move(*__try_tmp_9);
                 }
                 email = __email_5;
@@ -143,13 +143,13 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
         } else {
             {
                 auto __try_tmp_10 = __reader.skip_value();
-                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_10.error()));
             }
         }
     }
     {
         auto __try_tmp_11 = __reader.read_object_end();
-        if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+        if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_11.error()));
     }
     return User(name, age, active, email);
 }

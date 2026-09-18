@@ -19,7 +19,8 @@ from ..type_def_registry import (
     is_internal_boundary_field, is_list, is_set, is_str_type,
     is_str_view_type, type_def_of,
 )
-from ..typesys import ReadonlyType, RefType
+from .. import qnames
+from ..typesys import ReadonlyType, RefType, bare_name, qualify_exception_name
 from .export_shape import (
     EXPORT_CLASS_REPR_STR_DUNDERS as _EXPORT_CLASS_REPR_STR_DUNDERS,
     EXPORT_CLASS_COMPARE_DUNDERS as _EXPORT_CLASS_COMPARE_DUNDERS,
@@ -246,6 +247,17 @@ def validate_export_class_dunders(ctx: 'SemanticContext',
             if shape is not None:
                 raise SemanticError(
                     f"exposed class '{record.name}': {shape}", loc)
+            # CPython's iterator protocol has one end signal; the tp_iternext
+            # wrapper can only turn StopIteration into a Python error.
+            if (m.name in _EXPORT_CLASS_NEXT_DUNDERS and m.error_return
+                    and qualify_exception_name(
+                        m.error_return, ctx.registry, ctx.module_name)
+                    != qnames.STOP_ITERATION):
+                raise SemanticError(
+                    f"exposed class '{record.name}': '{m.name}' must end "
+                    f"iteration with StopIteration, not "
+                    f"'{bare_name(m.error_return)}' -- "
+                    f"a return-only exception cannot cross to Python", loc)
             # A defaulted/starred operand reaches codegen silently otherwise
             # -- e.g. a defaulted compare operand (`other: Vec2 = None`)
             # passes the count/type checks below (a default changes neither

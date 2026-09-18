@@ -7630,7 +7630,7 @@ def _ctor_shape_ok(e: TpyCall, analyzer, *, native_ok: bool = False) -> bool:
     # `@cpp_template` __init__ overloads only inform C++ overload resolution --
     # the call site emits args verbatim, exactly like a user-record ctor.
     # Any OTHER native record takes a different ctor emit shape -> reject.
-    is_native_exc = ri.is_native and ri.implements_throwable
+    is_native_exc = ri.is_native_exception_class
     native_named = (native_ok and ri.is_native and not ri.is_native_c
                     and not is_native_exc)
     if fi.native_name and not native_named:
