@@ -19,8 +19,13 @@ from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
     TpyIntLiteral, TpyCoerce, TpyNamedExpr, TpyBoolLiteral, TpyChainedCompare,
+    TpyForEach, TpyArrayLiteral, TpyTupleLiteral, TpySetLiteral,
+    TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral,
 )
-from .literal_utils import literal_value_from_expr
+from ..value_category import peel_coerce
+from .literal_utils import (
+    literal_value_from_expr, fixed_int_literal_value_from_expr,
+)
 from .value_range import ValueRange
 from ..prescan import (
     match_is_none, _expr_to_narrowing_key, deref_view_key,
@@ -34,6 +39,22 @@ if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
+
+
+def nonempty_container_literal(expr: TpyExpr) -> bool | None:
+    """Whether a container literal is non-empty; None when `expr` is not one.
+
+    The one decoder behind both emptiness proofs -- a literal at a `for`
+    head and a local whose single binding was a literal -- so the two cannot
+    drift over which spellings they recognize.
+    """
+    if isinstance(expr, (TpyArrayLiteral, TpyTupleLiteral, TpySetLiteral)):
+        return bool(expr.elements)
+    if isinstance(expr, TpyDictLiteral):
+        return bool(expr.keys)
+    if isinstance(expr, (TpyStrLiteral, TpyBytesLiteral)):
+        return bool(expr.value)
+    return None
 
 
 class NarrowingTracker:
@@ -577,6 +598,101 @@ class NarrowingTracker:
         once" -- what lets a body-bound name count as assigned after the
         loop without a runtime check."""
         return self._range_truth(condition) is True
+
+    def for_head_provably_runs(self, stmt: TpyForEach) -> bool:
+        """Whether this `for` head provably runs the body at least once.
+
+        The `for` counterpart of `condition_provably_true`, and the same
+        question: may a name the body binds count as assigned after the
+        loop. Every `for` head asks it here -- the enum and `async for`
+        heads included, so that no arm carries an answer of its own.
+        Proven for a `range` whose bounds the value ranges decide (step sign
+        included), a non-empty literal at the head, a local whose only
+        binding so far is a non-empty container literal, and a TPy enum
+        (which always has at least one member). Anything else -- a
+        parameter, a call result, an unnarrowed bound -- is taken as
+        possibly empty, and nothing at all proves an async iterator yields.
+
+        Whether the loop RUNS is the only question here: a set / dict /
+        bytes literal at the head proves it like any other, even though the
+        lowering cannot yet hoist a body local out of those heads
+        (`BUGS.md#hoisted-local-over-set-dict-literal-head-unlowered`) and
+        the read then takes that reject instead. A tuple literal has no arm
+        because iterating a tuple is rejected at the head itself.
+        """
+        if stmt.is_async:
+            return False
+        if stmt.enum_iterable is not None:
+            return True
+        expr = peel_coerce(stmt.iterable)
+        # A tuple literal has no arm HERE because iterating a tuple is
+        # rejected at the head itself, so the shared predicate's answer for
+        # it must not be taken.
+        if not isinstance(expr, TpyTupleLiteral):
+            nonempty = nonempty_container_literal(expr)
+            if nonempty is not None:
+                return nonempty
+        if isinstance(expr, TpyCall) and expr.func_name == "range":
+            return self._range_call_nonempty(expr)
+        if isinstance(expr, TpyName):
+            return self._name_bound_to_nonempty_literal(expr.name)
+        return False
+
+    def _range_call_nonempty(self, call: TpyCall) -> bool:
+        """Whether `range(...)` provably yields at least one value."""
+        args = [peel_coerce(a) for a in call.args]
+        if len(args) == 1:
+            stop = self._range_arg_range(args[0])
+            start: ValueRange | None = ValueRange.from_literal(0)
+            step = 1
+        elif len(args) in (2, 3):
+            start = self._range_arg_range(args[0])
+            stop = self._range_arg_range(args[1])
+            if len(args) == 2:
+                step = 1
+            else:
+                # A non-literal step could be either sign, so neither
+                # direction of the emptiness test is decidable.
+                literal_step = fixed_int_literal_value_from_expr(args[2])
+                if literal_step is None or literal_step == 0:
+                    return False
+                step = literal_step
+        else:
+            return False
+        if start is None or stop is None:
+            return False
+        if step > 0:
+            return stop.compare(">", start) is True
+        return stop.compare("<", start) is True
+
+    def _range_arg_range(self, expr: TpyExpr) -> ValueRange | None:
+        """Value range of a `range()` bound: a signed integer literal, or
+        whatever the narrowing engine already proved about a name.
+
+        This is a second decoder of a `range()` argument beside
+        `_track_for_range_facts`, and the two do not recognize the same
+        spellings (`BUGS.md#range-literal-bound-arm-unreached`).
+        """
+        literal = fixed_int_literal_value_from_expr(expr)
+        if literal is not None:
+            return ValueRange.from_literal(literal)
+        return self._operand_range(expr)
+
+    def _name_bound_to_nonempty_literal(self, name: str) -> bool:
+        """Whether `name`'s only binding so far is a non-empty container
+        literal -- `items = [10, 20, 30]` ahead of `for x in items`.
+
+        Reads the write history the local-type deduction already records;
+        two writes (or one that is not a literal) decide nothing. A
+        mutation that empties the container between the binding and the
+        loop is NOT seen, so the proof can be wrong
+        (`BUGS.md#literal-bound-local-proof-ignores-mutation`).
+        """
+        writes = self.ctx.func.write_history.get(name)
+        if not writes or len(writes) != 1:
+            return False
+        _, rhs = writes[0]
+        return nonempty_container_literal(peel_coerce(rhs)) is True
 
     def _range_truth(self, expr: TpyExpr) -> bool | None:
         if isinstance(expr, TpyBoolLiteral):

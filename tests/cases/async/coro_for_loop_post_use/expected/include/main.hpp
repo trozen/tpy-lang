@@ -39,11 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 // class Container:
 struct Container {
-    // items: list[Item]
-    std::vector<Item> items;
 
-    // def __init__(self) -> None:
-    Container();
 
     __coro_Container_last_n last_n() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -59,6 +55,7 @@ struct __coro_Container_last_n {
     int32_t __state;
     bool __cancel_pending;
     const Container& __self;
+    ::tpy::frame_slot<std::array<Item, 2>> items;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -111,14 +108,5 @@ struct __coro_driver {
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
-
-// def __init__(self) -> None:
-//     self.items = []
-//     self.items.append(Item(1))
-//     self.items.append(Item(99))
-inline Container::Container() : items(std::vector<Item>{}) {
-    this->items.push_back(Item(1));
-    this->items.push_back(Item(99));
-}
 void __tpy_init();
 } // namespace tpyapp::main

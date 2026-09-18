@@ -5,11 +5,12 @@ namespace tpyapp::main {
 
 
 // def main():
-//     d: dict[str, list[int32]] = {}
-//     d["a"] = [1, 2, 3]
-//     d["b"] = [4, 5]
-//     for k, v in d.items():
-//         pass
+//     # A dict literal is the local's only binding, so iterating it proves the
+//     # loop runs and the names it binds are readable after it (`d.items()`
+//     # would not prove -- it is a call).
+//     d = {"a": [1, 2, 3], "b": [4, 5]}
+//     for k in d:
+//         v = d[k]
 //     print(k, len(v))
 //     v.append(6)
 //     print(d["b"])
@@ -20,19 +21,15 @@ namespace tpyapp::main {
 //     xs.append(30)
 //     print(n, pairs[1][1])
 void main() {
-    ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    ::tpy::__setitem__(d, "a", std::vector<int32_t>{1, 2, 3});
-    ::tpy::__setitem__(d, "b", std::vector<int32_t>{4, 5});
+    ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"a", {1, 2, 3}}, {"b", {4, 5}}});
     std::string_view k;
-    std::vector<int32_t>* v = nullptr;
-    auto __obj_0 = ::tpy::dict_items(d);
+    std::vector<int32_t>* v;
+    auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, std::vector<int32_t>*>>(__for_tup_0);
-        k = std::get<0>(__tup_1);
-        v = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        k = *__beg_0;
+        v = &(::tpy::__getitem__(d, k));
     }
     std::cout << k << " " << ::tpy::__len__((*v)) << "\n";
     v->push_back(6);
@@ -44,10 +41,10 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& __for_tup_1 = *__beg_1;
-        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<int32_t, std::vector<int32_t>*>>(__for_tup_1);
-        n = std::get<0>(__tup_2);
-        xs = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2))));
+        auto&& __for_tup_0 = *__beg_1;
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, std::vector<int32_t>*>>(__for_tup_0);
+        n = std::get<0>(__tup_1);
+        xs = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
     }
     xs->push_back(30);
     std::cout << n << " " << ::tpy::ListPrinter(std::get<1>(::tpy::__getitem__(pairs, 1))) << "\n";

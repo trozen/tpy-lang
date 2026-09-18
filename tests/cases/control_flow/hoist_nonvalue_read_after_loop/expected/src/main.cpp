@@ -1130,6 +1130,10 @@ void two_loop_int_widen(int32_t n) {
 // def two_loop_empty_list(n: int32) -> None:
 //     for i in range(2):
 //         xs = []  # tpyc: ok
+//     # Narrowed: `held` is bound only by the second loop, so that loop has to
+//     # provably run for the read after it.
+//     if n < 1:
+//         return
 //     for j in range(n):
 //         xs = [1, 2]
 //         held = xs
@@ -1141,6 +1145,9 @@ void two_loop_empty_list(int32_t n) {
     std::vector<int32_t>* xs;
     for (int32_t i = 0; i < 2; ++i) {
         xs = &*(__slot_1 = std::vector<int32_t>{});
+    }
+    if ((n < 1)) {
+        return;
     }
     std::vector<int32_t>* held;
     int32_t __stop_1 = n;
@@ -1189,6 +1196,11 @@ void arm_empty_list(bool flag) {
 // def two_loop_none_then_record(n: int32) -> None:
 //     for i in range(2):
 //         p = None  # tpyc: ok
+//     # Narrowed: `saved` is bound only by the second loop, so that loop has to
+//     # provably run for the read after it.
+//     if n < 1:
+//         print("two_loop_none_then_record none")
+//         return
 //     for j in range(n):
 //         p = Pic(j)
 //         saved = p
@@ -1202,6 +1214,10 @@ void two_loop_none_then_record(int32_t n) {
     Pic* p;
     for (int32_t i = 0; i < 2; ++i) {
         p = nullptr;
+    }
+    if ((n < 1)) {
+        std::cout << "two_loop_none_then_record none" << "\n";
+        return;
     }
     Pic* saved;
     int32_t __stop_1 = n;

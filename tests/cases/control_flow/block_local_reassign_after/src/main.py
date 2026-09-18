@@ -56,8 +56,12 @@ def in_except(d: int) -> int:
 
 
 def in_for_else() -> int:
-    # A loop `else:` body is its own C++ block (the `break` path jumps past
-    # it), so its declarations must not reach the post-loop assignment.
+    # A loop `else:` body is a block like the others: the name it first binds
+    # is the same function-scoped local the post-loop assignment rebinds, so
+    # one slot is declared ahead of the loop and both writes target it. (The
+    # `break` path jumps past the `else`, which is why a name bound ONLY
+    # there is not assigned after a loop that can break -- see
+    # error_loop_else_local_after_break.)
     for i in range(3):
         print(i)
     else:
@@ -68,6 +72,7 @@ def in_for_else() -> int:
 
 
 def in_while_else(k: int) -> int:
+    # Same rule on the `while` arm.
     i = 0
     while i < k:
         print(i)

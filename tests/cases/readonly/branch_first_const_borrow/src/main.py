@@ -74,6 +74,10 @@ def try_position(r: readonly[Reg], n: int32) -> int32:
 
 # loop body: the for-each ladder, read after the loop
 def loop_position(r: readonly[Reg], n: int32) -> int32:
+    # Narrowed so the loop provably runs -- an unnarrowed bound leaves `v`
+    # unassigned after a loop that may run zero times.
+    if n < 1:
+        return 0
     for _i in range(n):
         v = r.view()  # tpyc: ok
     return v.x

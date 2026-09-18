@@ -1576,8 +1576,6 @@ def _for_enum_route(stmt: TpyForEach, analyzer,
     if (stmt.is_async or stmt.is_tuple_unpack
             or stmt.consuming_iter_fi is not None or stmt.hoist_loop_var):
         return None
-    if analyzer.if_branch_decls.get(stmt):
-        return None
     if stmt.var in declared:
         return None
     et = stmt.enum_iterable
@@ -15795,6 +15793,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 body=body,
                 const_loop_var=stmt.const_loop_var,
                 iterable_lvalue=True,
+                hoist_decls=foreach_hoist_decls,
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                           "loop.for_else"),
                 loc=loc,

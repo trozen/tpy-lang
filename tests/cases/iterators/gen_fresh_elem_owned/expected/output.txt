@@ -4,4 +4,4 @@
 2
 3
 3
-leaked loop var after the loop: 3
+last element value after the loop: 3

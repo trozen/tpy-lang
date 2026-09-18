@@ -21,11 +21,12 @@ from ..modules import (
     BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD,
 )
 from ..parse.nodes import (
-    TpyCoerce, TpyFieldAccess, TpyName, TpyReturn, walk_body_stmts,
+    TpyFieldAccess, TpyName, TpyReturn, walk_body_stmts,
     is_docstring, is_none_return,
 )
 from ..type_def_registry import _boundary_inner
 from ..typesys import NominalType, OwnType, ReadonlyType
+from ..value_category import peel_coerce
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyExpr, TpyFunction, TpyRecord
@@ -159,12 +160,6 @@ def uncrossable_docstring_reason(text: 'str | None') -> 'str | None':
     return None
 
 
-def _peel_coerce(expr: 'TpyExpr') -> 'TpyExpr':
-    while isinstance(expr, TpyCoerce):
-        expr = expr.expr
-    return expr
-
-
 def boundary_alias_records(params, registry,
                            rec_info: 'RecordInfo | None' = None
                            ) -> 'dict[str, RecordInfo]':
@@ -196,10 +191,10 @@ def view_safe_attr_source(expr: 'TpyExpr',
     EXACTLY the return class (an upcast field view would lie about the
     dynamic type, so it stays on the copy path; a rebindable field's view
     would alias the storage SLOT through the rebind, so it does too)."""
-    expr = _peel_coerce(expr)
+    expr = peel_coerce(expr)
     if not isinstance(expr, TpyFieldAccess):
         return False
-    base = _peel_coerce(expr.obj)
+    base = peel_coerce(expr.obj)
     if not isinstance(base, TpyName) or base.name not in alias_records:
         return False
     holder = alias_records[base.name]
@@ -271,7 +266,7 @@ def view_safe_borrow_returns(fn: 'TpyFunction',
     if not returns:
         return False
     for r in returns:
-        src = _peel_coerce(r.value)
+        src = peel_coerce(r.value)
         if isinstance(src, TpyName) and src.name in alias_records:
             continue
         if not view_safe_attr_source(r.value, alias_records, return_info,

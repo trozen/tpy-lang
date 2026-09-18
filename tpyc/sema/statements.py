@@ -5,7 +5,8 @@ Statement analysis including variable declarations, assignments, and control flo
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Iterator, NamedTuple
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType,
@@ -55,12 +56,13 @@ from ..prescan import (
     FactKills, collect_fact_kills, liveness_alias_sources,
 )
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
-                        stmts_terminate)
+                        stmts_terminate, while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage
 from .context import (addr_taken_roots, canonical_storage_key,
-                      expr_yields_non_null_ptr,
+                      expr_yields_non_null_ptr, LoopClauseEdges,
                       record_borrow_binding, record_stmt_borrow_binding,
                       tuple_borrow_escape_roots)
+from .flow_facts import condition_walrus_assigned, condition_walrus_targets
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
@@ -71,12 +73,14 @@ from .init_tracker import InitTracker
 from .value_range import ValueRange
 if TYPE_CHECKING:
     from .context import SemanticContext, BorrowTracker
+    from .flow_facts import FlowFacts
     from .type_ops import TypeOperations
     from .compatibility import TypeCompatibility
     from .local_deduction import LocalTypeDeduction
     from .list_literals import IterableHelper
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
+    from ..diagnostics import Scope
 
 from .alias_rebind import decide_rebind_storage, stamp_bind_kind
 from .context import BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, ITER_BORROWER, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
@@ -101,6 +105,18 @@ from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type,
     find_factory_by_simple_name, protocol_info_of,
 )
+
+
+class ConditionWalrus(NamedTuple):
+    """Where a condition's walrus targets hold, by the way out of the head.
+
+    A target counts as assigned on a path out of the head only when every
+    way of reaching that path evaluated it, which is one answer per path --
+    so a target the head always binds is in BOTH sets.
+    """
+
+    if_true: frozenset[str]
+    if_false: frozenset[str]
 
 
 # How a diagnostic names the compound statement a nested `def` sits in.
@@ -528,6 +544,144 @@ class StatementAnalyzer:
         # is declared in); every statement's analysis ends by retiring the
         # nested defs that block bound.
         self._stmt_stack: list[TpyStmt] = []
+
+    @contextmanager
+    def _loop_body_scope(
+            self, stmt: TpyWhile | TpyForEach
+    ) -> Iterator[tuple['Scope', LoopClauseEdges]]:
+        """`ScopeTracker.loop_scope` plus this loop's clause-edge record.
+
+        The record is pushed on the function state, where `break` and
+        `continue` file their snapshots, and closed here: inside the loop
+        scope, the last point at which the body's own exit state exists
+        (`apply_loop_exit_facts` restores the pre-loop one), and at the pop,
+        because a `break` in the `else` clause belongs to the ENCLOSING loop.
+
+        While the body is open the live stack is the only authority: a
+        nested `def` (and a lambda trial) analyzed there saves and restores
+        the whole function state WHOLESALE, and the restore installs a deep
+        COPY -- a record captured at entry would be orphaned by it and every
+        `break` after such a def would go missing. The yielded record is
+        therefore filled at the close, and `_finish_loop_clauses` is its one
+        reader.
+        """
+        edges = LoopClauseEdges()
+        self.ctx.func.loop_clause_edges.append(LoopClauseEdges())
+        try:
+            with self.scopes.loop_scope(stmt.body) as inner_scope:
+                yield inner_scope, edges
+                live = self.ctx.func.loop_clause_edges[-1]
+                live.body_assigned = self._body_clause_assigned(
+                    live, head_can_exit=not (isinstance(stmt, TpyWhile)
+                                             and while_head_always_true(stmt)))
+        finally:
+            closed = self.ctx.func.loop_clause_edges.pop()
+            edges.breaks = closed.breaks
+            edges.continues = closed.continues
+            edges.body_assigned = closed.body_assigned
+
+    def _assigned_here(self) -> frozenset[str]:
+        """The names that hold a value at this point, as one set.
+
+        `definitely_assigned` and `loop_bound_assigned` are two spellings of
+        the one fact -- `FlowFacts.merge` joins them as `(da|lba) & (da|lba)`
+        -- so an edge out of a loop clause records their union, and the
+        intersections that consume it take each spelling back out of it
+        separately.
+        """
+        return frozenset(self.ctx.func.definitely_assigned
+                         | self.ctx.func.loop_bound_assigned)
+
+    def _body_clause_assigned(self, edges: LoopClauseEdges, *,
+                              head_can_exit: bool) -> frozenset[str]:
+        """What the loop BODY holds on every edge that leaves it.
+
+        The edges are the fall-through end (only when it is reachable) and
+        every `continue`; both lead back to the head, so neither leaves the
+        loop when the head can never be false (`while True:`) and the
+        `break`s are then the only way out. A body with no edge of either
+        kind is in that same position.
+        """
+        joined: list[frozenset[str]] = []
+        if head_can_exit:
+            joined.extend(edges.continues)
+            if not self.ctx.func.init_terminated:
+                joined.append(self._assigned_here())
+        if not joined:
+            # Nothing leaves the loop at all: the code after it is
+            # unreachable, which sema does not model, so keep the state the
+            # body ended in rather than invent a verdict for it.
+            joined = list(edges.breaks) or [self._assigned_here()]
+        return frozenset.intersection(*joined)
+
+    def _finish_loop_clauses(
+            self, stmt: TpyWhile | TpyForEach, inner_scope: 'Scope',
+            edges: LoopClauseEdges, *,
+            before: 'FlowFacts',
+            consumed_before: set[str],
+            ns_types_before: dict[str, TpyType],
+            runs_once: bool,
+            elem_type: TpyType | None = None,
+            head_exit_assigned: frozenset[str] = frozenset()) -> None:
+        """Close a loop: exit facts, both clauses' bindings, the break join.
+
+        Every loop arm ends here, so the order the clauses are joined in is
+        stated once. A name first bound in a clause counts as assigned after
+        the loop only when the clause provably ran (`runs_once`) and the
+        binding is on every edge that leaves it: the body's own edges,
+        already joined into `edges.body_assigned`; the `else` clause, which
+        the fall-through path ran by definition; and every `break`, which
+        leaves past the rest of the body AND past the `else`. A
+        `return`/`raise` never joins here at all.
+
+        `head_exit_assigned` is what only the path that left through the
+        head holds -- a `while`'s short-circuit walrus -- which the `else`
+        clause and the code after the loop are on and a `break` is not.
+        `elem_type` is a `for`'s, whose loop variable is a binding of the
+        same kind; an `async for` has no `else` clause to walk (the parser
+        rejects one).
+        """
+        self.init.apply_loop_exit_facts(before, runs_once=runs_once)
+        # Loop might not execute -- consumption inside is not definite.
+        self.ctx.func.current_consumed_own_params = consumed_before
+        # loop_scope() restored the scope bindings; namespace mutations made
+        # inside the body persist, so they are rolled back here.
+        self._restore_ns_var_types(ns_types_before)
+        self._sync_promoted_var_types()
+        self.ctx.func.definitely_assigned |= head_exit_assigned
+        # Python locals are function-scoped: what a clause binds stays
+        # readable after the loop, promoted on first use.
+        if elem_type is not None:
+            self._propagate_for_loop_scope(
+                stmt, inner_scope, elem_type, runs_once=runs_once,
+                body_end_assigned=edges.body_assigned)
+        else:
+            self._propagate_loop_body_vars(
+                stmt, inner_scope, runs_once=runs_once,
+                body_end_assigned=edges.body_assigned)
+        self._analyze_loop_orelse(stmt)
+        if edges.breaks:
+            on_every_break = frozenset.intersection(*edges.breaks)
+            self.ctx.func.definitely_assigned &= on_every_break
+            self.ctx.func.loop_bound_assigned &= on_every_break
+
+    def _analyze_condition_walrus(self, condition: TpyExpr) -> ConditionWalrus:
+        """Analyze a condition and sort its walrus targets by path out of it.
+
+        The `if` head and the `while` head ask the same question -- an `if`
+        of its two bodies, a `while` of its body and of the edge that leaves
+        through the head -- so both ask it here.
+        """
+        assigned_before = frozenset(self.ctx.func.definitely_assigned)
+        self.expr.analyze_expr(condition)
+        if_true, if_false = condition_walrus_assigned(condition)
+        # The head's own verdict is what every path out of it is granted, so
+        # a target only ONE path evaluates must not be left assigned here by
+        # the walk that analyzed the condition.
+        conditional = condition_walrus_targets(condition) - (if_true
+                                                             & if_false)
+        self.ctx.func.definitely_assigned -= conditional - assigned_before
+        return ConditionWalrus(if_true=if_true, if_false=if_false)
 
     def _resolve_obj_storage(self, obj: TpyExpr) -> str | None:
         """This analyzer's spelling of `BorrowTracker.resolve_obj_storage`."""
@@ -1537,17 +1691,7 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyYield):
             self._analyze_yield(stmt)
         elif isinstance(stmt, TpyIf):
-            assigned_before_cond = frozenset(self.ctx.func.definitely_assigned)
-            saved_sc_and = self.ctx.sc_and_walrus.copy()
-            saved_sc_or = self.ctx.sc_or_walrus.copy()
-            self.ctx.sc_and_walrus = set()
-            self.ctx.sc_or_walrus = set()
-            self.expr.analyze_expr(stmt.condition)
-            always_walrus = self.ctx.func.definitely_assigned - assigned_before_cond
-            sc_and = self.ctx.sc_and_walrus   # safe in then-body
-            sc_or = self.ctx.sc_or_walrus     # safe in else-body
-            self.ctx.sc_and_walrus = saved_sc_and
-            self.ctx.sc_or_walrus = saved_sc_or
+            head = self._analyze_condition_walrus(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, else_type_facts = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn_then, ptr_nn_else = self.narrowing.condition_ptr_null_facts(stmt.condition)
@@ -1562,9 +1706,9 @@ class StatementAnalyzer:
             # Save binding types for ReadonlyType merge after branches
             bindings_before = dict(self.ctx.func.current_scope.bindings)
             ns_types_before = self._save_ns_var_types()
-            # Then-body: condition was true -> && operands all evaluated,
-            # but || RHS may have been skipped (LHS alone was truthy)
-            self.ctx.func.definitely_assigned |= always_walrus | sc_and
+            # Then-body: reached only through an evaluation that came out
+            # true, so it is granted what every such evaluation bound.
+            self.ctx.func.definitely_assigned |= head.if_true
             self.ctx.func.narrowed_types.update(then_type_facts)
             self.ctx.func.non_null_ptr_vars |= ptr_nn_then
             self._apply_range_facts(range_true)
@@ -1588,9 +1732,9 @@ class StatementAnalyzer:
             self._unbind_names(set(bindings_after_then) - scope_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
-            # Else-body: condition was false -> || operands all evaluated,
-            # but && RHS may have been skipped (LHS alone was falsy)
-            self.ctx.func.definitely_assigned |= always_walrus | sc_or
+            # Else-body: the mirror -- what every evaluation that came out
+            # false bound.
+            self.ctx.func.definitely_assigned |= head.if_false
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
             self.ctx.func.narrowed_types.update(else_type_facts)
             self.ctx.func.non_null_ptr_vars |= ptr_nn_else
@@ -1650,16 +1794,7 @@ class StatementAnalyzer:
                 })
                 self.deduction.promote_predecl_view_targets(predecl)
         elif isinstance(stmt, TpyWhile):
-            assigned_before_cond = frozenset(self.ctx.func.definitely_assigned)
-            saved_sc_and = self.ctx.sc_and_walrus.copy()
-            saved_sc_or = self.ctx.sc_or_walrus.copy()
-            self.ctx.sc_and_walrus = set()
-            self.ctx.sc_or_walrus = set()
-            self.expr.analyze_expr(stmt.condition)
-            always_walrus_w = self.ctx.func.definitely_assigned - assigned_before_cond
-            all_walrus_w = always_walrus_w | self.ctx.sc_and_walrus | self.ctx.sc_or_walrus
-            self.ctx.sc_and_walrus = saved_sc_and
-            self.ctx.sc_or_walrus = saved_sc_or
+            head = self._analyze_condition_walrus(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
@@ -1679,34 +1814,28 @@ class StatementAnalyzer:
             # loop-invariant, so drop the static fold and re-check each
             # iteration (else codegen emits an exit-less `while (true)`).
             self._unfold_loop_killed_isinstance(stmt.condition, body_kills.names)
-            with self.scopes.loop_scope(stmt.body) as inner_scope:
+            with self._loop_body_scope(stmt) as (inner_scope, edges):
                 self.init.apply_loop_entry_facts(
                     before,
                     condition_type_facts=then_type_facts,
                     kills=body_kills,
                 )
+                # The body runs on the path the head came out TRUE -- the
+                # `if` arm's then-body, same rule.
+                self.ctx.func.definitely_assigned |= head.if_true
                 # Applied separately from apply_loop_entry_facts because
                 # that method only handles type narrowing, not ptr non-null.
                 self.ctx.func.non_null_ptr_vars |= ptr_nn
                 self._apply_range_facts(range_true)
                 for s in stmt.body:
                     self.analyze_stmt(s)
-            self.init.apply_loop_exit_facts(before, runs_once=runs_once)
-            # Re-add all walrus vars (condition always evaluates fully)
-            self.ctx.func.definitely_assigned |= all_walrus_w
-            # Loop might not execute — consumption inside is not definite
-            self.ctx.func.current_consumed_own_params = consumed_before_loop
-            # Restore namespace to pre-loop state (scope was already restored
-            # by loop_scope context manager)
-            self._restore_ns_var_types(ns_types_before_while)
-            self._sync_promoted_var_types()
-            # Python locals are function-scoped: what the body binds stays
-            # readable after the loop, promoted on first use like a for
-            # body's bindings.
-            self._propagate_loop_body_vars(stmt, inner_scope,
-                                           runs_once=runs_once)
-            for s in stmt.orelse:
-                self.analyze_stmt(s)
+            self._finish_loop_clauses(
+                stmt, inner_scope, edges, before=before,
+                consumed_before=consumed_before_loop,
+                ns_types_before=ns_types_before_while, runs_once=runs_once,
+                # Leaving through the head means it came out FALSE -- the
+                # `if` arm's else-body.
+                head_exit_assigned=head.if_false)
         elif isinstance(stmt, TpyForEach):
             if stmt.is_async:
                 self._analyze_async_for(stmt)
@@ -1718,22 +1847,21 @@ class StatementAnalyzer:
                 elem_type = enum_type
                 self._check_loop_var_rebind(stmt, elem_type)
                 self._record_for_loop_var_type(stmt, elem_type)
+                runs_once = self.narrowing.for_head_provably_runs(stmt)
                 before = self.init.save()
                 consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
-                with self.scopes.loop_scope(stmt.body) as inner_scope:
+                with self._loop_body_scope(stmt) as (inner_scope, edges):
                     self.init.apply_loop_entry_facts(
                         before, kills=collect_fact_kills(stmt.body))
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
-                self.init.apply_loop_exit_facts(before)
-                self.ctx.func.current_consumed_own_params = consumed_before_loop
-                self._restore_ns_var_types(ns_types_before_foreach)
-                self._sync_promoted_var_types()
-                self._propagate_for_loop_scope(stmt, inner_scope, elem_type)
-                for s in stmt.orelse:
-                    self.analyze_stmt(s)
+                self._finish_loop_clauses(
+                    stmt, inner_scope, edges, before=before,
+                    consumed_before=consumed_before_loop,
+                    ns_types_before=ns_types_before_foreach,
+                    runs_once=runs_once, elem_type=elem_type)
             else:
                 iterable_type = self.expr.analyze_expr(stmt.iterable)
                 is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
@@ -1762,10 +1890,13 @@ class StatementAnalyzer:
                 is_direct_next_iter = builtin_modules.get_error_return_next_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")
+                # Decided before the body: the ranges the head is read
+                # against are the pre-loop ones, as on the `while` side.
+                runs_once = self.narrowing.for_head_provably_runs(stmt)
                 before = self.init.save()
                 consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
-                with self.scopes.loop_scope(stmt.body) as inner_scope:
+                with self._loop_body_scope(stmt) as (inner_scope, edges):
                     self.init.apply_loop_entry_facts(
                         before, kills=collect_fact_kills(stmt.body))
                     # Track range facts for loop variable from range() calls
@@ -1929,21 +2060,30 @@ class StatementAnalyzer:
                     if deferred:
                         for idx in sorted(deferred, reverse=True):
                             del self.ctx.diagnostics[idx]
-                self.init.apply_loop_exit_facts(before)
-                # Loop might not execute — consumption inside is not definite
-                self.ctx.func.current_consumed_own_params = consumed_before_loop
-                self._restore_ns_var_types(ns_types_before_foreach)
-                self._sync_promoted_var_types()
-                self._propagate_for_loop_scope(stmt, inner_scope, elem_type)
-                for s in stmt.orelse:
-                    self.analyze_stmt(s)
+                self._finish_loop_clauses(
+                    stmt, inner_scope, edges, before=before,
+                    consumed_before=consumed_before_loop,
+                    ns_types_before=ns_types_before_foreach,
+                    runs_once=runs_once, elem_type=elem_type)
         elif isinstance(stmt, TpyBreak):
             if self.ctx.func.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
+            # Only the assignment lattice crosses the break edge, and it
+            # crosses as a plain set: the other flow families merge with
+            # UNION (a consumed `Own` param, a borrow), so carrying them
+            # here would start rejecting valid code after any loop that
+            # can break.
+            self.ctx.func.loop_clause_edges[-1].breaks.append(
+                self._assigned_here())
             self.init.mark_terminated()
         elif isinstance(stmt, TpyContinue):
             if self.ctx.func.loop_depth == 0:
                 raise self.ctx.error("'continue' outside loop", stmt)
+            # A `continue` leaves the body clause exactly as a `break` does;
+            # it differs only in where it lands, which is why its snapshots
+            # join the body's own exit state instead of the post-loop one.
+            self.ctx.func.loop_clause_edges[-1].continues.append(
+                self._assigned_here())
             self.init.mark_terminated()
         elif isinstance(stmt, TpyAssert):
             self.expr.analyze_expr(stmt.condition)
@@ -3000,10 +3140,11 @@ class StatementAnalyzer:
         # kill pre-save so the loop-entry restore and the exit-facts
         # intersection both see the post-suspension state.
         self.narrowing.invalidate_suspension_facts()
+        runs_once = self.narrowing.for_head_provably_runs(stmt)
         before = self.init.save()
         consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
         ns_types_before = self._save_ns_var_types()
-        with self.scopes.loop_scope(stmt.body) as inner_scope:
+        with self._loop_body_scope(stmt) as (inner_scope, edges):
             self.init.apply_loop_entry_facts(
                 before, kills=collect_fact_kills(stmt.body))
             self.ctx.func.mutated_loop_vars.discard(stmt.var)
@@ -3023,13 +3164,11 @@ class StatementAnalyzer:
                                        inner_scope.depth, is_foreach=True):
                 for s in stmt.body:
                     self.analyze_stmt(s)
-        self.init.apply_loop_exit_facts(before)
-        # Loop body might not execute; consumption inside isn't definite.
-        self.ctx.func.current_consumed_own_params = consumed_before_loop
-        self._restore_ns_var_types(ns_types_before)
-        self._sync_promoted_var_types()
-        self._propagate_for_loop_scope(stmt, inner_scope, elem_type)
-        # `async for` parser already rejects orelse; nothing to analyze.
+        self._finish_loop_clauses(
+            stmt, inner_scope, edges, before=before,
+            consumed_before=consumed_before_loop,
+            ns_types_before=ns_types_before, runs_once=runs_once,
+            elem_type=elem_type)
 
     def _mark_with_manager_mutated(self, manager: 'TpyExpr') -> None:
         """Mark the durable root of a borrowed `with` manager mutated, so a
@@ -3777,19 +3916,48 @@ class StatementAnalyzer:
             if self.ctx.func.current_ns is not None:
                 self.ctx.func.current_ns.unbind(name)
 
+    def _analyze_loop_orelse(self, stmt: TpyWhile | TpyForEach) -> None:
+        """Analyze a loop's `else` clause as another block of the loop.
+
+        Same rule and same deciding site as the body: a name first bound in
+        the clause is the one function-scoped local Python makes it, hoisted
+        to the loop statement through the pending table so a read after the
+        loop promotes ONE declaration. `runs_once=True` is not a claim about
+        the head -- on the fall-through path the `else` clause DID run, by
+        definition, and the paths that skipped it are the break paths the
+        caller joins in afterwards.
+        """
+        if not stmt.orelse:
+            return
+        with self.scopes.block_scope() as else_scope:
+            for s in stmt.orelse:
+                self.analyze_stmt(s)
+            else_end_assigned = self._assigned_here()
+            # A str/bytes tuple-unpack target the clause declares owns its
+            # buffer, on the same channel and for the same reason as an
+            # if/match branch's: the `__tup` it would view into is the
+            # clause's own and dies with the block, while the hoisted slot
+            # stands at the loop statement. Inside the scope, which is where
+            # the targets are still looked up.
+            self.deduction.promote_predecl_view_targets(
+                set(else_scope.bindings))
+        self._propagate_loop_body_vars(stmt, else_scope, runs_once=True,
+                                       body_end_assigned=else_end_assigned)
+
     def _propagate_loop_body_vars(self, stmt: TpyStmt,
                                    inner_scope: 'Scope',
                                    skip_var: str | None = None, *,
-                                   runs_once: bool = True) -> None:
+                                   runs_once: bool,
+                                   body_end_assigned: frozenset[str]) -> None:
         """Store a loop body's declared variables as pending.
 
-        Both loop kinds call this. Variables are lazily promoted to the
-        parent scope when first referenced after the loop, pre-declared
-        against the enclosing-statement stack recorded here. `runs_once` is
-        whether the body provably ran: a `while` head sema cannot prove
-        leaves its names unassigned, so the read after the loop is the
-        definite-assignment reject. (A `for` over an iterable no fact proves
-        non-empty is taken as run -- BUGS.md#zero-trip-loop-body-local-read.)
+        Every loop kind calls this, and it is the one site that decides the
+        rule: a name first bound inside a loop body counts as assigned after
+        the loop only when the loop provably runs (`runs_once`) AND the
+        binding is on every path through the body (`body_end_assigned`,
+        the definite-assignment set at body exit). Otherwise the name stays
+        maybe-unassigned and a read after the loop takes the ordinary
+        definite-assignment reject.
 
         skip_var: loop variable name to exclude (already handled by caller).
         """
@@ -3818,7 +3986,7 @@ class StatementAnalyzer:
             name_stack = existing[1] if existing is not None else stack
             self.ctx.func.pending_loop_vars[name] = (resolved, name_stack,
                                                      None)
-            if runs_once:
+            if runs_once and name in body_end_assigned:
                 # Assigned past the loop, recorded on the flow state so the
                 # branch merges intersect it like any other binding -- a loop
                 # in ONE arm leaves the name maybe-unassigned.
@@ -3826,7 +3994,9 @@ class StatementAnalyzer:
 
     def _propagate_for_loop_scope(self, stmt: TpyForEach,
                                    inner_scope: 'Scope',
-                                   elem_type: TpyType) -> None:
+                                   elem_type: TpyType, *,
+                                   runs_once: bool,
+                                   body_end_assigned: frozenset[str]) -> None:
         """Store for-loop variable and body-declared variables as pending."""
         # Loop variable (skip synthetic tuple-unpack vars in non-generators;
         # generators need the synthetic var as a struct field)
@@ -3838,12 +4008,16 @@ class StatementAnalyzer:
             resolved = self._resolve_literal_type(elem_type)
             stack = tuple(self.ctx.func.compound_stack)
             self.ctx.func.pending_loop_vars[var_name] = (resolved, stack, stmt)
-            # Assigned past the loop like a body binding (same zero-trip
-            # assumption), and on the same flow state, so a branch merge can
-            # take it back when only one arm runs the loop.
-            self.ctx.func.loop_bound_assigned.add(var_name)
+            if runs_once:
+                # A provable loop binds its variable on every iteration, so
+                # it is assigned past the loop; an unprovable one leaves it
+                # maybe-assigned. Recorded on the flow state so a branch
+                # merge can take it back when only one arm runs the loop.
+                self.ctx.func.loop_bound_assigned.add(var_name)
 
-        self._propagate_loop_body_vars(stmt, inner_scope, skip_var=var_name)
+        self._propagate_loop_body_vars(stmt, inner_scope, skip_var=var_name,
+                                       runs_once=runs_once,
+                                       body_end_assigned=body_end_assigned)
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""

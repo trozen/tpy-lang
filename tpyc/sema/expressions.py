@@ -820,10 +820,13 @@ class ExpressionAnalyzer:
         self.ctx.record_branch_decls(decl_stmt, {name: var_type})
         # NB: a str/bytes view target first-declared in a loop BODY from an
         # owned-temp source, hoisted here and used after the loop, dangles into
-        # the dead per-iteration `__tup` -- but we cannot blanket-own here, as
-        # that would also copy the safe leaked-loop-var case (the iteration var
-        # aliases the live container). Telling them apart needs source-lifetime
-        # analysis; tracked in BUGS.md.
+        # the dead per-iteration `__tup`
+        # (`BUGS.md#loop-body-view-unpack-target-dangles`). The branch path's
+        # blanket promotion cannot simply be applied here: measured, it also
+        # OWNS the safe leaked-loop-var case (`for k, v in pairs` aliasing the
+        # live container), which `tuple/tuple_unpack_loopvar_after` pins as a
+        # zero-copy view. Telling them apart needs the unpack's own
+        # `source_binds_by_ref`, which this read site cannot see.
         # Mark the original for-loop's var for hoisted codegen (hidden counter)
         if isinstance(orig_stmt, TpyForEach) and name == orig_stmt.var:
             orig_stmt.hoist_loop_var = True
@@ -932,13 +935,6 @@ class ExpressionAnalyzer:
             finally:
                 self.ctx.cond_operand_depth -= 1
                 self.ctx.func.narrowed_types = saved_types
-                # Track walrus vars introduced in RHS (short-circuit conditional)
-                rhs_walrus = self.ctx.func.definitely_assigned - saved_assigned
-                if rhs_walrus:
-                    if expr.op == "&&":
-                        self.ctx.sc_and_walrus |= rhs_walrus
-                    else:
-                        self.ctx.sc_or_walrus |= rhs_walrus
                 # Rollback: RHS walrus vars are not definitely assigned
                 self.ctx.func.definitely_assigned = set(saved_assigned)
         elif expr.cond_right:

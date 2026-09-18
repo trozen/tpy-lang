@@ -1,0 +1,1 @@
+main.py:17: error: variable 'w' may not be assigned at this point

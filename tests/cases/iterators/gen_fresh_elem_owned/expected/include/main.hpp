@@ -74,6 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
 struct __gen_collect : public ::tpy::next_iter_mixin<__gen_collect, int32_t> {
     int32_t __state;
     Fresh& src;
+    int32_t last;
     ::tpy::frame_slot<::tpy::for_elem_next_t<Fresh>> node;
     ::tpy::frame_loop_slot<::tpy::iter_type_t<Fresh>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<Fresh>> __for_r_0;

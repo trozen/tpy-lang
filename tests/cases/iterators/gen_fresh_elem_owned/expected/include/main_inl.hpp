@@ -6,13 +6,16 @@
 namespace tpyapp::main {
 
 // def collect(src: Fresh) -> Iterator[int32]:
+//     last = -1
 //     for node in src:
-//         yield node.v                                  # -> S_RESUME_0
-//         yield node.v                                  # -> S_RESUME_1
-//     print("leaked loop var after the loop:", node.v)
+//         yield node.v                                   # -> S_RESUME_0
+//         yield node.v                                   # -> S_RESUME_1
+//         last = node.v
+//     print("last element value after the loop:", last)
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        last = -1;
         ::tpy::resumable_iter_init(__for_itr_0, src);
         __state = S_JOIN_0;
         continue;
@@ -21,11 +24,15 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
         __state = S_RESUME_1;
         return (*node).v;
     }
-    case S_RESUME_1:  // after: yield node.v
+    case S_RESUME_1: {  // after: yield node.v
+        last = (*node).v;
+        __state = S_JOIN_0;
+        continue;
+    }
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, src));
         if (!(*__for_r_0).has_value()) {
-            std::cout << "leaked loop var after the loop:" << " " << (*node).v << "\n";
+            std::cout << "last element value after the loop:" << " " << last << "\n";
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }

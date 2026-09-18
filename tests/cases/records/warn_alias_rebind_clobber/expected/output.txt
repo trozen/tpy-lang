@@ -11,3 +11,7 @@ hoisted_body_bind_iter: 41
 hoisted_body_bind_iter: 1
 hoisted_body_bind: 1 1
 two_alias: 102 102
+alias_kind_iter: 70
+alias_kind_iter: 0
+alias_kind_iter: 1
+alias_kind: 102 102

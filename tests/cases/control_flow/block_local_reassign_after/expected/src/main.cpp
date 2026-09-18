@@ -108,8 +108,12 @@ namespace tpyapp::main {
 }
 
 // def in_for_else() -> int:
-//     # A loop `else:` body is its own C++ block (the `break` path jumps past
-//     # it), so its declarations must not reach the post-loop assignment.
+//     # A loop `else:` body is a block like the others: the name it first binds
+//     # is the same function-scoped local the post-loop assignment rebinds, so
+//     # one slot is declared ahead of the loop and both writes target it. (The
+//     # `break` path jumps past the `else`, which is why a name bound ONLY
+//     # there is not assigned after a loop that can break -- see
+//     # error_loop_else_local_after_break.)
 //     for i in range(3):
 //         print(i)
 //     else:
@@ -118,19 +122,21 @@ namespace tpyapp::main {
 //     n = 9
 //     return n
 ::tpy::BigInt in_for_else() {
+    int32_t n;
     for (int32_t i = 0; i < 3; ++i) {
         std::cout << i << "\n";
     }
     {
-        int32_t n = 7;
+        n = 7;
         std::cout << n << "\n";
     }
     __after_else_0:;
-    int32_t n = 9;
+    n = 9;
     return ::tpy::BigInt(n);
 }
 
 // def in_while_else(k: int) -> int:
+//     # Same rule on the `while` arm.
 //     i = 0
 //     while i < k:
 //         print(i)
@@ -142,16 +148,17 @@ namespace tpyapp::main {
 //     return n
 ::tpy::BigInt in_while_else(const ::tpy::BigInt& k) {
     int32_t i = 0;
+    int32_t n;
     while ((::tpy::BigInt(i) < k)) {
         std::cout << i << "\n";
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     {
-        int32_t n = 7;
+        n = 7;
         std::cout << n << "\n";
     }
     __after_else_0:;
-    int32_t n = 9;
+    n = 9;
     return ::tpy::BigInt(n);
 }
 

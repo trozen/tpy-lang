@@ -122,6 +122,7 @@ _LEAF_VALUE_NAMES = {
     'TpyType',          # deliberately not carried by identity; see the seeder
     'TryTier', 'ValueRange', 'BindingProvenance', '_ModuleInitSentinel',
     'EphemeralKind',
+    'LoopClauseEdges',  # sets of names only
 }
 _CONTAINER_NAMES = {'list', 'dict', 'set', 'frozenset', 'tuple'}
 

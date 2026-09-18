@@ -994,7 +994,7 @@ process(b"hello")      # zero-alloc: static span passed directly
   - **Annotated nested values**: a value written as a container LITERAL takes the annotated value type, one level at a time -- `d: dict[str, list[int32]] = {"a": [1, 2]}` stores a real `list[int32]`, and so do the `dict`, `set`, `Array[T, N]` and tuple-of-container value slots, an `Optional[dict[K, V]]` slot, and arbitrary nesting (`dict[str, list[list[int32]]]`). A value literal of a different container kind is still a type mismatch.
   - Methods: `get(k)`, `get(k, default)`, `pop(k)`, `pop(k, default)`, `clear()`, `update(other)`, `setdefault(k, default)`, `keys()`, `values()`, `items()`; augmented `|=` (merge in-place)
   - Views: `d.keys()`, `d.values()`, `d.items()` return zero-allocation views with `for`-loop, `len()`, `in`
-  - **Aliasing (CPython semantics)**: `for k, v in d.items()` and `for v in d.values()` bind `v` as an alias of the stored value -- mutations reach the dict (also inside generators/async, and through the leaked loop var after the loop). `setdefault(k, default)` returns a borrow of the stored value, so `d.setdefault(k, []).append(x)` mutates the dict. On a `readonly[dict]` receiver the views yield readonly elements and mutation is a sema error. Keys bind as const borrows (mutating a key object through iteration is a compile error -- CPython permits it but it corrupts the hash table).
+  - **Aliasing (CPython semantics)**: `for k, v in d.items()` and `for v in d.values()` bind `v` as an alias of the stored value -- mutations reach the dict (also inside generators/async, and through the leaked loop var after the loop -- readable there only when the loop provably runs, see "Loop clause locals, the zero-trip loop and `break`"). `setdefault(k, default)` returns a borrow of the stored value, so `d.setdefault(k, []).append(x)` mutates the dict. On a `readonly[dict]` receiver the views yield readonly elements and mutation is a sema error. Keys bind as const borrows (mutating a key object through iteration is a compile error -- CPython permits it but it corrupts the hash table).
   - **Readonly reads**: the read surface works on a `readonly[dict]` (including a dict field read inside a `@readonly` / auto-inferred-readonly method, where `self._data` is `readonly[dict[K,V]]`): `d[k]`, `d.get(k)` / `get(k, default)`, `k in d`, and `for k in d`. A read of a reference-type value yields `readonly[V]`. (Known gap: `sorted(d.items(), key=...)` directly on a readonly dict fails because `items()` projects `readonly` onto a value-typed element -- build the pairs list first; see BUGS.md.)
   - **Readonly keys**: the pure-read key methods (`__getitem__`, `get`, `__contains__`, `__delitem__`, `pop`) accept a `readonly[K]` key -- the key is only hashed/compared. (`__delitem__`/`pop` mutate, so they still require a mutable dict; only their *key argument* may be readonly. `__setitem__`/`setdefault` store the key and keep a mutable `K`.)
   - **Acknowledged divergence**: two-arg `get(k, default)` on reference-type values returns a *copy* of the stored value (CPython returns the stored object); a warning fires at the call site. Alias via `d[k]` / one-arg `get(k)`, or wrap in `copy()` to acknowledge the copy. Value-type results are parity-clean (no warning). The borrow-returning form is tracked in BUGS.md.
@@ -1911,7 +1911,7 @@ def example(cond: bool) -> None:
 - `x: int32` (bare annotation) does NOT mark as assigned
 - **If/else merge**: intersection of both branches (a variable is assigned after `if/else` only if assigned in *both* branches)
 - **Terminated branch**: if one branch returns/breaks/continues, the other branch's state is used
-- **Loops**: a name first bound in a `for` or `while` body is visible after the loop (the loop-body local hoist below). After a `for` it counts as assigned (an empty iterable is a tracked gap in `BUGS.md`); after a `while` only when the entry condition is provably true -- the literal `True`, or an integer comparison the value ranges decide, as in `i = 0; while i < n` -- otherwise the read is rejected as possibly unassigned. A name bound before the loop and only reassigned inside keeps its pre-loop state
+- **Loops**: a name first bound in a `for` or `while` clause -- body or `else` -- is visible after the loop (the loop-clause local hoist below), but **counts as assigned after the loop only when that clause provably ran and the binding is on every edge that leaves the clause: the fall-through into `else`, each `continue`, each `break`** -- otherwise the read after the loop is rejected as possibly unassigned (see "Loop clause locals, the zero-trip loop and `break`" below). A name bound before the loop and only reassigned inside keeps its pre-loop state
 - **Top-level code**: skipped (globals have separate initialization semantics)
 
 #### Owned Parameters (Working)
@@ -4133,7 +4133,169 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Reassigning scalar range targets inside the body does not affect iteration, matching Python. Direct assignment, augmented assignment, walrus writes and accepted nested scalar target reuse use private induction. Existing target storage and post-loop values are preserved. A tuple-unpack target reusing a name already in scope (`for i, j in pairs:` under `for i in range(3):`) assigns that slot per iteration and holds the last element after the loop; the reused slot must be a same-type scalar, since a reused str slot may be the view form while the element is owned.
 - **Working**: Const-ref loop variable binding -- when the loop body never mutates the loop variable (no field writes, no non-`@readonly` method calls, no passing to mutable parameters, no address-of), codegen emits `const auto&` instead of `auto&&`. Value types always use typed copies regardless. Parameter mutation inference (see [Implementation Notes](#parameter-mutation-inference-partial)) refines "passing to mutable parameters": if the callee is known not to mutate a specific parameter, passing the loop variable there does not force mutable binding.
 - **Working**: `for/else`, `while/else` -- else block runs when loop completes without `break`; `break` emits `goto` past the else body
-- **Working**: Loop variable and body-declared variables visible after the loop (matching CPython scoping). Only hoisted when actually referenced after the loop -- no codegen change for variables used only inside the loop. Range counter loops use a hidden counter so the user variable holds the last-yielded value (not the C++ post-increment overshoot). A name first declared in a LOOP body takes its single declaration at the anchor whether the later use reads it or only *assigns* it: `for i in range(3): x = i` followed by `x = 5` emits `int32_t x;` before the loop and writes into it from both sites, since it is one local either way. The other block-emitting statements revoke their declarations at the block's close, so a name first declared in an `if` / `match` arm, a `for`/`while` `else` clause or a `try` / `except` body and only assigned afterwards needs no hoist -- the later assignment declares the function-scope local itself. One gap: a name first declared in a `try`'s `else` body and assigned after the `try` is still rejected by the C++ build (see BUGS.md). Because it is one local, it also carries **one type and one storage**: the join of every binding to it anywhere in the function -- same block, `if` / `try` / `match` arm, loop body, sibling loop -- and the position of a binding never changes the TYPE or the SAFETY of the answer, though for a `str`/`bytes` local whether it copies can still depend on binding order (`BUGS.md#view-storage-join-stricter-after-first-binding`, detailed below). The join widens exactly where a same-scope reassignment widens (an int literal past `int32`, `int32` then `int64`, `None` then a record, an empty `[]` then `[1, 2]`, coercions such as `int32` into an `int` local) and is rejected where that reassignment is rejected (`Type mismatch in reassignment to 'n'` for a value the earlier bindings' type cannot hold). Within one function TPy has no re-declaration/shadowing: a name cannot take a second type by crossing a block boundary any more than it can within one scope. (A *function* boundary is different, and follows CPython: a bare write inside a function binds a fresh local that takes its own type even when a module global of that name exists -- see "Variables & Scope".) The loop *variable* is exempt, since its type comes from the iterable rather than from the user -- `for p in points: ...` followed by `p = Point(9)` binds a fresh local, matching CPython. A body-declared reference local that is read after the loop and bound at two sites (if/else arms, or once in the body and again after the loop) hoists as a pointer local with a rebind slot per site, the alias-gated model's storage, so a holder bound in the body keeps the loop's last object across the later rebind; `while` bodies hoist the same way as `for` bodies, nested either way round; at module level that two-site shape is still rejected (see BUGS.md). The single declaration stands in the innermost C++ scope enclosing both the binding loop and the read, so it reaches across an unrelated *sibling* loop between them (two loops binding one name bind one local -- the declaration goes before the first, and both bodies assign into it) and out of an enclosing `if` / `with` / `try` / `match` whose arm holds the binding loop. Read *inside* that enclosing block, the declaration stays inside it. Definite assignment follows the block, not the loop: a loop in only ONE `if` / `try` / `match` arm leaves the name maybe-unassigned after the block and the read is rejected, exactly as a direct assignment in one arm is -- assign the name once before the block to accept it. The MIXED shape -- a loop binding the name in one arm and a plain assignment in another -- is accepted at the `if` only; the `try` and `match` spellings still reject (`BUGS.md#try-match-mixed-loop-arm-bind-rejected`). Two hoist flavors do not render: a UNION-typed local rejects at every position, loop or branch (`BUGS.md#union-local-hoist-unclassified`), and a non-value local hoisted out of a `match` rejects where its `if` / `with` / `try` twins compile (`BUGS.md#match-nonvalue-hoist-unadmitted`). The one storage runs the same join for `str`/`bytes`, taking the STRICTEST binding's demand: a binding that owns -- a concatenation, or any source the check cannot prove is a live borrow -- makes the one local own, and the borrowing bindings copy into it, which is what CPython's aliasing means for an immutable string. A local every binding of which is a proven live borrow keeps the zero-copy view. The proof is stricter after the first binding, so the two orders of the same pair of bindings can differ in whether the local copies (never in its type, and never towards the unsafe side) -- `BUGS.md#view-storage-join-stricter-after-first-binding`. Two caveats on what the hoist emits: a REFERENCE-typed loop *variable* read after the loop holds a copy of the last element rather than the element itself (`BUGS.md#ref-loop-var-read-after-loop-copies`), and a loan taken in the body of a loop over storage the enclosing block owns is carried past the block that frees it (`BUGS.md#loop-body-storage-outlived-by-loan`).
+- **Working**: Loop variable and body-declared variables visible after the loop (matching CPython scoping). Only hoisted when actually referenced after the loop -- no codegen change for variables used only inside the loop. Range counter loops use a hidden counter so the user variable holds the last-yielded value (not the C++ post-increment overshoot). A name first declared in a LOOP body takes its single declaration at the anchor whether the later use reads it or only *assigns* it: `for i in range(3): x = i` followed by `x = 5` emits `int32_t x;` before the loop and writes into it from both sites, since it is one local either way. A loop's `else` clause is a clause of the same loop statement and hoists the same way: a name first bound there takes its declaration at the loop's anchor, so the `else` binding and a later assignment write one slot. The other block-emitting statements revoke their declarations at the block's close, so a name first declared in an `if` / `match` arm or a `try` / `except` body and only assigned afterwards needs no hoist -- the later assignment declares the function-scope local itself. One gap: a name first declared in a `try`'s `else` body and assigned after the `try` is still rejected by the C++ build (see BUGS.md). Because it is one local, it also carries **one type and one storage**: the join of every binding to it anywhere in the function -- same block, `if` / `try` / `match` arm, loop body, sibling loop -- and the position of a binding never changes the TYPE or the SAFETY of the answer, though for a `str`/`bytes` local whether it copies can still depend on binding order (`BUGS.md#view-storage-join-stricter-after-first-binding`, detailed below). The join widens exactly where a same-scope reassignment widens (an int literal past `int32`, `int32` then `int64`, `None` then a record, an empty `[]` then `[1, 2]`, coercions such as `int32` into an `int` local) and is rejected where that reassignment is rejected (`Type mismatch in reassignment to 'n'` for a value the earlier bindings' type cannot hold). Within one function TPy has no re-declaration/shadowing: a name cannot take a second type by crossing a block boundary any more than it can within one scope. (A *function* boundary is different, and follows CPython: a bare write inside a function binds a fresh local that takes its own type even when a module global of that name exists -- see "Variables & Scope".) The loop *variable* is exempt, since its type comes from the iterable rather than from the user -- `for p in points: ...` followed by `p = Point(9)` binds a fresh local, matching CPython. A body-declared reference local that is read after the loop and bound at two sites (if/else arms, or once in the body and again after the loop) hoists as a pointer local with a rebind slot per site, the alias-gated model's storage, so a holder bound in the body keeps the loop's last object across the later rebind; `while` bodies hoist the same way as `for` bodies, nested either way round; at module level that two-site shape is still rejected (see BUGS.md). The single declaration stands in the innermost C++ scope enclosing both the binding loop and the read, so it reaches across an unrelated *sibling* loop between them (two loops binding one name bind one local -- the declaration goes before the first, and both bodies assign into it) and out of an enclosing `if` / `with` / `try` / `match` whose arm holds the binding loop. Read *inside* that enclosing block, the declaration stays inside it. Definite assignment follows the block, not the loop: a loop in only ONE `if` / `try` / `match` arm leaves the name maybe-unassigned after the block and the read is rejected, exactly as a direct assignment in one arm is -- assign the name once before the block to accept it. The MIXED shape -- a loop binding the name in one arm and a plain assignment in another -- is accepted at the `if` only, and only when the loop head provably runs (otherwise the loop arm assigns nothing and every spelling rejects); the `try` and `match` spellings still reject (`BUGS.md#try-match-mixed-loop-arm-bind-rejected`). Two hoist flavors do not render: a UNION-typed local rejects at every position, loop or branch (`BUGS.md#union-local-hoist-unclassified`), and a non-value local hoisted out of a `match` rejects where its `if` / `with` / `try` twins compile (`BUGS.md#match-nonvalue-hoist-unadmitted`). The one storage runs the same join for `str`/`bytes`, taking the STRICTEST binding's demand: a binding that owns -- a concatenation, or any source the check cannot prove is a live borrow -- makes the one local own, and the borrowing bindings copy into it, which is what CPython's aliasing means for an immutable string. A local every binding of which is a proven live borrow keeps the zero-copy view. The proof is stricter after the first binding, so the two orders of the same pair of bindings can differ in whether the local copies (never in its type, and never towards the unsafe side) -- `BUGS.md#view-storage-join-stricter-after-first-binding`. Two caveats on what the hoist emits: a REFERENCE-typed loop *variable* read after the loop holds a copy of the last element rather than the element itself (`BUGS.md#ref-loop-var-read-after-loop-copies`), and a loan taken in the body of a loop over storage the enclosing block owns is carried past the block that frees it (`BUGS.md#loop-body-storage-outlived-by-loan`).
+
+#### Loop clause locals, the zero-trip loop and `break`
+
+Every clause of a loop -- the body and the `else` -- is a block. A name first
+bound in one is the function-scoped local Python makes it, hoisted to the loop
+statement, and:
+
+> after the loop it counts as assigned only when that clause **provably ran**
+> and the binding is on **every edge that leaves the clause**: the fall-through
+> into `else`, each `continue`, each `break`.
+
+Otherwise the read after the loop is rejected with
+`variable 'x' may not be assigned at this point`.
+
+The two clauses answer "provably ran" differently, and for a zero-trip loop
+oppositely: the body needs a head that proves an iteration, while the `else`
+clause runs on the fall-through path by definition -- it is the paths that
+*skip* it, the `break` paths, that have to be joined in.
+
+What proves a loop runs:
+
+- a `range` whose bounds the value ranges decide, including the step's sign:
+  `range(2)`, `range(0, 6, 2)`, `range(3, 0, -1)`, and `range(n)` /
+  `range(1, n)` where an earlier guard narrowed `n` (`if n < 1: return ...`);
+- a non-empty literal at the head: `for x in [4, 5, 6]`, `for c in "abc"`, and
+  the set, dict and bytes spellings -- though for those three the read after
+  the loop is not yet compiled, and reports the construct as unsupported
+  instead (`BUGS.md#hoisted-local-over-set-dict-literal-head-unlowered`); bind
+  the literal to a name ahead of the loop to get the same proof and code that
+  builds;
+- a local whose only binding is a non-empty container literal
+  (`items = [10, 20, 30]` ahead of `for x in items`), of any container kind;
+- a `while` whose entry condition is provably true -- the literal `True`, or an
+  integer comparison the value ranges decide, as in `i = 0; while i < 3`;
+- iteration over an enum (`for c in Color`), which always has members.
+
+What does not: a parameter or field container, a call result (including
+`d.items()`), an unnarrowed bound, an `async for` head, and an emptiness guard
+(`if not xs: return` / `if len(xs) == 0: return` / `if xs:`) -- the last is a
+tracked gap in `TODO.md`, not a decision that the guard is meaningless.
+
+One caveat on the literal-bound-local proof: it reads the local's write
+history, and a *mutation* is not a write, so `items = [1, 2]` followed by
+`items.clear()` still proves. That one is a defect, not a rule
+(`BUGS.md#literal-bound-local-proof-ignores-mutation`) -- the container-non-empty
+fact family that closes the emptiness guard closes it with the same kill set.
+
+The second half of the rule is the body path: a provable head is not enough.
+
+```python
+for i in range(2):     # provably runs
+    if flag:
+        q = Pic(i)     # but the binding is not on every body path
+return q.n             # ERROR: variable 'q' may not be assigned at this point
+```
+
+**This is stricter than CPython, deliberately.** CPython accepts such a program
+and raises `UnboundLocalError` only on the zero-trip path, at runtime; TPy has
+no such exception to raise -- the C++ it would emit reads an uninitialized slot
+-- so it rejects at compile time instead. The remedy is either of the two the
+diagnostic implies: assign the name once before the loop, or narrow the bound so
+the loop provably runs.
+
+```python
+def last(xs: list[int32]) -> int32:
+    v = 0                 # assigned once before the loop
+    for x in xs:
+        v = x
+    return v
+```
+
+**The edges out of a clause.** A `break` leaves the loop past the rest of the
+body and past the `else` clause; a `continue` leaves the body the same way and
+lands at the head, so the `else` still runs. Both are edges out of the body
+clause and both are joined -- a `continue` against the body's own end, a `break`
+against the state after the `else`. So an `else`-bound name is not assigned
+after a loop whose body can break, and a body-bound name is not assigned when a
+`break` *or* a `continue` sits above its binding. A `return` or `raise` never
+joins here at all: those paths do not reach the statement after the loop.
+
+`while True:` is the shape with no fall-through at all -- the head is never
+false, so the `else` never runs and the `break`s are the only edges out. A name
+bound on every break path is therefore assigned after it:
+
+```python
+i = 0
+while True:
+    i += 1
+    if i > 2:
+        total = i * 10     # the only edge out carries the binding
+        break
+return total               # accepted, prints 30
+```
+
+```python
+for i in range(3):     # provably runs
+    if flag:
+        break          # ... but this path skips both the binding and the else
+    w = i
+else:
+    w = 9
+return w               # ERROR: variable 'w' may not be assigned at this point
+
+for i in range(3):     # provably runs
+    if flag:
+        continue       # ... but this path skips the binding
+    w = i + 1
+return w               # ERROR: variable 'w' may not be assigned at this point
+```
+
+CPython raises `UnboundLocalError` on exactly those paths. The remedies are the
+same two: assign the name before the loop, or bind it on the early-exit path as
+well (`w = i` above the `break` / `continue`).
+
+**A walrus in the head** follows one rule, the same one an `if` head follows,
+because it is the same question asked of the loop's two exits: *a walrus target
+in a condition counts as assigned on a branch only when every way of reaching
+that branch evaluated it.* The condition answers it for both of its paths at
+once, by structure:
+
+- `a and b` is true only through both operands, false either through `a` alone
+  or through both -- so true grants `T(a) | T(b)`, false grants
+  `F(a) & (T(a) | F(b))`.
+- `a or b` is the mirror: false grants `F(a) | F(b)`, true grants
+  `T(a) & (F(a) | T(b))`.
+- `not a` swaps the two answers, and a comparison chain (`x < (m := f()) < y`)
+  evaluates its first two operands whatever it answers and the later ones only
+  when it is true.
+
+A `while` body is the true path and the edge that *leaves through the head* --
+the fall-through into the `else` and the code after the loop, but never a
+`break` -- is the false path.
+
+```python
+while (n := next_val(i)) > 0:   # plain: assigned on every edge
+    ...
+return n                        # accepted
+
+while flag and (b := next_val(i)) > 0:
+    total += b                  # accepted: the head came out true to get here
+return b                        # ERROR: `flag` alone may have ended the head
+
+while i > 5 or (c := next_val(i)) > 0:
+    i += 1
+return c                        # accepted: leaving the head evaluated the `or`
+
+while not (i > 5 or (d := next_val(i)) > 0):
+    total += d                  # accepted: a false `or` evaluated both operands
+
+while (flag and (e := next_val(i)) > 0) or i < 0:
+    total += e                  # ERROR: the `or`'s right operand alone may
+                                # have made the head true
+```
+
+The head is evaluated even by a zero-trip loop, so the plain and `or` forms are
+assigned after one that never ran a single iteration.
+
+One stated conservatism: a `break` inside a `try` whose `finally` binds the name
+is snapshotted at the `break`, so the `finally`'s binding is not counted and a
+valid program of that shape is rejected
+(`BUGS.md#break-join-ignores-finally-binding`, which covers the `continue`
+spelling too).
 
 ### `with` Statement (Context Managers)
 - **Working**: `with expr as var:` -- duck-typed context manager protocol via `__enter__`/`__exit__` methods
@@ -7018,7 +7180,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
 - **Working**: Contextual type inference from assignment/return/nested-call context for generic functions, record constructors, and module-type constructors; partial explicit type args; `_` wildcard type arguments
 - **Working**: CPython's function-scope binding rule -- inside a function a bare write to a name binds a fresh **local** for the whole body, even when a module global of that name exists and holds a different type; the local takes its own type from that write. Only `global X` makes the write land on the module variable. A read placed before the bare write is rejected at compile time (CPython raises `UnboundLocalError` at runtime; the TPy diagnostic still names `name.global_read` rather than the unbound local -- `BUGS.md#unbound-local-read-reported-as-global-read`), except when the read is an ATTRIBUTE of a record global, which still compiles and resolves to the global -- `BUGS.md#read-before-local-shadow-resolves-global`. It is the *function* boundary that starts a fresh binding, not a block: block boundaries inside one function create no scope, so the one-type-and-one-storage rule described under "Loops" -- the join of every binding to the name, wherever it stands -- still holds across them.
 - **Working**: `global` keyword for explicit global mutation from functions and methods (annotated or bare module globals); the named global must already exist at module level (unlike CPython, `global x` cannot create a new one). Honoured by plain assignment, augmented assignment, tuple unpacking and `:=`; a `for`, `with ... as` or `match`-capture target still binds a local shadow instead -- see BUGS.md
-- **Working**: `:=` walrus operator (assignment expression) -- `if`, `while`, `and`/`or` chains, general expression positions. Value types use `T x{}`; non-value types bound to a fresh rvalue use `std::optional<T>` wrapping; a non-value walrus bound to a BORROW (reference-returning call, field or subscript of a live lvalue) binds a `T*` pointer aliasing the source (mutations through it are visible on the source, matching CPython). A field of a const-inferred parent binds a `const T*` alias, so a read-only use builds and a mutating use fails the C++ build (loud, not silent; `BUGS.md#container-field-alias-mutation-not-credited`); a subscript on an RVALUE container is misclassified as a borrow -- see the BUGS.md `is_rvalue_source` subscript entry. Comprehension scope leak (PEP 572) supported. Reassigning an existing local via `:=` is type-checked against the local's type for value-typed locals (scalars, str/bytes, views, Optional-of-value); reassigning an existing non-value local via `:=` is rejected (use a separate assignment) -- see BUGS.md. A target declared `global` writes the module variable (coerced to the global's declared type), like the plain assignment; a reference-typed global target is rejected with the same diagnostic `g = ...` produces.
+- **Working**: `:=` walrus operator (assignment expression) -- `if`, `while`, `and`/`or` chains, general expression positions. Which branch of an `if` or `while` head may READ the target is the one definite-assignment rule stated under "A walrus in the head" above -- `if` and `while` answer it identically. Value types use `T x{}`; non-value types bound to a fresh rvalue use `std::optional<T>` wrapping; a non-value walrus bound to a BORROW (reference-returning call, field or subscript of a live lvalue) binds a `T*` pointer aliasing the source (mutations through it are visible on the source, matching CPython). A field of a const-inferred parent binds a `const T*` alias, so a read-only use builds and a mutating use fails the C++ build (loud, not silent; `BUGS.md#container-field-alias-mutation-not-credited`); a subscript on an RVALUE container is misclassified as a borrow -- see the BUGS.md `is_rvalue_source` subscript entry. Comprehension scope leak (PEP 572) supported. Reassigning an existing local via `:=` is type-checked against the local's type for value-typed locals (scalars, str/bytes, views, Optional-of-value); reassigning an existing non-value local via `:=` is rejected (use a separate assignment) -- see BUGS.md. A target declared `global` writes the module variable (coerced to the global's declared type), like the plain assignment; a reference-typed global target is rejected with the same diagnostic `g = ...` produces.
 - **Working**: PEP 484 string type annotations (`def f() -> "ClassName"`, `def f(x: "ClassName")`, `children: list["Tree"]`). Strings are re-parsed as Python expressions at parse time and resolved by the same deferred type-resolver pass as bare annotations -- forward references to classes/aliases defined later in the same module work for names, generics (`"list[T]"`), and unions (`"A | B"`). A string that is not a valid Python expression is rejected with a clean tpyc diagnostic (no SyntaxError leak). `from __future__ import annotations` is accepted and ignored: it is a CPython runtime directive (PEP 563) that does not affect `ast.parse` output, so tpyc sees the same annotation AST nodes whether the import is present or not.
 
 ---

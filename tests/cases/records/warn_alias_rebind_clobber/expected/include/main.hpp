@@ -21,6 +21,8 @@ void foreign_origin_section(std::vector<Point>& xs);
 void hoisted_body_bind_section();
 // def two_alias_section() -> None:
 void two_alias_section();
+// def alias_kind_section() -> None:
+void alias_kind_section();
 // def main() -> None:
 void main();
 

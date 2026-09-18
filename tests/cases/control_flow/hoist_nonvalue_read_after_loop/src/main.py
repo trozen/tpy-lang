@@ -680,6 +680,10 @@ def two_loop_int_widen(n: int32) -> None:
 def two_loop_empty_list(n: int32) -> None:
     for i in range(2):
         xs = []  # tpyc: ok
+    # Narrowed: `held` is bound only by the second loop, so that loop has to
+    # provably run for the read after it.
+    if n < 1:
+        return
     for j in range(n):
         xs = [1, 2]
         held = xs
@@ -709,6 +713,11 @@ def arm_empty_list(flag: bool) -> None:
 def two_loop_none_then_record(n: int32) -> None:
     for i in range(2):
         p = None  # tpyc: ok
+    # Narrowed: `saved` is bound only by the second loop, so that loop has to
+    # provably run for the read after it.
+    if n < 1:
+        print("two_loop_none_then_record none")
+        return
     for j in range(n):
         p = Pic(j)
         saved = p

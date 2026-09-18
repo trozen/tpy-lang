@@ -225,6 +225,19 @@ def _compute_alias_detachment(
 
 # -- Termination check --------------------------------------------------------
 
+def while_head_always_true(stmt: TpyWhile) -> bool:
+    """Whether the head can never be false -- `while True:`.
+
+    Distinct from "the head is true on entry", which the value ranges can
+    prove for `i = 0; while i < 3` and which the body may then falsify: this
+    one holds on EVERY evaluation, so the loop has no normal exit at all.
+    Nothing falls out of its head, which is why its `else` clause never runs
+    and why the statement after it is reached only from a `break`.
+    """
+    return (isinstance(stmt.condition, TpyBoolLiteral)
+            and stmt.condition.value is True)
+
+
 def stmts_terminate(stmts: list[TpyStmt]) -> bool:
     """Do all execution paths through stmts end with return/break/raise?
 
@@ -264,8 +277,7 @@ def stmts_terminate(stmts: list[TpyStmt]) -> bool:
     if isinstance(last, TpyWhile):
         # `while True:` with no break targeting this loop never falls
         # through (it returns/raises from inside or runs forever).
-        return (isinstance(last.condition, TpyBoolLiteral)
-                and last.condition.value is True
+        return (while_head_always_true(last)
                 and not _has_loop_break(last.body))
     if isinstance(last, TpyAssert):
         # `assert False` lowers to an unconditional raise (TPy asserts are

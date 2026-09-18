@@ -1078,6 +1078,24 @@ class DeferredGenericYieldSettle(NamedTuple):
 
 
 @dataclass
+class LoopClauseEdges:
+    """Every edge that leaves one loop's BODY clause, and their verdict.
+
+    A `break` leaves past the `else` and out of the loop, a `continue`
+    jumps back to the head and still reaches the `else`, and the body's
+    own end falls through to the head as well -- so a name first bound in
+    the clause counts as assigned after the loop only when it is bound on
+    all of them. `body_assigned` is what the continue and fall-through
+    edges join to, taken while the body's state is still live;
+    `_finish_loop_clauses` is the one consumer of the whole record.
+    """
+
+    breaks: list[frozenset[str]] = field(default_factory=list)
+    continues: list[frozenset[str]] = field(default_factory=list)
+    body_assigned: frozenset[str] = frozenset()
+
+
+@dataclass
 class FunctionTrackingState:
     """Per-function analysis state.
 
@@ -1091,6 +1109,12 @@ class FunctionTrackingState:
     current_function: TpyFunction | _ModuleInitSentinel | None = None
     current_ns: Namespace | None = None
     loop_depth: int = 0
+    # One entry per loop whose body is open, innermost last; `break` and
+    # `continue` file their snapshots on the innermost. Per-loop, not
+    # per-function: a nested def analyzed inside a loop body gets a fresh
+    # state (and `loop_depth == 0` with it), so its own `break` cannot
+    # reach this loop's record.
+    loop_clause_edges: list[LoopClauseEdges] = field(default_factory=list)
     # Enclosing compound statements (if/while/for/with/try/match), outermost
     # first, while their bodies are analyzed. A loop-body-first local is
     # function-scoped in Python, so the binding's stack and the read's are
@@ -1785,8 +1809,6 @@ class SemanticContext:
     # `warn_cond_operand_eager_arg` reports. Zeroed for the duration of a
     # body that carries its own region (`ScopeTracker.deferred_body`).
     cond_operand_depth: int = 0
-    sc_and_walrus: set[str] = field(default_factory=set)
-    sc_or_walrus: set[str] = field(default_factory=set)
     is_top_level: bool = False
     # REPL mode: allow @error_return calls at top level (unwrap with panic)
     allow_top_level_error_unwrap: bool = False

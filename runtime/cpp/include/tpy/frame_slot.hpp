@@ -344,8 +344,8 @@ private:
  * (`__for_it/__for_end`, `__for_i/__for_stop`, `__for_itr/__for_r`,
  * `__for_src`). Same storage and surface; reads skip the dead-slot check.
  *
- * The check exists because user code can reach a dead user-local slot
- * (BUGS.md#zero-trip-loop-body-local-read). No user code names these fields:
+ * The check exists because a user-local slot is only as live as the
+ * analysis that promoted it proved. No user code names these fields:
  * the emitter reads each one only inside its loop, after the loop's own init
  * wrote it, so the check could only catch an emitter bug -- and it costs a
  * tight generator loop about 2x under clang.

@@ -18,9 +18,105 @@ from .context import (
     BindingProvenance, _DEFAULT_PROVENANCE,
 )
 from .value_range import ValueRange
+from ..parse.nodes import (
+    TpyBinOp, TpyChainedCompare, TpyDictComprehension, TpyExpr,
+    TpyGeneratorExpression, TpyIfExpr, TpyLambda, TpyListComprehension,
+    TpyNamedExpr, TpySetComprehension, TpyUnaryOp,
+)
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
+
+
+# A body evaluated somewhere other than where it is written -- the enclosing
+# expression guarantees nothing about whether it ran at all.
+_DEFERRED_BODY = (
+    TpyLambda, TpyListComprehension, TpyDictComprehension,
+    TpySetComprehension, TpyGeneratorExpression,
+)
+
+_NO_TARGETS: frozenset[str] = frozenset()
+
+
+def condition_walrus_assigned(
+        cond: TpyExpr) -> tuple[frozenset[str], frozenset[str]]:
+    """The walrus targets `cond` definitely assigns on its TRUE / FALSE path.
+
+    One rule: a walrus target in a condition counts as assigned on a branch
+    only when EVERY way of reaching that branch evaluated it. `a and b`
+    reaches true only through both operands but false either through `a`
+    alone or through both; `a or b` is the mirror; `not a` swaps the two
+    answers. So the answer is a pair of sets, and an `if` gives the true set
+    to its then-body and the false set to its else-body, while a `while`
+    gives the true set to its body and the false set to the edge that leaves
+    through the head.
+    """
+    return _walrus_paths(cond)
+
+
+def _walrus_paths(e: TpyExpr) -> tuple[frozenset[str], frozenset[str]]:
+    if isinstance(e, TpyBinOp) and e.op in ("&&", "||"):
+        t_l, f_l = _walrus_paths(e.left)
+        t_r, f_r = _walrus_paths(e.right)
+        if e.op == "&&":
+            return t_l | t_r, f_l & (t_l | f_r)
+        return t_l & (f_l | t_r), f_l | f_r
+    if isinstance(e, TpyUnaryOp) and e.op == "!":
+        t, f = _walrus_paths(e.operand)
+        return f, t
+    if isinstance(e, TpyIfExpr):
+        # The condition always runs; each arm answers for its own path only.
+        cond = _walrus_certain(e.condition)
+        t_then, f_then = _walrus_paths(e.then_expr)
+        t_else, f_else = _walrus_paths(e.else_expr)
+        return cond | (t_then & t_else), cond | (f_then & f_else)
+    if isinstance(e, TpyChainedCompare):
+        # `a < b < c` stops at the first comparison that fails, so only the
+        # first PAIR of operands is evaluated whatever the chain answers.
+        head = _walrus_certain(e.left)
+        if e.comparators:
+            head |= _walrus_certain(e.comparators[0])
+        rest = _NO_TARGETS
+        for later in e.comparators[1:]:
+            rest |= _walrus_certain(later)
+        return head | rest, head
+    if isinstance(e, _DEFERRED_BODY):
+        return _NO_TARGETS, _NO_TARGETS
+    certain = _NO_TARGETS
+    if isinstance(e, TpyNamedExpr):
+        certain = frozenset({e.target})
+    for child in e.children():
+        if isinstance(child, TpyExpr):
+            certain |= _walrus_certain(child)
+    return certain, certain
+
+
+def _walrus_certain(e: TpyExpr) -> frozenset[str]:
+    """The targets `e` assigns however it evaluated -- true on both paths."""
+    t, f = _walrus_paths(e)
+    return t & f
+
+
+def condition_walrus_targets(cond: TpyExpr) -> frozenset[str]:
+    """Every walrus target `condition_walrus_assigned` answers for.
+
+    A deferred body is left out for the same reason it contributes nothing
+    there: its walrus binds the enclosing scope on its own terms
+    (`BUGS.md#lambda-body-walrus-binds-enclosing-scope`), not on the head's.
+    """
+    found: set[str] = set()
+
+    def walk(e: TpyExpr) -> None:
+        if isinstance(e, _DEFERRED_BODY):
+            return
+        if isinstance(e, TpyNamedExpr):
+            found.add(e.target)
+        for child in e.children():
+            if isinstance(child, TpyExpr):
+                walk(child)
+
+    walk(cond)
+    return frozenset(found)
 
 
 class _MergePolicy(Enum):

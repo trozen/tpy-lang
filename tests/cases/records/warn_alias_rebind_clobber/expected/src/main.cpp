@@ -100,25 +100,29 @@ void hoisted_body_bind_section() {
     std::cout << "hoisted_body_bind:" << " " << q->x << " " << p->x << "\n";
 }
 
-// # Two holders of the body-bound `p`: the scope-escape check warns for
-// # `saved` at its alias site, and the rebind still warns for `other`, which
-// # keeps the object of ONE iteration and reads the site's slot after that.
+// # Two holders of the body-bound `p`: the scope-escape check warns at each
+// # alias site -- `saved`, taken on every iteration, and `other`, taken on one
+// # of them and then reading the site's slot after the loop.
 // def two_alias_section() -> None:
 //     saved = Point(50)
+//     # Seeded before the loop: the alias below is taken on ONE body path, so
+//     # without this `other` would not be assigned after the loop.
+//     other = Point(60)
 //     for i in range(3):
-//         p = Point(i)  # tpyc: warning(/'other' will not keep the object/)
+//         p = Point(i)
 //         saved = p  # tpyc: warning(/'saved' will not keep the object/)
 //         if i == 0:
-//             other = p
+//             other = p  # tpyc: warning(/'other' will not keep the object/)
 //     other.x += 100
 //     print("two_alias:", saved.x, other.x)
 void two_alias_section() {
-    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_3;
     Point __slot_1 = Point(50);
     Point* saved = &__slot_1;
-    Point* other;
+    Point __slot_2 = Point(60);
+    Point* other = &__slot_2;
     for (int32_t i = 0; i < 3; ++i) {
-        Point* p = &*(__slot_2 = Point(i));
+        Point* p = &*(__slot_3 = Point(i));
         saved = p;
         if ((i == 0)) {
             other = p;
@@ -128,12 +132,39 @@ void two_alias_section() {
     std::cout << "two_alias:" << " " << saved->x << " " << other->x << "\n";
 }
 
+// # The holder is a plain ALIAS of `p` (not a loan pointing INTO it), and it is
+// # a body-first local at the loop's own depth, so the scope-escape check has
+// # nothing to say and the rebind site is what warns -- with the remedy only the
+// # alias kind has, `copy(p)`.
+// def alias_kind_section() -> None:
+//     p = Point(70)
+//     for i in range(3):
+//         held = p
+//         print("alias_kind_iter:", held.x)
+//         p = Point(i)  # tpyc: warning(/share its storage/)
+//     held.x += 100
+//     print("alias_kind:", held.x, p.x)
+void alias_kind_section() {
+    std::optional<Point> __slot_2;
+    Point __slot_1 = Point(70);
+    Point* p = &__slot_1;
+    Point* held;
+    for (int32_t i = 0; i < 3; ++i) {
+        held = p;
+        std::cout << "alias_kind_iter:" << " " << held->x << "\n";
+        p = &*(__slot_2 = Point(i));
+    }
+    held->x = ::tpy::add_check<int32_t>(held->x, 100);
+    std::cout << "alias_kind:" << " " << held->x << " " << p->x << "\n";
+}
+
 // def main() -> None:
 //     loop_carried_section()
 //     for_carried_section()
 //     foreign_origin_section([Point(40)])
 //     hoisted_body_bind_section()
 //     two_alias_section()
+//     alias_kind_section()
 void main() {
     ::tpyapp::main::loop_carried_section();
     ::tpyapp::main::for_carried_section();
@@ -141,6 +172,7 @@ void main() {
     ::tpyapp::main::foreign_origin_section(__tmp_1);
     ::tpyapp::main::hoisted_body_bind_section();
     ::tpyapp::main::two_alias_section();
+    ::tpyapp::main::alias_kind_section();
 }
 
 // main()

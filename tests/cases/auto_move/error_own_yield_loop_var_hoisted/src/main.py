@@ -13,6 +13,10 @@ def gen() -> Iterator[Own[int32]]:
 
 def collect() -> None:
     out: list[int32] = []
+    # Seeded before the loop: a generator head cannot prove the loop runs, so
+    # without this the post-loop read would take the may-not-be-assigned
+    # reject instead of the hoisted-binding one under test.
+    x = 0
     for x in gen():  # tpyc: error(/foreach\.hoist_loop_var/)
         out.append(x)
     print(x)

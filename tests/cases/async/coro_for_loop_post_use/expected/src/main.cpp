@@ -38,8 +38,15 @@ __coro_driver driver() {
 }
 
 // async def last_n(self) -> int32:
-//     await asyncio.sleep(0)        # -> S_RESUME_0
-//     for it in self.items:
+//     await asyncio.sleep(0)                                                 # -> S_RESUME_0
+//     # A literal-bound local proves the loop runs, which is what keeps the
+//     # post-loop read (and with it the pre-declaration under test) legal;
+//     # a field container proves nothing. The original shape (`self.items`
+//     # as the head) is therefore no longer expressible with a post-loop
+//     # read at all -- not even by seeding the name before the loop, which
+//     # would remove the promotion this case exists to pin.
+//     items = [Item(1), Item(99)]
+//     for it in items:
 //         pass
 //     return it.n
 ::tpystd::tpy::Poll<int32_t> __coro_Container_last_n::__poll__(::tpystd::coro::Waker waker) {
@@ -54,8 +61,9 @@ __coro_driver driver() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
+        items.emplace(std::array<Item, 2>{Item(1), Item(99)});
         std::optional<Item> it;
-        auto& __obj_0 = __self.items;
+        auto& __obj_0 = (*items);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {

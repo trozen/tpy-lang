@@ -30,6 +30,30 @@ class ScopeTracker:
     # --- Loop scope management ---
 
     @contextmanager
+    def block_scope(self) -> Iterator[Scope]:
+        """Create an inner scope and namespace for a statement's block.
+
+        The bindings made in it do not outlive the block as scope bindings --
+        a read after the enclosing statement promotes them from the pending
+        table instead, as the function-scoped locals Python makes them. Used
+        for a clause that is a block but not a loop body (a loop's `else`),
+        where bumping `loop_depth` would misdirect a `break` at the clause's
+        own statement instead of the enclosing loop.
+        """
+        inner_scope = Scope(self.ctx.func.current_scope)
+        old_scope = self.ctx.func.current_scope
+        old_ns = self.ctx.func.current_ns
+        if old_ns:
+            inner_scope.namespace = Namespace(parent=old_ns)
+            self.ctx.func.current_ns = inner_scope.namespace
+        self.ctx.func.current_scope = inner_scope
+        try:
+            yield inner_scope
+        finally:
+            self.ctx.func.current_scope = old_scope
+            self.ctx.func.current_ns = old_ns
+
+    @contextmanager
     def loop_scope(self, body: list[TpyStmt] | None = None) -> Iterator[Scope]:
         """Create an inner scope for a loop body and bump loop_depth.
 
@@ -44,24 +68,13 @@ class ScopeTracker:
         loan is dropped along with it and comes back from the `before`
         snapshot every caller's exit-facts merge restores.
         """
-        inner_scope = Scope(self.ctx.func.current_scope)
-        old_scope = self.ctx.func.current_scope
-        old_ns = self.ctx.func.current_ns
-        if old_ns:
-            # The body's namespace region: its bindings do not outlive the
-            # loop here -- a read after the loop promotes them from the
-            # pending table instead, as function-scoped locals.
-            inner_scope.namespace = Namespace(parent=old_ns)
-            self.ctx.func.current_ns = inner_scope.namespace
-        self.ctx.func.current_scope = inner_scope
-        self.ctx.func.loop_depth += 1
-        try:
-            yield inner_scope
-        finally:
-            self.ctx.func.loop_depth -= 1
-            self.ctx.func.current_scope = old_scope
-            self.ctx.func.current_ns = old_ns
-            self.ctx.func.borrow_tracker.remove_borrower(ITER_BORROWER)
+        with self.block_scope() as inner_scope:
+            self.ctx.func.loop_depth += 1
+            try:
+                yield inner_scope
+            finally:
+                self.ctx.func.loop_depth -= 1
+                self.ctx.func.borrow_tracker.remove_borrower(ITER_BORROWER)
 
     @contextmanager
     def deferred_body(self) -> Iterator[None]:

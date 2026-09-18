@@ -21,16 +21,16 @@ class Item:
 
 
 class Container:
-    items: list[Item]
-
-    def __init__(self) -> None:
-        self.items = []
-        self.items.append(Item(1))
-        self.items.append(Item(99))
-
     async def last_n(self) -> int32:
         await asyncio.sleep(0)
-        for it in self.items:
+        # A literal-bound local proves the loop runs, which is what keeps the
+        # post-loop read (and with it the pre-declaration under test) legal;
+        # a field container proves nothing. The original shape (`self.items`
+        # as the head) is therefore no longer expressible with a post-loop
+        # read at all -- not even by seeding the name before the loop, which
+        # would remove the promotion this case exists to pin.
+        items = [Item(1), Item(99)]
+        for it in items:
             pass
         return it.n
 
