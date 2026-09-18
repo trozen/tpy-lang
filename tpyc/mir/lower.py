@@ -11,7 +11,7 @@ from ..typesys import (
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
-    MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered,
+    MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
@@ -20,7 +20,7 @@ from .nodes import (
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
 )
 from .coverage import MIRUnsupported, plain as _plain, require as _require
-from .definitions import MIRConstructorDefinition, MIRDefinitions
+from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
 from .validate import MIRPresenceError, successors, validate_function
 
 
@@ -1117,7 +1117,7 @@ class _Builder:
         self.stmts(stmts)
         self.bindings = bindings
 
-    def build(self) -> MIRFunction:
+    def build(self, initialization: MIRConstructorDefinition | None = None) -> MIRFunction:
         if self.fn.receiver is not None:
             self.bindings["self"] = self.slot(self.fn.receiver.type, MIRSlotKind.PARAMETER,
                                               "self", self.fn.receiver)
@@ -1125,6 +1125,15 @@ class _Builder:
             self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
                                                p.borrowed_record, optional_layout=p.optional_layout,
                                                union_layout=p.union_layout, tuple_layout=p.tuple_layout)
+        receiver_init = None
+        if initialization is not None:
+            values: dict[str, MIRSlotId | MIRConstant] = {}
+            for mil in initialization.constructor.mil_inits:
+                value = mil.value.expr if isinstance(mil.value, th.THIRCoerce) else mil.value
+                values[mil.field_identity.name] = (self.bindings[value.name] if isinstance(value, th.THIRName)
+                                                   else MIRConstant(value.value))
+            receiver_init = MIRReceiverInit(self.bindings["self"], tuple(
+                values[f.id.name] for f in initialization.layout.fields))
         self.stmts(self.fn.body)
         reachable: set[MIRBlockId] = set()
         pending = [self.blocks[0].id]
@@ -1145,8 +1154,10 @@ class _Builder:
                 continue
             assert b.terminator is not None
             blocks.append(MIRBlock(b.id, tuple(b.statements), b.terminator))
+        kind = (MIRBodyKind.CONSTRUCTOR if initialization is not None else
+                MIRBodyKind.METHOD if self.fn.receiver is not None else MIRBodyKind.FREE_FUNCTION)
         fn = MIRFunction(self.body, self.fn.return_type, tuple(self.slots), tuple(blocks),
-                         self.blocks[0].id, tuple(d.layout for d in self.records.values()))
+                         self.blocks[0].id, tuple(d.layout for d in self.records.values()), receiver_init, kind)
         validate_function(fn)
         return fn
 
@@ -1164,6 +1175,26 @@ def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
             return _Builder(body, fn, coverage).build()
         except MIRPresenceError as failure:
             raise MIRUnsupported(fn, str(failure)) from failure
+    except MIRUnsupported as failure:
+        return MIRNotCovered(body, type(failure.node).__name__, failure.reason,
+                             getattr(failure.node, "loc", None))
+
+
+def lower_constructor(ctor: th.THIRConstructor, body: MIRBodyId, *,
+                      definitions: MIRDefinitions | None = None) -> MIRFunction | MIRNotCovered:
+    """Lower complete pure initialization before a supported constructor tail."""
+    try:
+        initialization = constructor_initialization(ctor)
+        fn = th.THIRFunction(
+            f"{ctor.record_name}.__init__", ctor.params, VoidType(), ctor.body, th.THIRFunctionLayout(),
+            receiver=th.THIRBorrowedRecord(initialization.layout.type, False))
+        coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions())
+        coverage.check()
+        coverage.records[initialization.layout.type] = initialization
+        try:
+            return _Builder(body, fn, coverage).build(initialization)
+        except MIRPresenceError as failure:
+            raise MIRUnsupported(ctor, str(failure)) from failure
     except MIRUnsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,
                              getattr(failure.node, "loc", None))

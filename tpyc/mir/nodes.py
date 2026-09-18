@@ -276,6 +276,13 @@ class MIRBlock:
 
 
 @dataclass(frozen=True)
+class MIRReceiverInit:
+    """Initialize supplied storage before the CFG can observe the receiver."""
+    receiver: MIRSlotId
+    fields: tuple[MIRSlotId | MIRConstant, ...]
+
+
+@dataclass(frozen=True)
 class MIRFunction:
     id: MIRBodyId
     return_type: TpyType
@@ -283,6 +290,8 @@ class MIRFunction:
     blocks: tuple[MIRBlock, ...]
     entry: MIRBlockId
     records: tuple[MIRRecordLayout, ...] = ()
+    receiver_init: MIRReceiverInit | None = None
+    kind: MIRBodyKind = MIRBodyKind.FREE_FUNCTION
 
 
 @dataclass(frozen=True)

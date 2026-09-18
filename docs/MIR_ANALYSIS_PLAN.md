@@ -1601,6 +1601,88 @@ M2.6, M2.7 and M2.8 each form one commit on the unmerged batch branch; broader
 M2 coverage and the M3-M5 analysis/authority work remain as listed below.
 
 
+## Approved batch: M2.9 constructors and M2.10 scalar globals
+
+The user approved these two increments on 2026-09-18. Develop them in order,
+review and verify each, and retain one squashed commit per increment on a
+single branch. Do not merge to master or push. Both remain analysis-only:
+source acceptance, diagnostics, C++ emission and provenance authority stay
+unchanged. Resolve routine implementation details within this boundary;
+stop for blockers or a material design change.
+
+### M2.9: complete scalar constructor initialization and body
+
+Admit unique constructors of eligible flat plain records with bool/int32
+fields and parameters. Every field must have exactly one explicit, pure
+parameter-or-literal member initializer. Then admit the existing body subset,
+including receiver aliases, singleton/mixed tuples, field writes and CFG.
+For example, initializing value=3, capturing (self, self.value), writing 7
+through the captured receiver and reading the captured scalar must retain
+the original receiver identity and the old scalar value 3.
+
+Invariant: complete initialization of caller-supplied receiver storage occurs
+before any body operation can observe or alias self. Represent this as an
+explicit MIR entry initialization with field values from scalar parameters
+or typed constants, followed by the ordinary CFG. This is not record
+replacement and does not require move assignment. The bounded initializers
+have no effects or self reads, so field declaration order versus source order
+is unobservable. No partially initialized receiver enters the CFG.
+
+Reuse the eligibility and complete-initializer verification in
+mir/definitions.py, factoring it from the additional empty-body restriction
+on caller-side constructor summaries. Constructor-body coverage must NOT
+relax MIRDefinitions: current call expansion reproduces only initializers,
+so calls to constructors with effects remain uncovered. Reuse the method
+receiver, place, alias, tuple and CFG machinery for the body.
+
+| Axis | Covered | Deferred / existing gap |
+|---|---|---|
+| Position | Constructor entry and supported body tail; existing function/method coverage unchanged | Module bodies and closures: M2; resumables, comprehension, with, try/finally, error-return and match: M3; generic instantiations: M4 |
+| Shape | bool/int32 receiver fields and parameters; existing supported local shapes and borrowed self tuples | Nested/reference/owning/Optional/union fields; non-scalar parameters; defaults, bases and special members: later M2; generics: M4 |
+| Slot | Receiver storage, parameters, entry locals, scalar fields, void return | Globals: M2.10; containers/captures/reference returns: later M2/M4 |
+| Operation | Complete pure entry initialization, then existing alias/mutation/CFG operations | Partial/demoted/default initialization, effectful initializers, calls and arbitrary construction effects: later M2/M3/M4 |
+
+Tests consume the actual emitted THIRConstructor, check entry initialization
+and execute both mutation branches over supplied empty receiver storage.
+Malformed-IR tests cover absent/duplicate/mistyped fields, non-parameter
+sources and wrong receiver identity/access. Rejection tests cover all
+excluded initializer families and confirm body-bearing constructors remain
+excluded from call summaries. Audit deliberate native constructor coverage;
+add one semantic witness only where the alias/scalar-snapshot interaction
+is not already pinned. Existing snapshots must remain identical.
+
+Pitfalls: mutation distinguishes alias from copy; singleton/mixed tuple
+captures preserve element semantics; the shared body lowering preserves
+conditional evaluation. Other source positions keep their explicit gates.
+No new view, allocation, numeric, warning or source-rejection behavior is
+introduced. Generic twins and partial initialization remain excluded rather
+than receiving fabricated facts. Independent design/parity surveys support
+this boundary; initialization and call-summary separation are review gates.
+
+### M2.10: qualified scalar global places
+
+Admit bool/int32 global reads and writes inside supported function, method
+and constructor bodies. Carry semantic module/binding identity from existing
+resolved bindings into THIR and then MIR; never recover identity from C++
+spelling or conflate a global with a same-named local. Imported aliases and
+module-qualified reads must identify the actual selected binding. Writes
+follow the binding selected by the existing frontend, including Python's
+distinction between module attributes and locally rebound imported names.
+
+Model globals as shared external storage, not copied parameters. Require
+explicit initial state when interpreting tests, and preserve mutations
+across separately executed bodies. Module initialization, native globals,
+reference/aggregate globals, closure captures and interprocedural effects
+remain outside this increment. The detailed producer survey precedes code.
+Test same-name globals in distinct modules, local shadowing, repeated reads,
+conditional writes and existing-body-position symmetry. MIR tests prove
+identity; native tests only pin deliberate source-semantic gaps in coverage.
+
+For each increment update this plan and the architecture/language status,
+run focused checks, the applicable specialist reviews and readiness gate,
+then one full forced suite. Fix and re-review findings before squashing;
+do not refresh existing snapshots without the user's approval.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

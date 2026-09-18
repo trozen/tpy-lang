@@ -11,7 +11,7 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
@@ -104,6 +104,10 @@ def _cyclic_blocks(blocks: dict[MIRBlockId, MIRBlock],
 
 
 def validate_function(fn: MIRFunction) -> None:
+    _require(fn.kind in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD, MIRBodyKind.CONSTRUCTOR),
+             "unsupported body kind")
+    _require((fn.kind is MIRBodyKind.CONSTRUCTOR) == (fn.receiver_init is not None),
+             "constructor entry mismatch")
     _require(bool(fn.id.module and fn.id.declaration), "empty body identity")
     _require(fn.return_type in (INT32, BOOL) or isinstance(fn.return_type, VoidType),
              "unsupported return type")
@@ -214,6 +218,30 @@ def validate_function(fn: MIRFunction) -> None:
         _require(slot.value_kind is MIRValueKind.PAYLOAD_ALIAS or slot.alias_source is None,
                  "payload alias source on non-alias slot")
         _require(isinstance(slot.kind, MIRSlotKind), "invalid slot kind")
+
+    if fn.receiver_init is not None:
+        init = fn.receiver_init
+        _require(isinstance(init, MIRReceiverInit) and init.receiver in slots,
+                 "invalid constructor receiver")
+        receiver = slots[init.receiver]
+        _require(receiver.kind is MIRSlotKind.PARAMETER
+                 and receiver.value_kind is MIRValueKind.BORROWED_RECORD
+                 and not receiver.readonly and receiver.type in records
+                 and isinstance(fn.return_type, VoidType), "invalid constructor receiver")
+        members = records[receiver.type].fields
+        _require(len(init.fields) == len(members), "incomplete receiver initialization")
+        for value, member in zip(init.fields, members):
+            match value:
+                case MIRSlotId():
+                    _require(value in slots and slots[value].kind is MIRSlotKind.PARAMETER
+                             and slots[value].value_kind is MIRValueKind.SCALAR
+                             and slots[value].type == member.type, "invalid receiver initializer parameter")
+                case MIRConstant(value=literal):
+                    _require((member.type == BOOL and type(literal) is bool)
+                             or (member.type == INT32 and type(literal) is int
+                                 and INT32_MIN <= literal <= INT32_MAX), "invalid receiver initializer constant")
+                case _:
+                    raise MIRValidationError("invalid receiver initializer")
 
     def slot_type(slot: MIRSlotId) -> TpyType:
         _require(slot in slots, "undeclared operand or destination")

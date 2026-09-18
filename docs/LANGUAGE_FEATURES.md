@@ -8324,9 +8324,14 @@ receiver and finalized readonly access. Scalar aliases and singleton/mixed tuple
 captures retain self identity; local alias reseats do not retarget the receiver.
 Existing field, owned-record and wrapper operations apply inside those bodies.
 Consuming/generated method variants, properties, dunders, static/class methods,
-constructors and resumables remain excluded. Direct self-to-Optional pointer
+resumables remain excluded. Direct self-to-Optional pointer
 initializers stay uncovered; self-to-union capture retains its frontend gate
 (`BUGS.md#self-record-union-initializer`).
+M2.9 adds bounded constructor bodies: complete pure bool/int32 field
+initialization precedes the existing body operations, preserving the supplied
+receiver's identity. Defaults, partial initialization, bases and reference-valued
+fields remain uncovered. Constructors with body effects still cannot be expanded
+at MIR call sites; analyzing their bodies does not supply a call summary.
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

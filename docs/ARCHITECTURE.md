@@ -34,7 +34,12 @@ alias-binding, owned-storage and direct-field facts from the existing lowering d
 Ordinary monomorphic instance methods also carry a borrowed receiver fact with
 the finalized method readonly verdict. MIR maps THIRSelf to the first borrowed
 parameter slot and reuses local alias, tuple and field-place operations; reseating
-the receiver is forbidden. Constructors, consuming/generated method variants,
+the receiver is forbidden. Bounded constructors have an explicit receiver
+initialization before the CFG: every bool/int32 field comes from a scalar
+parameter or literal, then existing body operations run on that same storage.
+Initialization is separate from record replacement. Constructor-call summaries
+still require an empty tail; body coverage does not imply call-effect coverage.
+Defaults, partial initialization, bases, consuming/generated method variants,
 properties, dunders and resumables retain their separate coverage boundaries.
 MIR uses body-scoped reference holders and explicit alias transfers; scalar
 field places contain dereference and qualified field projections. Distinct

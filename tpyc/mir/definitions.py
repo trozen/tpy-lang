@@ -39,7 +39,7 @@ class MIRConstructorDefinition:
     layout: MIRRecordLayout
 
 
-def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
+def constructor_initialization(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
     plain(ctor, {"record_name", "params", "mil_inits", "body", "record_layout"})
     layout = ctor.record_layout
     require(ctor, isinstance(layout, th.THIRRecordLayout), "missing record layout")
@@ -62,9 +62,6 @@ def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
     for p in ctor.params:
         plain(p, {"name", "type"})
         require(p, p.type in (BOOL, INT32), "constructor parameter type")
-    for stmt in ctor.body:
-        require(stmt, isinstance(stmt, th.THIRNoOpStmt), "constructor body effects")
-        plain(stmt, set())
     initialized: set[str] = set()
     for mil in ctor.mil_inits:
         plain(mil, {"field_cpp", "field_identity", "value"})
@@ -78,6 +75,14 @@ def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
     return MIRConstructorDefinition(ctor, MIRRecordLayout(
         typ, tuple(MIRField(MIRFieldId(f.owner, f.name), f.type) for f in layout.fields),
         layout.copyable, layout.movable))
+
+
+def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
+    definition = constructor_initialization(ctor)
+    for stmt in ctor.body:
+        require(stmt, isinstance(stmt, th.THIRNoOpStmt), "constructor body effects")
+        plain(stmt, set())
+    return definition
 
 
 @dataclass(frozen=True, init=False)

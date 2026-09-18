@@ -62,6 +62,11 @@ def dump_function(fn: MIRFunction) -> str:
             case _:
                 access = ""
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}")
+    if fn.receiver_init is not None:
+        init = fn.receiver_init
+        values = ", ".join(repr(value.value) if isinstance(value, MIRConstant) else f"%{value.index}"
+                           for value in init.fields)
+        lines.append(f"initialize-receiver %{init.receiver.index} ({values})")
     for block in fn.blocks:
         lines.append(f"bb{block.id.index}:")
         for stmt in block.statements:

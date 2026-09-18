@@ -1661,8 +1661,11 @@ alongside related feature work; only the big-rock deferrals live here.
   elements stay excluded; local/reseated capture and record-tuple parameter
   copies into later-reseated locals retain their frontend gates. M2.8 adds receiver
   facts and ordinary method-body coverage; consuming/generated variants,
-  properties/dunders/static/class methods and constructor bodies remain later
-  increments. Direct self-to-Optional pointer initializers remain uncovered;
+  properties/dunders/static/class methods remain later increments. M2.9 adds
+  complete scalar constructor initialization and supported body tails; defaults,
+  partial initialization, bases and reference-valued fields remain later work.
+  Constructor-call summaries still exclude body effects.
+  Direct self-to-Optional pointer initializers remain uncovered;
   self-to-union capture is tracked as `BUGS.md#self-record-union-initializer`.
   Inferred/whole-readonly auto tuple copies remain MIR-uncovered until
   `BUGS.md#readonly-auto-tuple-copy-fact` preserves their actual payload access.

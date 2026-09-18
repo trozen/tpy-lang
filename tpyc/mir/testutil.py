@@ -53,6 +53,15 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
     blocks = {b.id: b for b in fn.blocks}
     slots = {s.id: s for s in fn.slots}
     records = {r.type: r for r in fn.records}
+    if fn.receiver_init is not None:
+        init = fn.receiver_init
+        reference = values[init.receiver]
+        assert isinstance(reference, Reference) and not reference.path
+        assert reference.identity not in objects or not objects[reference.identity]
+        objects[reference.identity] = {
+            member.id: value.value if isinstance(value, MIRConstant) else values[value]
+            for member, value in zip(records[slots[init.receiver].type].fields, init.fields)
+        }
     next_identity = max(objects, default=0) + 1
     bid = fn.entry
     comparisons = {"<": operator.lt, "<=": operator.le, ">": operator.gt,
