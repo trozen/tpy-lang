@@ -43,6 +43,7 @@ from .faces import (begin_witness_journal, commit_witnesses,
                     rollback_witnesses)
 from ..parse.nodes import (
     FunctionLinkage,
+    is_parse_node,
     SourceLocation,
     TpyAwait,
     TpyDictComprehension,
@@ -258,16 +259,9 @@ def _strict_error(component: RejectComponent, node: object, where: str | None,
         f"generation ({reason})", loc=loc, component=component, reason=reason)
 
 
-def _is_node(x: object) -> bool:
-    # Recurse only into parse-tree dataclasses (patterns, handlers, and
-    # comprehension generators included); TpyType/SourceLocation values
-    # carry no landmark and types can be shared/cyclic, so skip them.
-    return (is_dataclass(x) and not isinstance(x, type)
-            and type(x).__module__ == TpyStmt.__module__
-            and type(x).__name__ != "SourceLocation")
-
-
 def _walk(root: object):
+    # Parse-tree nodes only: a TpyType carries no landmark and can be shared
+    # or cyclic, so the walk would not terminate on one.
     stack = [root]
     while stack:
         node = stack.pop()
@@ -275,8 +269,8 @@ def _walk(root: object):
         for f in dataclass_fields(node):
             v = getattr(node, f.name, None)
             if isinstance(v, (list, tuple)):
-                stack.extend(x for x in v if _is_node(x))
-            elif _is_node(v):
+                stack.extend(x for x in v if is_parse_node(x))
+            elif is_parse_node(v):
                 stack.append(v)
 
 

@@ -48,6 +48,8 @@ void match_arm_position();
 void scope_above_block_position();
 // def block_then_scope_position() -> None:
 void block_then_scope_position();
+// def two_block_defs_position() -> None:
+void two_block_defs_position();
 // def method_position() -> None:
 void method_position();
 // def main() -> None:

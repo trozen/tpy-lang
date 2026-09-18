@@ -1,2 +1,20 @@
 999
 42
+outer: 3
+sibling: 2
+before: 2
+before_sibling: 1
+if_arm: 2
+if_arm_sibling: 1
+lambda: 3
+lambda_sibling: 3
+nonlocal: 3
+nonlocal_sibling: 1
+transitive: 2
+transitive_sibling: 1
+arms: 2
+arms_sibling: 1
+named_not_called: 2
+named_not_called_sibling: 2
+lambda_param_shadow: 2
+lambda_param_sibling: 2

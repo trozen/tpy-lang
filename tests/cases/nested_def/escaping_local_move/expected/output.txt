@@ -1,1 +1,7 @@
 42
+unrelated: 1
+counter: 9
+other: 0
+reader: 4
+param_shadow: 1
+param_shadow_read: 3

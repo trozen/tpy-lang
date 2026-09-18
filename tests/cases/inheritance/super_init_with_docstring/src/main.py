@@ -1,4 +1,6 @@
-# Test: docstring before super().__init__() is allowed
+# What may sit around `super().__init__()` without displacing it from the
+# first-statement position the rule demands (error_super_not_first): a
+# docstring before it, and a nested `def` after it.
 
 class Parent:
     value: int
@@ -16,6 +18,26 @@ class Child(Parent):
         self.extra = extra
 
 
+class Nested(Parent):
+    extra: int
+
+    def __init__(self, value: int, extra: int) -> None:
+        super().__init__(value)
+
+        # the call above stays the first statement, so this is accepted. The
+        # nested def takes no parameter named like a module-level global --
+        # `n` below is one, and such a parameter miscompiles
+        # (BUGS.md#nested-local-shadows-module-global)
+        def bonus() -> int:  # tpyc: ok
+            return 5
+
+        self.extra = extra + bonus()
+
+
 c = Child(10, 20)
 print(c.value)
 print(c.extra)
+
+n = Nested(3, 4)
+print(n.value)
+print(n.extra)

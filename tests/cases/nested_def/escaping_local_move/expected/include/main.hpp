@@ -13,6 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def make_getter() -> Callable[[], int32]:
 std::function<int32_t()> make_getter();
+// def make_counter() -> Callable[[], int32]:
+std::function<int32_t()> make_counter();
+// def make_reader() -> Callable[[], int32]:
+std::function<int32_t()> make_reader();
+// def make_param_shadow() -> Callable[[], int32]:
+std::function<int32_t()> make_param_shadow();
 // def main() -> None:
 void main();
 

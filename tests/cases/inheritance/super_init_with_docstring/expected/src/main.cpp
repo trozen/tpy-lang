@@ -4,10 +4,15 @@
 namespace tpyapp::main {
 
 Child* c{};
+Nested* n{};
 
 // c = Child(10, 20)
 // print(c.value)
 // print(c.extra)
+//
+// n = Nested(3, 4)
+// print(n.value)
+// print(n.extra)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -17,6 +22,10 @@ void __tpy_init() {
     c = &__global_slot_1;
     std::cout << c->value << "\n";
     std::cout << c->extra << "\n";
+    static Nested __global_slot_2 = Nested(::tpy::BigInt(3), ::tpy::BigInt(4));
+    n = &__global_slot_2;
+    std::cout << n->value << "\n";
+    std::cout << n->extra << "\n";
 }
 
 } // namespace tpyapp::main

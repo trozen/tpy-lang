@@ -13,6 +13,24 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def make_getter() -> Callable[[], int32]:
 std::function<int32_t()> make_getter();
+// def make_sibling_reader() -> Callable[[], int32]:
+std::function<int32_t()> make_sibling_reader();
+// def make_before_sibling() -> Callable[[], int32]:
+std::function<int32_t()> make_before_sibling();
+// def make_if_arm_sibling() -> Callable[[], int32]:
+std::function<int32_t()> make_if_arm_sibling();
+// def make_lambda_reader() -> Callable[[], int32]:
+std::function<int32_t()> make_lambda_reader();
+// def make_nonlocal_sibling() -> Callable[[], int32]:
+std::function<int32_t()> make_nonlocal_sibling();
+// def make_transitive_sibling() -> Callable[[], int32]:
+std::function<int32_t()> make_transitive_sibling();
+// def make_two_arms_same_name() -> Callable[[], int32]:
+std::function<int32_t()> make_two_arms_same_name();
+// def make_named_not_called() -> Callable[[], int32]:
+std::function<int32_t()> make_named_not_called();
+// def make_lambda_param_shadow() -> Callable[[], int32]:
+std::function<int32_t()> make_lambda_param_shadow();
 // def main() -> None:
 void main();
 

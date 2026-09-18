@@ -7,7 +7,7 @@ No parsing logic lives here.
 
 from __future__ import annotations
 import ast
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, is_dataclass
 from enum import Enum, IntEnum
 from typing import Any, Callable, Iterator, Literal, Optional, TYPE_CHECKING
 
@@ -1875,11 +1875,17 @@ def is_base_init_call(stmt: TpyStmt) -> bool:
     return False
 
 
-def collect_name_refs(expr: TpyExpr) -> set[str]:
+def collect_name_refs(expr: TpyExpr, *, into_lambdas: bool = False) -> set[str]:
     """Collect all name references in an expression tree.
 
     Uses TpyExpr.children() for generic traversal. TpyCall.func is a
     TpyName child, so callable variable names are captured automatically.
+
+    `into_lambdas` also walks a lambda's body, which `children()` withholds
+    because the lambda is its own scope -- for a caller asking which names
+    the expression can READ rather than which ones it binds here. The
+    lambda's own parameters are reported too, so such a caller has to be one
+    that can afford the conservative answer.
     """
     names: set[str] = set()
     stack: list[TpyExpr] = [expr]
@@ -1889,6 +1895,8 @@ def collect_name_refs(expr: TpyExpr) -> set[str]:
             names.add(node.name)
         else:
             stack.extend(node.children())
+            if into_lambdas and isinstance(node, TpyLambda):
+                stack.append(node.body)
     return names
 
 
@@ -2238,3 +2246,25 @@ def walk_body_stmts(
             on_expr(expr)
         for body in stmt.sub_bodies():
             walk_body_stmts(body, on_expr, on_stmt)
+
+
+# Non-node records a caller can actually meet, and so has to be told apart
+# from a node: `SourceLocation` hangs off every node and carries no position
+# in the tree of its own.
+_NON_NODE_RECORDS = frozenset(('SourceLocation',))
+
+
+def is_parse_node(obj: object) -> bool:
+    """True for a dataclass INSTANCE declared in this module, other than the
+    records listed above -- which is every parse-tree node.
+
+    It is not an exact characterization of "node": the other dataclasses
+    declared here (`ParseWarning`, `ModuleDirectives`, `RelativeImportKey`)
+    answer True as well. Nothing is wrong with that today -- no tree walk and
+    no per-function tracking state holds one -- but a caller that could meet
+    one needs its own test. `ParseError` and the enums are not dataclasses,
+    so they answer False.
+    """
+    return (is_dataclass(obj) and not isinstance(obj, type)
+            and type(obj).__module__ == __name__
+            and type(obj).__name__ not in _NON_NODE_RECORDS)

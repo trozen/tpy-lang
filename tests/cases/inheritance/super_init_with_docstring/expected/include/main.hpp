@@ -9,8 +9,10 @@ namespace tpyapp::main {
 
 struct Parent;
 struct Child;
+struct Nested;
 
 extern Child* c;
+extern Nested* n;
 inline constexpr std::string_view __name__ = "__main__";
 
 // class Parent:
@@ -45,6 +47,22 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+// class Nested(Parent):
+struct Nested : Parent {
+    // extra: int
+    ::tpy::BigInt extra;
+
+    // def __init__(self, value: int, extra: int) -> None:
+    Nested() = default;
+    explicit Nested(const ::tpy::BigInt& value, const ::tpy::BigInt& extra);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Nested";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Nested& obj) {
+    ::tpy::print_object_default(os, "Nested", obj);
+    return os;
+}
+
 
 // def __init__(self, value: int) -> None:
 //     self.value = value
@@ -55,6 +73,24 @@ inline Parent::Parent(const ::tpy::BigInt& value) : value(value) {}
 //     super().__init__(value)
 //     self.extra = extra
 inline Child::Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Parent(value), extra(extra) {
+}
+
+// def __init__(self, value: int, extra: int) -> None:
+//     super().__init__(value)
+//
+//     # the call above stays the first statement, so this is accepted. The
+//     # nested def takes no parameter named like a module-level global --
+//     # `n` below is one, and such a parameter miscompiles
+//     # (BUGS.md#nested-local-shadows-module-global)
+//     def bonus() -> int:  # tpyc: ok
+//         return 5
+//
+//     self.extra = extra + bonus()
+inline Nested::Nested(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Parent(value) {
+    auto bonus = []() -> ::tpy::BigInt {
+        return ::tpy::BigInt(5);
+    };
+    this->extra = ((extra) + (bonus()));
 }
 void __tpy_init();
 } // namespace tpyapp::main

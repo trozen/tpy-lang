@@ -1,1 +1,11 @@
-main.py:15: warning: Escaping closure 'get_value' copies local 'cfg' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:21: warning: Escaping closure 'get_value' copies local 'cfg' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:34: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:49: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:57: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:71: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:85: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:85: warning: Escaping closure captures local 'data' by value, but 'data' is reassigned after the closure is created; the closure keeps the value from capture time (CPython would observe the later value). Capture a fresh local that is not reassigned (e.g. `snap = data`), or use copy() to make the snapshot explicit.
+main.py:103: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:113: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:132: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:144: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit

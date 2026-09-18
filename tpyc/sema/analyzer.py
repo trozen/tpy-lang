@@ -23,7 +23,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
 )
 from ..type_def_registry import is_span, is_varargs, is_spanlike_view
-from ..identity_map import IdentityMap
+from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
@@ -1867,19 +1867,63 @@ class SemanticAnalyzer:
 
     @staticmethod
     def _names_used_after(body: list[TpyStmt], nested_node: TpyNestedDef) -> set[str]:
-        """Collect names referenced in top-level statements after the nested def."""
+        """Collect names referenced after the nested def -- in the statements
+        that follow it, in the lambdas they build, and by every sibling `def`
+        those statements can reach.
+
+        A sibling def's body is a separate scope, but not for this question:
+        it reads the local while the escaping closure is alive, so moving the
+        local into that closure would leave the sibling reading a moved-from
+        object. Which enclosing locals a sibling reads is not re-derived here
+        -- `_analyze_nested_def` decided it, and `TpyNestedDef.captured_names`
+        is the authoritative answer (the names it writes through with
+        `nonlocal` are already in it). That verdict is read off the node
+        itself, never matched by name: two arms of an `if` can hold two
+        different defs called the same thing.
+
+        A sibling written after this def can be reached; one written before
+        can as soon as a statement after this def names it, or a sibling
+        already reachable captures it. The answer is deliberately
+        conservative -- a sibling that is named but never called, and a
+        lambda parameter that shadows the local, both count -- because the
+        cost of a wrong YES is a copy and the cost of a wrong NO is a read of
+        moved-from storage.
+        """
         found = False
         after_stmts: list[TpyStmt] = []
-        target_name = nested_node.func.name
         for stmt in body:
             if found:
                 after_stmts.append(stmt)
-            elif isinstance(stmt, TpyNestedDef) and stmt.func.name == target_name:
+            elif stmt is nested_node:
                 found = True
         if not found:
             # Nested def not at top level of body -- conservatively assume all used
             return set(nested_node.captured_names or [])
-        return _collect_body_name_refs(after_stmts)
+        names = _collect_body_name_refs(after_stmts, into_lambdas=True)
+        siblings: list[TpyNestedDef] = []
+        written_after: IdentitySet = IdentitySet()
+
+        def on_stmt(stmt: TpyStmt) -> None:
+            if isinstance(stmt, TpyNestedDef) and stmt is not nested_node:
+                siblings.append(stmt)
+
+        def on_after_stmt(stmt: TpyStmt) -> None:
+            if isinstance(stmt, TpyNestedDef) and stmt is not nested_node:
+                written_after.add(stmt)
+
+        walk_body_stmts(body, lambda e: None, on_stmt)
+        walk_body_stmts(after_stmts, lambda e: None, on_after_stmt)
+        # Fixpoint: a name one sibling captures can be another sibling's.
+        merged: IdentitySet = IdentitySet()
+        while True:
+            newly = [sib for sib in siblings
+                     if sib not in merged
+                     and (sib in written_after or sib.func.name in names)]
+            if not newly:
+                return names
+            for sib in newly:
+                merged.add(sib)
+                names.update(sib.captured_names)
 
     def _warn_stale_value_captures(self) -> None:
         """Warn on an escaping by-value closure whose captured local is
@@ -1899,9 +1943,8 @@ class SemanticAnalyzer:
         # (stmt index, warn-at node, by-value captured names)
         closures: list[tuple[int, TpyExpr | TpyNestedDef, list[str]]] = []
         rebound_per_stmt: list[set[str]] = []
-        # Top-level body index of each nested def, by name. The body's
-        # TpyNestedDef is a stale copy -- escape/capture facts live on the
-        # analyzed node in nested_def_nodes -- so body only supplies position.
+        # Top-level body index of each nested def, by name; a def bound deeper
+        # has no position here and is skipped below.
         nd_index: dict[str, int] = {}
         for idx, stmt in enumerate(body):
             rebound_per_stmt.append(collect_fact_kills([stmt]).names)

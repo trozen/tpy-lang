@@ -36,6 +36,7 @@ from .nodes import (
     collect_name_refs,
     collect_top_level_local_names,
     expr_reads_self_field,
+    is_parse_node,
     is_stable_address_lvalue,
     walk_body_stmts,
     walrus_bindings,
@@ -79,6 +80,7 @@ __all__ = [
     "collect_name_refs",
     "collect_top_level_local_names",
     "expr_reads_self_field",
+    "is_parse_node",
     "walrus_bindings",
     # imports
     "is_parser_keyword", "_IMPLICIT_MODULES",

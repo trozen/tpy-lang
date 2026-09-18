@@ -459,6 +459,49 @@ void block_then_scope_position() {
     std::cout << "block_then_scope:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
 }
 
+// def two_block_defs_position() -> None:
+//     # TWO defs in one block: both are readable while the block is open, and a
+//     # later SCOPE-level def of the first name supersedes its block binding --
+//     # the sibling def must not cost the first one either property
+//     flag = True
+//     if flag:
+//         def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//             xs.append(20)
+//             return len(xs)
+//
+//         def twice(xs: list[int32]) -> int32:  # tpyc: ok
+//             return tally(xs) + tally(xs)
+//
+//         inner = [11]
+//         print("two_block_defs inside:", twice(inner), inner)  # tpyc: ok
+//
+//     def tally(xs: list[int32]) -> int32:  # tpyc: ok
+//         xs.append(21)
+//         return len(xs)
+//
+//     data = [12]
+//     print("two_block_defs:", tally(data), data)  # tpyc: ok
+void two_block_defs_position() {
+    bool flag = true;
+    if (flag) {
+        auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+            xs.push_back(20);
+            return ::tpy::__len__(xs);
+        };
+        auto twice = [&tally](std::vector<int32_t>& xs) -> int32_t {
+            return (::tpy::add_check<int32_t>(tally(xs), tally(xs)));
+        };
+        std::vector<int32_t> inner = {11};
+        std::cout << "two_block_defs inside:" << " " << twice(inner) << " " << ::tpy::ListPrinter(inner) << "\n";
+    }
+    auto tally = [](std::vector<int32_t>& xs) -> int32_t {
+        xs.push_back(21);
+        return ::tpy::__len__(xs);
+    };
+    std::vector<int32_t> data = {12};
+    std::cout << "two_block_defs:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+}
+
 // def method_position() -> None:
 //     c = Counter()
 //     m = [5]
@@ -489,6 +532,7 @@ void method_position() {
 //     match_arm_position()
 //     scope_above_block_position()
 //     block_then_scope_position()
+//     two_block_defs_position()
 //     method_position()
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
@@ -510,6 +554,7 @@ void main() {
     ::tpyapp::main::match_arm_position();
     ::tpyapp::main::scope_above_block_position();
     ::tpyapp::main::block_then_scope_position();
+    ::tpyapp::main::two_block_defs_position();
     ::tpyapp::main::method_position();
 }
 

@@ -6,7 +6,7 @@ Contains the shared state that is passed to all semantic analysis components.
 
 from __future__ import annotations
 from contextlib import contextmanager
-from copy import copy, deepcopy
+from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any, Iterator, NamedTuple, TYPE_CHECKING
@@ -29,6 +29,7 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
+    FunctionInfo,
     is_dyn_protocol, contains_pending_leaf,
 )
 from ..namespace import Namespace
@@ -38,6 +39,7 @@ from ..parse import (
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
     TpyUnaryOp, TpyIfExpr, TpyTupleLiteral, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
+    is_parse_node,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import call_returns_cpp_ref
@@ -1422,23 +1424,22 @@ class FunctionTrackingState:
     current_awaited_subframes: list = field(default_factory=list)
 
     def __deepcopy__(self, memo: dict) -> 'FunctionTrackingState':
-        # `LIVE_HANDLE_FIELDS` are the objects the enclosing analysis keeps
-        # using after the restore, carried over AS THEMSELVES.
-        # `AST_IDENTITY_FIELDS` hold AST nodes as VALUES, carried over BY
-        # IDENTITY: a snapshot is what a restore installs, so clones would
-        # leave every consumer that compares against the live node (the
-        # pending anchor's `is` walk over the compound stack,
-        # `record_branch_decls`' identity-keyed map) silently missing. The
-        # same argument `IdentityMap.__deepcopy__` makes for identity KEYS.
-        # Every other field still copies deeply, so a nested def's mutations
-        # stay isolated.
+        # A snapshot owns the facts, not the structures the whole compilation
+        # shares: the parse tree and the registry's function records are not
+        # state to roll back, so a save must never clone one. Seeding the
+        # memo carries them over by identity while the containers around them
+        # still copy deeply -- the same argument `IdentityMap.__deepcopy__`
+        # makes for identity KEYS. `LIVE_HANDLE_FIELDS` are shared structure
+        # by the same principle, one level up: the enclosing analysis goes on
+        # binding into that scope and those namespaces, so the field carries
+        # the object itself rather than a copy seeded from its contents.
         new = self.__class__.__new__(self.__class__)
         memo[id(self)] = new
-        for name, value in vars(self).items():
+        attrs = vars(self)
+        seed_identity_objects(attrs, memo)
+        for name, value in attrs.items():
             if name in LIVE_HANDLE_FIELDS:
                 setattr(new, name, value)
-            elif name in AST_IDENTITY_FIELDS:
-                setattr(new, name, copy(value))
             else:
                 setattr(new, name, deepcopy(value, memo))
         return new
@@ -1529,16 +1530,63 @@ class FunctionTrackingState:
         return bp.borrow_source_roots if bp is not None else frozenset()
 
 
-# FunctionTrackingState fields whose contents are AST nodes consumers compare
-# by identity. `FunctionTrackingState.__deepcopy__` copies them shallow.
-# The three `pending_*` lists park an expression for a POST-BODY consumer that
-# asks the identity-keyed `expr_types` for its type; a cloned node answers None
-# there, which reads as "no borrowable storage" and turns a valid borrow yield
-# into a rejection (or, at the generic slot, silently into a value slot).
-AST_IDENTITY_FIELDS = frozenset((
-    'compound_stack', 'pending_loop_vars', 'pending_yield_root_checks',
-    'pending_generic_yield_sources', 'pending_view_storage_checks',
-))
+_ATOMIC_VALUES = (str, bytes, bytearray, int, float, complex, bool,
+                  type(None), type, Enum)
+
+
+def _object_members(obj: object) -> Iterator[object]:
+    """The values an ordinary object holds, `__slots__` classes included."""
+    holder = getattr(obj, '__dict__', None)
+    if holder is not None:
+        yield from holder.values()
+    for cls in type(obj).__mro__:
+        for name in getattr(cls, '__slots__', ()):
+            try:
+                yield getattr(obj, name)
+            except AttributeError:
+                pass
+
+
+def seed_identity_objects(value: object, memo: dict,
+                          seen: 'set[int] | None' = None) -> None:
+    """Map every object under `value` that must NOT be cloned to ITSELF, so a
+    `deepcopy` through `memo` hands the original back.
+
+    Two kinds qualify. Parse nodes: the tree the analysis reads, which no
+    snapshot owns. Registry `FunctionInfo`s: the call-graph objects Phase-2
+    mutation propagation reads facts off BY IDENTITY, reached from a state
+    through a call edge. `TpyType`s are skipped -- shared, possibly cyclic,
+    and nothing keys on their identity.
+    """
+    if seen is None:
+        seen = set()
+    if isinstance(value, _ATOMIC_VALUES):
+        return
+    key = id(value)
+    if key in seen:
+        return
+    seen.add(key)
+    if is_parse_node(value) or isinstance(value, FunctionInfo):
+        memo[key] = value
+    elif isinstance(value, TpyType):
+        pass
+    elif isinstance(value, (list, tuple, set, frozenset)):
+        for item in value:
+            seed_identity_objects(item, memo, seen)
+    elif isinstance(value, dict):
+        for dict_key, item in value.items():
+            seed_identity_objects(dict_key, memo, seen)
+            seed_identity_objects(item, memo, seen)
+    elif isinstance(value, IdentityMap):
+        # Its KEYS survive its own `__deepcopy__`; its values do not.
+        for item in value.values():
+            seed_identity_objects(item, memo, seen)
+    elif isinstance(value, IdentitySet):
+        # Its members ARE its keys, so they survive its own `__deepcopy__`.
+        pass
+    else:
+        for member in _object_members(value):
+            seed_identity_objects(member, memo, seen)
 
 
 # FunctionTrackingState fields holding the LIVE handles of the enclosing
@@ -2363,11 +2411,12 @@ class SemanticContext:
         The restore installs the SNAPSHOT, so anything the enclosing analysis
         goes on using must survive the round trip as ITSELF. Two groups do:
         the live scope, namespaces and function node (`LIVE_HANDLE_FIELDS`),
-        and the fields holding AST nodes -- as identity KEYS (`IdentityMap` /
-        `IdentitySet`, e.g. `pre_analyzed_method_args`) or as VALUES
-        (`AST_IDENTITY_FIELDS`). Each `__deepcopy__` says why. Callers get
-        those handles back live from `restore_function_state` and must not
-        re-attach them themselves.
+        carried over unchanged; and every parse node and registry
+        `FunctionInfo` the copy reaches, wherever it sits -- an identity KEY
+        (`IdentityMap` / `IdentitySet`, e.g. `pre_analyzed_method_args`), a
+        container value, or an attribute of a state object. Each
+        `__deepcopy__` says why. Callers get the live handles back from
+        `restore_function_state` and must not re-attach them themselves.
         """
         return deepcopy(self.func)
 

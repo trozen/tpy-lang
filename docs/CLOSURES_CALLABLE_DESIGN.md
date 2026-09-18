@@ -492,6 +492,15 @@ This reuses the existing last-use / auto-move infrastructure in sema. The closur
 creation point is treated as a "use" of each moved-captured variable, and subsequent
 uses are flagged as use-after-move errors.
 
+A capture is only moved when nothing uses the local afterwards, and a *sibling*
+nested `def` counts: a read of the local in its body -- or a `nonlocal`
+declaration of it, which names the enclosing binding rather than shadowing it --
+is a later use whether that sibling is written before the escaping `def` (and
+referenced after it) or after, and so is a read inside a lambda built after it.
+The capture then copies and warns instead. The answer is deliberately
+conservative: a sibling that merely mentions the local and is never called
+counts too.
+
 ### Escaping Closure: Stale Value-Capture Warning
 
 An escaping closure must *own* its captures (by value), so it freezes each captured

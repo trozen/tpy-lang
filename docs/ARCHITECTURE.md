@@ -369,8 +369,17 @@ store the key beside the value; every such table on
 `SemanticContext`, `SemanticAnalyzer`, `CodeGenContext`, `Compiler`
 and `THIRResumableBody` uses them, and their `__deepcopy__` carries
 keys over by identity so a snapshot is still looked up with the live
-node. A `WeakKeyDictionary` is not available: AST nodes are plain
-`@dataclass`es, so they define `__eq__` and are unhashable -- which
+node. The same holds for what a snapshot HOLDS, not just what it is
+keyed by: `FunctionTrackingState.__deepcopy__` seeds its memo with
+every parse node and registry `FunctionInfo` it reaches, so a restore
+never installs a clone of something a later phase compares with `is`
+or stamps a fact on. That walk stops at a `TpyType`, so a node
+reachable only through one (`PendingGenericInstanceType.expr`) is
+still cloned. The live scope, namespaces and function node
+(`LIVE_HANDLE_FIELDS`) are not copied at all, for a stronger reason
+than identity lookups: the enclosing analysis goes on binding into
+them after the restore. A `WeakKeyDictionary` is not available: AST nodes are
+plain `@dataclass`es, so they define `__eq__` and are unhashable -- which
 is why `id()` was reached for in the first place. Raw `id()` keys
 remain sound only where the container is a local recursion guard or
 worklist whose keyed objects are alive for the whole call, or where a

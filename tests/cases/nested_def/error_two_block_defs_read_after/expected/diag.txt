@@ -1,0 +1,1 @@
+main.py:33: error: 'scale' is not readable after the 'if' block on line 15: the nested function 'scale' defined on line 16 is bound inside that block and does not outlive it, and a nested 'def' makes its name a local of the whole enclosing scope, so this read cannot reach an outer 'scale' -- move the 'def' above the block, or rename it

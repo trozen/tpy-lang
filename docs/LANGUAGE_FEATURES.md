@@ -7941,6 +7941,12 @@ Send/Sync rules for built-in types:
   and the C++ build fails naming a symbol the user never wrote
   (`BUGS.md#module-level-block-scoped-def-not-declared`, the same defect as
   `BUGS.md#conditional-def-lambda-block-scoped`).
+  An escaping closure MOVES a captured local only when nothing uses it
+  afterwards; a read inside a sibling nested `def` (written after it, or written
+  before it and referenced after), a `nonlocal` declaration of the name in such a
+  sibling, and a read inside a lambda built after it all count as a later use, so
+  the capture copies and warns instead. The rule is deliberately conservative: a
+  sibling that merely mentions the local and is never called counts too.
   Escaping closures that
   capture `str` parameters are rejected (string_view would dangle). Returning a
   view of a CAPTURED enclosing name is rejected too -- `def inner() -> StrView:

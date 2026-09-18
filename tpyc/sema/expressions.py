@@ -87,16 +87,19 @@ if TYPE_CHECKING:
 from tpyc import modules as builtin_modules
 
 
-def _collect_body_name_refs(stmts: list[TpyStmt]) -> set[str]:
+def _collect_body_name_refs(stmts: list[TpyStmt],
+                           into_lambdas: bool = False) -> set[str]:
     """Collect all name references from a list of statements.
 
     Walks all expressions in statements to find free variable references.
-    Does NOT recurse into nested function definitions (separate scope).
+    Does NOT recurse into nested function definitions (separate scope);
+    `into_lambdas` opts into the lambda bodies, which are withheld for the
+    same reason -- see `collect_name_refs`.
     """
     names: set[str] = set()
 
     def on_expr(expr: TpyExpr) -> None:
-        names.update(collect_name_refs(expr))
+        names.update(collect_name_refs(expr, into_lambdas=into_lambdas))
 
     walk_body_stmts(stmts, on_expr, lambda s: None)
     return names
@@ -127,6 +130,19 @@ def _collect_body_local_defs(stmts: list[TpyStmt]) -> set[str]:
 
     walk_body_stmts(stmts, lambda e: None, on_stmt)
     return defs
+
+
+def _nested_def_free_names(func: TpyFunction) -> set[str]:
+    """Names a nested def's body reads from the scope the `def` is written in.
+
+    A binding of its own -- a parameter, an assignment, a loop variable --
+    shadows the enclosing name and is not such a read. A `nonlocal` target is
+    not counted here either: the caller has the authoritative set and adds it
+    back, because it is a write THROUGH to the enclosing binding.
+    """
+    return (_collect_body_name_refs(func.body)
+            - {p for p, _ in func.params}
+            - _collect_body_local_defs(func.body))
 
 
 def _union_like_members(ut: TpyType) -> 'tuple[TpyType, ...]':

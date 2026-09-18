@@ -1,12 +1,14 @@
 # A nested def whose name matches a module-level function or a method of the
 # enclosing record. The lambda shadows the outer name for the rest of the body,
 # exactly as Python rebinds it; the list params are mutated and re-read so a
-# copy at the lambda boundary would show up in the output. The last six
-# sections bind the shadowing name inside an `if` / `for` / `while` / `with` /
-# `try` / `match` body and read it THERE, while the block is still open; a
-# read after such a block is the error
+# copy at the lambda boundary would show up in the output. Six sections bind
+# the shadowing name inside an `if` / `for` / `while` / `with` / `try` /
+# `match` body and read it THERE, while the block is still open; a read after
+# such a block is the error
 # (nested_def/error_branch_local_read_after) -- unless a SCOPE-level def of the
-# name is in effect there, which the last two sections cover from either side.
+# name is in effect there, which two more sections cover from either side. The
+# last section puts TWO defs in one block: each retires with the block
+# independently of its sibling (nested_def/error_two_block_defs_read_after).
 from typing import Callable
 
 from tpy import int32
@@ -275,6 +277,30 @@ def block_then_scope_position() -> None:
     print("block_then_scope:", tally(data), data)  # tpyc: ok
 
 
+def two_block_defs_position() -> None:
+    # TWO defs in one block: both are readable while the block is open, and a
+    # later SCOPE-level def of the first name supersedes its block binding --
+    # the sibling def must not cost the first one either property
+    flag = True
+    if flag:
+        def tally(xs: list[int32]) -> int32:  # tpyc: ok
+            xs.append(20)
+            return len(xs)
+
+        def twice(xs: list[int32]) -> int32:  # tpyc: ok
+            return tally(xs) + tally(xs)
+
+        inner = [11]
+        print("two_block_defs inside:", twice(inner), inner)  # tpyc: ok
+
+    def tally(xs: list[int32]) -> int32:  # tpyc: ok
+        xs.append(21)
+        return len(xs)
+
+    data = [12]
+    print("two_block_defs:", tally(data), data)  # tpyc: ok
+
+
 def method_position() -> None:
     c = Counter()
     m = [5]
@@ -301,6 +327,7 @@ def main() -> None:
     match_arm_position()
     scope_above_block_position()
     block_then_scope_position()
+    two_block_defs_position()
     method_position()
 
 

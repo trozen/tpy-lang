@@ -85,7 +85,7 @@ from ..value_category import (
     async_return_form, AsyncReturnForm, frame_factory_callee,
     frame_temp_arg_source,
 )
-from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
+from .expressions import _nested_def_free_names, _find_list_member
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
     view_source_is_temporary, walk_view_source_leaves,
@@ -3521,7 +3521,6 @@ class StatementAnalyzer:
         resolved_params_bare = [(p, self.type_ops.resolve_type(t)) for p, t in func.params]
         func.params = [(p, make_ref(t)) for p, t in resolved_params_bare]
         params = resolved_params_bare
-        param_names = {p for p, _ in params}
         return_type = self.type_ops.resolve_type(func.return_type)
         func.return_type = make_ref(return_type)
 
@@ -3581,10 +3580,8 @@ class StatementAnalyzer:
         self.ctx.func.closure_written_names |= nonlocal_names
 
         # Compute captures: free variables that come from outer scope
-        free_names = _collect_body_name_refs(func.body)
-        local_defs = _collect_body_local_defs(func.body)
         captured = sorted(
-            (free_names - param_names - local_defs - nonlocal_names) & outer_locals
+            (_nested_def_free_names(func) - nonlocal_names) & outer_locals
         )
         # Nonlocal names are also captures (mutable references)
         for name in sorted(nonlocal_names):

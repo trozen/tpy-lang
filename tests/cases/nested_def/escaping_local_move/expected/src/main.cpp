@@ -17,12 +17,99 @@ std::function<int32_t()> make_getter() {
     return get_value;
 }
 
+// def make_counter() -> Callable[[], int32]:
+//     start = 9
+//     # value local: captured BY VALUE, so the sibling def below cannot make it
+//     # a reference into the frame `make_counter` is about to leave
+//     def read() -> int32:  # tpyc: ok
+//         return start
+//     def unrelated() -> int32:  # tpyc: ok
+//         return 1
+//     print("unrelated:", unrelated())
+//     return read
+std::function<int32_t()> make_counter() {
+    int32_t start = 9;
+    auto read = [start]() -> int32_t {
+        return start;
+    };
+    auto unrelated = []() -> int32_t {
+        return 1;
+    };
+    std::cout << "unrelated:" << " " << unrelated() << "\n";
+    return read;
+}
+
+// def make_reader() -> Callable[[], int32]:
+//     xs = [1, 2, 3]
+//     # the append keeps `xs` a vector rather than a constant array, so the move
+//     # into the closure below is a real move of owned storage
+//     xs.append(4)
+//     # reference local at its last use: MOVED into the closure, sibling or not
+//     def total() -> int32:  # tpyc: ok
+//         return len(xs)
+//     def other() -> int32:  # tpyc: ok
+//         return 0
+//     print("other:", other())
+//     return total
+std::function<int32_t()> make_reader() {
+    std::vector<int32_t> xs = {1, 2, 3};
+    xs.push_back(4);
+    auto total = [xs = std::move(xs)]() -> int32_t {
+        return ::tpy::__len__(xs);
+    };
+    auto other = []() -> int32_t {
+        return 0;
+    };
+    std::cout << "other:" << " " << other() << "\n";
+    return total;
+}
+
+// def make_param_shadow() -> Callable[[], int32]:
+//     xs = [1, 2]
+//     xs.append(3)
+//     def total() -> int32:  # tpyc: ok
+//         return len(xs)
+//     # the sibling's PARAMETER takes the local's name, so its body reads the
+//     # parameter and not the local -- no later use, and the move stands
+//     def unrelated(xs: list[int32]) -> int32:  # tpyc: ok
+//         return len(xs)
+//     print("param_shadow:", unrelated([0]))
+//     return total
+std::function<int32_t()> make_param_shadow() {
+    std::vector<int32_t> xs = {1, 2};
+    xs.push_back(3);
+    auto total = [xs = std::move(xs)]() -> int32_t {
+        return ::tpy::__len__(xs);
+    };
+    auto unrelated = [](std::vector<int32_t>& xs) -> int32_t {
+        return ::tpy::__len__(xs);
+    };
+    std::vector<int32_t> __tmp_1 = {0};
+    std::cout << "param_shadow:" << " " << unrelated(__tmp_1) << "\n";
+    return total;
+}
+
 // def main() -> None:
 //     getter = make_getter()
 //     print(getter())
+//     # the calls are hoisted out of the prints: the factories write to stdout,
+//     # and an argument that does interleaves ahead of the earlier arguments
+//     # (BUGS.md#subexpression-right-to-left-eval)
+//     counted = make_counter()()
+//     print("counter:", counted)
+//     read = make_reader()()
+//     print("reader:", read)
+//     shadowed = make_param_shadow()()
+//     print("param_shadow_read:", shadowed)
 void main() {
     std::function<int32_t()> getter = ::tpyapp::main::make_getter();
     std::cout << getter() << "\n";
+    int32_t counted = (::tpyapp::main::make_counter())();
+    std::cout << "counter:" << " " << counted << "\n";
+    int32_t read = (::tpyapp::main::make_reader())();
+    std::cout << "reader:" << " " << read << "\n";
+    int32_t shadowed = (::tpyapp::main::make_param_shadow())();
+    std::cout << "param_shadow_read:" << " " << shadowed << "\n";
 }
 
 // main()
