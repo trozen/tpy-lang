@@ -161,8 +161,8 @@ struct __gen_each_list : public ::tpy::next_iter_mixin<__gen_each_list, ::tpy::v
     int32_t __state;
     std::vector<std::vector<int32_t>>& xs;
     std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -188,8 +188,8 @@ struct __gen_each_rec : public ::tpy::next_iter_mixin<__gen_each_rec, ::tpy::val
     int32_t __state;
     std::vector<Box>& xs;
     Box* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -215,8 +215,8 @@ struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::v
     int32_t __state;
     ::tpy::varargs<std::vector<int32_t>> xs;
     std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -242,8 +242,8 @@ struct __gen_each_local : public ::tpy::next_iter_mixin<__gen_each_local, ::tpy:
     int32_t __state;
     ::tpy::frame_slot<std::vector<std::vector<int32_t>>> own;
     std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -318,8 +318,8 @@ struct __gen_each_dict : public ::tpy::next_iter_mixin<__gen_each_dict, ::tpy::v
     int32_t __state;
     std::vector<::tpy::ordered_map<int32_t, int32_t>>& xs;
     ::tpy::ordered_map<int32_t, int32_t>* d = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::ordered_map<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::ordered_map<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<::tpy::ordered_map<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<::tpy::ordered_map<int32_t, int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -345,8 +345,8 @@ struct __gen_each_set : public ::tpy::next_iter_mixin<__gen_each_set, ::tpy::val
     int32_t __state;
     std::vector<::tpy::ordered_set<int32_t>>& xs;
     ::tpy::ordered_set<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::ordered_set<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::ordered_set<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<::tpy::ordered_set<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<::tpy::ordered_set<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -372,8 +372,8 @@ struct __gen_each_with : public ::tpy::next_iter_mixin<__gen_each_with, ::tpy::v
     ::tpy::frame_state __state;
     std::vector<std::vector<int32_t>>& xs;
     std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
     ::tpy::frame_slot<Guard> __with_ctx_0;
 
     enum : int32_t {
@@ -418,8 +418,8 @@ struct __gen_each_finally : public ::tpy::next_iter_mixin<__gen_each_finally, ::
     int32_t __state;
     std::vector<std::vector<int32_t>>& xs;
     std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
     std::exception_ptr __finally_exc_0;
 
     enum : int32_t {
@@ -449,8 +449,8 @@ struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, ::tpy::val_or_re
     int32_t __state;
     std::vector<Box>& xs;
     Box* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -478,7 +478,7 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
     T_it it;
     Box* b = nullptr;
     int32_t v;
-    ::tpy::frame_slot<::tpy::iter_next_t<T_it>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<T_it>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -546,8 +546,8 @@ struct __gen_Rows_each : public ::tpy::next_iter_mixin<__gen_Rows_each, ::tpy::v
     const Rows& __self;
     std::vector<std::vector<int32_t>>& xs;
     std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

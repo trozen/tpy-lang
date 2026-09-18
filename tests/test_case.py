@@ -186,6 +186,11 @@ def test_case(case_dir, main_src, request):
             fwd_path = hpp_path.with_name(hpp_path.stem + "_fwd.hpp")
             if fwd_path.exists():
                 pairs.append(("_fwd.hpp", fwd_path))
+            # Modules with generators get `<mod>_inl.hpp` (inline __next__
+            # bodies), probed the same way.
+            inl_path = hpp_path.with_name(hpp_path.stem + "_inl.hpp")
+            if inl_path.exists():
+                pairs.append(("_inl.hpp", inl_path))
         if cpp_path is not None:
             pairs.append((".cpp", cpp_path))
         return pairs

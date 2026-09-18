@@ -56,8 +56,8 @@ struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::str
     int32_t __state;
     const ::tpy::ordered_map<std::string, int32_t>& d;
     std::string k;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -84,8 +84,8 @@ struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int3
     const std::vector<::tpy::Bytes>& blobs;
     ::tpy::Bytes total;
     ::tpy::Bytes b;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -57,8 +57,8 @@ struct __coro_coro {
     int32_t i;
     int32_t j;
     std::tuple<int32_t, int32_t> __for_tup_5;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -86,8 +86,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t i;
     std::tuple<int32_t, int32_t> __for_tup_4;
     int32_t j;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

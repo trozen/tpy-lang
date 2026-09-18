@@ -64,8 +64,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::varargs<const std::vector<int32_t>> xs;
     int32_t n;
     const std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -93,8 +93,8 @@ struct __gen_kwgen : public ::tpy::next_iter_mixin<__gen_kwgen, int32_t> {
     const std::vector<int32_t>& extra;
     int32_t n;
     const std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -122,8 +122,8 @@ struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_siz
     ::tpy::varargs<const std::vector<int32_t>> xs;
     int32_t n;
     const std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -29,8 +29,8 @@ struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     std::tuple<int32_t, int32_t> __for_tup_0;
     int32_t a;
     int32_t b;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -57,8 +57,8 @@ struct __gen_firsts : public ::tpy::next_iter_mixin<__gen_firsts, int32_t> {
     const std::vector<std::tuple<int32_t, int32_t>>& pairs;
     std::tuple<int32_t, int32_t> __for_tup_1;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -89,10 +89,10 @@ struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     std::tuple<int32_t, int32_t> __for_tup_3;
     int32_t c;
     int32_t d;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_1;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_1;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_1;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_1;
 
     enum : int32_t {
         S_INITIAL = 0,

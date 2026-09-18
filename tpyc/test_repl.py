@@ -227,3 +227,19 @@ def test_repl_written_paths_match_include_path_map():
     assert expected <= written_rel, (
         f"missing headers: {sorted(str(p) for p in expected - written_rel)}"
     )
+
+
+def test_repl_writes_inline_generator_bodies_beside_the_header():
+    # A module's non-template generator bodies live in `<mod>_inl.hpp`, which
+    # the generated .cpp includes by the header's own path. The REPL writes
+    # its own files, so it has to write that one too -- itertools has such a
+    # generator, and its .cpp is unbuildable without the bodies.
+    session, backend, success, output = _run_line("import itertools\n")
+    assert success, output
+
+    inl = (session.temp_dir / "tpystd/itertools_inl.hpp").resolve()
+    assert inl.exists(), (
+        "itertools inline-body header not written; wrote: "
+        f"{sorted(str(p) for p in backend.hpp_paths)}"
+    )
+    assert "__next__" in inl.read_text()

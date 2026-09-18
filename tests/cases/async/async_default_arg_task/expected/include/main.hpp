@@ -766,7 +766,7 @@ struct __coro_anext_default {
     ::tpy::frame_slot<Counts> c;
     int32_t total;
     int32_t x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
     std::optional<__coro_Counter___anext__> __sub_0;
 
     enum : int32_t {

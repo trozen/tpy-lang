@@ -407,7 +407,7 @@ struct __coro_main_coro {
     int32_t x;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
-    ::tpy::frame_slot<::tpy::aiter_type_t<IntCounter>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<IntCounter>> __for_itr_0;
     IntGuard* __with_ctx_0 = nullptr;
     std::exception_ptr __finally_exc_0;
     std::optional<__coro_Box_fetch<int32_t>> __sub_0;

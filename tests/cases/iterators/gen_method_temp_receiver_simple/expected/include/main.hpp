@@ -39,8 +39,8 @@ struct __gen_Counter_each : public ::tpy::next_iter_mixin<__gen_Counter_each, ::
     int32_t __state;
     const Counter& __self;
     ::tpy::BigInt i;
-    ::tpy::frame_slot<::tpy::BigInt> __for_i_0;
-    ::tpy::frame_slot<::tpy::BigInt> __for_stop_0;
+    ::tpy::frame_loop_slot<::tpy::BigInt> __for_i_0;
+    ::tpy::frame_loop_slot<::tpy::BigInt> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

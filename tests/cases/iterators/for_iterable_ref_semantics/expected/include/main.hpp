@@ -50,8 +50,8 @@ struct __gen_gen_double_x : public ::tpy::next_iter_mixin<__gen_gen_double_x<T_i
     int32_t __state;
     T_items items;
     ::tpy::frame_slot<::tpy::for_elem_next_t<T_items>> p;
-    ::tpy::frame_slot<::tpy::iter_type_t<T_items>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<T_items>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_items>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_items>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

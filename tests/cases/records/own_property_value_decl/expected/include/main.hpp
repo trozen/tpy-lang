@@ -72,8 +72,8 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
     const Snap& s;
     ::tpy::frame_slot<std::vector<int32_t>> snap;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

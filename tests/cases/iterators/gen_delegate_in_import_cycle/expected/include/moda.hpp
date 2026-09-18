@@ -70,8 +70,8 @@ struct __gen_local_walk : public ::tpy::next_iter_mixin<__gen_local_walk, int32_
 struct __gen_free_delegator : public ::tpy::next_iter_mixin<__gen_free_delegator, int32_t> {
     int32_t __state;
     int32_t x;
-    ::tpy::frame_slot<__gen_local_walk> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_local_walk>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_local_walk> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_local_walk>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -124,8 +124,8 @@ struct __gen_method_delegator : public ::tpy::next_iter_mixin<__gen_method_deleg
     int32_t __state;
     Src& s;
     int32_t x;
-    ::tpy::frame_slot<__gen_Src_steps> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_Src_steps>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_Src_steps> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_Src_steps>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

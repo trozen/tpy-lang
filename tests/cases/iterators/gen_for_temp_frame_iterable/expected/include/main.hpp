@@ -43,8 +43,8 @@ struct __gen_Holder___iter__ : public ::tpy::next_iter_mixin<__gen_Holder___iter
     int32_t __state;
     const Holder& __self;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -73,9 +73,9 @@ inline __gen_Holder___iter__ Holder::__iter__() const {
 struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int32_t> {
     int32_t __state;
     int32_t x;
-    ::tpy::frame_slot<Holder> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_type_t<Holder>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<Holder>> __for_r_0;
+    ::tpy::frame_loop_slot<Holder> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<Holder>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<Holder>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

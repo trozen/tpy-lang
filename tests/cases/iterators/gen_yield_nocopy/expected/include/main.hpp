@@ -45,8 +45,8 @@ struct __gen_handles : public ::tpy::next_iter_mixin<__gen_handles, ::tpy::val_o
     int32_t __state;
     std::vector<Handle>& items;
     Handle* h = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

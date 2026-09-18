@@ -744,8 +744,8 @@ struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReade
     ::tpy::frame_slot<::tpy::ordered_map<std::string, std::string>> out;
     int32_t i;
     int32_t m;
-    ::tpy::frame_slot<__gen__parse_rows<W>> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen__parse_rows<W>>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen__parse_rows<W>> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen__parse_rows<W>>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

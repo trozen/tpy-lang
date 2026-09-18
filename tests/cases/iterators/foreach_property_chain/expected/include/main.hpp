@@ -124,8 +124,8 @@ struct __coro_bump_await {
     Inner& i;
     int32_t total;
     Box* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
     std::optional<__coro_tick> __sub_0;
 
     enum : int32_t {
@@ -176,8 +176,8 @@ struct __gen_bump_one_hop : public ::tpy::next_iter_mixin<__gen_bump_one_hop, in
     int32_t __state;
     Inner& i;
     Box* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

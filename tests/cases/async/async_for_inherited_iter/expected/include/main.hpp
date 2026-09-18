@@ -89,7 +89,7 @@ struct __coro_main_coro {
     bool __cancel_pending;
     int32_t total;
     int32_t x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<DerivedAIter>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<DerivedAIter>> __for_itr_0;
     std::optional<__coro_BaseAIter___anext__> __sub_0;
 
     enum : int32_t {

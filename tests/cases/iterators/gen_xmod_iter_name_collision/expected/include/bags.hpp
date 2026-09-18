@@ -35,8 +35,8 @@ struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, in
     int32_t __state;
     const Bag& __self;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

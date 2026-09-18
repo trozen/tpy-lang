@@ -39,8 +39,8 @@ struct __gen_Holder_keys_of : public ::tpy::next_iter_mixin<__gen_Holder_keys_of
     Holder& __self;
     ::tpy::ordered_map<int32_t, int32_t>* m = nullptr;
     int32_t k;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::ordered_map<int32_t, int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::ordered_map<int32_t, int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::ordered_map<int32_t, int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::ordered_map<int32_t, int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

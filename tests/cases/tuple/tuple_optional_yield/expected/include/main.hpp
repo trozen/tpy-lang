@@ -45,8 +45,8 @@ struct __gen_gen_for : public ::tpy::next_iter_mixin<__gen_gen_for, std::tuple<P
     int32_t __state;
     std::vector<P>& items;
     P* it = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -71,8 +71,8 @@ struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, std::tup
     int32_t __state;
     std::vector<P>& items;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

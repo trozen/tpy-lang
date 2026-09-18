@@ -117,7 +117,11 @@ protocol bases; cycle peers `#include` the fwd header in their
 `.hpp` and the full header in their `.cpp`. Method bodies on cycle
 members always emit out-of-line in `.cpp` so a small body's
 inline-in-header optimization doesn't reach into a peer's complete
-type from the .hpp.
+type from the .hpp. A small non-template generator's `__next__` (at
+most 40 rendered lines) is the one body that still emits `inline`, in
+`<mod>_inl.hpp` -- a file nothing includes from a header, only from a
+`.cpp` whose headers are all complete (see docs/ASYNC_DESIGN.md "Body
+placement").
 
 A workspace-wide completeness-graph reject gate
 (`_check_workspace_completeness_cycles`) runs after decl

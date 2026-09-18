@@ -482,7 +482,8 @@ class REPLSession:
         # map or the written header lands where the #include can't find it.
         with activate_compiler(compiler):
             for mod in compiled_modules:
-                hpp_code, cpp_code = compiler.generate_code_to_strings(mod)
+                hpp_code, cpp_code, inl_code = (
+                    compiler.generate_inl_and_code_to_strings(mod))
 
                 # Write files matching the include path the codegen emits
                 include_path = get_include_path(mod.name)
@@ -505,6 +506,8 @@ class REPLSession:
 
                 hpp_path.write_text(hpp_code)
                 cpp_path.write_text(cpp_code)
+                if inl_code is not None:
+                    hpp_path.with_name(hpp_path.stem + "_inl.hpp").write_text(inl_code)
                 all_hpp_paths.append(hpp_path)
                 all_cpp_paths.append(cpp_path)
                 all_hpp_code.append(hpp_code)

@@ -77,8 +77,8 @@ struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_f
     const std::vector<int32_t>& xs;
     int32_t v;
     ::tpy::frame_slot<Point> p;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

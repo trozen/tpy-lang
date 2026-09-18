@@ -68,8 +68,8 @@ struct __gen_doubled_range : public ::tpy::next_iter_mixin<__gen_doubled_range, 
     int32_t __state;
     NumberRange& r;
     int32_t x;
-    ::tpy::frame_slot<::tpy::iter_type_t<NumberRange>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<NumberRange>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<NumberRange>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<NumberRange>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

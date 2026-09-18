@@ -55,8 +55,8 @@ struct __gen_Holder_bump : public ::tpy::next_iter_mixin<__gen_Holder_bump, int3
     int32_t __state;
     Holder& __self;
     Node* n = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

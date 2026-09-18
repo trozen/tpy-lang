@@ -37,8 +37,8 @@ struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int3
     const Walker& __self;
     const std::vector<int32_t>& xs;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

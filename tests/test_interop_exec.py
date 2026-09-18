@@ -214,6 +214,13 @@ def test_interop_exec(case_dir, mod_py, request):
         if not gen.exists():
             pytest.fail(f"{gen} not generated", pytrace=False)
         check_or_update(gen.read_text(), expected_dir / rel, str(rel))
+    # Only a module with generators emits its inline-body header.
+    gen_inl = build_dir / "include" / f"{mod}_inl.hpp"
+    gen_files = [gen_hpp, gen_cpp, gen_ext]
+    if gen_inl.exists():
+        rel = Path("include") / f"{mod}_inl.hpp"
+        check_or_update(gen_inl.read_text(), expected_dir / rel, str(rel))
+        gen_files.append(gen_inl)
 
     output_txt = expected_dir / "output.txt"
 
@@ -225,7 +232,7 @@ def test_interop_exec(case_dir, mod_py, request):
     # The snapshot half above always runs.
     if not no_exec and not build_only and _EXT_BUILD_SUPPORTED:
         companions = [driver] + ([ext_checks] if ext_checks.exists() else [])
-        fingerprint = compute_ext_exec_fingerprint([gen_hpp, gen_cpp, gen_ext], companions)
+        fingerprint = compute_ext_exec_fingerprint(gen_files, companions)
         must_build = force or not output_txt.exists() or not exec_pass_is_cached(fingerprint)
 
         if must_build:

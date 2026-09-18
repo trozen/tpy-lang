@@ -427,6 +427,12 @@ def greet(p: Player) -> None:
 
 The compiler propagates `<game/types.hpp>` to `main.hpp` so the C++ type is available.
 
+The other direction -- hand-written C++ (an `@native` companion `.cpp`, or an
+external caller) that iterates a TPy generator -- must include the module's
+`<mod>_inl.hpp` after its `<mod>.hpp`. A small generator's `__next__` is
+defined only there, `inline`, so a TU that includes just the header compiles
+but fails to link.
+
 ---
 
 ## Symbol naming

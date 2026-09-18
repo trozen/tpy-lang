@@ -44,8 +44,8 @@ struct __gen_first_only : public ::tpy::next_iter_mixin<__gen_first_only, std::t
     int32_t __state;
     std::vector<P>& items;
     P* it = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -71,7 +71,7 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_src>, std::tupl
     int32_t __state;
     T_src src;
     std::tuple<P*, P*> pair;
-    ::tpy::frame_slot<::tpy::iter_next_t<T_src>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<T_src>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

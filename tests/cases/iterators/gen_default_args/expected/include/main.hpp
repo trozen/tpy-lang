@@ -203,8 +203,8 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, ::tpy::yi
     int32_t n;
     int32_t c;
     ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
-    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -382,8 +382,8 @@ struct __gen_Box2_take : public ::tpy::next_iter_mixin<__gen_Box2_take<T>, ::tpy
     int32_t n;
     int32_t c;
     T* x = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

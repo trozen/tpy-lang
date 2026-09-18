@@ -192,8 +192,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = nullptr;
     int32_t v;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
     std::optional<::tpy::ordered_map<std::string, std::vector<int32_t>>> __ptr_slot_f0;
 
     enum : int32_t {

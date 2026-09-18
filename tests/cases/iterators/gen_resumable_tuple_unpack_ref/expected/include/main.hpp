@@ -41,8 +41,8 @@ struct __gen_process : public ::tpy::next_iter_mixin<__gen_process, int32_t> {
     std::tuple<int32_t, Item>* __for_tup_0 = nullptr;
     int32_t idx;
     Item* it = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, Item>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, Item>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, Item>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, Item>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

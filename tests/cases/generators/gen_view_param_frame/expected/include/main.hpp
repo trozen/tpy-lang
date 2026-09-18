@@ -409,8 +409,8 @@ struct __coro_outer_loop_bind {
     std::optional<__coro_async_head> c;
     std::string __await_lift_0;
     std::string __coro_arg_0;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -673,8 +673,8 @@ struct __gen_outer_for : public ::tpy::next_iter_mixin<__gen_outer_for, std::str
     int32_t __state;
     std::string v;
     std::string __coro_arg_0;
-    ::tpy::frame_slot<__gen_head_tail> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_head_tail>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_head_tail> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_head_tail>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -700,8 +700,8 @@ struct __gen_outer_span : public ::tpy::next_iter_mixin<__gen_outer_span, int32_
     int32_t __state;
     int32_t v;
     ::tpy::frame_slot<std::array<int32_t, 2>> __coro_arg_0;
-    ::tpy::frame_slot<__gen_read_pair> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_read_pair>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_read_pair> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_read_pair>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -728,8 +728,8 @@ struct __gen_outer_comp : public ::tpy::next_iter_mixin<__gen_outer_comp, int32_
     const std::vector<int32_t>& src;
     int32_t v;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
-    ::tpy::frame_slot<__gen_ends> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_ends>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_ends> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_ends>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -756,8 +756,8 @@ struct __gen_outer_fstring : public ::tpy::next_iter_mixin<__gen_outer_fstring, 
     int32_t n;
     std::string v;
     std::string __coro_arg_0;
-    ::tpy::frame_slot<__gen_head_tail> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_head_tail>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_head_tail> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_head_tail>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -785,10 +785,10 @@ struct __gen_outer_loop_for : public ::tpy::next_iter_mixin<__gen_outer_loop_for
     int32_t v;
     int32_t i;
     ::tpy::frame_slot<std::array<int32_t, 2>> __coro_arg_0;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
-    ::tpy::frame_slot<__gen_read_pair> __for_src_1;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_read_pair>> __for_r_1;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<__gen_read_pair> __for_src_1;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_read_pair>> __for_r_1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -901,8 +901,8 @@ struct __coro_outer_async_recv {
     int32_t n;
     int32_t v;
     ::tpy::frame_slot<Summer> __coro_arg_0;
-    ::tpy::frame_slot<__gen_Summer_pair> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_Summer_pair>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_Summer_pair> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_Summer_pair>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
@@ -932,8 +932,8 @@ struct __gen_outer_comp_method : public ::tpy::next_iter_mixin<__gen_outer_comp_
     int32_t v;
     ::tpy::frame_slot<Summer> __coro_arg_0;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_1;
-    ::tpy::frame_slot<__gen_Summer_pair> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_Summer_pair>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_Summer_pair> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_Summer_pair>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -960,8 +960,8 @@ struct __gen_Outer_run : public ::tpy::next_iter_mixin<__gen_Outer_run, std::str
     const Outer& __self;
     std::string v;
     std::string __coro_arg_0;
-    ::tpy::frame_slot<__gen_head_tail> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_head_tail>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_head_tail> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_head_tail>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -993,8 +993,8 @@ struct __gen_Outer_run_recv : public ::tpy::next_iter_mixin<__gen_Outer_run_recv
     const std::vector<int32_t>& xs;
     int32_t v;
     ::tpy::frame_slot<Summer> __coro_arg_0;
-    ::tpy::frame_slot<__gen_Summer_pair> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_Summer_pair>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_Summer_pair> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_Summer_pair>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

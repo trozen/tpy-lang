@@ -44,10 +44,10 @@ struct __gen_Repeater_run : public ::tpy::next_iter_mixin<__gen_Repeater_run<T_i
     T_it it;
     int32_t _;
     int32_t x;
-    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
-    ::tpy::frame_slot<int32_t> __for_i_1;
-    ::tpy::frame_slot<int32_t> __for_stop_1;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_1;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_1;
 
     enum : int32_t {
         S_INITIAL = 0,

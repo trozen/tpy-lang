@@ -1,7 +1,7 @@
 /**
  * TurboPython Runtime - frame_slot
  *
- * Uninitialized aligned storage for a single T, used as a generator /
+ * Deferred-construction storage for a single T, used as a generator /
  * coroutine state-machine frame field. Defers T's construction until
  * the source code's first assignment (vs. C++'s default behavior of
  * default-constructing every non-static member of a struct).
@@ -20,6 +20,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -67,7 +68,8 @@ private:
 template <typename T>
 class frame_slot {
 public:
-    frame_slot() noexcept = default;
+    // User-provided: the union member leaves `v_` unconstructed.
+    frame_slot() noexcept {}
 
     frame_slot(const frame_slot&) = delete;
     frame_slot& operator=(const frame_slot&) = delete;
@@ -81,7 +83,7 @@ public:
     frame_slot(frame_slot&& other)
         noexcept(std::is_nothrow_move_constructible_v<T>) {
         if (other.alive_) {
-            ::new (static_cast<void*>(&storage_)) T(std::move(*other.ptr()));
+            ::new (static_cast<void*>(raw())) T(std::move(*other.ptr()));
             alive_ = true;
             other.ptr()->~T();
             other.alive_ = false;
@@ -103,7 +105,7 @@ public:
             // (would cause the dtor to double-destroy).
             alive_ = false;
         }
-        ::new (static_cast<void*>(&storage_)) T(std::forward<Args>(args)...);
+        ::new (static_cast<void*>(raw())) T(std::forward<Args>(args)...);
         alive_ = true;
         return *ptr();
     }
@@ -141,27 +143,40 @@ public:
         return *ptr();
     }
 
+    T& unchecked() & noexcept { return *ptr(); }
+    const T& unchecked() const & noexcept { return *ptr(); }
+
     T& operator*() & { return get(); }
     const T& operator*() const & { return get(); }
     T* operator->() { return &get(); }
     const T* operator->() const { return &get(); }
 
 private:
-    T* ptr() noexcept { return std::launder(reinterpret_cast<T*>(&storage_)); }
-    const T* ptr() const noexcept { return std::launder(reinterpret_cast<const T*>(&storage_)); }
+    T* ptr() noexcept { return std::addressof(v_); }
+    const T* ptr() const noexcept { return std::addressof(v_); }
+    // Placement-new needs a `void*`, which a const payload's own pointer
+    // does not convert to -- hence the non-const storage below.
+    std::remove_const_t<T>* raw() noexcept { return std::addressof(v_); }
 
-    alignas(T) unsigned char storage_[sizeof(T)];
+    // A union member rather than a byte array: construction is still
+    // deferred, and gcc keeps the payload's fields in registers across a
+    // tight generator loop, which it does not through a laundered cast
+    // (about 1.5x on a filtered-loop frame). The member drops T's const so
+    // the slot can construct into it; every accessor hands back `T`, so a
+    // const payload stays const to the reader.
+    union {
+        std::remove_const_t<T> v_;
+    };
     bool alive_ = false;
 };
 
 /**
  * frame_slot<T> for a trivial payload - stores T as a real member.
  *
- * The primary template's aligned-storage + placement-new exists to defer T's
+ * The primary template's union member + placement-new exists to defer T's
  * construction past frame creation. That buys nothing when default-constructing
- * T is itself a no-op, so a trivial payload skips the indirection: no
- * reinterpret_cast, no launder, and `emplace` is an assignment. The field also
- * shows up as a T in a debugger rather than a byte array.
+ * T is itself a no-op, so a trivial payload skips it: no placement-new or
+ * explicit destructor call, and `emplace` is an assignment.
  *
  * BOTH constraints are load-bearing, and each rules out a payload the primary
  * template handles correctly:
@@ -243,6 +258,9 @@ public:
         return v_;
     }
 
+    T& unchecked() & noexcept { return v_; }
+    const T& unchecked() const & noexcept { return v_; }
+
     T& operator*() & { return get(); }
     const T& operator*() const & { return get(); }
     T* operator->() { return &get(); }
@@ -309,6 +327,9 @@ public:
         return *p_;
     }
 
+    T& unchecked() & noexcept { return *p_; }
+    const T& unchecked() const & noexcept { return *p_; }
+
     T& operator*() & { return get(); }
     const T& operator*() const & { return get(); }
     T* operator->() { return &get(); }
@@ -316,6 +337,29 @@ public:
 
 private:
     T* p_ = nullptr;
+};
+
+/**
+ * frame_loop_slot<T> - a frame_slot for the compiler's own for-loop state
+ * (`__for_it/__for_end`, `__for_i/__for_stop`, `__for_itr/__for_r`,
+ * `__for_src`). Same storage and surface; reads skip the dead-slot check.
+ *
+ * The check exists because user code can reach a dead user-local slot
+ * (BUGS.md#zero-trip-loop-body-local-read). No user code names these fields:
+ * the emitter reads each one only inside its loop, after the loop's own init
+ * wrote it, so the check could only catch an emitter bug -- and it costs a
+ * tight generator loop about 2x under clang.
+ */
+template <typename T>
+class frame_loop_slot : public frame_slot<T> {
+public:
+    frame_loop_slot() noexcept = default;
+    frame_loop_slot(frame_loop_slot&&) = default;
+
+    std::remove_reference_t<T>& operator*() & { return this->unchecked(); }
+    const std::remove_reference_t<T>& operator*() const & { return this->unchecked(); }
+    std::remove_reference_t<T>* operator->() { return &this->unchecked(); }
+    const std::remove_reference_t<T>* operator->() const { return &this->unchecked(); }
 };
 
 } // namespace tpy

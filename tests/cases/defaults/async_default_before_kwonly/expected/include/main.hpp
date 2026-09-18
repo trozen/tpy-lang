@@ -81,8 +81,8 @@ struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, int64_t> {
     int64_t n;
     int64_t step;
     int64_t i;
-    ::tpy::frame_slot<int64_t> __for_i_0;
-    ::tpy::frame_slot<int64_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int64_t> __for_i_0;
+    ::tpy::frame_loop_slot<int64_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

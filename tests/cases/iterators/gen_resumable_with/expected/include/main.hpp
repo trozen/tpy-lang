@@ -45,8 +45,8 @@ struct __gen_gen_with_yield : public ::tpy::next_iter_mixin<__gen_gen_with_yield
     ::tpy::frame_state __state;
     const std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
     ::tpy::frame_slot<Tracer> __with_ctx_0;
 
     enum : int32_t {

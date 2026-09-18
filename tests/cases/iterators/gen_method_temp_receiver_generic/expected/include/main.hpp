@@ -44,8 +44,8 @@ struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, :
     int32_t __state;
     Holder<T>& __self;
     T* x = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

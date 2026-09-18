@@ -94,7 +94,7 @@ struct __coro_Collector_run {
     bool __cancel_pending;
     Collector& __self;
     int32_t v;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Countdown>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Countdown>> __for_itr_0;
     std::optional<__coro_Countdown___anext__> __sub_0;
 
     enum : int32_t {

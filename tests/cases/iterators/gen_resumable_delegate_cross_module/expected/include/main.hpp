@@ -91,8 +91,8 @@ struct __coro_async_position {
     bool __cancel_pending;
     int32_t total;
     int32_t x;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_walk> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_walk> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -117,8 +117,8 @@ struct __coro_async_position {
 struct __gen_free_import : public ::tpy::next_iter_mixin<__gen_free_import, int32_t> {
     int32_t __state;
     int32_t x;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_walk> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_walk> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -143,8 +143,8 @@ struct __gen_free_import : public ::tpy::next_iter_mixin<__gen_free_import, int3
 struct __gen_single_yield_import : public ::tpy::next_iter_mixin<__gen_single_yield_import, int32_t> {
     int32_t __state;
     int32_t x;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_walk_once> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk_once>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_walk_once> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk_once>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -169,8 +169,8 @@ struct __gen_single_yield_import : public ::tpy::next_iter_mixin<__gen_single_yi
 struct __gen_module_call : public ::tpy::next_iter_mixin<__gen_module_call, int32_t> {
     int32_t __state;
     int32_t x;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_walk> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_walk> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_walk>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -196,8 +196,8 @@ struct __gen_imported_method : public ::tpy::next_iter_mixin<__gen_imported_meth
     int32_t __state;
     const ::tpyapp::gensrc::Src& s;
     int32_t x;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_Src_steps> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_Src_steps>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_Src_steps> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_Src_steps>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -222,8 +222,8 @@ struct __gen_imported_method : public ::tpy::next_iter_mixin<__gen_imported_meth
 struct __gen_generic_callee : public ::tpy::next_iter_mixin<__gen_generic_callee, int32_t> {
     int32_t __state;
     int32_t x;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_pair<int32_t>> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_pair<int32_t>>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_pair<int32_t>> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_pair<int32_t>>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -249,8 +249,8 @@ struct __gen_generic_owner_imported : public ::tpy::next_iter_mixin<__gen_generi
     int32_t __state;
     ::tpyapp::gensrc::Box<int32_t>& b;
     int32_t v;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_Box_two<int32_t>> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_Box_two<int32_t>>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_Box_two<int32_t>> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_Box_two<int32_t>>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -276,8 +276,8 @@ struct __gen_mutate_receiver : public ::tpy::next_iter_mixin<__gen_mutate_receiv
     int32_t __state;
     ::tpyapp::gensrc::Bag& b;
     int32_t v;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_Bag_readings> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_Bag_readings>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_Bag_readings> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_Bag_readings>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -302,8 +302,8 @@ struct __gen_mutate_receiver : public ::tpy::next_iter_mixin<__gen_mutate_receiv
 struct __gen_lazy_interleave : public ::tpy::next_iter_mixin<__gen_lazy_interleave, int32_t> {
     int32_t __state;
     int32_t x;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_chatty> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_chatty>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_chatty> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_chatty>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -328,8 +328,8 @@ struct __gen_lazy_interleave : public ::tpy::next_iter_mixin<__gen_lazy_interlea
 struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t> {
     int32_t __state;
     int32_t x;
-    ::tpy::frame_slot<::tpyapp::gensrc::__gen_guarded> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_guarded>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpyapp::gensrc::__gen_guarded> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::gensrc::__gen_guarded>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -408,8 +408,8 @@ struct __gen_generic_owner_local : public ::tpy::next_iter_mixin<__gen_generic_o
     int32_t __state;
     LocalBox<int32_t>& b;
     int32_t v;
-    ::tpy::frame_slot<__gen_LocalBox_two<int32_t>> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_LocalBox_two<int32_t>>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_LocalBox_two<int32_t>> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_LocalBox_two<int32_t>>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

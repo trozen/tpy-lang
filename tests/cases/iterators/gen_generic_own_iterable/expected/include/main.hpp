@@ -25,8 +25,8 @@ struct __gen_indexed : public ::tpy::next_iter_mixin<__gen_indexed<T, T_items>, 
     T_items items;
     int32_t i;
     ::tpy::frame_slot<::tpy::for_elem_next_t<T_items>> item;
-    ::tpy::frame_slot<::tpy::iter_type_t<T_items>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<T_items>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_items>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_items>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
