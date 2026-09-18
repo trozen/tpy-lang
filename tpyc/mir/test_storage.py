@@ -330,7 +330,7 @@ def test_inconsistent_thir_facts_fail_validation(functions: dict[str, th.THIRFun
         validate_thir(replace(fn, params=(replace(param, type=INT32),)))
 
 
-def test_self_aliases_remain_valid_without_name_binding_facts() -> None:
+def test_self_alias_facts_reach_method_and_constructor_producers() -> None:
     compiler, modules = _compile("""\
 from tpy import int32
 class Cell:
@@ -351,7 +351,7 @@ class Cell:
     for body in (method.body, ctor.body):
         alias = next(stmt for stmt in body if isinstance(stmt, th.THIRVarDecl) and stmt.name == "alias")
         assert isinstance(alias.init, th.THIRSelf)
-        assert alias.alias_binding is None
+        assert alias.alias_binding is not None and alias.alias_binding.source == "self"
 
 
 @pytest.mark.parametrize("source,node_kind", [

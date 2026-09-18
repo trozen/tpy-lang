@@ -255,7 +255,8 @@ def _check_node(owner: str, node: THIRNode) -> None:
                         or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.reference.type):
                     _fail(owner, node, "alias binding has a non-borrow conversion")
                 source = source.value
-            if (not isinstance(source, THIRName) or fact.source != source.name
+            name = source.name if isinstance(source, THIRName) else "self" if isinstance(source, THIRSelf) else None
+            if (name is None or fact.source != name
                     or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.reference.type
                     or type(fact.reference.readonly) is not bool):
                 _fail(owner, node, "alias binding disagrees with its source")
@@ -777,6 +778,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
 
 
 def validate_function(fn: THIRFunction) -> None:
+    if fn.receiver is not None:
+        fact = fn.receiver
+        if (not isinstance(fact, THIRBorrowedRecord) or not isinstance(fact.type, NominalType)
+                or fact.type.qualified_name() is None or fact.type in (BOOL, INT32)
+                or fact.type.type_args or fact.type.is_protocol or type(fact.readonly) is not bool
+                or any(p.name == "self" for p in fn.params)):
+            _fail(fn.name, fn, "invalid receiver fact")
     for param in fn.params:
         if param.tuple_layout is not None:
             if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):

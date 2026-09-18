@@ -51,6 +51,11 @@ class _Coverage:
         _require(fn, not fn.layout.hoisted_locals, "hoisted declarations")
         _require(fn, fn.return_type in (BOOL, INT32) or isinstance(fn.return_type, VoidType),
                  "unsupported return type")
+        if fn.receiver is not None:
+            self.reference(fn, fn.receiver, fn.receiver.type)
+            self.bindings["self"] = fn.receiver.type
+            self.references["self"] = fn.receiver
+            self.parameters.add("self")
         for p in fn.params:
             _plain(p, {"name", "type", "borrowed_record", "optional_layout", "union_layout", "tuple_layout"})
             _require(fn, p.name not in self.bindings, "duplicate binding")
@@ -218,11 +223,22 @@ class _Coverage:
                  "reference type mismatch")
 
     def reference_name(self, expr: th.THIRExpr) -> str:
-        _require(expr, isinstance(expr, th.THIRName), "reference needs local name")
-        _plain(expr, {"name", "is_last_use", "is_movable", "deref"})
-        _require(expr, expr.name in self.references, "unknown reference source")
-        self.reference(expr, self.references[expr.name], expr.result_type)
-        return expr.name
+        match expr:
+            case th.THIRName():
+                _plain(expr, {"name", "is_last_use", "is_movable", "deref"})
+                name = expr.name
+            case th.THIRSelf():
+                _plain(expr, {"deref"})
+                _require(expr, self.fn.receiver is not None, "missing receiver fact")
+                _require(expr, expr.form is th.Form.BORROW, "receiver read form")
+                _require(expr, not isinstance(unwrap_ref_type(expr.result_type), ReadonlyType)
+                         or self.fn.receiver.readonly, "receiver read increases access")
+                name = "self"
+            case _:
+                raise MIRUnsupported(expr, "reference needs local name")
+        _require(expr, name in self.references, "unknown reference source")
+        self.reference(expr, self.references[name], expr.result_type)
+        return name
 
     def borrow_binding(self, stmt: th.THIRStmt, *, declaration: bool = False) -> None:
         storage = stmt.storage_borrow is not None
@@ -420,6 +436,7 @@ class _Coverage:
             source = self.optional_name(expr, extract=False)
             self.payload_compatible(expr, source.payload, target.payload)
         elif isinstance(target.payload, th.THIRBorrowedRecord):
+            _require(expr, isinstance(expr, th.THIRName), "optional capture needs local name")
             source = self.references[self.reference_name(expr)]
             _require(expr, source.type == target.payload.type
                      and (not source.readonly or target.payload.readonly), "optional capture access mismatch")
@@ -851,7 +868,7 @@ class _Builder:
             value = MIRTupleCopy(self.bindings[expr.name])
         else:
             value = MIRTupleConstruct(tuple(
-                self.bindings[e.name] if isinstance(member, th.THIRBorrowedRecord) else self.expr(e)
+                self.place(e).root if isinstance(member, th.THIRBorrowedRecord) else self.expr(e)
                 for e, member in zip(expr.elements, self.tuple_exprs[expr].elements)))
         self.write(dest, value, expr.loc)
         return dest
@@ -863,6 +880,8 @@ class _Builder:
 
     def place(self, expr: th.THIRExpr) -> MIRPlace:
         match expr:
+            case th.THIRSelf():
+                return MIRPlace(self.bindings["self"])
             case th.THIRNarrowedRead():
                 return self.union_place(expr.union_extraction)
             case th.THIRName():
@@ -960,7 +979,7 @@ class _Builder:
                                                          else self.expr(value))
                 return MIRConstruct(tuple(members[f.id.name] for f in definition.layout.fields))
             case th.THIRCopy():
-                return MIRCopy(MIRPlace(self.bindings[expr.value.name], (MIRDeref(),)))
+                return MIRCopy(MIRPlace(self.place(expr.value).root, (MIRDeref(),)))
             case _:
                 assert isinstance(expr, th.THIRMove)
                 return MIRMove(self.storage[expr.value.name])
@@ -1099,6 +1118,9 @@ class _Builder:
         self.bindings = bindings
 
     def build(self) -> MIRFunction:
+        if self.fn.receiver is not None:
+            self.bindings["self"] = self.slot(self.fn.receiver.type, MIRSlotKind.PARAMETER,
+                                              "self", self.fn.receiver)
         for p in self.fn.params:
             self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
                                                p.borrowed_record, optional_layout=p.optional_layout,
@@ -1131,9 +1153,11 @@ class _Builder:
 
 def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
                    kind: MIRBodyKind, definitions: MIRDefinitions | None = None) -> MIRFunction | MIRNotCovered:
-    """The caller supplies declaration kind; THIRFunction alone loses it."""
+    """The caller supplies declaration kind; eligible methods also carry a receiver."""
     try:
-        _require(fn, kind is MIRBodyKind.FREE_FUNCTION, "unsupported body kind")
+        _require(fn, kind in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD), "unsupported body kind")
+        _require(fn, (kind is MIRBodyKind.METHOD) == (fn.receiver is not None),
+                 "body kind and receiver mismatch")
         coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions())
         coverage.check()
         try:

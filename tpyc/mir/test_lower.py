@@ -163,7 +163,8 @@ def test_unreachable_supported_tail_is_not_executed(functions: dict[str, th.THIR
     assert execute(lower(fn), True) == 10
 
 
-@pytest.mark.parametrize("kind", [k for k in MIRBodyKind if k is not MIRBodyKind.FREE_FUNCTION])
+@pytest.mark.parametrize("kind", [k for k in MIRBodyKind
+                                 if k not in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD)])
 def test_body_kinds_explicitly_excluded(functions: dict[str, th.THIRFunction], kind: MIRBodyKind) -> None:
     result = lower_function(functions["choose"], MIRBodyId("test", "choose"), kind=kind)
     assert isinstance(result, MIRNotCovered) and result.reason == "unsupported body kind"

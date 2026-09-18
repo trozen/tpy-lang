@@ -192,8 +192,10 @@ def test_shared_parameter_and_declaration_producers(artifacts: Artifacts) -> Non
         assert next(p for p in body.params if p.name == "a").optional_layout is not None
         decl = next(stmt for stmt in body.body if isinstance(stmt, th.THIRVarDecl) and stmt.name == "saved")
         assert decl.optional_layout is not None and decl.init.optional_read is not None
-    assert isinstance(lower_function(method, MIRBodyId("optionals", "observe"),
-                                    kind=MIRBodyKind.METHOD), MIRNotCovered)
+    result = lower_function(method, MIRBodyId("optionals", "observe"), kind=MIRBodyKind.METHOD)
+    assert isinstance(result, MIRFunction)
+    value = MIRFieldId(method.receiver.type, "value")
+    assert execute(result, Reference(1), OptionalValue(Reference(1)), heap={1: {value: 1}}) == 9
 
 
 def test_missing_read_or_binding_fact_is_uncovered(artifacts: Artifacts) -> None:

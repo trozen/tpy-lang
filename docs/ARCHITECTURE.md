@@ -31,6 +31,11 @@ scalars, borrowed/owned plain records, flat tuples, selected Optional payloads
 and nonrecursive unions of bool/int32 values or borrowed plain records.
 THIR carries immutable borrowed-parameter,
 alias-binding, owned-storage and direct-field facts from the existing lowering decisions.
+Ordinary monomorphic instance methods also carry a borrowed receiver fact with
+the finalized method readonly verdict. MIR maps THIRSelf to the first borrowed
+parameter slot and reuses local alias, tuple and field-place operations; reseating
+the receiver is forbidden. Constructors, consuming/generated method variants,
+properties, dunders and resumables retain their separate coverage boundaries.
 MIR uses body-scoped reference holders and explicit alias transfers; scalar
 field places contain dereference and qualified field projections. Distinct
 holders can reference the same object, and readonly access does not imply

@@ -16,7 +16,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction,
+    MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRCopy, MIRFieldId, MIRFunction,
     MIRMove, MIRNotCovered, MIRValueKind,
 )
 from .testutil import Heap, Reference, execute
@@ -279,7 +279,7 @@ def test_cpp_spellings_do_not_supply_storage_or_constructor_identity(artifacts: 
     "    cell = Cell(1)\n    return cell.value\n",
     "    alias = self\n    return alias.value\n",
 ])
-def test_metadata_producers_in_methods_do_not_change_body_admission(body: str) -> None:
+def test_owned_and_self_alias_method_bodies(body: str) -> None:
     source = SOURCE.replace("class Other:", "    def method(self) -> int32:\n" +
                             "\n".join("    " + line for line in body.splitlines()) + "\n\nclass Other:")
     compiler, modules = _compile(source)
@@ -288,10 +288,12 @@ def test_metadata_producers_in_methods_do_not_change_body_admission(body: str) -
     if body.startswith("    cell"):
         assert fn.body[0].owned_storage is not None
     else:
-        assert fn.body[0].alias_binding is None
+        assert fn.body[0].alias_binding.source == "self"
     result = lower_function(fn, MIRBodyId("owned", "method"), kind=MIRBodyKind.METHOD,
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
-    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported body kind"
+    assert isinstance(result, MIRFunction)
+    value = MIRFieldId(fn.receiver.type, "value")
+    assert execute(result, Reference(1), heap={1: {value: 7}}) == (1 if body.startswith("    cell") else 7)
 
 
 @pytest.mark.parametrize("declaration,assignment,reason", [

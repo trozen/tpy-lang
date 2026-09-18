@@ -10,11 +10,11 @@
 | THIR-backed codegen context | The ONLY author, for every module (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | **DONE (2026-09-03).** The AST body emitters (`codegen_cpp/{expressions,statements,match,builtins}.py`) are deleted; `codegen_cpp` is the printer/skeleton layer |
 | THIR form fact (Open Q 9/11/12) | **Rungs F1-F3 landed as tabulated below; unions/generics/views route in practice, so the F4-F6 rows are stale as a status view -- read them as scope, not as remaining work. F-final (RefType removal + AST form-codegen retirement) has NOT happened: `RefType` is still live in `typesys.py`.** The per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
-| MIR node definitions (`tpyc/mir/nodes.py`) | Scalar CFG, borrowed-record holders, alias operations and scalar field places, validation and internal dump implemented |
-| THIR -> MIR lowering (`tpyc/mir/lower.py`) | M1 scalars plus M2.1 borrowed plain-record aliases/reseats and direct bool/int32 fields in free functions; explicit whole-body MIRNotCovered, no compilation hook |
+| MIR node definitions (`tpyc/mir/nodes.py`) | Scalar CFG, borrowed/owned record storage, alias operations, nested field places and selected tuple/Optional/union payloads, validation and internal dump implemented |
+| THIR -> MIR lowering (`tpyc/mir/lower.py`) | M1 and M2.1-M2.8 bounded coverage in free functions and ordinary instance methods; explicit whole-body MIRNotCovered, no compilation hook. Exact shapes and exclusions: [MIR analysis plan](MIR_ANALYSIS_PLAN.md) |
 | `--dump-mir` debug output | Not started |
 | MIR liveness pass | Not started |
-| MIR move/copy lowering and move optimization | Not started |
+| MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
 | MIR advisory loan checker (default mode) | Not started |
 | MIR safe opt-in enforcement mode | Not started |
 | MIR-backed codegen | Not started |
@@ -22,7 +22,7 @@
 
 **Active MIR sequence (approved 2026-09-17):** analysis-only MIR precedes the
 coupled callable contract. `MIR_ANALYSIS_PLAN.md` records the approved and
-implemented M1 and M2.1 increments and the later coverage gates. The
+implemented M1 and M2.1-M2.8 increments and the later coverage gates. The
 historical phase lists below are not an instruction to implement move
 optimization or switch emission before the callable analysis consumer.
 

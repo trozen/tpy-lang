@@ -10,7 +10,7 @@ from ...typesys import (
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
-    THIRCoerce, THIRLiteral, THIRUnionLiteral,
+    THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral,
 )
 
 if TYPE_CHECKING:
@@ -31,14 +31,14 @@ def borrowed_record(typ: TpyType, readonly: bool,
 
 def alias_binding(source: THIRExpr, typ: TpyType, readonly: bool,
                   analyzer: 'SemanticAnalyzer') -> THIRAliasBinding | None:
-    if not isinstance(source, THIRName):
+    if not isinstance(source, (THIRName, THIRSelf)):
         return None
     reference = borrowed_record(typ, readonly, analyzer)
     if reference is None:
         return None
     if unwrap_readonly(unwrap_ref_type(source.result_type)) != reference.type:
         return None
-    return THIRAliasBinding(source.name, reference)
+    return THIRAliasBinding(source.name if isinstance(source, THIRName) else "self", reference)
 
 
 def record_layout(typ: TpyType, analyzer: 'SemanticAnalyzer') -> THIRRecordLayout | None:

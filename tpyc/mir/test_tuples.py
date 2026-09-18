@@ -197,8 +197,10 @@ def test_shared_producers_cover_methods_and_constructors(artifacts: Artifacts) -
         projected = [n for n in nodes(body) if isinstance(n, th.THIRFieldAccess)
                      and isinstance(n.receiver, th.THIRSubscript)]
         assert projected and all(n.field_identity is not None for n in projected)
-    assert isinstance(lower_function(method, MIRBodyId("tuples", "observe"),
-                                    kind=MIRBodyKind.METHOD), MIRNotCovered)
+    result = lower_function(method, MIRBodyId("tuples", "observe"), kind=MIRBodyKind.METHOD)
+    assert isinstance(result, MIRFunction)
+    value = MIRFieldId(method.receiver.type, "value")
+    assert execute(result, Reference(1), Reference(1), heap={1: {value: 1}}) == 7
 
 
 @pytest.mark.parametrize("change", [

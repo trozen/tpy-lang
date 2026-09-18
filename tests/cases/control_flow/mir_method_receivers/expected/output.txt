@@ -1,0 +1,7 @@
+singleton 12 12
+mixed 12 13
+readonly-distinct 13 14
+readonly-shared 14 14
+optional-distinct 15 17
+optional-shared 17 17
+copy 17 19

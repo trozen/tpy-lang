@@ -3466,6 +3466,7 @@ class THIRFunction:
     layout: THIRFunctionLayout
     error_return_cpp: 'str | None' = None
     body_terminates: bool = False
+    receiver: THIRBorrowedRecord | None = None
 
 
 @dataclass(frozen=True)

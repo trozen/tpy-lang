@@ -19,6 +19,20 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 
 ## Compiler bugs
 
+- **[MED small] (valid source rejected) A record-union local cannot be initialized directly from self.** [`self-record-union-initializer`]
+  In an ordinary `Cell` method, `saved: Cell | Other = self` fails THIR lowering
+  at `decl.ptr_union_source`, even for eligible plain records. The equivalent
+  typed union initialized from a record parameter is supported; an Optional
+  local initialized from self also compiles. The union declaration source
+  selector in `tpyc/thir/lower/statements.py` does not admit the receiver form.
+  Reseating a union to self similarly fails `decl.union_reseat_source`; an
+  Optional initialized to None then assigned self fails `decl.opt_reseat_source`.
+  Audit receiver identity, value-versus-pointer form and readonly propagation
+  across declarations, assignments, methods and constructors before extending
+  the shared selector. M2.8 pins this existing source gate and excludes the
+  shape; fixing source admission is outside its analysis-only scope.
+  Needs `/tpy-fix-bug`.
+
 - **[MED small] (ill-formed C++, loud) Copying a readonly record-union parameter into a local drops pointee constness.** [`readonly-record-union-local-copy`]
   With ordinary `Cell` and `Other` records holding `value: int32` and an
   `__init__` that assigns it, this function passes frontend analysis:

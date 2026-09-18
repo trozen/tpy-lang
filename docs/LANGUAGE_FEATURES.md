@@ -8319,6 +8319,14 @@ local-tuple captures, reseated captures and record-tuple parameter copies into
 later-reseated locals are unchanged; scalar tuple parameter copies already compile.
 Readonly auto-copy metadata mismatches remain uncovered and are tracked as
 `BUGS.md#readonly-auto-tuple-copy-fact`; C++ preserves the source constness.
+M2.8 adds ordinary monomorphic instance-method bodies with an explicit borrowed
+receiver and finalized readonly access. Scalar aliases and singleton/mixed tuple
+captures retain self identity; local alias reseats do not retarget the receiver.
+Existing field, owned-record and wrapper operations apply inside those bodies.
+Consuming/generated method variants, properties, dunders, static/class methods,
+constructors and resumables remain excluded. Direct self-to-Optional pointer
+initializers stay uncovered; self-to-union capture retains its frontend gate
+(`BUGS.md#self-record-union-initializer`).
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

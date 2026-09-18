@@ -289,7 +289,9 @@ def test_borrow_facts_reach_sibling_producers(artifacts: Artifacts) -> None:
     observer = next(ctor for ctor in constructors if ctor.record_name == "Observer")
     assert any(getattr(stmt, "storage_borrow", None) is not None for stmt in observer.body)
     result = lower_function(functions["method"], MIRBodyId("nested", "method"), kind=MIRBodyKind.METHOD)
-    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported body kind"
+    assert isinstance(result, MIRFunction)
+    _, _, _, heap = objects(functions)
+    assert execute(result, Reference(1), heap=heap) == 8
 
 
 @pytest.mark.parametrize("name", ["replace_field", "owning"])

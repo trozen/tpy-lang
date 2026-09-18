@@ -1497,6 +1497,110 @@ The independent retrospective accepted the producer facts and bounded coverage.
 Existing snapshots remain unchanged. The only deferred defect is the tracked
 readonly auto-copy fact mismatch above, with a safe-rejection regression guard.
 
+## M2.8: ordinary instance-method receivers
+
+Status: implemented, verified and reviewed under the autonomous batch
+authorization. This is an architectural metadata extension within the existing
+analysis-only boundary.
+
+The contract uses an already accepted method body:
+
+```python
+def update(self) -> int32:
+    saved = self
+    saved.value = 7
+    return self.value
+```
+
+The generated C++ binds `saved` to `*this` by reference. MIR receives the same
+record identity as an explicit borrowed receiver parameter and returns 7.
+The receiver's access comes from finalized `func.is_readonly`, the verdict
+used by the method signature. Inferred readonly receivers can have an
+unqualified THIRSelf result type; neither that type nor body-read inspection
+is a substitute for the finalized verdict.
+
+Extend THIRFunction with an optional borrowed-record receiver fact at the
+ordinary callable producer. Reuse `borrowed_record` eligibility and the
+existing alias-binding operation, including its shared constructor producer.
+No synthetic THIRParam is needed: the emitter already owns implicit receiver
+emission. MIR requires the fact for METHOD and its absence for FREE_FUNCTION,
+then seeds a non-reseatable borrowed parameter named self. THIRSelf maps to
+that identity explicitly, never by parsing C++ text. Tuple captures use the
+same reference-source mapping as scalar aliases. Existing place/access and
+CFG rules apply unchanged.
+
+Eligibility is deliberately positive: ordinary synchronous monomorphic
+non-consuming instance methods on eligible plain records. Properties,
+dunders, static/class methods, overload specializations, auto-own and
+auto-readonly twins, generic/native/value/inherited/protocol records,
+constructors and resumables remain excluded. Missing receiver metadata does
+not grant free-function eligibility. Unsupported statements still reject
+the whole body. No call effects or interprocedural checking are introduced.
+
+| Axis | Covered | Excluded / later work |
+|---|---|---|
+| Position | Ordinary instance methods, prior free functions; shared self-alias facts checked in constructors | Constructor/module/closure bodies later M2; generator/async/comprehension/context-manager/try-finally/error-return/match M3; generic bodies M4 |
+| Shape | Eligible plain-record self, mutable/inferred/explicit readonly; scalar/singleton/mixed tuple aliases and existing payload operations | Consuming and generated receiver twins, native/value/inherited/protocol/generic records; other type families retain prior M2/M3/M4 gaps |
+| Slot | Receiver parameter, entry locals, existing scalar field projections and scalar returns | Receiver reseat; record/tuple returns, globals/captures/container elements: remaining M2/M4 |
+| Operation | Shared mutation, local alias reseat, nested fields, prior CFG | Calls/effects, constructor body initialization and all prior uncovered operations |
+
+The sibling survey traced ordinary/module/constructor/resumable producers and
+generated method twins. Independent native/CPython probes agreed on scalar,
+singleton and mixed tuple captures, shared/distinct readonly observers and
+local alias reseating. Explicit readonly also constrains ordinary parameters;
+the mutable-writer witness therefore uses inferred readonly self. Existing
+snapshot output must remain unchanged.
+
+Implementation probes pinned two inherited boundaries: `saved: Cell | Other =
+self` fails the frontend's `decl.ptr_union_source` gate, whereas `saved: Cell |
+None = self` compiles but selects a pointer initializer outside M2.4's existing
+Optional declaration subset. Both remain outside M2.8. The former rejects valid
+source and is tracked as `BUGS.md#self-record-union-initializer`; fixing the
+shared union initializer family would change source admission, outside this
+analysis-only batch. Methods receiving Optional/union parameters still reuse
+the previously supported wrapper operations.
+Assigning self into an existing Optional/union local also retains the frontend
+reseat-source gate. Direct receiver payload construction is therefore excluded
+at the internal boundary too; aliases and tuples do not grant wrapper coverage.
+
+Tests will use compiler-owned source fixtures plus one condensed native case.
+Pin receiver identity/access, scalar and tuple aliases through mutation,
+shared/distinct parameters, nested projections, copies/reseats where already
+covered, and exclusion facts. Malformed IR must reject missing/wrong receiver,
+body-kind mismatch, readonly writes, duplicate self and receiver reseating.
+THIR validation checks fact shape, source identity and nominal consistency.
+
+The native receiver case pins tuple/Optional captures, a readonly receiver
+observing another writer, and explicit copy independence. Direct self aliases,
+explicit readonly aliases and local reseats are already deliberate subjects of
+`tests/cases/records/receiver_alias`; nested field aliases are pinned by
+`mir_nested_record_fields`. Those sections are not duplicated in the new native
+case. The independent MIR unit checks still cover every admitted operation.
+The tuple-parameter case uses distinct starting values for its shared/distinct
+mixed-access calls, so the two outputs distinguish referent identity.
+
+Pitfalls: mutation witnesses cover silent-copy-vs-alias and tuple-equals-scalar;
+the finalized semantic access verdict covers const-source-const-loop-var.
+Shared alias producers plus explicit excluded positions cover
+same-construct-every-position. Generic-equals-monomorphic-twin is deferred to
+M4. Calls/effectful expressions remain under prior coverage gates, preserving
+conditional-operand-evaluates-in-place. No emission, allocations, views or
+diagnostics change, so the remaining copy/view/allocation/diagnostic and valid
+Python obligations are byte-identical existing output. Finish all specialist
+reviews, readiness and a forced full suite before the third squash commit.
+
+Completion: 817 focused MIR/THIR and tracking checks passed before the final
+source-gate tests were added. The full forced run, including those tests, passed
+with 8652 tests, 23 skips and 4156 C++ cases built and run. The new native case
+matched CPython. All seven specialist lenses found no code defect; the docs
+review refreshed the stale landing-status overview in `IR_DESIGN.md`. Independent
+retrospective and meta-review accepted the approach and bounded exclusions.
+The compiler implementation is unchanged by the native coverage cleanup.
+Snapshots of cases predating the batch are unchanged.
+M2.6, M2.7 and M2.8 each form one commit on the unmerged batch branch; broader
+M2 coverage and the M3-M5 analysis/authority work remain as listed below.
+
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

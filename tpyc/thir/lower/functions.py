@@ -1058,6 +1058,15 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             layout=THIRFunctionLayout(),
             error_return_cpp=lc.error_return_cpp,
             body_terminates=stmts_terminate(func.body),
+            receiver=(borrowed_record(self_type, func.is_readonly, analyzer)
+                      if has_self and not (
+                          func.is_consuming or func.type_params or stub is not None
+                          or func.is_property_getter or func.is_property_setter
+                          or (func.name.startswith("__") and func.name.endswith("__"))
+                          or func.is_async or func.is_generator
+                          or func.is_auto_own_borrowing_clone or func.is_auto_own_consuming_clone
+                          or func.auto_readonly_polarity is not None)
+                      else None),
         )
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")

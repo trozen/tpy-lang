@@ -237,11 +237,15 @@ def test_guarded_early_compound_loop_and_none_paths(artifacts: Artifacts) -> Non
         assert text == dump_function(fn)
 
 
-def test_methods_and_constructors_carry_facts_without_mir_admission(artifacts: Artifacts) -> None:
+def test_method_admission_and_shared_constructor_facts(artifacts: Artifacts) -> None:
     functions, constructors = artifacts
     method = functions["read"]
     assert method.params[0].union_layout is not None
-    assert isinstance(lower_function(method, MIRBodyId("unions", "method"), kind=MIRBodyKind.METHOD), MIRNotCovered)
+    result = lower_function(method, MIRBodyId("unions", "method"), kind=MIRBodyKind.METHOD)
+    assert isinstance(result, MIRFunction)
+    value = MIRFieldId(method.receiver.type, "value")
+    assert execute(result, Reference(1), union_arg(result, 1, "Cell", Reference(1)),
+                   heap={1: {value: 7}}) == 7
     holder = next(c for c in constructors if c.record_name == "Holder")
     assert holder.params[0].union_layout is not None
 
