@@ -123,7 +123,15 @@ statement boundaries (index equal to statement count denotes the terminator),
 and constructor initialization entry uses. A projected store reads its address
 root; a live scalar payload alias also keeps its wrapper live. The debug dump
 prints these sets. Production AST last-use and provenance decisions are
-unchanged; reference-dependency propagation is the next analysis increment.
+unchanged.
+
+`mir/dependencies.py` propagates possible referents per reference-bearing
+holder leaf, then selects live dependencies using those liveness sets. Copies
+capture referents independently of later source reseats. Origins are local
+backing IDs or symbolic external inputs with inline field paths; external
+origins may alias. Explicit BODY/CALLER duration facts describe backing roots.
+Missing duration or recursive inline paths produce an uncovered result. The
+debug dump exposes this inventory, without storage-release or safety authority.
 
 Tuple local bindings register their borrowed payloads with the existing sema
 `BorrowTracker`, including its statement records consumed by alias-rebind

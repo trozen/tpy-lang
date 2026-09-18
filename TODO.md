@@ -1685,11 +1685,11 @@ alongside related feature work; only the big-rock deferrals live here.
   Inline reusable slots without semantic storage verdicts,
   owned tuple/union backing, materialized expression/view temporaries, container
   elements and broader call/closure execution remain explicit M2/M3/M4 gaps.
-  The recommended next design after that slice is bounded M3 liveness and
-  all-holder propagation; completing it would not complete M2 or enable M5.
+  Bounded M3 liveness and all-holder propagation are implemented, without
+  completing M2 or enabling M5.
   `docs/MIR_M3_LIVENESS_PLAN.md` records the approved M3.1/M3.2 design.
-  `--dump-mir` and M3.1 backward liveness are implemented; M3.2 forward
-  reference dependencies remain next. Whole-holder precision
+  `--dump-mir`, M3.1 backward liveness and M3.2 forward reference dependencies
+  are implemented. Whole-holder precision
   and conservative joins are explicit. General storage-end/cleanup events,
   invalidation policy, external disjointness and escaping-reference safety
   remain later M3 work; an empty dependency inventory authorizes none of them.

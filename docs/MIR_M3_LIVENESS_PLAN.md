@@ -189,7 +189,7 @@ The bounded storage contract is explicit:
 - Returning ends the body; currently admitted scalar returns cannot export
   these references. No implicit scope end is inferred from a CFG join.
 
-Make that contract positive MIR data in M3.2: propose an optional
+M3.2 carries that contract as positive MIR data: an optional
 `MIRSlot.storage_duration` fact using `MIRStorageDuration.BODY` or `CALLER`.
 It describes the slot's actual backing when used as a dependency root, not
 the lifetime of whatever a pointer holder currently refers to. `None` means
@@ -197,8 +197,10 @@ unavailable, never an inferred BODY duration.
 
 The existing THIR-to-MIR producer arms stamp BODY on admitted entry backing
 and hoisted OWN-site record storage, and on an admitted local union wrapper
-whose scalar payload can be borrowed. A borrowed parameter wrapper uses
-CALLER; symbolic external record referents retain the caller obligation above.
+whose scalar payload can be borrowed. A borrowed scalar-union parameter wrapper
+uses CALLER. Reference-union parameter wrappers are passed by value and receive
+no backing-duration fact; their symbolic external record referents retain the
+caller obligation above independently of the wrapper's lifetime.
 Stamp only where the selected THIR storage operation proves the placement;
 do not consult emitter names or an analyzer from the analysis pass. Synthetic
 reference temporaries do not acquire ownership by receiving a slot ID.
@@ -328,6 +330,12 @@ established by the design survey.
 
 The two increments and conservative precision boundary are approved. The
 source language's ownership/borrowing rules and existing checker authority
-stay unchanged. The debug CLI and M3.1 are implemented; M3.2 remains pending.
-M3.1 also exposes liveness through `--dump-mir`. Its constructor entry-use set
+stay unchanged. The debug CLI, M3.1 and M3.2 are implemented.
+The dump exposes liveness plus possible referents and active dependencies.
+M3.1's constructor entry-use set
 includes the receiver address used by initialization as well as field operands.
+M3.2 requires the same immutable function instance as its liveness input;
+it cannot accidentally consume stale facts for a reused body ID. Readonly
+field targets are normalized when checking the finite inline-field graph.
+General storage-end events and lifetime checking remain the next M3 design
+checkpoint; this batch does not authorize moves, releases or new diagnostics.

@@ -63,7 +63,8 @@ def dump_function(fn: MIRFunction) -> str:
                 access = f" payload-alias({_place(slot.alias_source)})"
             case _:
                 access = " readonly" if slot.global_id is not None and slot.readonly else ""
-        lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}")
+        duration = f" duration={slot.storage_duration.name.lower()}" if slot.storage_duration is not None else ""
+        lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}{duration}")
     if fn.receiver_init is not None:
         init = fn.receiver_init
         values = ", ".join(repr(value.value) if isinstance(value, MIRConstant) else f"%{value.index}"

@@ -13,7 +13,7 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
     MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
@@ -849,7 +849,8 @@ class _Builder:
              optional_layout: th.THIROptionalLayout | None = None,
              union_layout: th.THIRUnionLayout | None = None,
              alias_source: MIRPlace | None = None,
-             global_binding: th.THIRGlobalBinding | None = None) -> MIRSlotId:
+             global_binding: th.THIRGlobalBinding | None = None,
+             storage_duration: MIRStorageDuration | None = None) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
         self.slots.append(MIRSlot(sid, reference.type if reference else (
             unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
@@ -871,7 +872,8 @@ class _Builder:
                                       for member in union_layout.elements)) if union_layout is not None else None,
                                   alias_source=alias_source,
                                   global_id=MIRGlobalId(global_binding.module, global_binding.name)
-                                  if global_binding is not None else None))
+                                  if global_binding is not None else None,
+                                  storage_duration=storage_duration))
         return sid
 
     @staticmethod
@@ -1048,7 +1050,7 @@ class _Builder:
                 return MIRMove(self.storage[expr.value.name])
 
     def optional_record(self, expr: th.THIRCtorCall, fact: th.THIRBorrowedRecord) -> MIRRvalue:
-        storage = self.slot(fact.type, storage=True)
+        storage = self.slot(fact.type, storage=True, storage_duration=MIRStorageDuration.BODY)
         self.write(storage, self.record_value(expr), expr.loc)
         reference = self.slot(fact.type, reference=fact)
         self.write(reference, MIRBorrow(MIRPlace(storage)), expr.loc)
@@ -1074,7 +1076,7 @@ class _Builder:
                     self.bindings[stmt.alias] = dest
                 case th.THIRVarDecl() if stmt.union_layout is not None:
                     dest = self.slot(stmt.union_layout.type, MIRSlotKind.LOCAL, stmt.name,
-                                     union_layout=stmt.union_layout)
+                                     union_layout=stmt.union_layout, storage_duration=MIRStorageDuration.BODY)
                     self.write(dest, self.union_value(stmt.init, stmt.union_layout, stmt.union_literal), loc)
                     self.bindings[stmt.name] = dest
                 case th.THIRAssign() if stmt.union_layout is not None:
@@ -1098,7 +1100,7 @@ class _Builder:
                         self.write(dest, self.optional_value(stmt.value), loc)
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.owned_storage is not None:
                     fact = stmt.owned_storage
-                    storage = self.slot(fact.type, storage=True)
+                    storage = self.slot(fact.type, storage=True, storage_duration=MIRStorageDuration.BODY)
                     self.write(storage, self.record_value(stmt.init), loc)
                     holder = self.slot(fact.type, MIRSlotKind.LOCAL, stmt.name, fact)
                     self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
@@ -1108,7 +1110,8 @@ class _Builder:
                     holder = self.bindings[stmt.target.name]
                     value = self.record_value(stmt.value)
                     if stmt.rebind_storage is RebindStorage.OWN:
-                        storage = self.slot(self.slots[holder.index].type, storage=True)
+                        storage = self.slot(self.slots[holder.index].type, storage=True,
+                                            storage_duration=MIRStorageDuration.BODY)
                         self.write(storage, value, loc)
                         self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
                     else:
@@ -1203,7 +1206,11 @@ class _Builder:
         for p in self.fn.params:
             self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
                                                p.borrowed_record, optional_layout=p.optional_layout,
-                                               union_layout=p.union_layout, tuple_layout=p.tuple_layout)
+                                               union_layout=p.union_layout, tuple_layout=p.tuple_layout,
+                                               storage_duration=MIRStorageDuration.CALLER
+                                               if p.union_layout is not None and all(
+                                                   member is None or member in (BOOL, INT32)
+                                                   for member in p.union_layout.elements) else None)
         for identity, fact in self.global_facts.items():
             self.globals[identity] = self.slot(fact.type, MIRSlotKind.GLOBAL, fact.name, global_binding=fact)
         receiver_init = None

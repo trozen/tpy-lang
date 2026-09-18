@@ -15,6 +15,7 @@
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | M1 and M2.1-M2.10 bounded coverage in free functions, ordinary instance methods and fully initialized scalar constructors, including qualified scalar globals; explicit whole-body MIRNotCovered, no compilation hook. Exact shapes and exclusions: [MIR analysis plan](MIR_ANALYSIS_PLAN.md) |
 | `--dump-mir` debug output | Implemented for the bounded MIR subset; uncovered/unavailable bodies are reported explicitly |
 | MIR liveness pass | M3.1 backward may-liveness implemented for validated bounded MIR; debug output only, no move decisions |
+| MIR dependency pass | M3.2 per-payload referents and live dependencies implemented with explicit backing duration; debug output only, no lifetime-safety verdict |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
 | MIR advisory loan checker (default mode) | Not started |
 | MIR safe opt-in enforcement mode | Not started |

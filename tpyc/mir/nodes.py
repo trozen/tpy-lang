@@ -54,6 +54,11 @@ class MIRValueKind(Enum):
     PAYLOAD_ALIAS = auto()
 
 
+class MIRStorageDuration(Enum):
+    BODY = auto()
+    CALLER = auto()
+
+
 @dataclass(frozen=True)
 class MIRTupleElement:
     type: TpyType
@@ -98,6 +103,7 @@ class MIRSlot:
     union_layout: MIRUnionLayout | None = None
     alias_source: 'MIRPlace | None' = None
     global_id: MIRGlobalId | None = None
+    storage_duration: MIRStorageDuration | None = None
 
 
 @dataclass(frozen=True)

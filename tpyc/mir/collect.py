@@ -7,6 +7,7 @@ from ..sema.analyzer import SemanticAnalyzer
 from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.reject import is_bodyless_binding
 from .definitions import MIRDefinitions
+from .dependencies import analyze_dependencies, dump_dependencies
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .liveness import analyze_liveness, dump_liveness
@@ -45,7 +46,9 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
                 unavailable(result.body, f"MIR not covered: {result.reason}")
             case MIRFunction():
                 lines.append(dump_function(result).rstrip("\n") + "\n")
-                lines.append(dump_liveness(analyze_liveness(result)))
+                liveness = analyze_liveness(result)
+                lines.append(dump_liveness(liveness))
+                lines.append(dump_dependencies(analyze_dependencies(result, liveness)))
 
     if module.top_level_stmts:
         body = identity("__tpy_init")

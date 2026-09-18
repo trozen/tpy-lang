@@ -10,7 +10,7 @@ from ..typesys import (
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
-    MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind,
+    MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
@@ -136,6 +136,14 @@ def validate_function(fn: MIRFunction) -> None:
     global_ids: set[MIRGlobalId] = set()
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
+        if slot.storage_duration is not None:
+            _require(isinstance(slot.storage_duration, MIRStorageDuration)
+                     and slot.value_kind in (MIRValueKind.RECORD_STORAGE, MIRValueKind.UNION)
+                     and ((slot.storage_duration is MIRStorageDuration.CALLER
+                           and slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.UNION)
+                          or (slot.storage_duration is MIRStorageDuration.BODY
+                              and slot.kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY))),
+                     "invalid storage duration fact")
         if slot.kind is MIRSlotKind.GLOBAL:
             _require(isinstance(slot.global_id, MIRGlobalId) and bool(slot.global_id.module and slot.global_id.name)
                      and slot.global_id not in global_ids and slot.value_kind is MIRValueKind.SCALAR,
@@ -167,6 +175,8 @@ def validate_function(fn: MIRFunction) -> None:
                              and member.type not in (BOOL, INT32)
                              and (typ == member.type or member.readonly), "unsupported union reference")
             _require(len(kinds) == 1 and len(layout.elements) >= 2, "mixed or empty union layout")
+            _require(slot.storage_duration is not MIRStorageDuration.CALLER
+                     or kinds == {MIRValueKind.SCALAR}, "caller duration requires borrowed scalar union wrapper")
         elif slot.value_kind is MIRValueKind.PAYLOAD_ALIAS:
             _require(slot.type in (BOOL, INT32) and slot.form is Form.BORROW and slot.readonly
                      and slot.kind is not MIRSlotKind.PARAMETER
