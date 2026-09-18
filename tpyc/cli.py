@@ -458,6 +458,8 @@ def _run_cli(is_runner: bool) -> int:
     parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
     parser.add_argument("--dump-thir", action="store_true",
                         help="Print the lowered THIR for every body, naming the rejected ones and why, and exit (debug)")
+    parser.add_argument("--dump-mir", action="store_true",
+                        help="Print supported MIR control-flow graphs and reasons for uncovered bodies, and exit (debug)")
     parser.add_argument("--explain-send", metavar="TYPE",
                         help="Print the Send derivation tree for TYPE (e.g. 'list[Order]') and exit")
     parser.add_argument("--explain-sync", metavar="TYPE",
@@ -554,7 +556,7 @@ def _run_cli(is_runner: bool) -> int:
     if is_runner:
         has_input = bool(args.input or args.cmd) or not sys.stdin.isatty()
         has_action = (
-            args.build or args.exec or args.dump_code or args.dump_thir or args.repl
+            args.build or args.exec or args.dump_code or args.dump_thir or args.dump_mir or args.repl
             or args.info or args.print_types
             or args.install_agent_docs is not None
             or args.explain_send is not None or args.explain_sync is not None
@@ -614,7 +616,7 @@ def _run_cli(is_runner: bool) -> int:
         dump_builtin_types()
         return 0
 
-    # Handle -c: implies -x unless --dump-code or -b is set.
+    # Handle -c: implies -x unless a dump action or -b is set.
     # With -c, a positional ends up in args.input due to nargs="?" -- prepend
     # it to forwarded script args (matches `python -c CMD a b`). For tpyc,
     # args.script_args may already contain tokens from a post-`--` separator;
@@ -623,7 +625,7 @@ def _run_cli(is_runner: bool) -> int:
         if args.input:
             args.script_args = [args.input, *args.script_args]
             args.input = None
-        if not args.dump_code and not args.build:
+        if not (args.dump_code or args.dump_thir or args.dump_mir or args.build):
             args.exec = True
 
     # Auto-detect stdin when no input file given and stdin is piped/heredoc
@@ -707,11 +709,13 @@ def _run_cli(is_runner: bool) -> int:
         parser.error("--dump-code cannot be combined with --build or --exec")
     if args.dump_thir and (args.build or args.exec):
         parser.error("--dump-thir cannot be combined with --build or --exec")
+    if args.dump_mir and (args.build or args.exec or args.dump_code or args.dump_thir):
+        parser.error("--dump-mir cannot be combined with --build, --exec, --dump-code or --dump-thir")
     if args.jobs is not None and args.jobs < 1:
         parser.error("-j/--jobs must be a positive integer")
     explain_type = args.explain_send or args.explain_sync
     building = args.build or args.exec
-    quiet = args.dump_code or args.dump_thir or args.quiet or explain_type is not None
+    quiet = args.dump_code or args.dump_thir or args.dump_mir or args.quiet or explain_type is not None
     explicit_output = bool(args.output)
     n_jobs = args.jobs or os.cpu_count() or 1
     progress = ProgressPrinter(enabled=not quiet)
@@ -854,6 +858,28 @@ def _run_cli(is_runner: bool) -> int:
                 print(msg, file=sys.stderr)
 
         t_codegen_start = time.monotonic()
+        if args.dump_mir:
+            from .mir.collect import dump_codegen_mir
+            from .mir.definitions import MIRDefinitions
+
+            collected = []
+            for compiled in compiled_modules:
+                if not compiler.is_user_module(compiled):
+                    continue
+                source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
+                with stamp_codegen_error_file(source_name, compiled.is_entry_point):
+                    ctx = compiler.collect_thir(compiled, options, tolerate_reject=True)
+                collected.append((compiled, ctx))
+            definitions = MIRDefinitions(tuple(
+                ctor for _compiled, ctx in collected for ctor in ctx.thir_constructors.values()))
+            for compiled, ctx in collected:
+                assert compiled.analyzer is not None
+                print(f"// === mir/{compiled.name} ===")
+                print(dump_codegen_mir(compiled.ast, compiled.analyzer, ctx,
+                                       compiled.name, definitions,
+                                       compiler.thir_reject_by_node), end="")
+            return 0
+
         for i, compiled in enumerate(compiled_modules, 1):
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
 

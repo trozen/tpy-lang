@@ -109,7 +109,10 @@ captured field, and readonly access propagates down the path. Scalar leaves
 may be written; whole-field replacement and nested owning operations remain
 uncovered. These borrowed paths require no eligible owning constructor. Tests
 feed it the exact THIR returned by `Compiler.generate_code_and_thir()`, together
-with body identity and declaration kind. It does not run during normal
+with body identity and declaration kind. The `--dump-mir` debug option uses
+the same emitted THIR caches, collecting constructor definitions across user
+modules before lowering their bodies. It reports coverage failures explicitly
+and does not write generated files. MIR does not run during normal
 compilation or affect emission. Unsupported bodies return `MIRNotCovered`, which
 is distinct from malformed MIR and never constitutes a safety proof. Broader
 place/loan analysis remains planned in `docs/MIR_ANALYSIS_PLAN.md`.

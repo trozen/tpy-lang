@@ -8534,9 +8534,18 @@ requires a present mutable payload. Inline-slot reuse without carried storage
 facts remains excluded. No source-language rule or generated C++ changes.
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
-It has no normal compilation hook or borrow checker yet. Current provenance
+`uv run tpyc --dump-mir program.py` exposes the supported CFGs for user modules
+and explicit reasons for uncovered or unavailable bodies. It uses actual
+emitted THIR, writes no generated files and does not execute the program.
+There is no normal compilation hook or MIR borrow checker yet. Current provenance
 checks remain authoritative. Callable admission remains planned, with no new
 acceptance rule or diagnostic enabled by this foundation.
+
+Proposed M3.1/M3.2 add internal backward liveness and forward reference
+dependency inventories for that bounded subset (`MIR_M3_LIVENESS_PLAN.md`).
+The design is approved. It preserves dependencies through live aliases
+and aggregate copies, without enabling lifetime safety verdicts, move
+optimization, new diagnostics or a change of checker authority.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

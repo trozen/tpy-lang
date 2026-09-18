@@ -1786,6 +1786,9 @@ holder copies and None clears. Inline-slot reuse without those facts stays
 excluded. The implementation was approved on 2026-09-18.
 The audit maps all six analysis requirements and recommends designing bounded
 M3 liveness/holder propagation next, while retaining explicit M2 coverage gaps.
+The proposed M3.1/M3.2 rules and tests are in
+[MIR_M3_LIVENESS_PLAN.md](MIR_M3_LIVENESS_PLAN.md). They are approved
+and provide analysis inventories, not lifetime safety verdicts or authority.
 This does not declare M2 complete or authorize callable admission.
 
 ## Scope matrix and remaining increments

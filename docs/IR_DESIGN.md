@@ -13,7 +13,7 @@
 | MIR node definitions (`tpyc/mir/nodes.py`) | Scalar CFG, borrowed/owned record storage, alias operations, nested field places and selected tuple/Optional/union payloads, validation and internal dump implemented |
 | Semantic callable metadata | M2.11 carries selected resolved free-function identities/signatures on THIR calls and definitions; M2.12 carries complete bounded closure capture inventories and body-local occurrence identities. General MIR calls and closure execution remain uncovered; see [call/capture plan](MIR_CALL_CAPTURE_PLAN.md) |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | M1 and M2.1-M2.10 bounded coverage in free functions, ordinary instance methods and fully initialized scalar constructors, including qualified scalar globals; explicit whole-body MIRNotCovered, no compilation hook. Exact shapes and exclusions: [MIR analysis plan](MIR_ANALYSIS_PLAN.md) |
-| `--dump-mir` debug output | Not started |
+| `--dump-mir` debug output | Implemented for the bounded MIR subset; uncovered/unavailable bodies are reported explicitly |
 | MIR liveness pass | Not started |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
 | MIR advisory loan checker (default mode) | Not started |
@@ -2015,6 +2015,15 @@ Remove statements whose results are never used (no live variables depend on them
 Standard backward pass on the CFG.
 
 ### Debugging: `--dump-mir`
+
+`uv run tpyc --dump-mir program.py` collects the THIR bodies used by emission
+and prints supported MIR CFGs for user modules. It also reports why a body is
+outside MIR coverage, has no body, rejected THIR lowering, or was never
+attempted after an earlier rejection. It produces no C++ files or binary and
+does not change normal compilation. `tpy --dump-mir program.py`, `-c` and stdin
+input are also supported. The option cannot be combined with build/exec or
+other dump modes. The following sketch includes future operations outside
+the current bounded subset:
 
 ```
 fn main() -> Void:
