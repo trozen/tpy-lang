@@ -14,7 +14,7 @@
 | Semantic callable metadata | M2.11 carries selected resolved free-function identities/signatures on THIR calls and definitions; M2.12 carries complete bounded closure capture inventories and body-local occurrence identities. General MIR calls and closure execution remain uncovered; see [call/capture plan](MIR_CALL_CAPTURE_PLAN.md) |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | M1 and M2.1-M2.10 bounded coverage in free functions, ordinary instance methods and fully initialized scalar constructors, including qualified scalar globals; explicit whole-body MIRNotCovered, no compilation hook. Exact shapes and exclusions: [MIR analysis plan](MIR_ANALYSIS_PLAN.md) |
 | `--dump-mir` debug output | Implemented for the bounded MIR subset; uncovered/unavailable bodies are reported explicitly |
-| MIR liveness pass | Not started |
+| MIR liveness pass | M3.1 backward may-liveness implemented for validated bounded MIR; debug output only, no move decisions |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
 | MIR advisory loan checker (default mode) | Not started |
 | MIR safe opt-in enforcement mode | Not started |

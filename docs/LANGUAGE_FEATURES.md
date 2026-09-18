@@ -8541,11 +8541,13 @@ There is no normal compilation hook or MIR borrow checker yet. Current provenanc
 checks remain authoritative. Callable admission remains planned, with no new
 acceptance rule or diagnostic enabled by this foundation.
 
-Proposed M3.1/M3.2 add internal backward liveness and forward reference
-dependency inventories for that bounded subset (`MIR_M3_LIVENESS_PLAN.md`).
-The design is approved. It preserves dependencies through live aliases
-and aggregate copies, without enabling lifetime safety verdicts, move
-optimization, new diagnostics or a change of checker authority.
+M3.1 adds internal backward may-liveness for that bounded subset, visible in
+`--dump-mir` as block entry/exit and statement-boundary live sets. Projected
+writes use their holder; scalar union payload aliases keep their wrapper live.
+Constructor initialization has a separate entry-use set. This is no move,
+dead-store or lifetime-safety verdict. M3.2's approved forward reference
+dependency inventory remains pending (`MIR_M3_LIVENESS_PLAN.md`); no new
+diagnostics or change of checker authority is enabled.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

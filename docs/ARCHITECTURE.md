@@ -117,6 +117,14 @@ compilation or affect emission. Unsupported bodies return `MIRNotCovered`, which
 is distinct from malformed MIR and never constitutes a safety proof. Broader
 place/loan analysis remains planned in `docs/MIR_ANALYSIS_PLAN.md`.
 
+`mir/liveness.py` computes backward may-liveness over validated MIR with a
+predecessor worklist. Its immutable result includes block entry/exit sets,
+statement boundaries (index equal to statement count denotes the terminator),
+and constructor initialization entry uses. A projected store reads its address
+root; a live scalar payload alias also keeps its wrapper live. The debug dump
+prints these sets. Production AST last-use and provenance decisions are
+unchanged; reference-dependency propagation is the next analysis increment.
+
 Tuple local bindings register their borrowed payloads with the existing sema
 `BorrowTracker`, including its statement records consumed by alias-rebind
 analysis. Declaration/reassignment capture modes distinguish borrowed elements

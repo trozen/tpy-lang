@@ -328,4 +328,6 @@ established by the design survey.
 
 The two increments and conservative precision boundary are approved. The
 source language's ownership/borrowing rules and existing checker authority
-stay unchanged. M3.1/M3.2 implementation is pending the debug CLI delivery.
+stay unchanged. The debug CLI and M3.1 are implemented; M3.2 remains pending.
+M3.1 also exposes liveness through `--dump-mir`. Its constructor entry-use set
+includes the receiver address used by initialization as well as field operands.

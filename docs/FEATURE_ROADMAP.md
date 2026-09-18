@@ -2025,8 +2025,10 @@ set, lowering plan, MIR node set, liveness + move/copy + borrow passes, rollout
 phasing, and what *doesn't* change. The internal MIR foundation now has
 body-scoped scalar slots and borrowed-record holders, explicit aliases/reseats,
 direct scalar field places, CFG lowering, verification and a dump; it has no normal
-compilation hook and changes no emitted code or acceptance rule. The remaining
-MIR work (broader places/regions, liveness, provenance/effects, move lowering,
+compilation hook and changes no emitted code or acceptance rule.
+M3.1 adds bounded backward may-liveness, exposed with the CFG by `--dump-mir`.
+It does not authorize moves or storage release. The remaining MIR work
+(broader places/regions, reference-dependency propagation, provenance/effects, move lowering,
 borrow checking, opt-in safe mode, MIR-backed codegen and retirement of old
 ownership logic) is pending. `docs/MIR_ANALYSIS_PLAN.md` records the active
 analysis-first sequence and coverage gates.

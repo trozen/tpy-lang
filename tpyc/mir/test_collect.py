@@ -138,6 +138,8 @@ def test_cli_dump_does_not_execute_or_write_cpp(tmp_path: Path, monkeypatch: pyt
     output = capsys.readouterr().out
     assert "// === mir/main ===" in output
     assert "entry bb0" in output
+    assert "liveness entry:" in output
+    assert "before 0:" in output
     assert not re.search(r"^2$", output, re.MULTILINE)
     assert not (tmp_path / "__tpyc__").exists()
 
