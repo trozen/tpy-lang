@@ -1176,6 +1176,18 @@ def _lower_comprehension(
         init, result_type: 'TpyType | None', lc: '_LowerCtx',
         declared: dict[str, TpyType],
         pointers: AbstractSet[str]) -> THIRComprehension:
+    global_scope = lc.global_binding_scope
+    lc.global_binding_scope = False
+    try:
+        return _lower_comprehension_impl(init, result_type, lc, declared, pointers)
+    finally:
+        lc.global_binding_scope = global_scope
+
+
+def _lower_comprehension_impl(
+        init, result_type: 'TpyType | None', lc: '_LowerCtx',
+        declared: dict[str, TpyType],
+        pointers: AbstractSet[str]) -> THIRComprehension:
     """Build the THIRComprehension node from its classified route. The
     container spelling composes from the node's sema-stamped result types;
     elements/keys/values lower through the S5 per-slot owned-str wrap
@@ -1489,6 +1501,16 @@ def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
 
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                    declared: dict[str, TpyType]) -> THIRGenExpr:
+    global_scope = lc.global_binding_scope
+    lc.global_binding_scope = False
+    try:
+        return _lower_genexpr_impl(expr, lc, declared)
+    finally:
+        lc.global_binding_scope = global_scope
+
+
+def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
+                       declared: dict[str, TpyType]) -> THIRGenExpr:
     """Lower a generator expression to the make_generator render: the
     `_source_route` verdict the comprehension shares (which source, borrowed
     lvalue vs owned rvalue, element type), then the genexpr's own gates --

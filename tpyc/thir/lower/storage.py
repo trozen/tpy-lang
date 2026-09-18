@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING
 
+from ...symbol_binding import SymbolKind
+
 from ...parse.nodes import TpyFieldAccess, TpyName, TpySubscript, TupleElemCapture
 from ...typesys import (
     BOOL, INT32, INT32_MIN, INT32_MAX, NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
@@ -10,11 +12,43 @@ from ...typesys import (
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
-    THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral,
+    THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding,
 )
 
 if TYPE_CHECKING:
     from ...sema.analyzer import SemanticAnalyzer
+    from .context import _LowerCtx
+
+
+def global_name_binding(name: str, typ: TpyType, lc: '_LowerCtx') -> THIRGlobalBinding | None:
+    analyzer = lc.analyzer
+    if (not lc.global_binding_scope or lc.top_level_scope or lc.capture_funcs or name in lc.prescan.param_names
+            or typ not in (BOOL, INT32) or not lc.prescan.binds_global(name)
+            or name not in analyzer.ctx.top_level_decls or name in lc.prescan.native_globals):
+        return None
+    declared = analyzer.ctx.global_scope.lookup(name)
+    if declared is None:
+        binding = analyzer.global_ns.lookup_local(name)
+        declared = binding.type if binding is not None else None
+    if declared != typ:
+        return None
+    return THIRGlobalBinding(analyzer.ctx.cpp_module_name, name, typ,
+                             name in lc.prescan.global_seeded)
+
+
+def module_global_binding(module: str, name: str, typ: TpyType,
+                          analyzer: 'SemanticAnalyzer') -> THIRGlobalBinding | None:
+    info = analyzer.registry.get_module(module)
+    if typ not in (BOOL, INT32) or info is None or info.module_attributes is None:
+        return None
+    cell = info.module_attributes.get(name)
+    variable = info.variables.get(name)
+    if (cell is None or cell.binding.kind is not SymbolKind.VARIABLE
+            or cell.binding.defining_module is not None or variable is None
+            or variable.native_cpp_name is not None or variable.is_pointer or variable.type != typ):
+        return None
+    # Reexports do not preserve Python's imported binding snapshot.
+    return THIRGlobalBinding(module, cell.binding.canonical_name, typ)
 
 
 def borrowed_record(typ: TpyType, readonly: bool,

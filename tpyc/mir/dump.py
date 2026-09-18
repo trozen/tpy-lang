@@ -39,6 +39,8 @@ def dump_function(fn: MIRFunction) -> str:
              f"entry bb{fn.entry.index}"]
     for slot in fn.slots:
         name = f" {slot.name}" if slot.name is not None else ""
+        if slot.global_id is not None:
+            name = f" {slot.global_id.module}::{slot.global_id.name}"
         match slot.value_kind:
             case MIRValueKind.BORROWED_RECORD:
                 access = " readonly-ref" if slot.readonly else " mutable-ref"
@@ -60,7 +62,7 @@ def dump_function(fn: MIRFunction) -> str:
             case MIRValueKind.PAYLOAD_ALIAS:
                 access = f" payload-alias({_place(slot.alias_source)})"
             case _:
-                access = ""
+                access = " readonly" if slot.global_id is not None and slot.readonly else ""
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}")
     if fn.receiver_init is not None:
         init = fn.receiver_init

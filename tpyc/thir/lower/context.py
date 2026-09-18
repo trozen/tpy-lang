@@ -1099,7 +1099,7 @@ class _LowerCtx:
                  "overload_narrowing", "overload_stub_return",
                  "overload_literal_facts",
                  "overload_terminated", "render_concept",
-                 "top_level_scope", "global_ptr_slots", "global_slot_assigned",
+                 "top_level_scope", "global_binding_scope", "global_ptr_slots", "global_slot_assigned",
                  "in_for_body",
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
                  "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
@@ -1121,6 +1121,7 @@ class _LowerCtx:
                  top_level_scope: bool = False) -> None:
         self.analyzer = analyzer
         self.func = func
+        self.global_binding_scope = not (func.is_async or func.is_generator)
         # The SIGNATURE params this body is lowered against: a per-@overload
         # stub's when one is being specialized (the body is emitted against
         # the stub's types), the impl's otherwise. Every param-type lookup

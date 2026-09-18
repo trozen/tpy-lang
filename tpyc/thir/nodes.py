@@ -118,6 +118,14 @@ class THIRAliasBinding:
 
 
 @dataclass(frozen=True)
+class THIRGlobalBinding:
+    module: str
+    name: str
+    type: TpyType
+    writable: bool = False
+
+
+@dataclass(frozen=True)
 class THIRFieldIdentity:
     owner: NominalType
     name: str
@@ -278,6 +286,7 @@ class THIRWalrus(THIRExpr):
     name: str
     cpp_name: str
     value: 'THIRExpr'
+    global_binding: THIRGlobalBinding | None = field(default=None, kw_only=True)
     cpp_type: 'str | None' = None
     init: 'str | None' = None
     tail: 'str | None' = None
@@ -309,6 +318,7 @@ class THIRName(THIRExpr):
     verbatim by emit; `name` keeps the Python name for the gate/scope
     bookkeeping."""
     name: str
+    global_binding: THIRGlobalBinding | None = field(default=None, kw_only=True)
     optional_read: THIROptionalRead | None = field(default=None, kw_only=True)
     union_read: THIRUnionLayout | None = field(default=None, kw_only=True)
     is_last_use: bool = False
@@ -1412,6 +1422,7 @@ class THIRModuleVar(THIRExpr):
     registry's VariableInfo. A dedicated leaf (not a THIRName) so no
     local-name-keyed sink can mistake it for a binding."""
     cpp: str
+    global_binding: THIRGlobalBinding | None = None
 
 
 @dataclass(frozen=True)

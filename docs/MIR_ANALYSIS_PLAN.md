@@ -1612,6 +1612,11 @@ stop for blockers or a material design change.
 
 ### M2.9: complete scalar constructor initialization and body
 
+Completed: 841 focused checks passed, including the new native/CPython
+witness. The full forced suite passed with 8679 tests, 23 skips and 4158 C++
+cases built and run. All applicable specialist lenses and the independent
+retrospective were clean. No existing snapshots changed.
+
 Admit unique constructors of eligible flat plain records with bool/int32
 fields and parameters. Every field must have exactly one explicit, pure
 parameter-or-literal member initializer. Then admit the existing body subset,
@@ -1661,6 +1666,12 @@ this boundary; initialization and call-summary separation are review gates.
 
 ### M2.10: qualified scalar global places
 
+Completed: 864 focused checks passed, including 10 native executions. The
+full forced suite passed with 8689 tests, 23 skips and 4158 C++ cases built
+and run. All seven specialist lenses were clean after the scope-isolation
+and explicit-load verification fixes; the independent meta-review and
+retrospective accepted the bounded design. No existing snapshots changed.
+
 Admit bool/int32 global reads and writes inside supported function, method
 and constructor bodies. Carry semantic module/binding identity from existing
 resolved bindings into THIR and then MIR; never recover identity from C++
@@ -1669,14 +1680,52 @@ module-qualified reads must identify the actual selected binding. Writes
 follow the binding selected by the existing frontend, including Python's
 distinction between module attributes and locally rebound imported names.
 
+The producer survey confirmed that imported scalar names currently read the
+defining module's live storage, unlike CPython's imported binding snapshot
+(`BUGS.md#imported-scalar-binding-tracks-foreign-rebind`). Keep those names
+and reexported module attributes uncovered. Admit same-module declarations
+and direct module attributes (including module aliases) only. This narrows
+internal coverage without changing source admission or C++ emission.
+
+Use THIRGlobalBinding on scalar names, module-variable leaves and walrus
+targets. Existing scope seeding decides whether a name is global; the module
+registry identifies direct module attributes. Preserve qualified module/name,
+type and lexical write permission. MIR global slots carry MIRGlobalId and
+are separate from parameters/locals. Their storage is supplied by the caller,
+shared across bodies and read afresh at each operation. Deduplicate by logical
+identity, checking type consistency and each source write's permission.
+Global slots are places only: scalar operands and terminators must consume
+an explicit load into a local/temporary. Bare-name facts are not stamped in
+nested functions, lambdas, comprehension scopes, module initialization or
+resumable bodies; their inherited outer scope classifications cannot prove
+the selected inner binding. Direct module attributes retain their resolved
+module identity without consulting local names.
+
 Model globals as shared external storage, not copied parameters. Require
 explicit initial state when interpreting tests, and preserve mutations
 across separately executed bodies. Module initialization, native globals,
 reference/aggregate globals, closure captures and interprocedural effects
 remain outside this increment. The detailed producer survey precedes code.
 Test same-name globals in distinct modules, local shadowing, repeated reads,
-conditional writes and existing-body-position symmetry. MIR tests prove
-identity; native tests only pin deliberate source-semantic gaps in coverage.
+conditional writes and existing-body-position symmetry. Preserve the existing
+rejection of order-sensitive eager operands; global walrus writes do not
+authorize a source-order assumption for an unsequenced emitted expression.
+MIR tests prove identity; native tests only pin deliberate source-semantic
+gaps in coverage.
+
+| Axis | Covered | Deferred / existing gap |
+|---|---|---|
+| Position | Existing ordinary free/method bodies and complete scalar constructor tails | Module init and closures: later M2; generator/async/comprehension/with/try-finally/error-return/match: M3; generic instantiations: M4 |
+| Shape | bool/int32 external storage, including bool walrus and ordinary scalar stores | Other scalars, tuple/Optional/union, reference types, str/bytes/views, Own/readonly wrappers, Ptr/Span/Box/Rc globals: later M2/M4 |
+| Slot | Qualified global storage; reads into existing locals, scalar fields and return positions | Aggregate/field-held global aliases, containers and captures: later M2/M4 |
+| Identity | Same-module declarations and direct module attributes, module aliases and distinct module names | From-import/reexports: tracked import-binding defect; native linkage: later M2 |
+
+Native coverage is already deliberate in global_keyword_write,
+global_unannotated_decl (including constructor writes), global_walrus_write,
+global_walrus_shapes and global_shadow_func_local. Reuse those cases without
+duplicating them or reading their sources from compiler tests. New MIR tests
+use their own emitted-THIR fixtures to prove shared storage, lazy writes,
+qualified identity, shadowing, readonly access and safe exclusions.
 
 For each increment update this plan and the architecture/language status,
 run focused checks, the applicable specialist reviews and readiness gate,

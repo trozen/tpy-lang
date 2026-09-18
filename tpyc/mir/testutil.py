@@ -5,7 +5,7 @@ import operator
 
 from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRField, MIRFieldId,
-    MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind,
+    MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind,
     MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
@@ -45,13 +45,18 @@ Record = dict[MIRFieldId, 'int | bool | Record']
 Heap = dict[int, Record]
 
 
-def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | None:
+def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
+            global_state: dict[MIRGlobalId, int | bool] | None = None) -> Value | None:
     params = [s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
     assert len(params) == len(args)
     values = dict(zip(params, args))
     objects = heap if heap is not None else {}
     blocks = {b.id: b for b in fn.blocks}
     slots = {s.id: s for s in fn.slots}
+    global_values = global_state if global_state is not None else {}
+    for slot in fn.slots:
+        if slot.global_id is not None:
+            assert slot.global_id in global_values, "global storage must be initialized by caller"
     records = {r.type: r for r in fn.records}
     if fn.receiver_init is not None:
         init = fn.receiver_init
@@ -82,7 +87,8 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
         return record(reference), member.id
 
     def read(place: MIRPlace) -> Value:
-        value = values[place.root]
+        identity = slots[place.root].global_id
+        value = global_values[identity] if identity is not None else values[place.root]
         if isinstance(value, PayloadAlias):
             value = read(value.place)
         for projection in place.projections:
@@ -184,7 +190,12 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
                 assert not isinstance(value, Reference)
                 obj[member] = value
             else:
-                values[stmt.target.root] = value
+                identity = slots[stmt.target.root].global_id
+                if identity is not None:
+                    assert type(value) in (int, bool)
+                    global_values[identity] = value
+                else:
+                    values[stmt.target.root] = value
         term = block.terminator
         match term:
             case MIRReturn(value=result):

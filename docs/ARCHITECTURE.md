@@ -42,7 +42,12 @@ still require an empty tail; body coverage does not imply call-effect coverage.
 Defaults, partial initialization, bases, consuming/generated method variants,
 properties, dunders and resumables retain their separate coverage boundaries.
 MIR uses body-scoped reference holders and explicit alias transfers; scalar
-field places contain dereference and qualified field projections. Distinct
+global slots instead carry a qualified module/binding identity and refer to
+caller-supplied shared storage. THIR carries the selected scalar global binding
+and write permission; MIR does not infer either from C++ names. Same-module
+bool/int32 globals and direct module attributes are covered; from-import names,
+reexports, native globals and module initialization remain uncovered.
+MIR scalar field places contain dereference and qualified field projections. Distinct
 holders can reference the same object, and readonly access does not imply
 an immutable referent. The verifier checks access and definite assignment,
 including initialized bases for field stores, but proves no lifetimes. Owned

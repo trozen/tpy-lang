@@ -7,7 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
-from .storage import direct_field, optional_layout, tuple_layout, union_layout
+from .storage import direct_field, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -5282,6 +5282,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                        not kwargs.get("allow_whole_optional", False)
                        and not isinstance(unwrap_readonly(unwrap_ref_type(lowered.result_type)), OptionalType))
             lowered = replace(lowered, optional_read=THIROptionalRead(layout, extract))
+    if isinstance(lowered, (THIRName, THIRWalrus)):
+        fact = global_name_binding(lowered.name, lowered.result_type, lc)
+        if fact is not None:
+            lowered = replace(lowered, global_binding=fact)
     if cond_eager:
         _check_cond_eager_temps(lowered)
     return lowered
@@ -11022,6 +11026,8 @@ def _capture_entry_cpp(name: str, lc: '_LowerCtx',
 
 def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
                   declared: dict[str, TpyType]) -> THIRExpr:
+    global_scope = lc.global_binding_scope
+    lc.global_binding_scope = False
     try:
         return _lower_lambda_impl(e, lc, declared)
     except ThirUnsupported as ex:
@@ -11031,6 +11037,8 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
         cause = (ex.reason if ex.reason.startswith("lambda.")
                  else f"lambda.body:{ex.reason}")
         raise ThirUnsupported(f"expr.lambda:{cause}", loc=e.loc) from None
+    finally:
+        lc.global_binding_scope = global_scope
 
 
 def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
@@ -11333,6 +11341,7 @@ def _lower_module_var(e: TpyFieldAccess, rtype: 'TpyType | None',
         raise ThirUnsupported("field.module_var_lookup", detail=True)
     _witness("field.module_var")
     return THIRModuleVar(result_type=rtype, cpp=cpp,
+                         global_binding=module_global_binding(module_name, var_name, rtype, analyzer),
                          form=_viewfam_result_form(viewfam), loc=loc)
 
 def lower_print_sink(file_val: TpyExpr, lc: '_LowerCtx',

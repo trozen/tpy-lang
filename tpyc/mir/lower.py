@@ -11,7 +11,7 @@ from ..typesys import (
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
-    MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit,
+    MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
@@ -44,6 +44,22 @@ class _Coverage:
         self.optionals: dict[str, th.THIROptionalLayout] = {}
         self.unions: dict[str, th.THIRUnionLayout] = {}
         self.payload_aliases: set[str] = set()
+        self.globals: dict[MIRGlobalId, th.THIRGlobalBinding] = {}
+
+    def global_binding(self, expr: th.THIRName | th.THIRModuleVar | th.THIRWalrus,
+                       *, write: bool = False) -> TpyType:
+        fact = expr.global_binding
+        _require(expr, isinstance(fact, th.THIRGlobalBinding) and bool(fact.module and fact.name)
+                 and fact.type in (BOOL, INT32) and fact.type == expr.result_type
+                 and expr.form is th.Form.VALUE and type(fact.writable) is bool,
+                 "missing or invalid scalar global binding")
+        _require(expr, not write or fact.writable, "global binding is not writable")
+        identity = MIRGlobalId(fact.module, fact.name)
+        previous = self.globals.get(identity)
+        _require(expr, previous is None or previous.type == fact.type, "inconsistent global type")
+        if previous is None or fact.writable:
+            self.globals[identity] = fact
+        return fact.type
 
     def check(self) -> None:
         fn = self.fn
@@ -584,6 +600,12 @@ class _Coverage:
                          and bool(fact.alternatives) and len(set(fact.alternatives)) == len(fact.alternatives)
                          and all(type(i) is int and 0 <= i < len(fact.layout.elements)
                                  for i in fact.alternatives), "missing or invalid union test")
+            case th.THIRModuleVar():
+                _plain(expr, {"cpp", "global_binding"})
+                self.global_binding(expr)
+            case th.THIRName() if expr.global_binding is not None:
+                _plain(expr, {"name", "cpp", "global_binding", "is_last_use", "is_movable"})
+                self.global_binding(expr)
             case th.THIRName():
                 if expr.name in self.optionals:
                     _require(expr, self.optional_name(expr, extract=True).payload == typ,
@@ -619,8 +641,11 @@ class _Coverage:
                          and isinstance(expr.expr, th.THIRLiteral), "unsupported coercion")
                 _require(expr, self.expr(expr.expr) == INT32, "unsupported literal coercion")
             case th.THIRWalrus():
-                _plain(expr, {"name", "cpp_name", "value"})
-                _require(expr, self.bindings.get(expr.name) == typ, "walrus needs existing scalar local")
+                _plain(expr, {"name", "cpp_name", "value", "global_binding"})
+                if expr.global_binding is not None:
+                    self.global_binding(expr, write=True)
+                else:
+                    _require(expr, self.bindings.get(expr.name) == typ, "walrus needs existing scalar local")
                 _require(expr, self.expr(expr.value) == typ, "walrus type mismatch")
                 writing = True
             case th.THIRUnaryNot():
@@ -718,6 +743,8 @@ class _Coverage:
                 _plain(stmt, set())
             case th.THIRAssign():
                 _plain(stmt, {"target", "value"})
+                if isinstance(stmt.target, th.THIRName) and stmt.target.global_binding is not None:
+                    self.global_binding(stmt.target, write=True)
                 if isinstance(stmt.target, th.THIRName) and stmt.target.name in self.tuples:
                     _require(stmt, stmt.target.name not in self.parameters, "tuple parameter reseat")
                     _plain(stmt.target, {"name", "is_last_use", "is_movable"})
@@ -784,6 +811,8 @@ class _Builder:
         self.records = coverage.records
         self.tuple_exprs = coverage.tuple_exprs
         self.storage: dict[str, MIRSlotId] = {}
+        self.global_facts = coverage.globals
+        self.globals: dict[MIRGlobalId, MIRSlotId] = {}
 
     def block(self) -> _Block:
         block = _Block(MIRBlockId(self.body, len(self.blocks)))
@@ -795,7 +824,8 @@ class _Builder:
              *, storage: bool = False, tuple_layout: th.THIRTupleLayout | None = None,
              optional_layout: th.THIROptionalLayout | None = None,
              union_layout: th.THIRUnionLayout | None = None,
-             alias_source: MIRPlace | None = None) -> MIRSlotId:
+             alias_source: MIRPlace | None = None,
+             global_binding: th.THIRGlobalBinding | None = None) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
         self.slots.append(MIRSlot(sid, reference.type if reference else (
             unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
@@ -807,14 +837,17 @@ class _Builder:
                                               MIRValueKind.UNION if union_layout is not None else
                                               MIRValueKind.PAYLOAD_ALIAS if alias_source is not None else
                                               MIRValueKind.OPTIONAL if optional_layout is not None else MIRValueKind.SCALAR),
-                                  readonly=reference.readonly if reference else alias_source is not None,
+                                  readonly=(not global_binding.writable if global_binding is not None else
+                                            reference.readonly if reference else alias_source is not None),
                                   tuple_layout=self.layout(tuple_layout) if tuple_layout is not None else None,
                                   optional_layout=self.optional_layout(optional_layout)
                                   if optional_layout is not None else None,
                                   union_layout=MIRUnionLayout(tuple(
                                       None if member is None else self.payload(member)
                                       for member in union_layout.elements)) if union_layout is not None else None,
-                                  alias_source=alias_source))
+                                  alias_source=alias_source,
+                                  global_id=MIRGlobalId(global_binding.module, global_binding.name)
+                                  if global_binding is not None else None))
         return sid
 
     @staticmethod
@@ -879,6 +912,9 @@ class _Builder:
         self.current.statements.append(MIRAssign(target, value, loc))
 
     def place(self, expr: th.THIRExpr) -> MIRPlace:
+        if isinstance(expr, (th.THIRName, th.THIRModuleVar)) and expr.global_binding is not None:
+            fact = expr.global_binding
+            return MIRPlace(self.globals[MIRGlobalId(fact.module, fact.name)])
         match expr:
             case th.THIRSelf():
                 return MIRPlace(self.bindings["self"])
@@ -932,14 +968,17 @@ class _Builder:
                 return self.result(typ, MIRConstant(expr.value), loc)
             case th.THIRCoerce():
                 return self.result(INT32, MIRConstant(expr.expr.value), loc)
-            case th.THIRName() | th.THIRFieldAccess() | th.THIRSubscript() | th.THIRNarrowedRead():
+            case th.THIRName() | th.THIRModuleVar() | th.THIRFieldAccess() | th.THIRSubscript() | th.THIRNarrowedRead():
                 return self.result(typ, MIRRead(self.place(expr)), loc)
             case th.THIRIsinstance():
                 fact = expr.union_test
                 return self.result(BOOL, MIRIsAlternative(self.bindings[fact.source], fact.alternatives), loc)
             case th.THIRWalrus():
                 value = self.expr(expr.value)
-                self.write(self.bindings[expr.name], MIRRead(MIRPlace(value)), loc)
+                fact = expr.global_binding
+                target = (self.globals[MIRGlobalId(fact.module, fact.name)] if fact is not None
+                          else self.bindings[expr.name])
+                self.write(target, MIRRead(MIRPlace(value)), loc)
                 return value
             case th.THIRUnaryNot():
                 return self.result(BOOL, MIRNot(self.expr(expr.operand)), loc)
@@ -1125,6 +1164,8 @@ class _Builder:
             self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
                                                p.borrowed_record, optional_layout=p.optional_layout,
                                                union_layout=p.union_layout, tuple_layout=p.tuple_layout)
+        for identity, fact in self.global_facts.items():
+            self.globals[identity] = self.slot(fact.type, MIRSlotKind.GLOBAL, fact.name, global_binding=fact)
         receiver_init = None
         if initialization is not None:
             values: dict[str, MIRSlotId | MIRConstant] = {}

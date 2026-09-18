@@ -8332,6 +8332,13 @@ initialization precedes the existing body operations, preserving the supplied
 receiver's identity. Defaults, partial initialization, bases and reference-valued
 fields remain uncovered. Constructors with body effects still cannot be expanded
 at MIR call sites; analyzing their bodies does not supply a call summary.
+M2.10 adds qualified bool/int32 global reads and writes in supported bodies.
+Globals remain shared storage across bodies, distinct from same-named locals;
+short-circuit global writes remain on their guarded CFG edges. Same-module
+declarations and direct module attributes are covered. From-import bindings
+and reexports remain uncovered because of the existing import-rebinding defect
+(`BUGS.md#imported-scalar-binding-tracks-foreign-rebind`); native globals,
+aggregate/reference globals and module initialization are also outside the subset.
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

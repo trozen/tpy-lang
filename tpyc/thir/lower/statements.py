@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, optional_layout, storage_borrow, tuple_layout, union_literal
+from .storage import alias_binding, borrowed_record, global_name_binding, optional_layout, storage_borrow, tuple_layout, union_literal
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -11216,6 +11216,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             return THIRAssign(
                 target=THIRName(
                     result_type=vtype, name=stmt.name,
+                    global_binding=global_name_binding(stmt.name, vtype, lc),
                     cpp=lc.prescan.global_write_cpp.get(stmt.name), loc=loc),
                 value=init,
                 loc=loc,

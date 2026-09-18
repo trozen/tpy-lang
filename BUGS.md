@@ -19,6 +19,29 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 
 ## Compiler bugs
 
+- **[MED medium] (valid source rejected) Importing one module under multiple names loses earlier bindings.** [`duplicate-module-import-alias`]
+  With a module `store` defining `count`, `import store` followed by
+  `import store as alias` rejects a function returning `store.count` with
+  `Undefined variable: 'store'`. CPython keeps both names bound to the same
+  module. The parser's module-keyed alias map retains only one local name,
+  and its top-level import list deduplicates by module. These paths are
+  unchanged by M2.10. Fixing import registration is separate from MIR's
+  qualified global identities and needs `/tpy-fix-bug` analysis of aliases,
+  repeated imports, dotted modules and import initialization.
+
+- **[MED medium] (silent wrong result) Imported scalar bindings track later rebinding in the defining module.** [`imported-scalar-binding-tracks-foreign-rebind`]
+  With `store.count = 1`, `from store import count as saved`, followed by
+  `store.reset()` setting count to 9, CPython retains saved=1 while TPy reads
+  9. Bool bindings have the same divergence. The emitted imported-name read
+  and `store.count` both name the defining C++ global; Python's import binds
+  the current value independently. Reexported attributes have the same risk.
+  Reproduced with native execution and CPython during M2.10; the relevant
+  emission paths are unchanged from master. Distinct from the view-lifetime
+  defect `BUGS.md#imported-global-view-outlives-foreign-rebind`.
+  M2.10 excludes from-import bindings and reexported module attributes.
+  Fixing import storage and initialization needs a separate `/tpy-fix-bug`
+  analysis across scalar, reference, tuple, view and reexport bindings.
+
 - **[MED small] (valid source rejected) A record-union local cannot be initialized directly from self.** [`self-record-union-initializer`]
   In an ordinary `Cell` method, `saved: Cell | Other = self` fails THIR lowering
   at `decl.ptr_union_source`, even for eligible plain records. The equivalent

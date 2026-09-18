@@ -1665,6 +1665,10 @@ alongside related feature work; only the big-rock deferrals live here.
   complete scalar constructor initialization and supported body tails; defaults,
   partial initialization, bases and reference-valued fields remain later work.
   Constructor-call summaries still exclude body effects.
+  M2.10 adds qualified scalar globals in supported bodies; module initialization,
+  aggregate/reference/native globals and imported/reexported value bindings
+  remain excluded. The latter need the separate fix tracked as
+  `BUGS.md#imported-scalar-binding-tracks-foreign-rebind`.
   Direct self-to-Optional pointer initializers remain uncovered;
   self-to-union capture is tracked as `BUGS.md#self-record-union-initializer`.
   Inferred/whole-readonly auto tuple copies remain MIR-uncovered until

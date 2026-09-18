@@ -39,6 +39,7 @@ class MIRBlockId:
 
 class MIRSlotKind(Enum):
     PARAMETER = auto()
+    GLOBAL = auto()
     LOCAL = auto()
     TEMPORARY = auto()
 
@@ -78,6 +79,12 @@ class MIRUnionLayout:
 
 
 @dataclass(frozen=True)
+class MIRGlobalId:
+    module: str
+    name: str
+
+
+@dataclass(frozen=True)
 class MIRSlot:
     id: MIRSlotId
     type: TpyType
@@ -90,6 +97,7 @@ class MIRSlot:
     optional_layout: MIROptionalLayout | None = None
     union_layout: MIRUnionLayout | None = None
     alias_source: 'MIRPlace | None' = None
+    global_id: MIRGlobalId | None = None
 
 
 @dataclass(frozen=True)

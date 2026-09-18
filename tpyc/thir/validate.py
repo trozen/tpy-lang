@@ -64,7 +64,7 @@ from .nodes import (
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
     THIRIfExpr, THIRMethodCall,
-    THIRNode, THIRName, THIRInplaceContainerOp, THIRWhile,
+    THIRNode, THIRName, THIRInplaceContainerOp, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRSubscript,
     THIRFrameSlotWrite,
@@ -179,6 +179,14 @@ def _check_union(owner: str, node: object, layout: THIRUnionLayout,
 
 
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, (THIRName, THIRModuleVar, THIRWalrus)) and node.global_binding is not None:
+        fact = node.global_binding
+        if (not isinstance(fact, THIRGlobalBinding) or not fact.module or not fact.name
+                or fact.type not in (BOOL, INT32) or fact.type != node.result_type
+                or node.form is not Form.VALUE or type(fact.writable) is not bool):
+            _fail(owner, node, "invalid scalar global binding")
+        if isinstance(node, THIRWalrus) and not fact.writable:
+            _fail(owner, node, "global walrus needs writable binding")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
         if node.union_layout is not None:
             _check_union(owner, node, node.union_layout,

@@ -11,7 +11,7 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
@@ -133,8 +133,16 @@ def validate_function(fn: MIRFunction) -> None:
                      "invalid record layout field")
             seen.add(member.id)
             field_types[member.id] = member.type
+    global_ids: set[MIRGlobalId] = set()
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
+        if slot.kind is MIRSlotKind.GLOBAL:
+            _require(isinstance(slot.global_id, MIRGlobalId) and bool(slot.global_id.module and slot.global_id.name)
+                     and slot.global_id not in global_ids and slot.value_kind is MIRValueKind.SCALAR,
+                     "invalid or duplicate global identity")
+            global_ids.add(slot.global_id)
+        else:
+            _require(slot.global_id is None, "global identity on local slot")
         if slot.value_kind is MIRValueKind.UNION:
             layout = slot.union_layout
             _require(isinstance(slot.type, UnionType) and isinstance(layout, MIRUnionLayout)
@@ -196,7 +204,8 @@ def validate_function(fn: MIRFunction) -> None:
                              and not member.type.is_protocol and unwrap_readonly(typ) == member.type
                              and (typ == member.type or member.readonly), "invalid tuple reference")
         elif slot.value_kind is MIRValueKind.SCALAR:
-            _require(slot.type in (INT32, BOOL) and slot.form is Form.VALUE and not slot.readonly,
+            _require(slot.type in (INT32, BOOL) and slot.form is Form.VALUE
+                     and (not slot.readonly or slot.kind is MIRSlotKind.GLOBAL),
                      "unsupported slot type or form")
         elif slot.value_kind is MIRValueKind.RECORD_STORAGE:
             _require(slot.type in records and slot.form is Form.STORAGE
@@ -252,6 +261,7 @@ def validate_function(fn: MIRFunction) -> None:
         typ = slot_type(place.root)
         slot = slots[place.root]
         kind, readonly = slot.value_kind, slot.readonly
+        _require(not (write and slot.kind is MIRSlotKind.GLOBAL and readonly), "store through readonly global")
         tuple_member = False
         optional_member = False
         inline_record = False
@@ -342,6 +352,8 @@ def validate_function(fn: MIRFunction) -> None:
                          "payload alias requires extraction")
             for operand in operands(value):
                 slot_type(operand)
+                _require(slots[operand].kind is not MIRSlotKind.GLOBAL or isinstance(value, MIRRead),
+                         "global value needs explicit read")
             match value:
                 case MIRUnionConstruct() | MIRUnionCopy():
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.UNION
@@ -493,12 +505,14 @@ def validate_function(fn: MIRFunction) -> None:
             case MIRBranch():
                 _require(slot_type(term.condition) == BOOL and slots[term.condition].value_kind is MIRValueKind.SCALAR,
                          "branch condition is not bool")
+                _require(slots[term.condition].kind is not MIRSlotKind.GLOBAL, "global value needs explicit read")
             case MIRReturn():
                 if term.value is None:
                     _require(isinstance(fn.return_type, VoidType), "missing return value")
                 else:
                     _require(slot_type(term.value) == fn.return_type and slots[term.value].value_kind is MIRValueKind.SCALAR,
                              "return type mismatch")
+                    _require(slots[term.value].kind is not MIRSlotKind.GLOBAL, "global value needs explicit read")
 
     _require(not owning_blocks.intersection(_cyclic_blocks(blocks, pred)), "owning operation in cycle")
 
@@ -509,7 +523,7 @@ def validate_function(fn: MIRFunction) -> None:
         if bid not in reachable:
             reachable.add(bid)
             pending.extend(successors(blocks[bid].terminator))
-    parameters = {s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER}
+    parameters = {s.id for s in fn.slots if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
     writes = {bid: {s.target.root for s in blocks[bid].statements if not s.target.projections}
               for bid in reachable}
     # Intersection is a must analysis; initialize at top, with a synthetic
