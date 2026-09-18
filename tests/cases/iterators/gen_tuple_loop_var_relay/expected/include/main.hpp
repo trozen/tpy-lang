@@ -60,8 +60,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
     int32_t __state;
     ::tpy::frame_slot<std::vector<std::tuple<int32_t, Box>>> items;
     int32_t _;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -85,8 +85,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
 struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay, std::tuple<int32_t, Box*>> {
     int32_t __state;
     std::tuple<int32_t, Box*> p;
-    ::tpy::frame_slot<__gen_gen> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_gen> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -110,8 +110,8 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay, std::tuple<int32
 struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std::tuple<int32_t, Box*>> {
     int32_t __state;
     std::tuple<int32_t, Box*> p;
-    ::tpy::frame_slot<__gen_gen> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_gen> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -137,8 +137,8 @@ struct __gen_Hub_relay : public ::tpy::next_iter_mixin<__gen_Hub_relay, std::tup
     int32_t __state;
     const Hub& __self;
     std::tuple<int32_t, Box*> p;
-    ::tpy::frame_slot<__gen_gen> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_gen> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

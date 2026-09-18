@@ -162,8 +162,8 @@ struct __coro_async_body {
     bool __cancel_pending;
     int32_t count;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -190,8 +190,8 @@ struct __gen_generator : public ::tpy::next_iter_mixin<__gen_generator, ::tpy::B
     int32_t __state;
     int32_t count;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

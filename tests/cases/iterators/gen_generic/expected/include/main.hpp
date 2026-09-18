@@ -356,8 +356,8 @@ struct __gen_enumerate : public ::tpy::next_iter_mixin<__gen_enumerate<T, T_iter
     T_iterable iterable;
     int32_t i;
     ::tpy::frame_slot<::tpy::for_elem_next_t<T_iterable>> item;
-    ::tpy::frame_slot<::tpy::iter_type_t<T_iterable>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<T_iterable>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_iterable>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_iterable>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

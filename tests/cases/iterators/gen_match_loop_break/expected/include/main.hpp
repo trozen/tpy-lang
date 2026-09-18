@@ -22,8 +22,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     const std::vector<::tpy::BigInt>& items;
     ::tpy::BigInt it;
     ::tpy::BigInt v;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

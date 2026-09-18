@@ -334,10 +334,10 @@ struct __coro_async_sibling {
     int32_t i;
     Pic* p = nullptr;
     int32_t k;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
-    ::tpy::frame_slot<int32_t> __for_i_1;
-    ::tpy::frame_slot<int32_t> __for_stop_1;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_1;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_1;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
@@ -370,10 +370,10 @@ struct __coro_async_blk_if {
     int32_t i;
     Pic* p = nullptr;
     int32_t j;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
-    ::tpy::frame_slot<int32_t> __for_i_1;
-    ::tpy::frame_slot<int32_t> __for_stop_1;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_1;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_1;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
@@ -436,8 +436,8 @@ struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int3
     int32_t __state;
     Pic* p = nullptr;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     std::optional<Pic> __ptr_slot_f0;
     std::optional<Pic> __ptr_slot_f1;
 
@@ -495,8 +495,8 @@ struct __gen_gen_for_single : public ::tpy::next_iter_mixin<__gen_gen_for_single
     int32_t i;
     ::tpy::frame_slot<Flat> f;
     int32_t x;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -576,10 +576,10 @@ struct __gen_gen_sibling : public ::tpy::next_iter_mixin<__gen_gen_sibling, int3
     int32_t i;
     Pic* p = nullptr;
     int32_t k;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
-    ::tpy::frame_slot<int32_t> __for_i_1;
-    ::tpy::frame_slot<int32_t> __for_stop_1;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_1;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -610,10 +610,10 @@ struct __gen_gen_blk_if : public ::tpy::next_iter_mixin<__gen_gen_blk_if, int32_
     int32_t i;
     Pic* p = nullptr;
     int32_t j;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
-    ::tpy::frame_slot<int32_t> __for_i_1;
-    ::tpy::frame_slot<int32_t> __for_stop_1;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_1;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_1;
 
     enum : int32_t {
         S_INITIAL = 0,

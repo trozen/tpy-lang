@@ -206,8 +206,8 @@ struct __coro_a_dead {
     int32_t n;
     int32_t acc;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -362,8 +362,8 @@ struct __gen_dead_pass : public ::tpy::next_iter_mixin<__gen_dead_pass, ::tpy::v
     int32_t __state;
     std::vector<Node>& items;
     Node* node = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -390,8 +390,8 @@ struct __gen_dead_break : public ::tpy::next_iter_mixin<__gen_dead_break, ::tpy:
     int32_t __state;
     std::vector<Node>& items;
     Node* node = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -419,8 +419,8 @@ struct __gen_dead_return : public ::tpy::next_iter_mixin<__gen_dead_return, ::tp
     int32_t __state;
     std::vector<Node>& items;
     Node* node = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -450,8 +450,8 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested<T_it>, ::tpy::v
     T_it it;
     Node* node = nullptr;
     int32_t i;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

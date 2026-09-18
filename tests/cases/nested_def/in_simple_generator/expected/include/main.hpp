@@ -22,8 +22,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t k;
     int32_t base;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

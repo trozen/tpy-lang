@@ -57,8 +57,8 @@ struct __gen_Holder_pairs : public ::tpy::next_iter_mixin<__gen_Holder_pairs, st
     const Holder& __self;
     std::vector<P>& items;
     P* it = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

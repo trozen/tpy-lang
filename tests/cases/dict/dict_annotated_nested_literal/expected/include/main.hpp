@@ -98,9 +98,9 @@ struct __gen_rows : public ::tpy::next_iter_mixin<__gen_rows, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<::tpy::ordered_map<std::string, std::vector<int32_t>>> inside;
     std::vector<int32_t>* v = nullptr;
-    ::tpy::frame_slot<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))> __for_src_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))>> __for_end_0;
+    ::tpy::frame_loop_slot<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -189,6 +189,12 @@ class BuildLayout:
         """
         return self._module_path(module_name, "_fwd.hpp", self.include_dir)
 
+    def inl_hpp_path(self, module_name: str) -> Path:
+        """Path to the header of a module's small inline generator bodies
+        (`<mod>_inl.hpp`), which every dependent .cpp includes after its
+        other headers."""
+        return self._module_path(module_name, "_inl.hpp", self.include_dir)
+
     def cpp_path(self, module_name: str) -> Path:
         """Path to the generated source for a module."""
         return self._module_path(module_name, ".cpp", self.src_dir)
@@ -654,6 +660,13 @@ class Compiler:
         # consults this to swap full <peer>.hpp includes for
         # <peer>_fwd.hpp in the header path.
         self._cycle_peers: dict[str, frozenset[str]] = {}
+        # Direct user-module import edges, recorded by the SCC pass.
+        self._import_succ: dict[str, list[str]] = {}
+        # Per-module `<mod>_inl.hpp` verdicts and the implicit-stdlib set,
+        # both asked once per generated module -- each answer is a scan.
+        self._emits_inl_cache: dict[str, bool] = {}
+        self._implicit_stdlib_cache: set[str] | None = None
+        self._reach_cache: dict[str, frozenset[str]] = {}
         self.compile_order: list[str] = []
         # Generated CPython extension glue .cpp paths (one per ext_module),
         # collected here during codegen for the build driver to add to the
@@ -1068,12 +1081,69 @@ class Compiler:
         try:
             return codegen.generate(compiled.ast, mod_name,
                                     is_entry_point=compiled.is_entry_point,
+                                    inl_modules=self._inl_modules_for(mod_name),
+                                    emits_inl=self._module_emits_inl(mod_name),
                                     **kwargs)
         except ThirRejectError as err:
             if (err.filename is None and compiled.path is not None
                     and not compiled.is_entry_point):
                 err.filename = os.path.relpath(compiled.path)
             raise
+
+    def _module_emits_inl(self, mod_name: str) -> bool:
+        """Whether `mod_name` emits `<mod>_inl.hpp`. Decided from the AST
+        (any generator function or method) rather than from what codegen
+        emitted, so a dependent generated first -- a cycle peer -- sees the
+        same answer. Explicitly generic generators define their bodies in
+        the header and don't count; one templated only by a protocol-typed
+        param does (sema decides that), so its module gets a file with no
+        bodies."""
+        cached = self._emits_inl_cache.get(mod_name)
+        if cached is not None:
+            return cached
+        verdict = self._compute_module_emits_inl(mod_name)
+        self._emits_inl_cache[mod_name] = verdict
+        return verdict
+
+    def _compute_module_emits_inl(self, mod_name: str) -> bool:
+        compiled = self.modules.get(mod_name)
+        if compiled is None:
+            return False
+        module = compiled.ast
+        if any(f.is_generator and not f.skip_codegen and not f.type_params
+               for f in module.functions):
+            return True
+        return any(m.is_generator and not m.type_params
+                   for record in module.all_records()
+                   if not record.type_params
+                   for m in record.methods)
+
+    def _inl_modules_for(self, mod_name: str) -> list[str]:
+        """The `_inl.hpp` headers `mod_name`'s .cpp includes: its own and
+        every module its headers can reach -- transitive imports, their
+        parent packages, and the implicit stdlib."""
+        succ = self._import_succ
+        if self._implicit_stdlib_cache is None:
+            self._implicit_stdlib_cache = self._implicit_stdlib_set()
+        seen: set[str] = set()
+        stack = [mod_name, *self._implicit_stdlib_cache]
+        while stack:
+            name = stack.pop()
+            if name in seen or name not in self.modules:
+                continue
+            # Modules generate dependencies first, so most of the walk is a
+            # closure already computed; reusing it keeps the whole program
+            # from being re-walked once per module.
+            known = self._reach_cache.get(name)
+            if known is not None:
+                seen |= known
+                continue
+            seen.add(name)
+            stack.extend(succ.get(name, ()))
+            parts = name.split(".")
+            stack.extend(".".join(parts[:i]) for i in range(1, len(parts)))
+        self._reach_cache[mod_name] = frozenset(seen)
+        return sorted(n for n in seen if self._module_emits_inl(n))
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
@@ -1612,6 +1682,7 @@ class Compiler:
             for dep_name in compiled.ast.user_module_imports:
                 if dep_name in self.modules:
                     succ[name].append(dep_name)
+        self._import_succ = succ
 
         # Tarjan SCC. Iterative for safety on deep import graphs.
         index_counter = [0]
@@ -1675,6 +1746,10 @@ class Compiler:
         # includes for SCC members and avoid the cyclic complete-
         # header include problem.
         self._cycle_peers = {}
+        # A recompile (the REPL adds a module per line) can change both.
+        self._emits_inl_cache = {}
+        self._implicit_stdlib_cache = None
+        self._reach_cache = {}
         for component in sccs:
             if len(component) > 1 or component[0] in succ.get(component[0], []):
                 peers = frozenset(component)
@@ -3586,6 +3661,12 @@ class Compiler:
             fwd_path = layout.fwd_hpp_path(mod_name)
             fwd_path.parent.mkdir(parents=True, exist_ok=True)
             fwd_path.write_text(fwd_code)
+        inl_path = layout.inl_hpp_path(mod_name)
+        if codegen.inl_header_code is not None:
+            inl_path.write_text(codegen.inl_header_code)
+        else:
+            # A stale one would shadow nothing but still be hashed and read.
+            inl_path.unlink(missing_ok=True)
         cpp_path.parent.mkdir(parents=True, exist_ok=True)
         cpp_path.write_text(cpp_code)
 
@@ -3617,6 +3698,10 @@ class Compiler:
                 codegen, compiled, compiled.name,
                 actual_user_modules=actual_user_modules,
                 implicit_stdlib_modules=implicit_stdlib,
+                # Same peers as the file-writing path: without them a cycle
+                # member's dumped/REPL-written sources lack the peer includes
+                # its bodies need, so they differ from what a build emits.
+                cycle_peers=self._cycle_peers.get(compiled.name, frozenset()),
             )
             return sources, codegen
 
@@ -3625,6 +3710,15 @@ class Compiler:
         """Generate C++ code and return as strings (no file I/O)."""
         sources, _codegen = self._generate_to_strings(compiled, options)
         return sources
+
+    def generate_inl_and_code_to_strings(
+            self, compiled: CompiledModule,
+            options: CodeGenOptions | None = None,
+    ) -> tuple[str, str, str | None]:
+        """`generate_code_to_strings` plus the module's `<mod>_inl.hpp` text
+        (None when it emits none), for callers that build what they print."""
+        (hpp, cpp), codegen = self._generate_to_strings(compiled, options)
+        return hpp, cpp, codegen.inl_header_code
 
     @property
     def thir_reject_by_node(self) -> IdentityMap:

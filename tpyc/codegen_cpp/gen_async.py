@@ -772,9 +772,11 @@ class AsyncCoroCodegen:
         of explicit `[T, ...]` type params, a static-protocol-typed param
         (`T_<pname>` template arg), OR (for a method) the enclosing record's
         type params. Templated structs must emit their poll/__next__ body +
-        factory inline in the header; a non-template struct's body lands in
-        the .cpp. Single source of truth for the header-vs-cpp placement
-        decision across both async and generator shapes."""
+        factory inline in the header. A non-template struct's body goes to
+        the .cpp, except a small generator `__next__`, which
+        `CodeGenerator._emit_generator_next` moves to `<mod>_inl.hpp` (and
+        `Compiler._module_emits_inl` approximates this test from the AST to
+        decide which modules emit that file)."""
         return (bool(func.type_params)
                 or bool(self._protocol_template_parts(func))
                 or bool(self._record_template_parts(record_name)))
@@ -1926,12 +1928,12 @@ class AsyncCoroCodegen:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}::tpy::frame_slot<{cpp_type}> {cpp_name};\n")
 
-        # Synthetic fields for CFG-decomposed for-loops: one
-        # iterator + one __next__-result slot per for-with-await,
-        # stored as frame_slot<T> -- same memory shape as the hoisted
-        # user-local fields, so the whole frame uses one slot type.
+        # Synthetic fields for CFG-decomposed for-loops (iterator, sentinel,
+        # step result, source copy). frame_loop_slot has frame_slot's storage
+        # but unchecked reads: only this loop's own emitted code reads them,
+        # after its init.
         for fname, ftype in state.for_fields:
-            out.write(f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n")
+            out.write(f"{INDENT}::tpy::frame_loop_slot<{ftype}> {fname};\n")
 
         # Per-write-site materialization slots for rvalue writes into
         # pointer-form frame locals (see _prescan_resumable_ptr_slots).
@@ -2566,10 +2568,12 @@ class AsyncCoroCodegen:
 
     def gen_coro_poll_def(self, out: "TextIO", func: TpyFunction,
                             record_name: str | None = None) -> None:
-        """Emit the `poll()` method body in the .cpp file (or inline-in-hpp
-        for templates -- the caller handles placement). When `record_name`
-        is given, the struct is `__coro_<Record>_<func>` and the body
-        sees `self.X` as `__self.X` (parallels generator methods).
+        """Emit the frame's body method, wherever the caller places it: the
+        .cpp for an async `__poll__`, inline-in-hpp for a template, and
+        `<mod>_inl.hpp` or the .cpp by size for a non-template generator's
+        `__next__` (`CodeGenerator._emit_generator_next`). When
+        `record_name` is given, the struct is `__coro_<Record>_<func>` and
+        the body sees `self.X` as `__self.X` (parallels generator methods).
         """
         struct_name = self._struct_name_templated(func, record_name)
         cfg = self._build_resumable_cfg(func, record_name)

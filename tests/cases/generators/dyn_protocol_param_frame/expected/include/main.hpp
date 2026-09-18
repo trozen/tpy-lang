@@ -279,8 +279,8 @@ struct __gen_forward_gen : public ::tpy::next_iter_mixin<__gen_forward_gen, int3
     int32_t __state;
     Src& s;
     int32_t n;
-    ::tpy::frame_slot<__gen_free_gen> __for_src_0;
-    ::tpy::frame_slot<::tpy::iter_next_t<__gen_free_gen>> __for_r_0;
+    ::tpy::frame_loop_slot<__gen_free_gen> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_free_gen>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

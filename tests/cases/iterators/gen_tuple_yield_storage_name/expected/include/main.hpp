@@ -62,8 +62,8 @@ struct __gen_storage_relay : public ::tpy::next_iter_mixin<__gen_storage_relay, 
     int32_t __state;
     std::vector<std::tuple<int32_t, C>>& items;
     std::tuple<int32_t, C>* pair = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -88,8 +88,8 @@ struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std:
     int32_t __state;
     std::vector<std::tuple<int32_t, C>>& items;
     std::tuple<int32_t, C>* pair = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -115,8 +115,8 @@ struct __gen_Holder_relay : public ::tpy::next_iter_mixin<__gen_Holder_relay, st
     int32_t __state;
     Holder& __self;
     std::tuple<int32_t, C>* pair = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, C>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

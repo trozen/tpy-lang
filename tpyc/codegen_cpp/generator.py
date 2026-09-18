@@ -53,6 +53,12 @@ def _emits_own_cpp(typ: NominalType) -> bool:
 # Maps user-facing platform names to sys.platform prefixes (also in compiler.py)
 _PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
 
+# Rendered lines (source-echo comments excluded) of a generator `__next__`
+# still worth defining inline in `<mod>_inl.hpp`. Measured with the consumer in
+# another module, gcc-14 -O3: 29 lines inlined -24%, 41 lines -11%, 53 lines
+# -7%, 77 lines -2%, ~84 lines no longer inlined at all; clang-20 inlined none.
+_INLINE_NEXT_MAX_LINES = 40
+
 
 def _platform_matches(platform_filter: str | None) -> bool:
     """Check if a platform filter matches the current platform."""
@@ -132,7 +138,9 @@ class CodeGenerator:
                  is_entry_point: bool = True,
                  actual_user_modules: set[str] | None = None,
                  implicit_stdlib_modules: set[str] | None = None,
-                 cycle_peers: 'frozenset[str] | None' = None) -> tuple[str, str]:
+                 cycle_peers: 'frozenset[str] | None' = None,
+                 inl_modules: 'list[str] | None' = None,
+                 emits_inl: bool = False) -> tuple[str, str]:
         """Generate C++ header and source files.
 
         Args:
@@ -141,7 +149,15 @@ class CodeGenerator:
             is_entry_point: True if this is the entry point module (generates main()).
             actual_user_modules: Set of module names that are actually user modules (have source files).
                                  If None, uses module.user_module_imports (legacy behavior).
+            inl_modules: Modules whose `<mod>_inl.hpp` the .cpp includes after
+                its other headers (every dependency that emits one, plus this
+                module).
+            emits_inl: This module emits `<mod>_inl.hpp`; its text is left on
+                `self.inl_header_code`.
         """
+        self.inl_header_code: str | None = None
+        self._inl_bodies = io.StringIO()
+        self._inl_modules = list(inl_modules or ())
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
         self.ctx.cycle_peers = cycle_peers or frozenset()
@@ -680,15 +696,14 @@ class CodeGenerator:
             if func.is_generator:
                 if self._resumable_generator_eligible(func, None):
                     # Generator lowered onto the resumable frame. Non-template
-                    # generators emit the __next__ body + factory here in the
-                    # .cpp; templated ones (generic / protocol-typed params)
+                    # generators emit the __next__ body (see
+                    # _emit_generator_next) + finally helpers + factory here;
+                    # templated ones (generic / protocol-typed params)
                     # emit inline in the header instead (see the
-                    # struct-definition pass), so skip the .cpp emission for
-                    # them.
+                    # struct-definition pass), so skip them here.
                     if not self.gen_async._is_templated_coro(func):
                         with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
-                            self.gen_async.gen_coro_poll_def(cpp, func)
-                            cpp.write("\n")
+                            self._emit_generator_next(cpp, func, None)
                             self.gen_async.gen_coro_finally_top_def(cpp, func)
                             cpp.write("\n")
                             self.gen_async.gen_factory(cpp, func)
@@ -721,15 +736,13 @@ class CodeGenerator:
                 if method.is_generator:
                     # Eligibility is True-or-raises for a generator method;
                     # the call also builds + caches the CFG. Non-template
-                    # methods emit the __next__ body + finally-top in the .cpp
-                    # (templated ones emit inline next to the struct in the
-                    # .hpp, see below).
+                    # methods emit the __next__ body (_emit_generator_next)
+                    # and finally-top here (templated ones emit inline next to
+                    # the struct in the .hpp, see below).
                     if (self._resumable_generator_eligible(method, record.name)
                             and not self.gen_async._is_templated_coro(method, record.name)):
                         with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
-                            self.gen_async.gen_coro_poll_def(
-                                cpp, method, record_name=record.name)
-                            cpp.write("\n")
+                            self._emit_generator_next(cpp, method, record.name)
                             self.gen_async.gen_coro_finally_top_def(
                                 cpp, method, record_name=record.name)
                             cpp.write("\n")
@@ -793,7 +806,66 @@ class CodeGenerator:
 
         self._write_header_epilogue(hpp)
 
+        if emits_inl:
+            self.inl_header_code = self._inl_header(module)
+        elif self._inl_bodies.getvalue():
+            raise CodeGenError(
+                f"module '{module_name}' emitted inline generator bodies "
+                f"but was not told to emit {module_name}_inl.hpp")
+
         return hpp.getvalue(), cpp.getvalue()
+
+    def _emit_generator_next(self, cpp: TextIO, func: TpyFunction,
+                             record_name: str | None) -> None:
+        """A non-template generator's `__next__` definition: `inline` in
+        `<mod>_inl.hpp` when it is small enough for a consumer to inline,
+        otherwise out-of-line in this module's .cpp. The consumer calls it
+        once per element, so a small body inlined into the loop is worth it
+        -- gcc inlines one only when it is declared `inline`, and only if its
+        definition is in the consumer's TU. Past the limit nothing inlines
+        it, and every consumer TU would parse it for nothing."""
+        buf = io.StringIO()
+        self.gen_async.gen_coro_poll_def(buf, func, record_name=record_name)
+        body = buf.getvalue()
+        size = sum(1 for line in body.splitlines()
+                   if line.strip() and not line.lstrip().startswith("//"))
+        if size > _INLINE_NEXT_MAX_LINES:
+            cpp.write(body + "\n")
+            return
+        struct_name = self.gen_async._struct_name_templated(func, record_name)
+        head = self.gen_async._resumable_body_method_decl(func, struct_name) + " {"
+        # Match the definition's own line: the source echo above it may quote
+        # the same declarator text inside a comment.
+        lines = body.split("\n")
+        at = [i for i, line in enumerate(lines) if line == head]
+        assert len(at) == 1, f"__next__ definition line not unique in {struct_name}"
+        lines[at[0]] = f"inline {head}"
+        self._inl_bodies.write("\n".join(lines) + "\n")
+
+    def _inl_header(self, module: TpyModule) -> str:
+        """`<mod>_inl.hpp`: the inline `__next__` bodies of this module's
+        small non-template generators (`_emit_generator_next` picks them),
+        which must be visible to every consumer TU. They cannot live in the
+        .hpp: a header inside an include cycle (package <-> submodule, import
+        cycles) is parsed before the headers it depends on are complete.
+        Every .cpp includes the `_inl.hpp` of each dependency after all its
+        other headers instead."""
+        out = io.StringIO()
+        out.write("// Generated by TurboPython Compiler\n")
+        out.write("#pragma once\n\n")
+        out.write(f'#include "{self._module_to_include_path(self.ctx.module_name)}"\n')
+        # Same as the .cpp: cycle peers' complete headers.
+        for peer in sorted(self.ctx.cycle_peers):
+            if peer != self.ctx.module_name:
+                out.write(f'#include "{self._module_to_include_path(peer)}"\n')
+        ns = module_to_cpp_namespace(self.ctx.module_name)
+        out.write(f"\nnamespace {ns} {{\n\n")
+        out.write(self._inl_bodies.getvalue())
+        out.write(f"}} // namespace {ns}\n")
+        return out.getvalue()
+
+    def _module_to_inl_include_path(self, module_name: str) -> str:
+        return self._module_to_include_path(module_name)[:-len(".hpp")] + "_inl.hpp"
 
     def _resumable_generator_eligible(self, func: "TpyFunction",
                                       record_name: str | None) -> bool:
@@ -2648,6 +2720,12 @@ class CodeGenerator:
             if peer == self.ctx.module_name:
                 continue
             out.write(f'#include "{self._module_to_include_path(peer)}"\n')
+        # Inline generator bodies, ours and our dependencies'. They come after
+        # every header above, which is what they need: a body may name anything
+        # those headers declare, and inside an include cycle a header is parsed
+        # before its own dependencies are complete.
+        for inl_mod in self._inl_modules:
+            out.write(f'#include "{self._module_to_inl_include_path(inl_mod)}"\n')
         out.write("\n")
         # EnumUtil definitions go before user namespace (they live in namespace tpy)
         if module.all_enums():

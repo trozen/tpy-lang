@@ -75,8 +75,8 @@ struct __coro_total {
     int32_t n;
     const Point* p = nullptr;
     int32_t __await_lift_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
     std::optional<__coro_step> __sub_0;
 
     enum : int32_t {

@@ -52,8 +52,8 @@ struct __gen_gs : public ::tpy::next_iter_mixin<__gen_gs, std::string> {
     std::string s;
     int32_t n;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -79,8 +79,8 @@ struct __gen_gb : public ::tpy::next_iter_mixin<__gen_gb, int32_t> {
     ::tpy::Bytes b;
     int32_t n;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -106,8 +106,8 @@ struct __gen_gi : public ::tpy::next_iter_mixin<__gen_gi, ::tpy::BigInt> {
     ::tpy::BigInt v;
     int32_t n;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -133,8 +133,8 @@ struct __gen_gstr : public ::tpy::next_iter_mixin<__gen_gstr, std::string> {
     ::tpy::String s;
     int32_t n;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -161,8 +161,8 @@ struct __gen_Box_walk : public ::tpy::next_iter_mixin<__gen_Box_walk, std::strin
     std::string s;
     int32_t n;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -277,8 +277,8 @@ struct __gen_nested_exit : public ::tpy::next_iter_mixin<__gen_nested_exit, ::tp
 struct __gen_break_exit : public ::tpy::next_iter_mixin<__gen_break_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -320,8 +320,8 @@ struct __gen_break_exit : public ::tpy::next_iter_mixin<__gen_break_exit, ::tpy:
 struct __gen_continue_exit : public ::tpy::next_iter_mixin<__gen_continue_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

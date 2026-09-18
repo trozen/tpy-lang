@@ -50,8 +50,8 @@ struct __coro_caller {
     ::tpy::BigInt total;
     int32_t i;
     ::tpy::BigInt __await_lift_0;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     std::optional<__coro_value> __sub_0;
 
     enum : int32_t {

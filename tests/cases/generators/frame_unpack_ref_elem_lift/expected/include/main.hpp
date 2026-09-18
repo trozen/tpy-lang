@@ -527,8 +527,8 @@ struct __gen_gen_loop_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ro, int3
     const Holder* h = nullptr;
     int32_t a;
     const Box* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -556,8 +556,8 @@ struct __gen_gen_loop_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ptr_
     const Holder* h = nullptr;
     int32_t a;
     const Box* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -636,8 +636,8 @@ struct __gen_gen_loop_root : public ::tpy::next_iter_mixin<__gen_gen_loop_root, 
     Holder* h = nullptr;
     int32_t a;
     Box* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Holder>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Holder>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Holder>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Holder>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -57,8 +57,8 @@ struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_f
     F_fn fn;
     T_it it;
     ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
-    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -118,8 +118,8 @@ struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate<T, 
     T_it it;
     int32_t i;
     ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
-    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -68,8 +68,8 @@ struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, Node> {
     int32_t __state;
     ::tpy::BigInt n;
     ::tpy::BigInt i;
-    ::tpy::frame_slot<::tpy::BigInt> __for_i_0;
-    ::tpy::frame_slot<::tpy::BigInt> __for_stop_0;
+    ::tpy::frame_loop_slot<::tpy::BigInt> __for_i_0;
+    ::tpy::frame_loop_slot<::tpy::BigInt> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -94,8 +94,8 @@ struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, 
     int32_t __state;
     const std::vector<Node>& src;
     const Node* p = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -121,8 +121,8 @@ struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::v
     int32_t __state;
     const std::vector<std::vector<int32_t>>& src;
     const std::vector<int32_t>* r = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -148,8 +148,8 @@ struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain, Node> {
     int32_t __state;
     const Bag& __self;
     const Node* p = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

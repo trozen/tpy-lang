@@ -881,10 +881,13 @@ def _run_cli(is_runner: bool) -> int:
             if args.dump_code:
                 with stamp_codegen_error_file(source_name,
                                               compiled.is_entry_point):
-                    hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
+                    hpp_code, cpp_code, inl_code = compiler.generate_inl_and_code_to_strings(compiled, options=options)
                 if hpp_code:
                     print(f"// === include/{compiled.name}.hpp ===")
                     print(hpp_code)
+                if inl_code:
+                    print(f"// === include/{compiled.name}_inl.hpp ===")
+                    print(inl_code)
                 if cpp_code:
                     print(f"// === src/{compiled.name}.cpp ===")
                     print(cpp_code)
@@ -894,9 +897,12 @@ def _run_cli(is_runner: bool) -> int:
             if args.verbose >= 2:
                 with stamp_codegen_error_file(source_name,
                                               compiled.is_entry_point):
-                    hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
+                    hpp_code, cpp_code, inl_code = compiler.generate_inl_and_code_to_strings(compiled, options=options)
                 print(f"// === include/{compiled.name}.hpp ===")
                 print(hpp_code)
+                if inl_code:
+                    print(f"// === include/{compiled.name}_inl.hpp ===")
+                    print(inl_code)
                 if cpp_code:
                     print(f"// === src/{compiled.name}.cpp ===")
                     print(cpp_code)

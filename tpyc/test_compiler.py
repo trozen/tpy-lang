@@ -1356,3 +1356,29 @@ class TestRepeatedCompilesAreIdentical:
                 f"{diags}\n--- first ---\n{first_diags}")
             assert sources == first_sources, (
                 f"compile #{i} in this process emitted different C++")
+
+
+def test_string_codegen_matches_written_sources_for_cycle_peers(tmp_path):
+    # --dump-code, -vv and the REPL generate sources as strings; a build writes
+    # files. A module in an import cycle needs its peers' headers in its .cpp
+    # and _inl.hpp, so the string path must see the same cycle peers.
+    src = Path(__file__).resolve().parent.parent / (
+        "tests/cases/generators/frame_next_placement/src")
+    compiler = Compiler(src / "main.py", lib_dirs=_STDLIB_DIRS)
+    modules = compiler.compile()
+    entry = next(m for m in modules if m.is_entry_point)
+    out = tmp_path / "out"
+    written = {}
+    for m in modules:
+        hpp_path, cpp_path = compiler.generate_code(
+            m, out, entry_module_name=entry.name)
+        written[m.name] = (hpp_path, cpp_path)
+    cycle = [m for m in modules if m.name in ("cyc_a", "cyc_b")]
+    assert len(cycle) == 2, "fixture lost its import cycle -- test is vacuous"
+    for m in cycle:
+        hpp, cpp, inl = compiler.generate_inl_and_code_to_strings(m)
+        hpp_path, cpp_path = written[m.name]
+        assert hpp == hpp_path.read_text(), m.name
+        assert cpp == cpp_path.read_text(), m.name
+        inl_path = hpp_path.with_name(hpp_path.stem + "_inl.hpp")
+        assert (inl or None) == (inl_path.read_text() if inl_path.exists() else None), m.name

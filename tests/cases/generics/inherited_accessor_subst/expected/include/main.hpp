@@ -123,8 +123,8 @@ struct __gen_bump_gen : public ::tpy::next_iter_mixin<__gen_bump_gen, int32_t> {
     int32_t __state;
     Holder<int32_t, std::vector<Rec>>& h;
     Rec* r = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

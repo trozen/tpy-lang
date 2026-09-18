@@ -106,8 +106,8 @@ struct __gen_matching : public ::tpy::next_iter_mixin<__gen_matching, ::tpy::Byt
     const std::vector<::tpy::Bytes>& names;
     ::tpy::Bytes want;
     ::tpy::Bytes n;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::Bytes>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

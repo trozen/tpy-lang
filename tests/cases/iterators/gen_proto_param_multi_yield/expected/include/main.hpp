@@ -24,8 +24,8 @@ struct __gen_echo : public ::tpy::next_iter_mixin<__gen_echo<T_it>, ::tpy::BigIn
     int32_t __state;
     T_it it;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

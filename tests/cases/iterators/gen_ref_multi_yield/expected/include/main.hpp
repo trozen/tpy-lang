@@ -39,8 +39,8 @@ struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, ::tpy::val_or_re
     int32_t __state;
     std::vector<Box>& xs;
     Box* b = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -21,9 +21,9 @@ struct __gen_countdown : public ::tpy::next_iter_mixin<__gen_countdown, int32_t>
     int32_t __state;
     int32_t start;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
-    ::tpy::frame_slot<int32_t> __for_step_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_step_0;
 
     enum : int32_t {
         S_INITIAL = 0,

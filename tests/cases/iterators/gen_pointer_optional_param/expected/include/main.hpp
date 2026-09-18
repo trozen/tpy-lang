@@ -46,8 +46,8 @@ struct __gen_gen_n_times : public ::tpy::next_iter_mixin<__gen_gen_n_times, int3
     P* p;
     int32_t n;
     int32_t _;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

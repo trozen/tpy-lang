@@ -272,8 +272,8 @@ struct __gen_gen_loop : public ::tpy::next_iter_mixin<__gen_gen_loop, std::strin
     int32_t x;
     int32_t _;
     Point* p = nullptr;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     std::optional<Point> __ptr_slot_f0;
 
     enum : int32_t {

@@ -103,8 +103,8 @@ struct __gen_gen_return_suppresses_exc : public ::tpy::next_iter_mixin<__gen_gen
 struct __gen_gen_return_in_loop : public ::tpy::next_iter_mixin<__gen_gen_return_in_loop, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     int32_t i;
-    ::tpy::frame_slot<int32_t> __for_i_0;
-    ::tpy::frame_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     bool __finally_stop = false;
 
     enum : int32_t {

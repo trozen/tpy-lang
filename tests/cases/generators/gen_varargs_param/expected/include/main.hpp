@@ -178,8 +178,8 @@ struct __gen_scalars : public ::tpy::next_iter_mixin<__gen_scalars, int32_t> {
     ::tpy::varargs<const int32_t> xs;
     int32_t n;
     int32_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -206,8 +206,8 @@ struct __gen_strings : public ::tpy::next_iter_mixin<__gen_strings, int32_t> {
     ::tpy::varargs<const std::string> ss;
     int32_t n;
     std::string s;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::string>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::string>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::string>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::string>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -317,8 +317,8 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     int32_t __state;
     ::tpy::varargs<Point> ps;
     Point* p = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<Point>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<Point>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<Point>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<Point>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -344,8 +344,8 @@ struct __gen_read_pack : public ::tpy::next_iter_mixin<__gen_read_pack, int32_t>
     int32_t __state;
     ::tpy::varargs<const Point> ps;
     const Point* p = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const Point>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const Point>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const Point>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const Point>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -419,8 +419,8 @@ struct __gen_in_finally : public ::tpy::next_iter_mixin<__gen_in_finally, int32_
     ::tpy::frame_state __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
     const std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -463,8 +463,8 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with, int32_t> {
     ::tpy::frame_state __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
     const std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
     ::tpy::frame_slot<Trace> __with_ctx_0;
 
     enum : int32_t {
@@ -508,8 +508,8 @@ struct __gen_readonly_param : public ::tpy::next_iter_mixin<__gen_readonly_param
     int32_t __state;
     const std::vector<Point>& ps;
     const Point* p = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -536,8 +536,8 @@ struct __gen_bump_generic : public ::tpy::next_iter_mixin<__gen_bump_generic<T>,
     int32_t __state;
     ::tpy::varargs<T> xs;
     T* x = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<T>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<T>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<T>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<T>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -604,10 +604,10 @@ struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, ::tpy::val_or_
     int32_t __state;
     const std::vector<Point>& ps;
     const Point* p = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_1;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_1;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_1;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -637,7 +637,7 @@ struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T
     const Point* p = nullptr;
     int32_t before;
     int32_t after;
-    ::tpy::frame_slot<::tpy::iter_next_t<T_it>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<T_it>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -714,8 +714,8 @@ struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::v
     int32_t __state;
     ::tpy::varargs<std::vector<std::vector<int32_t>>> xs;
     std::vector<std::vector<int32_t>>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -741,8 +741,8 @@ struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_siz
     const Collector& __self;
     ::tpy::varargs<const std::vector<int32_t>> xs;
     const std::vector<int32_t>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::varargs<const std::vector<int32_t>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -772,8 +772,8 @@ struct __gen_Album_each : public ::tpy::next_iter_mixin<__gen_Album_each, int32_
     int32_t __state;
     const Album& __self;
     const Point* p = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -804,8 +804,8 @@ struct __gen_Grower_each_pack : public ::tpy::next_iter_mixin<__gen_Grower_each_
     const Grower& __self;
     ::tpy::varargs<std::vector<std::vector<int32_t>>> xs;
     std::vector<std::vector<int32_t>>* s = nullptr;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::varargs<std::vector<std::vector<int32_t>>>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

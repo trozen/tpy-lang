@@ -23,10 +23,10 @@ struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     int32_t n;
     int32_t x;
     int32_t i;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
-    ::tpy::frame_slot<int32_t> __for_i_1;
-    ::tpy::frame_slot<int32_t> __for_stop_1;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    ::tpy::frame_loop_slot<int32_t> __for_i_1;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_1;
 
     enum : int32_t {
         S_INITIAL = 0,

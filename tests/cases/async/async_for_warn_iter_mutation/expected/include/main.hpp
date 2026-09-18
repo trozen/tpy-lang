@@ -216,7 +216,7 @@ struct __coro_runner {
     bool __cancel_pending;
     ::tpy::frame_slot<Source> src;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
     std::optional<__coro_SrcIter___anext__> __sub_0;
 
     enum : int32_t {
@@ -245,7 +245,7 @@ struct __coro_post_loop {
     bool __cancel_pending;
     ::tpy::frame_slot<Source> src;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
     std::optional<__coro_SrcIter___anext__> __sub_0;
 
     enum : int32_t {
@@ -276,8 +276,8 @@ struct __coro_nested {
     ::tpy::frame_slot<Source> inner;
     ::tpy::BigInt y;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_1;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_1;
     std::optional<__coro_SrcIter___anext__> __sub_0;
     std::optional<__coro_SrcIter___anext__> __sub_1;
 
@@ -311,7 +311,7 @@ struct __coro_hop {
     bool __cancel_pending;
     Shelf& sh;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
     std::optional<__coro_SrcIter___anext__> __sub_0;
 
     enum : int32_t {
@@ -340,7 +340,7 @@ struct __coro_field_hop {
     bool __cancel_pending;
     Shelf& sh;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
     std::optional<__coro_SrcIter___anext__> __sub_0;
 
     enum : int32_t {
@@ -369,7 +369,7 @@ struct __coro_elem_distinct {
     bool __cancel_pending;
     std::vector<Source>& rows;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
     std::optional<__coro_SrcIter___anext__> __sub_0;
 
     enum : int32_t {
@@ -399,7 +399,7 @@ struct __coro_elem_unknown {
     std::vector<Source>& rows;
     ::tpy::BigInt i;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
     std::optional<__coro_SrcIter___anext__> __sub_0;
 
     enum : int32_t {
@@ -428,7 +428,7 @@ struct __coro_elem_container {
     bool __cancel_pending;
     std::vector<Source>& rows;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
     std::optional<__coro_SrcIter___anext__> __sub_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
@@ -459,7 +459,7 @@ struct __coro_ptr_iter {
     bool __cancel_pending;
     std::vector<Feed>& feeds;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Feed>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Feed>> __for_itr_0;
     std::optional<__coro_FeedIter___anext__> __sub_0;
 
     enum : int32_t {

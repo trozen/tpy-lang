@@ -77,8 +77,8 @@ struct __gen_if_cond_temp : public ::tpy::next_iter_mixin<__gen_if_cond_temp, ::
     int32_t __state;
     ::tpy::BigInt n;
     ::tpy::BigInt i;
-    ::tpy::frame_slot<::tpy::BigInt> __for_i_0;
-    ::tpy::frame_slot<::tpy::BigInt> __for_stop_0;
+    ::tpy::frame_loop_slot<::tpy::BigInt> __for_i_0;
+    ::tpy::frame_loop_slot<::tpy::BigInt> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

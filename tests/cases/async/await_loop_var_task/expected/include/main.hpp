@@ -54,8 +54,8 @@ struct __coro_main_coro {
     int32_t total;
     ::tpystd::asyncio::_executor::Task<int32_t>* t = nullptr;
     int32_t __await_lift_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>>> __for_end_0;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {

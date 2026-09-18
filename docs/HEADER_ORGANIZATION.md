@@ -7,7 +7,7 @@
 | **Phase 0** | Single-header scheme (current); template functions in `.hpp` | Done |
 | **Phase 1** | 4-header split (`_fwd.hpp`, `.hpp`, `_templ.hpp`, `_impl.hpp`) with conservative includes | Planned |
 | **Phase 2** | Usage classification pre-pass for minimum include levels per dependency | Planned |
-| **Phase 3** | Inline function heuristics for small non-template functions | Planned |
+| **Phase 3** | Inline function heuristics for small non-template functions | Partial: generator `__next__` only, via `_inl.hpp` (below) |
 
 ## Problem
 
@@ -247,6 +247,26 @@ Criteria for inlining (tentative):
 
 Functions that do not meet these criteria remain as declarations in `.hpp`
 with definitions in `.cpp`.
+
+**What landed, and what it changes about this plan.** The first shipped piece
+covers generator `__next__` only: a body of at most 40 rendered lines is
+defined `inline` in a sixth file, `module_inl.hpp`, and every `.cpp` includes
+the `_inl.hpp` of each module it can reach after all its other headers (see
+docs/ASYNC_DESIGN.md "Body placement"). Two findings bear on the rest of
+Phase 3:
+
+- `module.hpp` is the wrong home. A header inside an include cycle -- a
+  package and its submodule (`os.hpp` <-> `os/path.hpp`), or an import cycle
+  -- is parsed before the headers it depends on are complete, so an inline
+  body there fails to compile when it names the other side. Bodies belong in
+  a file only `.cpp` files include, after every header. That is the role
+  `_impl.hpp` already has for template bodies; when Phase 1 lands,
+  `_inl.hpp` should fold into it rather than stay a separate kind.
+- The payoff is measurable and fades with size. For a generator consumed
+  from another module (gcc-14 -O3): 29 lines -24%, 41 lines -11%, 53 lines
+  -7%, 77 lines -2%, not inlined past ~84. gcc inlines only a body declared
+  `inline` and defined in the consumer's TU; LTO did not substitute for the
+  keyword (196 vs 78 ms). clang-20 inlined none of these across modules.
 
 ## Template Class Members
 

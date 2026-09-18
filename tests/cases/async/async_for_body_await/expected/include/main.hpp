@@ -121,7 +121,7 @@ struct __coro_total {
     int32_t s;
     ::tpy::BigInt x;
     ::tpy::BigInt __await_lift_0;
-    ::tpy::frame_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
     std::optional<__coro_Counter___anext__> __sub_0;
     std::optional<__coro_doubled> __sub_1;
 

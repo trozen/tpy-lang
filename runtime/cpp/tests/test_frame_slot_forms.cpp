@@ -16,6 +16,7 @@
  */
 #include <cstdio>
 #include <expected>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -235,7 +236,7 @@ int peek(int n) { return n; }
 template <typename Src>
 void drive(Src src, int* observed_last) {
     using slot_t = tpy::frame_slot<tpy::for_elem_next_t<Src>>;
-    tpy::frame_slot<tpy::iter_result_t<Src>> r;
+    tpy::frame_loop_slot<tpy::iter_result_t<Src>> r;
     slot_t p;
     auto it = ::tpy::__iter__(src);
     while (true) {
@@ -273,12 +274,54 @@ void iteration_forms() {
     }
 }
 
+// --- 4. the loop-state slot keeps every form's storage and surface ---
+
+void loop_slot_forms() {
+    tpy::frame_loop_slot<int> i;
+    i.emplace(3);
+    ++(*i);
+    tpy::frame_loop_slot<int> i2(std::move(i));
+    check((*i2) == 4 && !i.has_value(), "trivial loop slot moves like frame_slot");
+
+    live = 0;
+    {
+        tpy::frame_loop_slot<CountedInit> c;
+        check(live == 0, "a loop slot defers construction");
+        c.emplace(6);
+        check(c->v == 6, "a loop slot reads through ->");
+    }
+
+    // A const payload reaches the primary form through slot types that keep
+    // cv (iter_result_t, begin_iter_t). It must still construct, re-emplace
+    // and move -- the slot's storage drops the const, its readers do not.
+    {
+        tpy::frame_loop_slot<const std::string> c;
+        c.emplace("first");
+        c.emplace("second");
+        check(*c == "second", "a const payload re-emplaces");
+        tpy::frame_loop_slot<const std::string> moved(std::move(c));
+        check(*moved == "second" && !c.has_value(),
+              "a const payload moves and leaves the source dead");
+        static_assert(std::is_same_v<decltype(*moved), const std::string&>,
+                      "a const payload reads back as const");
+    }
+
+    Point a{1};
+    tpy::frame_loop_slot<Point&> r;
+    r.emplace(a);
+    (*r).x = 5;
+    tpy::frame_loop_slot<Point&> r2(std::move(r));
+    check(a.x == 5 && &(*r2) == &a && !r.has_value(),
+          "ref loop slot aliases and moves like frame_slot");
+}
+
 } // namespace
 
 int main() {
     slot_trivial_form();
     slot_ref_form();
     iteration_forms();
+    loop_slot_forms();
     if (failures != 0) {
         std::printf("%d frame_slot form check(s) failed\n", failures);
         return 1;

@@ -246,9 +246,10 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
             if cpp.exists():
                 stdlib_cpps.append(cpp)
                 stdlib_gen_files.append(cpp)
-            hpp = layout.hpp_path(mod.name)
-            if hpp.exists():
-                stdlib_gen_files.append(hpp)
+            for hdr in (layout.hpp_path(mod.name),
+                        layout.inl_hpp_path(mod.name)):
+                if hdr.exists():
+                    stdlib_gen_files.append(hdr)
 
     if not stdlib_cpps:
         return _StdlibCache(objects=[], cpp_relpaths=set())
@@ -1798,7 +1799,9 @@ def compute_exec_fingerprint(
     h.update(b"\0")
     gen_files: list[Path] = []
     for _name, hpp, cpp, _is_local in all_modules:
-        for p in (hpp, cpp):
+        # `<mod>_inl.hpp` holds generator bodies, so it shapes the binary too.
+        inl = hpp.with_name(hpp.stem + "_inl.hpp") if hpp is not None else None
+        for p in (hpp, inl, cpp):
             if p is not None and p.exists():
                 gen_files.append(p)
     gen_files.sort()
@@ -2907,8 +2910,9 @@ def module_to_expected_path(expected_dir: Path, mod_name: str,
     contain `/` and a path component cannot contain `.`, and a package `a`
     lands on the file `a.hpp` beside the directory `a/` its submodules use.
 
-    Recognizes both the `.hpp` / `.cpp` extensions and the `_fwd.hpp`
-    cycle-peer forward-declaration header suffix (lives under include/).
+    Recognizes the `.hpp` / `.cpp` extensions, the `_fwd.hpp` cycle-peer
+    forward-declaration header suffix and the `_inl.hpp` inline-generator-body
+    header suffix (both live under include/).
     """
     subdir = "src" if ext == ".cpp" else "include"
     parts = mod_name.split('.')
