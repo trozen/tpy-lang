@@ -6,47 +6,60 @@ When a release ships, delete its section and promote the next one.
 
 Bugs are not listed here. Every `BUGS.md` entry tagged `IMM` or `HIGH`
 blocks the release, so the must-fix set is whatever those tags currently
-name -- a list here would only drift from them.
+name -- a list here would only drift from them. The one exception is
+stated per release below.
 
-## 0.6.0 committed tracks (scope set 2026-07-28)
+## 0.6.0 (scope set 2026-09-18)
 
-- Interop v1 wrap-up -- usable in real applications (deferred matrix in
-  `docs/CPYTHON_INTEROP.md`):
-  - Optional/None at the boundary (param + return)
-  - PEP 517 backend -> abi3 wheel (phase 2.5; the design-heavy one --
-    converges with the pyproject v0 track below)
-  - `from tpy import __ext_module__`
-  - Remaining exposed-class rungs (static/classmethods) + the
-    `@export`-class validation consolidation
-- pyproject v0 -- TODO: "pyproject v0: build TPy extensions and apps"
-- Per-project compilation options -- TODO: "Per-project compilation
-  options in pyproject" (default int, range checks, string/char type)
+Bug gate: every `IMM` and `HIGH` entry EXCEPT the borrow / provenance
+family, which moves to 0.7.0 (see there). An entry is in that family
+when its defect is one of:
+
+- a loan, view or pointer that outlives its storage, or a mutation that
+  does not invalidate a live borrow (dangling temporaries, loans blind
+  to a write path, frame-held borrows);
+- a silent copy where CPython aliases, or a move at the wrong point;
+- a borrow-form vs storage-form spelling mismatch (const-ness, pointer
+  vs payload slot) at a parameter, tuple element or Optional local.
+
+Features:
+
+- THIR migration -- SHIPPED (fallback -> 0, then the AST-codegen
+  deletion). Residual track: TODO: "The post-cutover fix queue: shapes
+  that are now compile errors"
+- Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
+  TODO: "Nested comprehensions"
+- Methods on enums (instance, `@staticmethod`, `@classmethod`; covers
+  `Color.from_str`) -- TODO: "Methods on enums"
+- `collections.defaultdict` -- TODO: "collections: the rest of the
+  module"
+- Interop: Optional/None at the `@export` boundary (param + return) --
+  `docs/CPYTHON_INTEROP.md` type table
+
+## 0.7.0 (queue to triage at 0.7 planning; not commitments)
+
+- Borrow / provenance `HIGH` entries (the family defined under 0.6.0),
+  fixed against the analysis-only MIR rather than patched one by one in
+  the AST borrow tracker
+- Interop v1 wrap-up: PEP 517 backend -> abi3 wheel (phase 2.5),
+  `from tpy import __ext_module__`, exposed-class static/classmethods +
+  the `@export`-class validation consolidation
+- pyproject v0 -- TODO: "pyproject v0: build TPy extensions and apps";
+  per-project options designed with it -- TODO: "Per-project compilation
+  options in pyproject"
+- Polymorphic `cls` -- FEATURE_ROADMAP: "Polymorphic `cls`
+  (`type[Self]`)"
 - Mixed-width int arithmetic decision -- TODO: "Sub-default-int
   arithmetic: promote, or keep width-preserving?" (snapshot-heavy)
 - Traits -- TODO: "No `AnyInt` protocol covering" + "trivially-
   relocatable / primitive-value trait"
-- Generic-record auto-derive bug (`_work.md`; file the BUGS.md entry
-  with a repro when picked up)
-- THIR migration -- SHIPPED (fallback -> 0, then the AST-codegen
-  deletion). Residual track: TODO: "The post-cutover fix queue: shapes
-  that are now compile errors"
-
-## 0.6.0 (queued features; details in TODO.md / `_work.md` where tracked)
-
-- Polymorphic `cls` -- FEATURE_ROADMAP: "Polymorphic `cls` (`type[Self]`)". `@classmethod`
-  ships with `cls` bound to the DEFINING class, so an INHERITED factory reached
-  through a subclass is a compile error; the per-class override that works is
-  not virtual. This is what "alternate constructors everywhere" still means to a
-  user. (The enum half -- `Color.from_str` -- is a separate feature: enums accept
-  no methods at all, TODO: "Methods on enums".)
-- `collections.defaultdict` + `namedtuple` (TODO: "`collections.namedtuple`
-  / `typing.NamedTuple` support"); `deque` / `OrderedDict` if time allows
-- Nested / multi-`for` comprehensions (list/dict/set + genexprs) -- stretch
+- `namedtuple` -- TODO: "`collections.namedtuple` / `typing.NamedTuple`
+  support"; `deque` / `OrderedDict`
 - Extend the stale-capture warning to in-place mutation of captured
-  containers (the fixable half of the closure-snapshot divergence)
-
-## 0.7.0 (queue to triage at 0.7 planning; not commitments)
-
+  containers (the fixable half of the closure-snapshot divergence; no
+  TODO entry yet)
+- Generic-record auto-derive bug (no repro on file; file the BUGS.md
+  entry with one when picked up)
 - `@noalloc` enforcement v1 (FEATURE_ROADMAP C3 -- parsed-only today)
 - Unicode `str` / build-time string width (`docs/STRING_WIDTH_DESIGN.md`)
 - Send/Sync enforcement phases 4-6 (`docs/SEND_SYNC_DESIGN.md`)
