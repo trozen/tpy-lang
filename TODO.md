@@ -1680,6 +1680,13 @@ alongside related feature work; only the big-rock deferrals live here.
   inventories. General calls and closure execution stay MIR-uncovered. That
   plan files the remaining target, capture-source, shape and position cells;
   effects, lifetime proofs and broader binding identities remain later work.
+  The post-merge audit in `docs/MIR_M2_REMAINING_PLAN.md` describes M2.13:
+  constructor-backed Optional record locals, reusing M2.2 storage identities.
+  Inline reusable slots without semantic storage verdicts,
+  owned tuple/union backing, materialized expression/view temporaries, container
+  elements and broader call/closure execution remain explicit M2/M3/M4 gaps.
+  The recommended next design after that slice is bounded M3 liveness and
+  all-holder propagation; completing it would not complete M2 or enable M5.
   Direct self-to-Optional pointer initializers remain uncovered;
   self-to-union capture is tracked as `BUGS.md#self-record-union-initializer`.
   Inferred/whole-readonly auto tuple copies remain MIR-uncovered until

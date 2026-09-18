@@ -68,7 +68,7 @@ from .nodes import (
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRSubscript,
     THIRFrameSlotWrite,
-    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf,
+    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
     THIROptionalLayout, THIROptionalRead,
@@ -306,8 +306,16 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _fail(owner, node, "invalid normalized tuple index")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) and node.owned_storage is not None:
         fact = node.owned_storage
+        typ = unwrap_readonly(unwrap_ref_type(node.resolved_type))
+        if isinstance(typ, OptionalType):
+            if (not isinstance(node, THIRPtrLocalDecl) or node.kind is not PtrSlotKind.OPT_RVALUE
+                    or not isinstance(node.init, THIRCtorCall) or node.init.form is not Form.STORAGE
+                    or node.init.result_type != fact.type
+                    or node.optional_layout != THIROptionalLayout(fact)):
+                _fail(owner, node, "owned optional storage disagrees with its payload")
+            typ = unwrap_readonly(typ.inner)
         if (node.alias_binding is not None or node.init is None
-                or unwrap_readonly(unwrap_ref_type(node.resolved_type)) != fact.type
+                or typ != fact.type
                 or type(fact.readonly) is not bool or node.is_const != fact.readonly):
             _fail(owner, node, "owned storage disagrees with its declaration")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):

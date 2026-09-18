@@ -62,8 +62,13 @@ their parameter/local/receiver category. Unsupported inventory is distinct from 
 proven empty one. Capture metadata grants no MIR execution or lifetime coverage.
 The verifier checks access and definite assignment,
 including initialized bases for field stores, but proves no lifetimes. Owned
-record slots have explicit construct/copy/move/borrow operations. Their layouts
-contain only bool/int32 fields and have no custom special members; construction
+record slots have explicit construct/copy/move/borrow operations. Supported
+pointer-form Optional locals use the same slots: construction borrows distinct
+record storage into a nullable holder, OWN replacement redirects that holder,
+IN_PLACE replaces its present referent and None clears only the holder. THIR
+records payload ownership at the constructor-backed declaration producer;
+MIR consumes the effective replacement verdict and retains presence checks.
+Their layouts contain only bool/int32 fields and have no custom special members; construction
 requires a complete, pure constructor definition. `MIRDefinitions` indexes and
 checks the emitted `THIRConstructor` artifacts and their logical layout/member
 facts, without reaching back into sema. OWN replacements use distinct storage;

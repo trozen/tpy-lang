@@ -433,7 +433,8 @@ def validate_function(fn: MIRFunction) -> None:
                     target = slots[stmt.target.root]
                     _require(target_type in records and (
                         (not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE)
-                        or stmt.target.projections == (MIRDeref(),)), "record destination type")
+                        or stmt.target.projections in ((MIRDeref(),), (MIROptionalPayload(), MIRDeref()))),
+                        "record destination type")
                     if not stmt.target.projections:
                         _require(stmt.target.root not in initialized_storage, "repeated storage initialization")
                         initialized_storage.add(stmt.target.root)

@@ -1,0 +1,8 @@
+free shared: 7
+free replacement: 3
+free cleared: 9 True
+free shared: 7
+free replacement: 2
+free cleared: 9 True
+constructor: 7
+method: 8

@@ -183,6 +183,7 @@ from ..reject import (
     stmt_reject_reason,
 )
 from ..nodes import (
+    THIRCtorCall,
     THIRBorrowTupleLiteral,
     Form,
     PrintForm,
@@ -4648,6 +4649,9 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
         _witness("decl.opt_slot_rvalue")
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype, kind=kind, init=init,
+        owned_storage=(borrowed_record(pointee, is_const, analyzer)
+                       if kind is PtrSlotKind.OPT_RVALUE and isinstance(init, THIRCtorCall)
+                       and init.result_type == pointee else None),
         cpp_type=lc.render_type(pointee), is_const=is_const, loc=loc)
 
 

@@ -1776,6 +1776,18 @@ native executions; the focused THIR/MIR and existing closure-case gate passed
 Existing snapshots were unchanged. Both milestones are prepared as separate
 commits on one branch; this batch does not merge or push them.
 
+## Remaining M2 audit and M2.13
+
+M2.11 and M2.12 are merged. The post-merge audit and M2.13 plan are in
+[MIR_M2_REMAINING_PLAN.md](MIR_M2_REMAINING_PLAN.md). M2.2 already models separate
+plain-record backing storage; M2.13 extends that model to constructor-backed
+Optional record locals, consuming OWN/IN_PLACE facts and preserving nullable
+holder copies and None clears. Inline-slot reuse without those facts stays
+excluded. The implementation was approved on 2026-09-18.
+The audit maps all six analysis requirements and recommends designing bounded
+M3 liveness/holder propagation next, while retaining explicit M2 coverage gaps.
+This does not declare M2 complete or authorize callable admission.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

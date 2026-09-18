@@ -129,11 +129,21 @@ class _Coverage:
                                  "optional declaration access mismatch")
                     else:
                         allowed |= {"kind"}
-                        _require(stmt, stmt.kind is th.PtrSlotKind.OPT_NONE and stmt.init is None,
-                                 "optional backing storage")
+                        if stmt.kind is th.PtrSlotKind.OPT_RVALUE:
+                            allowed.add("owned_storage")
+                            fact = stmt.owned_storage
+                            _require(stmt, isinstance(fact, th.THIRBorrowedRecord)
+                                     and fact == stmt.optional_layout.payload
+                                     and stmt.is_const == fact.readonly
+                                     and isinstance(stmt.init, th.THIRCtorCall), "optional backing storage")
+                            self.record_value(stmt.init, fact.type)
+                        else:
+                            _require(stmt, stmt.kind is th.PtrSlotKind.OPT_NONE and stmt.init is None,
+                                     "optional backing storage")
                     _plain(stmt, allowed)
                     self.optional_layout(stmt, stmt.optional_layout, stmt.resolved_type)
-                    self.optional_source(stmt.init, stmt.optional_layout)
+                    if stmt.owned_storage is None:
+                        self.optional_source(stmt.init, stmt.optional_layout)
                     self.optionals[stmt.name] = stmt.optional_layout
                     self.bindings[stmt.name] = unwrap_readonly(unwrap_ref_type(stmt.resolved_type))
                     continue
@@ -718,13 +728,13 @@ class _Coverage:
                 self.union_source(stmt.value, stmt.union_layout, stmt.union_literal)
             case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.optional_layout is not None:
                 if isinstance(stmt, th.THIRAssign):
-                    _plain(stmt, {"target", "value", "optional_layout"})
+                    _plain(stmt, {"target", "value", "optional_layout", "rebind_storage", "slot_cpp"})
                     _require(stmt, isinstance(stmt.target, th.THIRName), "optional assignment needs local")
                     _plain(stmt.target, {"name", "is_last_use", "is_movable"})
                     name = stmt.target.name
                 else:
-                    _plain(stmt, {"name", "kind", "optional_layout"})
                     _require(stmt, stmt.kind is th.PtrSlotKind.OPT_NONE, "unsupported optional reseat")
+                    _plain(stmt, {"name", "kind", "optional_layout"})
                     name = stmt.name
                 _require(stmt, name in self.optionals and name not in self.parameters
                          and stmt.optional_layout == self.optionals[name], "optional destination mismatch")
@@ -734,7 +744,21 @@ class _Coverage:
                     actual = unwrap_readonly(unwrap_ref_type(stmt.target.result_type))
                     _require(stmt, actual in (typ, self.bindings[name]) or isinstance(actual, NoneType),
                              "optional destination type mismatch")
-                self.optional_source(stmt.value, stmt.optional_layout)
+                if isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is not None:
+                    member = stmt.optional_layout.payload
+                    _require(stmt, isinstance(member, th.THIRBorrowedRecord)
+                             and stmt.rebind_storage in (RebindStorage.OWN, RebindStorage.IN_PLACE),
+                             "unsupported optional replacement storage")
+                    _require(stmt, loops == 0, "owning operation in loop")
+                    _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE or not member.readonly,
+                             "readonly in-place replacement")
+                    _require(stmt, isinstance(stmt.value, th.THIRCtorCall), "replacement needs constructor")
+                    self.record_value(stmt.value, member.type)
+                    _require(stmt, self.records[member.type].layout.movable, "replacement needs movable record")
+                else:
+                    _require(stmt, not isinstance(stmt, th.THIRAssign) or stmt.slot_cpp is None,
+                             "optional slot without replacement storage")
+                    self.optional_source(stmt.value, stmt.optional_layout)
             case th.THIRAssign() if stmt.rebind_storage is not None:
                 self.replacement(stmt, loops)
             case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.alias_binding is not None or stmt.storage_borrow is not None:
@@ -1023,6 +1047,13 @@ class _Builder:
                 assert isinstance(expr, th.THIRMove)
                 return MIRMove(self.storage[expr.value.name])
 
+    def optional_record(self, expr: th.THIRCtorCall, fact: th.THIRBorrowedRecord) -> MIRRvalue:
+        storage = self.slot(fact.type, storage=True)
+        self.write(storage, self.record_value(expr), expr.loc)
+        reference = self.slot(fact.type, reference=fact)
+        self.write(reference, MIRBorrow(MIRPlace(storage)), expr.loc)
+        return MIROptionalConstruct(reference)
+
     def stmts(self, stmts: tuple[th.THIRStmt, ...]) -> None:
         for stmt in stmts:
             if self.current is None:
@@ -1051,11 +1082,20 @@ class _Builder:
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.optional_layout is not None:
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,
                                      optional_layout=stmt.optional_layout)
-                    self.write(dest, self.optional_value(stmt.init), loc)
+                    value = (self.optional_record(stmt.init, stmt.owned_storage)
+                             if stmt.owned_storage is not None else self.optional_value(stmt.init))
+                    self.write(dest, value, loc)
                     self.bindings[stmt.name] = dest
                 case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.optional_layout is not None:
                     name = stmt.target.name if isinstance(stmt, th.THIRAssign) else stmt.name
-                    self.write(self.bindings[name], self.optional_value(stmt.value), loc)
+                    dest = self.bindings[name]
+                    if isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is RebindStorage.OWN:
+                        self.write(dest, self.optional_record(stmt.value, stmt.optional_layout.payload), loc)
+                    elif isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is RebindStorage.IN_PLACE:
+                        self.write(MIRPlace(dest, (MIROptionalPayload(), MIRDeref())),
+                                   self.record_value(stmt.value), loc)
+                    else:
+                        self.write(dest, self.optional_value(stmt.value), loc)
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.owned_storage is not None:
                     fact = stmt.owned_storage
                     storage = self.slot(fact.type, storage=True)

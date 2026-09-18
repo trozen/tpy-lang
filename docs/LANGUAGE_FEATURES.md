@@ -8365,6 +8365,11 @@ An unsupported capture or position makes the inventory unavailable; an empty
 inventory proves only that there are no captures. Nested closures, record
 copy/move captures, record locals, wrappers and frame-backed sources remain
 outside coverage. Closure execution, escape and lifetime checks are unchanged.
+M2.13 extends internal coverage to constructor-backed Optional record locals
+using existing storage identities (`MIR_M2_REMAINING_PLAN.md`). Replacing or
+clearing a holder preserves independent aliases; selected in-place replacement
+requires a present mutable payload. Inline-slot reuse without carried storage
+facts remains excluded. No source-language rule or generated C++ changes.
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

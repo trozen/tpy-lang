@@ -157,7 +157,10 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     value = (PayloadAlias(rhs.source) if slots[stmt.target.root].value_kind is MIRValueKind.PAYLOAD_ALIAS
                              else read(rhs.source))
                 case MIRConstruct():
-                    layout = records[slots[stmt.target.root].type]
+                    target = slots[stmt.target.root]
+                    typ = (target.optional_layout.type if stmt.target.projections == (
+                        MIROptionalPayload(), MIRDeref()) else target.type)
+                    layout = records[typ]
                     value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}
                 case MIRCopy() | MIRMove():
                     source = rhs.source.root if isinstance(rhs, MIRCopy) else rhs.source
@@ -172,7 +175,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     raise AssertionError(rhs)
             if isinstance(value, dict):
                 if stmt.target.projections:
-                    reference = values[stmt.target.root]
+                    reference = read(stmt.target)
                     assert isinstance(reference, Reference)
                 else:
                     assert slots[stmt.target.root].value_kind is MIRValueKind.RECORD_STORAGE
