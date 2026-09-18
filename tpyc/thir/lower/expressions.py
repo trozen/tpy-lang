@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
 from .callables import resolved_callee
 from .storage import direct_field, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
+from .captures import capture_facts
 from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -11103,6 +11104,7 @@ def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
         capture = "[" + ", ".join(parts) + "]"
     else:
         capture = "[]"
+    closure_id, captures = capture_facts(e, lc, declared)
     if is_void_like_type(ret_type):
         # The statement-body closure: the body IS a builtin print call
         # (gate-checked by _lambda_reject_reason). Its args lower TEMP-FREE --
@@ -11127,6 +11129,7 @@ def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
             body=THIRPrintChain(result_type=ret_type, args=tuple(pargs),
                                 loc=loc),
             ret_cpp=None,
+            closure_id=closure_id, captures=captures,
             loc=loc,
         )
     # A borrow-returning lambda (`-> Point&`, the map key/value-preserving
@@ -11162,6 +11165,7 @@ def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
         params_cpp=tuple(params_cpp),
         body=body,
         ret_cpp=ret_cpp,
+        closure_id=closure_id, captures=captures,
         loc=loc,
     )
 

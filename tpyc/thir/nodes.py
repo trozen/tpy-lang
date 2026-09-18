@@ -947,6 +947,48 @@ class THIRDecayCopy(THIRExpr):
     value: THIRExpr
 
 
+class THIRClosureKind(Enum):
+    LAMBDA = auto()
+    NESTED_DEF = auto()
+
+
+@dataclass(frozen=True)
+class THIRClosureIdentity:
+    """Occurrence within the immediate enclosing body, independent of eligibility."""
+    index: int
+    kind: THIRClosureKind
+
+
+class THIRCaptureSourceKind(Enum):
+    PARAMETER = auto()
+    LOCAL = auto()
+    RECEIVER = auto()
+
+
+class THIRCaptureRelation(Enum):
+    SCALAR_BINDING = auto()
+    SCALAR_SNAPSHOT = auto()
+    RECORD_REFERENT = auto()
+    RECEIVER_ALIAS = auto()
+
+
+@dataclass(frozen=True)
+class THIRCaptureSlot:
+    closure: THIRClosureIdentity
+    index: int
+
+
+@dataclass(frozen=True)
+class THIRCapture:
+    """Selected capture storage and access; a snapshot is readonly inside the closure."""
+    slot: THIRCaptureSlot
+    source_name: str
+    source_kind: THIRCaptureSourceKind
+    type: TpyType
+    relation: THIRCaptureRelation
+    readonly: bool
+
+
 @dataclass(frozen=True)
 class THIRLambda(THIRExpr):
     """A lambda expression -- a C++ closure:
@@ -964,6 +1006,9 @@ class THIRLambda(THIRExpr):
     params_cpp: tuple[str, ...]
     body: THIRExpr
     ret_cpp: 'str | None' = None
+    closure_id: THIRClosureIdentity | None = None
+    # None is unavailable; () proves no captures, not absence of global effects.
+    captures: tuple[THIRCapture, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -2491,6 +2536,9 @@ class THIRNestedDef(THIRStmt):
     params_cpp: tuple[str, ...] = ()
     ret_cpp: 'str | None' = None
     body: tuple[THIRStmt, ...] = ()
+    closure_id: THIRClosureIdentity | None = None
+    # An unsupported capture invalidates the complete inventory.
+    captures: tuple[THIRCapture, ...] | None = None
 
 
 @dataclass(frozen=True)

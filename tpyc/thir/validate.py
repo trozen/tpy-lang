@@ -75,6 +75,8 @@ from .nodes import (
     THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral,
     THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
     THIRResolvedCallee, THIRFunctionIdentity, THIRCallableSignature,
+    THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
+    THIRCapture, THIRCaptureSlot, THIRCaptureSourceKind, THIRCaptureRelation,
 )
 
 
@@ -191,7 +193,44 @@ def _check_callee(owner: str, node: object, fact: THIRResolvedCallee) -> None:
         _fail(owner, node, "invalid resolved callee")
 
 
+def _check_captures(owner: str, node: THIRLambda | THIRNestedDef) -> None:
+    identity = node.closure_id
+    kind = THIRClosureKind.LAMBDA if isinstance(node, THIRLambda) else THIRClosureKind.NESTED_DEF
+    if identity is not None and (
+            not isinstance(identity, THIRClosureIdentity) or type(identity.index) is not int
+            or identity.index < 0 or identity.kind is not kind):
+        _fail(owner, node, "invalid closure identity")
+    if node.captures is None:
+        return
+    if identity is None or not isinstance(node.captures, tuple):
+        _fail(owner, node, "capture inventory needs closure identity and tuple")
+    names: set[str] = set()
+    for index, fact in enumerate(node.captures):
+        if (not isinstance(fact, THIRCapture) or not isinstance(fact.slot, THIRCaptureSlot)
+                or fact.slot.closure != identity or type(fact.slot.index) is not int or fact.slot.index != index
+                or not isinstance(fact.source_name, str) or not fact.source_name or fact.source_name in names
+                or not isinstance(fact.source_kind, THIRCaptureSourceKind)
+                or not isinstance(fact.relation, THIRCaptureRelation) or type(fact.readonly) is not bool):
+            _fail(owner, node, "invalid capture slot or source")
+        names.add(fact.source_name)
+        match fact.relation:
+            case THIRCaptureRelation.SCALAR_BINDING | THIRCaptureRelation.SCALAR_SNAPSHOT:
+                if (fact.type not in (BOOL, INT32) or fact.source_kind is THIRCaptureSourceKind.RECEIVER
+                        or (fact.relation is THIRCaptureRelation.SCALAR_SNAPSHOT and not fact.readonly)):
+                    _fail(owner, node, "invalid scalar capture")
+            case THIRCaptureRelation.RECORD_REFERENT | THIRCaptureRelation.RECEIVER_ALIAS:
+                expected = (THIRCaptureSourceKind.PARAMETER
+                            if fact.relation is THIRCaptureRelation.RECORD_REFERENT
+                            else THIRCaptureSourceKind.RECEIVER)
+                if (fact.source_kind is not expected or not isinstance(fact.type, NominalType)
+                        or not fact.type.qualified_name() or fact.type.type_args or fact.type.is_protocol
+                        or fact.type in (BOOL, INT32)):
+                    _fail(owner, node, "invalid reference capture")
+
+
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, (THIRLambda, THIRNestedDef)):
+        _check_captures(owner, node)
     if isinstance(node, THIRCall) and node.resolved_callee is not None:
         _check_callee(owner, node, node.resolved_callee)
         if (len(node.args) != len(node.resolved_callee.signature.param_types)

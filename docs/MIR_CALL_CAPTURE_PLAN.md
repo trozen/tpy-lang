@@ -1,8 +1,10 @@
 # M2.11-M2.12: semantic call and capture metadata
 
-Status: approved on 2026-09-18 after the producer survey. Implement M2.11
-then M2.12, each as one reviewed commit on one branch, without merging or
-pushing. Both steps preserve source acceptance, diagnostics and generated C++.
+Status: implemented on 2026-09-18 after the approved producer survey, with
+M2.11 then M2.12 delivered as separate reviewed commits on one branch.
+Both steps preserve source acceptance, diagnostics and generated C++.
+Validation results are recorded in [MIR_ANALYSIS_PLAN.md](MIR_ANALYSIS_PLAN.md).
+Merging and pushing remain separate from this batch.
 
 ## Why these steps
 

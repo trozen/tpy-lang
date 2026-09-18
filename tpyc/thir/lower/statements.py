@@ -7,6 +7,7 @@ import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
 from .storage import alias_binding, borrowed_record, global_name_binding, optional_layout, storage_borrow, tuple_layout, union_literal
+from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -5494,6 +5495,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
                 for n in stmt.captured_names) + "]"
     else:
         capture = "[]"
+    closure_id, captures = capture_facts(stmt, lc, scope.declared)
     params_cpp = []
     body_declared = dict(scope.declared)
     for pname, ptype in func.params:
@@ -5542,7 +5544,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     _witness("stmt.nested_def")
     return THIRNestedDef(name=escape_cpp_name(func.name), capture_cpp=capture,
                          params_cpp=tuple(params_cpp), ret_cpp=ret_cpp,
-                         body=body, loc=loc)
+                         body=body, loc=loc, closure_id=closure_id, captures=captures)
 
 
 def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],

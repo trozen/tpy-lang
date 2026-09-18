@@ -1753,6 +1753,28 @@ finalized declaration signature; stale cycle enum signatures remain absent
 existing MIRBodyId and call exclusion remain unchanged. The synthetic tuple
 unit fixture that adds a parameter clears its original declaration fact,
 since it no longer represents that emitted function's signature.
+The final M2.11 forced gate passed 8,721 tests with 23 skips and 4,158
+native executions after incorporating master `edfe216564`; existing snapshots
+were unchanged. All seven review lenses and the retrospective closed clean.
+
+M2.12 adds THIRClosureIdentity and THIRCaptureSlot plus a complete optional
+inventory on THIRLambda/THIRNestedDef. Source bindings carry their category
+and name; relations distinguish scalar binding references, scalar snapshots,
+record referents and receiver aliases. Source facts and selected capture modes
+determine access, including readonly snapshots and inferred readonly receivers.
+The lexical prepass numbers unavailable sites too, with a separate occurrence
+space for each nested body. Both levels of nested closure construction remain
+unavailable before checking the empty-capture case. Only direct ordinary-body
+positions and unambiguous parameters/entry scalar locals/receivers are covered;
+special regions, wrappers, record local/copy/move and frame captures retain
+the detailed exclusions in the call/capture plan. Existing MIR call and closure
+rejections remain in force; no renderer consumes the new inventory.
+
+The final M2.12 forced gate passed 8,747 tests with 23 skips and 4,158
+native executions; the focused THIR/MIR and existing closure-case gate passed
+907 tests. All seven review lenses and the retrospective closed clean.
+Existing snapshots were unchanged. Both milestones are prepared as separate
+commits on one branch; this batch does not merge or push them.
 
 ## Scope matrix and remaining increments
 

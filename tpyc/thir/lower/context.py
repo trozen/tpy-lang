@@ -27,6 +27,7 @@ from ...typesys import (
 )
 from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRUnionExtraction, THIRUnionLayout
+from .captures import CaptureSites
 from .predicates import (
     _borrow_tuple_return_type,
     _res_container_return,
@@ -1074,7 +1075,7 @@ class _LowerCtx:
                  "deref_view_spelled", "forwarded_map",
                  "movable_locals",
                  "sema_movable_locals",
-                 "params", "capture_funcs",
+                 "params", "capture_funcs", "capture_sites",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
                  "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
@@ -1121,6 +1122,15 @@ class _LowerCtx:
                  top_level_scope: bool = False) -> None:
         self.analyzer = analyzer
         self.func = func
+        self.capture_sites = CaptureSites(func, eligible=not (
+            top_level_scope or func.is_async or func.is_generator or func.error_return
+            or func.type_params or params_override is not None or analyzer.overload_groups.get(func)
+            or func.is_staticmethod or func.is_classmethod or func.is_consuming
+            or func.is_property_getter or func.is_property_setter
+            or func.is_auto_own_borrowing_clone or func.is_auto_own_consuming_clone
+            or func.auto_readonly_polarity is not None
+            or (func.is_method and func.name != "__init__"
+                and func.name.startswith("__") and func.name.endswith("__"))))
         self.global_binding_scope = not (func.is_async or func.is_generator)
         # The SIGNATURE params this body is lowered against: a per-@overload
         # stub's when one is being specialized (the body is emitted against

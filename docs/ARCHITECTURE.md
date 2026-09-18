@@ -54,7 +54,13 @@ declaration identities and semantic signatures at calls and definitions;
 these do not supply call effects or admit general MIR calls. Registration
 retains a unique ordinary declaration for signature/identity checks; overloads,
 redefinitions and stale cycle signatures stay uncovered. Structural module keys
-remain independent of rendered C++ namespaces. The verifier checks access and definite assignment,
+remain independent of rendered C++ namespaces. Selected lambdas and nested defs
+also carry complete capture inventories, distinguishing scalar binding references,
+scalar snapshots, borrowed record referents and receiver aliases. Closure occurrence
+and capture-slot identities are scoped to the enclosing body; source bindings retain
+their parameter/local/receiver category. Unsupported inventory is distinct from a
+proven empty one. Capture metadata grants no MIR execution or lifetime coverage.
+The verifier checks access and definite assignment,
 including initialized bases for field stores, but proves no lifetimes. Owned
 record slots have explicit construct/copy/move/borrow operations. Their layouts
 contain only bool/int32 fields and have no custom special members; construction

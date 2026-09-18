@@ -8351,6 +8351,14 @@ These facts describe declarations only: general calls remain MIR-uncovered,
 and no call-effect, lifetime or source-admission rule changes. Overloads,
 generic/callback templates, methods/constructors, native targets and resumable
 factories retain separate identity gates (`MIR_CALL_CAPTURE_PLAN.md`).
+M2.12 preserves complete capture inventories for selected direct lambdas and
+nested defs in ordinary free functions, instance methods and constructor tails.
+It distinguishes scalar binding references from readonly scalar snapshots,
+borrowed plain-record parameters and receiver aliases with finalized access.
+An unsupported capture or position makes the inventory unavailable; an empty
+inventory proves only that there are no captures. Nested closures, record
+copy/move captures, record locals, wrappers and frame-backed sources remain
+outside coverage. Closure execution, escape and lifetime checks are unchanged.
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance
