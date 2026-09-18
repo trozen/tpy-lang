@@ -1671,6 +1671,12 @@ alongside related feature work; only the big-rock deferrals live here.
   aggregate/reference/native globals and imported/reexported value bindings
   remain excluded. The latter need the separate fix tracked as
   `BUGS.md#imported-scalar-binding-tracks-foreign-rebind`.
+  The approved M2.11-M2.12 metadata batch is described in
+  `docs/MIR_CALL_CAPTURE_PLAN.md`. M2.11 carries resolved unique free-function
+  identities/signatures; selected complete closure capture inventories are
+  next. General calls and closure execution stay MIR-uncovered. That
+  plan files the remaining target, capture-source, shape and position cells;
+  effects, lifetime proofs and broader binding identities remain later work.
   Direct self-to-Optional pointer initializers remain uncovered;
   self-to-union capture is tracked as `BUGS.md#self-record-union-initializer`.
   Inferred/whole-readonly auto tuple copies remain MIR-uncovered until

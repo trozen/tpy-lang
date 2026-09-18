@@ -8345,6 +8345,12 @@ declarations and direct module attributes are covered. From-import bindings
 and reexports remain uncovered because of the existing import-rebinding defect
 (`BUGS.md#imported-scalar-binding-tracks-foreign-rebind`); native globals,
 aggregate/reference globals and module initialization are also outside the subset.
+M2.11 preserves resolved ordinary free-function identities and typed signatures
+on THIR calls and definitions, including imported aliases and reexports.
+These facts describe declarations only: general calls remain MIR-uncovered,
+and no call-effect, lifetime or source-admission rule changes. Overloads,
+generic/callback templates, methods/constructors, native targets and resumable
+factories retain separate identity gates (`MIR_CALL_CAPTURE_PLAN.md`).
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

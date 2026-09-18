@@ -5,6 +5,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
+from .callables import resolved_definition
 from .storage import borrowed_record, optional_layout, record_layout, tuple_parameter_layout
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
@@ -1052,6 +1053,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             raise ThirUnsupported("body.hoisted_vars")
         fn = THIRFunction(
             name=func.name,
+            resolved_callee=(resolved_definition(func, analyzer)
+                             if self_type is None and stub is None else None),
             params=params,
             return_type=rt,
             body=param_copies + body,

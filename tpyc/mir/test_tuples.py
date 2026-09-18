@@ -257,6 +257,7 @@ def test_readonly_source_thir_boundary(artifacts: Artifacts) -> None:
     init = replace(decl.init, elements=(th.THIRName(typ, "ro", form=th.Form.BORROW),),
                    tuple_layout=layout)
     fn = replace(fn, params=(*fn.params, th.THIRParam("ro", typ, reference)),
+                 resolved_callee=None,  # The synthetic signature is not the emitted declaration.
                  body=(replace(decl, init=init, tuple_layout=layout), *fn.body[1:]))
     validate_thir(fn)
     member = MIRFieldId(typ, "value")

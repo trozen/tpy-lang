@@ -74,6 +74,7 @@ from .nodes import (
     THIROptionalLayout, THIROptionalRead,
     THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral,
     THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
+    THIRResolvedCallee, THIRFunctionIdentity, THIRCallableSignature,
 )
 
 
@@ -178,7 +179,25 @@ def _check_union(owner: str, node: object, layout: THIRUnionLayout,
         _fail(owner, node, "mixed or empty union layout")
 
 
+def _check_callee(owner: str, node: object, fact: THIRResolvedCallee) -> None:
+    if (not isinstance(fact, THIRResolvedCallee)
+            or not isinstance(fact.identity, THIRFunctionIdentity)
+            or not isinstance(fact.identity.module, str) or not fact.identity.module
+            or not isinstance(fact.identity.name, str) or not fact.identity.name
+            or not isinstance(fact.signature, THIRCallableSignature)
+            or not isinstance(fact.signature.param_types, tuple)
+            or not all(isinstance(t, TpyType) for t in fact.signature.param_types)
+            or not isinstance(fact.signature.return_type, TpyType)):
+        _fail(owner, node, "invalid resolved callee")
+
+
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, THIRCall) and node.resolved_callee is not None:
+        _check_callee(owner, node, node.resolved_callee)
+        if (len(node.args) != len(node.resolved_callee.signature.param_types)
+                or any(value is not None for value in (
+                    node.native_name, node.cpp_template, node.callee_expr, node.template_args_cpp))):
+            _fail(owner, node, "resolved callee on incompatible call")
     if isinstance(node, (THIRName, THIRModuleVar, THIRWalrus)) and node.global_binding is not None:
         fact = node.global_binding
         if (not isinstance(fact, THIRGlobalBinding) or not fact.module or not fact.name
@@ -807,6 +826,16 @@ def validate_function(fn: THIRFunction) -> None:
                 unwrap_readonly(unwrap_ref_type(param.type)) != fact.type
                 or type(fact.readonly) is not bool):
             _fail(fn.name, param, "borrowed record fact disagrees with parameter")
+    if fn.resolved_callee is not None:
+        _check_callee(fn.name, fn, fn.resolved_callee)
+        signature = fn.resolved_callee.signature
+        if (fn.receiver is not None or fn.error_return_cpp is not None
+                or fn.name != fn.resolved_callee.identity.name
+                # Body normalization adds @readonly access separately from the declaration type.
+                or tuple(unwrap_ref_type(unwrap_readonly(unwrap_ref_type(p.type))) for p in fn.params)
+                != tuple(unwrap_ref_type(unwrap_readonly(unwrap_ref_type(t))) for t in signature.param_types)
+                or fn.return_type != signature.return_type):
+            _fail(fn.name, fn, "resolved callee disagrees with definition")
     for stmt in fn.body:
         _walk(fn.name, stmt, fn.return_type)
 

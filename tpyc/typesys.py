@@ -20,7 +20,7 @@ from .module_names import public_module_name
 from .compilation_context import get_current_compiler, require_current_compiler
 
 if TYPE_CHECKING:
-    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TypeRefNode
+    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TpyFunction, TypeRefNode
 
 
 # Toggled (default off) only by qualified_type_str, so diagnostics can render
@@ -5879,6 +5879,8 @@ class FunctionInfo:
     is_constructor: bool = False  # True for synthetic record-constructor FunctionInfo
     # (return_type is the record itself, the call is an rvalue; distinguishes
     # from a regular function declared to return that type which would emit T&).
+    # Only a unique ordinary source declaration; overloads/redefinitions stay absent.
+    declaration: TpyFunction | None = field(default=None, repr=False, compare=False)
     special_handling: bool = False  # True if sema/codegen handle specially
     error_return_type: Optional[str] = None  # @error_return(E) exception type name
     builtin_decorator_key: Optional[str] = None  # e.g. "tpy.readonly" -- links .py function to decorator semantics
@@ -6978,5 +6980,3 @@ class TypeRegistry:
             if td is not None and td.type_factory is not None:
                 return True
         return False
-
-

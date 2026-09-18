@@ -663,6 +663,24 @@ class THIRIfExpr(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRFunctionIdentity:
+    module: str
+    name: str
+
+
+@dataclass(frozen=True)
+class THIRCallableSignature:
+    param_types: tuple[TpyType, ...]
+    return_type: TpyType
+
+
+@dataclass(frozen=True)
+class THIRResolvedCallee:
+    identity: THIRFunctionIdentity
+    signature: THIRCallableSignature
+
+
+@dataclass(frozen=True)
 class THIRCall(THIRExpr):
     """Call to a plain free function, or -- when `callee_expr` is set -- to a
     computed callable (`make_adder(10)(5)`, `fns[i](x)`): the callee renders
@@ -714,6 +732,7 @@ class THIRCall(THIRExpr):
     callee_cpp: str | None = None
     callee_expr: 'THIRExpr | None' = None
     template_args_cpp: tuple[str, ...] | None = None
+    resolved_callee: THIRResolvedCallee | None = None
 
 
 @dataclass(frozen=True)
@@ -3478,6 +3497,7 @@ class THIRFunction:
     error_return_cpp: 'str | None' = None
     body_terminates: bool = False
     receiver: THIRBorrowedRecord | None = None
+    resolved_callee: THIRResolvedCallee | None = None
 
 
 @dataclass(frozen=True)

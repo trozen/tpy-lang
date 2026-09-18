@@ -27,6 +27,7 @@ from ..parse.nodes import (
     TpyVarDecl,
 )
 from ..typesys import (
+    FunctionInfo,
     NominalType,
     TpyType,
 )
@@ -187,6 +188,9 @@ def _iter_typed_children(node) -> list[TpyType]:
         if not d:
             continue
         for k, v in d.items():
+            # Declaration evidence must not make callers include callee-body types.
+            if isinstance(cur, FunctionInfo) and k == "declaration":
+                continue
             # `enum_member_of` records WHICH enum a `E.A` access resolved
             # through (a binding fact for codegen), not a type the module
             # reaches on its own: surfacing it here would re-add the

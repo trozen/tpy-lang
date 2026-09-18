@@ -19,6 +19,17 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 
 ## Compiler bugs
 
+- **[LOW medium] Cyclic enum imports can leave a stale reference wrapper in a function signature.** [`cycle-enum-stale-reference-signature`]
+  With `a` importing enum `Color` from `b` and `b` importing `a.lookup`,
+  `a.lookup() -> Color` can retain `Ref[Color]` in its registered FunctionInfo
+  after its finalized AST return becomes value-type `Color`. Declaration
+  registration saw the cycle placeholder before enum classification; the
+  later normalization preserves the existing Ref wrapper. The existing
+  `imports/mutual_cycle_with_enum` case still builds and runs correctly, so
+  no runtime defect is established. The inconsistency prevents a faithful
+  semantic signature join; THIR callee metadata stays absent for this shape.
+  Fix requires checking declaration finalization across cycle peers and
+  sibling parameter/aggregate signatures, separately from metadata carriage.
 - **[MED small] (silent wrong value) A `Callable`-typed local LAMBDA copies the enclosing local it reads, with no diagnostic, where the identical `def` spelling warns.** [`callable-local-lambda-copies-capture-silently`] `read: Callable[[], int32] = lambda: len(data)` renders `[data]` -- a full copy taken at creation -- so a later `data.append(...)` is invisible to it: TPy prints `2` where CPython prints `3`. Writing the same body as a nested `def` produces the `copies local ... preventing move` warning; the lambda spelling produces nothing, although the divergence is the same one that warning exists to announce. Probe `/tmp/agents/review3/p16_lambda_copy.py`; pinned as the `lambda`/`lambda_sibling` lines of `tests/cases/nested_def/escaping_local_copy`. Needs `/tpy-fix-bug`.
 - **[LOW small] (ill-formed C++, toolchain-caught) Two nested `def`s with the SAME name in one scope reach the C++ compiler as a redeclaration.** [`duplicate-nested-def-name-in-one-scope`] Two `def h()` at the same level of one body is legal Python (the second rebinds the name); tpyc emits two `auto h = [...]` in one block and g++ reports `conflicting declaration 'auto h'`, naming generated code rather than the source. The block-scoped spelling (one per `if` arm) is fine -- each arm is its own C++ block. **Fix shape:** either reject at the second `def` with a located diagnostic, or emit the rebind as an assignment to the first slot. Probe `/tmp/agents/r3/dupname.py`. Needs `/tpy-fix-bug`.
 - **[MED small] (ill-formed C++, toolchain-caught) A nested `def` does not capture a name only its own LAMBDA reads.** [`nested-def-lambda-only-capture-missing`] `def sib(): f = lambda: len(xs); return f()` inside a function that owns `xs` builds a lambda with no capture-default over a name the enclosing def never captured: g++ reports `'xs' is not captured`. A nested def's capture set comes from the name references its body's statements make, and a lambda withholds its body from that walk because it is its own scope -- so the name reaches neither capture list. Probe `/tmp/agents/task2/siblam.py`; reproduces at `21dcef707b` (the capture formula is unchanged there). Found 2026-09-17 checking whether `TpyNestedDef.captured_names` needs a lambda-aware fallback -- it does not, because this shape does not compile either way. Needs `/tpy-fix-bug`.

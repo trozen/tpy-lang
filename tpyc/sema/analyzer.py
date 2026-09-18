@@ -2182,6 +2182,9 @@ class SemanticAnalyzer:
         registered for body analysis only (not directly callable).
         """
         pending_stubs: dict[str, list[TpyFunction]] = {}
+        declaration_counts: dict[str, int] = {}
+        for func in functions:
+            declaration_counts[func.name] = declaration_counts.get(func.name, 0) + 1
 
         for func in functions:
             if func.builtin_decorator_key:
@@ -2214,7 +2217,7 @@ class SemanticAnalyzer:
                 self._require_overload_form(stubs, func.name, impl=func)
                 self._register_overload_group(func, stubs)
             else:
-                self.registrar.register_function(func)
+                self.registrar.register_function(func, unique_declaration=declaration_counts[func.name] == 1)
 
         # A @dispatch set has no trailing implementation to register with;
         # a @overload set left here is missing its implementation.

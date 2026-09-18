@@ -1732,6 +1732,28 @@ run focused checks, the applicable specialist reviews and readiness gate,
 then one full forced suite. Fix and re-review findings before squashing;
 do not refresh existing snapshots without the user's approval.
 
+## Approved batch: M2.11-M2.12
+
+The producer survey and bounded proposal are in
+[MIR_CALL_CAPTURE_PLAN.md](MIR_CALL_CAPTURE_PLAN.md). Approved on 2026-09-18.
+M2.11 preserves resolved ordinary free-function identities and signatures;
+M2.12 preserves complete inventories for selected closure captures. Both
+are descriptive THIR metadata steps: general calls and closure execution
+remain MIRNotCovered until their control flow and effects can be modeled.
+The proposal records the sibling survey, capture-storage distinction,
+position/shape/slot exclusions, tests and review gates.
+
+M2.11 implementation carries THIRResolvedCallee on eligible calls and
+definitions, with structural module/name identity and ordered semantic
+signature types. Registration retains the unique ordinary source declaration;
+overloads and repeated definitions remain absent even when the registry has
+collapsed them to one binding. Both producers require agreement with the
+finalized declaration signature; stale cycle enum signatures remain absent
+(`BUGS.md#cycle-enum-stale-reference-signature`). Declaration matching does not consult C++ names; the
+existing MIRBodyId and call exclusion remain unchanged. The synthetic tuple
+unit fixture that adds a parameter clears its original declaration fact,
+since it no longer represents that emitted function's signature.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

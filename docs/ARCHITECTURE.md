@@ -49,7 +49,12 @@ bool/int32 globals and direct module attributes are covered; from-import names,
 reexports, native globals and module initialization remain uncovered.
 MIR scalar field places contain dereference and qualified field projections. Distinct
 holders can reference the same object, and readonly access does not imply
-an immutable referent. The verifier checks access and definite assignment,
+an immutable referent. THIR also carries selected ordinary free-function
+declaration identities and semantic signatures at calls and definitions;
+these do not supply call effects or admit general MIR calls. Registration
+retains a unique ordinary declaration for signature/identity checks; overloads,
+redefinitions and stale cycle signatures stay uncovered. Structural module keys
+remain independent of rendered C++ namespaces. The verifier checks access and definite assignment,
 including initialized bases for field stores, but proves no lifetimes. Owned
 record slots have explicit construct/copy/move/borrow operations. Their layouts
 contain only bool/int32 fields and have no custom special members; construction

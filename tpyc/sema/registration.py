@@ -3294,7 +3294,7 @@ class TypeRegistrar:
                                      default.loc, target_noun="parameter",
                                      target_name=pname)
 
-    def register_function(self, func: TpyFunction) -> None:
+    def register_function(self, func: TpyFunction, *, unique_declaration: bool = False) -> None:
         """Register a function."""
         # Allow TypeParamRef in params/return for generic functions
         is_generic = bool(func.type_params)
@@ -3469,6 +3469,7 @@ class TypeRegistrar:
             fi_return_type = resolved_return
         info = FunctionInfo(
             name=func.name,
+            declaration=func if unique_declaration else None,
             params=param_infos,
             return_type=fi_return_type,
             async_inner_return=resolved_return if func.is_async else None,

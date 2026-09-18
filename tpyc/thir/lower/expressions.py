@@ -7,6 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
+from .callables import resolved_callee
 from .storage import direct_field, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from ... import qnames
 from ...parse.nodes import (
@@ -8992,6 +8993,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             result_type=rtype,
             callee=e.func_name,
             args=tuple(_free_arg(i, a) for i, a in enumerate(e.args)),
+            resolved_callee=(resolved_callee(fi, analyzer, arity=len(e.args))
+                             if k is not None and k[0] in ("plain", "imported")
+                             and not e.inferred_type_args else None),
             native_name=native_name,
             cpp_template=cpp_template,
             callee_cpp=callee_cpp,
@@ -9701,6 +9705,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             return THIRCall(
                 result_type=rtype if rtype is not None else VoidType(),
                 callee=e.method,
+                resolved_callee=(resolved_callee(mfi, analyzer, arity=len(e.args))
+                                 if mk[0] == "qualified" and not e.inferred_type_args else None),
                 args=tuple(
                     _lower_marker_method_arg(
                         e, a, mfi.params[i].type, i, lc, declared,
