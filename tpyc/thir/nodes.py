@@ -3435,6 +3435,7 @@ class THIRParam:
     borrowed_record: THIRBorrowedRecord | None = None
     optional_layout: THIROptionalLayout | None = None
     union_layout: THIRUnionLayout | None = None
+    tuple_layout: THIRTupleLayout | None = None
 
 
 @dataclass(frozen=True)

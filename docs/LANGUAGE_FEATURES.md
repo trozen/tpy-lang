@@ -8310,6 +8310,15 @@ reseats; readonly aliases still observe writes through mutable aliases. Existing
 tuple-local and narrowed Optional/union roots compose with nested paths. Nested
 owning operations and whole-field replacement remain uncovered; existing
 frontend field-alias spelling restrictions are unchanged.
+M2.7 adds flat tuple parameters and selected standalone borrowed-record element
+captures, including normalized negative indices and per-element readonly access.
+Scalar tuple members remain snapshots; captured records observe shared mutations.
+Tuple wrapper constness is separate from record access. Whole/per-element owning
+parameters and parameter replacement remain uncovered. Existing source gates for
+local-tuple captures, reseated captures and record-tuple parameter copies into
+later-reseated locals are unchanged; scalar tuple parameter copies already compile.
+Readonly auto-copy metadata mismatches remain uncovered and are tracked as
+`BUGS.md#readonly-auto-tuple-copy-fact`; C++ preserves the source constness.
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

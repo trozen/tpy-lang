@@ -72,6 +72,9 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
   with user approval; parameter reseats remain outside proposed M2.5
   coverage. Needs `/tpy-fix-bug`.
 
+- **[LOW medium] (latent THIR metadata) Auto copies of readonly borrowed tuples can claim mutable payloads.** [`readonly-auto-tuple-copy-fact`]
+  For `def inspect(pair: tuple[Cell, int32], writer: Cell): saved = pair; writer.value = 7; return saved[0].value`, inferred deep constness can emit `const std::tuple<const Cell*, int32_t>& pair`; the `auto saved = pair` copy preserves those const pointers, but `THIRVarDecl.tuple_layout` claims a mutable Cell payload. Explicit whole-tuple readonly and alias chains have the same mismatch in free functions, methods and constructors. The `decl.btuple_alias` producer in `tpyc/thir/lower/statements.py` consults `const_borrow_tuple_locals`, whose `ensure_borrow_tuple_const` deliberately records only reassigned/hoisted bindings. Mutable parameter copies and mixed-access annotated elements remain correct. M2.7 MIR rejects the mismatched copy (`payload copy type or access mismatch`), so this neither changes emitted C++ nor admits unsafe analysis. Do not fix only the first parameter hop or broaden the existing const set without auditing its rendering/admission consumers; preserve the selected per-element source capabilities through all auto-copy chains. Related to, but distinct from, the tuple-unpack fact below. Needs `/tpy-fix-bug`.
+
 - **[LOW small] (latent THIR metadata) Optional record tuple-unpack reads lose the selected readonly capability.** [`optional-tuple-unpack-readonly-fact`]
   Unpacking an Optional record from a const tuple emits `const Cell*`, but
   subsequent `THIRName.optional_read` facts describe a mutable

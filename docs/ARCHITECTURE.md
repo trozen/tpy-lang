@@ -47,10 +47,17 @@ Tuple construction/copy snapshots bool/int32 values and borrowed record identiti
 reseating one tuple holder leaves copies independent. THIR carries finalized
 element capture/capability layouts and normalized constant indices. Tuple field
 places compose index, dereference and field selection, checked by a typed
-projection walk. Empty payloads and readonly-source captures are tested at the
-internal IR boundary because their source forms still fail existing frontend
-gates. Tuple parameters, returns, unpacking, nested/owned elements and wrappers
-remain uncovered. Optional bool/int32 values and nullable borrowed plain records
+projection walk. Empty payloads and local tuple construction from readonly record
+sources are tested at the internal IR boundary because their source forms still
+fail existing frontend gates. Flat tuple parameters carry explicit payload layouts, including per-element
+access; wrapper constness does not imply readonly pointees. Selected standalone
+record-element captures borrow the dereferenced parameter element, independently
+of any later wrapper replacement. Parameter/element replacement, tuple returns,
+unpacking, nested/owned elements and wrappers remain uncovered. Existing frontend
+gates still exclude standalone local-tuple captures, reseated captures and
+record-tuple parameter copies into later-reseated locals. Readonly auto-copy
+metadata mismatches also remain uncovered (`BUGS.md#readonly-auto-tuple-copy-fact`).
+Optional bool/int32 values and nullable borrowed plain records
 have explicit absent/present construction, whole-value copies, presence tests
 and typed payload projections. THIR records the selected payload layout and
 whole-wrapper versus extracted-name reads. Presence verification propagates

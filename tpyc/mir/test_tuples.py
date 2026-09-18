@@ -280,7 +280,7 @@ def example(a: readonly[Cell]) -> int32:
 
 
 @pytest.mark.parametrize("body,reason", [
-    ("def example(pair: tuple[int32, int32]) -> int32:\n    return pair[0]\n",
+    ("def example(pair: tuple[tuple[int32, int32]]) -> int32:\n    return 1\n",
      "parameter type"),
     ("def example(x: int32) -> tuple[int32, int32]:\n    return (x, 1)\n", "return type"),
     ("def example(x: int32) -> int32:\n    pair = ((x, 1), 2)\n    return x\n", "tuple layout"),

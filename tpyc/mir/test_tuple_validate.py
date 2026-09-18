@@ -121,7 +121,7 @@ def test_tuple_layout_validation() -> None:
     ):
         invalid(replace(GOOD, slots=(*SLOTS[:3], replace(SLOTS[3], tuple_layout=layout), *SLOTS[4:])), reason)
     invalid(replace(GOOD, slots=(*SLOTS[:3], replace(SLOTS[3], kind=MIRSlotKind.PARAMETER), *SLOTS[4:])),
-            "tuple slot")
+            "tuple operation needs tuple destination")
 
 
 def test_payloads_must_be_initialized_on_every_incoming_path() -> None:

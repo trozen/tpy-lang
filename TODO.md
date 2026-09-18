@@ -1655,6 +1655,13 @@ alongside related feature work; only the big-rock deferrals live here.
   whole-field replacement and the observed frontend field-alias spelling gaps
   remain outside that increment;
   the factored matrix there records the other deferred shapes and positions.
+  M2.7 adds selected flat tuple parameters and standalone record-element
+  captures with semantic payload access facts. Parameter replacement and owning
+  elements stay excluded; local/reseated capture and record-tuple parameter
+  copies into later-reseated locals retain their frontend gates. M2.8 receiver facts and
+  ordinary method-body coverage are next in the authorized batch.
+  Inferred/whole-readonly auto tuple copies remain MIR-uncovered until
+  `BUGS.md#readonly-auto-tuple-copy-fact` preserves their actual payload access.
   All excluded cells are filed there: M2 identities, storage/forms,
   methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
   comprehension/match, binding scopes and holder propagation; M4 summaries,

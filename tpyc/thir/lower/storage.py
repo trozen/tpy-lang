@@ -57,11 +57,19 @@ def record_layout(typ: TpyType, analyzer: 'SemanticAnalyzer') -> THIRRecordLayou
 
 def storage_borrow(source: THIRExpr, typ: TpyType, readonly: bool,
                    analyzer: 'SemanticAnalyzer') -> THIRBorrowedRecord | None:
-    if (not isinstance(source, THIRFieldAccess) or source.field_identity is None
-            or source.form is not Form.STORAGE):
-        return None
+    match source:
+        case THIRFieldAccess() if source.field_identity is not None and source.form is Form.STORAGE:
+            selected = source.field_identity.type
+        case THIRSubscript() if source.deref and source.tuple_index is not None and source.form is Form.BORROW:
+            tuple_type = unwrap_readonly(unwrap_ref_type(source.receiver.result_type))
+            if (not isinstance(source.receiver, THIRName) or not isinstance(tuple_type, TupleType)
+                    or not 0 <= source.tuple_index < len(tuple_type.element_types)):
+                return None
+            selected = tuple_type.element_types[source.tuple_index]
+        case _:
+            return None
     reference = borrowed_record(typ, readonly, analyzer)
-    if (reference is None or unwrap_readonly(source.field_identity.type) != reference.type
+    if (reference is None or unwrap_readonly(unwrap_ref_type(selected)) != reference.type
             or unwrap_readonly(unwrap_ref_type(source.result_type)) != reference.type):
         return None
     return reference
@@ -93,6 +101,15 @@ def tuple_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
                 return None
             elements.append(reference)
     return THIRTupleLayout(tuple(elements))
+
+
+def tuple_parameter_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
+                           readonly: bool) -> THIRTupleLayout | None:
+    # Ref describes parameter passing; Own must survive normalization and fail eligibility.
+    typ = unwrap_ref_type(typ)
+    readonly = readonly or isinstance(typ, ReadonlyType)
+    typ = unwrap_ref_type(unwrap_readonly(typ))
+    return tuple_layout(typ, analyzer, borrow=True, readonly=readonly)
 
 
 def optional_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,

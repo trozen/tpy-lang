@@ -1,0 +1,10 @@
+mixed 1 17
+singleton 21
+readonly 23
+mixed-access-distinct 23
+mixed-access-shared 25
+tuple-copy-distinct 25
+tuple-copy-shared 27
+tuple-scalar-copy 27
+method 8
+constructor 9 9

@@ -176,8 +176,7 @@ def validate_function(fn: MIRFunction) -> None:
         elif slot.value_kind is MIRValueKind.TUPLE:
             layout = slot.tuple_layout
             _require(isinstance(slot.type, TupleType) and isinstance(layout, MIRTupleLayout)
-                     and slot.form is Form.VALUE and not slot.readonly
-                     and slot.kind is not MIRSlotKind.PARAMETER, "unsupported tuple slot")
+                     and slot.form is Form.VALUE and not slot.readonly, "unsupported tuple slot")
             _require(len(layout.elements) == len(slot.type.element_types), "tuple layout arity")
             for member, typ in zip(layout.elements, slot.type.element_types):
                 _require(isinstance(member, MIRTupleElement) and type(member.readonly) is bool,
@@ -281,7 +280,7 @@ def validate_function(fn: MIRFunction) -> None:
         _require(not (write and tuple_member), "tuple element replacement is forbidden")
         _require(not (write and optional_member), "optional payload replacement is forbidden")
         _require(not (write and inline_record), "inline record replacement is unsupported")
-        if kind is MIRValueKind.RECORD_STORAGE and not inline_record:
+        if kind is MIRValueKind.RECORD_STORAGE and not place.projections:
             _require(typ in records, "record place needs layout")
         return typ, kind, readonly
 
@@ -375,7 +374,8 @@ def validate_function(fn: MIRFunction) -> None:
                              "presence test needs optional source and bool destination")
                 case MIRTupleConstruct() | MIRTupleCopy():
                     target = slots[stmt.target.root]
-                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.TUPLE,
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.TUPLE
+                             and target.kind is not MIRSlotKind.PARAMETER,
                              "tuple operation needs tuple destination")
                     if isinstance(value, MIRTupleConstruct):
                         elements = tuple(MIRTupleElement(slots[s].type, slots[s].value_kind, slots[s].readonly)

@@ -52,9 +52,15 @@ class _Coverage:
         _require(fn, fn.return_type in (BOOL, INT32) or isinstance(fn.return_type, VoidType),
                  "unsupported return type")
         for p in fn.params:
-            _plain(p, {"name", "type", "borrowed_record", "optional_layout", "union_layout"})
+            _plain(p, {"name", "type", "borrowed_record", "optional_layout", "union_layout", "tuple_layout"})
             _require(fn, p.name not in self.bindings, "duplicate binding")
-            if p.union_layout is not None:
+            if p.tuple_layout is not None:
+                _require(p, all(f is None for f in (p.borrowed_record, p.optional_layout, p.union_layout)),
+                         "conflicting parameter facts")
+                self.tuple_layout(p, p.tuple_layout, p.type)
+                self.tuples[p.name] = p.tuple_layout
+                self.bindings[p.name] = unwrap_ref_type(unwrap_readonly(unwrap_ref_type(p.type)))
+            elif p.union_layout is not None:
                 _require(p, p.borrowed_record is None and p.optional_layout is None, "conflicting parameter facts")
                 self.union_layout(p, p.union_layout, p.type)
                 self.unions[p.name] = p.union_layout
@@ -256,9 +262,14 @@ class _Coverage:
             self.reference(source, fact, source.result_type)
             source = source.value
         if storage:
-            _require(source, isinstance(source, th.THIRFieldAccess) and source.form is th.Form.STORAGE,
-                     "storage borrow needs record field")
-            reference = self.field(source)
+            if isinstance(source, th.THIRSubscript):
+                _require(source, declaration and isinstance(source.receiver, th.THIRName)
+                         and source.receiver.name in self.parameters, "tuple borrow needs parameter capture")
+                reference = self.projection(source, capture=True)
+            else:
+                _require(source, isinstance(source, th.THIRFieldAccess) and source.form is th.Form.STORAGE,
+                         "storage borrow needs record field")
+                reference = self.field(source)
             _require(source, isinstance(reference, th.THIRBorrowedRecord), "storage borrow needs record")
         else:
             source_name = self.reference_name(source)
@@ -418,13 +429,15 @@ class _Coverage:
 
     def tuple_layout(self, node: object, layout: th.THIRTupleLayout | None,
                      typ: TpyType) -> None:
+        readonly = isinstance(unwrap_ref_type(typ), ReadonlyType)
+        typ = unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
         _require(node, isinstance(layout, th.THIRTupleLayout) and isinstance(typ, TupleType),
                  "missing tuple layout")
         _require(node, len(layout.elements) == len(typ.element_types), "tuple layout arity")
         for member, element in zip(layout.elements, typ.element_types):
             if isinstance(member, th.THIRBorrowedRecord):
                 self.reference(node, member, element)
-                _require(node, unwrap_readonly(element) == element or member.readonly,
+                _require(node, (not readonly and unwrap_readonly(element) == element) or member.readonly,
                          "tuple layout increases access")
             else:
                 _require(node, member in (BOOL, INT32) and member == element,
@@ -450,7 +463,8 @@ class _Coverage:
             _plain(expr, {"name", "is_last_use", "is_movable"})
             _require(expr, expr.name in self.tuples, "tuple needs local payload")
             layout = self.tuples[expr.name]
-            _require(expr, expr.result_type == self.bindings[expr.name], "tuple name type mismatch")
+            _require(expr, unwrap_ref_type(unwrap_readonly(unwrap_ref_type(expr.result_type)))
+                     == self.bindings[expr.name], "tuple name type mismatch")
         else:
             _require(expr, isinstance(expr, (th.THIRTupleLiteral, th.THIRBorrowTupleLiteral)),
                      "unsupported tuple expression")
@@ -476,8 +490,9 @@ class _Coverage:
         self.tuple_exprs[expr] = layout
         return layout
 
-    def projection(self, expr: th.THIRSubscript) -> TpyType | th.THIRBorrowedRecord:
-        _plain(expr, {"receiver", "index", "tuple_index"})
+    def projection(self, expr: th.THIRSubscript, *, capture: bool = False) -> TpyType | th.THIRBorrowedRecord:
+        _plain(expr, {"receiver", "index", "tuple_index"} | ({"deref"} if capture else set()))
+        _require(expr, not capture or expr.deref, "tuple capture needs dereferenced element")
         layout = self.tuple_expr(expr.receiver)
         index = expr.tuple_index
         _require(expr, type(index) is int and 0 <= index < len(layout.elements),
@@ -491,6 +506,7 @@ class _Coverage:
             self.reference(expr, member, expr.result_type)
             _require(expr, expr.form is th.Form.BORROW, "tuple reference projection form")
         else:
+            _require(expr, not capture, "tuple capture needs record element")
             _require(expr, expr.result_type == member and expr.form is th.Form.VALUE,
                      "tuple scalar projection type or form")
         return member
@@ -686,6 +702,7 @@ class _Coverage:
             case th.THIRAssign():
                 _plain(stmt, {"target", "value"})
                 if isinstance(stmt.target, th.THIRName) and stmt.target.name in self.tuples:
+                    _require(stmt, stmt.target.name not in self.parameters, "tuple parameter reseat")
                     _plain(stmt.target, {"name", "is_last_use", "is_movable"})
                     _require(stmt, stmt.target.result_type == self.bindings[stmt.target.name],
                              "tuple destination type mismatch")
@@ -764,7 +781,8 @@ class _Builder:
              alias_source: MIRPlace | None = None) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
         self.slots.append(MIRSlot(sid, reference.type if reference else (
-            unwrap_readonly(unwrap_ref_type(typ)) if optional_layout is not None or union_layout is not None else typ), kind, name,
+            unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
+            if optional_layout is not None or union_layout is not None or tuple_layout is not None else typ), kind, name,
                                   form=th.Form.STORAGE if storage else th.Form.BORROW if reference or alias_source else th.Form.VALUE,
                                   value_kind=(MIRValueKind.RECORD_STORAGE if storage else
                                               MIRValueKind.BORROWED_RECORD if reference else
@@ -1006,6 +1024,8 @@ class _Builder:
                         if isinstance(source, th.THIRFormConvert):
                             source = source.value
                         value = MIRBorrow(self.place(source))
+                        if isinstance(source, th.THIRSubscript):
+                            value = MIRBorrow(MIRPlace(value.source.root, (*value.source.projections, MIRDeref())))
                     else:
                         fact = stmt.alias_binding.reference
                         value = MIRAlias(self.bindings[stmt.alias_binding.source])
@@ -1082,7 +1102,7 @@ class _Builder:
         for p in self.fn.params:
             self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
                                                p.borrowed_record, optional_layout=p.optional_layout,
-                                               union_layout=p.union_layout)
+                                               union_layout=p.union_layout, tuple_layout=p.tuple_layout)
         self.stmts(self.fn.body)
         reachable: set[MIRBlockId] = set()
         pending = [self.blocks[0].id]

@@ -52,7 +52,7 @@ from ..type_def_registry import (
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
 )
 from ..typesys import (
-    BOOL, INT32, INT32_MIN, INT32_MAX, AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
+    BOOL, INT32, INT32_MIN, INT32_MAX, AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, TupleType,
     UnionType, TpyType,
     TypeParamRef,
     is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
@@ -81,6 +81,27 @@ class THIRValidationError(Exception):
     """A lowered node violates a THIR structural invariant -- a lowering bug,
     never an unsupported shape (those must raise during lowering, not produce
     inconsistent THIR)."""
+
+
+def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType) -> None:
+    readonly = isinstance(unwrap_ref_type(typ), ReadonlyType)
+    typ = unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
+    if (not isinstance(layout, THIRTupleLayout) or not isinstance(typ, TupleType)
+            or len(layout.elements) != len(typ.element_types)):
+        _fail(owner, node, "tuple layout disagrees with its type")
+    for member, element in zip(layout.elements, typ.element_types):
+        if isinstance(member, THIRBorrowedRecord):
+            valid = (isinstance(member.type, NominalType)
+                     and member.type.qualified_name() is not None
+                     and not member.type.type_args and not member.type.is_protocol
+                     and member.type not in (BOOL, INT32)
+                     and type(member.readonly) is bool
+                     and unwrap_readonly(element) == member.type
+                     and (not readonly and not isinstance(element, ReadonlyType) or member.readonly))
+        else:
+            valid = member in (BOOL, INT32) and element == member
+        if not valid:
+            _fail(owner, node, "invalid tuple member fact")
 
 
 def _iter_children(node: THIRNode):
@@ -207,21 +228,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
         layout = node.tuple_layout
         if layout is not None:
             typ = node.resolved_type if isinstance(node, THIRVarDecl) else node.result_type
-            if (not isinstance(layout, THIRTupleLayout) or not isinstance(typ, TupleType)
-                    or len(layout.elements) != len(typ.element_types)):
-                _fail(owner, node, "tuple layout disagrees with its type")
-            for member, element in zip(layout.elements, typ.element_types):
-                if isinstance(member, THIRBorrowedRecord):
-                    valid = (isinstance(member.type, NominalType)
-                             and member.type.qualified_name() is not None
-                             and not member.type.type_args and not member.type.is_protocol
-                             and member.type not in (BOOL, INT32)
-                             and type(member.readonly) is bool
-                             and unwrap_readonly(element) == member.type)
-                else:
-                    valid = member in (BOOL, INT32) and element == member
-                if not valid:
-                    _fail(owner, node, "invalid tuple member fact")
+            _check_tuple(owner, node, layout, typ)
             if not isinstance(node, THIRVarDecl) and len(node.elements) != len(layout.elements):
                 _fail(owner, node, "tuple capture arity mismatch")
     if isinstance(node, THIRSubscript) and node.tuple_index is not None:
@@ -269,10 +276,18 @@ def _check_node(owner: str, node: THIRNode) -> None:
                         or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.type):
                     _fail(owner, node, "storage borrow has a non-borrow conversion")
                 source = source.value
-            if (not isinstance(source, THIRFieldAccess) or source.field_identity is None
-                    or source.form is not Form.STORAGE
-                    or unwrap_readonly(source.field_identity.type) != fact.type
-                    or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.type):
+            if isinstance(source, THIRFieldAccess):
+                valid = (source.field_identity is not None and source.form is Form.STORAGE
+                         and unwrap_readonly(source.field_identity.type) == fact.type)
+            elif isinstance(source, THIRSubscript):
+                typ = unwrap_readonly(unwrap_ref_type(source.receiver.result_type))
+                valid = (source.form is Form.BORROW and source.deref
+                         and isinstance(source.receiver, THIRName) and isinstance(typ, TupleType)
+                         and type(source.tuple_index) is int and 0 <= source.tuple_index < len(typ.element_types)
+                         and unwrap_readonly(unwrap_ref_type(typ.element_types[source.tuple_index])) == fact.type)
+            else:
+                valid = False
+            if not valid or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.type:
                 _fail(owner, node, "storage borrow disagrees with its source")
             if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)):
                 if (unwrap_readonly(unwrap_ref_type(node.resolved_type)) != fact.type
@@ -763,6 +778,10 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
 
 def validate_function(fn: THIRFunction) -> None:
     for param in fn.params:
+        if param.tuple_layout is not None:
+            if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):
+                _fail(fn.name, param, "conflicting parameter facts")
+            _check_tuple(fn.name, param, param.tuple_layout, param.type)
         if param.union_layout is not None:
             _check_union(fn.name, param, param.union_layout, param.type)
         if param.optional_layout is not None:
@@ -779,6 +798,10 @@ def validate_function(fn: THIRFunction) -> None:
 def validate_constructor(ctor: THIRConstructor) -> None:
     owner = f"{ctor.record_name}.__init__"
     for param in ctor.params:
+        if param.tuple_layout is not None:
+            if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):
+                _fail(owner, param, "conflicting parameter facts")
+            _check_tuple(owner, param, param.tuple_layout, param.type)
         if param.union_layout is not None:
             _check_union(owner, param, param.union_layout, param.type)
         if param.optional_layout is not None:

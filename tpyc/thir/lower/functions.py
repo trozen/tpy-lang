@@ -5,7 +5,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
-from .storage import borrowed_record, optional_layout, record_layout
+from .storage import borrowed_record, optional_layout, record_layout, tuple_parameter_layout
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
@@ -141,6 +141,7 @@ from ..nodes import (
 from ...value_category import is_rvalue_source
 from .predicates import (
     _param_is_const,
+    _param_is_deep_const,
     _peel_coerce,
     _str_literal_value_opt_arg,
     _IDENTITY_STR_COERCIONS,
@@ -1036,6 +1037,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                                         analyzer),
         optional_layout=optional_layout(t, analyzer, borrow=True,
                                        readonly=_param_is_const(n, func, analyzer, record_name)),
+        tuple_layout=tuple_parameter_layout(t, analyzer,
+                                            readonly=_param_is_deep_const(n, func, analyzer, record_name)),
     ) for n, t in src_params)
     rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
     # Seeded with params (and `self`): a write to such a name is a reassignment.
@@ -2008,6 +2011,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 optional_layout=optional_layout(
                     t, analyzer, borrow=True,
                     readonly=_param_is_const(n, init_method, analyzer, record.name)),
+                tuple_layout=tuple_parameter_layout(
+                    t, analyzer, readonly=_param_is_deep_const(n, init_method, analyzer, record.name)),
             ) for n, t in init_method.params),
             mil_inits=tuple(field_inits),
             base_inits=tuple(base_inits),

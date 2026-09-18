@@ -1405,6 +1405,98 @@ delegated. Stop for blockers or changes to language behavior, source acceptance,
 diagnostics or the agreed architecture. Existing snapshot changes require
 approval. This batch does not claim completion of M2.
 
+## M2.7: flat tuple parameters and selected element borrows
+
+Status: implemented, verified and reviewed under the autonomous batch
+authorization. This extends the internal
+analysis contract only. Source admission, C++ and diagnostics stay unchanged.
+
+The contract is an already accepted capture from a borrowed tuple parameter:
+
+```python
+def inspect(pair: tuple[Cell, int32]) -> int32:
+    saved = pair[0]
+    pair[0].value = 7
+    return saved.value
+```
+
+The signature borrows a tuple containing `Cell*`, and `saved` binds the
+dereferenced element by reference. MIR must return 7. A scalar tuple member
+is a value snapshot. Capturing the record selects its current referent, not a
+tuple slot to follow later. An immutable tuple wrapper does not make its
+record pointees readonly; explicit payload readonly and the existing semantic
+deep-const decision determine access.
+
+Native/CPython probes agree for mixed/singleton parameter captures and readonly
+captures observing another alias's mutation. A mixed-access parameter emits
+`const std::tuple<const Cell*, Cell*>&`, confirming the two constness axes.
+Standalone capture from a tuple local, and a parameter-element capture whose
+destination is later reseated, retain their existing `decl.slot_type` gate.
+Copying a borrowed record-tuple parameter into a later-reseated tuple local also
+retains that gate; non-reseated copies and scalar tuple copies compile. These source forms remain
+excluded rather than changing the frontend for MIR completeness.
+
+An existing producer defect also bounds coverage: auto copies from inferred or
+whole-tuple readonly record parameters can lose readonly in their local payload
+fact, including alias chains and method/constructor siblings. C++ auto copies
+preserve constness; MIR rejects the inconsistent fact. This is tracked as
+`BUGS.md#readonly-auto-tuple-copy-fact`. Mutable and correctly annotated mixed
+payload copies remain covered. The defect's existing const table also feeds
+rendering/admission, so changing it or adding parallel name-state is deferred.
+
+Implementation follows M2.3 tuple layouts and M2.6 place-valued borrows:
+
+- Add an optional tuple-layout fact to THIR parameters at the shared function
+  and constructor producers. Record only flat bool/int32 and borrowed eligible
+  plain-record elements. Exclude whole/per-element Own before stripping type
+  wrappers; use semantic element/deep constness, never rendered C++.
+- Extend the existing storage-borrow fact only for the positively selected
+  tuple-parameter alias source: normalized constant index, borrowed record
+  element and the producer's existing dereference decision. Its source remains
+  the actual initializer; name aliases and field borrows retain their operations.
+- MIR consumes the parameter layout and lowers capture as tuple index followed
+  by dereference. Storage reached through a borrowed holder needs no owning
+  constructor layout; actual owning operations still do. Forbid tuple parameter
+  replacement separately from tuple-element replacement.
+- Reuse tuple compatibility and typed projection validation, normalizing the
+  semantic Ref wrappers carried by parameter types. Validate conflicting facts,
+  element access, declaration type and capture representation. No new runtime,
+  parser, sema, emitter or effect model is required.
+
+| Axis | Covered | Excluded / later work |
+|---|---|---|
+| Position | Ordinary monomorphic synchronous free functions; shared producer facts checked in methods/constructors | Method bodies M2.8; constructor/module/closure bodies later M2; resumables/comprehension/context-manager/try-finally/error-return/match M3; generic bodies M4 |
+| Shape | Flat bool/int32 and borrowed plain-record tuple parameters; singleton/mixed tuples; mutable/readonly elements | Nested/owning/wrapper elements, str/bytes, native/value/protocol/generic records, Ptr/Span/Box/Rc: remaining M2/M3/M4 |
+| Slot | Parameter reads, existing local tuple copies/reseats, entry record captures and scalar locals | Tuple parameter replacement, returns/unpack/field/container/global/capture slots: remaining M2/M4 |
+| Operation | Constant/negative index normalization, scalar snapshots, record capture and shared field mutations, existing CFG | Effectful elements, calls, dynamic indexing, frontend-rejected local/reseated captures: later increments |
+
+Tests use compiler-owned source fixtures and one condensed native/CPython case.
+They must observe mutation after capture, distinguish scalar snapshots, cover
+singleton/mixed/duplicate referents, explicit/inferred readonly, negative indices,
+and parameter-to-local tuple copies. Malformed IR tests reject parameter writes,
+access escalation, incompatible facts and wrong capture forms. Pin existing
+frontend gates and non-admitted ownership/body shapes. Existing native snapshots
+must remain byte-identical; no refresh is planned.
+
+Pitfalls: mutation witnesses cover silent-copy-vs-alias and tuple-equals-scalar;
+shared producers cover same-construct-every-position while generic admission is
+explicitly deferred. Readonly comes from semantic facts (const-source-const-loop-var).
+Effectful sources remain excluded (conditional-operand-evaluates-in-place).
+No view/container/allocation operations or new warnings/rejections are added,
+so view-not-copy, hidden-allocation, copy-warning-at-wrong-site, diagnostic-name
+and valid-Python diagnostic obligations reduce to unchanged emission/admission.
+The sibling survey and independent parity design assessment found no blocker
+within this boundary. Finish review/readiness and a full forced suite before
+adding M2.7 as its own squashed commit on the final stack.
+
+Completion: 792 focused MIR/THIR and tracking checks passed. The full forced
+suite passed with 8624 tests, 23 skips and 4155 C++ cases built and run; the new
+case also matched CPython. Seven specialist lenses found no code defect; the
+docs review clarified the older readonly local-tuple construction exclusion.
+The independent retrospective accepted the producer facts and bounded coverage.
+Existing snapshots remain unchanged. The only deferred defect is the tracked
+readonly auto-copy fact mismatch above, with a safe-rejection regression guard.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

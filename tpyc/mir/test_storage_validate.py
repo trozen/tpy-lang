@@ -52,7 +52,7 @@ def invalid(fn: MIRFunction, message: str) -> None:
     (MIRAssign(field(Q), MIRAlias(P)), "alias type mismatch"),
     (MIRAssign(MIRPlace(X, (MIRDeref(), MEMBER)), MIRConstant(7)), "needs reference holder"),
     (MIRAssign(MIRPlace(Q, (MEMBER,)), MIRConstant(7)), "field needs record storage"),
-    (MIRAssign(MIRPlace(Q, (MIRDeref(),)), MIRConstant(7)), "record place needs layout"),
+    (MIRAssign(MIRPlace(Q, (MIRDeref(),)), MIRConstant(7)), "constant type"),
     (MIRAssign(MIRPlace(Q, (MIRDeref(), MIRField(MIRFieldId(OTHER, "value"), INT32))),
                MIRConstant(7)), "field owner mismatch"),
     (MIRAssign(field(Q), MIRConstant(True)), "constant type"),
