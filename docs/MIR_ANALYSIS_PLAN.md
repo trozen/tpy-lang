@@ -1189,6 +1189,222 @@ ran, with zero execution-cache skips. Existing snapshots remained unchanged.
 Only this factual completion record followed verification. Prepare the reviewed
 tree as one squashed branch commit; merging into master remains separate.
 
+## M2.6: borrowed nested record places
+
+Status: implemented and verified for the autonomous M2.6-M2.8 batch.
+M2.5 landed on master as `2cb3c41d3f`. This is an architectural extension of
+the analysis-only THIR/MIR contract, not a new source feature or a lifetime
+checker. Existing acceptance, diagnostics and C++ emission stay unchanged.
+
+### Observable contract and evidence
+
+Given `Outer.inner: Cell` and `Cell.value: int32`, both ordinary reference
+records, this already compiles:
+
+```python
+def inspect(outer: Outer) -> int32:
+    saved = outer.inner
+    outer.inner.value = 7
+    return saved.value
+```
+
+The emitted core is `Cell& saved = outer.inner; outer.inner.value = 7;`.
+MIR should model the same shared storage and return 7. If a local holder
+`current` is reseated from one Outer to another after `saved = current.inner`,
+`saved` must continue referring to the first Outer's inner storage.
+
+**Invariant:** an admitted field borrow captures the selected inline record
+subobject at that operation; later holder reseats cannot retarget it, scalar
+leaf writes remain observable through aliases, and access cannot become more
+mutable along a field path.
+
+Design probes on `2cb3c41d3f` established:
+
+- Native TPy and CPython agree for the direct example (7), a method twin (8),
+  staged nested aliases (17), parent-holder reseating (8, 8, 11), and readonly
+  reads after writes through another alias (13). Optional and union narrowed
+  record roots also reach nested scalar fields without emission changes.
+- Longer scalar paths such as `root.outer.inner.value` already emit chained
+  member access. Rebinding a field-derived holder emits `Cell* current =
+  &(a.inner)` followed by `current = &(b.inner)`. A tuple built from an already
+  bound field alias stores a pointer to that same field.
+- Some source spellings still reject before MIR: `saved = root.outer.inner`
+  and `saved = pair[0].inner` hit the THIR local-declaration gate. The staged
+  `parent = root.outer; saved = parent.inner` form compiles. Preserve these
+  source limits; do not widen the frontend to fill the MIR scope matrix.
+- Borrowed tuple locals containing a non-copyable record retain the existing
+  sema gate. The tuple mutation witnesses use copyable records; a separate
+  direct-field witness verifies borrowing a non-copyable inline record.
+- Whole-field replacement is a distinct boundary. With a saved alias to a
+  field containing 13, `outer.inner = Cell(19)` leaves the alias reading 19
+  in TPy and 13 in CPython. TPy emits the existing located field-borrow
+  mutation warning. This warned behavior is part of the documented inline
+  storage model, not a new defect to file; whole-field replacement is excluded.
+- Replacing a local owning Outer after taking a field alias currently chooses
+  another backing slot and preserves the old value in the probe. That is
+  evidence about existing emission, not permission to admit nested ownership.
+
+### Existing authorities and proposed extension
+
+1. **Extend the existing semantic field facts.** `THIRFieldIdentity` already
+   carries qualified declaring owner, source field name and declared type.
+   Extend `storage.direct_field()` to positively classify bool/int32 leaves
+   and inline plain-record fields using the existing `borrowed_record()`
+   eligibility rules. Preserve its exclusions for properties/hidden calls,
+   user dereference, native and interior-mutable fields. Both the ordinary
+   expression field producer and `_lower_field_source()` must attach these
+   facts; the latter currently emits STORAGE-form fields without them.
+   Receiver recursion consumes the actual THIR expression, never C++ text.
+
+2. **Record storage borrowing explicitly at the selected binding operation.**
+   Add `storage_borrow: THIRBorrowedRecord | None` to the relevant existing
+   declaration/rebind statement families. It records destination type/access;
+   the source remains exclusively in the statement's existing `init`/`value`.
+   It is mutually exclusive with `alias_binding` and `owned_storage`.
+   Name-to-name aliases retain their existing fact and `MIRAlias` operation.
+   This avoids duplicating the source as a second path representation or
+   embedding a second expression tree inside metadata. Stamp the new fact
+   only where lowering already selected a borrow, including the pointer-form
+   declaration and reseat siblings; do not infer it from `Form` alone.
+
+3. **Borrow a MIR place.** Generalize `MIRBorrow.source` from a storage slot
+   to `MIRPlace`, adapting existing owned-scalar-record borrows to empty-path
+   places. Resolve the source at execution of the borrow. A path rooted in
+   an Outer holder is `Deref(holder), Field(inner), Field(value)`; inline
+   record fields do not add another dereference. A borrowed field endpoint
+   produces a holder of that selected storage identity. Reuse existing
+   `MIRPlace`, `MIRField`, operand enumeration and deterministic dump patterns.
+
+4. **Validate type, storage category and access throughout the path.** A
+   scalar field ends traversal; an eligible inline record field continues as
+   record storage. Effective readonly is inherited from the receiver or the
+   declared field type; the accessed result type may consequently differ from
+   the declaration by readonly qualification. Preserve explicit malformed-IR
+   checks for foreign owners, inconsistent field types, invalid dereferences,
+   incompatible borrow destinations and increased access. A shared place
+   classification should serve reads, writes and borrows. Admit scalar leaf
+   writes only; a record endpoint is not permission for record replacement.
+   Presence/alternative validation must inspect place-valued borrow sources
+   as well as scalar reads: borrowing a field through a wrapper needs a current
+   selection proof. Once captured, the record reference survives reseating
+   that borrowed wrapper just as an existing record extraction does.
+
+5. **Keep borrowed paths independent of constructor eligibility.** Existing
+   `MIRDefinitions` verifies owning scalar-record constructors. Borrowed nested
+   access must not require such a constructor, and must not relax that verifier
+   to admit nested construction/copy/move. Field facts supply the path's schema
+   just as direct borrowed scalar-field facts do today. No new full-record
+   registry or runtime representation is needed for this increment.
+
+6. **Represent subobject identity in the test interpreter.** Extend the flat
+   scalar heap model with nested inline storage and stable subobject references.
+   Borrowing a field captures its containing storage identity and selected
+   subobject, not a source-holder expression to re-evaluate later. Distinct
+   owners' same-named fields remain distinct; aliases of one owner share them.
+   Do not model inline fields as independently replaceable pointer slots, and
+   do not let the interpreter's existing shallow copy stand in for nested
+   owning copy semantics. Those operations remain outside coverage.
+
+Parser, sema rules, type-system rules, C++ rendering, runtime and stdlib need
+no behavior changes. Expected implementation sites are THIR nodes, storage
+fact helpers, the field and binding producers, THIR validation, MIR nodes,
+lowering, place/presence validation, operand/dump consumers and the test interpreter.
+Definitions need only regression protection against accidentally widened
+constructor eligibility. Construction/validation should remain proportional
+to the nodes and field-path lengths actually traversed.
+
+### Factored scope matrix
+
+These axes compose; a cell is covered only when every axis is admitted. The
+existing M1-M2.5 coverage remains available. All other cells stay explicit
+whole-body `MIRNotCovered`, or retain their existing earlier frontend gate.
+
+| Axis | Proposed M2.6 coverage | Deferred, tracked under the remaining increments |
+|---|---|---|
+| Position | Ordinary monomorphic synchronous free functions; existing prefix bindings and if/while/short-circuit CFG | Methods, constructors as bodies, module statements and closures: remaining M2; generator, async, comprehension, context-manager body, try/finally, error-return and match arms: M3; generic twins: M4 |
+| Shape | Plain reference records with nested inline plain-record paths and bool/int32 leaves; mutable/readonly access | Value/native/inherited/protocol records; str/bytes, Own, Ptr/Span, Box/Rc, containers; tuple/Optional/union stored inside fields: later M2/M3; recursive owning layouts are not introduced |
+| Root | Borrowed parameters and name aliases; already-covered local tuple-element, Optional and union borrowed-record roots compose with field traversal | Tuple parameters, unproven wrapper extraction, global/capture/container-element roots and calls remain excluded; no new wrapper-source admission |
+| Destination | Entry-declared field-derived holders; reseats of existing holders; scalar locals/temporaries and scalar field leaves | New branch/loop bindings and frames: M3; reference returns, field/container/global/capture stores: later M2/M4 |
+| Operation | Borrow an inline field; copy a reference holder; reseat a holder; scalar leaf reads/writes; existing wrapper captures of already-bound record names | Whole-field or containing-record replacement; nested owning construction/copy/move/destruction; direct field-to-wrapper capture beyond current producers; reference equality and calls/effects |
+
+Producer facts should be checked in method and constructor twins even though
+MIR continues to decline those body kinds. Non-admitted record shapes and
+body positions need explicit negative coverage, not fabricated scalar facts.
+
+### Tests, pitfalls and implementation gate
+
+- Use compiler-owned source fixtures, lower the exact emitted THIR and compare
+  MIR execution with expected shared mutations: direct/staged nested paths,
+  distinct/shared owners, holder reseats before and after capture, conditional
+  reseats, scalar snapshots, and scalar leaf writes in existing loops.
+- Cover readonly receiver/field paths, reading through a readonly alias after
+  another alias writes, and rejecting any mutable borrow from readonly storage.
+  Include a non-copyable record witness and scoped wrapper-root tests with
+  current presence/alternative proofs. Local singleton/mixed tuples holding an
+  already-bound field alias must retain that alias and observe later mutation.
+- Test invalid field owners/types, scalar traversal, double dereferences,
+  mismatched binding facts and access escalation directly at THIR/MIR boundaries.
+  Pin frontend rejection of the observed unsupported alias spellings separately
+  from MIR coverage failure. Whole-record writes and nested owned operations
+  must fail coverage even when a related borrowed path is supported.
+- `silent-copy-vs-alias`, `tuple-equals-scalar` and `copy-warning-at-wrong-site`:
+  mutation witnesses and unchanged C++/diagnostics protect each boundary.
+  `same-construct-every-position` and `generic-equals-monomorphic-twin`: check
+  shared producer facts at sibling positions; unadmitted bodies stay explicit.
+  `conditional-operand-evaluates-in-place`: no borrow or field read is hoisted
+  above its existing guard. Calls/properties remain excluded.
+- `view-not-copy`, `hidden-allocation` and `const-source-const-loop-var`:
+  view/container/frame operations remain excluded; inline subobjects add no
+  allocation. `generated-cpp-readability`: existing emission is unchanged.
+  Both diagnostic-name pitfalls and both valid-Python diagnostic pitfalls:
+  no new source errors, warnings or internal-name leaks; missing MIR coverage
+  cannot reject a program or authorize a safety proof.
+- Update the internal MIR status in `LANGUAGE_FEATURES.md`, `ARCHITECTURE.md`
+  and the existing TODO entry when implemented. Add one condensed native/CPython
+  mutation case if existing case coverage cannot pin the emitted source forms;
+  keep graph and malformed-IR tests in `tpyc/mir/`. No existing snapshot changes
+  are expected. Finish targeted tests, specialist review/readiness, and one
+  full forced suite before preparing a single squashed implementation commit.
+
+CPython-parity design assessment is clean for the proposed boundary. The
+warned whole-field replacement difference stays excluded. Related tracked
+gaps include `BUGS.md#iter-borrow-place-needs-hops` and
+`BUGS.md#optional-tuple-unpack-readonly-fact`; this increment does not fix them.
+Confidence is high for the borrowed-only contract, supported by emitted THIR,
+native/CPython probes and the sibling survey. The autonomous batch authorizes
+the new storage-borrow fact and place-valued MIRBorrow; nested owning/replacement
+operations remain a separate design decision.
+
+Completion gates: all seven review lenses are clean, including a closing review
+after strengthening the actual nested-constructor exclusion and wrapper-clear
+execution tests. The full forced suite passed (8603 passed, 23 skipped; 4154 C++
+cases built and ran). Existing case sources and snapshots are unchanged. The
+readiness retrospective accepts the fact/place design and bounded ownership
+scope; this remains internal analysis, with no production provenance authority.
+
+### Autonomous M2.6-M2.8 batch
+
+The requested deliverable is one branch with three sequential, individually
+reviewed and squashed commits. Do not merge to master or push. Each iteration
+includes its design record, implementation, tests, docs, defect review and
+readiness gate. Preserve intermediate working branches when constructing the
+final stack; no amend, rebase or destructive cleanup is needed.
+
+- M2.6: the borrowed nested-record-place contract above.
+- M2.7: investigate and implement a bounded tuple-borrow extension, reusing
+  place-valued borrows for standalone record element captures and selected
+  borrowed tuple parameters. Preserve existing source admission and document
+  exact supported forms before implementation.
+- M2.8: investigate and implement ordinary synchronous method-body coverage,
+  carrying receiver identity/access explicitly and reusing the established
+  operations. Constructors, effects/call summaries and resumables are excluded.
+
+The latter two boundaries remain subject to their source/THIR investigations;
+routine design choices within the existing analysis-only architecture are
+delegated. Stop for blockers or changes to language behavior, source acceptance,
+diagnostics or the agreed architecture. Existing snapshot changes require
+approval. This batch does not claim completion of M2.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

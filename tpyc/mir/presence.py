@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from ..typesys import BOOL
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
+    MIRAssign, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRPlace, MIRRead, MIRSlotId, MIRValueKind,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
@@ -189,7 +189,7 @@ def presence_error(fn: MIRFunction) -> str | None:
     for bid, state in incoming.items():
         for stmt in blocks[bid].statements:
             places = [stmt.target] if stmt.target.projections else []
-            if isinstance(stmt.value, (MIRRead, MIRUnionExtract)):
+            if isinstance(stmt.value, (MIRRead, MIRUnionExtract, MIRBorrow)):
                 places.append(stmt.value.source)
             for place in places:
                 failure = _missing(place, state, alias_slots)

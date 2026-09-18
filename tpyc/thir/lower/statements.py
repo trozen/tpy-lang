@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, optional_layout, tuple_layout, union_literal
+from .storage import alias_binding, borrowed_record, optional_layout, storage_borrow, tuple_layout, union_literal
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -4157,6 +4157,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
+            storage_borrow=storage_borrow(src, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if binding is LocalBinding.POINTER and isinstance(stmt.init, TpyCoerce):
@@ -4318,6 +4319,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
                                   is_const=is_const, loc=loc)
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=convert,
+            storage_borrow=storage_borrow(field, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     inner = vtype.inner  # OptionalType(Inner) -- the borrow points at Inner
@@ -10063,6 +10065,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
                 alias_binding=alias_binding(src_name, vtype,
                                             stmt.name in lc.const_locals, analyzer),
+                storage_borrow=storage_borrow(src_name, vtype,
+                                              stmt.name in lc.const_locals, analyzer),
                 value=convert, loc=loc)
         # F4 U2: a pointer-variant union local -- first decl or reseat. A
         # same-union name copies bare (borrow -> borrow); a value-variant

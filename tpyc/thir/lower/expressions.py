@@ -6213,7 +6213,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return _self_recv_positioned(THIRFieldAccess(
             result_type=rtype,
             field_identity=direct_field(e, analyzer, receiver)
-            if (isinstance(receiver, (THIRName, THIRSubscript))
+            if (isinstance(receiver, (THIRName, THIRSelf, THIRSubscript, THIRFieldAccess))
                 or isinstance(receiver, THIRNarrowedRead) and receiver.union_extraction is not None) else None,
             receiver=receiver,
             field_cpp=_field_cpp(e),
@@ -17683,16 +17683,18 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
     ptr_arrow, ptr_deref = _ptr_recv_access(e.ptr_non_null)
     if ptr_recv:
         _witness("field.ptr_value_storage")
+    receiver = _lower_expr(
+        e.obj, lc, declared,
+        use=_ExprUse(result=_ExprResultUse.RECEIVER),
+        field_prechecked=isinstance(e.obj, TpyFieldAccess),
+        subscript_prechecked=isinstance(e.obj, TpySubscript))
     return _self_recv_positioned(THIRFieldAccess(
         result_type=rtype,
         # RECEIVER, like every sibling field arm: an indirect receiver reaches
         # its member through `is_arrow`, so a value-position deref here would
         # compose into `(*h)->value`.
-        receiver=_lower_expr(
-            e.obj, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.RECEIVER),
-            field_prechecked=isinstance(e.obj, TpyFieldAccess),
-            subscript_prechecked=isinstance(e.obj, TpySubscript)),
+        receiver=receiver,
+        field_identity=direct_field(e, lc.analyzer, receiver),
         field_cpp=_field_cpp(e),
         is_arrow=(ptr_arrow if ptr_recv else _field_is_arrow(e, lc)),
         deref_check=ptr_recv and ptr_deref,

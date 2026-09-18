@@ -16,6 +16,7 @@ from .nodes import (
 @dataclass(frozen=True)
 class Reference:
     identity: int
+    path: tuple[MIRFieldId, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,8 @@ class PayloadAlias:
 
 
 Value = int | bool | Reference | TupleValue | OptionalValue | UnionValue | PayloadAlias
-Heap = dict[int, dict[MIRFieldId, int | bool]]
+Record = dict[MIRFieldId, 'int | bool | Record']
+Heap = dict[int, Record]
 
 
 def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | None:
@@ -56,12 +58,19 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
     comparisons = {"<": operator.lt, "<=": operator.le, ">": operator.gt,
                    ">=": operator.ge, "==": operator.eq, "!=": operator.ne}
 
-    def field(place: MIRPlace) -> tuple[dict[MIRFieldId, int | bool], MIRFieldId]:
+    def record(reference: Reference) -> Record:
+        value = objects[reference.identity]
+        for member in reference.path:
+            value = value[member]
+            assert isinstance(value, dict)
+        return value
+
+    def field(place: MIRPlace) -> tuple[Record, MIRFieldId]:
         reference = read(MIRPlace(place.root, place.projections[:-1]))
         assert isinstance(reference, Reference)
         member = place.projections[-1]
         assert isinstance(member, MIRField)
-        return objects[reference.identity], member.id
+        return record(reference), member.id
 
     def read(place: MIRPlace) -> Value:
         value = values[place.root]
@@ -83,7 +92,9 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
                     assert isinstance(value, Reference)
                 case _:
                     assert isinstance(projection, MIRField) and isinstance(value, Reference)
-                    value = objects[value.identity][projection.id]
+                    member = record(value)[projection.id]
+                    value = (Reference(value.identity, value.path + (projection.id,))
+                             if isinstance(member, dict) else member)
         return value
 
     for _ in range(100):
@@ -95,8 +106,11 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
                     value = rhs.value
                 case MIRRead():
                     value = read(rhs.source)
-                case MIRAlias() | MIRBorrow():
+                case MIRAlias():
                     value = values[rhs.source]
+                    assert isinstance(value, Reference)
+                case MIRBorrow():
+                    value = read(rhs.source)
                     assert isinstance(value, Reference)
                 case MIRTupleConstruct():
                     value = TupleValue(tuple(values[src] for src in rhs.elements))
@@ -134,7 +148,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
                     source = rhs.source.root if isinstance(rhs, MIRCopy) else rhs.source
                     reference = values[source]
                     assert isinstance(reference, Reference)
-                    value = objects[reference.identity].copy()
+                    value = record(reference).copy()
                 case MIRCompare():
                     value = comparisons[rhs.op](values[rhs.left], values[rhs.right])
                 case MIRNot():
@@ -150,7 +164,12 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
                     reference = Reference(next_identity)
                     next_identity += 1
                     values[stmt.target.root] = reference
-                objects[reference.identity] = value
+                destination = record(reference) if stmt.target.projections else None
+                if destination is not None:
+                    destination.clear()
+                    destination.update(value)
+                else:
+                    objects[reference.identity] = value
             elif stmt.target.projections:
                 obj, member = field(stmt.target)
                 assert not isinstance(value, Reference)

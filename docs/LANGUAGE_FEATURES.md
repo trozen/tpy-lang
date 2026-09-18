@@ -8304,6 +8304,12 @@ Record extraction captures the referent; scalar extraction aliases payload
 storage and becomes invalid on any wrapper replacement until re-extraction.
 Mixed scalar/reference and owned/recursive unions, union aggregate slots and
 parameter reseats remain outside that subset (`MIR_ANALYSIS_PLAN.md`).
+M2.6 adds borrowed nested plain-record paths, field-derived holders and scalar
+leaf writes. A captured field keeps its subobject identity across parent-holder
+reseats; readonly aliases still observe writes through mutable aliases. Existing
+tuple-local and narrowed Optional/union roots compose with nested paths. Nested
+owning operations and whole-field replacement remain uncovered; existing
+frontend field-alias spelling restrictions are unchanged.
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

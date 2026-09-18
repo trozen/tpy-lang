@@ -1,0 +1,9 @@
+free-function 1 1 11
+shared-owner 11
+nested 17
+readonly 13
+method 8
+constructor 19 19
+tuple-shapes 46
+optional 23 0
+union 23 0

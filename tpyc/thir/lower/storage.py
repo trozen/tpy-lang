@@ -8,7 +8,7 @@ from ...typesys import (
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
 from ..nodes import (
-    THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldIdentity, THIRName,
+    Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
     THIRCoerce, THIRLiteral, THIRUnionLiteral,
 )
@@ -53,6 +53,18 @@ def record_layout(typ: TpyType, analyzer: 'SemanticAnalyzer') -> THIRRecordLayou
         info.has_copy, info.has_move, info.has_del,
         not info.is_nocopy, info.is_movable and info.move_override is not False,
     )
+
+
+def storage_borrow(source: THIRExpr, typ: TpyType, readonly: bool,
+                   analyzer: 'SemanticAnalyzer') -> THIRBorrowedRecord | None:
+    if (not isinstance(source, THIRFieldAccess) or source.field_identity is None
+            or source.form is not Form.STORAGE):
+        return None
+    reference = borrowed_record(typ, readonly, analyzer)
+    if (reference is None or unwrap_readonly(source.field_identity.type) != reference.type
+            or unwrap_readonly(unwrap_ref_type(source.result_type)) != reference.type):
+        return None
+    return reference
 
 
 def tuple_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
@@ -148,7 +160,10 @@ def direct_field(expr: TpyFieldAccess,
     tuple_receiver = (isinstance(expr.obj, TpySubscript)
                       and isinstance(receiver, THIRSubscript)
                       and receiver.tuple_index is not None)
-    if ((not isinstance(expr.obj, TpyName) and not tuple_receiver)
+    field_receiver = (isinstance(expr.obj, TpyFieldAccess)
+                      and isinstance(receiver, THIRFieldAccess)
+                      and receiver.field_identity is not None)
+    if ((not isinstance(expr.obj, TpyName) and not tuple_receiver and not field_receiver)
             or expr.hidden_call is not None
             or expr.deref_depth or expr.needs_optional_runtime_check
             or expr.unbound_self_parent_type is not None
@@ -161,6 +176,7 @@ def direct_field(expr: TpyFieldAccess,
         return None
     info = analyzer.registry.get_record_for_type(reference.type)
     member = next((f for f in info.fields if f.name == expr.field), None)
-    if member is None or member.type not in (BOOL, INT32):
+    if member is None or (member.type not in (BOOL, INT32)
+                          and borrowed_record(member.type, False, analyzer) is None):
         return None
     return THIRFieldIdentity(reference.type, member.name, member.type)

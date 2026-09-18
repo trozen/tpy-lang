@@ -32,7 +32,7 @@ SLOTS = (
 )
 NUMBER = MIRAssign(MIRPlace(N), MIRConstant(1))
 INIT = MIRAssign(MIRPlace(S), MIRConstruct((N,)))
-BORROW = MIRAssign(MIRPlace(P), MIRBorrow(S))
+BORROW = MIRAssign(MIRPlace(P), MIRBorrow(MIRPlace(S)))
 COPY = MIRAssign(MIRPlace(T), MIRCopy(MIRPlace(P, (MIRDeref(),))))
 READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(P, (MIRDeref(), MEMBER))))
 GOOD = MIRFunction(B, INT32, SLOTS,
@@ -51,8 +51,8 @@ def invalid(fn: MIRFunction, message: str) -> None:
     (MIRAssign(MIRPlace(T), MIRConstruct((FLAG,))), "incomplete or mistyped"),
     (MIRAssign(MIRPlace(T), MIRCopy(MIRPlace(P))), "copy source"),
     (MIRAssign(MIRPlace(T), MIRMove(P)), "move source"),
-    (MIRAssign(MIRPlace(Q), MIRBorrow(P)), "borrow type"),
-    (MIRAssign(MIRPlace(T), MIRBorrow(S)), "borrow type"),
+    (MIRAssign(MIRPlace(Q), MIRBorrow(MIRPlace(P))), "borrow type"),
+    (MIRAssign(MIRPlace(T), MIRBorrow(MIRPlace(S))), "borrow type"),
     (MIRAssign(MIRPlace(P), MIRConstruct((N,))), "record destination"),
     (MIRAssign(MIRPlace(P, (MIRDeref(),)), MIRCopy(MIRPlace(S))), "record replacement"),
     (MIRAssign(MIRPlace(S), MIRMove(S)), "repeated storage initialization"),

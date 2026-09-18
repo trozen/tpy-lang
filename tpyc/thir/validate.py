@@ -256,15 +256,42 @@ def _check_node(owner: str, node: THIRNode) -> None:
                 if (unwrap_readonly(unwrap_ref_type(node.resolved_type)) != fact.reference.type
                         or node.is_const != fact.reference.readonly):
                     _fail(owner, node, "alias binding disagrees with its destination")
+    if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRAssign, THIRPtrLocalRebind)):
+        fact = node.storage_borrow
+        if fact is not None:
+            if (not isinstance(fact, THIRBorrowedRecord) or type(fact.readonly) is not bool
+                    or node.alias_binding is not None or getattr(node, "owned_storage", None) is not None):
+                _fail(owner, node, "invalid storage borrow fact")
+            source = node.init if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else node.value
+            if isinstance(source, THIRFormConvert):
+                if (source.form is not Form.BORROW or source.move or source.materialize is not None
+                        or source.generic_return or source.is_const != fact.readonly
+                        or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.type):
+                    _fail(owner, node, "storage borrow has a non-borrow conversion")
+                source = source.value
+            if (not isinstance(source, THIRFieldAccess) or source.field_identity is None
+                    or source.form is not Form.STORAGE
+                    or unwrap_readonly(source.field_identity.type) != fact.type
+                    or unwrap_readonly(unwrap_ref_type(source.result_type)) != fact.type):
+                _fail(owner, node, "storage borrow disagrees with its source")
+            if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)):
+                if (unwrap_readonly(unwrap_ref_type(node.resolved_type)) != fact.type
+                        or node.is_const != fact.readonly):
+                    _fail(owner, node, "storage borrow disagrees with its destination")
     if isinstance(node, THIRFieldAccess) and node.field_identity is not None:
         fact = node.field_identity
-        direct = isinstance(node.receiver, THIRName) or (
+        direct = isinstance(node.receiver, (THIRName, THIRSelf)) or (
+            isinstance(node.receiver, THIRFieldAccess) and node.receiver.field_identity is not None) or (
             isinstance(node.receiver, THIRSubscript) and node.receiver.tuple_index is not None) or (
             isinstance(node.receiver, THIRNarrowedRead) and node.receiver.union_extraction is not None)
+        typ = unwrap_readonly(fact.type)
+        record = (isinstance(typ, NominalType) and typ not in (BOOL, INT32)
+                  and not typ.type_args and not typ.is_protocol)
         if (not direct or not fact.name
                 or unwrap_readonly(unwrap_ref_type(node.receiver.result_type)) != fact.owner
-                or fact.type not in (BOOL, INT32) or node.result_type != fact.type
-                or node.form is not Form.VALUE):
+                or (not record and (fact.type not in (BOOL, INT32)
+                                    or node.result_type != fact.type or node.form is not Form.VALUE))
+                or (record and unwrap_readonly(unwrap_ref_type(node.result_type)) != typ)):
             _fail(owner, node, "field identity disagrees with its access")
     if isinstance(node, (THIRFieldAccess, THIRMethodCall)):
         # A plain method's receiver read carries its own value-position

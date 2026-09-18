@@ -63,7 +63,13 @@ scalar extraction aliases the wrapper payload and any wrapper replacement
 invalidates that alias until re-extraction. Live projections require a current
 selection proof. Mixed scalar/reference unions, owned/nested/recursive wrappers,
 wrapper parameter replacement, calls/results and runtime-checked extraction
-remain uncovered. Tests
+remain uncovered. Borrowed nested record paths use consecutive inline field
+projections after the root dereference. THIR storage-borrow facts distinguish
+capturing a field subobject from copying a name holder; MIRBorrow takes a place
+and captures its current storage identity. Holder reseats cannot retarget a
+captured field, and readonly access propagates down the path. Scalar leaves
+may be written; whole-field replacement and nested owning operations remain
+uncovered. These borrowed paths require no eligible owning constructor. Tests
 feed it the exact THIR returned by `Compiler.generate_code_and_thir()`, together
 with body identity and declaration kind. It does not run during normal
 compilation or affect emission. Unsupported bodies return `MIRNotCovered`, which

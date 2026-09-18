@@ -4,7 +4,7 @@ from collections import deque
 
 from ..thir.nodes import Form
 from ..typesys import (
-    BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, OptionalType, TupleType, TpyType, VoidType,
+    BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, OptionalType, ReadonlyType, TupleType, TpyType, VoidType,
     UnionType, is_void_like_type, unwrap_readonly,
 )
 from .nodes import (
@@ -34,10 +34,11 @@ def _require(condition: bool, message: str) -> None:
 
 def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
     match value:
-        case MIRRead(source=source) | MIRCopy(source=source) | MIRUnionExtract(source=source):
+        case (MIRRead(source=source) | MIRCopy(source=source)
+              | MIRUnionExtract(source=source) | MIRBorrow(source=source)):
             _require(isinstance(source, MIRPlace), "invalid read place")
             return (source.root,)
-        case (MIRAlias(source=source) | MIRBorrow(source=source) | MIRMove(source=source)
+        case (MIRAlias(source=source) | MIRMove(source=source)
               | MIRTupleCopy(source=source) | MIROptionalCopy(source=source) | MIRIsPresent(source=source)
               | MIRUnionCopy(source=source) | MIRIsAlternative(source=source)):
             return (source,)
@@ -219,15 +220,14 @@ def validate_function(fn: MIRFunction) -> None:
         _require(slot in slots, "undeclared operand or destination")
         return slots[slot].type
 
-    def place_type(place: MIRPlace, *, write: bool = False) -> TpyType:
+    def place_info(place: MIRPlace, *, write: bool = False) -> tuple[TpyType, MIRValueKind, bool]:
         _require(isinstance(place, MIRPlace), "invalid place")
         typ = slot_type(place.root)
-        if not place.projections:
-            return typ
         slot = slots[place.root]
         kind, readonly = slot.value_kind, slot.readonly
         tuple_member = False
         optional_member = False
+        inline_record = False
         for projection in place.projections:
             match projection:
                 case MIRUnionPayload():
@@ -264,19 +264,29 @@ def validate_function(fn: MIRFunction) -> None:
                     _require(not (write and readonly), "store through readonly storage")
                     _require(isinstance(projection.id, MIRFieldId) and projection.id.owner == typ
                              and bool(projection.id.name), "field owner mismatch")
-                    _require(projection.type in (BOOL, INT32), "unsupported field type")
+                    member_type = unwrap_readonly(projection.type)
+                    inline_record = (isinstance(member_type, NominalType) and member_type not in (BOOL, INT32)
+                                     and member_type.qualified_name() is not None
+                                     and not member_type.type_args and not member_type.is_protocol)
+                    _require(projection.type in (BOOL, INT32) or inline_record, "unsupported field type")
                     if typ in records:
                         _require(projection.id in field_types, "field missing from record layout")
                     _require(field_types.setdefault(projection.id, projection.type) == projection.type,
                              "inconsistent field type")
-                    typ, kind = projection.type, MIRValueKind.SCALAR
+                    typ = member_type
+                    kind = MIRValueKind.RECORD_STORAGE if inline_record else MIRValueKind.SCALAR
+                    readonly = readonly or isinstance(projection.type, ReadonlyType)
                 case _:
                     raise MIRValidationError("unsupported place projections")
         _require(not (write and tuple_member), "tuple element replacement is forbidden")
         _require(not (write and optional_member), "optional payload replacement is forbidden")
-        if kind is MIRValueKind.RECORD_STORAGE:
+        _require(not (write and inline_record), "inline record replacement is unsupported")
+        if kind is MIRValueKind.RECORD_STORAGE and not inline_record:
             _require(typ in records, "record place needs layout")
-        return typ
+        return typ, kind, readonly
+
+    def place_type(place: MIRPlace, *, write: bool = False) -> TpyType:
+        return place_info(place, write=write)[0]
 
     for slot in fn.slots:
         if slot.value_kind is MIRValueKind.PAYLOAD_ALIAS:
@@ -410,12 +420,13 @@ def validate_function(fn: MIRFunction) -> None:
                                      and records[target_type].movable and value.source != stmt.target.root,
                                      "record move source or eligibility")
                 case MIRBorrow():
-                    target, source = slots[stmt.target.root], slots[value.source]
+                    target = slots[stmt.target.root]
+                    source_type, source_kind, readonly = place_info(value.source)
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.BORROWED_RECORD
                              and target.kind is not MIRSlotKind.PARAMETER
-                             and source.value_kind is MIRValueKind.RECORD_STORAGE
-                             and target_type == source.type, "storage borrow type mismatch")
-                    _require(not source.readonly or target.readonly, "borrow increases access")
+                             and source_kind is MIRValueKind.RECORD_STORAGE
+                             and target_type == source_type, "storage borrow type mismatch")
+                    _require(not readonly or target.readonly, "borrow increases access")
                 case MIRConstant():
                     _require((target_type == BOOL and type(value.value) is bool)
                              or (target_type == INT32 and type(value.value) is int

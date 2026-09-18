@@ -7,7 +7,7 @@ from ..parse import RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..typesys import (
     BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, NominalType, TpyType,
-    NoneType, OptionalType, TupleType, UnionType, VoidType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
+    NoneType, OptionalType, ReadonlyType, TupleType, UnionType, VoidType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
@@ -122,8 +122,8 @@ class _Coverage:
                 if stmt.owned_storage is not None:
                     self.owned(stmt)
                     continue
-                if stmt.alias_binding is not None:
-                    self.alias(stmt, declaration=True)
+                if stmt.alias_binding is not None or stmt.storage_borrow is not None:
+                    self.borrow_binding(stmt, declaration=True)
                     continue
                 _require(stmt, isinstance(stmt, th.THIRVarDecl), "missing alias binding")
                 _plain(stmt, {"name", "resolved_type", "init", "is_const"})
@@ -218,11 +218,16 @@ class _Coverage:
         self.reference(expr, self.references[expr.name], expr.result_type)
         return expr.name
 
-    def alias(self, stmt: th.THIRStmt, *, declaration: bool = False) -> None:
-        fact = stmt.alias_binding
-        _require(stmt, isinstance(fact, th.THIRAliasBinding), "missing alias binding")
+    def borrow_binding(self, stmt: th.THIRStmt, *, declaration: bool = False) -> None:
+        storage = stmt.storage_borrow is not None
+        alias = stmt.alias_binding
+        _require(stmt, (storage and alias is None) or isinstance(alias, th.THIRAliasBinding),
+                 "missing or conflicting borrow binding")
+        fact = stmt.storage_borrow if storage else alias.reference
+        _require(stmt, isinstance(fact, th.THIRBorrowedRecord), "invalid borrow binding")
+        operation = "storage_borrow" if storage else "alias_binding"
         if declaration:
-            allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", "alias_binding"}
+            allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", operation}
             if isinstance(stmt, th.THIRVarDecl):
                 allowed.add("cpp_local_representation")
                 _require(stmt, stmt.form is th.Form.BORROW, "alias declaration form")
@@ -231,14 +236,14 @@ class _Coverage:
                 _require(stmt, stmt.kind is th.PtrSlotKind.PTR_ADDR, "unsupported alias declaration")
             _plain(stmt, allowed)
             name, source = stmt.name, stmt.init
-            self.reference(stmt, fact.reference, stmt.resolved_type)
-            _require(stmt, stmt.is_const == fact.reference.readonly, "alias access mismatch")
+            self.reference(stmt, fact, stmt.resolved_type)
+            _require(stmt, stmt.is_const == fact.readonly, "alias access mismatch")
         elif isinstance(stmt, th.THIRAssign):
-            _plain(stmt, {"target", "value", "alias_binding"})
+            _plain(stmt, {"target", "value", operation})
             name = self.reference_name(stmt.target)
             source = stmt.value
         else:
-            _plain(stmt, {"name", "kind", "value", "alias_binding"})
+            _plain(stmt, {"name", "kind", "value", operation})
             _require(stmt, stmt.kind is th.PtrSlotKind.PTR_ADDR, "unsupported alias reseat")
             name, source = stmt.name, stmt.value
         _require(stmt, name not in self.parameters, "reference parameter reseat")
@@ -246,20 +251,26 @@ class _Coverage:
         if isinstance(source, th.THIRFormConvert):
             _plain(source, {"value", "is_const"})
             _require(source, source.form is th.Form.BORROW
-                     and source.is_const == fact.reference.readonly,
+                     and source.is_const == fact.readonly,
                      "unsupported alias conversion")
-            self.reference(source, fact.reference, source.result_type)
+            self.reference(source, fact, source.result_type)
             source = source.value
-        source_name = self.reference_name(source)
-        _require(stmt, fact.source == source_name, "alias source mismatch")
-        self.reference(stmt, fact.reference, self.bindings[source_name])
-        _require(stmt, not self.references[source_name].readonly or fact.reference.readonly,
-                 "alias increases access")
-        if declaration:
-            self.bindings[name] = fact.reference.type
-            self.references[name] = fact.reference
+        if storage:
+            _require(source, isinstance(source, th.THIRFieldAccess) and source.form is th.Form.STORAGE,
+                     "storage borrow needs record field")
+            reference = self.field(source)
+            _require(source, isinstance(reference, th.THIRBorrowedRecord), "storage borrow needs record")
         else:
-            _require(stmt, self.references.get(name) == fact.reference, "alias destination mismatch")
+            source_name = self.reference_name(source)
+            _require(stmt, alias.source == source_name, "alias source mismatch")
+            reference = self.references[source_name]
+        self.reference(stmt, fact, reference.type)
+        _require(stmt, not reference.readonly or fact.readonly, "alias increases access")
+        if declaration:
+            self.bindings[name] = fact.type
+            self.references[name] = fact
+        else:
+            _require(stmt, self.references.get(name) == fact, "alias destination mismatch")
             self.fixed_owned.discard(name)
 
     def union_layout(self, node: object, layout: th.THIRUnionLayout, typ: TpyType) -> None:
@@ -484,9 +495,12 @@ class _Coverage:
                      "tuple scalar projection type or form")
         return member
 
-    def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> TpyType:
+    def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> TpyType | th.THIRBorrowedRecord:
         _plain(expr, {"receiver", "field_cpp", "field_identity", "is_arrow"})
         match expr.receiver:
+            case th.THIRFieldAccess():
+                reference = self.field(expr.receiver)
+                _require(expr, isinstance(reference, th.THIRBorrowedRecord), "field needs record storage")
             case th.THIRNarrowedRead():
                 reference = self.inline_union(expr.receiver)
                 _require(expr, isinstance(reference, th.THIRBorrowedRecord), "field needs union record")
@@ -502,10 +516,16 @@ class _Coverage:
         _require(expr, isinstance(fact, th.THIRFieldIdentity), "missing field identity")
         _require(expr, fact.owner == reference.type and bool(fact.name),
                  "field owner mismatch")
-        _require(expr, fact.type in (BOOL, INT32) and expr.result_type == fact.type
-                 and expr.form is th.Form.VALUE, "unsupported field type or form")
-        _require(expr, not (write and reference.readonly), "readonly field store")
-        return fact.type
+        readonly = reference.readonly or isinstance(fact.type, ReadonlyType)
+        _require(expr, not (write and readonly), "readonly field store")
+        if fact.type in (BOOL, INT32):
+            _require(expr, expr.result_type == fact.type and expr.form is th.Form.VALUE,
+                     "unsupported field type or form")
+            return fact.type
+        _require(expr, not write, "record field replacement is unsupported")
+        member = th.THIRBorrowedRecord(unwrap_readonly(fact.type), readonly)
+        self.reference(expr, member, expr.result_type)
+        return member
 
     def expr(self, expr: th.THIRExpr) -> TpyType:
         _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
@@ -659,8 +679,8 @@ class _Coverage:
                 self.optional_source(stmt.value, stmt.optional_layout)
             case th.THIRAssign() if stmt.rebind_storage is not None:
                 self.replacement(stmt, loops)
-            case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.alias_binding is not None:
-                self.alias(stmt)
+            case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.alias_binding is not None or stmt.storage_borrow is not None:
+                self.borrow_binding(stmt)
             case th.THIRNoOpStmt():
                 _plain(stmt, set())
             case th.THIRAssign():
@@ -839,8 +859,9 @@ class _Builder:
                 assert isinstance(expr, th.THIRFieldAccess) and expr.field_identity is not None
                 member = expr.field_identity
                 base = self.place(expr.receiver)
-                return MIRPlace(base.root, base.projections + (
-                    MIRDeref(), MIRField(MIRFieldId(member.owner, member.name), member.type)))
+                deref = () if isinstance(expr.receiver, th.THIRFieldAccess) else (MIRDeref(),)
+                return MIRPlace(base.root, base.projections + deref + (
+                    MIRField(MIRFieldId(member.owner, member.name), member.type),))
 
     def end(self, term: MIRTerminator) -> None:
         assert self.current is not None and self.current.terminator is None
@@ -964,7 +985,7 @@ class _Builder:
                     storage = self.slot(fact.type, storage=True)
                     self.write(storage, self.record_value(stmt.init), loc)
                     holder = self.slot(fact.type, MIRSlotKind.LOCAL, stmt.name, fact)
-                    self.write(holder, MIRBorrow(storage), loc)
+                    self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
                     self.storage[stmt.name] = storage
                     self.bindings[stmt.name] = holder
                 case th.THIRAssign() if stmt.rebind_storage is not None:
@@ -973,18 +994,25 @@ class _Builder:
                     if stmt.rebind_storage is RebindStorage.OWN:
                         storage = self.slot(self.slots[holder.index].type, storage=True)
                         self.write(storage, value, loc)
-                        self.write(holder, MIRBorrow(storage), loc)
+                        self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
                     else:
                         self.write(MIRPlace(holder, (MIRDeref(),)), value, loc)
                 case (th.THIRVarDecl() | th.THIRPtrLocalDecl() | th.THIRAssign()
-                      | th.THIRPtrLocalRebind()) if stmt.alias_binding is not None:
-                    fact = stmt.alias_binding
-                    source = self.bindings[fact.source]
+                      | th.THIRPtrLocalRebind()) if stmt.alias_binding is not None or stmt.storage_borrow is not None:
+                    declaration = isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl))
+                    if stmt.storage_borrow is not None:
+                        fact = stmt.storage_borrow
+                        source = stmt.init if declaration else stmt.value
+                        if isinstance(source, th.THIRFormConvert):
+                            source = source.value
+                        value = MIRBorrow(self.place(source))
+                    else:
+                        fact = stmt.alias_binding.reference
+                        value = MIRAlias(self.bindings[stmt.alias_binding.source])
                     name = stmt.target.name if isinstance(stmt, th.THIRAssign) else stmt.name
-                    if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
-                        self.bindings[name] = self.slot(fact.reference.type, MIRSlotKind.LOCAL,
-                                                        name, fact.reference)
-                    self.write(self.bindings[name], MIRAlias(source), loc)
+                    if declaration:
+                        self.bindings[name] = self.slot(fact.type, MIRSlotKind.LOCAL, name, fact)
+                    self.write(self.bindings[name], value, loc)
                 case th.THIRVarDecl() if stmt.tuple_layout is not None:
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,
                                      tuple_layout=stmt.tuple_layout)

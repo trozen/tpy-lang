@@ -1650,6 +1650,11 @@ alongside related feature work; only the big-rock deferrals live here.
   owned/recursive wrappers, union aggregate slots and parameter reseats stay
   deferred; value-payload aliases track validity separately from discriminator
   proofs. This increment adds no source admission or production analysis hook.
+  M2.6 implements borrowed nested plain-record places, field-derived holders
+  and scalar leaf writes (`docs/MIR_ANALYSIS_PLAN.md`). Nested owning operations,
+  whole-field replacement and the observed frontend field-alias spelling gaps
+  remain outside that increment;
+  the factored matrix there records the other deferred shapes and positions.
   All excluded cells are filed there: M2 identities, storage/forms,
   methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
   comprehension/match, binding scopes and holder propagation; M4 summaries,

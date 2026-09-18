@@ -73,7 +73,7 @@ def dump_function(fn: MIRFunction) -> str:
                 case MIRAlias(source=source):
                     rhs = f"alias %{source.index}"
                 case MIRBorrow(source=source):
-                    rhs = f"borrow %{source.index}"
+                    rhs = f"borrow {_place(source)}"
                 case MIRConstruct(fields=fields):
                     rhs = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")"
                 case MIRTupleConstruct(elements=elements):

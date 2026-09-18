@@ -1736,6 +1736,7 @@ class THIRVarDecl(THIRStmt):
     union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
+    storage_borrow: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
     init: THIRExpr | None = None
@@ -1925,6 +1926,7 @@ class THIRPtrLocalDecl(THIRStmt):
     union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
+    storage_borrow: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     init: THIRExpr | None = None
@@ -1955,6 +1957,7 @@ class THIRPtrLocalRebind(THIRStmt):
     union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
     union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
+    storage_borrow: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     value: THIRExpr | None = None
     val_cpp: str | None = None
@@ -1996,6 +1999,7 @@ class THIRAssign(THIRStmt):
     union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)
     value: THIRExpr
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
+    storage_borrow: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     recv_eval: 'THIRExpr | None' = None
     recv_wrap: 'str | None' = None
     # A borrow-tuple reseat from an OWNING tuple call (`t = make_pair(9)`

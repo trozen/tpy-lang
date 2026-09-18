@@ -155,7 +155,7 @@ class MIRAlias:
 
 @dataclass(frozen=True)
 class MIRBorrow:
-    source: MIRSlotId
+    source: MIRPlace
 
 
 @dataclass(frozen=True)
