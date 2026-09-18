@@ -1642,8 +1642,14 @@ alongside related feature work; only the big-rock deferrals live here.
   verified current presence at extraction; holder writes invalidate stale tests.
   Nullable local reseats from plain record parameters retain their existing
   source gate; internal IR support does not widen frontend admission. General
-  unions need typed alternative/narrowing facts next; owned/nested wrappers and
+  unions beyond the selected M2.5 subset, owned/nested wrappers and
   backing-storage lifetimes remain separate scope decisions.
+  M2.5 adds nonrecursive bool/int32 value
+  unions and borrowed plain-record unions, with optional None alternatives,
+  typed tests and explicit extraction aliases. Mixed scalar/reference unions,
+  owned/recursive wrappers, union aggregate slots and parameter reseats stay
+  deferred; value-payload aliases track validity separately from discriminator
+  proofs. This increment adds no source admission or production analysis hook.
   All excluded cells are filed there: M2 identities, storage/forms,
   methods/constructors/globals/captures; M3 complete regions, cleanup, resumables,
   comprehension/match, binding scopes and holder propagation; M4 summaries,

@@ -52,10 +52,10 @@ from ..type_def_registry import (
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
 )
 from ..typesys import (
-    BOOL, INT32, AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
+    BOOL, INT32, INT32_MIN, INT32_MAX, AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
     UnionType, TpyType,
     TypeParamRef,
-    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
@@ -72,6 +72,8 @@ from .nodes import (
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
     THIROptionalLayout, THIROptionalRead,
+    THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral,
+    THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
 )
 
 
@@ -129,7 +131,67 @@ def _check_optional(owner: str, node: THIRNode, layout: THIROptionalLayout,
             _fail(owner, node, "optional layout increases access")
 
 
+def _check_union(owner: str, node: object, layout: THIRUnionLayout,
+                 typ: TpyType | None = None) -> None:
+    if (not isinstance(layout, THIRUnionLayout) or not isinstance(layout.type, UnionType)
+            or len(layout.elements) != len(layout.type.members) or len(layout.elements) < 2):
+        _fail(owner, node, "invalid union layout")
+    if typ is not None and unwrap_readonly(unwrap_ref_type(typ)) != layout.type:
+        _fail(owner, node, "union layout disagrees with type")
+    kinds = set()
+    for payload, member in zip(layout.elements, layout.type.members):
+        if payload is None:
+            if not is_void_like_type(member):
+                _fail(owner, node, "invalid union absence alternative")
+        elif isinstance(payload, THIRBorrowedRecord):
+            _check_optional(owner, node, THIROptionalLayout(payload))
+            if (payload.type != unwrap_readonly(member) or not payload.readonly
+                    and (member != payload.type or typ is not None and unwrap_readonly(typ) != typ)):
+                _fail(owner, node, "union layout increases access or changes type")
+            kinds.add("reference")
+        else:
+            if payload not in (BOOL, INT32) or payload != member:
+                _fail(owner, node, "invalid union scalar alternative")
+            kinds.add("scalar")
+    if len(kinds) != 1:
+        _fail(owner, node, "mixed or empty union layout")
+
+
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
+        if node.union_layout is not None:
+            _check_union(owner, node, node.union_layout,
+                         node.resolved_type if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else None)
+        if node.union_literal is not None:
+            fact = node.union_literal
+            if (not isinstance(fact, THIRUnionLiteral) or fact.layout != node.union_layout
+                    or fact.layout is None or type(fact.alternative) is not int
+                    or not 0 <= fact.alternative < len(fact.layout.elements)):
+                _fail(owner, node, "invalid union literal fact")
+            value = node.init if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else node.value
+            if isinstance(value, THIRCoerce) and value.coercion_name == "int_literal_to_fixed_int" and value.wrap is None:
+                value = value.expr
+            member = fact.layout.elements[fact.alternative]
+            if (not isinstance(value, THIRLiteral) or type(value.value) is not type(fact.value)
+                    or value.value != fact.value or not (
+                        member is None and fact.value is None
+                        or member == BOOL and type(fact.value) is bool
+                        or member == INT32 and type(fact.value) is int and INT32_MIN <= fact.value <= INT32_MAX)):
+                _fail(owner, node, "union literal payload mismatch")
+    if isinstance(node, THIRName) and node.union_read is not None:
+        _check_union(owner, node, node.union_read)
+    if isinstance(node, (THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead)):
+        fact = node.union_test if isinstance(node, THIRIsinstance) else node.union_extraction
+        if fact is not None:
+            if not isinstance(fact, THIRUnionTest if isinstance(node, THIRIsinstance) else THIRUnionExtraction):
+                _fail(owner, node, "invalid union selection fact")
+            _check_union(owner, node, fact.layout)
+            alternatives = fact.alternatives if isinstance(fact, THIRUnionTest) else (fact.alternative,)
+            if (not fact.source or not alternatives or len(set(alternatives)) != len(alternatives)
+                    or any(type(i) is not int or not 0 <= i < len(fact.layout.elements) for i in alternatives)):
+                _fail(owner, node, "invalid union selection alternatives")
+            if isinstance(fact, THIRUnionExtraction) and fact.layout.elements[fact.alternative] is None:
+                _fail(owner, node, "absent union alternative has no payload")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
         if node.optional_layout is not None:
             _check_optional(owner, node, node.optional_layout,
@@ -197,7 +259,8 @@ def _check_node(owner: str, node: THIRNode) -> None:
     if isinstance(node, THIRFieldAccess) and node.field_identity is not None:
         fact = node.field_identity
         direct = isinstance(node.receiver, THIRName) or (
-            isinstance(node.receiver, THIRSubscript) and node.receiver.tuple_index is not None)
+            isinstance(node.receiver, THIRSubscript) and node.receiver.tuple_index is not None) or (
+            isinstance(node.receiver, THIRNarrowedRead) and node.receiver.union_extraction is not None)
         if (not direct or not fact.name
                 or unwrap_readonly(unwrap_ref_type(node.receiver.result_type)) != fact.owner
                 or fact.type not in (BOOL, INT32) or node.result_type != fact.type
@@ -673,6 +736,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
 
 def validate_function(fn: THIRFunction) -> None:
     for param in fn.params:
+        if param.union_layout is not None:
+            _check_union(fn.name, param, param.union_layout, param.type)
         if param.optional_layout is not None:
             _check_optional(fn.name, param, param.optional_layout, param.type)
         fact = param.borrowed_record
@@ -687,6 +752,8 @@ def validate_function(fn: THIRFunction) -> None:
 def validate_constructor(ctor: THIRConstructor) -> None:
     owner = f"{ctor.record_name}.__init__"
     for param in ctor.params:
+        if param.union_layout is not None:
+            _check_union(owner, param, param.union_layout, param.type)
         if param.optional_layout is not None:
             _check_optional(owner, param, param.optional_layout, param.type)
     for mil in ctor.mil_inits:

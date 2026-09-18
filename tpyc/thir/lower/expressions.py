@@ -7,7 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
-from .storage import direct_field, optional_layout, tuple_layout
+from .storage import direct_field, optional_layout, tuple_layout, union_layout
 from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -200,6 +200,7 @@ from ..nodes import (
     THIRMove,
     THIRName,
     THIROptionalRead,
+    THIRUnionLayout, THIRUnionTest, THIRUnionExtraction,
     THIRWalrus,
     THIRValueSelect,
     THIRNarrowedRead,
@@ -4558,6 +4559,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             _witness("binop.narrowed_union_operand")
             return THIRNarrowedRead(
                 result_type=member, variant_cpp=side.name,
+                union_extraction=_union_extraction(side.name, u, member, lc),
                 member_cpp=member_cpp, is_ptr_variant=is_ptr,
                 form=(Form.BORROW if _is_borrow_form_name(member)
                       else Form.VALUE),
@@ -5000,6 +5002,48 @@ def _narrow_member_cpp(var: str, member: TpyType, u: UnionType,
     return member_cpp, is_ptr
 
 
+def _union_source_layout(var: str, typ: TpyType, lc: '_LowerCtx') -> THIRUnionLayout | None:
+    bare = unwrap_readonly(unwrap_ref_type(typ))
+    if not isinstance(bare, UnionType) and var not in lc.narrow.subject_union:
+        return None
+    original = lc.narrow.union_layouts.get(var)
+    if (original is not None and isinstance(bare, UnionType)
+            and not set(bare.members) <= set(original.type.members)):
+        original = None
+    layout = union_layout(original.type if original is not None else typ, lc.analyzer,
+                          borrow=var in lc.ptr_variant_locals,
+                          readonly=_narrow_subject_const(var, lc))
+    if layout is not None:
+        lc.narrow.union_layouts[var] = layout
+    return layout
+
+
+def _union_extraction(var: str, typ: TpyType, member: TpyType,
+                      lc: '_LowerCtx') -> THIRUnionExtraction | None:
+    layout = _union_source_layout(var, typ, lc)
+    if layout is None:
+        return None
+    indices = [i for i, m in enumerate(layout.type.members)
+               if unwrap_readonly(m) == unwrap_readonly(member)]
+    return THIRUnionExtraction(var, layout, indices[0]) if len(indices) == 1 else None
+
+
+def _union_test(var: str, typ: TpyType, members: list[TpyType] | tuple[TpyType, ...],
+                lc: '_LowerCtx') -> THIRUnionTest | None:
+    layout = _union_source_layout(var, typ, lc)
+    if layout is None:
+        return None
+    indices = tuple(i for i, m in enumerate(layout.type.members)
+                    if any(unwrap_readonly(m) == unwrap_readonly(t) for t in members))
+    return THIRUnionTest(var, layout, indices) if indices else None
+
+
+def _inline_union_member(var: str, member: TpyType, typ: UnionType,
+                         lc: '_LowerCtx') -> tuple[str, bool, THIRUnionExtraction | None]:
+    cpp, pointer = _narrow_member_cpp(var, member, typ, lc)
+    return cpp, pointer, _union_extraction(var, typ, member, lc)
+
+
 def _lower_isinstance_cond(info, condition: TpyExpr,
                            lc: '_LowerCtx') -> THIRExpr:
     """The isinstance-condition render shared by the narrow if / while /
@@ -5017,6 +5061,7 @@ def _lower_isinstance_cond(info, condition: TpyExpr,
         _witness("narrow.wrapper_union")
     return THIRIsinstance(
         result_type=result_type,
+        union_test=_union_test(var, u, members, lc),
         variant_cpp=_narrow_variant_cpp(var, u, lc),
         member_cpps=tuple(
             f"{const}{lc.render_type(m)}*" if is_ptr else lc.render_type(m)
@@ -5217,6 +5262,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     lowered subtree once, so the grant sites (the logical RHS, ternary
     scalar arms, chained comparators i>=2) need no per-row threading."""
     lowered = _lower_expr_impl(e, lc, declared, use=use, **kwargs)
+    if (isinstance(e, TpyName) and isinstance(lowered, THIRName)
+            and lowered.name == e.name and lowered.cpp is None):
+        binding = lc.narrow.subject_union.get(e.name, declared.get(e.name))
+        if binding is not None:
+            layout = _union_source_layout(e.name, binding, lc)
+            if layout is not None:
+                lowered = replace(lowered, union_read=layout)
     if (isinstance(e, TpyName) and isinstance(lowered, THIRName)
             and lowered.cpp is None and not lowered.opt_deref_check):
         binding = declared.get(e.name)
@@ -5476,10 +5528,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if inr is not None:
             # A compound-condition read of the narrowed subject: no alias
             # exists yet, so it lowers to the structural bare-get node.
-            member_cpp, is_ptr = inr
+            member_cpp, is_ptr, extraction = inr
             return THIRNarrowedRead(
                 result_type=rtype, variant_cpp=e.name, member_cpp=member_cpp,
                 is_ptr_variant=is_ptr,
+                union_extraction=extraction,
                 form=Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE,
                 loc=loc)
         spelled = lc.narrow.spelled.get(e.name)
@@ -6059,6 +6112,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 receiver=THIRNarrowedRead(
                     result_type=analyzer.get_expr_type(e.obj),
                     variant_cpp=e.obj.name, member_cpp=member_cpp,
+                    union_extraction=_union_extraction(e.obj.name, u, member, lc),
                     is_ptr_variant=is_ptr, form=Form.BORROW, loc=loc),
                 field_cpp=_field_cpp(e),
                 is_arrow=False,
@@ -6159,7 +6213,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return _self_recv_positioned(THIRFieldAccess(
             result_type=rtype,
             field_identity=direct_field(e, analyzer, receiver)
-            if isinstance(receiver, (THIRName, THIRSubscript)) else None,
+            if (isinstance(receiver, (THIRName, THIRSubscript))
+                or isinstance(receiver, THIRNarrowedRead) and receiver.union_extraction is not None) else None,
             receiver=receiver,
             field_cpp=_field_cpp(e),
             is_arrow=_field_is_arrow(e, lc),
@@ -7871,6 +7926,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 return THIRIsinstance(
                     result_type=rtype,
                     variant_cpp=_narrow_variant_cpp(iv, dub, lc),
+                    union_test=_union_test(iv, dub, members, lc),
                     member_cpps=tuple(
                         f"{const}{lc.render_type(m)}*" if is_ptr
                         else lc.render_type(m)
@@ -10203,6 +10259,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             recv_lowered = THIRNarrowedRead(
                 result_type=analyzer.get_expr_type(e.obj),
                 variant_cpp=e.obj.name, member_cpp=_mnu_cpp,
+                union_extraction=_union_extraction(e.obj.name, _mnu_u, _mnu_member, lc),
                 is_ptr_variant=_mnu_ptr, form=Form.BORROW,
                 loc=getattr(e.obj, "loc", None))
         else:
@@ -16991,7 +17048,7 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
         arm_declared = dict(declared)
         arm_declared[var] = member
         try:
-            lc.inline_narrowed[var] = _narrow_member_cpp(var, member, u, lc)
+            lc.inline_narrowed[var] = _inline_union_member(var, member, u, lc)
             return _slot_literal_retype(
                 _lower_char_targeted(arm_expr, slot, lc, arm_declared),
                 slot, lc)

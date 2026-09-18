@@ -9,6 +9,7 @@ from .nodes import (
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind,
     MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
+    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
 )
 
 
@@ -27,7 +28,18 @@ class OptionalValue:
     payload: int | bool | Reference | None = None
 
 
-Value = int | bool | Reference | TupleValue | OptionalValue
+@dataclass(frozen=True)
+class UnionValue:
+    alternative: int
+    payload: int | bool | Reference | None = None
+
+
+@dataclass(frozen=True)
+class PayloadAlias:
+    place: MIRPlace
+
+
+Value = int | bool | Reference | TupleValue | OptionalValue | UnionValue | PayloadAlias
 Heap = dict[int, dict[MIRFieldId, int | bool]]
 
 
@@ -53,61 +65,82 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
 
     def read(place: MIRPlace) -> Value:
         value = values[place.root]
+        if isinstance(value, PayloadAlias):
+            value = read(value.place)
         for projection in place.projections:
-            if isinstance(projection, MIROptionalPayload):
-                assert isinstance(value, OptionalValue) and value.payload is not None
-                value = value.payload
-            elif isinstance(projection, MIRTupleIndex):
-                assert isinstance(value, TupleValue)
-                value = value.elements[projection.index]
-            elif isinstance(projection, MIRDeref):
-                assert isinstance(value, Reference)
-            else:
-                assert isinstance(projection, MIRField) and isinstance(value, Reference)
-                value = objects[value.identity][projection.id]
+            match projection:
+                case MIRUnionPayload():
+                    assert isinstance(value, UnionValue) and value.alternative == projection.alternative
+                    value = value.payload
+                    assert value is not None
+                case MIROptionalPayload():
+                    assert isinstance(value, OptionalValue) and value.payload is not None
+                    value = value.payload
+                case MIRTupleIndex():
+                    assert isinstance(value, TupleValue)
+                    value = value.elements[projection.index]
+                case MIRDeref():
+                    assert isinstance(value, Reference)
+                case _:
+                    assert isinstance(projection, MIRField) and isinstance(value, Reference)
+                    value = objects[value.identity][projection.id]
         return value
 
     for _ in range(100):
         block = blocks[bid]
         for stmt in block.statements:
             rhs = stmt.value
-            if isinstance(rhs, MIRConstant):
-                value = rhs.value
-            elif isinstance(rhs, MIRRead):
-                value = read(rhs.source)
-            elif isinstance(rhs, (MIRAlias, MIRBorrow)):
-                value = values[rhs.source]
-                assert isinstance(value, Reference)
-            elif isinstance(rhs, MIRTupleConstruct):
-                value = TupleValue(tuple(values[src] for src in rhs.elements))
-            elif isinstance(rhs, MIRTupleCopy):
-                source = values[rhs.source]
-                assert isinstance(source, TupleValue)
-                value = TupleValue(source.elements)
-            elif isinstance(rhs, MIROptionalConstruct):
-                value = OptionalValue(values[rhs.source] if rhs.source is not None else None)
-            elif isinstance(rhs, MIROptionalCopy):
-                source = values[rhs.source]
-                assert isinstance(source, OptionalValue)
-                value = OptionalValue(source.payload)
-            elif isinstance(rhs, MIRIsPresent):
-                source = values[rhs.source]
-                assert isinstance(source, OptionalValue)
-                value = source.payload is not None
-            elif isinstance(rhs, MIRConstruct):
-                layout = records[slots[stmt.target.root].type]
-                value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}
-            elif isinstance(rhs, (MIRCopy, MIRMove)):
-                source = rhs.source.root if isinstance(rhs, MIRCopy) else rhs.source
-                reference = values[source]
-                assert isinstance(reference, Reference)
-                value = objects[reference.identity].copy()
-            elif isinstance(rhs, MIRCompare):
-                value = comparisons[rhs.op](values[rhs.left], values[rhs.right])
-            elif isinstance(rhs, MIRNot):
-                value = not values[rhs.operand]
-            else:
-                raise AssertionError(rhs)
+            match rhs:
+                case MIRConstant():
+                    value = rhs.value
+                case MIRRead():
+                    value = read(rhs.source)
+                case MIRAlias() | MIRBorrow():
+                    value = values[rhs.source]
+                    assert isinstance(value, Reference)
+                case MIRTupleConstruct():
+                    value = TupleValue(tuple(values[src] for src in rhs.elements))
+                case MIRTupleCopy():
+                    source = values[rhs.source]
+                    assert isinstance(source, TupleValue)
+                    value = TupleValue(source.elements)
+                case MIROptionalConstruct():
+                    value = OptionalValue(values[rhs.source] if rhs.source is not None else None)
+                case MIROptionalCopy():
+                    source = values[rhs.source]
+                    assert isinstance(source, OptionalValue)
+                    value = OptionalValue(source.payload)
+                case MIRIsPresent():
+                    source = values[rhs.source]
+                    assert isinstance(source, OptionalValue)
+                    value = source.payload is not None
+                case MIRUnionConstruct():
+                    value = UnionValue(rhs.alternative, values[rhs.source] if rhs.source is not None else None)
+                case MIRUnionCopy():
+                    source = values[rhs.source]
+                    assert isinstance(source, UnionValue)
+                    value = UnionValue(source.alternative, source.payload)
+                case MIRIsAlternative():
+                    source = values[rhs.source]
+                    assert isinstance(source, UnionValue)
+                    value = source.alternative in rhs.alternatives
+                case MIRUnionExtract():
+                    value = (PayloadAlias(rhs.source) if slots[stmt.target.root].value_kind is MIRValueKind.PAYLOAD_ALIAS
+                             else read(rhs.source))
+                case MIRConstruct():
+                    layout = records[slots[stmt.target.root].type]
+                    value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}
+                case MIRCopy() | MIRMove():
+                    source = rhs.source.root if isinstance(rhs, MIRCopy) else rhs.source
+                    reference = values[source]
+                    assert isinstance(reference, Reference)
+                    value = objects[reference.identity].copy()
+                case MIRCompare():
+                    value = comparisons[rhs.op](values[rhs.left], values[rhs.right])
+                case MIRNot():
+                    value = not values[rhs.operand]
+                case _:
+                    raise AssertionError(rhs)
             if isinstance(value, dict):
                 if stmt.target.projections:
                     reference = values[stmt.target.root]
@@ -125,12 +158,13 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None) -> Value | 
             else:
                 values[stmt.target.root] = value
         term = block.terminator
-        if isinstance(term, MIRReturn):
-            return values[term.value] if term.value is not None else None
-        if isinstance(term, MIRBranch):
-            bid = term.then if values[term.condition] else term.otherwise
-        elif isinstance(term, MIRGoto):
-            bid = term.target
-        else:
-            raise AssertionError(term)
+        match term:
+            case MIRReturn(value=result):
+                return values[result] if result is not None else None
+            case MIRBranch(condition=condition, then=then, otherwise=otherwise):
+                bid = then if values[condition] else otherwise
+            case MIRGoto(target=target):
+                bid = target
+            case _:
+                raise AssertionError(term)
     raise AssertionError("unexpected nontermination")

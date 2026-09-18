@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 from ..thir import nodes as th
 from ..typesys import BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, NominalType, TpyType
-from .coverage import Unsupported, plain, require
+from .coverage import MIRUnsupported, plain, require
 from .nodes import MIRField, MIRFieldId, MIRRecordLayout
 
 
@@ -14,21 +14,22 @@ def _initializer(expr: th.THIRExpr, params: dict[str, TpyType]) -> TpyType:
     require(expr, expr.form is th.Form.VALUE, "constructor initializer form")
     typ = INT32 if isinstance(expr.result_type, IntLiteralType) else expr.result_type
     require(expr, typ in (BOOL, INT32), "constructor initializer type")
-    if isinstance(expr, th.THIRName):
-        plain(expr, {"name", "is_last_use", "is_movable"})
-        require(expr, params.get(expr.name) == typ, "constructor initializer needs parameter")
-    elif isinstance(expr, th.THIRLiteral):
-        plain(expr, {"value", "int_cpp"})
-        require(expr, (typ == BOOL and type(expr.value) is bool)
-                or (typ == INT32 and type(expr.value) is int
-                    and INT32_MIN <= expr.value <= INT32_MAX), "constructor literal value")
-    elif isinstance(expr, th.THIRCoerce):
-        plain(expr, {"expr", "coercion_name"})
-        require(expr, typ == INT32 and expr.coercion_name == "int_literal_to_fixed_int"
-                and isinstance(expr.expr, th.THIRLiteral), "constructor coercion")
-        require(expr, _initializer(expr.expr, params) == typ, "constructor coercion type")
-    else:
-        raise Unsupported(expr, "constructor initializer needs parameter or literal")
+    match expr:
+        case th.THIRName():
+            plain(expr, {"name", "is_last_use", "is_movable"})
+            require(expr, params.get(expr.name) == typ, "constructor initializer needs parameter")
+        case th.THIRLiteral():
+            plain(expr, {"value", "int_cpp"})
+            require(expr, (typ == BOOL and type(expr.value) is bool)
+                    or (typ == INT32 and type(expr.value) is int
+                        and INT32_MIN <= expr.value <= INT32_MAX), "constructor literal value")
+        case th.THIRCoerce():
+            plain(expr, {"expr", "coercion_name"})
+            require(expr, typ == INT32 and expr.coercion_name == "int_literal_to_fixed_int"
+                    and isinstance(expr.expr, th.THIRLiteral), "constructor coercion")
+            require(expr, _initializer(expr.expr, params) == typ, "constructor coercion type")
+        case _:
+            raise MIRUnsupported(expr, "constructor initializer needs parameter or literal")
     return typ
 
 
@@ -95,12 +96,12 @@ class MIRDefinitions:
                 continue
             try:
                 records[typ] = _verify(ctor)
-            except Unsupported as failure:
+            except MIRUnsupported as failure:
                 records[typ] = failure.reason
         object.__setattr__(self, "records", MappingProxyType(records))
 
     def get(self, node: object, typ: NominalType) -> MIRConstructorDefinition:
         definition = self.records.get(typ, "missing constructor definition")
         if isinstance(definition, str):
-            raise Unsupported(node, definition)
+            raise MIRUnsupported(node, definition)
         return definition

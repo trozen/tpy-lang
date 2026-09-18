@@ -8296,8 +8296,14 @@ holder writes invalidate old presence tests, joins intersect the remaining
 facts, and loops converge conservatively. Readonly payload access stays readonly.
 This is internal payload-selection verification, not a new source acceptance
 rule or lifetime proof. Existing nullable-record reseat source gates remain;
-general unions, owned/nested wrappers, Optional calls/results and unproven
-runtime-checked extraction are deferred.
+owned/nested wrappers, Optional calls/results and unproven runtime-checked
+extraction are deferred.
+M2.5 adds nonrecursive bool/int32 unions and borrowed plain-record unions,
+optionally including None, with typed alternative tests and extraction aliases.
+Record extraction captures the referent; scalar extraction aliases payload
+storage and becomes invalid on any wrapper replacement until re-extraction.
+Mixed scalar/reference and owned/recursive unions, union aggregate slots and
+parameter reseats remain outside that subset (`MIR_ANALYSIS_PLAN.md`).
 Owning operations in loops, arbitrary constructor effects, containers
 and consuming call/return boundaries remain outside its internal coverage.
 It has no normal compilation hook or borrow checker yet. Current provenance

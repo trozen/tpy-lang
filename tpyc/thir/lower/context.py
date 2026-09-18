@@ -26,7 +26,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
-from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf
+from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRUnionExtraction, THIRUnionLayout
 from .predicates import (
     _borrow_tuple_return_type,
     _res_container_return,
@@ -931,6 +931,7 @@ class _NarrowScope:
     narrowed: dict[str, str] = field(default_factory=dict)
     persistent_aliases: set[str] = field(default_factory=set)
     subject_union: dict[str, UnionType] = field(default_factory=dict)
+    union_layouts: dict[str, THIRUnionLayout] = field(default_factory=dict)
     persistent_narrowed: set[str] = field(default_factory=set)
     # Vars narrowed from an ANY subject (D15): consumers keyed on the
     # declared-type classification (print args) read this to pick
@@ -1628,7 +1629,7 @@ class _LowerCtx:
         # alias-free THIRNarrowedRead inside the condition. Strictly
         # condition-scoped -- installed and popped by _lower_narrow_cond,
         # never live across statements (deliberately OUTSIDE _NarrowScope).
-        self.inline_narrowed: dict[str, tuple[str, bool]] = {}
+        self.inline_narrowed: dict[str, tuple[str, bool, THIRUnionExtraction | None]] = {}
         self.forbidden_reads: set[str] = set()
         self.forbidden_writes: set[str] = set()
         # Closure locals bound by a lowered TpyNestedDef. Sole consumer: the

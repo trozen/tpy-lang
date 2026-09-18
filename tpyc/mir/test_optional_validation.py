@@ -171,4 +171,4 @@ def test_unrelated_boolean_results_do_not_duplicate_holder_facts() -> None:
     assert not state.conditions
     for holder in holders:
         state = _transfer(state, MIRAssign(MIRPlace(holder), MIROptionalConstruct()), booleans)
-    assert state.present == frozenset((holder, False) for holder in holders)
+    assert state.present == frozenset((holder, frozenset({0})) for holder in holders)

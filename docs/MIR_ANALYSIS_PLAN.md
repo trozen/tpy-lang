@@ -987,11 +987,207 @@ The final forced suite passed 8,465 tests with 23 skips and rebuilt/ran all
 4,138 native cases; no existing source, diagnostics or generated-code snapshots
 changed. Normal compilation and provenance authority remain unchanged.
 
-Proposed M2.5: nonrecursive unions, with typed alternative tests and extraction
-aliases in one increment. Audit value-payload aliases into the wrapper separately
-from borrowed-record identities, and mixed unions' scalar backing storage before
-choosing its exact subset. Nullable tuples and owned wrappers remain separate
-scope decisions; M2.4 approval does not approve their implementation.
+## M2.5: nonrecursive union selection and extraction
+
+Status: implemented, reviewed and verified; ready to merge. Architectural scope,
+following M2.4 at `f22952127f`. Branch: `mir-union-payloads`. Normal compilation,
+source acceptance, diagnostics, C++ emission and provenance authority stay
+unchanged. This increment models already-emitted operations in analysis-only MIR.
+
+With existing plain `Cell` and `Other` records holding `value: int32`:
+
+```python
+def example(current: Cell | Other, other: Cell) -> int32:
+    saved = current
+    if isinstance(saved, Cell):
+        saved.value = 9
+    return other.value
+```
+
+The borrowed union copies its discriminator and selected pointer; the narrowed
+branch binds `auto&` to the selected object. Shared `current`/`other` returns 9;
+distinct objects leave `other` unchanged. A direct readonly union parameter
+can observe a write through another mutable alias. An all-value union copy
+instead copies its bool/int32 payload independently of later holder replacement.
+Design-time TPy/native and CPython probes matched for shared/distinct records,
+direct readonly observation, scalar copies/replacement and bool/int32 tests.
+
+**Invariant:** a union carries a typed alternative and its selected value or
+borrowed identity/capability; extraction requires a current alternative proof,
+and an extraction alias preserves the actual selected referent or storage place
+rather than following a subsequently replaced holder.
+
+### Representation and alias audit
+
+| Producer decision | Existing emitted behavior | Required MIR meaning |
+|---|---|---|
+| All-value bool/int32 union | Inline values; value-union parameters bind by const reference | Local wrapper copies snapshot values; parameters cannot be reseated in this subset |
+| Borrowed plain-record union | Tagged pointers, including pointee constness | Wrapper copies preserve referent identity and capability |
+| Borrowed `THIRNarrowAlias` | Reference initialized from the selected pointer once | Capture the selected reference in its own binding |
+| Value `THIRNarrowAlias` | Reference to the selected subobject inside wrapper storage | Retain a payload-place alias; do not eagerly snapshot a scalar |
+| `THIRNarrowedRead` | Fresh extraction in a compound condition | Live wrapper projection, checked at each read |
+| None in a genuine union | A separate discriminator with no payload | Excluding None leaves a set of alternatives, not necessarily one member |
+| Mixed scalar/reference union | Every non-None alternative is a pointer, including scalars | Deferred: needs borrowed scalar/backing-storage identity |
+| Owned/storage or recursive union | Payloads live inside a wrapper; recursive layout has registry identity | Deferred: do not classify from `UnionType` alone |
+
+The deciding sites are `thir/lower/functions.py` for parameters, union
+declaration/reseat arms in `thir/lower/statements.py`, `_make_narrow_alias`,
+and `_lower_isinstance_cond` / `THIRNarrowedRead` producers in
+`thir/lower/expressions.py`. Branch-entry, early-return, while and compound
+condition paths must share the same typed facts. Freeze the original wrapper's
+full alternative identities before narrowing; never derive them from emitted
+`variant_cpp`, `member_cpp`, alias spelling or a narrowed subset's indices.
+
+### Approved implementation
+
+1. Add immutable THIR union layout, transfer, test and extraction facts at the
+   existing representation/access decisions. Keep emitter fields intact. Facts
+   identify the source binding, full layout, checked alternatives and extraction
+   mode. Validate capability transfers, including source versus destination
+   decisions; missing or contradictory facts cannot authorize MIR coverage.
+2. Add typed MIR union slots, construction/copy, alternative tests and payload
+   projections. Borrowed extraction captures a reference into a distinct holder;
+   value extraction binds a typed wrapper-payload place. Give extraction
+   bindings body-scoped identities and preserve lexical scope, including aliases
+   recreated on loop entry. This is internal alias binding, not admission of
+   arbitrary source declarations inside branches.
+3. Extend the existing Optional finite-worklist selection engine to union
+   alternative sets. Guards intersect possible alternatives; joins union them;
+   unknown means the full declared set, and an empty set makes the edge
+   unreachable. Keep boolean implications sparse and
+   invalidate them on holder writes. Optional remains its two-state case with
+   all existing regression tests. Do not introduce a second competing analysis.
+4. Track value-alias coverage validity separately from discriminator facts.
+   Conservatively invalidate its existing payload aliases on wrapper replacement;
+   C++ can preserve the subobject on some same-alternative assignments, but this
+   increment does not prove that case. A later successful test,
+   even for the same alternative, must not revive them. A subsequent use of
+   such an alias makes the whole body uncovered in this increment. Re-extraction
+   creates a valid binding; joins retain validity only when it holds on every
+   reachable predecessor. A captured borrowed-record identity survives wrapper
+   replacement. This verifies selection/storage binding, not general lifetime
+   or loan safety.
+5. Test emitted THIR from compiler-unit-owned sources, then malformed internal
+   IR and excluded shapes. Complete specialist review, readiness and a final
+   full forced suite. Prepare one squashed commit; merge/push remain separate.
+
+### Scope matrix
+
+The axes below factor the Cartesian product. A cell is covered only when every
+axis is covered; all other cells remain whole-body `MIRNotCovered`, assigned to
+the listed later stage. Existing M1-M2.4 coverage remains available unchanged.
+
+| Axis | Covered cells | Filed later scope |
+|---|---|---|
+| Position | Ordinary monomorphic free functions; existing if/while/short-circuit/early-return CFG | Methods, constructors, module statements, closures: remaining M2; generators, async, comprehensions, context managers, try/finally, error-return, match: M3 |
+| Shape | Nonrecursive bool/int32-only value unions or flat borrowed plain-record unions; either family may include None; selected mutable/readonly capabilities | Mixed scalar/reference, other scalars, tuple/Optional payload nesting, str/bytes/views, Own, Ptr/Span, Box/Rc, containers, protocols, recursive wrappers: remaining M2; generics: M4 |
+| Slot | Read-only union parameters, entry-declared local wrappers, expression temporaries, internal extraction aliases; scalar fields of extracted records | Parameter reseats; union returns/call boundaries, fields, container elements, globals, captures, owned backing storage: remaining M2; general branch/loop-created source bindings and frame slots: M3 |
+| Operation | Whole-wrapper copies and supported local reseats; member/None construction without effects or new backing storage; typed isinstance/None tests; guarded scalar reads and record-field reads/writes | General equality/truthiness, effects/calls, runtime-checked extraction, widening/conversion across different layouts, writes through scalar payload aliases: later M2/M3 |
+
+Readonly refers to the selected payload capability, including inferred constness.
+Direct readonly parameter extraction is included. The existing source path
+copying a readonly record union into a local currently emits a mutable pointer
+union and fails C++ compilation (`BUGS.md#readonly-record-union-local-copy`);
+exclude it until fixed separately. Readonly
+construction/copy directions are covered by internal IR tests. Scalar-union parameter
+reseats also currently emit writes through a const reference
+(`BUGS.md#scalar-union-parameter-reassign-const`) and remain excluded.
+Both defects are recorded for separate fixes with user approval.
+No frontend gate is relaxed to manufacture a source witness.
+Direct record-member construction and reseating are likewise tested at the
+internal IR boundary: their source forms still hit `decl.ptr_union_source` and
+`decl.union_reseat_source`. Negative source tests pin both existing gates.
+
+### Tests, pitfalls and risks
+
+Use existing bool/int32/record/tuple/Optional tests as neighboring regression
+coverage. New compiler-owned sources cover shared/distinct record mutation,
+readonly observation, scalar copy independence, local reseats, every alternative,
+None, bool False/True and int32 bounds, single/multiple-member tests and their
+complements, short-circuit reads, early-return aliases, branch joins and loops.
+Use explicit `int32(...)` runtime witnesses when testing that discriminator:
+the CPython stub's distinct subclass behavior is already tracked in
+`BUGS.md#isinstance-int32-cpy-stub-subclass`.
+
+Internal tests must distinguish a captured reference from a live projection,
+and a scalar payload alias from an eager scalar copy. Include holder replacement
+after extraction, stale boolean tests, same-alternative replacement, alias
+recreation on loops, conflicting joins, readonly access escalation, missing
+facts, mismatched alternative identities and invalid layouts. Keep unsupported
+source gates pinned; use internal IR where the frontend cannot express a cell.
+No production compiler code reaches into snippet-test directories.
+
+| Pitfall | Design obligation |
+|---|---|
+| silent-copy-vs-alias | Mutate shared records after union copy/extraction and observe through each alias; inspect pointer/reference emission |
+| copy-warning-at-wrong-site | No warning/emitter changes; reference extraction adds no copy |
+| tuple-equals-scalar | Keep flat-tuple regressions; union-in-tuple and tuple-in-union stay explicitly uncovered |
+| same-construct-every-position | Stamp facts at shared producer decisions; matrix excludes positions whose complete bodies are not modeled |
+| conditional-operand-evaluates-in-place | Extract only on the guarded CFG edge; probe compound conditions and loop reevaluation |
+| generic-equals-monomorphic-twin | Open/instantiated generic obligations remain M4, not inferred from concrete coverage |
+| view-not-copy; hidden-allocation | Views/backing-storage families excluded; verify byte-identical emission, no new allocations |
+| const-source-const-loop-var | No foreach admission; direct and inferred readonly capabilities cannot increase |
+| generated-cpp-readability | C++ emission unchanged; new internal MIR dumps remain deterministic and readable |
+| no-cpp-in-diagnostics; no-internal-names-in-diagnostics | No new source diagnostics; internal coverage reasons do not become language errors |
+| reject-valid-python-only-as-documented-divergence; no-warning-on-valid-code | Coverage failure preserves source behavior; adjacent build defects need separate fixes |
+
+The main risks are accidentally re-deriving representation from union types,
+confusing alias capture with projection, reviving invalid scalar aliases, and
+duplicating the selection engine. Use a finite per-holder/per-alias domain and
+sparse conditional facts, not path enumeration. Check widening loop joins and
+state size; make no blanket linear-time claim for arbitrary CFGs.
+Scalar-union parameters retain their const-reference binding distinction even
+though excluded effects/reseats make it unobservable in this subset. Future
+effect or parameter-write support must preserve that storage identity.
+
+An independent design review found no blocking contradiction after clarifying
+conservative value-alias validity, its joins/re-extraction, and unreachable
+alternative sets. Confidence in the bounded design is high; mixed/owned storage
+and broader effect/lifetime behavior are explicitly outside that assessment.
+
+Documentation at implementation: update this section, `ARCHITECTURE.md`,
+`LANGUAGE_FEATURES.md`'s internal MIR status and the existing MIR TODO entry.
+No parser, language type rules, runtime, stdlib or C++ emitter change is proposed;
+existing snapshots should remain byte-identical. The Optional tuple-unpack
+metadata defect remains separate and must be fixed before admitting that shape.
+
+### Implementation checkpoint
+
+THIR carries original union layouts, whole-name reads, literal-construction
+facts, alternative-test sets and extraction-source identities. The facts are
+recorded by existing declaration/parameter and narrowing producers; inline
+condition reads carry the same source/alternative facts as branch aliases.
+MIR has tagged construction/copy, set-membership tests, live payload projections,
+captured borrowed references and scalar payload-place alias slots. Scoped alias
+bindings receive body-local IDs even when separate C++ scopes reuse a spelling.
+
+The Optional selection worklist now tracks finite alternative sets and sparse
+boolean implications. Scalar-alias coverage validity is separate and intersects
+at joins; holder replacement kills it, and explicit re-extraction restores it.
+Readonly-to-mutable transfers and malformed layouts, tests, literal facts or
+extraction bindings are rejected. Existing source gates, including narrowed
+union reseats and the two separately filed codegen defects, remain unchanged.
+
+Compiler-owned tests cover source producers, mutation through shared identities,
+copies surviving replacement, bool/int32/None alternatives, guarded field reads,
+multiple-member tests, early return, compound conditions and loops. Internal IR
+tests distinguish frozen record identities from scalar storage aliases, check
+stale guards and aliases, and exercise access directions and malformed inputs.
+The first combined MIR/THIR and union snippet run passed 1,064 tests without
+snapshot updates. Specialist review found and prompted a fix for direct scalar
+alias operands bypassing record-construction validation, a single-pass reverse
+alias index, and additional internal record-member construction, scalar compound-read
+and complement-alternative witnesses. Independent native/CPython probes matched
+and produced byte-identical C++ against the base.
+
+Closing cumulative review from `f22952127f` through `ff605cd114` was clean across
+architecture, safety, codegen, CPython parity, test coverage, conventions and
+docs. Meta-review and the readiness retrospective accepted the bounded design;
+no code changes followed that review. The final `rpytest --force-exec` passed
+8,568 tests with 23 skips in 292.55 seconds: all 4,152 executable cases built and
+ran, with zero execution-cache skips. Existing snapshots remained unchanged.
+Only this factual completion record followed verification. Prepare the reviewed
+tree as one squashed branch commit; merging into master remains separate.
 
 ## Scope matrix and remaining increments
 

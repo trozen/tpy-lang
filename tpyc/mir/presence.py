@@ -1,4 +1,4 @@
-"""Presence facts and boolean implications over mutable Optional holders."""
+"""Finite payload-selection facts and boolean implications over mutable holders."""
 
 from collections import deque
 from dataclasses import dataclass, field
@@ -8,9 +8,10 @@ from .nodes import (
     MIRAssign, MIRBlockId, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRPlace, MIRRead, MIRSlotId, MIRValueKind,
+    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
 )
 
-Facts = frozenset[tuple[MIRSlotId, bool]]
+Facts = frozenset[tuple[MIRSlotId, frozenset[int]]]
 # None means this boolean outcome is impossible, not that its facts are unknown.
 Outcomes = tuple[Facts | None, Facts | None]
 EMPTY: Facts = frozenset()
@@ -20,13 +21,18 @@ EMPTY: Facts = frozenset()
 class _State:
     present: Facts = EMPTY
     conditions: dict[MIRSlotId, Outcomes] = field(default_factory=dict)
+    valid_aliases: frozenset[MIRSlotId] = frozenset()
 
 
 def _combine(left: Facts, right: Facts | None) -> Facts | None:
     if right is None:
         return None
-    result = left | right
-    return None if any((slot, not value) in result for slot, value in result) else result
+    result = dict(left)
+    for slot, alternatives in right:
+        result[slot] = result.get(slot, alternatives) & alternatives
+        if not result[slot]:
+            return None
+    return frozenset(result.items())
 
 
 def _outcome(state: _State, slot: MIRSlotId, truth: bool) -> Facts | None:
@@ -43,27 +49,42 @@ def _remember(conditions: dict[MIRSlotId, Outcomes], slot: MIRSlotId,
         conditions[slot] = (reduced[0], reduced[1])
 
 
+def _join_facts(facts: list[Facts]) -> Facts:
+    maps = [dict(f) for f in facts]
+    common = set.intersection(*(set(m) for m in maps))
+    return frozenset((slot, frozenset.union(*(m[slot] for m in maps))) for slot in common)
+
+
 def _join(states: list[_State]) -> _State:
-    present = frozenset.intersection(*(s.present for s in states))
+    present = _join_facts([s.present for s in states])
     conditions: dict[MIRSlotId, Outcomes] = {}
     for slot in set().union(*(s.conditions.keys() for s in states)):
         outcomes: list[Facts | None] = []
         for truth in (False, True):
             possible = [facts for s in states if (facts := _outcome(s, slot, truth)) is not None]
-            outcomes.append(frozenset.intersection(*possible) if possible else None)
+            outcomes.append(_join_facts(possible) if possible else None)
         _remember(conditions, slot, (outcomes[0], outcomes[1]), present)
-    return _State(present, conditions)
+    return _State(present, conditions, frozenset.intersection(*(s.valid_aliases for s in states)))
 
 
-def _transfer(state: _State, stmt: MIRAssign, booleans: set[MIRSlotId]) -> _State:
+def _transfer(state: _State, stmt: MIRAssign, booleans: set[MIRSlotId],
+              domains: dict[MIRSlotId, frozenset[int]] | None = None,
+              aliases: dict[MIRSlotId, frozenset[MIRSlotId]] | None = None) -> _State:
     if stmt.target.projections:
         return state
     target, value = stmt.target.root, stmt.value
     present, conditions = state.present, state.conditions.copy()
-    if isinstance(value, (MIROptionalConstruct, MIROptionalCopy)):
-        known = (value.source is not None if isinstance(value, MIROptionalConstruct)
-                 else dict(present).get(value.source))
+    valid = state.valid_aliases
+    if isinstance(value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)):
+        match value:
+            case MIROptionalConstruct():
+                known = frozenset({int(value.source is not None)})
+            case MIRUnionConstruct():
+                known = frozenset({value.alternative})
+            case _:
+                known = dict(present).get(value.source)
         present = frozenset(f for f in present if f[0] != target)
+        valid -= (aliases or {}).get(target, frozenset())
         conditions = {}
         for slot, outcomes in state.conditions.items():
             kept = tuple(None if facts is None else frozenset(f for f in facts if f[0] != target)
@@ -72,31 +93,54 @@ def _transfer(state: _State, stmt: MIRAssign, booleans: set[MIRSlotId]) -> _Stat
         if known is not None:
             present |= {(target, known)}
     elif target in booleans:
-        if isinstance(value, MIRIsPresent):
-            outcomes = tuple(_combine(present, frozenset({(value.source, truth)})) for truth in (False, True))
-        elif isinstance(value, MIRRead) and not value.source.projections and value.source.root in booleans:
-            outcomes = tuple(_outcome(state, value.source.root, truth) for truth in (False, True))
-        elif isinstance(value, MIRNot):
-            outcomes = tuple(_outcome(state, value.operand, not truth) for truth in (False, True))
-        elif isinstance(value, MIRConstant):
-            outcomes = tuple(present if value.value is truth else None for truth in (False, True))
-        else:
-            outcomes = (present, present)
+        match value:
+            case MIRIsPresent() | MIRIsAlternative():
+                domain = (domains or {}).get(value.source, frozenset({0, 1}))
+                selected = (frozenset({1}) if isinstance(value, MIRIsPresent)
+                            else frozenset(value.alternatives))
+                outcomes = tuple(_combine(present, frozenset({(value.source, members)}))
+                                 if members else None for members in (domain - selected, selected))
+            case MIRRead() if not value.source.projections and value.source.root in booleans:
+                outcomes = tuple(_outcome(state, value.source.root, truth) for truth in (False, True))
+            case MIRNot():
+                outcomes = tuple(_outcome(state, value.operand, not truth) for truth in (False, True))
+            case MIRConstant():
+                outcomes = tuple(present if value.value is truth else None for truth in (False, True))
+            case _:
+                outcomes = (present, present)
         _remember(conditions, target, (outcomes[0], outcomes[1]), present)
-    return _State(present, conditions)
+    if isinstance(value, MIRUnionExtract) and target in (aliases or {}).get(value.source.root, frozenset()):
+        valid |= {target}
+    return _State(present, conditions, valid)
 
 
-def _missing(place: MIRPlace, state: _State) -> bool:
-    return (any(isinstance(p, MIROptionalPayload) for p in place.projections)
-            and (place.root, True) not in state.present)
+def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId]) -> str | None:
+    if place.root in alias_slots and place.root not in state.valid_aliases:
+        return "union payload alias used after holder replacement"
+    facts = dict(state.present)
+    for projection in place.projections:
+        if isinstance(projection, MIROptionalPayload) and facts.get(place.root) != frozenset({1}):
+            return "optional payload access without current presence proof"
+        if isinstance(projection, MIRUnionPayload) and facts.get(place.root) != frozenset({projection.alternative}):
+            return "union payload access without current alternative proof"
+    return None
 
 
 def presence_error(fn: MIRFunction) -> str | None:
     """Verify selection only; presence says nothing about a record's lifetime."""
-    if not any(s.value_kind is MIRValueKind.OPTIONAL for s in fn.slots):
+    if not any(s.value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION) for s in fn.slots):
         return None
     blocks = {b.id: b for b in fn.blocks}
-    booleans = {s.id for s in fn.slots if s.type == BOOL}
+    booleans = {s.id for s in fn.slots if s.type == BOOL and s.value_kind is MIRValueKind.SCALAR}
+    domains = {s.id: (frozenset({0, 1}) if s.value_kind is MIRValueKind.OPTIONAL
+                     else frozenset(range(len(s.union_layout.elements))))
+               for s in fn.slots if s.value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION)}
+    alias_slots = {s.id for s in fn.slots if s.value_kind is MIRValueKind.PAYLOAD_ALIAS}
+    aliases_by_root: dict[MIRSlotId, set[MIRSlotId]] = {}
+    for slot in fn.slots:
+        if slot.alias_source is not None:
+            aliases_by_root.setdefault(slot.alias_source.root, set()).add(slot.id)
+    aliases = {root: frozenset(ids) for root, ids in aliases_by_root.items()}
     incoming: dict[MIRBlockId, _State] = {}
     edges: dict[tuple[MIRBlockId, MIRBlockId, bool | None], _State] = {}
     predecessors: dict[MIRBlockId, set[tuple[MIRBlockId, MIRBlockId, bool | None]]] = {
@@ -115,21 +159,22 @@ def presence_error(fn: MIRFunction) -> str | None:
         state = _join(sources)
         incoming[bid] = state
         for stmt in blocks[bid].statements:
-            state = _transfer(state, stmt, booleans)
+            state = _transfer(state, stmt, booleans, domains, aliases)
         term = blocks[bid].terminator
         outgoing: list[tuple[MIRBlockId, bool | None, _State | None]] = []
-        if isinstance(term, MIRGoto):
-            outgoing.append((term.target, None, state))
-        elif isinstance(term, MIRBranch):
-            for target, truth in ((term.then, True), (term.otherwise, False)):
-                facts = _outcome(state, term.condition, truth)
-                branch = None
-                if facts is not None:
-                    conditions = state.conditions.copy()
-                    _remember(conditions, term.condition,
-                              (None, facts) if truth else (facts, None), facts)
-                    branch = _State(facts, conditions)
-                outgoing.append((target, truth, branch))
+        match term:
+            case MIRGoto():
+                outgoing.append((term.target, None, state))
+            case MIRBranch():
+                for target, truth in ((term.then, True), (term.otherwise, False)):
+                    facts = _outcome(state, term.condition, truth)
+                    branch = None
+                    if facts is not None:
+                        conditions = state.conditions.copy()
+                        _remember(conditions, term.condition,
+                                  (None, facts) if truth else (facts, None), facts)
+                        branch = _State(facts, conditions, state.valid_aliases)
+                    outgoing.append((target, truth, branch))
         for target, truth, branch in outgoing:
             key = (bid, target, truth)
             predecessors[target].add(key)
@@ -143,8 +188,12 @@ def presence_error(fn: MIRFunction) -> str | None:
                     work.append(target)
     for bid, state in incoming.items():
         for stmt in blocks[bid].statements:
-            if (_missing(stmt.target, state)
-                    or isinstance(stmt.value, MIRRead) and _missing(stmt.value.source, state)):
-                return "optional payload access without current presence proof"
-            state = _transfer(state, stmt, booleans)
+            places = [stmt.target] if stmt.target.projections else []
+            if isinstance(stmt.value, (MIRRead, MIRUnionExtract)):
+                places.append(stmt.value.source)
+            for place in places:
+                failure = _missing(place, state, alias_slots)
+                if failure is not None:
+                    return failure
+            state = _transfer(state, stmt, booleans, domains, aliases)
     return None

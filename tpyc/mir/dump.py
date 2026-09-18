@@ -7,6 +7,7 @@ from .nodes import (
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
+    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
 )
 from .validate import validate_function
 
@@ -18,14 +19,17 @@ def _location(loc: SourceLocation | None) -> str:
 def _place(place: MIRPlace) -> str:
     text = f"%{place.root.index}"
     for projection in place.projections:
-        if isinstance(projection, MIRDeref):
-            text = f"(*{text})"
-        elif isinstance(projection, MIRField):
-            text += f".{projection.id.owner.qualified_name()}::{projection.id.name}"
-        elif isinstance(projection, MIRTupleIndex):
-            text += f"[{projection.index}]"
-        elif isinstance(projection, MIROptionalPayload):
-            text += ".payload"
+        match projection:
+            case MIRDeref():
+                text = f"(*{text})"
+            case MIRField(id=field):
+                text += f".{field.owner.qualified_name()}::{field.name}"
+            case MIRTupleIndex(index=index):
+                text += f"[{index}]"
+            case MIROptionalPayload():
+                text += ".payload"
+            case MIRUnionPayload(alternative=alternative):
+                text += f".alternative[{alternative}]"
     return text
 
 
@@ -35,63 +39,82 @@ def dump_function(fn: MIRFunction) -> str:
              f"entry bb{fn.entry.index}"]
     for slot in fn.slots:
         name = f" {slot.name}" if slot.name is not None else ""
-        access = (" readonly-ref" if slot.readonly else " mutable-ref"
-                  ) if slot.value_kind is MIRValueKind.BORROWED_RECORD else ""
-        if slot.value_kind is MIRValueKind.RECORD_STORAGE:
-            access = " owned-storage"
-        elif slot.value_kind is MIRValueKind.TUPLE:
-            access = " payload(" + ", ".join(
-                ("readonly-ref" if e.readonly else "mutable-ref")
-                if e.kind is MIRValueKind.BORROWED_RECORD else "value"
-                for e in slot.tuple_layout.elements) + ")"
-        elif slot.value_kind is MIRValueKind.OPTIONAL:
-            member = slot.optional_layout
-            access = " optional(" + (("readonly-ref" if member.readonly else "mutable-ref")
-                                      if member.kind is MIRValueKind.BORROWED_RECORD else "value") + ")"
+        match slot.value_kind:
+            case MIRValueKind.BORROWED_RECORD:
+                access = " readonly-ref" if slot.readonly else " mutable-ref"
+            case MIRValueKind.RECORD_STORAGE:
+                access = " owned-storage"
+            case MIRValueKind.TUPLE:
+                access = " payload(" + ", ".join(
+                    ("readonly-ref" if e.readonly else "mutable-ref")
+                    if e.kind is MIRValueKind.BORROWED_RECORD else "value"
+                    for e in slot.tuple_layout.elements) + ")"
+            case MIRValueKind.OPTIONAL:
+                member = slot.optional_layout
+                access = " optional(" + (("readonly-ref" if member.readonly else "mutable-ref")
+                                          if member.kind is MIRValueKind.BORROWED_RECORD else "value") + ")"
+            case MIRValueKind.UNION:
+                access = " union(" + ", ".join("absent" if m is None else
+                    ("readonly-ref" if m.readonly else "mutable-ref")
+                    if m.kind is MIRValueKind.BORROWED_RECORD else "value" for m in slot.union_layout.elements) + ")"
+            case MIRValueKind.PAYLOAD_ALIAS:
+                access = f" payload-alias({_place(slot.alias_source)})"
+            case _:
+                access = ""
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}")
     for block in fn.blocks:
         lines.append(f"bb{block.id.index}:")
         for stmt in block.statements:
-            value = stmt.value
-            if isinstance(value, MIRConstant):
-                rhs = repr(value.value)
-            elif isinstance(value, MIRRead):
-                rhs = f"read {_place(value.source)}"
-            elif isinstance(value, MIRAlias):
-                rhs = f"alias %{value.source.index}"
-            elif isinstance(value, MIRBorrow):
-                rhs = f"borrow %{value.source.index}"
-            elif isinstance(value, MIRConstruct):
-                rhs = "construct (" + ", ".join(f"%{s.index}" for s in value.fields) + ")"
-            elif isinstance(value, MIRTupleConstruct):
-                rhs = "tuple (" + ", ".join(f"%{s.index}" for s in value.elements) + ")"
-            elif isinstance(value, MIRTupleCopy):
-                rhs = f"tuple-copy %{value.source.index}"
-            elif isinstance(value, MIROptionalConstruct):
-                rhs = "absent" if value.source is None else f"present %{value.source.index}"
-            elif isinstance(value, MIROptionalCopy):
-                rhs = f"optional-copy %{value.source.index}"
-            elif isinstance(value, MIRIsPresent):
-                rhs = f"is-present %{value.source.index}"
-            elif isinstance(value, MIRCopy):
-                rhs = f"copy {_place(value.source)}"
-            elif isinstance(value, MIRMove):
-                rhs = f"move %{value.source.index}"
-            elif isinstance(value, MIRCompare):
-                rhs = f"%{value.left.index} {value.op} %{value.right.index}"
-            elif isinstance(value, MIRNot):
-                rhs = f"not %{value.operand.index}"
-            else:
-                raise AssertionError("validated rvalue missing dump")
+            match stmt.value:
+                case MIRConstant(value=value):
+                    rhs = repr(value)
+                case MIRRead(source=source):
+                    rhs = f"read {_place(source)}"
+                case MIRAlias(source=source):
+                    rhs = f"alias %{source.index}"
+                case MIRBorrow(source=source):
+                    rhs = f"borrow %{source.index}"
+                case MIRConstruct(fields=fields):
+                    rhs = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")"
+                case MIRTupleConstruct(elements=elements):
+                    rhs = "tuple (" + ", ".join(f"%{s.index}" for s in elements) + ")"
+                case MIRTupleCopy(source=source):
+                    rhs = f"tuple-copy %{source.index}"
+                case MIROptionalConstruct(source=source):
+                    rhs = "absent" if source is None else f"present %{source.index}"
+                case MIROptionalCopy(source=source):
+                    rhs = f"optional-copy %{source.index}"
+                case MIRIsPresent(source=source):
+                    rhs = f"is-present %{source.index}"
+                case MIRUnionConstruct(alternative=alternative, source=source):
+                    payload = f"%{source.index}" if source is not None else "absent"
+                    rhs = f"union[{alternative}] {payload}"
+                case MIRUnionCopy(source=source):
+                    rhs = f"union-copy %{source.index}"
+                case MIRIsAlternative(source=source, alternatives=alternatives):
+                    rhs = f"is-alternative %{source.index} {alternatives}"
+                case MIRUnionExtract(source=source):
+                    rhs = f"extract {_place(source)}"
+                case MIRCopy(source=source):
+                    rhs = f"copy {_place(source)}"
+                case MIRMove(source=source):
+                    rhs = f"move %{source.index}"
+                case MIRCompare(op=op, left=left, right=right):
+                    rhs = f"%{left.index} {op} %{right.index}"
+                case MIRNot(operand=operand):
+                    rhs = f"not %{operand.index}"
+                case _:
+                    raise AssertionError("validated rvalue missing dump")
             lines.append(f"  {_place(stmt.target)} = {rhs}{_location(stmt.loc)}")
         term = block.terminator
-        if isinstance(term, MIRGoto):
-            line = f"goto bb{term.target.index}"
-        elif isinstance(term, MIRBranch):
-            line = f"branch %{term.condition.index} -> bb{term.then.index}, bb{term.otherwise.index}"
-        elif isinstance(term, MIRReturn):
-            line = "return" if term.value is None else f"return %{term.value.index}"
-        else:
-            raise AssertionError("validated terminator missing dump")
+        match term:
+            case MIRGoto(target=target):
+                line = f"goto bb{target.index}"
+            case MIRBranch(condition=condition, then=then, otherwise=otherwise):
+                line = f"branch %{condition.index} -> bb{then.index}, bb{otherwise.index}"
+            case MIRReturn(value=value):
+                line = "return" if value is None else f"return %{value.index}"
+            case _:
+                raise AssertionError("validated terminator missing dump")
         lines.append(f"  {line}{_location(term.loc)}")
     return "\n".join(lines) + "\n"

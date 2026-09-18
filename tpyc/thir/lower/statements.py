@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, optional_layout, tuple_layout
+from .storage import alias_binding, borrowed_record, optional_layout, tuple_layout, union_literal
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
 from ... import qnames
@@ -550,6 +550,7 @@ from .expressions import (
     _narrow_member_cpp,
     _narrow_subject_const,
     _narrow_subject_is_ptr,
+    _union_source_layout, _union_extraction, _inline_union_member,
     _narrow_variant_cpp,
     _poly_cast_checks,
     _poly_cast_context,
@@ -5580,6 +5581,10 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
         return result
     typ = declared.get(name)
     if typ is not None:
+        union = _union_source_layout(name, typ, lc)
+        if union is not None:
+            value = result.init if isinstance(result, (THIRVarDecl, THIRPtrLocalDecl)) else result.value
+            result = replace(result, union_layout=union, union_literal=union_literal(value, union))
         pointer = name in lc.pointers
         layout = optional_layout(typ, lc.analyzer, borrow=pointer,
                                  readonly=name in lc.const_locals or getattr(result, "is_const", False))
@@ -5669,7 +5674,8 @@ def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
                       or isinstance(ptu, OwnType)))
     return THIRNarrowAlias(alias=alias, variant_cpp=_narrow_variant_cpp(var, u, lc),
                            member_cpp=member_cpp,
-                           is_ptr_variant=is_ptr, const_ref=const_ref, loc=loc)
+                           is_ptr_variant=is_ptr, const_ref=const_ref, loc=loc,
+                           union_extraction=_union_extraction(var, u, member, lc))
 
 def _make_dyn_narrow_alias(alias: str, var: str, member: TpyType,
                            lc: _LowerCtx, declared: dict[str, TpyType],
@@ -6131,7 +6137,7 @@ def _lower_multi_compound_cond(cond: TpyExpr, hits, lc: _LowerCtx,
         var, u, members = hit
         lowered = _lower_isinstance_cond((var, u, members, False), c, lc)
         if len(members) == 1:
-            lc.inline_narrowed[var] = _narrow_member_cpp(var, members[0],
+            lc.inline_narrowed[var] = _inline_union_member(var, members[0],
                                                          u, lc)
         return lowered
 
@@ -6208,7 +6214,7 @@ def _lower_or_chain_cond(oinfo, condition: TpyExpr, lc: _LowerCtx,
         remaining = [m for m in u.members
                      if m not in done and not is_void_like_type(m)]
         if done and len(remaining) == 1:
-            lc.inline_narrowed[var] = _narrow_member_cpp(
+            lc.inline_narrowed[var] = _inline_union_member(
                 var, remaining[0], u, lc)
             cur_member[0] = remaining[0]
         else:

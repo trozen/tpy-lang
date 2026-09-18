@@ -4,12 +4,13 @@ from typing import TYPE_CHECKING
 
 from ...parse.nodes import TpyFieldAccess, TpyName, TpySubscript, TupleElemCapture
 from ...typesys import (
-    BOOL, INT32, NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
-    unwrap_readonly, unwrap_ref_type,
+    BOOL, INT32, INT32_MIN, INT32_MAX, NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
+    UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
 from ..nodes import (
     THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldIdentity, THIRName,
-    THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout,
+    THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
+    THIRCoerce, THIRLiteral, THIRUnionLiteral,
 )
 
 if TYPE_CHECKING:
@@ -96,6 +97,49 @@ def optional_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
     reference = borrowed_record(typ.inner, readonly or outer_readonly
                                 or isinstance(typ.inner, ReadonlyType), analyzer)
     return THIROptionalLayout(reference) if reference is not None else None
+
+
+def union_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
+                 borrow: bool, readonly: bool = False) -> THIRUnionLayout | None:
+    outer_readonly = isinstance(unwrap_ref_type(typ), ReadonlyType)
+    typ = unwrap_readonly(unwrap_ref_type(typ))
+    if not isinstance(typ, UnionType) or typ.needs_wrapper():
+        return None
+    if len({unwrap_readonly(m) for m in typ.members}) != len(typ.members):
+        return None
+    if typ.uses_pointer_repr() != borrow:
+        return None
+    elements: list[TpyType | THIRBorrowedRecord | None] = []
+    for member in typ.members:
+        if is_void_like_type(member):
+            elements.append(None)
+        elif borrow:
+            if (outer_readonly or isinstance(member, ReadonlyType)) and not readonly:
+                return None
+            reference = borrowed_record(member, readonly, analyzer)
+            if reference is None:
+                return None
+            elements.append(reference)
+        elif member in (BOOL, INT32):
+            elements.append(member)
+        else:
+            return None
+    return THIRUnionLayout(typ, tuple(elements))
+
+
+def union_literal(expr: THIRExpr | None, layout: THIRUnionLayout) -> THIRUnionLiteral | None:
+    if isinstance(expr, THIRCoerce):
+        if expr.coercion_name != "int_literal_to_fixed_int" or expr.wrap is not None:
+            return None
+        expr = expr.expr
+    if not isinstance(expr, THIRLiteral):
+        return None
+    if type(expr.value) is int and not INT32_MIN <= expr.value <= INT32_MAX:
+        return None
+    typ = BOOL if type(expr.value) is bool else INT32 if type(expr.value) is int else None
+    if (expr.value is None or typ is not None) and typ in layout.elements:
+        return THIRUnionLiteral(layout, layout.elements.index(typ), expr.value)
+    return None
 
 
 def direct_field(expr: TpyFieldAccess,

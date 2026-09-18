@@ -225,7 +225,7 @@ class Other:
 
 @pytest.mark.parametrize("annotation", [
     "Own[Cell | None]", "tuple[int32] | None", "str | None", "list[Cell] | None",
-    "GenericCell[int32] | None", "Child | None", "int32 | bool",
+    "GenericCell[int32] | None", "Child | None", "int32 | str",
 ])
 def test_deferred_payload_families_are_uncovered(annotation: str) -> None:
     source = SOURCE + """\

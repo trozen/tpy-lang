@@ -206,6 +206,7 @@ from .expressions import (
     _lower_ru_literal,
     _lower_tuple_literal,
     _slot_literal_retype,
+    _union_source_layout,
 )
 from .statements import (
     _lower_stmts,
@@ -1030,6 +1031,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     src_rt = func.return_type if stub is None else stub.return_type
     params = tuple(THIRParam(
         name=n, type=t,
+        union_layout=_union_source_layout(n, t, lc),
         borrowed_record=borrowed_record(t, _param_is_const(n, func, analyzer, record_name),
                                         analyzer),
         optional_layout=optional_layout(t, analyzer, borrow=True,
@@ -2002,7 +2004,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             record_name=record.name,
             record_layout=layout,
             params=tuple(THIRParam(
-                name=n, type=t, optional_layout=optional_layout(
+                name=n, type=t, union_layout=_union_source_layout(n, t, lc),
+                optional_layout=optional_layout(
                     t, analyzer, borrow=True,
                     readonly=_param_is_const(n, init_method, analyzer, record.name)),
             ) for n, t in init_method.params),

@@ -5,7 +5,7 @@ from collections import deque
 from ..thir.nodes import Form
 from ..typesys import (
     BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, OptionalType, TupleType, TpyType, VoidType,
-    unwrap_readonly,
+    UnionType, is_void_like_type, unwrap_readonly,
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCompare, MIRConstant, MIRDeref,
@@ -14,6 +14,7 @@ from .nodes import (
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
+    MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
 )
 from .presence import presence_error
 
@@ -32,34 +33,40 @@ def _require(condition: bool, message: str) -> None:
 
 
 def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
-    if isinstance(value, (MIRRead, MIRCopy)):
-        _require(isinstance(value.source, MIRPlace), "invalid read place")
-        return (value.source.root,)
-    if isinstance(value, (MIRAlias, MIRBorrow, MIRMove, MIRTupleCopy, MIROptionalCopy, MIRIsPresent)):
-        return (value.source,)
-    if isinstance(value, MIROptionalConstruct):
-        return () if value.source is None else (value.source,)
-    if isinstance(value, MIRConstruct):
-        return value.fields
-    if isinstance(value, MIRTupleConstruct):
-        return value.elements
-    if isinstance(value, MIRCompare):
-        return (value.left, value.right)
-    if isinstance(value, MIRNot):
-        return (value.operand,)
-    if isinstance(value, MIRConstant):
-        return ()
-    raise MIRValidationError("unknown rvalue")
+    match value:
+        case MIRRead(source=source) | MIRCopy(source=source) | MIRUnionExtract(source=source):
+            _require(isinstance(source, MIRPlace), "invalid read place")
+            return (source.root,)
+        case (MIRAlias(source=source) | MIRBorrow(source=source) | MIRMove(source=source)
+              | MIRTupleCopy(source=source) | MIROptionalCopy(source=source) | MIRIsPresent(source=source)
+              | MIRUnionCopy(source=source) | MIRIsAlternative(source=source)):
+            return (source,)
+        case MIROptionalConstruct(source=source) | MIRUnionConstruct(source=source):
+            return () if source is None else (source,)
+        case MIRConstruct(fields=fields):
+            return fields
+        case MIRTupleConstruct(elements=elements):
+            return elements
+        case MIRCompare(left=left, right=right):
+            return (left, right)
+        case MIRNot(operand=operand):
+            return (operand,)
+        case MIRConstant():
+            return ()
+        case _:
+            raise MIRValidationError("unknown rvalue")
 
 
 def successors(term: MIRGoto | MIRBranch | MIRReturn) -> tuple[MIRBlockId, ...]:
-    if isinstance(term, MIRGoto):
-        return (term.target,)
-    if isinstance(term, MIRBranch):
-        return (term.then, term.otherwise)
-    if isinstance(term, MIRReturn):
-        return ()
-    raise MIRValidationError("missing or unknown terminator")
+    match term:
+        case MIRGoto(target=target):
+            return (target,)
+        case MIRBranch(then=then, otherwise=otherwise):
+            return (then, otherwise)
+        case MIRReturn():
+            return ()
+        case _:
+            raise MIRValidationError("missing or unknown terminator")
 
 
 def _cyclic_blocks(blocks: dict[MIRBlockId, MIRBlock],
@@ -123,7 +130,35 @@ def validate_function(fn: MIRFunction) -> None:
             field_types[member.id] = member.type
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
-        if slot.value_kind is MIRValueKind.OPTIONAL:
+        if slot.value_kind is MIRValueKind.UNION:
+            layout = slot.union_layout
+            _require(isinstance(slot.type, UnionType) and isinstance(layout, MIRUnionLayout)
+                     and slot.form is Form.VALUE and not slot.readonly
+                     and len(layout.elements) == len(slot.type.members)
+                     and len({unwrap_readonly(m) for m in slot.type.members}) == len(slot.type.members),
+                     "unsupported union slot")
+            kinds = set()
+            for member, typ in zip(layout.elements, slot.type.members):
+                if member is None:
+                    _require(is_void_like_type(typ), "union absence type mismatch")
+                    continue
+                _require(isinstance(member, MIRTupleElement) and type(member.readonly) is bool
+                         and unwrap_readonly(typ) == member.type, "union member type mismatch")
+                kinds.add(member.kind)
+                if member.kind is MIRValueKind.SCALAR:
+                    _require(member.type in (BOOL, INT32) and not member.readonly, "unsupported union scalar")
+                else:
+                    _require(member.kind is MIRValueKind.BORROWED_RECORD
+                             and isinstance(member.type, NominalType) and member.type.qualified_name() is not None
+                             and not member.type.type_args and not member.type.is_protocol
+                             and member.type not in (BOOL, INT32)
+                             and (typ == member.type or member.readonly), "unsupported union reference")
+            _require(len(kinds) == 1 and len(layout.elements) >= 2, "mixed or empty union layout")
+        elif slot.value_kind is MIRValueKind.PAYLOAD_ALIAS:
+            _require(slot.type in (BOOL, INT32) and slot.form is Form.BORROW and slot.readonly
+                     and slot.kind is not MIRSlotKind.PARAMETER
+                     and isinstance(slot.alias_source, MIRPlace), "unsupported payload alias")
+        elif slot.value_kind is MIRValueKind.OPTIONAL:
             layout = slot.optional_layout
             _require(isinstance(slot.type, OptionalType) and not slot.type.force_pointer_repr
                      and isinstance(layout, MIROptionalLayout) and slot.form is Form.VALUE
@@ -174,6 +209,10 @@ def validate_function(fn: MIRFunction) -> None:
                  "tuple layout on non-tuple slot")
         _require(slot.value_kind is MIRValueKind.OPTIONAL or slot.optional_layout is None,
                  "optional layout on non-optional slot")
+        _require(slot.value_kind is MIRValueKind.UNION or slot.union_layout is None,
+                 "union layout on non-union slot")
+        _require(slot.value_kind is MIRValueKind.PAYLOAD_ALIAS or slot.alias_source is None,
+                 "payload alias source on non-alias slot")
         _require(isinstance(slot.kind, MIRSlotKind), "invalid slot kind")
 
     def slot_type(slot: MIRSlotId) -> TpyType:
@@ -190,44 +229,60 @@ def validate_function(fn: MIRFunction) -> None:
         tuple_member = False
         optional_member = False
         for projection in place.projections:
-            if isinstance(projection, MIROptionalPayload):
-                _require(kind is MIRValueKind.OPTIONAL and slot.optional_layout is not None,
-                         "optional projection needs optional payload")
-                member = slot.optional_layout
-                typ, kind, readonly = member.type, member.kind, member.readonly
-                optional_member = True
-            elif isinstance(projection, MIRTupleIndex):
-                _require(kind is MIRValueKind.TUPLE and slot.tuple_layout is not None,
-                         "tuple projection needs tuple payload")
-                _require(type(projection.index) is int
-                         and 0 <= projection.index < len(slot.tuple_layout.elements), "tuple index out of range")
-                member = slot.tuple_layout.elements[projection.index]
-                typ, kind, readonly = member.type, member.kind, member.readonly
-                tuple_member = True
-            elif isinstance(projection, MIRDeref):
-                _require(kind is MIRValueKind.BORROWED_RECORD, "dereference needs reference holder")
-                _require(not (write and readonly), "store through readonly reference")
-                kind = MIRValueKind.RECORD_STORAGE
-                tuple_member = False
-                optional_member = False
-            elif isinstance(projection, MIRField):
-                _require(kind is MIRValueKind.RECORD_STORAGE, "field needs record storage")
-                _require(not (write and readonly), "store through readonly storage")
-                _require(isinstance(projection.id, MIRFieldId) and projection.id.owner == typ
-                         and bool(projection.id.name), "field owner mismatch")
-                _require(projection.type in (BOOL, INT32), "unsupported field type")
-                if typ in records:
-                    _require(projection.id in field_types, "field missing from record layout")
-                _require(field_types.setdefault(projection.id, projection.type) == projection.type,
-                         "inconsistent field type")
-                typ, kind = projection.type, MIRValueKind.SCALAR
-            else:
-                raise MIRValidationError("unsupported place projections")
+            match projection:
+                case MIRUnionPayload():
+                    _require(kind is MIRValueKind.UNION and slot.union_layout is not None,
+                             "union projection needs union payload")
+                    _require(type(projection.alternative) is int
+                             and 0 <= projection.alternative < len(slot.union_layout.elements), "invalid union alternative")
+                    member = slot.union_layout.elements[projection.alternative]
+                    _require(member is not None, "absent union alternative has no payload")
+                    typ, kind, readonly = member.type, member.kind, member.readonly
+                    optional_member = True
+                case MIROptionalPayload():
+                    _require(kind is MIRValueKind.OPTIONAL and slot.optional_layout is not None,
+                             "optional projection needs optional payload")
+                    member = slot.optional_layout
+                    typ, kind, readonly = member.type, member.kind, member.readonly
+                    optional_member = True
+                case MIRTupleIndex():
+                    _require(kind is MIRValueKind.TUPLE and slot.tuple_layout is not None,
+                             "tuple projection needs tuple payload")
+                    _require(type(projection.index) is int
+                             and 0 <= projection.index < len(slot.tuple_layout.elements), "tuple index out of range")
+                    member = slot.tuple_layout.elements[projection.index]
+                    typ, kind, readonly = member.type, member.kind, member.readonly
+                    tuple_member = True
+                case MIRDeref():
+                    _require(kind is MIRValueKind.BORROWED_RECORD, "dereference needs reference holder")
+                    _require(not (write and readonly), "store through readonly reference")
+                    kind = MIRValueKind.RECORD_STORAGE
+                    tuple_member = False
+                    optional_member = False
+                case MIRField():
+                    _require(kind is MIRValueKind.RECORD_STORAGE, "field needs record storage")
+                    _require(not (write and readonly), "store through readonly storage")
+                    _require(isinstance(projection.id, MIRFieldId) and projection.id.owner == typ
+                             and bool(projection.id.name), "field owner mismatch")
+                    _require(projection.type in (BOOL, INT32), "unsupported field type")
+                    if typ in records:
+                        _require(projection.id in field_types, "field missing from record layout")
+                    _require(field_types.setdefault(projection.id, projection.type) == projection.type,
+                             "inconsistent field type")
+                    typ, kind = projection.type, MIRValueKind.SCALAR
+                case _:
+                    raise MIRValidationError("unsupported place projections")
         _require(not (write and tuple_member), "tuple element replacement is forbidden")
         _require(not (write and optional_member), "optional payload replacement is forbidden")
         if kind is MIRValueKind.RECORD_STORAGE:
             _require(typ in records, "record place needs layout")
         return typ
+
+    for slot in fn.slots:
+        if slot.value_kind is MIRValueKind.PAYLOAD_ALIAS:
+            source = slot.alias_source
+            _require(len(source.projections) == 1 and isinstance(source.projections[0], MIRUnionPayload)
+                     and place_type(source) == slot.type, "invalid payload alias source")
 
     def compatible_element(source: MIRTupleElement | MIROptionalLayout,
                            target: MIRTupleElement | MIROptionalLayout) -> bool:
@@ -244,114 +299,167 @@ def validate_function(fn: MIRFunction) -> None:
             _require(isinstance(stmt, MIRAssign), "unknown instruction")
             target_type = place_type(stmt.target, write=True)
             value = stmt.value
+            target = slots[stmt.target.root]
+            if not stmt.target.projections:
+                _require(target.value_kind is not MIRValueKind.PAYLOAD_ALIAS or isinstance(value, MIRUnionExtract),
+                         "payload alias requires extraction")
             for operand in operands(value):
                 slot_type(operand)
-            if isinstance(value, (MIROptionalConstruct, MIROptionalCopy)):
-                target = slots[stmt.target.root]
-                _require(not stmt.target.projections and target.value_kind is MIRValueKind.OPTIONAL
-                         and target.kind is not MIRSlotKind.PARAMETER, "optional operation needs local destination")
-                if isinstance(value, MIROptionalCopy):
+            match value:
+                case MIRUnionConstruct() | MIRUnionCopy():
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.UNION
+                             and target.kind is not MIRSlotKind.PARAMETER, "union operation needs local destination")
+                    if isinstance(value, MIRUnionCopy):
+                        source = slots[value.source]
+                        _require(source.value_kind is MIRValueKind.UNION and source.type == target.type,
+                                 "union copy layout mismatch")
+                        _require(all(a is b if a is None or b is None else compatible_element(a, b)
+                                     for a, b in zip(source.union_layout.elements, target.union_layout.elements)),
+                                 "union copy increases access")
+                    else:
+                        _require(type(value.alternative) is int
+                                 and 0 <= value.alternative < len(target.union_layout.elements), "invalid union construction alternative")
+                        member = target.union_layout.elements[value.alternative]
+                        _require((member is None) == (value.source is None), "union construction payload mismatch")
+                        if member is not None:
+                            source = slots[value.source]
+                            _require(compatible_element(MIRTupleElement(source.type, source.value_kind, source.readonly), member),
+                                     "union construction type or access mismatch")
+                case MIRIsAlternative():
                     source = slots[value.source]
-                    _require(source.value_kind is MIRValueKind.OPTIONAL, "optional copy needs optional source")
-                    member = source.optional_layout
-                elif value.source is not None:
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.SCALAR
+                             and target_type == BOOL and source.value_kind is MIRValueKind.UNION,
+                             "union test type mismatch")
+                    _require(bool(value.alternatives) and len(set(value.alternatives)) == len(value.alternatives)
+                             and all(type(i) is int and 0 <= i < len(source.union_layout.elements)
+                                     for i in value.alternatives), "invalid tested union alternatives")
+                case MIRUnionExtract():
+                    source = value.source
+                    _require(not stmt.target.projections and len(source.projections) == 1
+                             and isinstance(source.projections[0], MIRUnionPayload)
+                             and target.kind is not MIRSlotKind.PARAMETER, "unsupported union extraction")
+                    _require(place_type(source) == target_type, "union extraction type mismatch")
+                    member = slots[source.root].union_layout.elements[source.projections[0].alternative]
+                    if member.kind is MIRValueKind.SCALAR:
+                        _require(target.value_kind is MIRValueKind.PAYLOAD_ALIAS and target.alias_source == source,
+                                 "scalar extraction must bind payload storage")
+                    else:
+                        _require(target.value_kind is MIRValueKind.BORROWED_RECORD
+                                 and (not member.readonly or target.readonly), "union extraction increases access")
+                case MIROptionalConstruct() | MIROptionalCopy():
+                    target = slots[stmt.target.root]
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.OPTIONAL
+                             and target.kind is not MIRSlotKind.PARAMETER, "optional operation needs local destination")
+                    if isinstance(value, MIROptionalCopy):
+                        source = slots[value.source]
+                        _require(source.value_kind is MIRValueKind.OPTIONAL, "optional copy needs optional source")
+                        member = source.optional_layout
+                    elif value.source is not None:
+                        source = slots[value.source]
+                        member = MIROptionalLayout(source.type, source.value_kind, source.readonly)
+                    else:
+                        member = target.optional_layout
+                    _require(compatible_element(member, target.optional_layout), "optional payload type or access mismatch")
+                case MIRIsPresent():
+                    _require(target_type == BOOL and slots[value.source].value_kind is MIRValueKind.OPTIONAL,
+                             "presence test needs optional source and bool destination")
+                case MIRTupleConstruct() | MIRTupleCopy():
+                    target = slots[stmt.target.root]
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.TUPLE,
+                             "tuple operation needs tuple destination")
+                    if isinstance(value, MIRTupleConstruct):
+                        elements = tuple(MIRTupleElement(slots[s].type, slots[s].value_kind, slots[s].readonly)
+                                         for s in value.elements)
+                    else:
+                        source = slots[value.source]
+                        _require(source.value_kind is MIRValueKind.TUPLE, "tuple copy needs tuple source")
+                        elements = source.tuple_layout.elements
+                    _require(len(elements) == len(target.tuple_layout.elements)
+                             and all(compatible_element(src, dst)
+                                     for src, dst in zip(elements, target.tuple_layout.elements)),
+                             "tuple payload type or access mismatch")
+                case MIRConstruct() | MIRCopy() | MIRMove():
+                    owning_blocks.add(block.id)
+                    target = slots[stmt.target.root]
+                    _require(target_type in records and (
+                        (not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE)
+                        or stmt.target.projections == (MIRDeref(),)), "record destination type")
+                    if not stmt.target.projections:
+                        _require(stmt.target.root not in initialized_storage, "repeated storage initialization")
+                        initialized_storage.add(stmt.target.root)
+                    else:
+                        _require(isinstance(value, MIRConstruct) and records[target_type].movable,
+                                 "unsupported record replacement")
+                    match value:
+                        case MIRConstruct():
+                            members = records[target_type].fields
+                            _require(len(value.fields) == len(members) and all(
+                                slot_type(src) == member.type and slots[src].value_kind is MIRValueKind.SCALAR
+                                for src, member in zip(value.fields, members)),
+                                "incomplete or mistyped record construction")
+                        case MIRCopy():
+                            _require(records[target_type].copyable and place_type(value.source) == target_type
+                                     and (value.source.projections == (MIRDeref(),)
+                                          or (not value.source.projections
+                                              and slots[value.source.root].value_kind is MIRValueKind.RECORD_STORAGE)),
+                                     "record copy source or eligibility")
+                        case _:
+                            source = slots[value.source]
+                            _require(source.value_kind is MIRValueKind.RECORD_STORAGE
+                                     and source.type == target_type and not source.readonly
+                                     and records[target_type].movable and value.source != stmt.target.root,
+                                     "record move source or eligibility")
+                case MIRBorrow():
+                    target, source = slots[stmt.target.root], slots[value.source]
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.BORROWED_RECORD
+                             and target.kind is not MIRSlotKind.PARAMETER
+                             and source.value_kind is MIRValueKind.RECORD_STORAGE
+                             and target_type == source.type, "storage borrow type mismatch")
+                    _require(not source.readonly or target.readonly, "borrow increases access")
+                case MIRConstant():
+                    _require((target_type == BOOL and type(value.value) is bool)
+                             or (target_type == INT32 and type(value.value) is int
+                                 and INT32_MIN <= value.value <= INT32_MAX),
+                             "constant type or range mismatch")
+                case MIRRead():
+                    _require(target.value_kind is not MIRValueKind.PAYLOAD_ALIAS and target_type in (BOOL, INT32)
+                             and target_type == place_type(value.source), "read type mismatch")
+                case MIRAlias():
+                    target = slots[stmt.target.root]
                     source = slots[value.source]
-                    member = MIROptionalLayout(source.type, source.value_kind, source.readonly)
-                else:
-                    member = target.optional_layout
-                _require(compatible_element(member, target.optional_layout), "optional payload type or access mismatch")
-            elif isinstance(value, MIRIsPresent):
-                _require(target_type == BOOL and slots[value.source].value_kind is MIRValueKind.OPTIONAL,
-                         "presence test needs optional source and bool destination")
-            elif isinstance(value, (MIRTupleConstruct, MIRTupleCopy)):
-                target = slots[stmt.target.root]
-                _require(not stmt.target.projections and target.value_kind is MIRValueKind.TUPLE,
-                         "tuple operation needs tuple destination")
-                if isinstance(value, MIRTupleConstruct):
-                    elements = tuple(MIRTupleElement(slots[s].type, slots[s].value_kind, slots[s].readonly)
-                                     for s in value.elements)
-                else:
-                    source = slots[value.source]
-                    _require(source.value_kind is MIRValueKind.TUPLE, "tuple copy needs tuple source")
-                    elements = source.tuple_layout.elements
-                _require(len(elements) == len(target.tuple_layout.elements)
-                         and all(compatible_element(src, dst)
-                                 for src, dst in zip(elements, target.tuple_layout.elements)),
-                         "tuple payload type or access mismatch")
-            elif isinstance(value, (MIRConstruct, MIRCopy, MIRMove)):
-                owning_blocks.add(block.id)
-                target = slots[stmt.target.root]
-                _require(target_type in records and (
-                    (not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE)
-                    or stmt.target.projections == (MIRDeref(),)), "record destination type")
-                if not stmt.target.projections:
-                    _require(stmt.target.root not in initialized_storage, "repeated storage initialization")
-                    initialized_storage.add(stmt.target.root)
-                else:
-                    _require(isinstance(value, MIRConstruct) and records[target_type].movable,
-                             "unsupported record replacement")
-                if isinstance(value, MIRConstruct):
-                    members = records[target_type].fields
-                    _require(len(value.fields) == len(members) and all(
-                        slot_type(src) == member.type for src, member in zip(value.fields, members)),
-                        "incomplete or mistyped record construction")
-                elif isinstance(value, MIRCopy):
-                    _require(records[target_type].copyable and place_type(value.source) == target_type
-                             and (value.source.projections == (MIRDeref(),)
-                                  or (not value.source.projections
-                                      and slots[value.source.root].value_kind is MIRValueKind.RECORD_STORAGE)),
-                             "record copy source or eligibility")
-                else:
-                    source = slots[value.source]
-                    _require(source.value_kind is MIRValueKind.RECORD_STORAGE
-                             and source.type == target_type and not source.readonly
-                             and records[target_type].movable and value.source != stmt.target.root,
-                             "record move source or eligibility")
-            elif isinstance(value, MIRBorrow):
-                target, source = slots[stmt.target.root], slots[value.source]
-                _require(not stmt.target.projections and target.value_kind is MIRValueKind.BORROWED_RECORD
-                         and target.kind is not MIRSlotKind.PARAMETER
-                         and source.value_kind is MIRValueKind.RECORD_STORAGE
-                         and target_type == source.type, "storage borrow type mismatch")
-                _require(not source.readonly or target.readonly, "borrow increases access")
-            elif isinstance(value, MIRConstant):
-                _require((target_type == BOOL and type(value.value) is bool)
-                         or (target_type == INT32 and type(value.value) is int
-                             and INT32_MIN <= value.value <= INT32_MAX),
-                         "constant type or range mismatch")
-            elif isinstance(value, MIRRead):
-                _require(target_type in (BOOL, INT32)
-                         and target_type == place_type(value.source), "read type mismatch")
-            elif isinstance(value, MIRAlias):
-                target = slots[stmt.target.root]
-                source = slots[value.source]
-                _require(not stmt.target.projections
-                         and target.value_kind is MIRValueKind.BORROWED_RECORD
-                         and source.value_kind is MIRValueKind.BORROWED_RECORD
-                         and target_type == source.type, "alias type mismatch")
-                _require(target.kind is not MIRSlotKind.PARAMETER, "reference parameter reseat")
-                _require(not source.readonly or target.readonly, "alias increases access")
-            elif isinstance(value, MIRCompare):
-                _require(value.op in ("==", "!=", "<", "<=", ">", ">="),
-                         "unsupported comparison")
-                _require(target_type == BOOL, "comparison result is not bool")
-                _require(slot_type(value.left) in (BOOL, INT32)
-                         and slot_type(value.left) == slot_type(value.right),
-                         "comparison operand type mismatch")
-            elif isinstance(value, MIRNot):
-                _require(target_type == BOOL and slot_type(value.operand) == BOOL,
-                         "not operand or result is not bool")
+                    _require(not stmt.target.projections
+                             and target.value_kind is MIRValueKind.BORROWED_RECORD
+                             and source.value_kind is MIRValueKind.BORROWED_RECORD
+                             and target_type == source.type, "alias type mismatch")
+                    _require(target.kind is not MIRSlotKind.PARAMETER, "reference parameter reseat")
+                    _require(not source.readonly or target.readonly, "alias increases access")
+                case MIRCompare():
+                    _require(value.op in ("==", "!=", "<", "<=", ">", ">="),
+                             "unsupported comparison")
+                    _require(target_type == BOOL, "comparison result is not bool")
+                    _require(slot_type(value.left) in (BOOL, INT32)
+                             and slot_type(value.left) == slot_type(value.right)
+                             and slots[value.left].value_kind is MIRValueKind.SCALAR
+                             and slots[value.right].value_kind is MIRValueKind.SCALAR,
+                             "comparison operand type mismatch")
+                case MIRNot():
+                    _require(target_type == BOOL and slot_type(value.operand) == BOOL
+                             and slots[value.operand].value_kind is MIRValueKind.SCALAR,
+                             "not operand or result is not bool")
         term = block.terminator
         for successor in successors(term):
             _require(successor in blocks, "invalid block target")
             pred[successor].add(block.id)
-        if isinstance(term, MIRBranch):
-            _require(slot_type(term.condition) == BOOL, "branch condition is not bool")
-        elif isinstance(term, MIRReturn):
-            if term.value is None:
-                _require(isinstance(fn.return_type, VoidType), "missing return value")
-            else:
-                _require(slot_type(term.value) == fn.return_type, "return type mismatch")
+        match term:
+            case MIRBranch():
+                _require(slot_type(term.condition) == BOOL and slots[term.condition].value_kind is MIRValueKind.SCALAR,
+                         "branch condition is not bool")
+            case MIRReturn():
+                if term.value is None:
+                    _require(isinstance(fn.return_type, VoidType), "missing return value")
+                else:
+                    _require(slot_type(term.value) == fn.return_type and slots[term.value].value_kind is MIRValueKind.SCALAR,
+                             "return type mismatch")
 
     _require(not owning_blocks.intersection(_cyclic_blocks(blocks, pred)), "owning operation in cycle")
 
@@ -397,10 +505,11 @@ def validate_function(fn: MIRFunction) -> None:
             if not stmt.target.projections:
                 assigned.add(stmt.target.root)
         term = block.terminator
-        if isinstance(term, MIRBranch):
-            _require(term.condition in assigned, "branch before definite assignment")
-        elif isinstance(term, MIRReturn) and term.value is not None:
-            _require(term.value in assigned, "return before definite assignment")
+        match term:
+            case MIRBranch():
+                _require(term.condition in assigned, "branch before definite assignment")
+            case MIRReturn() if term.value is not None:
+                _require(term.value in assigned, "return before definite assignment")
     failure = presence_error(fn)
     if failure is not None:
         raise MIRPresenceError(failure)

@@ -49,6 +49,8 @@ class MIRValueKind(Enum):
     RECORD_STORAGE = auto()
     TUPLE = auto()
     OPTIONAL = auto()
+    UNION = auto()
+    PAYLOAD_ALIAS = auto()
 
 
 @dataclass(frozen=True)
@@ -71,6 +73,11 @@ class MIROptionalLayout:
 
 
 @dataclass(frozen=True)
+class MIRUnionLayout:
+    elements: tuple[MIRTupleElement | None, ...]
+
+
+@dataclass(frozen=True)
 class MIRSlot:
     id: MIRSlotId
     type: TpyType
@@ -81,6 +88,8 @@ class MIRSlot:
     readonly: bool = False
     tuple_layout: MIRTupleLayout | None = None
     optional_layout: MIROptionalLayout | None = None
+    union_layout: MIRUnionLayout | None = None
+    alias_source: 'MIRPlace | None' = None
 
 
 @dataclass(frozen=True)
@@ -96,6 +105,11 @@ class MIRTupleIndex:
 @dataclass(frozen=True)
 class MIROptionalPayload:
     pass
+
+
+@dataclass(frozen=True)
+class MIRUnionPayload:
+    alternative: int
 
 
 @dataclass(frozen=True)
@@ -121,7 +135,7 @@ class MIRRecordLayout:
 @dataclass(frozen=True)
 class MIRPlace:
     root: MIRSlotId
-    projections: tuple[MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload, ...] = ()
+    projections: tuple[MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload | MIRUnionPayload, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -175,6 +189,28 @@ class MIRIsPresent:
 
 
 @dataclass(frozen=True)
+class MIRUnionConstruct:
+    alternative: int
+    source: MIRSlotId | None = None
+
+
+@dataclass(frozen=True)
+class MIRUnionCopy:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
+class MIRIsAlternative:
+    source: MIRSlotId
+    alternatives: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class MIRUnionExtract:
+    source: MIRPlace
+
+
+@dataclass(frozen=True)
 class MIRCopy:
     source: MIRPlace
 
@@ -198,7 +234,8 @@ class MIRNot:
 
 MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
              | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy
-             | MIROptionalConstruct | MIROptionalCopy | MIRIsPresent)
+             | MIROptionalConstruct | MIROptionalCopy | MIRIsPresent
+             | MIRUnionConstruct | MIRUnionCopy | MIRIsAlternative | MIRUnionExtract)
 
 
 @dataclass(frozen=True)

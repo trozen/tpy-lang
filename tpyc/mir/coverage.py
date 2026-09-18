@@ -3,7 +3,7 @@
 from dataclasses import MISSING, fields
 
 
-class Unsupported(Exception):
+class MIRUnsupported(Exception):
     def __init__(self, node: object, reason: str) -> None:
         self.node = node
         self.reason = reason
@@ -11,7 +11,7 @@ class Unsupported(Exception):
 
 def require(node: object, condition: bool, reason: str) -> None:
     if not condition:
-        raise Unsupported(node, reason)
+        raise MIRUnsupported(node, reason)
 
 
 def plain(node: object, allowed: set[str]) -> None:

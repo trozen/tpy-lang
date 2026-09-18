@@ -83,6 +83,34 @@ class THIROptionalRead:
 
 
 @dataclass(frozen=True)
+class THIRUnionLayout:
+    """Alternatives of the original wrapper with their selected payload forms."""
+    type: TpyType
+    elements: tuple[TpyType | THIRBorrowedRecord | None, ...]
+
+
+@dataclass(frozen=True)
+class THIRUnionTest:
+    source: str
+    layout: THIRUnionLayout
+    alternatives: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class THIRUnionExtraction:
+    source: str
+    layout: THIRUnionLayout
+    alternative: int
+
+
+@dataclass(frozen=True)
+class THIRUnionLiteral:
+    layout: THIRUnionLayout
+    alternative: int
+    value: int | bool | None
+
+
+@dataclass(frozen=True)
 class THIRAliasBinding:
     """The destination receives the source binding's current referent."""
     source: str
@@ -282,6 +310,7 @@ class THIRName(THIRExpr):
     bookkeeping."""
     name: str
     optional_read: THIROptionalRead | None = field(default=None, kw_only=True)
+    union_read: THIRUnionLayout | None = field(default=None, kw_only=True)
     is_last_use: bool = False
     is_movable: bool = False
     deref: bool = False
@@ -1588,6 +1617,7 @@ class THIRIsinstance(THIRExpr):
     slice excludes indirect / frame-slot sources."""
     variant_cpp: str
     member_cpps: tuple[str, ...]
+    union_test: THIRUnionTest | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -1643,6 +1673,7 @@ class THIRNarrowedRead(THIRExpr):
     variant_cpp: str
     member_cpp: str
     is_ptr_variant: bool
+    union_extraction: THIRUnionExtraction | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -1701,6 +1732,8 @@ class THIRVarDecl(THIRStmt):
     may depend on it."""
     name: str
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
+    union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
+    union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
@@ -1888,6 +1921,8 @@ class THIRPtrLocalDecl(THIRStmt):
     the decl pre-declares no rebind slot."""
     name: str
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
+    union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
+    union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)
     resolved_type: TpyType
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
@@ -1917,6 +1952,8 @@ class THIRPtrLocalRebind(THIRStmt):
     the union value-variant spelling (unused by the OPT_NONE kind)."""
     name: str
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
+    union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
+    union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     value: THIRExpr | None = None
@@ -1955,6 +1992,8 @@ class THIRAssign(THIRStmt):
     lvalue (a statement-expression wrap would be an rvalue)."""
     target: THIRExpr
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
+    union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
+    union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)
     value: THIRExpr
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     recv_eval: 'THIRExpr | None' = None
@@ -2167,6 +2206,7 @@ class THIRNarrowAlias(THIRStmt):
     member_cpp: str
     is_ptr_variant: bool
     const_ref: bool
+    union_extraction: THIRUnionExtraction | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -3390,6 +3430,7 @@ class THIRParam:
     type: TpyType
     borrowed_record: THIRBorrowedRecord | None = None
     optional_layout: THIROptionalLayout | None = None
+    union_layout: THIRUnionLayout | None = None
 
 
 @dataclass(frozen=True)

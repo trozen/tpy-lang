@@ -19,6 +19,59 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 
 ## Compiler bugs
 
+- **[MED small] (ill-formed C++, loud) Copying a readonly record-union parameter into a local drops pointee constness.** [`readonly-record-union-local-copy`]
+  With ordinary `Cell` and `Other` records holding `value: int32` and an
+  `__init__` that assigns it, this function passes frontend analysis:
+
+  ```python
+  def observe(current: readonly[Cell | Other], other: Cell) -> int32:
+      saved = current
+      other.value = 12
+      if isinstance(saved, Cell):
+          return saved.value
+      return 0
+  ```
+
+  Import `int32` and `readonly` from `tpy`. The parameter emits
+  `::tpy::Union<const Cell*, const Other*>`, but `saved` emits
+  `::tpy::Union<Cell*, Other*> saved = current;`, which cannot convert
+  without dropping constness. The narrowed local also selects `Cell*`.
+  Spelling the parameter `readonly[Cell] | readonly[Other]` has the same
+  failure. CPython returns 12 for `observe(cell, cell)`; directly narrowing
+  `current` without copying it also works in TPy and observes the shared
+  mutation. Preserve the selected source capability through local union
+  binding and extraction; audit inferred constness and sibling transfer
+  sites rather than adding a cast. Distinct from the call-admission gap
+  `BUGS.md#readonly-union-arg-at-inferred-const-slot`.
+  Confirmed by generated C++ and `g++ -fsyntax-only` during M2.5 design
+  probes on M2.4's merged tree (`f22952127f`). Deferred with user approval;
+  this source shape remains outside proposed M2.5 coverage. Needs `/tpy-fix-bug`.
+
+- **[MED small] (ill-formed C++, loud) Reassigning a scalar-union parameter writes through its const-reference parameter slot.** [`scalar-union-parameter-reassign-const`]
+  With `int32` imported from `tpy`:
+
+  ```python
+  def scalar(current: bool | int32) -> int32:
+      saved = current
+      current = True
+      if isinstance(saved, int32):
+          return saved
+      return 0
+  ```
+
+  The signature emits `const ::tpy::Union<bool, int32_t>& current`, then
+  the body emits `current = true;`. C++ rejects assignment through the
+  const reference. CPython's `scalar(int32(7))` returns 7: `saved` retains
+  its value while the local parameter binding changes. Copying `current`
+  into a separate local and reassigning that local works in TPy.
+  Reconcile the union parameter convention with parameter-rebinding
+  storage; simply removing const would incorrectly mutate caller storage.
+  Audit value-union parameter reassignment alongside other wrapper and
+  callable positions. Confirmed by generated C++ and `g++ -fsyntax-only`
+  during M2.5 design probes on M2.4's merged tree (`f22952127f`). Deferred
+  with user approval; parameter reseats remain outside proposed M2.5
+  coverage. Needs `/tpy-fix-bug`.
+
 - **[LOW small] (latent THIR metadata) Optional record tuple-unpack reads lose the selected readonly capability.** [`optional-tuple-unpack-readonly-fact`]
   Unpacking an Optional record from a const tuple emits `const Cell*`, but
   subsequent `THIRName.optional_read` facts describe a mutable
