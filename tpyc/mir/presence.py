@@ -155,14 +155,6 @@ def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId],
     return issues
 
 
-def presence_error(fn: MIRFunction) -> str | None:
-    """Keep the strict selection and alias-freshness rejection policy."""
-    if not any(s.value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION) for s in fn.slots):
-        return None
-    result = _analyze_presence(fn)
-    return result.issues[0].message if result.issues else None
-
-
 def _analyze_presence(fn: MIRFunction) -> MIRPresence:
     """Solve selection/freshness after structural and definite-assignment checks."""
     blocks = {b.id: b for b in fn.blocks}

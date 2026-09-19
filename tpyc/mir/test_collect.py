@@ -62,6 +62,7 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     assert "own_site" in out
     assert "retention (possible logical-object conflicts; no lifetime-safety verdict)" in out
     assert "payload ends (possible inline scalar lifetime ends; no safety verdict)" in out
+    assert "payload retention (possible conflicts at static places; no lifetime-safety verdict)" in out
     assert "branch" in out
     for name in ("Cell.read", "Other.read", "Cell.__init__", "choose"):
         assert re.search(rf"fn .*::{re.escape(name)}@[^\n]+ ->", out), out

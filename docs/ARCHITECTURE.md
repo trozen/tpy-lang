@@ -82,6 +82,18 @@ using incoming referents and post-write liveness. It exempts the deliberately
 rebound holder but retains other aliases, including aggregate payloads.
 External origins may alias. These results make no physical lifetime-end or
 general safety claim (`MIR_M3_REUSE_PLAN.md`).
+Inline scalar Optional/union writes carry initialization or assignment facts
+in the same typed `MIRAssign.storage_write` field. The existing selection
+solver supplies feasible-point tag sets for a possible payload-end inventory.
+Internal inspection combines it with incoming referents and post-write
+liveness, reporting retained payload aliases separately from strict freshness
+failures. Inspection rejects structural, definite-assignment and selection
+errors; all existing public validators/analyses still reject stale aliases.
+Same-tag scalar assignment preserves payload lifetime but does not relax that
+freshness policy. Record pointer-wrapper writes do not end the pointee.
+`--dump-mir` exposes these results only for already covered source bodies;
+general cleanup and lifetime safety remain future work
+(`MIR_M3_PAYLOAD_LIFETIME_PLAN.md`).
 Tuple construction/copy snapshots bool/int32 values and borrowed record identities;
 reseating one tuple holder leaves copies independent. THIR carries finalized
 element capture/capability layouts and normalized constant indices. Tuple field

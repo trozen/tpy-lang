@@ -2032,8 +2032,10 @@ reuse in loops and inventories positive record-write facts. M3.4 reports
 possible retained-object conflicts, including copied aggregate holders and
 acyclic in-place replacement. These are exposed with the CFG by `--dump-mir`;
 none authorizes moves, storage release or a general lifetime-safety verdict
-(`docs/MIR_M3_REUSE_PLAN.md`). The remaining MIR work
-(broader places/regions, storage-end events, provenance/effects, move lowering,
+(`docs/MIR_M3_REUSE_PLAN.md`). M3.5 adds possible inline scalar Optional/union
+payload-end events; M3.6 inspects retained payload aliases while preserving
+strict validation (`docs/MIR_M3_PAYLOAD_LIFETIME_PLAN.md`). The remaining MIR work
+(broader places/regions, general storage-end/cleanup events, provenance/effects, move lowering,
 borrow checking, opt-in safe mode, MIR-backed codegen and retirement of old
 ownership logic) is pending. `docs/MIR_ANALYSIS_PLAN.md` records the active
 analysis-first sequence and coverage gates.

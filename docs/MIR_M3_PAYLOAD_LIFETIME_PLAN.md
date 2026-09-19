@@ -1,6 +1,6 @@
 # M3.5/M3.6: inline payload lifetime events and retained aliases
 
-Status: design approved. M3.5 is implemented; M3.6 is next.
+Status: design approved. M3.5 and M3.6 are implemented.
 Continue on `mir-m3-reuse-batch`
 after M3.3/M3.4; prepare one coherent commit per step, then review the
 integrated branch for merge. This is architectural, analysis-only work.
@@ -272,3 +272,21 @@ constructor parameters remain an existing coverage gap: the covered
 constructor witness uses a scalar parameter and an annotated union local.
 Record pointer wrappers have no pointee end; mixed scalar/reference wrapper
 writes remain explicitly uncovered. No snippet snapshots or emitted C++ change.
+
+## M3.6 implementation checkpoint
+
+`inspect_payload_lifetimes` prepares structurally valid MIR and rejects all
+payload-selection failures before running shared private analysis cores.
+Freshness failures remain classified data in `MIRPayloadInspection` alongside
+the end inventory and possible conflicts. The existing public validators and
+analysis entry points still require strict validation. Composition checks
+the exact immutable function instance; missing facts remain uncovered and
+do not erase freshness issues.
+
+Tests pin positive stale-alias conflicts, same-tag and self-copy freshness
+without physical ends, snapshot and re-extraction controls, A -> B -> A,
+loops, rejected selection/definite-assignment failures and mismatched inputs.
+A bounded concrete generation trace independently checks physical end events
+and requires all concrete conflicts to appear in the conservative report.
+`--dump-mir` exposes the new report only for already covered source bodies;
+it does not bypass lowering to print rejected stale-alias bodies.

@@ -1723,7 +1723,7 @@ alongside related feature work; only the big-rock deferrals live here.
   This batch changes no source behavior or checker
   authority and does not claim a fixed count of remaining M3 increments.
   `docs/MIR_M3_PAYLOAD_LIFETIME_PLAN.md` records approved M3.5/M3.6: implemented
-  scalar Optional/union payload-end events and planned retained-alias
+  scalar Optional/union payload-end events and internal retained-alias
   inspection, preserving strict validation. Its factored matrix files the
   remaining positions/shapes/sinks: mixed/owning wrappers, parameter/field/
   container/global writes, branch/loop-first declarations, escaping uses,

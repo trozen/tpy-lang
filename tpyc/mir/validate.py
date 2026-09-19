@@ -1,6 +1,7 @@
 """Structural, typing and definite-assignment checks for MIR holders and places."""
 
 from collections import deque
+from dataclasses import dataclass
 
 from ..thir.nodes import Form
 from ..typesys import (
@@ -17,7 +18,7 @@ from .nodes import (
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
 )
-from .presence import presence_error
+from .presence import MIRPresence, _analyze_presence
 from .coverage import scalar_wrapper
 
 
@@ -27,6 +28,28 @@ class MIRValidationError(ValueError):
 
 class MIRPresenceError(MIRValidationError):
     """A payload access lacks a valid presence proof at its CFG position."""
+
+
+@dataclass(frozen=True)
+class MIRPrepared:
+    function: MIRFunction
+    presence: MIRPresence
+
+
+def _prepare_function(fn: MIRFunction) -> MIRPrepared:
+    _validate_structure(fn)
+    return MIRPrepared(fn, _analyze_presence(fn))
+
+
+def _validated_function(fn: MIRFunction) -> MIRPrepared:
+    prepared = _prepare_function(fn)
+    if prepared.presence.issues:
+        raise MIRPresenceError(prepared.presence.issues[0].message)
+    return prepared
+
+
+def validate_function(fn: MIRFunction) -> None:
+    _validated_function(fn)
 
 
 def _require(condition: bool, message: str) -> None:
@@ -105,7 +128,7 @@ def _cyclic_blocks(blocks: dict[MIRBlockId, MIRBlock],
     return cyclic
 
 
-def validate_function(fn: MIRFunction) -> None:
+def _validate_structure(fn: MIRFunction) -> None:
     _require(fn.kind in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD, MIRBodyKind.CONSTRUCTOR),
              "unsupported body kind")
     _require((fn.kind is MIRBodyKind.CONSTRUCTOR) == (fn.receiver_init is not None),
@@ -613,6 +636,3 @@ def validate_function(fn: MIRFunction) -> None:
                 _require(term.condition in assigned, "branch before definite assignment")
             case MIRReturn() if term.value is not None:
                 _require(term.value in assigned, "return before definite assignment")
-    failure = presence_error(fn)
-    if failure is not None:
-        raise MIRPresenceError(failure)

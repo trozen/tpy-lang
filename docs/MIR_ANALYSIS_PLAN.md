@@ -1799,7 +1799,8 @@ This does not declare M2 complete or authorize callable admission.
 The approved M3.5/M3.6 continuation is in
 [MIR_M3_PAYLOAD_LIFETIME_PLAN.md](MIR_M3_PAYLOAD_LIFETIME_PLAN.md): implemented
 inline scalar Optional/union payload-end events (M3.5), followed
-by internal retained-alias inspection that preserves strict validation.
+by implemented internal retained-alias inspection (M3.6) that preserves
+strict validation.
 The existing M3.3/M3.4 commits stay on the branch until this batch is ready.
 
 ## Scope matrix and remaining increments

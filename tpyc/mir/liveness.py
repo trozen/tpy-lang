@@ -9,7 +9,7 @@ from .nodes import (
     MIRAssign, MIRBlockId, MIRBranch, MIRFunction, MIRGoto, MIRReturn,
     MIRPoint, MIRSlotId, MIRTerminator,
 )
-from .validate import MIRValidationError, operands, successors, validate_function
+from .validate import MIRPrepared, MIRValidationError, _validated_function, operands, successors
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,11 @@ def _terminator_uses(term: MIRTerminator) -> frozenset[MIRSlotId]:
 
 
 def analyze_liveness(fn: MIRFunction) -> MIRLiveness:
-    validate_function(fn)
+    return _liveness(_validated_function(fn))
+
+
+def _liveness(prepared: MIRPrepared) -> MIRLiveness:
+    fn = prepared.function
     blocks = {b.id: b for b in fn.blocks}
     reachable: set[MIRBlockId] = set()
     pending = [fn.entry]

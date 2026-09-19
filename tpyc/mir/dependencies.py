@@ -16,7 +16,7 @@ from .nodes import (
     MIRSlotKind, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct,
     MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, MIRValueKind,
 )
-from .validate import MIRValidationError, successors, validate_function
+from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 
 
 @dataclass(frozen=True)
@@ -119,7 +119,11 @@ def resolve_referents(place: MIRPlace, state: MIRReferents,
 
 
 def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
-    validate_function(fn)
+    return _dependencies(_validated_function(fn), liveness)
+
+
+def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
+    fn = prepared.function
     if liveness.function is not fn:
         raise MIRValidationError("liveness belongs to a different MIR function")
     reason = _coverage(fn)

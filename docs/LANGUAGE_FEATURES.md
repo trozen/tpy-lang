@@ -8566,8 +8566,8 @@ source acceptance and C++ emission stay unchanged; cleanup and broader
 lifetime checking remain later work.
 
 M3.5 inventories possible lifetime-ending writes to inline scalar Optional/union
-payloads, visible in `--dump-mir`; M3.6's retained-alias inspection is approved
-and planned ([plan](MIR_M3_PAYLOAD_LIFETIME_PLAN.md)).
+payloads, visible in `--dump-mir`. M3.6 adds internal retained-alias inspection,
+also visible for covered source bodies ([plan](MIR_M3_PAYLOAD_LIFETIME_PLAN.md)).
 Strict MIR validation and source behavior remain unchanged; malformed or
 stale-alias witnesses are tested at the internal analysis boundary. General
 cleanup and authoritative lifetime checking remain outside this proposal.
