@@ -1791,7 +1791,8 @@ The implemented M3.1/M3.2 rules and tests are in
 inventories, not lifetime safety verdicts or authority. The approved next
 batch, M3.3/M3.4, is in [MIR_M3_REUSE_PLAN.md](MIR_M3_REUSE_PLAN.md): bounded
 backing reuse and internal possible retention conflicts. M3.3 implements the
-bounded backing reuse and positive write inventory; M3.4 remains planned.
+bounded backing reuse and positive write inventory; M3.4 adds internal
+possible retained-object conflicts using that inventory.
 General storage ends and cleanup remain later work.
 This does not declare M2 complete or authorize callable admission.
 

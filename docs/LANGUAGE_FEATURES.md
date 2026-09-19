@@ -8558,9 +8558,9 @@ M3.3 models bounded reuse of body-hoisted ordinary/Optional record backing
 and exposes positive record-write events in `--dump-mir`
 (`MIR_M3_REUSE_PLAN.md`). Only constructor-backed OWN replacement sites gain
 cyclic coverage; cyclic initial construction, copy/move and in-place writes
-remain uncovered. **Approved, planned:** M3.4 reports internal possible
+remain uncovered. M3.4 reports internal possible
 retained-object conflicts, including borrowed aggregate holders and existing
-acyclic in-place replacements. These are logical-object
+acyclic in-place replacements, also visible in `--dump-mir`. These are logical-object
 retention checks, not proof of ended physical storage. Existing warnings,
 source acceptance and C++ emission stay unchanged; cleanup and broader
 lifetime checking remain later work.

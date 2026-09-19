@@ -95,6 +95,29 @@ def _coverage(fn: MIRFunction) -> str | None:
     return "recursive inline field paths" if count != len(graph) else None
 
 
+def resolve_referents(place: MIRPlace, state: MIRReferents,
+                      slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent]:
+    """Resolve a validated place against the referents at its program point."""
+    empty: frozenset[MIRReferent] = frozenset()
+    # Payload selectors address a holder leaf; dereference follows its value.
+    leaf = MIRPlace(place.root)
+    refs = (frozenset({MIRReferent(leaf)})
+            if slots[place.root].value_kind is MIRValueKind.RECORD_STORAGE else state.get(leaf, empty))
+    for projection in place.projections:
+        match projection:
+            case MIRTupleIndex() | MIROptionalPayload() | MIRUnionPayload():
+                leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
+                refs = state.get(leaf, empty)
+            case MIRDeref():
+                pass
+            case MIRField():
+                refs = frozenset(MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
+                                 for r in refs)
+            case _:
+                raise MIRValidationError("unknown dependency projection")
+    return refs
+
+
 def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
     validate_function(fn)
     if liveness.function is not fn:
@@ -106,25 +129,6 @@ def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependenc
     leaves = {s.id: _leaves(s) for s in fn.slots}
     empty: frozenset[MIRReferent] = frozenset()
 
-    def resolve(place: MIRPlace, state: MIRReferents) -> frozenset[MIRReferent]:
-        # Payload selectors address a holder leaf; dereference follows its value.
-        leaf = MIRPlace(place.root)
-        refs = (frozenset({MIRReferent(leaf)})
-                if slots[place.root].value_kind is MIRValueKind.RECORD_STORAGE else state.get(leaf, empty))
-        for projection in place.projections:
-            match projection:
-                case MIRTupleIndex() | MIROptionalPayload() | MIRUnionPayload():
-                    leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
-                    refs = state.get(leaf, empty)
-                case MIRDeref():
-                    pass
-                case MIRField():
-                    refs = frozenset(MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
-                                     for r in refs)
-                case _:
-                    raise MIRValidationError("unknown dependency projection")
-        return refs
-
     def transfer(stmt: MIRAssign, state: dict[MIRPlace, frozenset[MIRReferent]]) -> None:
         target, value = stmt.target, stmt.value
         result: dict[MIRPlace, frozenset[MIRReferent]] = {}
@@ -132,11 +136,11 @@ def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependenc
             case MIRAlias(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRBorrow(source=source):
-                result[target] = resolve(source, state)
+                result[target] = resolve_referents(source, state, slots)
             case MIRUnionExtract(source=source):
                 result[target] = (frozenset({MIRReferent(source)})
                                   if slots[target.root].value_kind is MIRValueKind.PAYLOAD_ALIAS
-                                  else resolve(source, state))
+                                  else resolve_referents(source, state, slots))
             case MIRTupleCopy(source=source) | MIROptionalCopy(source=source) | MIRUnionCopy(source=source):
                 result = {leaf: state.get(MIRPlace(source, leaf.projections), empty) for leaf in leaves[target.root]}
             case MIRTupleConstruct(elements=elements):

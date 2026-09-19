@@ -9,7 +9,7 @@ The subsequent implemented increments are specified in
 forward reference dependencies. They do not yet provide scope-escape or
 invalidation safety verdicts; `--dump-mir` is also implemented.
 [MIR_M3_REUSE_PLAN.md](MIR_M3_REUSE_PLAN.md) records the approved next batch:
-M3.3 backing reuse is implemented; M3.4 retained-object conflicts are planned.
+M3.3 backing reuse and M3.4 internal retained-object conflicts are implemented.
 
 ## Result of the audit
 

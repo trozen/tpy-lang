@@ -1710,8 +1710,10 @@ alongside related feature work; only the big-rock deferrals live here.
   remain later M3 work; an empty dependency inventory authorizes none of them.
   `docs/MIR_M3_REUSE_PLAN.md` records the approved M3.3/M3.4 batch. M3.3
   implements positive backing-write facts and bounded ordinary/Optional
-  OWN-site reuse in loops. M3.4 remains internal possible retention conflicts
-  including acyclic IN_PLACE.
+  OWN-site reuse in loops. M3.4 implements internal possible retention
+  conflicts including acyclic IN_PLACE, borrowed aggregate holders and
+  conservative external overlap. Neither result proves physical lifetime
+  safety or authorizes a source diagnostic or move.
   Its factored scope matrix files the excluded shapes/positions/sinks:
   cyclic initial construction, copy/move and IN_PLACE; owned tuple/union
   backing; views/containers; branch/loop-first bindings; calls/captures,

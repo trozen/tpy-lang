@@ -77,8 +77,11 @@ replacements preserve referent identity. Positive MIR record-write facts
 distinguish initial construction, reusable OWN sites and in-place replacement.
 Only eligible constructor-backed OWN sites are admitted in CFG cycles;
 cyclic initial construction, copy/move and IN_PLACE remain uncovered.
-The debug dump exposes write events, without physical lifetime-end claims
-(`MIR_M3_REUSE_PLAN.md`).
+The debug dump exposes write events and possible retained-object conflicts,
+using incoming referents and post-write liveness. It exempts the deliberately
+rebound holder but retains other aliases, including aggregate payloads.
+External origins may alias. These results make no physical lifetime-end or
+general safety claim (`MIR_M3_REUSE_PLAN.md`).
 Tuple construction/copy snapshots bool/int32 values and borrowed record identities;
 reseating one tuple holder leaves copies independent. THIR carries finalized
 element capture/capability layouts and normalized constant indices. Tuple field

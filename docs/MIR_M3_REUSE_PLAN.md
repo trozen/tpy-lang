@@ -2,7 +2,7 @@
 
 Status: design approved. M3.1/M3.2 and `--dump-mir` are merged; M3.3 is
 implemented with positive record-write facts, bounded OWN-site reuse and a
-debug event inventory. M3.4 remains the second implementation step.
+debug event inventory. M3.4 implements internal possible retention conflicts.
 This is a two-commit, analysis-only batch; it does not
 complete M3 or change the authoritative provenance checker.
 
@@ -256,8 +256,15 @@ backing model to cleanup, inline unions or resumable frames.
 The implementation probes also found that a narrowed Optional-to-Optional
 capture can lack the non-extracting read required by existing MIR coverage.
 The source Optional loop test retains its initial alias while checking reuse
-of the replacement backing. M3.4 will add repeated-site Optional
+of the replacement backing. M3.4 adds repeated-site Optional
 alias-retention witnesses using internal MIR; the source coverage gap remains
 in TODO.md.
 Readonly-parameter-to-reassigned-local probes likewise retain their existing
 THIR/MIR gates; they do not justify widening this storage slice.
+
+The implemented retention pass shares M3.2's place resolver and requires the
+same immutable function instance for all analysis inputs. Its dump reports
+event, affected storage and retained holder payload, or explicit uncovered
+analysis. Exact expected conflicts and an independent concrete execution
+oracle cover bounded loops, copied payloads and pre-write last use; separate
+tests cover branch joins, external aliasing, inline fields and missing facts.

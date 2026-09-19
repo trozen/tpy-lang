@@ -2027,8 +2027,12 @@ body-scoped scalar slots and borrowed-record holders, explicit aliases/reseats,
 direct scalar field places, CFG lowering, verification and a dump; it has no normal
 compilation hook and changes no emitted code or acceptance rule.
 M3.1 adds bounded backward may-liveness; M3.2 propagates reference dependencies
-per holder payload. Both are exposed with the CFG by `--dump-mir` and neither
-authorizes moves or storage release. The remaining MIR work
+per holder payload. M3.3 models eligible ordinary/Optional OWN-site backing
+reuse in loops and inventories positive record-write facts. M3.4 reports
+possible retained-object conflicts, including copied aggregate holders and
+acyclic in-place replacement. These are exposed with the CFG by `--dump-mir`;
+none authorizes moves, storage release or a general lifetime-safety verdict
+(`docs/MIR_M3_REUSE_PLAN.md`). The remaining MIR work
 (broader places/regions, storage-end events, provenance/effects, move lowering,
 borrow checking, opt-in safe mode, MIR-backed codegen and retirement of old
 ownership logic) is pending. `docs/MIR_ANALYSIS_PLAN.md` records the active

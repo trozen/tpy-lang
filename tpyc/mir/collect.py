@@ -13,6 +13,7 @@ from .lower import lower_constructor, lower_function
 from .liveness import analyze_liveness, dump_liveness
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
 from .storage import analyze_storage, dump_storage
+from .retention import analyze_retention, dump_retention
 
 
 def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
@@ -49,8 +50,11 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
                 lines.append(dump_function(result).rstrip("\n") + "\n")
                 liveness = analyze_liveness(result)
                 lines.append(dump_liveness(liveness))
-                lines.append(dump_dependencies(analyze_dependencies(result, liveness)))
-                lines.append(dump_storage(analyze_storage(result)))
+                dependencies = analyze_dependencies(result, liveness)
+                events = analyze_storage(result)
+                lines.append(dump_dependencies(dependencies))
+                lines.append(dump_storage(events))
+                lines.append(dump_retention(analyze_retention(result, liveness, dependencies, events)))
 
     if module.top_level_stmts:
         body = identity("__tpy_init")
