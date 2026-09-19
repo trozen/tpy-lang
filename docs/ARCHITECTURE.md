@@ -71,9 +71,14 @@ MIR consumes the effective replacement verdict and retains presence checks.
 Their layouts contain only bool/int32 fields and have no custom special members; construction
 requires a complete, pure constructor definition. `MIRDefinitions` indexes and
 checks the emitted `THIRConstructor` artifacts and their logical layout/member
-facts, without reaching back into sema. OWN replacements use distinct storage;
-IN_PLACE replacements preserve referent identity. Owning operations in CFG
-cycles remain uncovered; the verifier also rejects cyclic materialization.
+facts, without reaching back into sema. Each OWN replacement site has distinct
+storage; repeated execution reuses that site's body-hoisted backing. IN_PLACE
+replacements preserve referent identity. Positive MIR record-write facts
+distinguish initial construction, reusable OWN sites and in-place replacement.
+Only eligible constructor-backed OWN sites are admitted in CFG cycles;
+cyclic initial construction, copy/move and IN_PLACE remain uncovered.
+The debug dump exposes write events, without physical lifetime-end claims
+(`MIR_M3_REUSE_PLAN.md`).
 Tuple construction/copy snapshots bool/int32 values and borrowed record identities;
 reseating one tuple holder leaves copies independent. THIR carries finalized
 element capture/capability layouts and normalized constant indices. Tuple field

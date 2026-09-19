@@ -113,7 +113,9 @@ def dump_function(fn: MIRFunction) -> str:
                     rhs = f"not %{operand.index}"
                 case _:
                     raise AssertionError("validated rvalue missing dump")
-            lines.append(f"  {_place(stmt.target)} = {rhs}{_location(stmt.loc)}")
+            fact = stmt.record_write
+            write = f" [{fact.mode.name.lower()}]" if fact is not None else ""
+            lines.append(f"  {_place(stmt.target)} = {rhs}{write}{_location(stmt.loc)}")
         term = block.terminator
         match term:
             case MIRGoto(target=target):

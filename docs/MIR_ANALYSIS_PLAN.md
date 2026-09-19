@@ -1786,9 +1786,13 @@ holder copies and None clears. Inline-slot reuse without those facts stays
 excluded. The implementation was approved on 2026-09-18.
 The audit maps all six analysis requirements and recommends designing bounded
 M3 liveness/holder propagation next, while retaining explicit M2 coverage gaps.
-The proposed M3.1/M3.2 rules and tests are in
-[MIR_M3_LIVENESS_PLAN.md](MIR_M3_LIVENESS_PLAN.md). They are approved
-and provide analysis inventories, not lifetime safety verdicts or authority.
+The implemented M3.1/M3.2 rules and tests are in
+[MIR_M3_LIVENESS_PLAN.md](MIR_M3_LIVENESS_PLAN.md). They provide analysis
+inventories, not lifetime safety verdicts or authority. The approved next
+batch, M3.3/M3.4, is in [MIR_M3_REUSE_PLAN.md](MIR_M3_REUSE_PLAN.md): bounded
+backing reuse and internal possible retention conflicts. M3.3 implements the
+bounded backing reuse and positive write inventory; M3.4 remains planned.
+General storage ends and cleanup remain later work.
 This does not declare M2 complete or authorize callable admission.
 
 ## Scope matrix and remaining increments

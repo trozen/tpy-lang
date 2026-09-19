@@ -252,11 +252,24 @@ MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
              | MIRUnionConstruct | MIRUnionCopy | MIRIsAlternative | MIRUnionExtract)
 
 
+class MIRRecordWriteMode(Enum):
+    INITIALIZE_ONCE = auto()
+    OWN_SITE = auto()
+    IN_PLACE = auto()
+
+
+@dataclass(frozen=True)
+class MIRRecordWrite:
+    mode: MIRRecordWriteMode
+    rebind_owner: MIRSlotId | None = None
+
+
 @dataclass(frozen=True)
 class MIRAssign:
     target: MIRPlace
     value: MIRRvalue
     loc: SourceLocation | None = None
+    record_write: MIRRecordWrite | None = None
 
 
 @dataclass(frozen=True)

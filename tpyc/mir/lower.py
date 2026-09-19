@@ -15,6 +15,7 @@ from .nodes import (
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRRecordWrite, MIRRecordWriteMode,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
@@ -226,7 +227,7 @@ class _Coverage:
 
     def replacement(self, stmt: th.THIRAssign, loops: int) -> None:
         _plain(stmt, {"target", "value", "rebind_storage", "slot_cpp"})
-        _require(stmt, loops == 0, "owning operation in loop")
+        _require(stmt, loops == 0 or stmt.rebind_storage is RebindStorage.OWN, "owning operation in loop")
         name = self.reference_name(stmt.target)
         _require(stmt, name not in self.parameters, "reference parameter reseat")
         _require(stmt, stmt.rebind_storage in (RebindStorage.OWN, RebindStorage.IN_PLACE),
@@ -749,7 +750,7 @@ class _Coverage:
                     _require(stmt, isinstance(member, th.THIRBorrowedRecord)
                              and stmt.rebind_storage in (RebindStorage.OWN, RebindStorage.IN_PLACE),
                              "unsupported optional replacement storage")
-                    _require(stmt, loops == 0, "owning operation in loop")
+                    _require(stmt, loops == 0 or stmt.rebind_storage is RebindStorage.OWN, "owning operation in loop")
                     _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE or not member.readonly,
                              "readonly in-place replacement")
                     _require(stmt, isinstance(stmt.value, th.THIRCtorCall), "replacement needs constructor")
@@ -932,10 +933,11 @@ class _Builder:
         self.write(dest, value, expr.loc)
         return dest
 
-    def write(self, dest: MIRSlotId | MIRPlace, value: MIRRvalue, loc: SourceLocation | None) -> None:
+    def write(self, dest: MIRSlotId | MIRPlace, value: MIRRvalue, loc: SourceLocation | None,
+              record_write: MIRRecordWrite | None = None) -> None:
         assert self.current is not None
         target = MIRPlace(dest) if isinstance(dest, MIRSlotId) else dest
-        self.current.statements.append(MIRAssign(target, value, loc))
+        self.current.statements.append(MIRAssign(target, value, loc, record_write))
 
     def place(self, expr: th.THIRExpr) -> MIRPlace:
         if isinstance(expr, (th.THIRName, th.THIRModuleVar)) and expr.global_binding is not None:
@@ -1049,9 +1051,10 @@ class _Builder:
                 assert isinstance(expr, th.THIRMove)
                 return MIRMove(self.storage[expr.value.name])
 
-    def optional_record(self, expr: th.THIRCtorCall, fact: th.THIRBorrowedRecord) -> MIRRvalue:
+    def optional_record(self, expr: th.THIRCtorCall, fact: th.THIRBorrowedRecord,
+                        mode: MIRRecordWriteMode) -> MIRRvalue:
         storage = self.slot(fact.type, storage=True, storage_duration=MIRStorageDuration.BODY)
-        self.write(storage, self.record_value(expr), expr.loc)
+        self.write(storage, self.record_value(expr), expr.loc, MIRRecordWrite(mode))
         reference = self.slot(fact.type, reference=fact)
         self.write(reference, MIRBorrow(MIRPlace(storage)), expr.loc)
         return MIROptionalConstruct(reference)
@@ -1084,7 +1087,7 @@ class _Builder:
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.optional_layout is not None:
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,
                                      optional_layout=stmt.optional_layout)
-                    value = (self.optional_record(stmt.init, stmt.owned_storage)
+                    value = (self.optional_record(stmt.init, stmt.owned_storage, MIRRecordWriteMode.INITIALIZE_ONCE)
                              if stmt.owned_storage is not None else self.optional_value(stmt.init))
                     self.write(dest, value, loc)
                     self.bindings[stmt.name] = dest
@@ -1092,16 +1095,17 @@ class _Builder:
                     name = stmt.target.name if isinstance(stmt, th.THIRAssign) else stmt.name
                     dest = self.bindings[name]
                     if isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is RebindStorage.OWN:
-                        self.write(dest, self.optional_record(stmt.value, stmt.optional_layout.payload), loc)
+                        self.write(dest, self.optional_record(stmt.value, stmt.optional_layout.payload,
+                                                             MIRRecordWriteMode.OWN_SITE), loc)
                     elif isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is RebindStorage.IN_PLACE:
                         self.write(MIRPlace(dest, (MIROptionalPayload(), MIRDeref())),
-                                   self.record_value(stmt.value), loc)
+                                   self.record_value(stmt.value), loc, MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, dest))
                     else:
                         self.write(dest, self.optional_value(stmt.value), loc)
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.owned_storage is not None:
                     fact = stmt.owned_storage
                     storage = self.slot(fact.type, storage=True, storage_duration=MIRStorageDuration.BODY)
-                    self.write(storage, self.record_value(stmt.init), loc)
+                    self.write(storage, self.record_value(stmt.init), loc, MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
                     holder = self.slot(fact.type, MIRSlotKind.LOCAL, stmt.name, fact)
                     self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
                     self.storage[stmt.name] = storage
@@ -1112,10 +1116,11 @@ class _Builder:
                     if stmt.rebind_storage is RebindStorage.OWN:
                         storage = self.slot(self.slots[holder.index].type, storage=True,
                                             storage_duration=MIRStorageDuration.BODY)
-                        self.write(storage, value, loc)
+                        self.write(storage, value, loc, MIRRecordWrite(MIRRecordWriteMode.OWN_SITE))
                         self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
                     else:
-                        self.write(MIRPlace(holder, (MIRDeref(),)), value, loc)
+                        self.write(MIRPlace(holder, (MIRDeref(),)), value, loc,
+                                   MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder))
                 case (th.THIRVarDecl() | th.THIRPtrLocalDecl() | th.THIRAssign()
                       | th.THIRPtrLocalRebind()) if stmt.alias_binding is not None or stmt.storage_borrow is not None:
                     declaration = isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl))

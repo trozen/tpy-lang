@@ -4,11 +4,12 @@ Status: M2.13 implemented and verified on 2026-09-18 after approval of the audit
 following M2.11 and M2.12 (`f56f424c7d`). Subsequent M3 work still requires its
 own design approval.
 
-The proposed next two increments are specified in
+The subsequent implemented increments are specified in
 [MIR_M3_LIVENESS_PLAN.md](MIR_M3_LIVENESS_PLAN.md): backward liveness, then
 forward reference dependencies. They do not yet provide scope-escape or
-invalidation safety verdicts; their design is approved, with `--dump-mir`
-as the preceding delivery step.
+invalidation safety verdicts; `--dump-mir` is also implemented.
+[MIR_M3_REUSE_PLAN.md](MIR_M3_REUSE_PLAN.md) records the approved next batch:
+M3.3 backing reuse is implemented; M3.4 retained-object conflicts are planned.
 
 ## Result of the audit
 

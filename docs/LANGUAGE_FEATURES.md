@@ -8554,6 +8554,17 @@ explicit, external inputs may alias, and unsupported facts remain uncovered
 (`MIR_M3_LIVENESS_PLAN.md`). No new diagnostics or change of checker authority
 is enabled; general storage-end events and lifetime checking remain planned.
 
+M3.3 models bounded reuse of body-hoisted ordinary/Optional record backing
+and exposes positive record-write events in `--dump-mir`
+(`MIR_M3_REUSE_PLAN.md`). Only constructor-backed OWN replacement sites gain
+cyclic coverage; cyclic initial construction, copy/move and in-place writes
+remain uncovered. **Approved, planned:** M3.4 reports internal possible
+retained-object conflicts, including borrowed aggregate holders and existing
+acyclic in-place replacements. These are logical-object
+retention checks, not proof of ended physical storage. Existing warnings,
+source acceptance and C++ emission stay unchanged; cleanup and broader
+lifetime checking remain later work.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

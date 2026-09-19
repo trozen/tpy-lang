@@ -15,8 +15,9 @@ from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBodyKind, MIRConstruct, MIRDeref, MIRFunction, MIRNotCovered,
-    MIROptionalConstruct, MIROptionalPayload, MIRPlace,
+    MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRecordWriteMode,
 )
+from .storage import MIRStorageEvents, analyze_storage
 from .testutil import Heap, Reference, execute
 from .validate import MIRPresenceError, MIRValidationError, validate_function
 
@@ -158,6 +159,18 @@ def test_optional_storage_identity(artifacts: Artifacts, name: str, expected: in
     # Object count and both payloads catch copies and lost aliases even if the return agrees.
     assert sorted(obj[member] for obj in heap.values()) == contents
     assert dump_function(fn) == dump_function(lower(artifacts[0][name], artifacts[1]))
+    events = analyze_storage(fn)
+    assert isinstance(events, MIRStorageEvents)
+    expected_modes = {
+        "retained": [MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.OWN_SITE],
+        "cleared": [MIRRecordWriteMode.INITIALIZE_ONCE],
+        "in_place": [MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.IN_PLACE],
+        "from_none": [MIRRecordWriteMode.OWN_SITE],
+    }
+    assert [s.record_write.mode for s in events.writes.values()] == expected_modes[name]
+    for stmt in events.writes.values():
+        if stmt.record_write.mode is MIRRecordWriteMode.IN_PLACE:
+            assert stmt.record_write.rebind_owner == stmt.target.root
 
 
 @pytest.mark.parametrize("flag", [False, True])

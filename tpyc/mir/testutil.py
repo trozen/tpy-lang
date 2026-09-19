@@ -179,9 +179,14 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     assert isinstance(reference, Reference)
                 else:
                     assert slots[stmt.target.root].value_kind is MIRValueKind.RECORD_STORAGE
-                    reference = Reference(next_identity)
-                    next_identity += 1
-                    values[stmt.target.root] = reference
+                    if stmt.target.root in values:
+                        # Validation admits repeated root writes only for reusable backing.
+                        reference = values[stmt.target.root]
+                        assert isinstance(reference, Reference)
+                    else:
+                        reference = Reference(next_identity)
+                        next_identity += 1
+                        values[stmt.target.root] = reference
                 destination = record(reference) if stmt.target.projections else None
                 if destination is not None:
                     destination.clear()

@@ -1708,6 +1708,18 @@ alongside related feature work; only the big-rock deferrals live here.
   and conservative joins are explicit. General storage-end/cleanup events,
   invalidation policy, external disjointness and escaping-reference safety
   remain later M3 work; an empty dependency inventory authorizes none of them.
+  `docs/MIR_M3_REUSE_PLAN.md` records the approved M3.3/M3.4 batch. M3.3
+  implements positive backing-write facts and bounded ordinary/Optional
+  OWN-site reuse in loops. M3.4 remains internal possible retention conflicts
+  including acyclic IN_PLACE.
+  Its factored scope matrix files the excluded shapes/positions/sinks:
+  cyclic initial construction, copy/move and IN_PLACE; owned tuple/union
+  backing; views/containers; branch/loop-first bindings; calls/captures,
+  escaping stores/returns and general regions/cleanup remain later work.
+  Initial alias/copy bindings rejected by THIR in the loop probe and narrowed
+  Optional-to-Optional captures rejected by MIR remain separate coverage gaps.
+  This batch changes no source behavior or checker
+  authority and does not claim a fixed count of remaining M3 increments.
   Direct self-to-Optional pointer initializers remain uncovered;
   self-to-union capture is tracked as `BUGS.md#self-record-union-initializer`.
   Inferred/whole-readonly auto tuple copies remain MIR-uncovered until

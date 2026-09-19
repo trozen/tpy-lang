@@ -337,5 +337,7 @@ includes the receiver address used by initialization as well as field operands.
 M3.2 requires the same immutable function instance as its liveness input;
 it cannot accidentally consume stale facts for a reused body ID. Readonly
 field targets are normalized when checking the finite inline-field graph.
-General storage-end events and lifetime checking remain the next M3 design
-checkpoint; this batch does not authorize moves, releases or new diagnostics.
+The approved next checkpoint is backing reuse and internal retained-object
+conflicts, specified in [MIR_M3_REUSE_PLAN.md](MIR_M3_REUSE_PLAN.md).
+General storage-end events and lifetime checking remain later work; this
+batch does not authorize moves, releases or new diagnostics.

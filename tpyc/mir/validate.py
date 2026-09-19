@@ -12,6 +12,7 @@ from .nodes import (
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
+    MIRRecordWrite, MIRRecordWriteMode,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
@@ -357,6 +358,25 @@ def validate_function(fn: MIRFunction) -> None:
             target_type = place_type(stmt.target, write=True)
             value = stmt.value
             target = slots[stmt.target.root]
+            fact = stmt.record_write
+            if fact is not None:
+                _require(isinstance(fact, MIRRecordWrite) and isinstance(fact.mode, MIRRecordWriteMode),
+                         "invalid record write fact")
+                _require(isinstance(value, (MIRConstruct, MIRCopy, MIRMove)), "record write on non-record operation")
+                match fact.mode:
+                    case MIRRecordWriteMode.INITIALIZE_ONCE | MIRRecordWriteMode.OWN_SITE:
+                        _require(not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE
+                                 and target.storage_duration is MIRStorageDuration.BODY and fact.rebind_owner is None,
+                                 "backing write needs private body storage")
+                        if fact.mode is MIRRecordWriteMode.OWN_SITE:
+                            _require(isinstance(value, MIRConstruct), "reusable backing needs constructor")
+                    case MIRRecordWriteMode.IN_PLACE:
+                        _require(isinstance(value, MIRConstruct) and fact.rebind_owner == stmt.target.root
+                                 and ((target.value_kind is MIRValueKind.BORROWED_RECORD
+                                       and stmt.target.projections == (MIRDeref(),))
+                                      or (target.value_kind is MIRValueKind.OPTIONAL
+                                          and stmt.target.projections == (MIROptionalPayload(), MIRDeref()))),
+                                 "invalid in-place rebind owner or target")
             if not stmt.target.projections:
                 _require(target.value_kind is not MIRValueKind.PAYLOAD_ALIAS or isinstance(value, MIRUnionExtract),
                          "payload alias requires extraction")
@@ -439,12 +459,15 @@ def validate_function(fn: MIRFunction) -> None:
                                      for src, dst in zip(elements, target.tuple_layout.elements)),
                              "tuple payload type or access mismatch")
                 case MIRConstruct() | MIRCopy() | MIRMove():
-                    owning_blocks.add(block.id)
+                    if fact is None or fact.mode is not MIRRecordWriteMode.OWN_SITE:
+                        owning_blocks.add(block.id)
                     target = slots[stmt.target.root]
                     _require(target_type in records and (
                         (not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE)
                         or stmt.target.projections in ((MIRDeref(),), (MIROptionalPayload(), MIRDeref()))),
                         "record destination type")
+                    if fact is not None and fact.mode is MIRRecordWriteMode.OWN_SITE:
+                        _require(records[target_type].movable, "reusable backing needs movable record")
                     if not stmt.target.projections:
                         _require(stmt.target.root not in initialized_storage, "repeated storage initialization")
                         initialized_storage.add(stmt.target.root)

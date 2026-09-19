@@ -58,6 +58,8 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     out = dump(SOURCE)
     assert "entry bb0" in out
     assert "owned-storage" in out
+    assert "record writes (logical replacement; no physical lifetime-end verdict)" in out
+    assert "own_site" in out
     assert "branch" in out
     for name in ("Cell.read", "Other.read", "Cell.__init__", "choose"):
         assert re.search(rf"fn .*::{re.escape(name)}@[^\n]+ ->", out), out
