@@ -7,15 +7,9 @@ from types import MappingProxyType
 
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBranch, MIRFunction, MIRGoto, MIRReturn,
-    MIRSlotId, MIRTerminator,
+    MIRPoint, MIRSlotId, MIRTerminator,
 )
 from .validate import MIRValidationError, operands, successors, validate_function
-
-
-@dataclass(frozen=True)
-class MIRPoint:
-    block: MIRBlockId
-    index: int
 
 
 @dataclass(frozen=True)

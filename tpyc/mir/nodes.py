@@ -37,6 +37,12 @@ class MIRBlockId:
     index: int
 
 
+@dataclass(frozen=True)
+class MIRPoint:
+    block: MIRBlockId
+    index: int
+
+
 class MIRSlotKind(Enum):
     PARAMETER = auto()
     GLOBAL = auto()
@@ -264,12 +270,22 @@ class MIRRecordWrite:
     rebind_owner: MIRSlotId | None = None
 
 
+class MIRPayloadWriteMode(Enum):
+    INITIALIZE = auto()
+    ASSIGN = auto()
+
+
+@dataclass(frozen=True)
+class MIRPayloadWrite:
+    mode: MIRPayloadWriteMode
+
+
 @dataclass(frozen=True)
 class MIRAssign:
     target: MIRPlace
     value: MIRRvalue
     loc: SourceLocation | None = None
-    record_write: MIRRecordWrite | None = None
+    storage_write: MIRRecordWrite | MIRPayloadWrite | None = None
 
 
 @dataclass(frozen=True)

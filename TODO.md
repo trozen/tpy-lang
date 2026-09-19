@@ -1722,6 +1722,16 @@ alongside related feature work; only the big-rock deferrals live here.
   Optional-to-Optional captures rejected by MIR remain separate coverage gaps.
   This batch changes no source behavior or checker
   authority and does not claim a fixed count of remaining M3 increments.
+  `docs/MIR_M3_PAYLOAD_LIFETIME_PLAN.md` records approved M3.5/M3.6: implemented
+  scalar Optional/union payload-end events and planned retained-alias
+  inspection, preserving strict validation. Its factored matrix files the
+  remaining positions/shapes/sinks: mixed/owning wrappers, parameter/field/
+  container/global writes, branch/loop-first declarations, escaping uses,
+  views, calls, resumable bodies and general cleanup. Scalar narrowed-branch
+  reassignment rejected by THIR and union constructor parameters remain
+  separate coverage gaps. Keep this
+  continuation stacked after M3.3/M3.4 and merge after both new steps pass
+  the integrated review/readiness gates.
   Direct self-to-Optional pointer initializers remain uncovered;
   self-to-union capture is tracked as `BUGS.md#self-record-union-initializer`.
   Inferred/whole-readonly auto tuple copies remain MIR-uncovered until

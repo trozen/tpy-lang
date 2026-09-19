@@ -8565,6 +8565,13 @@ retention checks, not proof of ended physical storage. Existing warnings,
 source acceptance and C++ emission stay unchanged; cleanup and broader
 lifetime checking remain later work.
 
+M3.5 inventories possible lifetime-ending writes to inline scalar Optional/union
+payloads, visible in `--dump-mir`; M3.6's retained-alias inspection is approved
+and planned ([plan](MIR_M3_PAYLOAD_LIFETIME_PLAN.md)).
+Strict MIR validation and source behavior remain unchanged; malformed or
+stale-alias witnesses are tested at the internal analysis boundary. General
+cleanup and authoritative lifetime checking remain outside this proposal.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

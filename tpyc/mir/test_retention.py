@@ -81,14 +81,14 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
              storage, replace(storage, id=SITE), current, reference(TEMP), holder,
              replace(holder, id=COPIED), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
     initial = MIRAssign(MIRPlace(INITIAL), MIRConstruct((N,)),
-                        record_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
+                        storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
     borrow = MIRAssign(MIRPlace(TEMP), MIRBorrow(MIRPlace(INITIAL)))
     set_current = MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(TEMP) if optional_owner else MIRAlias(TEMP))
     capture = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(CURRENT) if optional_owner else wrap)
     copy_holder = MIRAssign(MIRPlace(COPIED), copy)
     observed = MIRPlace(COPIED if copied else SAVED, path)
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(observed.root, (*path, MIRDeref(), FIELD))))
-    write = MIRAssign(MIRPlace(SITE), MIRConstruct((N,)), record_write=MIRRecordWrite(MIRRecordWriteMode.OWN_SITE))
+    write = MIRAssign(MIRPlace(SITE), MIRConstruct((N,)), storage_write=MIRRecordWrite(MIRRecordWriteMode.OWN_SITE))
     replacement = (write, replace(borrow, value=MIRBorrow(MIRPlace(SITE))), set_current)
     reads = (read,) if not safe else ()
     captures = (capture, copy_holder) if copied else (capture,)
@@ -142,7 +142,7 @@ def in_place_function(*, live_alias: bool, rhs_only: bool = False) -> MIRFunctio
     alias = MIRAssign(MIRPlace(SAVED), MIRAlias(CURRENT))
     read_alias = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD))))
     write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), MIRConstruct((OUT if rhs_only else N,)),
-                      record_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, CURRENT))
+                      storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, CURRENT))
     after = read_alias if live_alias else MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(CURRENT, (MIRDeref(), FIELD))))
     statements = (alias, *((read_alias,) if rhs_only else ()), write, after)
     return MIRFunction(B, INT32, slots, (MIRBlock(A, statements, MIRReturn(OUT)),), A, (LAYOUT,))
@@ -272,9 +272,9 @@ def test_branch_join_reports_possible_retention_without_merging_private_roots() 
     fn, _, _ = loop_function("record")
     entry = fn.blocks[0]
     initial_site = MIRAssign(MIRPlace(SITE), MIRConstruct((N,)),
-                             record_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
+                             storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
     write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), MIRConstruct((N,)),
-                      record_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, CURRENT))
+                      storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, CURRENT))
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD))))
     fn = replace(fn, blocks=(
         replace(entry, statements=(*entry.statements, initial_site), terminator=MIRBranch(FLAG, LOOP, AGAIN)),
@@ -308,7 +308,7 @@ def test_mixed_analysis_instances_are_rejected_and_uncovered_stays_uncovered() -
 def test_actual_missing_write_metadata_cannot_be_an_empty_conflict_result() -> None:
     fn = in_place_function(live_alias=True)
     fn = replace(fn, blocks=(replace(fn.blocks[0], statements=tuple(
-        replace(s, record_write=None) for s in fn.blocks[0].statements)),))
+        replace(s, storage_write=None) for s in fn.blocks[0].statements)),))
     live = analyze_liveness(fn)
     result = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn))
     assert isinstance(result, MIRNotCovered)

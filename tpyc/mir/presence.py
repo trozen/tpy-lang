@@ -1,13 +1,16 @@
 """Finite payload-selection facts and boolean implications over mutable holders."""
 
 from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from enum import Enum, auto
+from types import MappingProxyType
 
 from ..typesys import BOOL
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
-    MIRPlace, MIRRead, MIRSlotId, MIRValueKind,
+    MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIRValueKind,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
 )
 
@@ -15,6 +18,27 @@ Facts = frozenset[tuple[MIRSlotId, frozenset[int]]]
 # None means this boolean outcome is impossible, not that its facts are unknown.
 Outcomes = tuple[Facts | None, Facts | None]
 EMPTY: Facts = frozenset()
+
+
+class MIRPresenceIssueKind(Enum):
+    SELECTION = auto()
+    FRESHNESS = auto()
+
+
+@dataclass(frozen=True)
+class MIRPresenceIssue:
+    point: MIRPoint
+    kind: MIRPresenceIssueKind
+    message: str
+
+
+@dataclass(frozen=True)
+class MIRPresence:
+    function: MIRFunction
+    # Absent points are infeasible; absent slots at a point have their full domain.
+    points: Mapping[MIRPoint, Facts]
+    domains: Mapping[MIRSlotId, frozenset[int]]
+    issues: tuple[MIRPresenceIssue, ...]
 
 
 @dataclass(eq=True)
@@ -114,22 +138,33 @@ def _transfer(state: _State, stmt: MIRAssign, booleans: set[MIRSlotId],
     return _State(present, conditions, valid)
 
 
-def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId]) -> str | None:
+def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId],
+             point: MIRPoint) -> list[MIRPresenceIssue]:
+    issues = []
     if place.root in alias_slots and place.root not in state.valid_aliases:
-        return "union payload alias used after holder replacement"
+        issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.FRESHNESS,
+                                       "union payload alias used after holder replacement"))
     facts = dict(state.present)
     for projection in place.projections:
         if isinstance(projection, MIROptionalPayload) and facts.get(place.root) != frozenset({1}):
-            return "optional payload access without current presence proof"
+            issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
+                                           "optional payload access without current presence proof"))
         if isinstance(projection, MIRUnionPayload) and facts.get(place.root) != frozenset({projection.alternative}):
-            return "union payload access without current alternative proof"
-    return None
+            issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
+                                           "union payload access without current alternative proof"))
+    return issues
 
 
 def presence_error(fn: MIRFunction) -> str | None:
-    """Verify selection only; presence says nothing about a record's lifetime."""
+    """Keep the strict selection and alias-freshness rejection policy."""
     if not any(s.value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION) for s in fn.slots):
         return None
+    result = _analyze_presence(fn)
+    return result.issues[0].message if result.issues else None
+
+
+def _analyze_presence(fn: MIRFunction) -> MIRPresence:
+    """Solve selection/freshness after structural and definite-assignment checks."""
     blocks = {b.id: b for b in fn.blocks}
     booleans = {s.id for s in fn.slots if s.type == BOOL and s.value_kind is MIRValueKind.SCALAR}
     domains = {s.id: (frozenset({0, 1}) if s.value_kind is MIRValueKind.OPTIONAL
@@ -186,14 +221,17 @@ def presence_error(fn: MIRFunction) -> str | None:
                 if target not in queued:
                     queued.add(target)
                     work.append(target)
+    points: dict[MIRPoint, Facts] = {}
+    issues: list[MIRPresenceIssue] = []
     for bid, state in incoming.items():
-        for stmt in blocks[bid].statements:
+        for index, stmt in enumerate(blocks[bid].statements):
+            point = MIRPoint(bid, index)
+            points[point] = state.present
             places = [stmt.target] if stmt.target.projections else []
             if isinstance(stmt.value, (MIRRead, MIRUnionExtract, MIRBorrow)):
                 places.append(stmt.value.source)
             for place in places:
-                failure = _missing(place, state, alias_slots)
-                if failure is not None:
-                    return failure
+                issues.extend(_missing(place, state, alias_slots, point))
             state = _transfer(state, stmt, booleans, domains, aliases)
-    return None
+        points[MIRPoint(bid, len(blocks[bid].statements))] = state.present
+    return MIRPresence(fn, MappingProxyType(points), MappingProxyType(domains), tuple(issues))

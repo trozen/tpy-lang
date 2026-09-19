@@ -69,7 +69,7 @@ def test_source_reuse_has_one_physical_object_per_site(optional: bool, safe: boo
     fn = source_function(loop_source(optional, safe))
     events = analyze_storage(fn)
     assert isinstance(events, MIRStorageEvents)
-    assert [stmt.record_write.mode for stmt in events.writes.values()] == [
+    assert [stmt.storage_write.mode for stmt in events.writes.values()] == [
         *([MIRRecordWriteMode.INITIALIZE_ONCE] * (1 if optional else 2)), MIRRecordWriteMode.OWN_SITE]
     assert len({stmt.target.root for stmt in events.writes.values()}) == (2 if optional else 3)
     heap = {}
@@ -98,7 +98,7 @@ def test_distinct_replacement_sites_do_not_share_backing() -> None:
     assert len(heap) == 4
     events = analyze_storage(fn)
     assert isinstance(events, MIRStorageEvents)
-    sites = [s.target for s in events.writes.values() if s.record_write.mode is MIRRecordWriteMode.OWN_SITE]
+    sites = [s.target for s in events.writes.values() if s.storage_write.mode is MIRRecordWriteMode.OWN_SITE]
     assert len(sites) == 2 and sites[0] != sites[1]
 
 
@@ -123,7 +123,7 @@ def test_reuse_in_methods_and_constructor_tails(optional: bool, position: str) -
         assert isinstance(fn, MIRFunction), fn
     events = analyze_storage(fn)
     assert isinstance(events, MIRStorageEvents)
-    assert [s.record_write.mode for s in events.writes.values()].count(MIRRecordWriteMode.OWN_SITE) == 1
+    assert [s.storage_write.mode for s in events.writes.values()].count(MIRRecordWriteMode.OWN_SITE) == 1
 
 
 def test_readonly_holder_can_borrow_reused_mutable_backing() -> None:
@@ -147,7 +147,7 @@ def backing_function() -> MIRFunction:
     return MIRFunction(body, INT32, slots, (
         MIRBlock(a, (), MIRGoto(loop)),
         MIRBlock(loop, (
-            MIRAssign(MIRPlace(store), MIRConstruct((n,)), record_write=MIRRecordWrite(MIRRecordWriteMode.OWN_SITE)),
+            MIRAssign(MIRPlace(store), MIRConstruct((n,)), storage_write=MIRRecordWrite(MIRRecordWriteMode.OWN_SITE)),
             MIRAssign(MIRPlace(holder), MIRBorrow(MIRPlace(store))),
         ), MIRBranch(flag, loop, end)),
         MIRBlock(end, (MIRAssign(MIRPlace(result), MIRRead(MIRPlace(holder, (MIRDeref(), field)))),), MIRReturn(result)),
@@ -170,7 +170,7 @@ def test_cycles_require_positive_reuse_fact(fact: MIRRecordWrite | None, message
     fn = backing_function()
     validate_function(fn)
     with pytest.raises(MIRValidationError, match=message):
-        validate_function(rewrite_site(fn, record_write=fact))
+        validate_function(rewrite_site(fn, storage_write=fact))
 
 
 @pytest.mark.parametrize("duration", [None, MIRStorageDuration.CALLER])
@@ -197,7 +197,7 @@ def test_site_has_one_static_writer_and_no_copy_move_or_scalar_fact() -> None:
 def test_missing_fact_is_uncovered_even_when_acyclic() -> None:
     fn = backing_function()
     fn = replace(fn, blocks=(fn.blocks[0], replace(fn.blocks[1], terminator=MIRGoto(fn.blocks[2].id)), fn.blocks[2]))
-    fn = rewrite_site(fn, record_write=None)
+    fn = rewrite_site(fn, storage_write=None)
     validate_function(fn)
     result = analyze_storage(fn)
     assert isinstance(result, MIRNotCovered)
@@ -210,11 +210,11 @@ def test_in_place_owner_and_projection_must_match_exactly() -> None:
     block = fn.blocks[1]
     holder = fn.slots[2].id
     stmt = MIRAssign(MIRPlace(holder, (MIRDeref(),)), MIRConstruct((fn.slots[0].id,)),
-                     record_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder))
+                     storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(*block.statements, stmt),
                                                  terminator=MIRGoto(fn.blocks[2].id)), fn.blocks[2]))
     validate_function(fn)
-    for bad in (replace(stmt, record_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, fn.slots[1].id)),
+    for bad in (replace(stmt, storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, fn.slots[1].id)),
                 replace(stmt, target=MIRPlace(holder)),
                 replace(stmt, target=MIRPlace(holder, (MIRDeref(), fn.records[0].fields[0])))):
         with pytest.raises(MIRValidationError, match="invalid in-place"):

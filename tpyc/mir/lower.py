@@ -15,12 +15,12 @@ from .nodes import (
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
-    MIRRecordWrite, MIRRecordWriteMode,
+    MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
 )
-from .coverage import MIRUnsupported, plain as _plain, require as _require
+from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
 from .validate import MIRPresenceError, successors, validate_function
 
@@ -934,10 +934,13 @@ class _Builder:
         return dest
 
     def write(self, dest: MIRSlotId | MIRPlace, value: MIRRvalue, loc: SourceLocation | None,
-              record_write: MIRRecordWrite | None = None) -> None:
+              storage_write: MIRRecordWrite | MIRPayloadWrite | None = None) -> None:
         assert self.current is not None
         target = MIRPlace(dest) if isinstance(dest, MIRSlotId) else dest
-        self.current.statements.append(MIRAssign(target, value, loc, record_write))
+        self.current.statements.append(MIRAssign(target, value, loc, storage_write))
+
+    def payload_write(self, dest: MIRSlotId, mode: MIRPayloadWriteMode) -> MIRPayloadWrite | None:
+        return MIRPayloadWrite(mode) if scalar_wrapper(self.slots[dest.index]) else None
 
     def place(self, expr: th.THIRExpr) -> MIRPlace:
         if isinstance(expr, (th.THIRName, th.THIRModuleVar)) and expr.global_binding is not None:
@@ -1080,16 +1083,19 @@ class _Builder:
                 case th.THIRVarDecl() if stmt.union_layout is not None:
                     dest = self.slot(stmt.union_layout.type, MIRSlotKind.LOCAL, stmt.name,
                                      union_layout=stmt.union_layout, storage_duration=MIRStorageDuration.BODY)
-                    self.write(dest, self.union_value(stmt.init, stmt.union_layout, stmt.union_literal), loc)
+                    self.write(dest, self.union_value(stmt.init, stmt.union_layout, stmt.union_literal), loc,
+                               self.payload_write(dest, MIRPayloadWriteMode.INITIALIZE))
                     self.bindings[stmt.name] = dest
                 case th.THIRAssign() if stmt.union_layout is not None:
-                    self.write(self.bindings[stmt.target.name], self.union_value(stmt.value, stmt.union_layout, stmt.union_literal), loc)
+                    dest = self.bindings[stmt.target.name]
+                    self.write(dest, self.union_value(stmt.value, stmt.union_layout, stmt.union_literal), loc,
+                               self.payload_write(dest, MIRPayloadWriteMode.ASSIGN))
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.optional_layout is not None:
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,
                                      optional_layout=stmt.optional_layout)
                     value = (self.optional_record(stmt.init, stmt.owned_storage, MIRRecordWriteMode.INITIALIZE_ONCE)
                              if stmt.owned_storage is not None else self.optional_value(stmt.init))
-                    self.write(dest, value, loc)
+                    self.write(dest, value, loc, self.payload_write(dest, MIRPayloadWriteMode.INITIALIZE))
                     self.bindings[stmt.name] = dest
                 case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.optional_layout is not None:
                     name = stmt.target.name if isinstance(stmt, th.THIRAssign) else stmt.name
@@ -1101,7 +1107,8 @@ class _Builder:
                         self.write(MIRPlace(dest, (MIROptionalPayload(), MIRDeref())),
                                    self.record_value(stmt.value), loc, MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, dest))
                     else:
-                        self.write(dest, self.optional_value(stmt.value), loc)
+                        self.write(dest, self.optional_value(stmt.value), loc,
+                                   self.payload_write(dest, MIRPayloadWriteMode.ASSIGN))
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.owned_storage is not None:
                     fact = stmt.owned_storage
                     storage = self.slot(fact.type, storage=True, storage_duration=MIRStorageDuration.BODY)

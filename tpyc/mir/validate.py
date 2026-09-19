@@ -12,12 +12,13 @@ from .nodes import (
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
-    MIRRecordWrite, MIRRecordWriteMode,
+    MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
 )
 from .presence import presence_error
+from .coverage import scalar_wrapper
 
 
 class MIRValidationError(ValueError):
@@ -350,6 +351,8 @@ def validate_function(fn: MIRFunction) -> None:
     pred: dict[MIRBlockId, set[MIRBlockId]] = {b: set() for b in blocks}
     initialized_storage: set[MIRSlotId] = set()
     owning_blocks: set[MIRBlockId] = set()
+    payload_initializations: set[MIRSlotId] = set()
+    payload_init_blocks: set[MIRBlockId] = set()
     for block in fn.blocks:
         _require(block.id.body == fn.id and block.id.index >= 0,
                  "foreign or invalid block ID")
@@ -358,10 +361,19 @@ def validate_function(fn: MIRFunction) -> None:
             target_type = place_type(stmt.target, write=True)
             value = stmt.value
             target = slots[stmt.target.root]
-            fact = stmt.record_write
-            if fact is not None:
-                _require(isinstance(fact, MIRRecordWrite) and isinstance(fact.mode, MIRRecordWriteMode),
-                         "invalid record write fact")
+            fact = stmt.storage_write
+            if isinstance(fact, MIRPayloadWrite):
+                _require(isinstance(fact.mode, MIRPayloadWriteMode), "invalid payload write mode")
+                _require(not stmt.target.projections and target.kind is MIRSlotKind.LOCAL
+                         and scalar_wrapper(target)
+                         and isinstance(value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)),
+                         "payload write needs local scalar wrapper operation")
+                if fact.mode is MIRPayloadWriteMode.INITIALIZE:
+                    _require(target.id not in payload_initializations, "repeated payload initialization")
+                    payload_initializations.add(target.id)
+                    payload_init_blocks.add(block.id)
+            elif isinstance(fact, MIRRecordWrite):
+                _require(isinstance(fact.mode, MIRRecordWriteMode), "invalid record write fact")
                 _require(isinstance(value, (MIRConstruct, MIRCopy, MIRMove)), "record write on non-record operation")
                 match fact.mode:
                     case MIRRecordWriteMode.INITIALIZE_ONCE | MIRRecordWriteMode.OWN_SITE:
@@ -377,6 +389,8 @@ def validate_function(fn: MIRFunction) -> None:
                                       or (target.value_kind is MIRValueKind.OPTIONAL
                                           and stmt.target.projections == (MIROptionalPayload(), MIRDeref()))),
                                  "invalid in-place rebind owner or target")
+            else:
+                _require(fact is None, "invalid storage write fact")
             if not stmt.target.projections:
                 _require(target.value_kind is not MIRValueKind.PAYLOAD_ALIAS or isinstance(value, MIRUnionExtract),
                          "payload alias requires extraction")
@@ -548,7 +562,9 @@ def validate_function(fn: MIRFunction) -> None:
                              "return type mismatch")
                     _require(slots[term.value].kind is not MIRSlotKind.GLOBAL, "global value needs explicit read")
 
-    _require(not owning_blocks.intersection(_cyclic_blocks(blocks, pred)), "owning operation in cycle")
+    cyclic = _cyclic_blocks(blocks, pred)
+    _require(not owning_blocks.intersection(cyclic), "owning operation in cycle")
+    _require(not payload_init_blocks.intersection(cyclic), "payload initialization in cycle")
 
     reachable: set[MIRBlockId] = set()
     pending = [fn.entry]
@@ -586,7 +602,7 @@ def validate_function(fn: MIRFunction) -> None:
         block = blocks[bid]
         for stmt in block.statements:
             reads = set(operands(stmt.value))
-            if stmt.target.projections:
+            if stmt.target.projections or stmt.storage_write == MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN):
                 reads.add(stmt.target.root)
             _require(reads <= assigned, "read before definite assignment")
             if not stmt.target.projections:

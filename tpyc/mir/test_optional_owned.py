@@ -167,10 +167,10 @@ def test_optional_storage_identity(artifacts: Artifacts, name: str, expected: in
         "in_place": [MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.IN_PLACE],
         "from_none": [MIRRecordWriteMode.OWN_SITE],
     }
-    assert [s.record_write.mode for s in events.writes.values()] == expected_modes[name]
+    assert [s.storage_write.mode for s in events.writes.values()] == expected_modes[name]
     for stmt in events.writes.values():
-        if stmt.record_write.mode is MIRRecordWriteMode.IN_PLACE:
-            assert stmt.record_write.rebind_owner == stmt.target.root
+        if stmt.storage_write.mode is MIRRecordWriteMode.IN_PLACE:
+            assert stmt.storage_write.rebind_owner == stmt.target.root
 
 
 @pytest.mark.parametrize("flag", [False, True])

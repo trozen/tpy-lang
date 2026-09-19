@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 from .dump import _location, _place
 from .liveness import MIRPoint
-from .nodes import MIRAssign, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered
+from .nodes import MIRAssign, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWrite
 from .validate import successors, validate_function
 
 
@@ -31,7 +31,7 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
         for index, stmt in enumerate(block.statements):
             match stmt.value:
                 case MIRConstruct() | MIRCopy() | MIRMove():
-                    if stmt.record_write is None:
+                    if not isinstance(stmt.storage_write, MIRRecordWrite):
                         return MIRNotCovered(fn.id, "storage", "missing record write fact", stmt.loc)
                     if block.id in reached:
                         writes[MIRPoint(block.id, index)] = stmt
@@ -43,8 +43,8 @@ def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:
         return f"storage not covered: {result.reason}\n"
     lines = ["record writes (logical replacement; no physical lifetime-end verdict)"]
     for point, stmt in result.writes.items():
-        fact = stmt.record_write
-        assert fact is not None
+        fact = stmt.storage_write
+        assert isinstance(fact, MIRRecordWrite)
         owner = f" rebind-owner=%{fact.rebind_owner.index}" if fact.rebind_owner is not None else ""
         lines.append(f"  bb{point.block.index} before {point.index}: {fact.mode.name.lower()} "
                      f"{_place(stmt.target)}{owner}{_location(stmt.loc)}")

@@ -14,6 +14,7 @@ from .liveness import analyze_liveness, dump_liveness
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
 from .storage import analyze_storage, dump_storage
 from .retention import analyze_retention, dump_retention
+from .payload_lifetime import analyze_payload_ends, dump_payload_ends
 
 
 def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
@@ -55,6 +56,7 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
                 lines.append(dump_dependencies(dependencies))
                 lines.append(dump_storage(events))
                 lines.append(dump_retention(analyze_retention(result, liveness, dependencies, events)))
+                lines.append(dump_payload_ends(analyze_payload_ends(result)))
 
     if module.top_level_stmts:
         body = identity("__tpy_init")

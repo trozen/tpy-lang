@@ -164,10 +164,10 @@ def test_storage_identity_and_mutation(artifacts: Artifacts, name: str, expected
         "copied": [MIRRecordWriteMode.INITIALIZE_ONCE] * 2,
         "moved": [MIRRecordWriteMode.INITIALIZE_ONCE] * 2,
     }
-    assert [s.record_write.mode for s in events.writes.values()] == expected_modes[name]
+    assert [s.storage_write.mode for s in events.writes.values()] == expected_modes[name]
     for stmt in events.writes.values():
-        if stmt.record_write.mode is MIRRecordWriteMode.IN_PLACE:
-            assert stmt.record_write.rebind_owner == stmt.target.root
+        if stmt.storage_write.mode is MIRRecordWriteMode.IN_PLACE:
+            assert stmt.storage_write.rebind_owner == stmt.target.root
 
 
 @pytest.mark.parametrize("flag", [False, True])

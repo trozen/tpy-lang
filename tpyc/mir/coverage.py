@@ -2,6 +2,18 @@
 
 from dataclasses import MISSING, fields
 
+from .nodes import MIRSlot, MIRValueKind
+
+
+def scalar_wrapper(slot: MIRSlot) -> bool:
+    match slot.value_kind:
+        case MIRValueKind.OPTIONAL:
+            return slot.optional_layout.kind is MIRValueKind.SCALAR
+        case MIRValueKind.UNION:
+            return all(m is None or m.kind is MIRValueKind.SCALAR for m in slot.union_layout.elements)
+        case _:
+            return False
+
 
 class MIRUnsupported(Exception):
     def __init__(self, node: object, reason: str) -> None:

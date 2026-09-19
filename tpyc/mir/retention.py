@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from .dependencies import MIRDependencies, MIRReferent, resolve_referents
 from .dump import _location, _place
 from .liveness import MIRLiveness, MIRPoint
-from .nodes import MIRField, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWriteMode
+from .nodes import MIRField, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode
 from .storage import MIRStorageEvents
 from .validate import MIRValidationError, validate_function
 
@@ -60,8 +60,8 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
     slots = {slot.id: slot for slot in fn.slots}
     conflicts: list[MIRRetentionConflict] = []
     for point, stmt in events.writes.items():
-        fact = stmt.record_write
-        assert fact is not None
+        fact = stmt.storage_write
+        assert isinstance(fact, MIRRecordWrite)
         if fact.mode is MIRRecordWriteMode.INITIALIZE_ONCE:
             continue
         incoming = dependencies.referents[point]
