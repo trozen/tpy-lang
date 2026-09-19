@@ -12,6 +12,8 @@ local 201 102
 method 107 108
 field 209
 property 309
+property-value 5
+property-value-src 5
 with 101 102
 try 101 102
 match 101 2

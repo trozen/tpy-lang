@@ -1,9 +1,12 @@
-# A borrow-returning @property read off a TEMPORARY receiver: the getter hands
-# back a reference into an object destroyed at the end of the statement, so the
-# decl has no render and rejects. The METHOD spelling of the same read is a
-# conceded warn-and-emit tier (BUGS.md#readonly-borrow-of-temporary-receiver),
-# and a for-each over it still lowers unwarned, iterating the destroyed object
-# (BUGS.md#property-off-temporary-receiver-iterated). Neither is this subject.
+# A borrow-returning @property read off a TEMPORARY receiver, at a local decl.
+# The getter hands back a BORROW, and what it borrows can OUTLIVE the receiver
+# (a global, a longer-lived object) -- CPython aliases it. So the read is
+# neither ownable (a copy would lose every later mutation, silently) nor
+# bindable as a reference (it would dangle), and the decl has no render.
+# The METHOD spelling of the same read is a conceded warn-and-emit tier
+# (BUGS.md#readonly-borrow-of-temporary-receiver) and is not this subject.
+# The for-each and call-argument positions of the same read are
+# tests/cases/records/error_property_off_temporary_receiver_foreach.
 from tpy import Own, int32
 
 
@@ -23,7 +26,7 @@ def mk() -> Own[H]:
 
 
 def main() -> None:
-    p = mk().items  # tpyc: warning(/borrows from temporary receiver/) error(/decl.slot_type/)
+    p = mk().items  # tpyc: warning(/borrows from temporary receiver/) error(/local_decl.lends_from_temporary/)
     print(len(p))
 
 

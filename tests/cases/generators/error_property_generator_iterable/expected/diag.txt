@@ -1,1 +1,1 @@
-main.py:23: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.for_each:iter.user_iterator.field_access)
+main.py:29: error: in function 'main': this construct is not yet supported by C++ code generation (expr.method_call:method.fi_kind)

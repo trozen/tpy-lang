@@ -35,7 +35,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyFunction,
-    is_stable_address_lvalue,
+    is_stable_address_lvalue, is_property_getter_read, become_method_call,
     walk_body_stmts,
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
@@ -184,14 +184,9 @@ def _expr_has_error_return_call(expr: TpyExpr) -> bool:
     fi = getattr(expr, 'resolved_function_info', None)
     if fi is not None and fi.error_return_type:
         return True
-    # A property read hides its getter call outside children() (codegen emits
-    # the sema-attached property_getter_call, not the field access itself).
-    # dyn_getattr_call is the other hidden call but needs no traversal ONLY
-    # because registration bans @error_return on dyn-attr dunders; revisit
-    # here if that ban is ever relaxed.
-    getter = getattr(expr, 'property_getter_call', None)
-    if getter is not None and _expr_has_error_return_call(getter):
-        return True
+    # dyn_getattr_call is a call outside children() but needs no traversal
+    # ONLY because registration bans @error_return on dyn-attr dunders;
+    # revisit here if that ban is ever relaxed.
     for child in (expr.children() if hasattr(expr, "children") else ()):
         if _expr_has_error_return_call(child):
             return True
@@ -304,6 +299,28 @@ class ExpressionAnalyzer:
 
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
+        if is_property_getter_read(expr):
+            # A property read BECAME its getter call at the end of its own
+            # analysis, and bodies re-analyse expressions (a chained
+            # comparison's middle operand, the receiver of a write target, a
+            # lambda body under an overload dry-run). The getter is pruned
+            # from the record's method table, so re-running METHOD resolution
+            # would reject a read that already resolved.
+            # It is re-RESOLVED rather than read back: the become is
+            # permanent while a `trial_scope` rolls the type table back, so
+            # the recorded type is not there on every second pass. The probe
+            # node carries the same receiver and name the first pass saw, so
+            # the read resolves through exactly the path that typed it.
+            probe = TpyFieldAccess(obj=expr.obj, field=expr.method,
+                                   loc=expr.loc)
+            typ = self._analyze_field_access(probe)
+            # STAMP it: a trial scope rolls the table back, so returning the
+            # type without recording it leaves the read untyped for every
+            # consumer downstream of the winning candidate's re-analysis --
+            # which is what cost the lambda-under-dispatch position. The
+            # probe is a throwaway; this node is the one that lowers.
+            self.ctx.set_expr_type(expr, typ)
+            return typ
         if isinstance(expr, TpyIntLiteral):
             typ = IntLiteralType(expr.value)
         elif isinstance(expr, TpyFloatLiteral):
@@ -1735,11 +1752,7 @@ class ExpressionAnalyzer:
             # Check properties (getter access)
             prop = self.protocols.lookup_record_property(record, expr.field)
             if prop is not None:
-                expr.is_property_access = True
-                # Construct a TpyMethodCall so codegen can delegate to normal method path
-                getter_call = TpyMethodCall(obj=expr.obj, method=expr.field, args=[])
-                getter_call.resolved_function_info = prop.getter
-                expr.property_getter_call = getter_call
+                expr.resolved_property_getter = prop.getter
                 prop_type = prop.type
                 if type_subst:
                     prop_type = self.type_ops.substitute_type_params(prop_type, type_subst)
@@ -2141,6 +2154,18 @@ class ExpressionAnalyzer:
                     narrowed = self.ctx.func.narrowed_types.get(field_key)
                     if narrowed is not None:
                         result = narrowed
+                if (expr.resolved_property_getter is not None
+                        and not expr.is_write_target):
+                    # A property read IS the getter call, so it becomes one --
+                    # here, at the END of the read analysis, because everything
+                    # above still reads the node as a field access: the
+                    # deref/narrowing block and the field-path narrowing key
+                    # spell `obj.prop` off `expr.field`. From this point on
+                    # every position answers for it at its call arm, with no
+                    # property-specific code.
+                    become_method_call(
+                        expr, method=expr.field, args=[],
+                        fi=expr.resolved_property_getter)
                 return make_ref(result)
 
             deref_target = self.get_deref_target_type(

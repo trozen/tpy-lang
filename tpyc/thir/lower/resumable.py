@@ -108,6 +108,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...type_def_registry import is_borrowing_view_type, is_list
+from ...value_category import property_access_returns_cpp_ref
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.gen_generators import owned_view_frame_params
@@ -122,6 +123,7 @@ from .checks import (
     _narrow_cond_info,
     _record_rvalue_source_shape,
     _own_return_call_shape,
+    _own_return_getter_shape,
     check_polymorphic_rvalue_opt_rebind,
 )
 from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
@@ -164,7 +166,6 @@ from .predicates import (
     _optional_ptr_borrow,
     _optional_ptr_borrow_wide,
     _own_declared_call_ret,
-    _by_value_property_iterable,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
     _record_class_binding,
@@ -1005,6 +1006,7 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
     # generic factory call) flush before the source capture.
     lowered_it = _lower_expr(
         it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                       pos=SinkPos.ITER_SOURCE,
                                        allow_temps=True))
     if _for_iterable_narrowed_optional(it, declared, analyzer):
         # The begin_end skeleton owns the narrowed value-Optional unwrap
@@ -1058,6 +1060,12 @@ def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
                 and _f1_record(analyzer.get_expr_type(ctx), analyzer)):
             ok = True
             _witness("res.with_manager_field")
+        if not ok and property_access_returns_cpp_ref(analyzer, ctx):
+            # ... and its ACCESSOR spelling, the sync gate's twin: a getter
+            # that hands back a reference into its receiver's storage IS the
+            # field read, so the skeleton's `auto&` binds the same lvalue.
+            ok = True
+            _witness("res.with_manager_getter")
     else:
         ok = ((isinstance(ctx, TpyCall)
                and _f1_record(analyzer.get_expr_type(ctx), analyzer)
@@ -2288,19 +2296,6 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # async flavor renders the whole iterable once (its `__aiter__`
                 # call is skeleton).
                 begin_stmt()
-                if _by_value_property_iterable(stmt.iterable_expr, analyzer):
-                    # The sync route's `foreach.by_value_property_iter` fence,
-                    # asked here too: the frame's `__for_it_N`/`__for_end_N`
-                    # are built off the getter read and kept across every
-                    # suspension, so a by-value getter result would leave
-                    # them pointing into a destroyed temporary -- and unlike
-                    # the sync render, this one compiles. Asked before the
-                    # placeability verdict so the depth a chain happens to
-                    # have does not decide which of the two reasons the
-                    # program is told. A value-typed getter reaches this
-                    # route only: the sync one stops at its container-family
-                    # gate first.
-                    raise ThirUnsupported("res.by_value_property_iter")
                 if stmt.iter_borrow_unplaceable:
                     # Same rule as the sync for-each route, and for the async
                     # flavor too: sema could file no loan for an lvalue chain
@@ -2320,7 +2315,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                                         # the render whole -- the sync
                                         # for-head's ITERABLE use.
                                         use=_ExprUse(
-                                            result=_ExprResultUse.ITERABLE)),
+                                            result=_ExprResultUse.ITERABLE,
+                                            pos=SinkPos.ITER_SOURCE)),
                             lc))
                 else:
                     _lower_for_iter_setup(
@@ -2672,12 +2668,48 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
                     _witness(f"res.yield_{half}_field")
                     return
-                if (isinstance(yv_src, TpyCall)
-                        and isinstance(unwrap_readonly(unwrap_ref_type(
+                if (property_access_returns_cpp_ref(analyzer, yv_src)
+                        and isinstance(yv_src.obj, TpyName)
+                        and yv_src.obj.name == "self"
+                        and _f1_ref(unwrap_readonly(unwrap_ref_type(
+                            unwrap_send_sync(analyzer.get_expr_type(yv_src)))),
+                            analyzer)):
+                    # The ACCESSOR spelling of the field arm above: a getter
+                    # that hands back a reference into its receiver's storage
+                    # IS the field read, so it binds the val_or_ref slot the
+                    # same way (`return __self.val();`). `self` only, for the
+                    # frame-lifetime reason the field arm states.
+                    # The SPELLED method twin with the same return convention
+                    # stays rejected -- this ladder has no call arm at all --
+                    # which is the interim class TODO.md's "A borrow-returning
+                    # zero-arg METHOD call is a chain hop" collects: admitted
+                    # for a getter, refused for the twin, for want of a call
+                    # arm rather than a rule.
+                    yield_values[ys] = _lower_expr(
+                        yv_src, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                    _witness(f"res.yield_{half}_getter")
+                    return
+                if (isinstance(unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(yt))), OwnType)
-                        and ((_f1_record(yt_bare, analyzer)
-                              and _ctor_shape_ok(yv_src, analyzer))
-                             or _own_return_call_shape(yv_src, analyzer))):
+                        and ((isinstance(yv_src, TpyCall)
+                              and ((_f1_record(yt_bare, analyzer)
+                                    and _ctor_shape_ok(yv_src, analyzer))
+                                   or _own_return_call_shape(yv_src,
+                                                             analyzer)))
+                             # ... and the ACCESSOR spelling of the second
+                             # face (`yield self.own` at `-> Own[list[T]]`):
+                             # the getter declares the transfer just as a
+                             # spelled callee does, so the same storage
+                             # render applies. Its own predicate because the
+                             # call face is spelled for a `TpyCall` and a
+                             # read is a method call; the two collapse when
+                             # a spelled zero-arg METHOD is admitted here
+                             # (TODO.md, the chain-hop entry), which is also
+                             # why `yield self.own_m()` still rejects. The
+                             # predicate keys the `self` receiver for the
+                             # same reason -- see its docstring.
+                             or _own_return_getter_shape(yv_src))):
                     # A CTOR call at an OWN record yield slot (`yield
                     # Node(i)` at `Iterator[Own[Node]]`) or any call whose
                     # callee DECLARES the transfer (`yield copy(p)`,
@@ -2695,7 +2727,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         yv_src, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE))
                     _witness("res.yield_own_ctor"
-                             if _ctor_shape_ok(yv_src, analyzer)
+                             if (isinstance(yv_src, TpyCall)
+                                 and _ctor_shape_ok(yv_src, analyzer))
                              else "res.yield_own_rvalue")
                     return
                 if (isinstance(yv_src, TpyName)

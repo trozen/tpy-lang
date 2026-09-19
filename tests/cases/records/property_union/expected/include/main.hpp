@@ -14,7 +14,7 @@ struct Canvas;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def describe(c: Canvas) -> None:
-void describe(const Canvas& c);
+void describe(Canvas& c);
 // def main() -> None:
 void main();
 

@@ -2778,7 +2778,9 @@ c.radius = 5.0       # calls setter
 print(c.radius)      # calls getter
 ```
 
-Maps to C++ getter/setter methods, with field-access syntax desugared in codegen.
+Maps to C++ getter/setter methods. The READ is turned into its getter call by
+sema, so everything downstream sees an ordinary method call; only the write
+position stays a field access.
 
 **Why it matters**: Common Python OOP pattern for encapsulation. Without properties,
 users must use explicit `get_x()`/`set_x()` methods, which is un-Pythonic.

@@ -21,6 +21,7 @@ from ..parse import (
     TpyIntLiteral, TpyCoerce, TpyNamedExpr, TpyBoolLiteral, TpyChainedCompare,
     TpyForEach, TpyArrayLiteral, TpyTupleLiteral, TpySetLiteral,
     TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral,
+    is_property_getter_read,
 )
 from ..value_category import peel_coerce
 from .literal_utils import (
@@ -160,6 +161,9 @@ class NarrowingTracker:
                 if not record:
                     return None
                 type_subst = self.type_ops.build_type_substitution(actual_type)
+                # FIELDS only: a `@property` path is not narrowable storage
+                # (see `_expr_to_narrowing_key`), so resolving one here would
+                # file a fact no read can safely use.
                 field_info = self.protocols.lookup_record_field(record, expr.field)
                 if field_info is None:
                     return None
@@ -884,38 +888,58 @@ class NarrowingTracker:
 
     # -- Truthiness warnings -------------------------------------------
 
-    def _truthy_names(self, expr: TpyExpr) -> set[str]:
-        """Collect Optional variable/field keys used in truthiness contexts."""
-        if isinstance(expr, TpyName):
-            declared = self.declared_type_for_name(expr.name)
-            if self._is_optional_type(declared):
-                return {expr.name}
-            return set()
-        if isinstance(expr, TpyFieldAccess):
-            key = _expr_to_narrowing_key(expr)
-            if key is not None:
-                declared = self._resolve_field_path_type(key)
-                if self._is_optional_type(declared):
-                    return {key}
-            return set()
+    def _truthy_operands(self, expr: TpyExpr) -> list[TpyExpr]:
+        """The leaf expressions a truthiness context actually tests.
+
+        `not x` and the `and` / `or` arms distribute the test to their own
+        operands; everything else IS the operand, whatever its node kind.
+        """
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            return self._truthy_names(expr.operand)
+            return self._truthy_operands(expr.operand)
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-            return self._truthy_names(expr.left) | self._truthy_names(expr.right)
-        return set()
+            return (self._truthy_operands(expr.left)
+                    + self._truthy_operands(expr.right))
+        return [expr]
+
+    def _truthy_operand_type(self, operand: TpyExpr) -> TpyType | None:
+        """The type a truthiness operand is tested at.
+
+        A narrowable STORAGE spelling -- a name, a field path -- is asked at
+        its DECLARED type: the operand may already be narrowed here, and what
+        the warning is about is what the declaration admits. Nothing else has
+        a declaration to ask, so its analysed expression type is the answer.
+        """
+        key = _expr_to_narrowing_key(operand)
+        if key is not None:
+            return (self._resolve_field_path_type(key) if "." in key
+                    else self.declared_type_for_name(key))
+        return self.ctx.expr_types.get(operand)
+
+    @staticmethod
+    def _truthy_operand_spelling(operand: TpyExpr) -> str | None:
+        """How to name a warned operand back to the user -- the source
+        spelling, so an accessor read is `h.i` and not its getter call."""
+        key = _expr_to_narrowing_key(operand)
+        if key is not None:
+            return key
+        if is_property_getter_read(operand):
+            obj_key = _expr_to_narrowing_key(operand.obj)
+            if obj_key is not None:
+                return f"{obj_key}.{operand.method}"
+        return None
 
     def condition_truthy_value_optional_names(self, condition: TpyExpr) -> set[str]:
         """Get value-optionals used via truthiness in a condition."""
-        keys = self._truthy_names(condition)
         result: set[str] = set()
-        for key in keys:
-            if "." in key:
-                declared = self._resolve_field_path_type(key)
-            else:
-                declared = self.declared_type_for_name(key)
+        for operand in self._truthy_operands(condition):
+            declared = self._truthy_operand_type(operand)
             inner = unwrap_readonly(declared) if declared else None
-            if isinstance(inner, OptionalType) and inner.inner.is_value_type():
-                result.add(key)
+            if not (isinstance(inner, OptionalType)
+                    and inner.inner.is_value_type()):
+                continue
+            name = self._truthy_operand_spelling(operand)
+            if name is not None:
+                result.add(name)
         return result
 
     def warn_truthy_value_optionals(self, condition: TpyExpr) -> None:

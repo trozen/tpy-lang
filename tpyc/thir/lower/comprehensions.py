@@ -1007,7 +1007,8 @@ def _lower_array_source_comprehension(
         iterable = _lower_field_source(it, lc, declared)
     else:
         iterable = _lower_expr(
-            it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE))
+            it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                         pos=SinkPos.ITER_SOURCE))
     with _scrubbed_pointers(lc, ptr_shadow):
         element = _lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared)
@@ -1404,7 +1405,8 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
         # enclosing statement.
         iterable = _lower_expr(
             gen.iterable, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.ITERABLE, allow_temps=True))
+            use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                         pos=SinkPos.ITER_SOURCE, allow_temps=True))
     unpack_targets: tuple = ()
     unpack_cpps: tuple = ()
     if route.unpack_types is not None:
@@ -1665,7 +1667,8 @@ def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         iterable = _lower_field_source(it, lc, declared)
     else:
         iterable = _lower_expr(
-            it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE))
+            it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                         pos=SinkPos.ITER_SOURCE))
     if owned and isinstance(iterable, THIRContainerLiteral):
         # The holder's `src` must own the literal's elements: a bare
         # brace-init would deduce a std::initializer_list, a view of a

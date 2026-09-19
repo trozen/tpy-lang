@@ -1,2 +1,2 @@
-main.py:26: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
-main.py:26: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.slot_type)
+main.py:29: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:29: error: in function 'main': this construct is not yet supported by C++ code generation (expr.method_call:local_decl.lends_from_temporary)

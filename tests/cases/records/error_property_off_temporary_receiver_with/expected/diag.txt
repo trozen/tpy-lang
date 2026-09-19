@@ -1,0 +1,1 @@
+main.py:41: error: in function 'main': this construct is not yet supported by C++ code generation (expr.method_call:with_manager.lends_from_temporary)

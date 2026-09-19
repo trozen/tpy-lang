@@ -1,0 +1,3 @@
+loop_local: 2
+shared: 102
+field_twin: 2

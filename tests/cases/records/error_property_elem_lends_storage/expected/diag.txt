@@ -1,0 +1,1 @@
+main.py:41: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage)

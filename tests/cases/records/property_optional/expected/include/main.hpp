@@ -9,9 +9,12 @@ namespace tpyapp::main {
 
 struct Node;
 struct Wrapper;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def truthy(h: Holder, label: str) -> None:
+void truthy(const Holder& h, std::string_view label);
 // def main() -> None:
 void main();
 
@@ -58,6 +61,26 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
+// class Holder:
+struct Holder {
+    // _n: Optional[int32]
+    std::optional<int32_t> _n;
+
+    // def __init__(self, n: Optional[int32]) -> None:
+    Holder() = default;
+    explicit Holder(std::optional<int32_t> n);
+
+    // @property
+    // def num(self) -> Optional[int32]:
+    std::optional<int32_t> num() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
 
 // def __init__(self, v: int32) -> None:
 //     self.val = v
@@ -86,6 +109,17 @@ inline const std::optional<Node>& Wrapper::node() const {
 //     self._node = n
 inline void Wrapper::set_node(std::optional<Node>&& n) {
     this->_node = std::move(n);
+}
+
+// def __init__(self, n: Optional[int32]) -> None:
+//     self._n = n
+inline Holder::Holder(std::optional<int32_t> n) : _n(n) {}
+
+// @property
+// def num(self) -> Optional[int32]:
+//     return self._n
+inline std::optional<int32_t> Holder::num() const {
+    return this->_n;
 }
 void __tpy_init();
 } // namespace tpyapp::main

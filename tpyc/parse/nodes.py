@@ -442,9 +442,17 @@ class TpyFieldAccess(TpyExpr):
     # through a deref-view narrowing; codegen casts the deref payload pointer.
     deref_narrowed_to: TpyType | None = None
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
-    is_property_access: bool = False  # Set by sema: this is a property getter
+    # Set by sema BEFORE the target of an assignment is analysed as a read:
+    # the write position is the one place a property is not its getter, so
+    # this access keeps the field-access node kind and the setter is looked
+    # up by the field name it still carries.
+    is_write_target: bool = False
+    # Set by sema when the access resolves to a @property. A READ consumes it
+    # immediately -- the node becomes the getter call -- so an access still
+    # carrying it is a write target, and this is the fact the setter lookup
+    # and the augmented-assignment reject key on.
+    resolved_property_getter: 'FunctionInfo | None' = None
     property_setter: bool = False  # Set by sema: assignment target is a property setter
-    property_getter_call: 'TpyMethodCall | None' = None  # Set by sema: getter method call for codegen
     property_setter_call: 'TpyMethodCall | None' = None  # Set by sema: setter method call for codegen
     dyn_getattr_call: 'TpyMethodCall | None' = None  # Set by sema: __getattr__ fallback method call (D16)
     dyn_setattr_call: 'TpyMethodCall | None' = None  # Set by sema: __setattr__ fallback method call (D16)
@@ -460,24 +468,69 @@ class TpyFieldAccess(TpyExpr):
     def hidden_call(self) -> 'TpyMethodCall | None':
         """The user method this access dispatches to, if any.
 
-        A property or `__getattr__`/`__setattr__`/`__delattr__` access keeps
-        the field-access node kind but renders as a method call, so a
-        consumer reading the node kind alone sees an inert field read.
-        Anything deciding whether a render may be duplicated or reordered
-        has to ask here rather than infer from the node type.
+        A `__getattr__`/`__setattr__`/`__delattr__` access keeps the
+        field-access node kind but renders as a method call, so a consumer
+        reading the node kind alone sees an inert field read. Anything
+        deciding whether a render may be duplicated or reordered has to ask
+        here rather than infer from the node type. A property READ is not
+        one of these: it becomes a `TpyMethodCall` outright, so the node
+        kind answers for it.
 
         Covers the write slots too, though no current consumer can see an
         assignment target: this is the one enumeration, so it enumerates.
         A slot added to the node and not to this list silently un-vetoes
         whatever it feeds -- `test_hidden_call_covers_every_call_slot`
-        fails instead.
+        (`tpyc/parse/test_nodes.py`) fails instead.
         """
-        return (self.property_getter_call or self.property_setter_call
+        return (self.property_setter_call
                 or self.dyn_getattr_call or self.dyn_setattr_call
                 or self.dyn_delattr_call)
 
     def children(self) -> list[TpyExpr]:
         return [self.obj]
+
+
+def is_property_getter_read(expr: TpyExpr) -> bool:
+    """Whether `expr` is a `@property` read sema has already resolved.
+
+    A property read IS its getter call, and sema makes it one
+    (`become_method_call`), so the node kind no longer separates the two
+    spellings -- the getter's own `FunctionInfo` does. A getter is pruned
+    from the record's method table, so no user-spelled call can answer True
+    here, and the same node answering twice is a RE-analysis, not a fresh
+    one.
+    """
+    if not isinstance(expr, TpyMethodCall):
+        return False
+    fi = expr.resolved_function_info
+    return fi is not None and fi.is_property_getter
+
+
+def become_method_call(node: TpyFieldAccess, *, method: str,
+                       args: list[TpyExpr],
+                       fi: 'FunctionInfo') -> TpyMethodCall:
+    """Turn `node` INTO the method call it dispatches to, in place.
+
+    Identity is the whole argument: every fact sema recorded while analysing
+    the read is filed in an IdentityMap keyed on this object, so the type
+    stamp, the loc and the narrowing facts all survive a change of kind that
+    building a fresh node would strand. The AST dataclasses carry no
+    `__slots__`, so the swap is the ordinary Python one, and no parent slot
+    is written -- nothing walks the body.
+
+    The receiver-shape markers do NOT transfer. They were stamped for a
+    FIELD lookup on the receiver, and the accessor dispatch reaches the
+    getter through its own resolution -- a `Ptr` receiver's deref, a
+    narrowed deref view, an unproven Optional. Carrying the field's answers
+    onto the call would make the dispatch spell hops the getter render does
+    not take.
+    """
+    call = TpyMethodCall(obj=node.obj, method=method, args=args, loc=node.loc)
+    call.resolved_function_info = fi
+    node.__dict__.clear()
+    node.__dict__.update(call.__dict__)
+    node.__class__ = TpyMethodCall
+    return node  # type: ignore[return-value]
 
 
 @dataclass

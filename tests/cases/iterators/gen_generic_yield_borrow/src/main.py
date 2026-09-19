@@ -330,6 +330,14 @@ def main() -> None:
         p.x += 100
     print("property", c.v.x)
 
+    # the VALUE instantiation of the same getter yield: the slot holds the
+    # value, and `val()` is still spelled non-const, so the two instantiations
+    # of one getter agree on the receiver's const face
+    c2 = Cell(5)
+    for n in c2.prop():
+        print("property-value", n)
+    print("property-value-src", c2.v)
+
     # a yield inside a context-manager body
     ws = [Point(1), Point(2)]
     for p in in_with(ws):

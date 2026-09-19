@@ -1,1 +1,1 @@
-main.py:18: error: in function 'write_through_call': this construct is not yet supported by C++ code generation (stmt.assign:setitem.recv.call)
+main.py:25: error: in function 'write_through_call': this construct is not yet supported by C++ code generation (stmt.assign:setitem.recv.call)

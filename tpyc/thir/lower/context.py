@@ -172,6 +172,11 @@ class SinkPos(Enum):
     # `with open(path, mode) as f` -- the manager slot, sync or emplaced
     # into a resumable frame's `__with_ctx_N`.
     WITH_MANAGER = auto()
+    # `for x in <it>:` / `[x for x in <it>]` -- the ITERABLE a loop captures,
+    # one member for both routes (sync for-each and resumable frame) and for
+    # the comprehension family: what the capture must be able to hold is the
+    # same question at all of them.
+    ITER_SOURCE = auto()
 
 
 class CallArgKind(Enum):
@@ -259,6 +264,16 @@ class SinkForm(Enum):
     # by-value dispatch local (`auto __match_subject_N = <call>;`). Every
     # other consumer of a union result converts or narrows.
     UNION_SUBJECT = auto()
+    # An accessor result that LENDS storage its RECEIVER owns, where the
+    # receiver is an rvalue dying at the end of the full expression -- the
+    # render is a reference into it. Every TRANSIENT sink admits it: the
+    # read finishes before the receiver does. No sink that BINDS or HOLDS
+    # does, and neither answer a binding could give is right -- owning a
+    # copy loses the later mutations CPython makes through what was lent
+    # (it can outlive the receiver: a global, a longer-lived object), and
+    # aliasing it dangles. The row is the whole rule; there is no
+    # per-consumer subtraction.
+    DYING_SOURCE_LEND = auto()
     # A VALUE-tuple FIELD read consumed whole by a `tuple_to_str` wrap,
     # where storage and borrow form coincide and the bare member read IS
     # the render. Narrower than the BORROW_BIND result use, which also
@@ -319,7 +334,19 @@ _ONLY_FIELD_VALUE_TUPLE: frozenset[SinkForm] = frozenset(
 # `INDIRECT_READ` is the one permissive default still inherited (at 9 sites),
 # and it stays: a pointer-local NAME read derefing at an argument slot is
 # what an argument POSITION is, not a property of any slot.
+# The TRANSIENT verdict -- the consumer finishes inside the full expression,
+# so an accessor result that lends a dying receiver's storage is still alive
+# where it is read. Spelled once and OR-ed into each transient row below (and
+# into the `forms=` of the transient SITES whose sink's row is not theirs), so
+# "may this position hold a borrow of dying storage" is one name rather than a
+# property re-derived per consumer.
+_LEND_OK: frozenset[SinkForm] = frozenset({SinkForm.DYING_SOURCE_LEND})
+
 _POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
+    # NOT a sink: the row every site inherits when it names none. Binding
+    # sites are among them, so it FAILS CLOSED for the lend -- a transient
+    # read that wants it says so with `pos=`, and a site that forgets rejects
+    # loudly instead of copying borrowed storage in silence.
     SinkPos.UNSPECIFIED: _NO_FORMS,
     # Every LOCAL_DECL site derives its verdict through `_decl_slot_forms`,
     # so nothing inherits this row and an omitted `forms=` REJECTS again --
@@ -328,7 +355,7 @@ _POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
     SinkPos.LOCAL_DECL: _NO_FORMS,
     SinkPos.CALL_ARG: _ONLY_INDIRECT_READ,
     SinkPos.SETITEM_VALUE: _ONLY_TUPLE_SOURCE,
-    SinkPos.RECEIVER: _ONLY_INDIRECT_READ,
+    SinkPos.RECEIVER: _ONLY_INDIRECT_READ | _LEND_OK,
     SinkPos.TUPLE_ELEM: _ONLY_TUPLE_SOURCE,
     SinkPos.RETURN: _ONLY_INDIRECT_READ,
     SinkPos.IF_EXPR_ARM: _ONLY_INDIRECT_READ,
@@ -338,17 +365,20 @@ _POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
     SinkPos.GLOBAL_SLOT_WRITE: _ONLY_PTR_OPT_PASSTHROUGH,
     SinkPos.UNPACK_SOURCE: _ONLY_TUPLE_SOURCE,
     SinkPos.ALIAS_BIND: _ONLY_INDIRECT_READ,
-    SinkPos.OPERAND: _ONLY_LITERAL_FOLD,
+    SinkPos.OPERAND: _ONLY_LITERAL_FOLD | _LEND_OK,
     SinkPos.LAMBDA_RETURN: _ONLY_LAMBDA_BTUPLE_RET,
     SinkPos.WALRUS_TARGET: _ONLY_TUPLE_SOURCE,
     SinkPos.FRAME_SLOT_WRITE: _ONLY_TUPLE_SOURCE,
-    SinkPos.PRINT_ARG: _ONLY_PTR_OPT_PASSTHROUGH,
-    SinkPos.FSTRING_INTERP: _ONLY_FIELD_VALUE_TUPLE,
+    SinkPos.PRINT_ARG: _ONLY_PTR_OPT_PASSTHROUGH | _LEND_OK,
+    SinkPos.FSTRING_INTERP: _ONLY_FIELD_VALUE_TUPLE | _LEND_OK,
     SinkPos.MATCH_SUBJECT: _ONLY_UNION_SUBJECT,
-    SinkPos.TRUTHINESS_OPERAND: _ONLY_TRUTHY_DISCARD,
-    SinkPos.RAISE_OPERAND: _ONLY_INDIRECT_READ,
-    SinkPos.COERCE_INNER: _ONLY_INDIRECT_READ,
+    SinkPos.TRUTHINESS_OPERAND: _ONLY_TRUTHY_DISCARD | _LEND_OK,
+    SinkPos.RAISE_OPERAND: _ONLY_INDIRECT_READ | _LEND_OK,
+    SinkPos.COERCE_INNER: _ONLY_INDIRECT_READ | _LEND_OK,
     SinkPos.WITH_MANAGER: _ONLY_CTX_MANAGER,
+    # The capture outlives the setup statement, so it holds nothing that
+    # dies with it -- `_LEND_OK` is deliberately absent.
+    SinkPos.ITER_SOURCE: _NO_FORMS,
 }
 
 def _slot_lift_forms(ptr_opt_slot: bool,
@@ -453,10 +483,16 @@ def _recv_forms(opt_passthrough: bool, deref: bool) -> frozenset[SinkForm]:
     where a real member call spells `->`; a narrowed ptr-Optional name and a
     pointer-slot local read their deref the same way). The two are
     independent -- all four combinations occur -- so the position admits
-    both."""
+    both.
+
+    Every verdict carries `_LEND_OK`: a receiver is read inside the full
+    expression, so the position's own row admits an accessor result that
+    lends a dying receiver's storage whichever of the two facts holds."""
     if opt_passthrough:
-        return _PTR_OPT_AND_INDIRECT if deref else _ONLY_PTR_OPT_PASSTHROUGH
-    return _ONLY_INDIRECT_READ if deref else _NO_FORMS
+        base = _PTR_OPT_AND_INDIRECT if deref else _ONLY_PTR_OPT_PASSTHROUGH
+    else:
+        base = _ONLY_INDIRECT_READ if deref else _NO_FORMS
+    return base | _LEND_OK
 
 
 @dataclass(frozen=True, slots=True)

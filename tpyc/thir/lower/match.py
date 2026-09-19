@@ -98,6 +98,7 @@ from .context import (
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
+    _NO_FORMS,
     _Prescan,
     SinkPos,
     ValueOptKind,
@@ -1664,9 +1665,14 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         _witness("match.unreachable_tail")
     if route.subject_rvalue:
         _witness("match.scalar_rvalue_subject")
+    # `forms=_NO_FORMS` restates the MATCH_SUBJECT row rather than narrowing
+    # it: the subject is bound for the whole match, so a borrow of storage the
+    # statement kills is refused here on purpose.
     return THIRMatch(
         strategy=kind,
         subject=_lower_expr(stmt.subject, lc, declared,
+                            use=_ExprUse(pos=SinkPos.MATCH_SUBJECT,
+                                         forms=_NO_FORMS),
                             field_prechecked=isinstance(stmt.subject,
                                                         TpyFieldAccess)),
         subject_ref=not route.subject_rvalue,

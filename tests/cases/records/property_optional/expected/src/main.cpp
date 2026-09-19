@@ -4,7 +4,47 @@
 namespace tpyapp::main {
 
 
+// # truthiness over an UNNARROWED Optional getter, at the three boolean contexts
+// def truthy(h: Holder, label: str) -> None:
+//     if h.num:  # tpyc: warning(/Truthiness check on optional value/)
+//         print("truthy:", label, "if")
+//     n = 0
+//     while h.num:  # tpyc: warning(/Truthiness check on optional value/)
+//         n += 1
+//         break
+//     print("truthy:", label, "while", n)
+//     if h.num:  # tpyc: warning(/Truthiness check on optional value/)
+//         assert h.num, "engaged"  # tpyc: warning(/Truthiness check on optional value/)
+//         print("truthy:", label, "assert")
+//     # the NEGATIVE leg: `is not None` is the None-only test the warning points
+//     # at, so it must stay silent -- and it does NOT narrow the read below it,
+//     # because a getter is a call (TODO.md, "Narrowing over a pure zero-arg
+//     # getter")
+//     if h.num is not None:  # tpyc: ok
+//         print("truthy:", label, "is-not-none")
+void truthy(const Holder& h, std::string_view label) {
+    if (::tpy::is_truthy(h.num())) {
+        std::cout << "truthy:" << " " << label << " " << "if" << "\n";
+    }
+    int32_t n = 0;
+    while (::tpy::is_truthy(h.num())) {
+        n = ::tpy::add_check<int32_t>(n, 1);
+        break;
+    }
+    std::cout << "truthy:" << " " << label << " " << "while" << " " << n << "\n";
+    if (::tpy::is_truthy(h.num())) {
+        if (!(::tpy::is_truthy(h.num()))) ::tpy::raise_assertion_error("engaged");
+        std::cout << "truthy:" << " " << label << " " << "assert" << "\n";
+    }
+    if ((h.num().has_value())) {
+        std::cout << "truthy:" << " " << label << " " << "is-not-none" << "\n";
+    }
+}
+
 // def main() -> None:
+//     truthy(Holder(3), "three")
+//     truthy(Holder(0), "zero")
+//     truthy(Holder(None), "none")
 //     w = Wrapper()
 //     print(w.node is None)
 //     w.node = Node(42)
@@ -14,6 +54,12 @@ namespace tpyapp::main {
 //     w.node = None
 //     print(w.node is None)
 void main() {
+    Holder __tmp_1 = Holder(3);
+    ::tpyapp::main::truthy(__tmp_1, "three");
+    Holder __tmp_2 = Holder(0);
+    ::tpyapp::main::truthy(__tmp_2, "zero");
+    Holder __tmp_3 = Holder(std::nullopt);
+    ::tpyapp::main::truthy(__tmp_3, "none");
     Wrapper w = Wrapper();
     std::cout << ::tpy::print_bool((!w.node().has_value())) << "\n";
     w.set_node(Node(42));

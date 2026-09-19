@@ -2181,8 +2181,137 @@ class TestSinkVocabulary:
         assert set(_POS_FORMS) == set(SinkPos)
 
     def test_unspecified_admits_nothing(self):
+        """UNSPECIFIED is not a sink, it is the row every unnamed site
+        inherits -- and binding sites are among them. So it admits NO form,
+        the dying-source lend included: a transient read that wants one names
+        its sink."""
         assert _POS_FORMS[SinkPos.UNSPECIFIED] == frozenset()
         assert not any(_ExprUse().admits(f) for f in SinkForm)
+
+    def test_no_binding_sink_admits_a_dying_source_lend(self):
+        """The rule, as a table: a sink that BINDS or HOLDS its value past
+        the full expression can hold no borrow of storage that expression
+        kills. Stated here so a sink added without a considered row fails
+        rather than silently admitting one."""
+        binding = {
+            # Not a binding sink but the unnamed row, which binding sites
+            # inherit -- it fails closed with them.
+            SinkPos.UNSPECIFIED,
+            SinkPos.LOCAL_DECL, SinkPos.CALL_ARG, SinkPos.SETITEM_VALUE,
+            SinkPos.TUPLE_ELEM, SinkPos.RETURN, SinkPos.IF_EXPR_ARM,
+            SinkPos.CONTAINER_ELEM, SinkPos.FIELD_WRITE, SinkPos.MIL_INIT,
+            SinkPos.GLOBAL_SLOT_WRITE, SinkPos.UNPACK_SOURCE,
+            SinkPos.ALIAS_BIND, SinkPos.LAMBDA_RETURN,
+            SinkPos.WALRUS_TARGET, SinkPos.FRAME_SLOT_WRITE,
+            SinkPos.MATCH_SUBJECT, SinkPos.WITH_MANAGER,
+            SinkPos.ITER_SOURCE,
+        }
+        transient = set(SinkPos) - binding
+        for pos in binding:
+            assert SinkForm.DYING_SOURCE_LEND not in _POS_FORMS[pos], pos
+        for pos in transient:
+            assert SinkForm.DYING_SOURCE_LEND in _POS_FORMS[pos], pos
+
+    def test_no_forms_site_readmits_the_lend_at_a_binding_sink(self):
+        """`forms=` REPLACES a sink's row, so a site can hand itself a verdict
+        its sink refuses. The partition test above reads `_POS_FORMS` alone
+        and is blind to exactly that: two sites once spelled
+        `forms=_LEND_OK` at CALL_ARG, a binding sink, and one of them admitted
+        `reversed(mk().items)`. Both are gone -- the argument sink's verdict
+        comes from `arg_lend_ok` now -- which is why the exception below is
+        spelled as the predicate's name and not as a site's.
+
+        So this is a SOURCE scan rather than a table read: every
+        `_ExprUse(...)` / `replace(...)` group in `tpyc/thir/lower` whose
+        `forms=` can mention the lend must name a TRANSIENT sink, spelled as
+        a literal `pos=SinkPos.X` in the same group -- unless the verdict came
+        from `arg_lend_ok`, which is the one sanctioned way an argument admits
+        it (it asks the CALLEE's retention facts, not the position; see
+        `arg_lend_ok` in lower/expressions.py and
+        `BUGS.md#native-stub-declares-no-param-retention`).
+
+        "Can mention" and "spelled as a literal" are both wider than they read.
+        A `forms=` that calls a context.py helper whose body names the lend
+        (`_recv_forms`) counts, or the check would be blind to a verdict that
+        arrives one call away. And a group that hands out the lend while
+        INHERITING its `pos` from a replaced base, or naming it through a
+        variable, is an offender in itself: the sink cannot be read at the
+        site, so the verdict cannot be checked there at all. No such group
+        exists today; the rule is what keeps it that way.
+        """
+        import io
+        import pathlib
+        import re
+        import tokenize
+        lowering = pathlib.Path(__file__).resolve().parent / "lower"
+        binding = {p.name for p in SinkPos
+                   if SinkForm.DYING_SOURCE_LEND not in _POS_FORMS[p]}
+        # The names a `forms=` value may mention to mean "the argument sink's
+        # verdict, taken from the callee" -- `_lend_forms` is the local
+        # `_lower_free_call_arg` computes from `arg_lend_ok` once and hands to
+        # each of its arms.
+        VIA_PREDICATE = {"arg_lend_ok", "_lend_forms"}
+        LEND = {"_LEND_OK", "DYING_SOURCE_LEND"}
+        # ... plus any context.py helper whose own body can return the lend:
+        # `forms=_recv_forms(..)` hands it out just as `forms=_LEND_OK` does.
+        ctx_src = (lowering / "context.py").read_text()
+        for helper in re.findall(r"^def (_\w+)\(", ctx_src, re.M):
+            body = ctx_src.split(f"def {helper}(", 1)[1].split("\ndef ", 1)[0]
+            if any(name in body for name in LEND):
+                LEND.add(helper)
+        offenders = []
+        for f in sorted(lowering.glob("*.py")):
+            if f.name == "context.py":
+                continue
+            toks = [t for t in tokenize.generate_tokens(
+                io.StringIO(f.read_text()).readline)
+                    if t.type in (tokenize.NAME, tokenize.OP)]
+            for i, t in enumerate(toks):
+                if t.string not in ("_ExprUse", "replace"):
+                    continue
+                if i + 1 >= len(toks) or toks[i + 1].string != "(":
+                    continue
+                depth, j = 0, i + 1
+                group = []
+                while j < len(toks):
+                    st = toks[j].string
+                    if st in "([{":
+                        depth += 1
+                    elif st in ")]}":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    group.append((depth, toks[j]))
+                    j += 1
+                pos_name = None
+                in_forms = False
+                mentions_lend = False
+                via_pred = False
+                for k, (d, tk) in enumerate(group):
+                    if d == 1 and tk.string == "pos" and k + 3 < len(group):
+                        # pos = SinkPos . NAME
+                        pos_name = group[k + 4][1].string if (
+                            group[k + 3][1].string == ".") else None
+                    if d == 1 and tk.string == "forms":
+                        in_forms = True
+                    elif d == 1 and tk.string == ",":
+                        in_forms = False
+                    if in_forms and tk.string in LEND:
+                        mentions_lend = True
+                    if in_forms and tk.string in VIA_PREDICATE:
+                        via_pred = True
+                if mentions_lend and not via_pred:
+                    if pos_name is None:
+                        offenders.append(f"{f.name}:{toks[i].start[0]} "
+                                         f"pos not spelled at the site")
+                    elif pos_name in binding:
+                        offenders.append(f"{f.name}:{toks[i].start[0]} "
+                                         f"pos=SinkPos.{pos_name}")
+        assert not offenders, (
+            "a `forms=` site re-admits SinkForm.DYING_SOURCE_LEND at a sink "
+            "whose row refuses it, or at one it does not name; the verdict at "
+            "an argument belongs to `arg_lend_ok`, and at any other binding "
+            "sink there is no verdict to hand out: " + "; ".join(offenders))
 
     def test_every_form_is_admitted_somewhere(self):
         # A form is alive only through a PRODUCER: a `_POS_FORMS` row, or a

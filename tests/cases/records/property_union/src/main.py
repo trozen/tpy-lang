@@ -1,4 +1,9 @@
 # Property returning union of non-value types with isinstance narrowing
+# `describe` takes `Canvas&`, not `const Canvas&`: reading a borrow off an
+# accessor credits the receiver as mutated at the DECL rather than at the
+# write, so a body that only prints still pays the mutable binding -- and the
+# ptr-variant lift below follows it (`to_ptr_variant`, not the const twin).
+# TODO.md, "A borrow DECLARATION is credited as a mutation of its source".
 from tpy import int32
 
 class Circle:

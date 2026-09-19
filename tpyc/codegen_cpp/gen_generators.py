@@ -21,6 +21,7 @@ from .resumable_cfg import (ResumableShape, _stmts_have_any_suspension,
                             frame_struct_qualname, recursive_delegation_error,
                             same_module_dep_unit)
 from .protocols import protocol_param_template_name
+from ..value_category import property_access_returns_cpp_ref
 
 
 @dataclass(frozen=True)
@@ -329,8 +330,23 @@ class GeneratorCodegen:
         # elements off a const receiver, but the frame owns its result as a
         # fresh, non-const view whose element const rides inside the view's own
         # type -- so the slots naming the SOURCE type must not const-qualify it.
-        src_obj_is_const = (src_is_const
-                            and not isinstance(stmt.iterable, TpyMethodCall))
+        # ... and the exclusion is about what the call DOES, not its node
+        # kind: a view accessor MINTS a fresh view, a reference-returning one
+        # (a `@property` getter over a container field) LENDS the receiver's
+        # own container exactly as a member read does, so its slots must
+        # carry the receiver's const or `begin()` hands back a
+        # const_iterator the slot cannot hold. Only the ACCESSOR convention
+        # is asked, through the predicate that owns it: a plain method never
+        # reaches here, because `is_const_storage_source` above answers True
+        # for a call only when it is a view accessor or a getter. (A
+        # `T&`-returning plain method off a const receiver therefore gets no
+        # const carried at all; that gap is loud and filed as
+        # `BUGS.md#foreach-frame-const-not-carried-through-method`.)
+        src_obj_is_const = (
+            src_is_const
+            and not (isinstance(stmt.iterable, TpyMethodCall)
+                     and not property_access_returns_cpp_ref(
+                         self.ctx.analyzer, stmt.iterable)))
 
         # Range counter optimization
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range":
@@ -688,6 +704,16 @@ class GeneratorCodegen:
             return None
         fi = expr.resolved_function_info
         if fi is None or not fi.is_auto_readonly_mutable_clone:
+            return None
+        if fi.is_property_getter:
+            # A `@property` getter is an auto_readonly clone like any other,
+            # but its frame slot must NOT be deduced: the loop variable this
+            # slot feeds is spelled from the named element type, so deducing
+            # a `const_iterator` off a const receiver while the loop var stays
+            # `T*` is two halves of one decision disagreeing -- ill-formed
+            # C++. Keep the named type until the loop var derives its const
+            # from the same place (TODO.md,
+            # `BUGS.md#getter-source-const-not-tracked`).
             return None
         if expr.deref_depth or expr.kwargs or expr.double_star_unpack:
             return None

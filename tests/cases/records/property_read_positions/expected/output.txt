@@ -1,0 +1,19 @@
+module_level: 3 3
+constructor: 3 1 4
+comprehension: 2 3
+closure: 3
+context_manager: 3 7
+manager_is_getter: 1
+manager_is_getter owner: 1
+frame_manager: 1
+frame_manager: 1
+frame_manager owner: 1
+try_finally: 4
+error_return: 3 3
+match_subject: a 3 6
+free_fn_arg: 2
+method_arg: 2
+return_pos: 2
+container_insert: 1 1
+container_insert owner: 99
+tuple_literal: 1 2 77

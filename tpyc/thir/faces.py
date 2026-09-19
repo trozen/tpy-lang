@@ -652,9 +652,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.dyn_view_field",   # str/bytes dyn-getattr receiver: the
                                     # synthesized __getattr__ call composes
                                     # under the view family
-    # A CONTAINER-valued property receiver: the borrow-returning
-    # getter call is the receiver lvalue (`c.items().push_back(4)`).
-    "method.recv.container_property",
     # The protocol-isinstance ASSERT: the concept spelling under
     # THIRAssert's negated-if wrap (the F5 arm's assert flavor).
     "assert.protocol_concept",
@@ -2330,6 +2327,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Sync `with` faces (lowering, per item / per statement).
     "with.manager_borrowed",        # lvalue manager: `auto& __ctx_N = ...`
     "with.manager_borrowed_field",  # field-access lvalue manager: `auto& __ctx_N = <obj>.f;`
+    "with.manager_borrowed_getter",  # its accessor spelling: a getter returning a reference into the receiver
     "with.manager_owned",           # rvalue manager: `auto __ctx_N = ...`
     "with.manager_hoist",           # kept owned manager: `__slot_N.emplace(...)` + `auto& __ctx_N = (*__slot_N);`
     "with.manager_deref",           # pointer-local manager: `*(...)` deref
@@ -3067,6 +3065,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the storage member bare
     "res.yield_record_field",       # `yield self.a` at a record slot reads
                                     # the storage member bare
+    "res.yield_container_getter",   # `yield self.p` through a borrow-
+                                    # returning getter, the container twin of
+                                    # the field arm
+    "res.yield_record_getter",      # ... and its record twin
     "res.yield_record_ternary",     # ternary of frame-slot records hands out
                                     # the branch-picked deref borrow
     "res.yield_own_ctor",           # ctor call at an OWN record yield slot:
@@ -3146,6 +3148,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.with_region",              # body routed with a with region (R6)
     "res.with_ctx",                 # with-region manager expression render
     "res.with_manager_field",       # borrowed manager read off a field
+    "res.with_manager_getter",      # its accessor spelling (a reference-returning getter)
     "genexpr.narrowed_capture",     # genexpr captures a narrowing alias
     "res.btuple_yield_borrow_call", # yield of a borrow-form tuple CALL
     "res.finally_helper",           # helper-based finally body routed (R6)

@@ -19,10 +19,11 @@ from __future__ import annotations
 from enum import Enum, auto
 
 from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyName, TpyNoneLiteral,
-                           TpySubscript)
+                           TpySubscript, is_property_getter_read)
 from ..typesys import (
     OptionalType, OwnType, TpyType, TupleType, UnionType,
-    is_ptr_variant_union, unwrap_qualifiers, unwrap_readonly,
+    is_ptr_variant_union, property_getter_returns_storage_ref,
+    unwrap_qualifiers, unwrap_readonly,
 )
 from ..value_category import call_returns_cpp_ref, is_rvalue_source
 
@@ -96,12 +97,26 @@ def reads_storage_form_optional(analyzer, expr: TpyExpr) -> bool:
     """The analyzer-pure core of `CodeGenContext.is_storage_form_optional_source`
     for field / subscript sources: a read rendering as a storage-form
     `std::optional<T>` lvalue, so a borrow consumer must lift it via
-    `optional_to_ptr`. The `TpyName`/`STORAGE_OPTIONAL`-local case stays on the
+    `optional_to_ptr`.
+
+    The GETTER arm answers for the ptr-variant UNION too, which the name
+    does not say: both are `property_getter_returns_storage_ref` shapes --
+    the FIELD's storage handed back by reference where a plain method
+    returns the borrow form -- and every consumer of this predicate wants
+    the same lift for either. Renaming it would touch 20 call sites for a
+    word; the fact is stated here instead. The `TpyName`/`STORAGE_OPTIONAL`-local case stays on the
     ctx method -- it needs the walk-built local-form sets, not just the analyzer.
     """
     if isinstance(expr, TpyFieldAccess):
         vt = _expr_type(analyzer, expr)
         return isinstance(vt, OptionalType) and vt.uses_pointer_repr()
+    if is_property_getter_read(expr):
+        # A @property read is a getter CALL, but its return convention is
+        # the FIELD's: a pointer-repr Optional comes back as
+        # `std::optional<T>&`, not as the `T*` a plain method returns, so
+        # the borrow consumer still has to lift it.
+        return property_getter_returns_storage_ref(
+            expr.resolved_function_info.return_type)
     if isinstance(expr, TpySubscript):
         vt = _expr_type(analyzer, expr)
         if not (isinstance(vt, OptionalType) and vt.uses_pointer_repr()):

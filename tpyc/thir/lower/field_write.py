@@ -62,7 +62,8 @@ from ..nodes import (
     THIRMove,
     THIRName,
 )
-from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
+from .context import (
+    _NO_FORMS, _ExprResultUse, _ExprUse, _LowerCtx,
                       _ONLY_TUPLE_SOURCE, _slot_lift_forms, SinkPos)
 from .checks import (
     _borrow_tuple_local_type,
@@ -422,13 +423,20 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan, lc: _LowerCtx,
                        declared: dict[str, TpyType], loc) -> THIRAssign:
     # Each render keeps its arm's target-vs-value evaluation order: temp
     # numbering follows lowering order, so swapping them moves `__tmp_N`s.
+    # The `forms=_NO_FORMS` beside each `pos=SinkPos.FIELD_WRITE` below is
+    # the position's OWN row restated, not a narrowing of it: a field write
+    # keeps the value past the statement, so the dying-source lend is refused
+    # here on purpose, and restating it is what makes the site readable
+    # beside the arms that DO hand out a verdict.
     if plan.render is _ValueRender.STR:
         _witness("field_write.str")
-        return THIRAssign(target=_lower_field_write_target(stmt, lc, declared),
-                          value=_lower_expr(stmt.value, lc, declared), loc=loc)
+        return THIRAssign(
+            target=_lower_field_write_target(stmt, lc, declared),
+            value=_lower_expr(stmt.value, lc, declared,
+                              use=_ExprUse(pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS)), loc=loc)
     if plan.render is _ValueRender.BYTES:
         _witness("field_write.bytes")
-        bval = _lower_expr(stmt.value, lc, declared)
+        bval = _lower_expr(stmt.value, lc, declared, use=_ExprUse(pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS))
         if bval.form is Form.BORROW:
             bval = THIRFormConvert(result_type=plan.bytes_ft, value=bval,
                                    form=Form.STORAGE, move=False, loc=loc)
@@ -587,7 +595,7 @@ def _lower_container_literal_value(stmt: TpyAssign, plan: _RefFieldPlan,
         _witness("field_write.opt_container_lit")
         return value
     _witness("field_write.container_lit")
-    return _lower_expr(stmt.value, lc, declared)
+    return _lower_expr(stmt.value, lc, declared, use=_ExprUse(pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS))
 
 
 def _lower_container_comp_value(stmt: TpyAssign, slot: 'TpyType | None',
@@ -694,14 +702,15 @@ def _lower_ref_field(stmt: TpyAssign, plan: _RefFieldPlan,
                          else "field_write.container_method_call")
                 value = _lower_expr(
                     stmt.value, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.STORAGE))
+                    use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                 pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS))
             return THIRAssign(
                 target=_lower_field_write_target(stmt, lc, declared),
                 value=value, loc=loc)
     if isinstance(stmt.value, TpyName):
         _witness("field_write.record_name" if plain
                  else "field_write.optrec_name")
-        lowered = _lower_expr(stmt.value, lc, declared)
+        lowered = _lower_expr(stmt.value, lc, declared, use=_ExprUse(pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS))
         if plain:
             # A pointer-local source reads through the deref
             # (`this->result = (*saved);` -- an indirect name derefs at a

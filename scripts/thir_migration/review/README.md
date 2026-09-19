@@ -46,6 +46,20 @@ Scripts (run from the repo root with `uv run python`):
   down as gates move onto the reference-type axis; `resolve_pending_container`
   and the literal-construction sites are the two that legitimately stay, so a
   drop there is a regression, not progress. `--json` for a diffable dump.
+- `property_position_sweep.py` -- **the property x position verdict ratchet.**
+  Generates one program per (position x getter flavour x receiver kind), for
+  the accessor spelling and for its spelled-METHOD twin, compiles each, and
+  records a `[verdict, first warning]` pair per cell in
+  `property_position_sweep.expected.json` beside it. The claim it guards is a
+  MATRIX one -- a `@property` read is a method call from sema on, so every
+  position answers for it the way it answers for the twin, except where a
+  stated rule says otherwise -- and no case can state it. `--update` rewrites
+  the table, `--exec` additionally builds and runs every admitted cell
+  (reviewer-only, needs a toolchain). The committed table is gated by
+  `tests/test_property_position_sweep.py`, one test per cell, in the
+  full-suite tier: a future verdict or warning move is a diff there rather
+  than a review discovery. The table does NOT certify behaviour -- the cells
+  read and print, so copy-vs-alias stays the corpus cases' job.
 - `probe_fallback.py`, `probe_site.py`, `probe_programs.py` -- **RETIRED.**
   Each emitted one program through both codegen paths and compared the
   outcomes, so all three stopped working when the AST body emitters were

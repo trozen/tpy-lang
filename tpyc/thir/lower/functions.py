@@ -183,6 +183,7 @@ from .predicates import (
 )
 from .context import (
     _LowerCtx,
+    _NO_FORMS,
     _ONLY_BTUPLE_SLOT,
     _ONLY_RECORD_PRVALUE,
     SinkPos,
@@ -215,6 +216,11 @@ from .expressions import (
 from .statements import (
     _lower_stmts,
 )
+
+# A member-init list writes a FIELD, which outlives every statement in the
+# constructor -- the MIL_INIT row, not the unnamed default a bare
+# `_lower_expr` would inherit.
+_MIL_USE = _ExprUse(pos=SinkPos.MIL_INIT, forms=_NO_FORMS)
 
 def _overload_reject_detail(func: TpyFunction, stubs, *,
                             allow_arity: bool = False,
@@ -2558,7 +2564,7 @@ def _lower_ctor_mil_init(
                                 value=_lower_expr(source.expr, lc, declared),
                                 form=Form.STORAGE, move=False, loc=loc)
         else:
-            v = _lower_expr(source, lc, declared)
+            v = _lower_expr(source, lc, declared, use=_MIL_USE)
             # A view (span) source into the owned vector field copies to
             # owned -- vector has no span ctor; owned sources (literal /
             # `bytes()` rvalue) land bare.
@@ -2571,7 +2577,7 @@ def _lower_ctor_mil_init(
         # string_view ctor fires in the MIL direct-init (no wrap is added
         # there); a sema `strview_to_str` coerce materializes itself.
         _witness("mil.str_field")
-        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
+        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared, use=_MIL_USE))
     pu = _eligible_ptr_union(ftype, analyzer)
     if pu is not None:
         # F4 U2 cells: monostate `None`; a borrow ptr-variant name lifting via
@@ -2584,11 +2590,11 @@ def _lower_ctor_mil_init(
                                       form=Form.STORAGE, loc=loc)
         elif isinstance(source, TpyName):
             _witness("mil.union_lift")
-            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared),
+            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared, use=_MIL_USE),
                                 form=Form.STORAGE, move=False, loc=loc)
         else:
             _witness("mil.union_rvalue")
-            v = _lower_expr(source, lc, declared)
+            v = _lower_expr(source, lc, declared, use=_MIL_USE)
         return THIRMilInit(field_cpp=field_cpp, value=v)
     vu = _eligible_value_union(ftype)
     if vu is not None:
@@ -2606,7 +2612,7 @@ def _lower_ctor_mil_init(
                                value=THIRLiteral(result_type=vu, value=None,
                                                  form=Form.STORAGE, loc=loc))
         _witness("mil.value_union")
-        v = _lower_expr(source, lc, declared)
+        v = _lower_expr(source, lc, declared, use=_MIL_USE)
         if isinstance(v, THIRLiteral) and isinstance(v.value, (int, float)):
             v = replace(v, result_type=vu)
         return THIRMilInit(field_cpp=field_cpp, value=v)
@@ -2724,7 +2730,7 @@ def _lower_ctor_mil_init(
                 ) from None
             return THIRMilInit(field_cpp=field_cpp, value=value)
         _witness("mil.value_tuple_name")
-        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
+        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared, use=_MIL_USE))
     nt = _nested_storage_tuple(ftype, analyzer)
     if nt is not None and isinstance(source, TpyTupleLiteral):
         # The nested-storage tuple literal: the bare spelled brace-init,
@@ -2761,7 +2767,7 @@ def _lower_ctor_mil_init(
             # `s("xy")` -- the bare str literal at a value-repr Optional[str]
             # slot; C++'s `const char*` -> `optional<string>` chain absorbs it.
             _witness("mil.optional_str_literal")
-            v = _lower_expr(source, lc, declared)
+            v = _lower_expr(source, lc, declared, use=_MIL_USE)
         elif not ftype.uses_pointer_repr() and _value_opt_view(
                 ftype, analyzer) is not None:
             # A value-repr Optional[str/bytes] field <- a borrow
@@ -2782,20 +2788,20 @@ def _lower_ctor_mil_init(
             _witness("mil.optional_value_copy")
             v = _lower_expr(source, lc, declared, allow_whole_optional=True)
         elif _is_borrow_ptr_local(source, declared, set()):
-            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared),
+            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared, use=_MIL_USE),
                                 form=Form.STORAGE, move=False, loc=loc)
             _witness("mil.optional_ptr_lift")
         else:
             # A record-value source constructs the optional directly -- no
             # ptr_to_optional (that lifts a borrow `T*`, not a record prvalue/copy).
-            v = _lower_expr(source, lc, declared)
+            v = _lower_expr(source, lc, declared, use=_MIL_USE)
         return THIRMilInit(field_cpp=field_cpp, value=v)
     if _span_value(ftype):
         # Same-typed span param name: the bare view copy (`items(items)`) --
         # borrow and storage coincide for a view, so no lift renders.
         _witness("mil.span_copy")
         return THIRMilInit(field_cpp=field_cpp,
-                           value=_lower_expr(source, lc, declared))
+                           value=_lower_expr(source, lc, declared, use=_MIL_USE))
     if _callable_value(unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(ftype)))):
         # Same-typed callable param name: the bare `std::function` copy
@@ -2804,7 +2810,7 @@ def _lower_ctor_mil_init(
         _witness("mil.callable_lambda" if isinstance(source, TpyLambda)
                  else "mil.callable_copy")
         return THIRMilInit(field_cpp=field_cpp,
-                           value=_lower_expr(source, lc, declared))
+                           value=_lower_expr(source, lc, declared, use=_MIL_USE))
     if isinstance(stmt.value, TpyIfExpr) and _f1_record(ftype, analyzer):
         # The prvalue record ternary: the MIL direct-init IS the value sink,
         # so the arms lower as prvalues and the whole `?:` lands bare.

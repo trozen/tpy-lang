@@ -14,6 +14,7 @@ from ... import qnames
 from ...diagnostics import SemanticError
 from ...prescan import scan_reassigned_vars
 from ...parse.nodes import (
+    is_property_getter_read,
     RebindStorage,
     TryTier,
     TpyArrayLiteral,
@@ -170,6 +171,7 @@ from ...codegen_cpp import emit_prims, resumable_cfg as rcfg
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
 from ...value_category import (
     call_returns_cpp_ref, is_rvalue_source, wants_move,
+    property_access_returns_cpp_ref,
     async_return_form, AsyncReturnForm,
 )
 from ..faces import witness as _witness
@@ -361,7 +363,6 @@ from .predicates import (
     _narrow_facts_ok,
     _any_narrow_facts_ok,
     _nonvalue_container_ret,
-    _by_value_property_iterable,
     _record_call_rvalue_operand,
     _callable_value,
     _optional_narrow_facts_ok,
@@ -449,6 +450,7 @@ from .context import (
     _btuple_const_storage,
     _decl_slot_forms,
     _ExprResultUse,
+    _LEND_OK,
     _NO_FORMS,
     _ONLY_ADDR_CALL,
     _ONLY_BORROW_RET_PASSTHROUGH,
@@ -1280,10 +1282,12 @@ def _for_each_container_route(
             ret = analyzer.get_expr_type(it)
             if not _nonvalue_container_ret(ret):
                 return None
-            mfi = it.resolved_function_info
             it_type = unwrap_readonly(unwrap_send_sync(ret))
-            iterable_lvalue = not (
-                mfi is not None and isinstance(mfi.return_type, OwnType))
+            # The lvalue question is the return CONVENTION's, not the
+            # annotation's: `Own[...]` is only the spelling sema forces on a
+            # by-value container return, and a getter spells the same fact
+            # through the field's storage reference instead.
+            iterable_lvalue = not is_rvalue_source(analyzer, it)
     elif isinstance(it, TpyName):
         if it.name not in declared:
             note_detail("foreach.name_global")
@@ -1349,36 +1353,6 @@ def _for_each_container_route(
             return None
         it_type = unwrap_readonly(unwrap_send_sync(it_type))
         iterable_lvalue = False
-    elif (isinstance(it, TpyFieldAccess)
-          and it.property_getter_call is not None):
-        # A @property iterable (`for x in c.items:` -> `auto& __obj_N =
-        # c.items();`): the read IS the getter method call, so this is the
-        # container-returning user-METHOD leg one shape over -- the borrow
-        # getter return is a C++ lvalue capture. A BY-VALUE getter return
-        # rejects: binding `auto&` to it is ill-formed C++
-        # (`BUGS.md#own-property-iterable-materialize`).
-        #
-        # `stmt.iter_borrow_unplaceable` is deliberately NOT consulted here:
-        # a property iterable's loan is not a field-path key at all -- sema
-        # files it on the receiver ROOT through the getter's borrow
-        # provenance -- so the unplaceable verdict says nothing about this
-        # shape. It does NOT follow that the sync loop is guarded: the loan
-        # names the receiver while a mutation names the storage the getter
-        # returned, so `for v in b.items:` with `b.xs.append(...)` in the
-        # body is silent and diverges from CPython
-        # (`BUGS.md#property-iter-loan-misses-getter-storage`). The
-        # resumable route DOES consult the verdict, so it takes this shape
-        # only at one hop; that hop is no better guarded, since its
-        # iterators also outlive the body and a caller mutation between two
-        # resumes dangles (`BUGS.md#frame-iter-loan-blind-to-caller`).
-        ret = analyzer.get_expr_type(it)
-        if not _nonvalue_container_ret(ret):
-            return None
-        if _by_value_property_iterable(it, analyzer):
-            note_detail("foreach.by_value_property_iter")
-            return None
-        it_type = unwrap_readonly(unwrap_send_sync(ret))
-        iterable_lvalue = True
     elif isinstance(it, TpyFieldAccess):
         if not (_field_receiver_ok(it, declared, analyzer)
                 # A container member reached THROUGH a Ptr binding
@@ -3144,7 +3118,12 @@ def _lower_rebind_rvalue(init: TpyExpr, slot_t: TpyType, lc: '_LowerCtx',
     value = _lower_copy_record(init, lc, declared, loc=loc)
     if value is None:
         value = _lower_expr(init, lc, declared,
+                            # The SLOT holds the value past the statement,
+                            # so the sink is a local's, not a transient one
+                            # -- named here because `_rebind_rvalue_use`
+                            # answers the RESULT half only.
                             use=replace(_rebind_rvalue_use(init),
+                                        pos=SinkPos.LOCAL_DECL,
                                         slot_target=slot_t))
     return value
 
@@ -4093,9 +4072,8 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
                                               ptr_local=True))),
             cpp_type=lc.render_type(vtype), is_const=is_const, loc=loc)
     if (isinstance(stmt.init, (TpyCall, TpyMethodCall))
-            or (binding is LocalBinding.REF_ALIAS
-                and isinstance(stmt.init, TpyFieldAccess)
-                and stmt.init.property_getter_call is not None)):
+            and not (is_property_getter_read(stmt.init)
+                     and binding is not LocalBinding.REF_ALIAS)):
         # REF_ALIAS from a borrow-record-returning call: the `T&` binds the
         # callee's returned reference directly (`Pair& p = shared(x);`,
         # `MyNumber& num = h.get_item();`), so the init is the plain
@@ -4299,11 +4277,12 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
             is_const=is_const, cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.OPTIONAL_TO_PTR
-            and isinstance(stmt.init, TpyFieldAccess)
-            and stmt.init.property_getter_call is not None):
-        # A @property source lowers through the getter delegation (the raw
-        # field-source build would re-read a member that does not exist);
-        # the lift wraps the bare call render.
+            and is_property_getter_read(stmt.init)):
+        # A @property source: the getter returns the FIELD's storage
+        # optional BY REFERENCE (the property return convention), where a
+        # plain method returns the `T*` borrow form already -- so this read
+        # takes the lift over the bare call render and the method arm does
+        # not.
         src = _lower_expr(stmt.init, lc, declared, allow_whole_optional=True)
         convert = THIRFormConvert(result_type=vtype, value=src,
                                   form=Form.BORROW, is_const=is_const,
@@ -4365,14 +4344,14 @@ def _opt_slot_rvalue_shape(init: TpyExpr, inner: TpyType, analyzer) -> bool:
 
 def _opt_storage_field_rvalue(init: TpyExpr, vtype: TpyType,
                               analyzer) -> bool:
-    """A storage-form Optional FIELD read whose RECEIVER is an rvalue (`v =
-    make_holder(p).value`): `is_storage_form_optional_source` is true but
-    `is_rvalue_source` is too, so the lvalue lift does not apply and
-    the whole `std::optional<T>` materializes in a slot first -- otherwise
-    the pointer would outlive the receiver temporary. The field type must
-    match the local's declared Optional exactly."""
-    if not isinstance(init, TpyFieldAccess):
-        return False
+    """A storage-form Optional read whose RECEIVER is an rvalue (`v =
+    make_holder(p).value`, `q = mk().pp` off a getter):
+    `is_storage_form_optional_source` is true but `is_rvalue_source` is too,
+    so the lvalue lift does not apply and the whole `std::optional<T>`
+    materializes in a slot first -- otherwise the pointer would outlive the
+    receiver temporary. The two predicates ARE the shape: a field read and a
+    getter call both reach here, and both spell the field's storage. The
+    field type must match the local's declared Optional exactly."""
     if not reads_storage_form_optional(analyzer, init):
         return False
     if not is_rvalue_source(analyzer, init):
@@ -4580,6 +4559,8 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
                 kind=PtrSlotKind.OPT_STORAGE_CALL,
                 init=_lower_expr(stmt.init, lc, declared,
                                  use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                              pos=SinkPos.LOCAL_DECL,
+                                              forms=_NO_FORMS,
                                               allow_temps=True),
                                  allow_whole_optional=True,
                                  field_prechecked=True),
@@ -5076,6 +5057,7 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             init = _lower_expr(
                 stmt.init, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.STORAGE,
+                             pos=SinkPos.GLOBAL_SLOT_WRITE, forms=_NO_FORMS,
                              slot_target=slot_t))
     elif isinstance(slot_t, NominalType):
         if init_bare != slot_t and not (
@@ -6736,9 +6718,12 @@ def _list_inplace_extend(stmt: TpyAugAssign, lc: _LowerCtx,
     if not is_list(recv_bare):
         return None
     loc = getattr(stmt, "loc", None)
+    # `xs += <it>`: the extend reads the source INSIDE the statement, so the
+    # OPERAND row's transient verdict is the one that applies.
     value = _lower_expr(
         stmt.value, lc, declared,
-        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
+        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True,
+                     pos=SinkPos.OPERAND, forms=_LEND_OK))
     # The array-literal vector prefix keys on the RAW target type
     # (`is_list(get_expr_type(target))`), so an inferred (still-pending) list
     # binding gets no prefix while an annotated `list[T]` local does
@@ -8200,6 +8185,32 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
     return adjusted
 
 
+def _augassign_recv_is_accessor(target: TpyExpr) -> bool:
+    """Whether an augmented assignment reaches its lvalue THROUGH a
+    `@property` read.
+
+    `b.rec.x += 1` renders as `b.rec().x = add_check(b.rec().x, 1)`, running
+    the getter twice where Python runs it once. That is one site of the
+    evaluation-order class (`BUGS.md#augassign-call-receiver-double-eval`),
+    which is a postponed language decision -- fixing this site alone would
+    settle it by accident and leave the spelled-method twin disagreeing, so
+    the accessor spelling is held at a reject until the class is decided.
+
+    A subscript's INDEX is a hop for this question as much as its receiver
+    is: the render spells the whole TARGET on both sides, so `xs[b.i] += 1`
+    runs the getter twice exactly as `b.rec.x += 1` does.
+    """
+    if isinstance(target, TpySubscript):
+        return (_augassign_recv_is_accessor(target.obj)
+                or _augassign_recv_is_accessor(target.index))
+    if isinstance(target, TpyFieldAccess):
+        return _augassign_recv_is_accessor(target.obj)
+    if isinstance(target, TpyMethodCall):
+        return (is_property_getter_read(target)
+                or _augassign_recv_is_accessor(target.obj))
+    return False
+
+
 def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     lc = scope.lc
     declared = scope.declared
@@ -8720,6 +8731,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             and _optional_ptr_borrow_wide(
                                 analyzer.get_expr_type(stmt.init), analyzer)
                             is not None
+                            # ... and the result must ALREADY be that `T*`.
+                            # A `@property` getter hands back the field's
+                            # `std::optional<T>` BY REFERENCE, so the bare
+                            # bind would not compile: it materializes and
+                            # lifts instead, one arm down.
+                            and not reads_storage_form_optional(analyzer,
+                                                                stmt.init)
                             and not (isinstance(stmt.init,
                                                 (TpyCall, TpyMethodCall))
                                      and _own_declared_call_ret(stmt.init))):
@@ -9032,6 +9050,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         stmt.init, lc, declared,
                         use=_ExprUse(
                             result=_ExprResultUse.BORROW_BIND,
+                            pos=SinkPos.LOCAL_DECL, forms=_NO_FORMS,
                             allow_temps=True)),
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
             # Move-through owned record local: `a = h` where `h` is a non-value
@@ -9369,6 +9388,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                               analyzer) is not None
                 and _ptr_opt_borrow_call_ret(
                     stmt.init, analyzer.get_expr_type(stmt.init))
+                # ... and the result must ALREADY be that `T*`. A
+                # `@property` getter hands back the field's
+                # `std::optional<T>` BY REFERENCE, so the bare copy assigns
+                # an optional to a pointer and does not compile. The DECL
+                # pass-through asks the same question one arm up; this is
+                # its RESEAT sibling, which the storage-ref family has no
+                # lift for either (TODO.md, "Four positions REJECT a
+                # storage-ref `@property` read").
+                and not reads_storage_form_optional(analyzer, stmt.init)
                 and not _own_declared_call_ret(stmt.init)):
             _witness("reseat.opt_call_pass")
             return THIRAssign(
@@ -10160,7 +10188,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 u_const = False
                 u_init: THIRExpr = THIRLiteral(result_type=ptr_u, value=None,
                                                form=Form.STORAGE, loc=loc)
-            elif isinstance(stmt.init, TpyFieldAccess):
+            elif (isinstance(stmt.init, TpyFieldAccess)
+                    or is_property_getter_read(stmt.init)):
                 recv = stmt.init.obj
                 if isinstance(recv, TpyName) and recv.name != "self":
                     u_const = (recv.name in lc.const_locals
@@ -10172,11 +10201,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # `self.inner.pet`): const iff the method is readonly
                     # (`this` is const, so every member down the chain is).
                     u_const = bool(getattr(lc.func, "is_readonly", False))
-                # A PROPERTY read renders its getter CALL (`c.shape()`);
-                # the plain field keeps the raw member spelling.
-                if stmt.init.property_getter_call is not None:
+                # A @property read is a getter CALL that hands back the
+                # FIELD's storage variant by reference, so it lifts exactly
+                # as the plain member read does -- a method returning the
+                # union is already in ptr form and never reaches here.
+                if is_property_getter_read(stmt.init):
                     _u_src = _lower_expr(
-                        stmt.init, lc, declared, field_prechecked=True,
+                        stmt.init, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
                 else:
                     _u_src = _lower_field_source(stmt.init, lc, declared)
@@ -10398,8 +10429,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             form=Form.BORROW,
                             cpp_local_representation=LocalBinding.REF_ALIAS,
                             loc=loc)
-                storage_call = True
-                _witness("decl.storage_call")
+                    storage_call = True
+                    _witness("decl.storage_call")
+                else:
+                    storage_call = True
+                    _witness("decl.storage_call")
         # A @native free call returning a by-value record (`f = open(path)` ->
         # `::tpy::TextFile f = ::tpy::builtin_open(path);`): a plain-value decl,
         # like the container/tuple storage rows. The record is a non-value
@@ -11608,6 +11642,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         _lower_expr(_cv, lc, declared,
                                     use=_ExprUse(
                                         result=_ExprResultUse.STORAGE,
+                                        # The element SLOT holds the value
+                                        # past the statement; name the sink
+                                        # so a borrow of storage the
+                                        # statement kills cannot land in it.
+                                        pos=SinkPos.SETITEM_VALUE,
+                                        forms=_NO_FORMS,
                                         allow_temps=True)))
                     _witness("setitem.container_rvalue")
                 elif (type(_cv) in _comprehensions._COMP_KINDS
@@ -12131,6 +12171,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if (isinstance(stmt.target, TpyName)
                 and stmt.target.name in narrowed):
             raise ThirUnsupported("stmt.aug_assign")
+        if _augassign_recv_is_accessor(stmt.target):
+            note_detail("augassign.recv.accessor_double_eval")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         inplace = _list_inplace_extend(stmt, lc, declared)
         if inplace is not None:
             return inplace
@@ -12242,7 +12285,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if isinstance(stmt.target, TpyName):
                 return THIRStrAppend(
                     target=stmt.target.name,
-                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
+                    # `s += <v>`: the append copies the source's bytes inside
+                    # the statement -- the OPERAND row, like the list extend.
+                    value=_lower_expr(stmt.value, lc, declared,
+                                      use=_ExprUse(pos=SinkPos.OPERAND,
+                                                   forms=_LEND_OK)),
+                    loc=loc)
             if isinstance(stmt.target, TpyFieldAccess):
                 return THIRStrAppend(
                     target="",
@@ -15743,11 +15791,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     then=_lower_expr(
                         it.then_expr, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                     pos=SinkPos.ITER_SOURCE,
                                      allow_temps=True),
                         cond_eager=True),
                     orelse=_lower_expr(
                         it.else_expr, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                     pos=SinkPos.ITER_SOURCE,
                                      allow_temps=True),
                         cond_eager=True),
                     form=Form.VALUE,
@@ -15759,6 +15809,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # scope, right before the `__src` bind, so temp-hoisting
                     # arg rows are safe here.
                     use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                 pos=SinkPos.ITER_SOURCE,
                                  allow_temps=True))
             if (isinstance(proto_iterable, THIRName)
                     and not proto_iterable.deref
@@ -15817,7 +15868,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             consuming_src = it.args[0]
         iterable = _lower_expr(
             consuming_src, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.ITERABLE),
+            use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                         pos=SinkPos.ITER_SOURCE),
             field_prechecked=isinstance(it, TpyFieldAccess),
             # A literal iterable renders target-less (no container target is
             # threaded here).
@@ -16644,6 +16696,17 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # spelling cannot be reached from this row.
                 manager_ok = True
                 _witness("with.manager_borrowed_field")
+            if not manager_ok and property_access_returns_cpp_ref(
+                    lc.analyzer, ctx):
+                # ... and its ACCESSOR spelling. A `@property` read that
+                # hands back a reference into its receiver's storage IS that
+                # field read one spelling over, so the `auto&` binds the same
+                # lvalue; the row above keyed on the node KIND and a getter
+                # read is a method call. Whether the RECEIVER survives the
+                # statement is the WITH_MANAGER row's question, asked when the
+                # manager lowers, not this gate's.
+                manager_ok = True
+                _witness("with.manager_borrowed_getter")
         else:
             manager_ok = (
                 (isinstance(ctx, TpyCall)
@@ -16864,9 +16927,14 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         at = lc.analyzer.get_expr_type(a)
         atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
                if at is not None else None)
-        arg_use = (_ExprUse(result=_ExprResultUse.ITERABLE)
+        # `forms=_LEND_OK` is the sink's verdict, not the row's: the printer
+        # wrap reads the container inside the print expression, so a result
+        # lending a dying receiver's storage is still alive where it streams.
+        arg_use = (_ExprUse(result=_ExprResultUse.ITERABLE,
+                            pos=SinkPos.PRINT_ARG, forms=_LEND_OK)
                    if atu is not None and is_dict_view(atu)
                    else _ExprUse(result=_ExprResultUse.STORAGE,
+                                 pos=SinkPos.PRINT_ARG, forms=_LEND_OK,
                                  allow_temps=temps_ok))
         return THIRPrintArg(
             _lower_expr(a, lc, declared, use=arg_use),
@@ -16926,12 +16994,6 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         if wrap is PrintForm.TUPLE and isinstance(a, TpySubscript):
             wrap_use = _ExprUse(result=_ExprResultUse.BORROW_BIND,
                                 allow_temps=temps_ok)
-        elif (isinstance(a, TpyFieldAccess)
-                and a.property_getter_call is not None):
-            # A container PROPERTY read delegates to the getter call, whose
-            # borrow container return rides the ITERABLE result family --
-            # the same override the for-loop grants it.
-            wrap_use = _ExprUse(result=_ExprResultUse.ITERABLE)
         else:
             wrap_use = _ExprUse(pos=SinkPos.PRINT_ARG, forms=_ONLY_INDIRECT_READ)
         # The union STR row is DECLARED-type keyed (`::tpy::__str__(a)`
@@ -16984,11 +17046,14 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
                                      allow_temps=temps_ok),
                         subscript_prechecked=True),
             PrintForm.RAW, deref=tup_rec == "deref")
+    # A print argument is streamed inside the print statement, so every one of
+    # these arms carries the dying-source admission on top of its own verdict.
     use = _ExprUse(allow_temps=temps_ok, pos=SinkPos.PRINT_ARG,
-                                         forms=_ONLY_LITERAL_FOLD)
+                                         forms=_ONLY_LITERAL_FOLD | _LEND_OK)
     if _record_call_rvalue_operand(a, lc.analyzer):
         use = _ExprUse(allow_temps=temps_ok,
-                       result=_ExprResultUse.BORROW_BIND)
+                       result=_ExprResultUse.BORROW_BIND,
+                       pos=SinkPos.PRINT_ARG, forms=_LEND_OK)
     elif isinstance(a, (TpyFieldAccess, TpySubscript)):
         at = lc.analyzer.get_expr_type(a)
         atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))

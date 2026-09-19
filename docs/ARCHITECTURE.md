@@ -399,6 +399,12 @@ answers a fresh object with a dead one's fact. Two thirds of the
 entries in `SemanticContext.expr_types` belong to nodes that are dead
 by the end of a compilation, which is how the property-getter seam
 came to read a stale type and reject a valid body in some runs.
+That identity is also what lets sema change a node's KIND in place: a
+`@property` read becomes its getter `TpyMethodCall` at the end of the
+read analysis (`become_method_call`, `tpyc/parse/nodes.py`), and every
+fact already filed against the object -- its type, its loc, its
+narrowing facts -- survives because the tables are keyed on the object
+and not on a copy of it.
 `tpyc/identity_map.py` provides `IdentityMap` / `IdentitySet`, which
 store the key beside the value; every such table on
 `SemanticContext`, `SemanticAnalyzer`, `CodeGenContext`, `Compiler`

@@ -1,0 +1,1 @@
+main.py:26: error: in function 'borrow': this construct is not yet supported by C++ code generation (expr.method_call:return.lends_from_temporary)

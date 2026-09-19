@@ -1,0 +1,2 @@
+main.py:30: warning: copies list[int32] into container; use copy() to make this explicit
+main.py:30: error: in function 'main': this construct is not yet supported by C++ code generation (expr.method_call:setitem_value.lends_from_temporary)

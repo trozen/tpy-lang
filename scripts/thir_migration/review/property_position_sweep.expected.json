@@ -1,0 +1,3106 @@
+{
+ "any_arg__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "any_arg__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "any_arg__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "any_arg__items__prop__temp": [
+  "ok",
+  ""
+ ],
+ "any_arg__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "any_arg__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "any_arg__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "any_arg__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "arith__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "arith__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "arith__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "arith__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "arith_str__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "arith_str__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "arith_str__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "arith_str__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "arith_str__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "arith_str__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "arith_str__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "arith_str__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "assert_test__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "assert_test__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "assert_test__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "assert_test__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "async_body__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "async_body__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "async_body__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "async_body__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "async_body__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "async_body__name__meth__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "async_body__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "async_body__name__prop__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "async_body__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "async_body__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "async_body__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "async_body__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "augassign__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "augassign__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "augassign__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "augassign__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "augassign_index__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "augassign_index__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "augassign_index__n__prop__named": [
+  "stmt.aug_assign:augassign.recv.accessor_double_eval",
+  ""
+ ],
+ "augassign_index__n__prop__temp": [
+  "stmt.aug_assign:augassign.recv.accessor_double_eval",
+  ""
+ ],
+ "augassign_list__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "augassign_list__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "augassign_list__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "augassign_list__items__prop__temp": [
+  "ok",
+  ""
+ ],
+ "augassign_recv__rec__meth__named": [
+  "ok",
+  ""
+ ],
+ "augassign_recv__rec__meth__temp": [
+  "ok",
+  ""
+ ],
+ "augassign_recv__rec__prop__named": [
+  "stmt.aug_assign:augassign.recv.accessor_double_eval",
+  ""
+ ],
+ "augassign_recv__rec__prop__temp": [
+  "stmt.aug_assign:augassign.recv.accessor_double_eval",
+  ""
+ ],
+ "call_arg__items__meth__named": [
+  "stmt.expr_stmt:call.arg_shape.container",
+  ""
+ ],
+ "call_arg__items__meth__temp": [
+  "stmt.expr_stmt:call.arg_shape.container",
+  ""
+ ],
+ "call_arg__items__prop__named": [
+  "stmt.expr_stmt:call.arg_shape.container",
+  ""
+ ],
+ "call_arg__items__prop__temp": [
+  "stmt.expr_stmt:call.arg_shape.container",
+  ""
+ ],
+ "call_arg__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "call_arg__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "call_arg__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "call_arg__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "call_arg__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "call_arg__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "call_arg__rec__meth__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__rec__meth__temp": [
+  "ok",
+  ""
+ ],
+ "call_arg__rec__prop__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__rec__prop__temp": [
+  "stmt.expr_stmt:arg.lends_from_temporary",
+  ""
+ ],
+ "call_arg__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "call_arg__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "call_arg__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "closure__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "closure__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "closure__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "closure__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "closure__name__meth__named": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "closure__name__meth__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "closure__name__prop__named": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "closure__name__prop__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "closure__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "closure__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "closure__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "closure__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "comp_elem__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "comp_elem__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "comp_elem__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "comp_elem__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "comp_elem__name__meth__named": [
+  "expr.list_comp",
+  ""
+ ],
+ "comp_elem__name__meth__temp": [
+  "expr.list_comp",
+  ""
+ ],
+ "comp_elem__name__prop__named": [
+  "expr.list_comp",
+  ""
+ ],
+ "comp_elem__name__prop__temp": [
+  "expr.list_comp",
+  ""
+ ],
+ "comp_elem__rec__meth__named": [
+  "ok",
+  "copies R into owned storage; use copy() to make this explicit"
+ ],
+ "comp_elem__rec__meth__temp": [
+  "ok",
+  "copies R into owned storage; use copy() to make this explicit"
+ ],
+ "comp_elem__rec__prop__named": [
+  "expr.container_literal:container_elem.accessor_lends_storage",
+  "copies R into owned storage; use copy() to make this explicit"
+ ],
+ "comp_elem__rec__prop__temp": [
+  "expr.container_literal:container_elem.accessor_lends_storage",
+  ""
+ ],
+ "comp_elem__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "comp_elem__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "comp_elem__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "comp_elem__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "comp_iter__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "comp_iter__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "comp_iter__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "comp_iter__items__prop__temp": [
+  "expr.method_call:foreach.iter_lends_from_temporary",
+  ""
+ ],
+ "comp_iter__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "comp_iter__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "comp_iter__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "comp_iter__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "compare__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "compare__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "compare__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "compare__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "compare_str__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "compare_str__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "compare_str__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "compare_str__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "compare_str__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "compare_str__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "compare_str__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "compare_str__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__items__meth__named": [
+  "expr.call:call.ctor_arg.container",
+  "copies list[int32] into field; use copy() to make this explicit"
+ ],
+ "ctor_arg__items__meth__temp": [
+  "expr.call:call.ctor_arg.container",
+  "copies list[int32] into field; use copy() to make this explicit"
+ ],
+ "ctor_arg__items__prop__named": [
+  "expr.call:call.ctor_arg.container",
+  "copies list[int32] into field; use copy() to make this explicit"
+ ],
+ "ctor_arg__items__prop__temp": [
+  "expr.call:call.ctor_arg.container",
+  "copies list[int32] into field; use copy() to make this explicit"
+ ],
+ "ctor_arg__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__rec__meth__named": [
+  "expr.call:call.ctor_arg.record_f1",
+  "copies R into field; use copy() to make this explicit"
+ ],
+ "ctor_arg__rec__meth__temp": [
+  "expr.call:call.ctor_arg.record_f1",
+  "copies R into field; use copy() to make this explicit"
+ ],
+ "ctor_arg__rec__prop__named": [
+  "expr.call:call.ctor_arg.record_f1",
+  "copies R into field; use copy() to make this explicit"
+ ],
+ "ctor_arg__rec__prop__temp": [
+  "expr.method_call:unspecified.lends_from_temporary",
+  "copies R into field; use copy() to make this explicit"
+ ],
+ "ctor_arg__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "ctor_arg__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_body__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "ctor_body__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_body__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "ctor_body__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_body__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "ctor_body__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_body__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "ctor_body__name__prop__temp": [
+  "expr.method_call:mil_init.lends_from_temporary",
+  ""
+ ],
+ "ctor_body__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "ctor_body__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ctor_body__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "ctor_body__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "decl__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "decl__items__meth__temp": [
+  "ok",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end"
+ ],
+ "decl__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "decl__items__prop__temp": [
+  "expr.method_call:local_decl.lends_from_temporary",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end"
+ ],
+ "decl__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "decl__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "decl__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "decl__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "decl__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "decl__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "decl__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "decl__name__prop__temp": [
+  "expr.method_call:local_decl.lends_from_temporary",
+  ""
+ ],
+ "decl__opt__meth__named": [
+  "ok",
+  ""
+ ],
+ "decl__opt__meth__temp": [
+  "ok",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end"
+ ],
+ "decl__opt__prop__named": [
+  "ok",
+  ""
+ ],
+ "decl__opt__prop__temp": [
+  "expr.method_call:local_decl.lends_from_temporary",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end"
+ ],
+ "decl__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "decl__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "decl__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "decl__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "decl__rec__meth__named": [
+  "ok",
+  ""
+ ],
+ "decl__rec__meth__temp": [
+  "ok",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end"
+ ],
+ "decl__rec__prop__named": [
+  "ok",
+  ""
+ ],
+ "decl__rec__prop__temp": [
+  "expr.method_call:local_decl.lends_from_temporary",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end"
+ ],
+ "decl__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "decl__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "decl__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "decl__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "dict_key_read__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "dict_key_read__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "dict_key_read__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "dict_key_read__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "dict_key_read__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "dict_key_read__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "dict_key_read__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "dict_key_read__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "dict_key_write__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "dict_key_write__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "dict_key_write__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "dict_key_write__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "dict_key_write__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "dict_key_write__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "dict_key_write__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "dict_key_write__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "dict_val__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "dict_val__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "dict_val__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "dict_val__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "dict_val__name__meth__named": [
+  "expr.container_literal",
+  ""
+ ],
+ "dict_val__name__meth__temp": [
+  "expr.container_literal",
+  ""
+ ],
+ "dict_val__name__prop__named": [
+  "expr.container_literal",
+  ""
+ ],
+ "dict_val__name__prop__temp": [
+  "expr.container_literal",
+  ""
+ ],
+ "dict_val__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "dict_val__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "dict_val__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "dict_val__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "error_return_body__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "error_return_body__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "error_return_body__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "error_return_body__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "error_return_body__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "error_return_body__name__meth__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "error_return_body__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "error_return_body__name__prop__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "error_return_body__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "error_return_body__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "error_return_body__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "error_return_body__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "field_read__opt__meth__named": [
+  "ok",
+  "Potential None access on optional value; generated code adds runtime null check."
+ ],
+ "field_read__opt__meth__temp": [
+  "ok",
+  "Potential None access on optional value; generated code adds runtime null check."
+ ],
+ "field_read__opt__prop__named": [
+  "stmt.expr_stmt:method.recv.storage_ref_getter",
+  "Potential None access on optional value; generated code adds runtime null check."
+ ],
+ "field_read__opt__prop__temp": [
+  "stmt.expr_stmt:method.recv.storage_ref_getter",
+  "Potential None access on optional value; generated code adds runtime null check."
+ ],
+ "field_read__rec__meth__named": [
+  "ok",
+  ""
+ ],
+ "field_read__rec__meth__temp": [
+  "ok",
+  ""
+ ],
+ "field_read__rec__prop__named": [
+  "ok",
+  ""
+ ],
+ "field_read__rec__prop__temp": [
+  "ok",
+  ""
+ ],
+ "foreach__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "foreach__items__meth__temp": [
+  "ok",
+  "Iterator borrows from temporary receiver object; the temporary is destroyed befo"
+ ],
+ "foreach__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "foreach__items__prop__temp": [
+  "expr.method_call:foreach.iter_lends_from_temporary",
+  "Iterator borrows from temporary receiver object; the temporary is destroyed befo"
+ ],
+ "foreach__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "foreach__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "foreach__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "foreach__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "fstring__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "fstring__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "fstring__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "fstring__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "fstring__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "fstring__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "fstring__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "fstring__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "fstring__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "fstring__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "fstring__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "fstring__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "genexp_iter__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "genexp_iter__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "genexp_iter__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "genexp_iter__items__prop__temp": [
+  "expr.genexpr",
+  ""
+ ],
+ "genexp_iter__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "genexp_iter__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "genexp_iter__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "genexp_iter__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "global_write__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "global_write__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "global_write__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "global_write__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "kwarg__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "kwarg__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "kwarg__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "kwarg__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "len__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "len__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "len__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "len__items__prop__temp": [
+  "ok",
+  ""
+ ],
+ "len__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "len__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "len__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "len__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "len__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "len__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "len__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "len__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "len__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "len__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "len__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "len__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "list_arg__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "list_arg__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "list_arg__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "list_arg__items__prop__temp": [
+  "ok",
+  ""
+ ],
+ "list_arg__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "list_arg__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "list_arg__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "list_arg__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "list_elem__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "list_elem__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "list_elem__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "list_elem__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "list_elem__name__meth__named": [
+  "expr.container_literal",
+  ""
+ ],
+ "list_elem__name__meth__temp": [
+  "expr.container_literal",
+  ""
+ ],
+ "list_elem__name__prop__named": [
+  "expr.container_literal",
+  ""
+ ],
+ "list_elem__name__prop__temp": [
+  "expr.container_literal",
+  ""
+ ],
+ "list_elem__rec__meth__named": [
+  "expr.container_literal",
+  "copies R into owned storage; use copy() to make this explicit"
+ ],
+ "list_elem__rec__meth__temp": [
+  "expr.container_literal",
+  "copies R into owned storage; use copy() to make this explicit"
+ ],
+ "list_elem__rec__prop__named": [
+  "expr.container_literal",
+  "copies R into owned storage; use copy() to make this explicit"
+ ],
+ "list_elem__rec__prop__temp": [
+  "expr.container_literal:container_elem.accessor_lends_storage",
+  ""
+ ],
+ "list_elem__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "list_elem__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "list_elem__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "list_elem__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "list_elem_targeted__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "list_elem_targeted__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "list_elem_targeted__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "list_elem_targeted__name__prop__temp": [
+  "expr.method_call:container_elem.lends_from_temporary",
+  ""
+ ],
+ "list_elem_targeted__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "list_elem_targeted__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "list_elem_targeted__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "list_elem_targeted__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__items__meth__local": [
+  "stmt.expr_stmt:call.arg_shape.container",
+  ""
+ ],
+ "loop_call_arg__items__prop__local": [
+  "stmt.expr_stmt:call.arg_shape.container",
+  ""
+ ],
+ "loop_call_arg__n__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__n__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__name__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__name__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__own__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__own__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__rec__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__rec__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__text__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_call_arg__text__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_decl__items__meth__local": [
+  "stmt.var_decl:decl.container_call_reassigned",
+  ""
+ ],
+ "loop_decl__items__prop__local": [
+  "stmt.var_decl:decl.container_call_reassigned",
+  "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
+ ],
+ "loop_decl__n__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_decl__n__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_decl__name__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_decl__name__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_decl__opt__meth__local": [
+  "stmt.var_decl:decl.opt_slot_source",
+  ""
+ ],
+ "loop_decl__opt__prop__local": [
+  "stmt.var_decl:decl.opt_reseat_source",
+  "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
+ ],
+ "loop_decl__own__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_decl__own__prop__local": [
+  "stmt.var_decl:decl.container_call_reassigned",
+  ""
+ ],
+ "loop_decl__rec__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_decl__rec__prop__local": [
+  "stmt.var_decl:decl.slot_type",
+  "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
+ ],
+ "loop_decl__text__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_decl__text__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_foreach__items__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_foreach__items__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_foreach__own__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_foreach__own__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_ret__items__meth__local": [
+  "Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
+  ""
+ ],
+ "loop_ret__items__prop__local": [
+  "Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
+  ""
+ ],
+ "loop_ret__n__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_ret__n__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_ret__name__meth__local": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "loop_ret__name__prop__local": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "loop_ret__opt__meth__local": [
+  "Cannot return local or temporary as 'R | None'. The returned pointer would dangl",
+  ""
+ ],
+ "loop_ret__opt__prop__local": [
+  "Cannot return local or temporary as 'R | None'. The returned pointer would dangl",
+  ""
+ ],
+ "loop_ret__own__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_ret__own__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_ret__rec__meth__local": [
+  "Cannot return local or temporary as reference. Reference type 'R' is returned by",
+  ""
+ ],
+ "loop_ret__rec__prop__local": [
+  "Cannot return local or temporary as reference. Reference type 'R' is returned by",
+  ""
+ ],
+ "loop_ret__text__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_ret__text__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_tuple_elem__n__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_tuple_elem__n__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_tuple_elem__name__meth__local": [
+  "stmt.var_decl:decl.tuple_literal_shape",
+  ""
+ ],
+ "loop_tuple_elem__name__prop__local": [
+  "stmt.var_decl:decl.tuple_literal_shape",
+  ""
+ ],
+ "loop_tuple_elem__text__meth__local": [
+  "ok",
+  ""
+ ],
+ "loop_tuple_elem__text__prop__local": [
+  "ok",
+  ""
+ ],
+ "loop_with_mgr__guard__meth__local": [
+  "stmt.with",
+  ""
+ ],
+ "loop_with_mgr__guard__prop__local": [
+  "ok",
+  ""
+ ],
+ "match_arm__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "match_arm__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "match_arm__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "match_arm__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "match_arm__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "match_arm__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "match_arm__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "match_arm__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "match_arm__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "match_arm__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "match_arm__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "match_arm__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "match_subject__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "match_subject__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "match_subject__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "match_subject__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "membership__items__meth__named": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "membership__items__meth__temp": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "membership__items__prop__named": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "membership__items__prop__temp": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "membership__own__meth__named": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "membership__own__meth__temp": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "membership__own__prop__named": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "membership__own__prop__temp": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "membership_needle__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "membership_needle__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "membership_needle__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "membership_needle__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "membership_needle__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "membership_needle__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "membership_needle__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "membership_needle__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "meth_arg__items__meth__named": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "meth_arg__items__meth__temp": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "meth_arg__items__prop__named": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "meth_arg__items__prop__temp": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "meth_arg__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "meth_arg__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "meth_arg__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "meth_arg__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "meth_arg__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "meth_arg__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "meth_arg__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "meth_arg__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "meth_arg__own__meth__named": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "meth_arg__own__meth__temp": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "meth_arg__own__prop__named": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "meth_arg__own__prop__temp": [
+  "stmt.expr_stmt:method.ret_type",
+  ""
+ ],
+ "meth_arg__rec__meth__named": [
+  "ok",
+  ""
+ ],
+ "meth_arg__rec__meth__temp": [
+  "ok",
+  ""
+ ],
+ "meth_arg__rec__prop__named": [
+  "ok",
+  ""
+ ],
+ "meth_arg__rec__prop__temp": [
+  "stmt.expr_stmt:unspecified.lends_from_temporary",
+  ""
+ ],
+ "meth_arg__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "meth_arg__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "meth_arg__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "meth_arg__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "method_recv_cont__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "method_recv_cont__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "method_recv_cont__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "method_recv_cont__items__prop__temp": [
+  "ok",
+  ""
+ ],
+ "method_recv_cont__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "method_recv_cont__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "method_recv_cont__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "method_recv_cont__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "method_recv_view__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "method_recv_view__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "method_recv_view__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "method_recv_view__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "method_recv_view__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "method_recv_view__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "method_recv_view__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "method_recv_view__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "module_level__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "module_level__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "module_level__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "module_level__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "module_level__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "module_level__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "module_level__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "module_level__name__prop__temp": [
+  "expr.method_call:local_decl.lends_from_temporary",
+  ""
+ ],
+ "module_level__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "module_level__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "module_level__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "module_level__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "print__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "print__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "print__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "print__items__prop__temp": [
+  "ok",
+  ""
+ ],
+ "print__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "print__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "print__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "print__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "print__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "print__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "print__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "print__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "print__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "print__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "print__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "print__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "print__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "print__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "print__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "print__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "raise_operand__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "raise_operand__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "raise_operand__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "raise_operand__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "raise_operand__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "raise_operand__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "raise_operand__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "raise_operand__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "range_arg__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "range_arg__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "range_arg__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "range_arg__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ret__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "ret__items__meth__temp": [
+  "Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
+  ""
+ ],
+ "ret__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "ret__items__prop__temp": [
+  "Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
+  ""
+ ],
+ "ret__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "ret__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ret__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "ret__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ret__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "ret__name__meth__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "ret__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "ret__name__prop__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "ret__opt__meth__named": [
+  "stmt.return",
+  ""
+ ],
+ "ret__opt__meth__temp": [
+  "Cannot return local or temporary as 'R | None'. The returned pointer would dangl",
+  ""
+ ],
+ "ret__opt__prop__named": [
+  "stmt.return",
+  ""
+ ],
+ "ret__opt__prop__temp": [
+  "Cannot return local or temporary as 'R | None'. The returned pointer would dangl",
+  ""
+ ],
+ "ret__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "ret__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ret__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "ret__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ret__rec__meth__named": [
+  "ok",
+  ""
+ ],
+ "ret__rec__meth__temp": [
+  "Cannot return local or temporary as reference. Reference type 'R' is returned by",
+  ""
+ ],
+ "ret__rec__prop__named": [
+  "ok",
+  ""
+ ],
+ "ret__rec__prop__temp": [
+  "Cannot return local or temporary as reference. Reference type 'R' is returned by",
+  ""
+ ],
+ "ret__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "ret__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ret__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "ret__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "reversed_arg__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "reversed_arg__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "reversed_arg__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "reversed_arg__items__prop__temp": [
+  "expr.call:arg.lends_from_temporary",
+  ""
+ ],
+ "reversed_arg__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "reversed_arg__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "reversed_arg__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "reversed_arg__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__items__meth__self": [
+  "stmt.expr_stmt:call.arg_shape.container",
+  ""
+ ],
+ "self_call_arg__items__prop__self": [
+  "stmt.expr_stmt:call.arg_shape.container",
+  ""
+ ],
+ "self_call_arg__n__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__n__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__name__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__name__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__opt__meth__self": [
+  "Type mismatch in argument 'v': expected int32, got R | None",
+  ""
+ ],
+ "self_call_arg__opt__prop__self": [
+  "Type mismatch in argument 'v': expected int32, got R | None",
+  ""
+ ],
+ "self_call_arg__own__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__own__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__rec__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__rec__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__text__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_call_arg__text__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_comp_iter__items__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_comp_iter__items__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_comp_iter__own__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_comp_iter__own__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__items__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__items__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__n__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__n__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__name__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__name__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__opt__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__opt__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__own__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__own__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__rec__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__rec__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__text__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_decl__text__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_foreach__items__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_foreach__items__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_foreach__own__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_foreach__own__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_method_recv__items__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_method_recv__items__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_method_recv__own__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_method_recv__own__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_print__items__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_print__items__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_print__n__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_print__n__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_print__name__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_print__name__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_print__text__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_print__text__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__items__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__items__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__n__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__n__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__name__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__name__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__opt__meth__self": [
+  "stmt.return",
+  ""
+ ],
+ "self_ret__opt__prop__self": [
+  "stmt.return",
+  ""
+ ],
+ "self_ret__own__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__own__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__rec__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__rec__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__text__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_ret__text__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__items__meth__self": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "self_truthy__items__prop__self": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "self_truthy__n__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__n__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__name__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__name__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__opt__meth__self": [
+  "stmt.if:cond.method_call",
+  ""
+ ],
+ "self_truthy__opt__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__own__meth__self": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "self_truthy__own__prop__self": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "self_truthy__rec__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__rec__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__text__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_truthy__text__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_tuple_elem__n__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_tuple_elem__n__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_tuple_elem__name__meth__self": [
+  "stmt.var_decl:decl.tuple_literal_shape",
+  ""
+ ],
+ "self_tuple_elem__name__prop__self": [
+  "stmt.var_decl:decl.tuple_literal_shape",
+  ""
+ ],
+ "self_tuple_elem__text__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_tuple_elem__text__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__items__meth__self": [
+  "res.yield_type",
+  ""
+ ],
+ "self_yield__items__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__n__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__n__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__name__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__name__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__opt__meth__self": [
+  "stmt.for_each:foreach.elem_family.optional",
+  ""
+ ],
+ "self_yield__opt__prop__self": [
+  "stmt.for_each:foreach.elem_family.optional",
+  ""
+ ],
+ "self_yield__own__meth__self": [
+  "res.yield_type",
+  ""
+ ],
+ "self_yield__own__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__rec__meth__self": [
+  "res.yield_type",
+  ""
+ ],
+ "self_yield__rec__prop__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__text__meth__self": [
+  "ok",
+  ""
+ ],
+ "self_yield__text__prop__self": [
+  "ok",
+  ""
+ ],
+ "set_elem__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "set_elem__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "set_elem__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "set_elem__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "set_elem__name__meth__named": [
+  "expr.container_literal",
+  ""
+ ],
+ "set_elem__name__meth__temp": [
+  "expr.container_literal",
+  ""
+ ],
+ "set_elem__name__prop__named": [
+  "expr.container_literal",
+  ""
+ ],
+ "set_elem__name__prop__temp": [
+  "expr.container_literal",
+  ""
+ ],
+ "set_elem__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "set_elem__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "set_elem__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "set_elem__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "setitem_value__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "setitem_value__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "setitem_value__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "setitem_value__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "sorted_arg__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "sorted_arg__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "sorted_arg__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "sorted_arg__items__prop__temp": [
+  "ok",
+  ""
+ ],
+ "sorted_arg__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "sorted_arg__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "sorted_arg__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "sorted_arg__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "str_coerce__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "str_coerce__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "str_coerce__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "str_coerce__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "str_coerce__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "str_coerce__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "str_coerce__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "str_coerce__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "str_coerce__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "str_coerce__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "str_coerce__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "str_coerce__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "subscript_index__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "subscript_index__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "subscript_index__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "subscript_index__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "sum_arg__items__meth__named": [
+  "ok",
+  ""
+ ],
+ "sum_arg__items__meth__temp": [
+  "ok",
+  ""
+ ],
+ "sum_arg__items__prop__named": [
+  "ok",
+  ""
+ ],
+ "sum_arg__items__prop__temp": [
+  "ok",
+  ""
+ ],
+ "sum_arg__own__meth__named": [
+  "ok",
+  ""
+ ],
+ "sum_arg__own__meth__temp": [
+  "ok",
+  ""
+ ],
+ "sum_arg__own__prop__named": [
+  "ok",
+  ""
+ ],
+ "sum_arg__own__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ternary__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "ternary__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ternary__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "ternary__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "ternary__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "ternary__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ternary__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "ternary__name__prop__temp": [
+  "expr.method_call:if_expr_arm.lends_from_temporary",
+  ""
+ ],
+ "ternary__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "ternary__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "ternary__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "ternary__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__items__meth__named": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "truthy__items__meth__temp": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "truthy__items__prop__named": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "truthy__items__prop__temp": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "truthy__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "truthy__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "truthy__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "truthy__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "truthy__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__opt__meth__named": [
+  "stmt.if:cond.method_call",
+  ""
+ ],
+ "truthy__opt__meth__temp": [
+  "stmt.if:cond.method_call",
+  ""
+ ],
+ "truthy__opt__prop__named": [
+  "ok",
+  ""
+ ],
+ "truthy__opt__prop__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__own__meth__named": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "truthy__own__meth__temp": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "truthy__own__prop__named": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "truthy__own__prop__temp": [
+  "stmt.if:method.ret_type",
+  ""
+ ],
+ "truthy__rec__meth__named": [
+  "ok",
+  ""
+ ],
+ "truthy__rec__meth__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__rec__prop__named": [
+  "ok",
+  ""
+ ],
+ "truthy__rec__prop__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "truthy__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "truthy__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "truthy__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "try_finally__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "try_finally__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "try_finally__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "try_finally__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "try_finally__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "try_finally__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "try_finally__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "try_finally__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "try_finally__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "try_finally__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "try_finally__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "try_finally__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "tuple_elem__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "tuple_elem__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "tuple_elem__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "tuple_elem__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "tuple_elem__name__meth__named": [
+  "stmt.var_decl:decl.tuple_literal_shape",
+  ""
+ ],
+ "tuple_elem__name__meth__temp": [
+  "stmt.var_decl:decl.tuple_literal_shape",
+  ""
+ ],
+ "tuple_elem__name__prop__named": [
+  "stmt.var_decl:decl.tuple_literal_shape",
+  ""
+ ],
+ "tuple_elem__name__prop__temp": [
+  "stmt.var_decl:decl.tuple_literal_shape",
+  ""
+ ],
+ "tuple_elem__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "tuple_elem__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "tuple_elem__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "tuple_elem__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "walrus__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "walrus__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "walrus__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "walrus__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "while_cond__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "while_cond__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "while_cond__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "while_cond__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "with_body__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "with_body__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "with_body__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "with_body__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "with_body__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "with_body__name__meth__temp": [
+  "ok",
+  ""
+ ],
+ "with_body__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "with_body__name__prop__temp": [
+  "ok",
+  ""
+ ],
+ "with_body__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "with_body__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "with_body__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "with_body__text__prop__temp": [
+  "ok",
+  ""
+ ],
+ "with_mgr__guard__meth__named": [
+  "stmt.with",
+  ""
+ ],
+ "with_mgr__guard__meth__temp": [
+  "stmt.with",
+  ""
+ ],
+ "with_mgr__guard__prop__named": [
+  "ok",
+  ""
+ ],
+ "with_mgr__guard__prop__temp": [
+  "expr.method_call:with_manager.lends_from_temporary",
+  ""
+ ],
+ "yield_val__items__meth__named": [
+  "res.yield_type",
+  ""
+ ],
+ "yield_val__items__meth__temp": [
+  "Cannot yield local or temporary as reference. Reference type 'list[int32]' is yi",
+  ""
+ ],
+ "yield_val__items__prop__named": [
+  "res.yield_type",
+  ""
+ ],
+ "yield_val__items__prop__temp": [
+  "Cannot yield local or temporary as reference. Reference type 'list[int32]' is yi",
+  ""
+ ],
+ "yield_val__n__meth__named": [
+  "ok",
+  ""
+ ],
+ "yield_val__n__meth__temp": [
+  "ok",
+  ""
+ ],
+ "yield_val__n__prop__named": [
+  "ok",
+  ""
+ ],
+ "yield_val__n__prop__temp": [
+  "ok",
+  ""
+ ],
+ "yield_val__name__meth__named": [
+  "ok",
+  ""
+ ],
+ "yield_val__name__meth__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "yield_val__name__prop__named": [
+  "ok",
+  ""
+ ],
+ "yield_val__name__prop__temp": [
+  "Cannot return StrView referencing a local or temporary; use str or String to ret",
+  ""
+ ],
+ "yield_val__own__meth__named": [
+  "res.yield_type",
+  ""
+ ],
+ "yield_val__own__meth__temp": [
+  "res.yield_type",
+  ""
+ ],
+ "yield_val__own__prop__named": [
+  "res.yield_type",
+  ""
+ ],
+ "yield_val__own__prop__temp": [
+  "res.yield_type",
+  ""
+ ],
+ "yield_val__rec__meth__named": [
+  "res.yield_type",
+  ""
+ ],
+ "yield_val__rec__meth__temp": [
+  "Cannot yield local or temporary as reference. Reference type 'R' is yielded by r",
+  ""
+ ],
+ "yield_val__rec__prop__named": [
+  "res.yield_type",
+  ""
+ ],
+ "yield_val__rec__prop__temp": [
+  "Cannot yield local or temporary as reference. Reference type 'R' is yielded by r",
+  ""
+ ],
+ "yield_val__text__meth__named": [
+  "ok",
+  ""
+ ],
+ "yield_val__text__meth__temp": [
+  "ok",
+  ""
+ ],
+ "yield_val__text__prop__named": [
+  "ok",
+  ""
+ ],
+ "yield_val__text__prop__temp": [
+  "ok",
+  ""
+ ]
+}

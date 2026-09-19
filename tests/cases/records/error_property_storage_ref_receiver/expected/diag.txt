@@ -1,0 +1,3 @@
+main.py:47: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:48: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:47: error: in function 'main': this construct is not yet supported by C++ code generation (expr.method_call:method.recv.storage_ref_getter)

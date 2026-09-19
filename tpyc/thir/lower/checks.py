@@ -10,6 +10,7 @@ from collections.abc import Sequence, Set as AbstractSet
 from dataclasses import field, replace
 from typing import Callable, NamedTuple
 from ...parse.nodes import (
+    is_property_getter_read,
     FSTRING_CONV_REPR,
     FSTRING_CONV_STR,
     FunctionLinkage,
@@ -124,7 +125,7 @@ from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
 from ...value_category import (
-    call_returns_cpp_ref, is_rvalue_source, property_access_returns_cpp_ref,
+    call_returns_cpp_ref, is_rvalue_source, property_getter_of,
 )
 from ...codegen_cpp.context import (
     escape_cpp_name,
@@ -395,8 +396,7 @@ def _ptr_union_source_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer,
             return False
         bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
         return bt == u
-    if (allow_field and isinstance(e, TpyFieldAccess)
-            and e.property_getter_call is not None):
+    if allow_field and is_property_getter_read(e):
         # A ptr-union PROPERTY read (`s = c.shape`): the getter returns
         # the STORAGE variant by reference (the is_property_getter
         # signature arm), so the decl lifts it exactly like a plain
@@ -650,41 +650,26 @@ def _container_literal_decl_ok(stmt: TpyVarDecl, declared: dict[str, TpyType],
         return note_detail("container_lit.decl_type") if is_lit else False
     return _container_literal_shape_ok(stmt.init, t, analyzer, note=True)
 
-def _by_value_property_read(init: TpyExpr, analyzer) -> bool:
-    """A `@property` read whose getter hands its result back BY VALUE.
-
-    The read RENDERS as the getter call, so wherever a fresh call result is
-    the admitted rvalue this is the same shape one spelling over
-    (`BUGS.md#own-property-iterable-materialize`). The convention is the
-    value-category fact, not a re-read of the annotation, so a
-    borrow-returning getter answers False and keeps its alias cascade.
-
-    Asked of the getter alone, NOT through `is_rvalue_source`: that answers
-    rvalue for a borrow-returning getter off a TEMPORARY receiver too, and
-    that read owns nothing -- decling the value would silently copy what
-    the language says is an alias, where the shape has no render and must
-    keep rejecting (`BUGS.md#readonly-borrow-of-temporary-receiver`).
-    """
-    return (isinstance(init, TpyFieldAccess)
-            and init.property_getter_call is not None
-            and not property_access_returns_cpp_ref(analyzer, init))
-
 def _storage_decl_src(init: TpyExpr, analyzer) -> bool:
     """The decl's initializer is a fresh value the local must OWN, so the
     decl takes the storage-form init sink rather than the alias cascade.
 
-    Three spellings of one rule -- the init mints its result instead of
-    lending existing storage: a call or method call; a container SLICE read
-    (`sub = items[a:b:c]`, an owned `list[T]` out of list_slice); and a
-    by-value `@property` read (`auto snap = s.snapshot();`, the bind-first
-    workaround for `BUGS.md#own-property-iterable-materialize`).
+    Two spellings of one rule -- the init MINTS its result instead of
+    lending existing storage: a call or method call whose callee returns by
+    value (a by-value `@property` read is one, so it lands here with its
+    spelled twin); and a container SLICE read (`sub = items[a:b:c]`, an
+    owned `list[T]` out of list_slice).
+
+    A borrow of storage that dies with the statement is refused earlier, at
+    the sink channel (`SinkForm.DYING_SOURCE_LEND`), so this rule does not
+    re-derive it.
     """
     if isinstance(init, (TpyCall, TpyMethodCall)):
         return True
     if isinstance(init, TpySubscript):
         return (init.slice_function_info is not None
                 and isinstance(init.index, TpySlice))
-    return _by_value_property_read(init, analyzer)
+    return False
 
 def _container_literal_shape_ok(init: TpyExpr, t: TpyType, analyzer, *,
                                 note: bool = False,
@@ -1502,31 +1487,27 @@ def _field_over_field_ok(e: TpyExpr, locals_: dict[str, TpyType],
                 and _witness("field.chain_ptr_recv" if ptr_inner
                              else "field.chain_recv"))
 
-def _field_over_property_call_ok(e: TpyExpr, analyzer) -> bool:
-    """A field read off a PROPERTY-GETTER receiver (`s.Config.v` -- the inner
-    read is a getter call in disguise, lowered through the method-call arms):
-    the field chains postfix `.` off the call render, so
-    admission only needs the getter's return to be a record (native included
-    -- the member spelling resolves through `_field_cpp` either way); every
-    inner gate still applies when the receiver lowers."""
-    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
-            and isinstance(e.obj, TpyFieldAccess)
-            and e.obj.property_getter_call is not None):
-        return False
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(e.obj))))
-    return bool(isinstance(rt, NominalType) and rt.is_user_record
-                and _witness("field.property_call_recv"))
+def _field_over_call_ok(e: TpyExpr, analyzer, *,
+                        any_record_ok: bool = False) -> bool:
+    """A value field read off a record-returning call / method-call receiver
+    (`f().x`, `p.Box(10).n`, `h.boxed.get().x`, and `s.Config.v` off a
+    `@property` getter): the bare postfix member spells over the call
+    render, rvalue and borrow returns alike. The receiver lowers through its
+    own call arms (RECEIVER use), so every inner gate still applies.
 
-def _field_over_call_ok(e: TpyExpr, analyzer) -> bool:
-    """A value field read off an F1-record-returning call / method-call
-    receiver (`f().x`, `p.Box(10).n`, `h.boxed.get().x`): the bare postfix
-    member spells over the call render, rvalue and borrow returns
-    alike. The receiver lowers through its own call arms (RECEIVER use), so
-    every inner gate still applies."""
+    `any_record_ok` widens the receiver's record class from F1 to ANY user
+    record, NATIVE included -- the member spelling resolves through
+    `_field_cpp` either way. The WRITE positions pass it (a getter hop is
+    their admitted receiver); the read positions keep the F1 class they
+    always had, so the widening changes nothing they route."""
     if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
             and isinstance(e.obj, (TpyCall, TpyMethodCall))):
         return False
+    if any_record_ok:
+        rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            analyzer.get_expr_type(e.obj))))
+        return bool(isinstance(rt, NominalType) and rt.is_user_record
+                    and _witness("field.property_call_recv"))
     return bool(_f1_record(analyzer.get_expr_type(e.obj), analyzer)
                 and _witness("field.call_recv"))
 
@@ -1850,7 +1831,13 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         if _container_comp_arg(stmt.init, target_type):
             return binding
         return None
-    if isinstance(stmt.init, (TpyCall, TpyMethodCall)):
+    if (isinstance(stmt.init, (TpyCall, TpyMethodCall))
+            and not is_property_getter_read(stmt.init)):
+        # A @property read is a call too, but its return CONVENTION is the
+        # field's, not a method's: the storage-ref shapes come back by
+        # reference and take the lift rows further down. It is held out here
+        # rather than re-answered, so the two conventions stay one decision.
+        #
         # A borrow-record-returning free call (`p = shared(x)` -> `Pair& p =
         # shared(x);` -- the classifier's lvalue-source verdict). REF_ALIAS
         # only: the reassigned POINTER shape reseats via `&(call)`, a lift
@@ -1923,8 +1910,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # the field arm delegates to the method-call lowering, whose own
         # gates re-validate receiver/args.
         if (binding is LocalBinding.OPTIONAL_TO_PTR
-                and isinstance(stmt.init, TpyFieldAccess)
-                and stmt.init.property_getter_call is not None):
+                and is_property_getter_read(stmt.init)):
             return binding
         # A REF_ALIAS @property read (`v = c.items` ->
         # `std::vector<int32_t>& v = c.items();`): the borrow-returning
@@ -1937,8 +1923,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # REF_ALIAS at all (binding `T&` to the by-value getter result off
         # a mutable receiver would be ill-formed C++).
         if (binding is LocalBinding.REF_ALIAS
-                and isinstance(stmt.init, TpyFieldAccess)
-                and stmt.init.property_getter_call is not None
+                and is_property_getter_read(stmt.init)
                 and (_alias_ref_container(target_type)
                      or _f1_record(target_type, analyzer))):
             return binding
@@ -2172,6 +2157,29 @@ def _own_return_call_shape(e: TpyExpr, analyzer) -> bool:
         unwrap_send_sync(fi.return_type))), OwnType)
 
 
+def _own_return_getter_shape(e: TpyExpr) -> bool:
+    """The ACCESSOR spelling of `_own_return_call_shape`: a `@property` read
+    OFF `self` whose getter DECLARES `-> Own[T]`, so what it hands back is a
+    value the owning sink may take.
+
+    Separate from its sibling because the sibling is spelled for a `TpyCall`
+    and a read is a method call. The two collapse into one predicate the day
+    a SPELLED zero-arg method is admitted at an owning sink -- see TODO.md,
+    "A borrow-returning zero-arg METHOD call is a chain hop".
+
+    The `self` restriction holds a VERDICT, not a lifetime: the getter builds
+    the value and moves it out, so the receiver's lifetime cannot matter after
+    the call, and the same read off a parameter would be just as sound. It is
+    the receiver at which this yield was admitted before a read became a call,
+    and admitting the others is a widening nobody has measured.
+    """
+    fi = property_getter_of(e)
+    return (fi is not None
+            and isinstance(e.obj, TpyName) and e.obj.name == "self"
+            and isinstance(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(fi.return_type))), OwnType))
+
+
 def _method_recv_field_write_ok(target: TpyExpr, declared: dict[str, TpyType],
                                 analyzer) -> bool:
     """A field-write target whose RECEIVER is a method call returning a
@@ -2235,7 +2243,8 @@ def _field_write_receiver_ok(target: TpyExpr, declared: dict[str, TpyType],
             # `h.val.x = 8` -- the receiver is a PROPERTY getter returning
             # a borrow (`h.val().x = 8;`): the write chains the same
             # postfix member the read row admits.
-            or _field_over_property_call_ok(target, analyzer)
+            or _field_over_call_ok(target, analyzer,
+                                   any_record_ok=True)
             or _method_recv_field_write_ok(target, declared, analyzer))
 
 
@@ -2282,7 +2291,8 @@ def _viewfam_field_write_receiver_ok(target: TpyExpr,
             or _field_over_subscript_ok(target, declared, analyzer)
             or _field_over_container_subscript_ok(target, declared, analyzer,
                                                   pointers)
-            or _field_over_property_call_ok(target, analyzer)
+            or _field_over_call_ok(target, analyzer,
+                                   any_record_ok=True)
             or _method_recv_field_write_ok(target, declared, analyzer)):
         return False
     return _field_write_receiver_ok(target, declared, analyzer, pointers)
@@ -3760,8 +3770,7 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer,
         # apply -- which is why a `_Environ` record passes here but a record
         # bound to a plain local still rejects below.
         return True
-    elif (isinstance(arg, TpyFieldAccess)
-          and arg.property_getter_call is not None):
+    elif is_property_getter_read(arg):
         # `len(f.items)` on a @property -> `::tpy::__len__(f.items())`: the
         # getter CALL renders in place of the member read, so the arg is a
         # call result -- never a pointer-local, which is what the family
@@ -8416,16 +8425,6 @@ def _method_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
     receiver). Container, bytearray, view, Ptr-valued and protocol/tparam fields
     route their own families over the same bare member read; an Optional field
     is deferred (it would need the outer `(*obj)` / deref_check unwrap)."""
-    if (getattr(recv, "property_getter_call", None) is not None
-            and isinstance(recv.obj, TpyName)
-            and (_resolved_str_value(analyzer.get_expr_type(recv), analyzer)
-                 is not None
-                 or _resolved_bytes_value(analyzer.get_expr_type(recv),
-                                          analyzer) is not None)):
-        # A view-valued PROPERTY receiver (`self.text.encode()`): the read
-        # lowers as its getter call and the view family composes over the
-        # rvalue like a str/bytes method-call receiver.
-        return _witness("method.recv.view_field")
     if (getattr(recv, "dyn_getattr_call", None) is not None
             and isinstance(recv.obj, TpyName)
             and (_resolved_str_value(analyzer.get_expr_type(recv), analyzer)
@@ -8436,32 +8435,6 @@ def _method_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         # `str_upper(h.__getattr__("content_type"))`): the read lowers as
         # the synthesized __getattr__ call, composing the same way.
         return _witness("method.recv.dyn_view_field")
-    if (getattr(recv, "property_getter_call", None) is not None
-            and isinstance(recv.obj, TpyName)
-            # Only the getter marker: any OTHER special-emit marker has
-            # its own render.
-            and recv.module_var_access is None
-            and recv.class_constant_owner is None
-            and recv.dyn_getattr_call is None
-            and recv.property_setter_call is None
-            and recv.dyn_setattr_call is None
-            and recv.unbound_self_parent_type is None
-            and not recv.deref_depth
-            and recv.deref_narrowed_to is None
-            and not recv.needs_optional_runtime_check
-            and _f1_record(locals_.get(recv.obj.name), analyzer)):
-        _pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            analyzer.get_expr_type(recv))))
-        if _container_method_recv(_pt, analyzer, None):
-            # A CONTAINER-valued property receiver (`c.items.append(4)` ->
-            # `c.items().push_back(4)`): the borrow-returning getter call
-            # IS the receiver lvalue; the container family composes over
-            # it exactly as over a plain container field -- the SAME
-            # element-gated predicate the plain-field arm uses, so the two
-            # admission paths cannot drift. Mutation through a const
-            # getter is a sema error, so admitted shapes are mutable by
-            # proof.
-            return _witness("method.recv.container_property")
     if not (_field_receiver_ok(recv, locals_, analyzer)
             or _indirect_field_receiver_ok(recv, locals_, analyzer, pointers)
             or _chain_field_receiver_ok(recv, locals_, analyzer)
@@ -15129,19 +15102,6 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
             if is_set(mt):
                 return PrintForm.SET
             if is_list(mt) or is_array(mt):
-                return PrintForm.LIST
-            return None
-        # A container PROPERTY read (`print(c.items)` ->
-        # `ListPrinter(c.items())`): the getter call renders inside the
-        # same kind-keyed wrap; the method-call arms gate the read.
-        if a.property_getter_call is not None:
-            ft = unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(analyzer.get_expr_type(a))))
-            if is_dict(ft):
-                return PrintForm.DICT
-            if is_set(ft):
-                return PrintForm.SET
-            if is_list(ft) or is_array(ft):
                 return PrintForm.LIST
             return None
         # A container FIELD read (`m._items`) streams via the same kind-keyed

@@ -1,0 +1,1 @@
+main.py:36: error: in function 'take': this construct is not yet supported by C++ code generation (expr.method_call:assign.field_write_lends_from_temporary)

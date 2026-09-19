@@ -1,0 +1,8 @@
+view_char: a
+view: 1
+view_char: b
+view: 2
+name_char: a
+name: 1
+name_char: b
+name: 2

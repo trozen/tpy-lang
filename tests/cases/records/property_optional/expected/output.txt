@@ -1,3 +1,10 @@
+truthy: three if
+truthy: three while 1
+truthy: three assert
+truthy: three is-not-none
+truthy: zero while 0
+truthy: zero is-not-none
+truthy: none while 0
 True
 42
 True

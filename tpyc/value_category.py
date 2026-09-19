@@ -13,7 +13,7 @@ and `registry`. Both the sema `AnalyzerContext` and the codegen
 """
 
 from enum import Enum, auto
-from typing import Any, Protocol
+from typing import Any, NamedTuple, Protocol
 
 from .typesys import (
     FunctionInfo, NominalType, PtrType, TpyType, TypeParamRef, OwnType,
@@ -29,8 +29,9 @@ from .parse import (
     TpyGeneratorExpression, TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr, TpyAwait,
     TpyBytesLiteral, TpyFString, TpyNamedExpr,
+    is_property_getter_read,
 )
-from .type_def_registry import is_bool_type
+from .type_def_registry import is_bool_type, is_borrowing_view_type
 
 
 def wants_move(t: TpyType) -> bool:
@@ -143,8 +144,21 @@ def return_type_is_cpp_ref(rt: 'TpyType | None') -> bool:
     return returns_cpp_reference_shape(rt)
 
 
+def property_getter_of(expr: TpyExpr) -> 'FunctionInfo | None':
+    """The `@property` getter `expr` reads through, or None when it is not a
+    property read.
+
+    A read IS its getter call from the moment sema resolves it, so the
+    question is about the resolved callee, never about the node kind. The
+    predicate half lives on the node module (`is_property_getter_read`); this
+    is the accessor over it, so the two cannot disagree about what a
+    property read is.
+    """
+    return expr.resolved_function_info if is_property_getter_read(expr) else None
+
+
 def property_access_returns_cpp_ref(analyzer: ValueCategoryAnalyzer,
-                                    expr: TpyFieldAccess) -> bool:
+                                    expr: TpyExpr) -> bool:
     """The return convention of ONE property read: does the getter hand its
     result back as a C++ lvalue reference into live storage, or by value?
 
@@ -174,10 +188,7 @@ def property_access_returns_cpp_ref(analyzer: ValueCategoryAnalyzer,
     a read off a temporary from binding a reference into it
     (`BUGS.md#readonly-borrow-of-temporary-receiver`).
     """
-    getter = expr.property_getter_call
-    if getter is None:
-        return False
-    fi = getter.resolved_function_info
+    fi = property_getter_of(expr)
     if fi is None:
         return False
     if property_getter_returns_storage_ref(fi.return_type):
@@ -185,6 +196,92 @@ def property_access_returns_cpp_ref(analyzer: ValueCategoryAnalyzer,
     if is_open_type_param_return(fi.return_type):
         return return_type_is_cpp_ref(analyzer.get_expr_type(expr))
     return call_returns_cpp_ref(analyzer, fi)
+
+
+class AccessorTerms(NamedTuple):
+    """What a resolved `@property` read is, in the two terms its consumers
+    ask about. See `_accessor_terms` for why they are not one term."""
+    fi: 'FunctionInfo'
+    # The read renders as a C++ lvalue reference.
+    returns_ref: bool
+    # The result borrows the RECEIVER's storage -- wider than `returns_ref`.
+    borrows_receiver: bool
+
+
+def _accessor_terms(analyzer: 'ValueCategoryAnalyzer',
+                    expr: TpyExpr) -> 'AccessorTerms | None':
+    """The terms both accessor questions are built from, named once.
+
+    Returns the terms for a resolved `@property` read, or `None` when `expr`
+    is not one.
+
+    The two are NOT the same question and must not be folded. `returns_ref`
+    is the value CATEGORY: does the read render as a C++ lvalue reference,
+    which is what decides whether a binding may bind `T&`. `borrows_receiver`
+    is the LIFETIME question and is WIDER: a view return (`StrView`,
+    `BytesView`, `Span[T]`) is a value the category rightly calls an rvalue
+    while its payload still points into the receiver's storage, so it borrows
+    although it is not a reference. Answering the lifetime question with the
+    category is how a view getter off a temporary came to be stored into a
+    field with no diagnostic.
+    """
+    fi = property_getter_of(expr)
+    if fi is None:
+        return None
+    returns_ref = property_access_returns_cpp_ref(analyzer, expr)
+    rt = unwrap_ref_type(fi.return_type)
+    borrows = (returns_ref
+               or property_getter_returns_storage_ref(fi.return_type)
+               or (not isinstance(rt, OwnType)
+                   and rt is not None and is_borrowing_view_type(rt)))
+    return AccessorTerms(fi, returns_ref, borrows)
+
+
+def accessor_lends_receiver_storage(analyzer: 'ValueCategoryAnalyzer',
+                                   expr: TpyExpr) -> bool:
+    """`expr` is a `@property` read that hands back a BORROW of its
+    receiver's storage -- a reference return, a storage-ref Optional/union,
+    or a view whose payload points into the receiver.
+
+    The LIFETIME term of `_accessor_terms`, on its own: a position asks it
+    when what the read lends matters regardless of whether the receiver is
+    alive (its const-ness, its identity), where `lends_from_dying_source`
+    asks the pair.
+    """
+    terms = _accessor_terms(analyzer, expr)
+    return terms is not None and terms.borrows_receiver
+
+
+def lends_from_dying_source(analyzer: 'ValueCategoryAnalyzer',
+                            expr: TpyExpr) -> bool:
+    """`expr` hands back a BORROW of storage that dies at the end of the
+    statement -- an accessor read off a temporary receiver.
+
+    A minted result may be OWNED by the binding. A borrow of dying storage
+    may not: what the callee lends can OUTLIVE its receiver (a global, a
+    longer-lived object), CPython aliases it, and owning a copy would lose
+    every later mutation silently -- nor may it be bound as a reference,
+    which would dangle. WHICH positions those are is not this predicate's
+    to say: it reports the FACT, and `_POS_FORMS` (`tpyc/thir/lower/
+    context.py`) holds the verdict as one row per sink -- `SinkForm.
+    DYING_SOURCE_LEND`, admitted by the transient sinks and by no sink that
+    binds or holds a value past the full expression. An ARGUMENT is the one
+    sink whose row is not the whole answer: it asks the CALLEE's own
+    retention facts (`arg_lend_ok`).
+
+    The ACCESSOR spelling only, and that line is INTERIM: a spelled method
+    borrowing from a temporary receiver stays on the conceded
+    warn-and-emit tier (`BUGS.md#readonly-borrow-of-temporary-receiver`,
+    pinned by `tests/cases/list/warn_insert_temp_receiver_borrow` and its
+    siblings), so widening the fact to it would turn those warnings into
+    rejects -- that entry's decision, not this predicate's. When the
+    temporary-receiver tier is decided, `property_getter_of` is what gets
+    widened; the fact itself is spelling-blind.
+    """
+    terms = _accessor_terms(analyzer, expr)
+    if terms is None:
+        return False
+    return terms.borrows_receiver and is_rvalue_source(analyzer, expr.obj)
 
 
 def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
@@ -199,26 +296,17 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     if isinstance(expr, TpyName):
         return False
     # Field access: rvalue iff the object is rvalue (member of temporary).
-    # A property / __getattr__ access keeps the field-access node kind but
-    # RENDERS as a method call, so the accessor's return CONVENTION is a
-    # SECOND way for it to be one -- the node kind alone reads as an inert
-    # member read. Both are asked: an accessor handing back a C++ reference
-    # still borrows from its RECEIVER, so off a temporary the read names
-    # storage that dies at the end of the statement exactly as a plain
-    # member read off one does. Asking only the convention would bind a
-    # reference into the temporary (`std::vector<int32_t>& p =
-    # mk().items();`); the METHOD spelling of the same read is a conceded
-    # warn-and-emit tier (`BUGS.md#readonly-borrow-of-temporary-receiver`)
-    # and is not this arm.
+    # A `__getattr__` access keeps the field-access node kind but RENDERS as
+    # a method call, so the accessor's return CONVENTION is a SECOND way for
+    # it to be one -- the node kind alone reads as an inert member read.
+    # Both are asked: an accessor handing back a C++ reference still borrows
+    # from its RECEIVER, so off a temporary the read names storage that dies
+    # at the end of the statement exactly as a plain member read off one
+    # does. The receiver disjunct is inert today -- sema admits only a value
+    # type, `Any` or `Own[T]` as a `__getattr__` return, so the convention
+    # never answers "reference" here -- and is kept so the accessor arms
+    # cannot drift if it widens.
     if isinstance(expr, TpyFieldAccess):
-        if expr.property_getter_call is not None:
-            return (not property_access_returns_cpp_ref(analyzer, expr)
-                    or is_rvalue_source(analyzer, expr.obj))
-        # Same pair for the `__getattr__` face. The receiver disjunct is inert
-        # today -- sema admits only a value type, `Any` or `Own[T]` as a
-        # `__getattr__` return, so the convention never answers "reference"
-        # here -- and is kept so the two accessor arms cannot drift if it
-        # widens.
         hidden = expr.hidden_call
         if hidden is not None:
             return (not call_returns_cpp_ref(analyzer,
@@ -274,6 +362,17 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     if isinstance(expr, CONTAINER_LITERAL_NODES):
         return True
     if isinstance(expr, TpyMethodCall):
+        terms = _accessor_terms(analyzer, expr)
+        if terms is not None:
+            # The accessor pair above, one node kind over: a property read
+            # asks the RECEIVER as well as the convention, because a getter
+            # handing back a C++ reference still borrows from the object it
+            # was read off. The plain-method spelling deliberately does not
+            # (`BUGS.md#readonly-borrow-of-temporary-receiver` concedes that
+            # tier), so the disjunct stays keyed on the getter. The CATEGORY
+            # term is the narrow one -- see `_accessor_terms`.
+            _fi, returns_ref, _borrows = terms
+            return not returns_ref or is_rvalue_source(analyzer, expr.obj)
         return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
     # Coercions: a rule that builds a fresh value yields a prvalue whatever the
     # source was; every other rule renders the inner through, so it inherits
@@ -438,9 +537,6 @@ def _borrow_link(expr: TpyExpr) -> 'tuple[FunctionInfo | None, TpyExpr | None] |
         return (expr.resolved_function_info, None)
     if isinstance(expr, TpySubscript) and expr.getitem_function_info is not None:
         return (expr.getitem_function_info, expr.obj)
-    if isinstance(expr, TpyFieldAccess) and expr.property_getter_call is not None:
-        getter = expr.property_getter_call
-        return (getter.resolved_function_info, getter.obj)
     if isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
         rb = expr.resolved_binop
         return (rb.method, expr.right if rb.is_reverse else expr.left)

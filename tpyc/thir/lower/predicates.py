@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 from ...parse.nodes import (
+    is_property_getter_read,
     FunctionLinkage,
     TpyArrayLiteral,
     TpyAssert,
@@ -101,6 +102,7 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
+    property_getter_returns_storage_ref,
     varargs_is_readonly,
     view_family_for_type,
 )
@@ -141,7 +143,6 @@ from ...value_category import (
     is_rvalue_source,
     materializing_temp_source,
     peel_coerce,
-    property_access_returns_cpp_ref,
 )
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...codegen_cpp.forms import (
@@ -2862,8 +2863,13 @@ def _opt_record_dunder(t: TpyType | None, analyzer) -> bool:
 
 def _storage_form_opt_source(e: TpyExpr, analyzer,
                              storage_opt_locals: set[str]) -> bool:
-    """`is_storage_form_optional_source` over the shapes truthiness sees."""
-    if isinstance(e, (TpyFieldAccess, TpySubscript)):
+    """`is_storage_form_optional_source` over the shapes truthiness sees.
+
+    A `@property` read is one of them: the getter hands back the FIELD's
+    storage optional by reference, so `if s.o:` tests it exactly as the
+    member read does."""
+    if (isinstance(e, (TpyFieldAccess, TpySubscript))
+            or is_property_getter_read(e)):
         return reads_storage_form_optional(analyzer, e)
     return isinstance(e, TpyName) and e.name in storage_opt_locals
 
@@ -3765,7 +3771,6 @@ def _ptr_value_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     if not isinstance(e, TpyFieldAccess):
         return False
     if (e.module_var_access is not None or e.class_constant_owner is not None
-            or e.property_getter_call is not None
             or e.dyn_getattr_call is not None
             or e.property_setter_call is not None
             or e.dyn_setattr_call is not None
@@ -3834,7 +3839,6 @@ def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     if not e.deref_depth or e.deref_narrowed_to is not None:
         return False
     if (e.module_var_access is not None or e.class_constant_owner is not None
-            or e.property_getter_call is not None
             or e.dyn_getattr_call is not None
             or e.property_setter_call is not None
             or e.dyn_setattr_call is not None
@@ -5712,13 +5716,9 @@ def _ptr_tuple_field_compare_pair(
     deref-aware `tuple_eq` / `tuple_lt` composition, over the BARE member
     reads (the helpers bridge the storage form -- the member renders with
     no lift). DECLARED-type keyed: a narrowed Optional-declared field reads
-    with an unwrap this pair does not render, and a property read is a call
-    in disguise -- both stay out."""
+    with an unwrap this pair does not render and stays out."""
     if not (isinstance(e.left, TpyFieldAccess)
             and isinstance(e.right, TpyFieldAccess)):
-        return None
-    if (e.left.property_getter_call is not None
-            or e.right.property_getter_call is not None):
         return None
     pair = []
     for side in (e.left, e.right):
@@ -6867,7 +6867,6 @@ def _unbound_self_field_ok(e: TpyExpr) -> bool:
         return False
     return not (e.module_var_access is not None
                 or e.class_constant_owner is not None
-                or e.property_getter_call is not None
                 or e.dyn_getattr_call is not None
                 or e.property_setter_call is not None
                 or e.dyn_setattr_call is not None
@@ -6963,6 +6962,9 @@ def _lvalue_chain_root(e: TpyExpr, declared: dict[str, TpyType], analyzer,
 
     Every hop must name storage the root outlives; `_lvalue_chain_hop_ok`
     asks that of each one, so the walk grows no list of node kinds of its own.
+    A `@property` hop is walked through like the member it is spelled as --
+    the accessor question is the same one `_lvalue_chain_hop_ok` already puts
+    to a `__getitem__` hop, and the answer is the same for both.
 
     The root's own const verdict is the whole chain's (C++ const travels
     through member and element access), so a caller reads constness at the
@@ -6978,7 +6980,8 @@ def _lvalue_chain_root(e: TpyExpr, declared: dict[str, TpyType], analyzer,
     if not isinstance(e, (TpyFieldAccess, TpySubscript)):
         return None
     link = e
-    while isinstance(link, (TpyFieldAccess, TpySubscript)):
+    while (isinstance(link, (TpyFieldAccess, TpySubscript))
+           or is_property_getter_read(link)):
         if not _lvalue_chain_hop_ok(link, declared, analyzer, pointers):
             return None
         link = link.obj
@@ -6999,10 +7002,12 @@ def _chained_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
     checked the same way; each hop lowers through its own arm, which gates
     its own shape (an Optional or rvalue link rejects there). A chain that
     bottoms out in anything else -- a call result, a literal -- is not an
-    lvalue and is not admitted."""
+    lvalue and is not admitted; a `@property` hop is the exception the
+    walker states, since the read is a member spelling."""
     if not isinstance(e, TpyFieldAccess) or not _field_markers_clean(e):
         return False
-    if not isinstance(e.obj, (TpyFieldAccess, TpySubscript)):
+    if not (isinstance(e.obj, (TpyFieldAccess, TpySubscript))
+            or is_property_getter_read(e.obj)):
         return False
     return _lvalue_chain_root(e, declared, analyzer, pointers) is not None
 
@@ -7175,12 +7180,16 @@ def _optional_checked_field_over_call_ok(e: TpyExpr, analyzer) -> bool:
     ptr-repr Optional CALL (`find(points, 5).x` -- sema could not prove
     the result non-None): the raw `T*` result is wrapped --
     `::tpy::deref_check(find(...)).x` -- the call sibling of the
-    Optional-ptr NAME receiver."""
+    Optional-ptr NAME receiver. A `@property` read is a call whose result is
+    NOT that `T*` (the getter hands back the field's `std::optional<T>` by
+    reference), so it takes the STORAGE row below instead."""
     if not isinstance(e, TpyFieldAccess):
         return False
     if not e.needs_optional_runtime_check:
         return False
     if not _field_markers_clean(e, allow_optional_check=True):
+        return False
+    if reads_storage_form_optional(analyzer, e.obj):
         return False
     return _optional_checked_recv_call(e.obj, analyzer)
 
@@ -7191,8 +7200,9 @@ def _optional_checked_field_over_field_ok(e: TpyExpr,
     STORAGE `Optional[F1-record]` member (`h.opt.x` where sema could not
     prove `h.opt` non-None): the whole optional lvalue is wrapped --
     `::tpy::deref_optional_check(h.opt).x` -- the storage sibling of
-    `_optional_checked_field`'s already-`T*` name receiver. Read positions
-    only (the write target keeps its own gate)."""
+    `_optional_checked_field`'s already-`T*` name receiver. A `@property`
+    read joins it: the getter spells the same storage optional, by reference.
+    Read positions only (the write target keeps its own gate)."""
     if not isinstance(e, TpyFieldAccess):
         return False
     if not e.needs_optional_runtime_check:
@@ -7200,6 +7210,8 @@ def _optional_checked_field_over_field_ok(e: TpyExpr,
     if not _field_markers_clean(e, allow_optional_check=True):
         return False
     recv = e.obj
+    if is_property_getter_read(recv):
+        return reads_storage_form_optional(analyzer, recv)
     if not (isinstance(recv, TpyFieldAccess)
             and _field_receiver_ok(recv, declared, analyzer)):
         return False
@@ -7217,7 +7229,6 @@ def _field_markers_clean(e: TpyFieldAccess, *,
     `allow_optional_check` keeps `needs_optional_runtime_check` admissible for the
     Optional-element member path (which reproduces that runtime check)."""
     return not (e.module_var_access is not None or e.class_constant_owner is not None
-                or e.property_getter_call is not None
                 or e.dyn_getattr_call is not None
                 or e.property_setter_call is not None or e.dyn_setattr_call is not None
                 or e.unbound_self_parent_type is not None or e.deref_depth
@@ -9028,12 +9039,11 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
                 or _value_opt_view(wt, analyzer) is not None):
             return operand
         return None
-    if (isinstance(operand, TpyFieldAccess)
-            and operand.property_getter_call is not None):
-        # A @property read subject (`w.node is None`): the Optional
-        # detection sees the field-access node (an OptionalType, whatever
-        # the repr) and the storage-form classifier admits any FieldAccess,
-        # so the render is has_value over the getter call
+    if is_property_getter_read(operand):
+        # A @property read subject (`w.node is None`): the getter hands back
+        # the FIELD's storage optional by reference whatever the repr, where
+        # a plain method returns the `T*` borrow form -- so the render is
+        # has_value over the getter call
         # (`!w.node().has_value()`). A static-protocol optional takes the
         # pointer-compare arm instead -- keep it rejecting. Keyed on the
         # ANALYZED type: a sema-narrowed subject is no longer Optional and
@@ -9336,42 +9346,6 @@ def _nonvalue_container_ret(ret: TpyType | None) -> bool:
     t = unwrap_readonly(unwrap_send_sync(ret))
     return _f1_container_ref(t)
 
-def _by_value_property_iterable(it: 'TpyExpr', analyzer) -> bool:
-    """A @property for-each iterable whose getter hands its result back BY
-    VALUE -- an `Own[...]` return, or a value-typed one (`str`, `bytes`, a
-    view such as `StrView` / `Span[T]`): everything the getter's return
-    convention does not spell as a C++ reference. A value TUPLE is not on
-    the list: sema refuses iterating a tuple before this gate is asked.
-
-    Both for-each routes hold something that must outlive the setup
-    statement: the sync route binds `auto& __obj_N = c.items();`, the
-    resumable frame stores `__for_it_N` / `__for_end_N` off the same read.
-    A by-value getter result is a temporary destroyed at the end of that
-    statement, so neither shape is expressible -- the sync render is
-    ill-formed C++, the frame render compiles and dangles.
-
-    The convention is read from `property_access_returns_cpp_ref`, the one
-    home that already knows a getter spells the two pointer-repr shapes as
-    the FIELD's storage reference where a plain method returns them by
-    value, and that a bare type-param return is a reference or not per the
-    RECEIVER's instantiation; re-deriving it from the annotation would
-    answer Own-only and miss the value-typed getters. Asked of the getter,
-    not through `is_rvalue_source`: that also answers rvalue for a
-    REFERENCE-returning getter off a temporary receiver, which is a
-    different defect with its own conceded tier
-    (`BUGS.md#readonly-borrow-of-temporary-receiver`) and not this fence's
-    question.
-
-    One predicate for both routes on purpose: the frame keeps its
-    iterators across suspensions, so a shape the sync route cannot hold
-    for one statement is never safe there
-    (`BUGS.md#own-property-iterable-materialize`).
-    """
-    if not (isinstance(it, TpyFieldAccess)
-            and it.property_getter_call is not None):
-        return False
-    return not property_access_returns_cpp_ref(analyzer, it)
-
 def _resolve_literal_seeded(t: 'TpyType | None', analyzer) -> 'TpyType | None':
     """Resolve a literal-seeded analyzer type to its final form: a PENDING
     container (PendingListType -> list, or the read-only demoted Array) and
@@ -9670,7 +9644,15 @@ def _ptr_opt_borrow_call_ret(e: 'TpyCall | TpyMethodCall',
     """A call whose result is a ptr-repr `Optional[T]` the callee BORROWS
     (its declared return is not `Own[...]`), i.e. already a `T*` at the call
     site -- `callee_returns_own_ptr_optional`'s complement, which is what
-    picks the bare pass-through over the slot + `optional_to_ptr` lift."""
+    picks the bare pass-through over the slot + `optional_to_ptr` lift.
+
+    A `@property` getter's declared return is the same but its RESULT is
+    not: the storage-ref convention spells it as the FIELD's
+    `std::optional<T>` BY REFERENCE, so the bare pass-through would not
+    compile and the read takes the lift. The exclusion is NOT made here --
+    this predicate has nine callers and the shape reaches only one of them,
+    so the decl pass-through asks `reads_storage_form_optional` itself and
+    the other eight keep their answers."""
     return (isinstance(ret, OptionalType) and ret.uses_pointer_repr()
             and not _own_declared_call_ret(e))
 
@@ -11751,6 +11733,7 @@ def _plain_member_call_markers_ok(e: TpyMethodCall, *,
 
 def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                         property_getter_ok: bool = False,
+                        whole_optional_ok: bool = False,
                         property_setter_ok: bool = False,
                         coro_factory_ok: bool = False,
                         consuming_ok: bool = False,
@@ -11798,6 +11781,19 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                 or (fi.is_async and not coro_factory_ok)
                 or (fi.is_generator and not generator_ok)
                 or (fi.is_property_getter and not property_getter_ok)
+                # A getter returning a storage-ref OPTIONAL hands back the
+                # FIELD's `std::optional<T>` BY REFERENCE -- a form no plain
+                # method can return -- so a position that has not said it
+                # consumes the whole optional (`whole_optional_ok`) cannot
+                # render it, and admitting it there spells C++ that does not
+                # compile. Beside the other fi rows rather than computed at
+                # a call site, so the union half of the same convention has
+                # somewhere to join it.
+                or (fi.is_property_getter
+                    and not whole_optional_ok
+                    and isinstance(unwrap_ref_type(fi.return_type),
+                                   OptionalType)
+                    and property_getter_returns_storage_ref(fi.return_type))
                 or (fi.is_property_setter and not property_setter_ok))
 
 def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],

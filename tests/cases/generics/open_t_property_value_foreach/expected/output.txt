@@ -1,0 +1,9 @@
+decl: a string long enough to leave the SSO buffer behind
+prop_char: a
+prop: 1
+prop_char: b
+prop: 2
+meth_char: a
+meth: 1
+meth_char: b
+meth: 2

@@ -5,6 +5,11 @@
 # (BUGS.md#own-property-iterable-materialize).
 # The copy is the point -- the getter hands back a fresh list -- so every section
 # mutates the local and prints the owner to show the owner did NOT change.
+# `use_view` takes `Holder&`, not `const Holder&`: binding the view off the
+# accessor credits the receiver as mutated at the DECL rather than at the
+# write, so a body that only iterates the view still pays the mutable
+# binding. TODO.md, "A borrow DECLARATION is credited as a mutation of its
+# source".
 from typing import Iterator
 
 from tpy import int32, Own, StrView

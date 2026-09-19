@@ -302,6 +302,29 @@ A **borrow conflict** occurs when:
 **Value types** (`int32`, `bool`, `float`, `char`, `float32`) are exempt -- they copy
 on assignment, so no aliasing occurs.
 
+#### Where a borrow may be HANDED OUT: one row per sink
+
+The rule above says when a borrow conflicts. The lowering needs the dual: at
+which POSITION a value that borrows storage the statement is about to kill may
+be used at all. That is decided in one place and in one shape -- `SinkPos` names
+every position a lowered expression can land in (a local decl, a call argument,
+a container element, a field write, a return, a `with` manager, a match subject,
+a print argument, an operand, ...), and `_POS_FORMS` (`tpyc/thir/lower/
+context.py`) gives each position exactly one row saying which `SinkForm`s it
+admits. A position that BINDS the value past the full expression refuses
+`DYING_SOURCE_LEND`; a position that reads it inside the expression admits it.
+A lowering site never decides this for itself: it names its sink and takes the
+row's verdict.
+
+The ARGUMENT is the one position whose answer is not the position's. Whether an
+argument may hold such a borrow depends on what the CALLEE does with it, so the
+argument sink asks the callee's own retention facts (`arg_lend_ok`) instead of
+reading a row -- `len(mk().data)` reads the argument during the call and is
+admitted, `reversed(mk().data)` hands back a lazy view of it and is refused.
+That is a question about a function, not about a position, which is why it is
+the exception rather than a second kind of row. Its limits are filed as
+`BUGS.md#native-stub-declares-no-param-retention`.
+
 ### What Falls Out of This
 
 The borrow rule is a **unifying principle** that replaces several ad-hoc analyses:
@@ -514,10 +537,13 @@ iterables (`self.items`) and aliased mutation are Phase 2 (cross-function infere
   same verdict on the same iterable (`res.for_iter_borrow_unplaceable`).
   A chain whose TAIL is a `@property` is keyed like a stored field -- one
   hop keys, deeper does not -- so the stamp is the same question for it;
-  what differs is which ROUTE reads the stamp. The sync route's property
-  arm admits the chain before reaching the stamp, so `for b in
-  o.inner.items:` compiles in a plain body; the resumable route reads the
-  stamp ahead of every arm, so the same loop rejects there. Which route a
+  what differs is which ROUTE reads the stamp. The read is a getter CALL,
+  so the sync route admits it through the method-call arm before reaching
+  the stamp and `for b in o.inner.items:` compiles in a plain body; the
+  resumable route reads the stamp ahead of every arm, so the same loop
+  rejects there. The key is spelled for the getter deliberately: dropping
+  to the None a call answers would make the deep chain look placeable and
+  admit it in a frame. Which route a
   loop takes is decided per LOOP, by whether its BODY suspends: the same
   chain inside a generator or an `async def` whose loop body has no
   `yield` or `await` lowers on the sync route and compiles. That asymmetry
@@ -534,7 +560,7 @@ iterables (`self.items`) and aliased mutation are Phase 2 (cross-function infere
   call or property iterable is a located reject at lowering there
   (`call.ret_type.record_borrow` for a free function, `method.ret_type` for
   a method or a property getter; the sync property twin is
-  `iter.user_iterator.field_access`, which fires only for a property
+  `method.fi_kind` (the getter call's own result gate), which fires only for a property
   whose getter return is a USER-ITERATOR type -- a container-returning
   property iterable compiles on the sync route). Sharing it is what keeps the row
   lifting those rejects from leaving one route filing no loan.

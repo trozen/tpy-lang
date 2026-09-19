@@ -1,0 +1,5 @@
+frame: 3 4
+async: 3
+self_yield_own: 3
+self_yield_own owner: 2
+self_yield: 101 3 3

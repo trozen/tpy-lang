@@ -46,7 +46,7 @@ from ..parse import (
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
     TpyMatch, TpyBinOp, TpyIfExpr, TpyFString, TpyAwait,
-    is_stable_address_lvalue,
+    is_stable_address_lvalue, is_property_getter_read,
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind, NameBinding
@@ -211,11 +211,6 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         fi = expr.resolved_function_info
         args = expr.args
         obj = expr.obj
-    elif isinstance(expr, TpyFieldAccess) and expr.property_getter_call is not None:
-        # Property getter is a method call; use its return_borrows_from facts
-        fi = expr.property_getter_call.resolved_function_info
-        args = expr.property_getter_call.args
-        obj = expr.property_getter_call.obj
     elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
         # Operator dispatch is a method call in disguise: a borrow-returning
         # dunder hands out a borrow of an operand. Use the canonical fi --
@@ -258,6 +253,11 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
             if root is not None:
                 bt.add_borrow(root, borrower, BorrowKind.ELEMENT)
             elif _is_dangling_temporary_arg(obj):
+                # A borrow-returning callee can hand back storage that
+                # OUTLIVES its receiver (a global, a longer-lived object), so
+                # the receiver dying at end-of-statement is never a reason to
+                # call the result unborrowed -- the provenance is the whole
+                # question here.
                 ctx.warning(
                     f"Result borrows from temporary receiver object; "
                     f"the temporary is destroyed at end-of-statement",
@@ -2909,9 +2909,9 @@ class StatementAnalyzer:
         nothing guards. The stamp is the key question itself, so it is
         spelled once, here, where the key is computed.
 
-        The stamp is asked of the @property hop too, before the early
-        return below: a getter wearing field syntax is keyed at one hop
-        like a stored field and unkeyable deeper, and the resumable route
+        The stamp is asked of the @property read too, before the early
+        return below: a getter is keyed at one hop like the stored field
+        it reads through, and unkeyable deeper, and the resumable route
         holds its iterator across suspensions, where a caller's mutation
         of the returned container can reach it. What the one-hop answer
         does NOT mean is that the loan sits on the iterated container --
@@ -2923,15 +2923,16 @@ class StatementAnalyzer:
         a borrow-returning call): `_register_iter_provenance_loan` files
         those, and both routes call it too.
         """
-        if not isinstance(stmt.iterable, (TpyName, TpySubscript, TpyFieldAccess)):
+        is_getter = is_property_getter_read(stmt.iterable)
+        if not is_getter and not isinstance(
+                stmt.iterable, (TpyName, TpySubscript, TpyFieldAccess)):
             return False
         # A subscript iterates an ELEMENT of the storage its key names; every
         # other lvalue spelling iterates the storage itself.
         on_element = isinstance(stmt.iterable, TpySubscript)
         key = iter_borrow_storage(stmt.iterable)
         stmt.iter_borrow_unplaceable = key is None
-        if (isinstance(stmt.iterable, TpyFieldAccess)
-                and stmt.iterable.property_getter_call is not None):
+        if is_getter:
             return False
         if key is not None:
             self.ctx.func.borrow_tracker.add_borrow(
@@ -2955,9 +2956,9 @@ class StatementAnalyzer:
         A call result borrows whatever the callee's `return_borrows_from`
         names, so the loan goes on those source containers: the call
         expression itself has no storage key a mutating receiver could ever
-        be resolved to. A @property hop is such a call (its getter), which
-        is why `_register_iter_loan` hands both shapes here rather than
-        filing a field-path key for the property.
+        be resolved to. A @property read IS such a call, which is why
+        `_register_iter_loan` hands it here rather than filing a field-path
+        key for it.
 
         Shared by BOTH for-each routes, for the reason `_register_iter_loan`
         is: the two routes must not answer the invalidation question
@@ -2972,29 +2973,11 @@ class StatementAnalyzer:
         the async route with no loan.
         """
         bt = self.ctx.func.borrow_tracker
-        if isinstance(stmt.iterable, TpyFieldAccess):
-            # Property getter: register ITER borrow via return_borrows_from
-            # on the receiver object (more precise than the field-path key).
-            gc = stmt.iterable.property_getter_call
-            if gc is not None:
-                fi_gc = gc.resolved_function_info
-                gc_sources = (recorded_return_borrow_sources(fi_gc)
-                              if fi_gc is not None else frozenset())
-                if gc_sources:
-                    iter_srcs: list[str] = []
-                    for idx in gc_sources:
-                        if idx == -1 and gc.obj is not None:
-                            srcs = _borrow_storage_roots(gc.obj)
-                        elif idx >= 0 and idx < len(gc.args):
-                            srcs = _borrow_storage_roots(gc.args[idx])
-                        else:
-                            srcs = []
-                        for src in srcs:
-                            bt.add_borrow(src, ITER_BORROWER, BorrowKind.ITER)
-                            iter_srcs.append(src)
-                    if iter_srcs:
-                        self.ctx.func.loop_var_iterable[stmt.var] = iter_srcs
-        elif isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
+        # One leg for both spellings: a `@property` read is a TpyMethodCall
+        # from sema on, so the getter's own `return_borrows_from` (index -1 =
+        # the receiver) registers the ITER borrow here rather than through a
+        # field-access arm of its own.
+        if isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
             # 8b: iterable is a call whose return borrows from source arg(s).
             # Register ITER borrow directly on those source containers so that
             # structural mutations during the loop generate conflict warnings.
@@ -5833,6 +5816,11 @@ class StatementAnalyzer:
                 and self._target_is_dyn_writable_only(stmt.target)):
             self._analyze_dyn_setattr_assign(stmt)
             return
+        if isinstance(stmt.target, TpyFieldAccess):
+            # Pin the write position before the target is analysed as a read:
+            # a property read otherwise becomes its GETTER call and the setter
+            # below would have no field name to look up.
+            stmt.target.is_write_target = True
         target_type = self.expr.analyze_expr(stmt.target)
         self._check_class_constant_write(stmt.target, stmt)
         # D16 dyn-attr write detection: if the read-side analysis resolved the
@@ -5886,7 +5874,7 @@ class StatementAnalyzer:
         # (lifetime analysis), re-yielding it (yield-onward check), and capturing
         # it by reference in a closure (nested-def escape check).
         # Property setter: validate and tag for codegen
-        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:
+        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property_getter is not None:
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             actual = unwrap_readonly(obj_type) if obj_type else None
             record = self.ctx.registry.get_record_for_type(actual) if isinstance(actual, NominalType) else None
@@ -6171,7 +6159,7 @@ class StatementAnalyzer:
             # the storage of the record and of its other fields, so no loan
             # into either is invalidated. A property setter runs user code,
             # and a movable payload's slot is taken away, so both still warn.
-            if has_conflict and (stmt.target.is_property_access
+            if has_conflict and (stmt.target.resolved_property_getter is not None
                                  or not (is_primitive_type(target_type)
                                          or is_big_int_type(target_type))):
                 self.ctx.warning(loan_mutation_warning(
@@ -6608,9 +6596,13 @@ class StatementAnalyzer:
                 f"Cannot reassign Final variable '{stmt.target.name}'",
                 stmt
             )
+        if isinstance(stmt.target, TpyFieldAccess):
+            # Same pin as the plain assign: the located error below names the
+            # property by the field the target still carries.
+            stmt.target.is_write_target = True
         target_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(stmt.target)))
         # Augmented assignment on properties not yet supported
-        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:
+        if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property_getter is not None:
             raise self.ctx.error(
                 f"Augmented assignment on property '{stmt.target.field}' is not yet supported",
                 stmt,

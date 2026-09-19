@@ -1,0 +1,4 @@
+free_fn: 2 4
+owner: 4
+method: 2
+in_method: 3

@@ -21,7 +21,8 @@ from .parse import (
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
     TpyLambda, TpyMatch,
 )
-from .parse.nodes import (SourceLocation, iter_capture_bindings,
+from .parse.nodes import (SourceLocation, is_property_getter_read,
+                          iter_capture_bindings,
                           stmts_have_any_suspension)
 from .value_category import CONTAINER_LITERAL_NODES
 
@@ -123,6 +124,14 @@ def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
     Returns a simple name for TpyName, or a dotted path for multi-level
     TpyFieldAccess (e.g. "obj.field", "obj.inner.field").
     Returns None for unsupported expressions.
+
+    A `@property` read is deliberately NOT one: it is a getter CALL, and a
+    call's result is not narrowable storage. Nothing kills the fact when the
+    getter's backing changes (a global reassigned between the guard and the
+    read keeps the key "proven"), and the reads under a narrow would still
+    need the storage-form lift the positions do not carry. The spelled
+    method twin is not narrowed either; see TODO.md for what narrowing a
+    pure zero-arg getter would need.
     """
     if isinstance(expr, TpyName):
         return expr.name
@@ -456,8 +465,16 @@ def chain_root_name(expr: TpyExpr) -> str | None:
     o.items[0].inner -> the root name), or None when the chain bottoms out
     in anything else (call results are handled by the borrow tracker, not
     the prescan alias map).
+
+    A `@property` hop is a hop of this chain: the read is spelled like a
+    member and names storage the root owns, so it is walked through like
+    one. It is the ONE call shape that is -- a spelled zero-arg accessor
+    returning a borrow is the same thing structurally and is not admitted
+    here (see TODO.md); whether a hop's storage actually outlives the root
+    is the caller's per-hop question, not this walker's.
     """
-    while isinstance(expr, (TpyFieldAccess, TpySubscript)):
+    while (isinstance(expr, (TpyFieldAccess, TpySubscript))
+           or is_property_getter_read(expr)):
         expr = expr.obj
     return expr.name if isinstance(expr, TpyName) else None
 

@@ -10,14 +10,14 @@ namespace tpyapp::main {
 //         print(s.radius)
 //     elif isinstance(s, Square):
 //         print(s.side)
-void describe(const Canvas& c) {
-    ::tpy::Union<const Circle*, const Square*> s = ::tpy::to_const_ptr_variant(c.shape());
-    if (std::holds_alternative<const Circle*>(s)) {
-        auto& __s = *std::get<const Circle*>(s);
+void describe(Canvas& c) {
+    ::tpy::Union<Circle*, Square*> s = ::tpy::to_ptr_variant(c.shape());
+    if (std::holds_alternative<Circle*>(s)) {
+        auto& __s = *std::get<Circle*>(s);
         std::cout << __s.radius << "\n";
     } else {
         if (true) {
-            auto& __s = *std::get<const Square*>(s);
+            auto& __s = *std::get<Square*>(s);
             std::cout << __s.side << "\n";
         }
     }

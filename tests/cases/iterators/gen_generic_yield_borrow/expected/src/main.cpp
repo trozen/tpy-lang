@@ -97,6 +97,14 @@ Point& ident(Point& p) {
 //         p.x += 100
 //     print("property", c.v.x)
 //
+//     # the VALUE instantiation of the same getter yield: the slot holds the
+//     # value, and `val()` is still spelled non-const, so the two instantiations
+//     # of one getter agree on the receiver's const face
+//     c2 = Cell(5)
+//     for n in c2.prop():
+//         print("property-value", n)
+//     print("property-value-src", c2.v)
+//
 //     # a yield inside a context-manager body
 //     ws = [Point(1), Point(2)]
 //     for p in in_with(ws):
@@ -322,21 +330,21 @@ void main() {
         }
     }
     std::cout << "property" << " " << c.v.x << "\n";
-    std::vector<Point> ws = {Point(1), Point(2)};
+    Cell<int32_t> c2 = Cell<int32_t>(5);
     {
-        auto __src_24 = ::tpyapp::main::in_with<Point>(ws);
+        auto __src_24 = c2.prop();
         auto&& __itr_24 = ::tpy::__iter__(__src_24);
         for (;;) {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
-            auto&& p = ::tpy::unwrap_ref(*__r_25);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            int32_t n = ::tpy::unwrap_ref(*__r_25);
+        std::cout << "property-value" << " " << n << "\n";
         }
     }
-    std::cout << "with" << " " << ::tpy::__getitem__(ws, 0).x << " " << ::tpy::__getitem__(ws, 1).x << "\n";
-    std::vector<Point> ts = {Point(1), Point(2)};
+    std::cout << "property-value-src" << " " << c2.v << "\n";
+    std::vector<Point> ws = {Point(1), Point(2)};
     {
-        auto __src_26 = ::tpyapp::main::in_try<Point>(ts);
+        auto __src_26 = ::tpyapp::main::in_with<Point>(ws);
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
         for (;;) {
             auto __r_27 = __itr_26.__next__();
@@ -345,10 +353,10 @@ void main() {
         p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
-    std::cout << "try" << " " << ::tpy::__getitem__(ts, 0).x << " " << ::tpy::__getitem__(ts, 1).x << "\n";
-    std::vector<Point> mt = {Point(1), Point(2)};
+    std::cout << "with" << " " << ::tpy::__getitem__(ws, 0).x << " " << ::tpy::__getitem__(ws, 1).x << "\n";
+    std::vector<Point> ts = {Point(1), Point(2)};
     {
-        auto __src_28 = ::tpyapp::main::in_match<Point>(mt, 0);
+        auto __src_28 = ::tpyapp::main::in_try<Point>(ts);
         auto&& __itr_28 = ::tpy::__iter__(__src_28);
         for (;;) {
             auto __r_29 = __itr_28.__next__();
@@ -357,34 +365,34 @@ void main() {
         p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
-    std::cout << "match" << " " << ::tpy::__getitem__(mt, 0).x << " " << ::tpy::__getitem__(mt, 1).x << "\n";
-    std::vector<Point> ls = {Point(1), Point(2)};
+    std::cout << "try" << " " << ::tpy::__getitem__(ts, 0).x << " " << ::tpy::__getitem__(ts, 1).x << "\n";
+    std::vector<Point> mt = {Point(1), Point(2)};
     {
-        auto __src_30 = ::tpyapp::main::via_local<Point>(ls);
+        auto __src_30 = ::tpyapp::main::in_match<Point>(mt, 0);
         auto&& __itr_30 = ::tpy::__iter__(__src_30);
         for (;;) {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_31);
         p.x = ::tpy::add_check<int32_t>(p.x, 100);
-        std::cout << "local-container" << " " << p.x << "\n";
         }
     }
-    std::vector<Point> tls = {Point(1), Point(2)};
+    std::cout << "match" << " " << ::tpy::__getitem__(mt, 0).x << " " << ::tpy::__getitem__(mt, 1).x << "\n";
+    std::vector<Point> ls = {Point(1), Point(2)};
     {
-        auto __src_32 = ::tpyapp::main::trial_then_local<Point>(tls, 1);
+        auto __src_32 = ::tpyapp::main::via_local<Point>(ls);
         auto&& __itr_32 = ::tpy::__iter__(__src_32);
         for (;;) {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_33);
         p.x = ::tpy::add_check<int32_t>(p.x, 100);
+        std::cout << "local-container" << " " << p.x << "\n";
         }
     }
-    std::cout << "trial-local" << " " << ::tpy::__getitem__(tls, 0).x << " " << ::tpy::__getitem__(tls, 1).x << "\n";
-    std::vector<Point> nd = {Point(1), Point(2)};
+    std::vector<Point> tls = {Point(1), Point(2)};
     {
-        auto __src_34 = ::tpyapp::main::with_nested<Point>(nd);
+        auto __src_34 = ::tpyapp::main::trial_then_local<Point>(tls, 1);
         auto&& __itr_34 = ::tpy::__iter__(__src_34);
         for (;;) {
             auto __r_35 = __itr_34.__next__();
@@ -393,9 +401,10 @@ void main() {
         p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
-    std::cout << "nested-def" << " " << ::tpy::__getitem__(nd, 0).x << " " << ::tpy::__getitem__(nd, 1).x << "\n";
+    std::cout << "trial-local" << " " << ::tpy::__getitem__(tls, 0).x << " " << ::tpy::__getitem__(tls, 1).x << "\n";
+    std::vector<Point> nd = {Point(1), Point(2)};
     {
-        auto __src_36 = ::tpyapp::main::local_after_nested(1);
+        auto __src_36 = ::tpyapp::main::with_nested<Point>(nd);
         auto&& __itr_36 = ::tpy::__iter__(__src_36);
         for (;;) {
             auto __r_37 = __itr_36.__next__();
@@ -404,9 +413,9 @@ void main() {
         p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
-    std::vector<Point> sh = {Point(1), Point(2)};
+    std::cout << "nested-def" << " " << ::tpy::__getitem__(nd, 0).x << " " << ::tpy::__getitem__(nd, 1).x << "\n";
     {
-        auto __src_38 = ::tpyapp::main::via_shadowing_local<Point>(sh);
+        auto __src_38 = ::tpyapp::main::local_after_nested(1);
         auto&& __itr_38 = ::tpy::__iter__(__src_38);
         for (;;) {
             auto __r_39 = __itr_38.__next__();
@@ -415,11 +424,9 @@ void main() {
         p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
-    std::cout << "shadow-local" << " " << ::tpy::__getitem__(sh, 0).x << " " << ::tpy::__getitem__(sh, 1).x << "\n";
-    std::cout << "shadow-global" << " " << ::tpy::__getitem__((*shadowed_src), 0).x << " " << ::tpy::__getitem__((*shadowed_src), 1).x << "\n";
-    std::array<Point, 2> ns = {Point(1), Point(2)};
+    std::vector<Point> sh = {Point(1), Point(2)};
     {
-        auto __src_40 = ::tpyapp::main::mapped<Point, ::tpy::val_or_ref<Point>>(ident, ns);
+        auto __src_40 = ::tpyapp::main::via_shadowing_local<Point>(sh);
         auto&& __itr_40 = ::tpy::__iter__(__src_40);
         for (;;) {
             auto __r_41 = __itr_40.__next__();
@@ -428,37 +435,50 @@ void main() {
         p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
-    std::cout << "named-fn" << " " << ::tpy::__getitem__(ns, 0).x << " " << ::tpy::__getitem__(ns, 1).x << "\n";
-    std::array<Point, 2> ms = {Point(1), Point(2)};
+    std::cout << "shadow-local" << " " << ::tpy::__getitem__(sh, 0).x << " " << ::tpy::__getitem__(sh, 1).x << "\n";
+    std::cout << "shadow-global" << " " << ::tpy::__getitem__((*shadowed_src), 0).x << " " << ::tpy::__getitem__((*shadowed_src), 1).x << "\n";
+    std::array<Point, 2> ns = {Point(1), Point(2)};
     {
-        auto __src_42 = ::tpyapp::main::mapped<Point, Point>([](Point& q) -> Point { return q; }, ms);
+        auto __src_42 = ::tpyapp::main::mapped<Point, ::tpy::val_or_ref<Point>>(ident, ns);
         auto&& __itr_42 = ::tpy::__iter__(__src_42);
         for (;;) {
             auto __r_43 = __itr_42.__next__();
             if (!__r_43.has_value()) break;
-            const auto& p = ::tpy::unwrap_ref(*__r_43);
-        std::cout << "fn" << " " << p.x << "\n";
+            auto&& p = ::tpy::unwrap_ref(*__r_43);
+        p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
+    std::cout << "named-fn" << " " << ::tpy::__getitem__(ns, 0).x << " " << ::tpy::__getitem__(ns, 1).x << "\n";
+    std::array<Point, 2> ms = {Point(1), Point(2)};
     {
-        auto __src_44 = ::tpyapp::main::mapped<Point, Point>(fresh, ms);
+        auto __src_44 = ::tpyapp::main::mapped<Point, Point>([](Point& q) -> Point { return q; }, ms);
         auto&& __itr_44 = ::tpy::__iter__(__src_44);
         for (;;) {
             auto __r_45 = __itr_44.__next__();
             if (!__r_45.has_value()) break;
             const auto& p = ::tpy::unwrap_ref(*__r_45);
+        std::cout << "fn" << " " << p.x << "\n";
+        }
+    }
+    {
+        auto __src_46 = ::tpyapp::main::mapped<Point, Point>(fresh, ms);
+        auto&& __itr_46 = ::tpy::__iter__(__src_46);
+        for (;;) {
+            auto __r_47 = __itr_46.__next__();
+            if (!__r_47.has_value()) break;
+            const auto& p = ::tpy::unwrap_ref(*__r_47);
         std::cout << "own-fn" << " " << p.x << "\n";
         }
     }
     std::array<Point, 2> rs = {Point(1), Point(2)};
     {
         auto __tmp_4 = ::tpyapp::main::each<Point>(rs);
-        auto __src_46 = ::tpyapp::main::relay<Point>(__tmp_4);
-        auto&& __itr_46 = ::tpy::__iter__(__src_46);
+        auto __src_48 = ::tpyapp::main::relay<Point>(__tmp_4);
+        auto&& __itr_48 = ::tpy::__iter__(__src_48);
         for (;;) {
-            auto __r_47 = __itr_46.__next__();
-            if (!__r_47.has_value()) break;
-            const auto& p = ::tpy::unwrap_ref(*__r_47);
+            auto __r_49 = __itr_48.__next__();
+            if (!__r_49.has_value()) break;
+            const auto& p = ::tpy::unwrap_ref(*__r_49);
         std::cout << "relay" << " " << p.x << "\n";
         }
     }
@@ -467,12 +487,12 @@ void main() {
     std::array<Point, 1> mx = {Point(5)};
     {
         auto __tmp_5 = ::tpyapp::main::each<Point>(mx);
-        auto __src_48 = ::tpyapp::main::mixed<Point>(mi, __tmp_5);
-        auto&& __itr_48 = ::tpy::__iter__(__src_48);
+        auto __src_50 = ::tpyapp::main::mixed<Point>(mi, __tmp_5);
+        auto&& __itr_50 = ::tpy::__iter__(__src_50);
         for (;;) {
-            auto __r_49 = __itr_48.__next__();
-            if (!__r_49.has_value()) break;
-            const auto& p = ::tpy::unwrap_ref(*__r_49);
+            auto __r_51 = __itr_50.__next__();
+            if (!__r_51.has_value()) break;
+            const auto& p = ::tpy::unwrap_ref(*__r_51);
         std::cout << "mixed" << " " << p.x << "\n";
         }
     }

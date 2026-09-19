@@ -13,6 +13,7 @@ from ..typesys import TpyType, OwnType
 from ..parse import TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyExpr, TpyStmt, TpyFunction
 from ..namespace import Namespace
 from ..diagnostics import Scope
+from ..value_category import property_access_returns_cpp_ref
 from .context import ITER_BORROWER
 
 if TYPE_CHECKING:
@@ -204,7 +205,17 @@ class ScopeTracker:
             return self.get_expr_scope_depth(expr.obj)
         if isinstance(expr, TpySubscript):
             return self.get_expr_scope_depth(expr.obj)
-        # Calls, literals etc. -- fresh storage, no escape
+        if property_access_returns_cpp_ref(self.ctx, expr):
+            # A getter that hands back a reference into its RECEIVER's
+            # storage is the field-access arm above, spelled as a call: what
+            # the binding will point at is the receiver's storage, so the
+            # receiver's depth is the answer. Without this the read falls to
+            # the call arm and claims fresh storage, and a binding off a
+            # loop-local receiver takes the address of an object destroyed
+            # at the end of the iteration.
+            return self.get_expr_scope_depth(expr.obj)
+        # Calls, literals etc. -- fresh storage, no escape. An `Own` or
+        # value-returning getter belongs here too: it builds what it returns.
         return 0
 
     def is_scope_escape(self, target_name: str, source_expr: TpyExpr) -> bool:
@@ -267,7 +278,14 @@ class ScopeTracker:
                 self.ctx.func.current_scope.define(source_name, scope_type.wrapped)
 
     def _get_source_name(self, expr: TpyExpr) -> str:
-        """Extract the root variable name from an expression for error messages."""
+        """Extract the root variable name from an expression for error messages.
+
+        Walks the same hops `get_expr_scope_depth` does, the accessor one
+        included: the two are one walk read for two answers, and a name the
+        depth walk reached but this one did not would put a `'?'` in the
+        diagnostic for exactly the shapes the depth walk just started
+        catching.
+        """
         if isinstance(expr, TpyCoerce):
             return self._get_source_name(expr.expr)
         if isinstance(expr, TpyName):
@@ -275,5 +293,7 @@ class ScopeTracker:
         if isinstance(expr, TpyFieldAccess):
             return self._get_source_name(expr.obj)
         if isinstance(expr, TpySubscript):
+            return self._get_source_name(expr.obj)
+        if property_access_returns_cpp_ref(self.ctx, expr):
             return self._get_source_name(expr.obj)
         return "?"

@@ -25,7 +25,8 @@ from ..typesys import (
     disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources)
 from .. import qnames
 from ..value_category import (
-    async_result_aliases, peel_value_wrappers, returns_borrow)
+    async_result_aliases, peel_value_wrappers,
+    property_access_returns_cpp_ref, returns_borrow)
 from . import own_copy
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
@@ -2104,6 +2105,14 @@ class TypeCompatibility:
         # handled by the reference-ternary copy diagnostic instead).
         if isinstance(expr, TpyIfExpr):
             return self.is_lvalue(expr.then_expr) and self.is_lvalue(expr.else_expr)
+        # A `@property` read is a method call from the moment sema resolves
+        # it, so node kind no longer separates it from the field read it
+        # wraps -- the getter's RETURN CONVENTION does. One that hands back a
+        # reference into its receiver's storage is the field access arm
+        # above, spelled as a call, and answers the same way: an lvalue
+        # exactly when the receiver it reaches through is one.
+        if property_access_returns_cpp_ref(self.ctx, expr):
+            return self.is_lvalue(expr.obj)
         # Everything else (calls, literals, operators) are rvalues
         return False
 
@@ -3231,18 +3240,8 @@ class TypeCompatibility:
                 return False
             return True
 
-        # Field access - safe only if the object itself is safe. A @property
-        # read is a getter *call*, not a stable stored field: its provenance is
-        # the getter's return, so route through the getter call (which reaches
-        # the TpyMethodCall branch's owned-str/borrow rules) rather than the
-        # object. A property returning a fresh owned str/String/bytes is a
-        # temporary that dangles behind a view exactly as a method would.
+        # Field access - safe only if the object itself is safe.
         if isinstance(expr, TpyFieldAccess):
-            if expr.is_property_access and expr.property_getter_call is not None:
-                return self.is_dangling_return(
-                    expr.property_getter_call, view_source=view_source,
-                    gen_yield=gen_yield,
-                    assume_unknown_calls_safe=assume_unknown_calls_safe)
             return self.is_dangling_return(
                 expr.obj, view_source=view_source, gen_yield=gen_yield,
                 assume_unknown_calls_safe=assume_unknown_calls_safe)

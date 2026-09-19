@@ -1,0 +1,20 @@
+print: [1, 2]
+len: 2
+len_view: 3
+subscript: 1
+fstring: abc
+compare: True
+concat: abcz
+method: 1
+user_param: 3
+str_call: abc
+truthy: yes
+field_thru: 7
+augassign: 3
+augassign_str: zabc
+dict_read: 1
+dict_write: 2
+membership: True
+method_arg: 3
+ctor_arg: abc
+live: 3 3

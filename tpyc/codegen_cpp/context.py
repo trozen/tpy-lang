@@ -41,6 +41,7 @@ from ..compilation_context import get_current_compiler
 from ..value_category import (
     is_rvalue_source as _is_rvalue_source_shared,
     call_returns_cpp_ref as _call_returns_cpp_ref_shared,
+    property_access_returns_cpp_ref,
     CONTAINER_LITERAL_NODES,
 )
 from .forms import (
@@ -2694,8 +2695,17 @@ class CodeGenContext:
             return True
         if isinstance(expr, TpyMethodCall) and expr.obj is not None:
             fi = expr.resolved_function_info
-            if (fi is not None
-                    and is_borrowing_view_type(unwrap_ref_type(fi.return_type))):
+            if fi is not None and (
+                    is_borrowing_view_type(unwrap_ref_type(fi.return_type))
+                    # ... and a reference-returning accessor, which lends the
+                    # receiver's OWN storage rather than a view of it: a
+                    # `@property` getter over a container field is the member
+                    # read one spelling over, so its verdict is the
+                    # receiver's exactly as the member read's was. The
+                    # convention comes from the one predicate that owns it --
+                    # spelling it here again lost the storage-ref Optional /
+                    # union returns, which are references into the field too.
+                    or property_access_returns_cpp_ref(self.analyzer, expr)):
                 return self.is_const_storage_source(expr.obj)
             return False
         if isinstance(expr, TpyName):

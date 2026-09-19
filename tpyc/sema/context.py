@@ -40,9 +40,11 @@ from ..parse import (
     TpyUnaryOp, TpyIfExpr, TpyTupleLiteral, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
     is_parse_node,
+    is_property_getter_read,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import call_returns_cpp_ref
+from .type_ops import signature_may_return_borrow
 
 # Tuple of all pending container types -- use in isinstance checks so adding
 # a new container type requires updating only this one constant.
@@ -63,6 +65,17 @@ def addr_taken_roots(expr: TpyExpr) -> list[str]:
     if isinstance(expr, TpySubscript):
         return addr_taken_roots(expr.obj)
     if isinstance(expr, TpyFieldAccess):
+        return addr_taken_roots(expr.obj)
+    if (is_property_getter_read(expr)
+            and signature_may_return_borrow(expr.resolved_function_info)):
+        # ... and the ACCESSOR spelling of that field read: a getter handing
+        # back a reference into its receiver's storage aliases the receiver,
+        # so the address taken is the receiver's. Keyed on what the getter's
+        # SIGNATURE can return, not on the node kind: a by-value getter hands
+        # back a copy and aliases nothing, while an open-`T` one is a
+        # reference at a reference instantiation and must be taken as aliasing
+        # -- this is an escape question, where the conservative answer is the
+        # safe one.
         return addr_taken_roots(expr.obj)
     if isinstance(expr, TpyBinOp) and expr.op in ("||", "&&"):
         return addr_taken_roots(expr.left) + addr_taken_roots(expr.right)
@@ -106,11 +119,20 @@ def _storage_key(expr: TpyExpr) -> str | None:
     """
     if isinstance(expr, TpyName):
         return expr.name
-    if isinstance(expr, TpyFieldAccess):
-        if expr.unbound_self_parent_type is not None:
-            return f"self.{expr.field}"
-        if isinstance(expr.obj, TpyName):
-            return f"{expr.obj.name}.{expr.field}"
+    # A @property read is a getter CALL with no storage of its own, but it is
+    # SPELLED as the member it reads through and is keyed like one: the same
+    # two arms, over the method name instead of the field name, so a getter
+    # and a stored field can never be keyed differently.
+    if is_property_getter_read(expr):
+        member = expr.method
+    elif isinstance(expr, TpyFieldAccess):
+        member = expr.field
+    else:
+        return None
+    if expr.unbound_self_parent_type is not None:
+        return f"self.{member}"
+    if isinstance(expr.obj, TpyName):
+        return f"{expr.obj.name}.{member}"
     return None
 
 
@@ -169,9 +191,10 @@ def field_chain_storage_key(expr: TpyExpr) -> str | None:
     that is all the borrow tracker's dict needs. Spelling the whole path is
     what lets `mark_view_borrowers_mutated` relate the mutation to a view's
     own key by prefix: `m = i` keys 'i' and so marks the view under 'i.name'.
-    A hop that dispatches to a method (`hidden_call` -- a property getter or
-    `__getattr__`) mints a temporary the path does not own, so such a chain
-    has no key here.
+    A hop that dispatches to `__getattr__` (`hidden_call`) mints a temporary
+    the path does not own, so such a chain has no key here. Neither does one
+    through a `@property`: that hop is a getter CALL, which this walk stops
+    at -- `_storage_key` keys it at ONE hop, which is all a loan needs.
 
     The BORROW side must not call it: a loan is looked up by the one-hop key,
     so a view registered under a deeper dotted path would sit on a key no
@@ -260,6 +283,13 @@ def _borrow_storage_root(expr: TpyExpr) -> str | None:
     if isinstance(expr, TpySubscript):
         return _storage_key(expr.obj)
     if isinstance(expr, TpyFieldAccess):
+        return _storage_key(expr)
+    if is_property_getter_read(expr):
+        # Keyed by the shared speller: a getter is one hop off a name like the
+        # stored field it reads through, and unkeyable deeper. Dropping to the
+        # call's None would let a deep property chain answer "placeable" where
+        # the field spelling answers "unplaceable", and the routes that consult
+        # the verdict would iterate storage no loan guards.
         return _storage_key(expr)
     return None
 
