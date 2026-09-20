@@ -1101,10 +1101,12 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
                   ptr_slot_ok: bool = False,
                   ) -> 'tuple[tuple[str, TpyType, str], ...] | None':
     """The arm-declared hoist admission shared by every routed tier (the
-    try arm's discipline): already-declared names skip, fresh plain-value
-    names admit in straight-line function scope only. With `nonvalue_ok`
-    (the record tiers), F1-record non-value hoists additionally classify
-    into `_emit_branch_decls`' two non-value arms -- borrow-only names
+    try arm's discipline): already-declared names skip, a name the
+    resumable frame already declares takes the decl-less "frame" kind,
+    fresh plain-value names admit in straight-line function scope only.
+    With `nonvalue_ok` (the record tiers), F1-record non-value hoists
+    additionally classify into `_emit_branch_decls`' two non-value arms --
+    borrow-only names
     (aliasing whole-subject captures; sema's stmt-borrow fact) take the
     pointer form, single-bind rvalue names the owned optional slot. None
     rejects the whole match."""
@@ -1116,6 +1118,9 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             continue
         if prescan.binds_global(name):
             return None
+        if _statements._frame_declares_hoist(name, lc):
+            hoist_declared.append((name, unwrap_ref_type(raw), "frame"))
+            continue
         vtype = unwrap_ref_type(raw)
         # A plain-VALUE hoist decl (`T t;`) is position-neutral: the
         # branch-decl render puts it at the match site wherever the
@@ -1149,13 +1154,9 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
                     or name in prescan.rvalue_reassigned):
                 return None
             if lc.func.is_generator or lc.func.is_async:
-                # The RESUMABLE flavor: the capture is a `P* v;` FRAME
-                # field (the opt_ptr classification already seeded
-                # lc.pointers), so no decl line -- the bind writes the
-                # field and reads deref through the registered binding.
-                if name in lc.opt_ptr_frame_locals:
-                    hoist_declared.append((name, vtype, "opt_ptr_frame"))
-                    continue
+                # A frame FIELD took the decl-less "frame" kind above; what
+                # is left in a resumable body is a non-resident capture,
+                # whose `T* name;` decl has no drain point in the leaves.
                 return None
             hoist_declared.append((name, vtype, "opt_ptr"))
             continue
@@ -1522,9 +1523,9 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             "switch_union", "if_elif_record", "guarded_record",
             "optional_partition", "if_elif_optional",
             "if_elif_optional_guarded", "switch_str")
-            # opt_ptr_frame IS a frame-field binding (no decl mechanics);
-            # every other non-value hoist kind stays out of hook mode.
-            or any(hk not in ("value", "opt_ptr_frame")
+            # `frame` IS a frame-field binding (no decl mechanics); every
+            # other non-value hoist kind stays out of hook mode.
+            or any(hk not in ("value", "frame")
                    for _n, _t, hk in route.hoist_types)
             or (kind == "switch_union"
                 and route.union_route == "guarded_union"
@@ -1537,9 +1538,8 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         # partition paths draw block-scoped inner aliases the BB walk cannot
         # see (their own reject, inside the lowerer), and a non-value hoist
         # kind stays out here: its frame-field pointer mechanics are
-        # unverified. VALUE-kind hoists are no-op decls in a resumable --
-        # every local is already a frame field -- so they admit with the
-        # decl suppressed below.
+        # unverified. A frame member's hoist is a no-op decl -- the frame
+        # struct declares it -- so it admits with the decl suppressed below.
         raise ThirUnsupported("res.match_strategy")
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
@@ -1549,6 +1549,13 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     hoist_kinds: dict[str, str] = {}
     for name, vtype, hkind in route.hoist_types:
         hoist_kinds[name] = hkind
+        if hkind == "frame":
+            # The frame struct already declares the member, so the hoist
+            # registers the name only -- no decl line at the match site.
+            _statements._register_frame_hoist(
+                name, _statements._frame_hoist_type(name, vtype, lc),
+                declared, lc)
+            continue
         if hkind in ("ptr", "ptr_const"):
             # Borrow-only pointer-local (`T* name;`): reads/writes deref via
             # `pointers`, reseats ride the hoisted-record arms. The const
@@ -1590,20 +1597,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             declared[name] = vtype
             _witness("match.hoist_opt_ptr_local")
             continue
-        if hkind == "opt_ptr_frame":
-            # The resumable twin: the frame struct already declares the
-            # `P* v;` member and the classification seeded lc.pointers --
-            # register the binding only, no decl line.
-            declared[name] = vtype
-            _witness("match.hoist_opt_ptr_frame")
-            continue
         declared[name] = vtype
-        if arm_body_hooks:
-            # Resumable hook mode: the frame struct already declares every
-            # local, so the value hoist registers the name only -- no decl
-            # line at the match site.
-            _witness("match.hoist_value_frame")
-            continue
         render_src = (_resolved_str_value(vtype, lc.analyzer)
                       or _resolved_bytes_value(vtype, lc.analyzer)
                       or vtype)
@@ -3047,12 +3041,13 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                         is ValueOptKind.SCALAR)):
                 raise ThirUnsupported("stmt.match")
             hkind = hoist_kinds.get(bnode.name)
-            if hkind not in (None, "value") and not (
+            if hkind not in (None, "value", "frame") and not (
                     hkind == "opt_ptr" and binds_full):
                 # A non-value hoisted capture on this tier is routed only as
                 # the full-Optional pointer bind; inner-binding hoisted
                 # captures (`case Box() as bb:` leaked) reject. Value
-                # hoists keep the existing declared-assign paths.
+                # hoists keep the existing declared-assign paths, and a
+                # frame-declared one is a value hoist minus the decl line.
                 raise ThirUnsupported("stmt.match")
             if binds_full and hkind == "opt_ptr" and uses_ptr:
                 # The hoisted `T* q;` binds the pointer subject whole

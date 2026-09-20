@@ -13,7 +13,7 @@
     "rubric": 7,
     "file": "tpyc/thir/lower/match.py",
     "line": 760,
-    "title": "_MatchRoute.hoist_types carries a second stringly-typed micro-enum ('value'/'ptr'/'ptr_const'/'ptr_slot'/'opt_storage'/'opt_ptr'/'opt_ptr_frame')",
+    "title": "_MatchRoute.hoist_types carries a second stringly-typed micro-enum ('value'/'ptr'/'ptr_const'/'ptr_slot'/'opt_storage'/'opt_ptr'/'frame')",
     "detail": "hoist_kind is a bare str threaded through _route_hoists -> _MatchRoute.hoist_types -> _lower_match's hoist-decl loop (match.py:1258-1319), branched with a chain of string equality checks. Same shape as the strategy field above and the same precedent fix (an Enum) applies; today a typo in a new hoist-kind string would silently fall through to the else-branch rather than erroring.",
     "size": "S",
     "churn": "zero",
