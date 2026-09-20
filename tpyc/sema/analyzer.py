@@ -911,6 +911,7 @@ class SemanticAnalyzer:
         # Every callee's return-borrow fact is final now, so the generic
         # yield-slot verdicts can be answered order-independently.
         self._settle_deferred_generic_yields()
+        self.stmts.scopes.settle_deferred_escapes()
         self._advance_phase(
             self._PHASE_REGISTER_SIGNATURES,
             self._PHASE_ANALYZE_BODIES,
@@ -1754,6 +1755,7 @@ class SemanticAnalyzer:
         if self.ctx.func.global_declarations:
             self.function_global_decls[func] = self.ctx.func.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
+        self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
 
     def _validate_named_defaults(self, func: TpyFunction) -> None:
         """Validate `def f(x: T = NAME)` defaults: NAME must be a Final[T] global.
@@ -3586,6 +3588,7 @@ class SemanticAnalyzer:
         if self.ctx.func.move_through_vars:
             self.top_level_move_through_vars = self.ctx.func.move_through_vars.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
+        self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
 
         self.ctx.func.current_function = None
         self.ctx.func.current_scope = None

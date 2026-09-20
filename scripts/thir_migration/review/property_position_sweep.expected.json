@@ -1313,7 +1313,7 @@
  ],
  "loop_decl__items__meth__local": [
   "stmt.var_decl:decl.container_call_reassigned",
-  ""
+  "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
  ],
  "loop_decl__items__prop__local": [
   "stmt.var_decl:decl.container_call_reassigned",
@@ -1337,7 +1337,7 @@
  ],
  "loop_decl__opt__meth__local": [
   "stmt.var_decl:decl.opt_slot_source",
-  ""
+  "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
  ],
  "loop_decl__opt__prop__local": [
   "stmt.var_decl:decl.opt_reseat_source",
@@ -1353,7 +1353,7 @@
  ],
  "loop_decl__rec__meth__local": [
   "ok",
-  ""
+  "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
  ],
  "loop_decl__rec__prop__local": [
   "stmt.var_decl:decl.slot_type",

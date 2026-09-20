@@ -1,0 +1,77 @@
+module level: 61 61
+method in-loop: 10
+method in-loop: 11
+method in-loop: 12
+method: 112
+method_arg in-loop: 10
+method_arg in-loop: 11
+method_arg in-loop: 12
+method_arg: 112
+free in-loop: 10
+free in-loop: 11
+free in-loop: 12
+free: 112
+chain in-loop: 10
+chain in-loop: 11
+chain in-loop: 12
+chain: 112
+second_arg in-loop: 10 9
+second_arg in-loop: 11 9
+second_arg in-loop: 12 9
+second_arg: 112
+chain_of_calls in-loop: 10
+chain_of_calls in-loop: 11
+chain_of_calls in-loop: 12
+chain_of_calls: 112
+ternary in-loop: 0 19
+ternary in-loop: 11 19
+ternary in-loop: 12 19
+ternary: 112
+optional in-loop: 10
+optional in-loop: 11
+optional in-loop: 12
+optional: 112
+while: 2
+nested: 21
+runner: 2
+two roots in-loop: 0 110
+two roots in-loop: 101 11
+two roots in-loop: 2 112
+two roots: 112
+nocopy in-loop: 10
+nocopy in-loop: 11
+nocopy in-loop: 12
+nocopy: 12
+alias of param: 33 33
+alias of outer element: 13 13
+for-each over a returned list: 13 13
+for-each over values(): 15
+callee alias in-loop: 10
+callee alias in-loop: 11
+callee alias in-loop: 12
+callee alias: 12
+callee field-call in-loop: 10
+callee field-call in-loop: 11
+callee field-call in-loop: 12
+callee field-call: 12
+callee reseated in-loop: 0 19
+callee reseated in-loop: 11 19
+callee reseated in-loop: 12 19
+callee reseated: 12
+callee other: 22 22
+nested in-loop: 10
+nested in-loop: 11
+nested in-loop: 12
+nested: 112
+forward sibling: 43 43
+forward in-loop: 10
+forward in-loop: 11
+forward in-loop: 12
+forward: 112
+wrapper of later: 42 42
+gen-hosted nested def: 5
+copy in-loop: 0
+copy in-loop: 1
+copy in-loop: 2
+copy: 112
+inverse: 152 9

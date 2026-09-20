@@ -55,6 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    static std::optional<::tpy::UninitHeapStorage<Point>> __global_slot_2;
     static ::tpy::UninitHeapStorage<int32_t> __global_slot_1 = ::tpy::UninitHeapStorage<int32_t>(4);
     storage = &__global_slot_1;
     storage->init(0, 100);
@@ -68,8 +69,7 @@ void __tpy_init() {
     storage->drop(0);
     storage->drop(1);
     storage->drop(2);
-    static ::tpy::UninitHeapStorage<Point> __global_slot_2 = ::tpy::UninitHeapStorage<Point>(3);
-    points = &__global_slot_2;
+    points = &*(__global_slot_2 = ::tpy::UninitHeapStorage<Point>(3));
     points->init(0, Point(5, 6));
     points->init(1, Point(7, 8));
     pt = &(points->load(0));

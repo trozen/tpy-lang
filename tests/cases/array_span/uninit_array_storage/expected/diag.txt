@@ -1,0 +1,2 @@
+main.py:37: warning: 'pt' will not keep the object it was given -- 'points' is rebound on each iteration and both names share its storage; 'points' cannot be copied
+main.py:41: warning: 'pt2' will not keep the object it was given -- 'points' is rebound on each iteration and both names share its storage; 'points' cannot be copied

@@ -1,0 +1,21 @@
+main.py:473: warning: 'TOP_HOLD' will not keep the object it was given -- 'TOP' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:248: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:122: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:134: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:146: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:158: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:171: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:184: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:184: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:197: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:210: warning: 'v' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:227: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:233: warning: 'holder' will not keep the object it was given -- 'c' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:258: warning: 'holder' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:258: warning: 'holder' will not keep the object it was given -- 'q' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:269: warning: 'holder' will not keep the object it was given -- 's' is rebound on each iteration and both names share its storage; 's' cannot be copied
+main.py:311: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:317: warning: 'holder' will not keep the object it was given -- 'c' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:323: warning: 'holder' will not keep the object it was given -- 'd' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:339: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:365: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value

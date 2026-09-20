@@ -58,7 +58,8 @@ from ..prescan import (
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         stmts_terminate, while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage
-from .context import (addr_taken_roots, canonical_storage_key,
+from .context import (addr_taken_roots, call_borrow_operands,
+                      canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
                       record_borrow_binding, record_stmt_borrow_binding,
                       tuple_borrow_escape_roots)
@@ -203,31 +204,10 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         if expr.await_result_is_borrow:
             _register_call_result_borrow(ctx, borrower, expr.value)
         return
-    if isinstance(expr, TpyCall):
-        fi = expr.resolved_function_info
-        args = expr.args
-        obj = None
-    elif isinstance(expr, TpyMethodCall):
-        fi = expr.resolved_function_info
-        args = expr.args
-        obj = expr.obj
-    elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
-        # Operator dispatch is a method call in disguise: a borrow-returning
-        # dunder hands out a borrow of an operand. Use the canonical fi --
-        # the resolved copy is synthesized before the dunder's body facts
-        # land, so only the root carries return_borrows_from.
-        rb = expr.resolved_binop
-        fi = rb.method.root
-        obj = expr.right if rb.is_reverse else expr.left
-        args = [expr.left if rb.is_reverse else expr.right]
-    elif isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
-        fi = expr.resolved_unaryop.method.root
-        obj = expr.operand
-        args = []
-    else:
+    operands = call_borrow_operands(expr)
+    if operands is None:
         return
-    if fi is None:
-        return
+    fi, obj, args = operands
     bt = ctx.func.borrow_tracker
     if fi.return_borrows_from is None:
         # The callee's body has not been analyzed yet (forward reference in
@@ -1663,14 +1643,11 @@ class StatementAnalyzer:
                         # whose return_borrows_from is known, propagate the borrow contract.
                         # e.g. `return inner(items)` where inner borrows param 0 -> mark items.
                         ret_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
-                        if isinstance(ret_inner, (TpyCall, TpyMethodCall)):
-                            fi_ret = ret_inner.resolved_function_info
-                            ret_sources = (
-                                recorded_return_borrow_sources(fi_ret)
-                                if fi_ret is not None else frozenset())
+                        ret_operands = call_borrow_operands(ret_inner)
+                        if ret_operands is not None:
+                            fi_ret, ret_obj, ret_args = ret_operands
+                            ret_sources = recorded_return_borrow_sources(fi_ret)
                             if ret_sources:
-                                ret_args = ret_inner.args
-                                ret_obj = getattr(ret_inner, 'obj', None)
                                 for idx in ret_sources:
                                     # One argument position can hold many
                                     # operands (a `*args` pack), and each is
@@ -3692,6 +3669,12 @@ class StatementAnalyzer:
             # reads the storage the resolution settles.
             self.deduction.resolve_all()
             self.compat.drain_deferred_escape_checks()
+            # Only the scope-escape hoists: `hoisted_vars` also holds the
+            # branch pre-declarations, which the closure lowering already
+            # places and which need no slot.
+            if self.ctx.func.escape_hoisted_vars:
+                self.ctx.nested_def_hoisted_vars[func] = set(
+                    self.ctx.func.escape_hoisted_vars)
 
             # Use the authoritative nonlocal set from body analysis
             # (covers nonlocal declarations at any nesting depth)

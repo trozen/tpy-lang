@@ -109,7 +109,7 @@ invalidated.** A unified borrow system replaces these with a single, composable 
 ### 1. Dangling Return Detection
 
 **Files**: `sema/compatibility.py` (`is_dangling_return`, `check_dangling_reference`),
-`sema/scope_tracker.py` (`check_escape`, `is_scope_escape`)
+`sema/scope_tracker.py` (`check_escape`, `lend_roots`)
 
 Two complementary checks:
 
@@ -136,8 +136,17 @@ Safe sources:
 - Ternary where both arms are safe
 
 **Scope escape detection** (`check_escape`): When assigning to a variable at scope
-depth D from a source at scope depth D+N, the source may be freed before the target.
-The tracker compares `var_scope_depth` entries. Two outcomes:
+depth D from a source whose storage lives at depth D+N, the source may be freed
+before the target. The source's storage is the set of NAMES it lends from
+(`ScopeTracker.lend_roots`): a name, a field or an element lends its root, a ternary
+lends both arms when both lend, and a call lends whichever receiver or argument its
+callee's `return_borrows_from` names -- the fact the borrow tracker files the
+binding's loans from -- so the hoistable verdict does not turn on how a borrow is
+spelled. Each lent name is judged on its own, all of them before any is hoisted. A callee whose body is not
+analyzed yet has no fact: its operands are hoisted on the assumption and the
+diagnostic is settled after every body in the module (`settle_deferred_escapes`);
+the fact-side residue is Future-Extension 8b-A below and
+`BUGS.md#return-borrow-of-pending-callee-unrecorded`. Two outcomes per name:
 
 - **Hoistable**: source is an rvalue-initialized variable (owns its storage, not a
   loop iteration variable). Storage is hoisted to function scope with a warning.
@@ -145,7 +154,14 @@ The tracker compares `var_scope_depth` entries. Two outcomes:
   target observes later rebinds of the source -- an acknowledged CPython
   divergence the warning states and `copy()` avoids.
 - **Error**: source is a loop variable or lvalue-initialized (aliases other storage).
-  Hard error -- hoisting cannot help, since the aliased storage dies anyway.
+  Hard error -- hoisting cannot help, since the aliased storage dies anyway. The
+  test reads the alias's OWN declaration depth, not the depth of what it points
+  into, so it over-rejects an alias of longer-lived storage. That is why the tier
+  is applied only to a source that names the alias by path: behind a call the same
+  name is left undiagnosed (`BUGS.md#call-source-escape-through-alias-unchecked`)
+  rather than rejecting `for v in d.values(): best = v.child()`. Judging an alias
+  by the storage it points into needs the loan to carry that place; four attempts
+  to derive it from the name-keyed depth table were each unsound.
 
 The rebind-site sibling of the same hazard is the alias-rebind storage pass
 (`sema/alias_rebind.py`): after the body walk it replays the loans the tracker

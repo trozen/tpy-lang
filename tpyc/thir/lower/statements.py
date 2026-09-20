@@ -5384,8 +5384,8 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     # lower_function) and restore the OUTER set object untouched -- a
     # same-named nested try-hoist must not drain the outer's entry.
     saved_hoists = lc.unhandled_hoists
-    lc.unhandled_hoists = set(
-        lc.analyzer.function_hoisted_vars.get(func, ()))
+    own_hoisted = lc.analyzer.function_hoisted_vars.get(func, set())
+    lc.unhandled_hoists = set(own_hoisted)
     outer_prescan = lc.prescan
     prescan = _Prescan(func, lc.analyzer)
     # Module-level facts carry over; the nested func has no global decls
@@ -5416,7 +5416,10 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     prescan.rvalue_reassigned = (outer_prescan.rvalue_reassigned
                                  | own_scan.rvalue_reassigned)
     prescan.nonlocal_names = set(nonlocal_names)
-    prescan.hoisted = outer_prescan.hoisted
+    # The nested body's OWN escape hoists join the outer set for the same
+    # reason its rebinds do: a local it declares and lends past a loop needs
+    # its slot inside the closure body.
+    prescan.hoisted = outer_prescan.hoisted | own_hoisted
     prescan.move_through = outer_prescan.move_through
     # Same reason the outer param NAMES are unioned above: a captured name
     # keeps its outer render, so the predicates keyed on the enclosing
@@ -5437,11 +5440,10 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     # would emit a move/deref the plain lambda param cannot take. The param
     # shapes that would NEED seeding (Optional / Own /
     # value-opt) are rejected by `_lower_nested_def`'s param gate.
-    # NB `function_movable_locals` / `function_hoisted_vars` hold NO entries
-    # for nested funcs today (sema's nested_def_scope discards the nested
-    # body's facts unstored), so the hoist seed above is empty by
-    # construction -- kept so the residue check self-activates if sema ever
-    # stores them.
+    # NB `function_movable_locals` holds NO entries for nested funcs (sema's
+    # nested_def_scope discards the nested body's facts unstored); the
+    # scope-escape hoists are the one fact it keeps, in
+    # `function_hoisted_vars` like any other function's.
     lc.inline_narrowed = {}
     try:
         with lc.branch_scope():

@@ -20,6 +20,7 @@ from .value_range import ValueRange
 
 if TYPE_CHECKING:
     from ..parse.type_resolver import TypeResolver
+    from .scope_tracker import DeferredEscape
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
@@ -33,7 +34,7 @@ from ..typesys import (
     is_dyn_protocol, contains_pending_leaf,
 )
 from ..namespace import Namespace
-from ..type_def_registry import int_traits_of
+from ..type_def_registry import int_traits_of, is_borrowing_view_type
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
@@ -336,6 +337,39 @@ def _borrow_storage_roots(expr: TpyExpr) -> list[str]:
         return roots
     root = _borrow_storage_root(expr)
     return [] if root is None else [root]
+
+
+class CallOperands(NamedTuple):
+    """A call-shaped expression as the borrow facts index it: the callee,
+    its receiver (source index -1) and its positional arguments."""
+    fi: FunctionInfo
+    obj: TpyExpr | None
+    args: list[TpyExpr]
+
+
+def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
+    """The operands a call-shaped `expr`'s `return_borrows_from` indexes, or
+    None when `expr` is not a resolved call.
+
+    Operator dispatch is a method call in disguise -- a borrow-returning
+    dunder hands out a borrow of an operand -- and answers with the CANONICAL
+    fi: the resolved copy is synthesized before the dunder's body facts land,
+    so only the root carries them.
+    """
+    if isinstance(expr, TpyCall):
+        fi, obj, args = expr.resolved_function_info, None, expr.args
+    elif isinstance(expr, TpyMethodCall):
+        fi, obj, args = expr.resolved_function_info, expr.obj, expr.args
+    elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
+        rb = expr.resolved_binop
+        fi = rb.method.root
+        obj = expr.right if rb.is_reverse else expr.left
+        args = [expr.left if rb.is_reverse else expr.right]
+    elif isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
+        fi, obj, args = expr.resolved_unaryop.method.root, expr.operand, []
+    else:
+        return None
+    return None if fi is None else CallOperands(fi, obj, args)
 
 
 class BorrowKind(Enum):
@@ -728,7 +762,8 @@ class BorrowTracker:
                 return storage
         return None
 
-    def all_storage_through_borrows(self, name: str) -> list[str]:
+    def all_storage_through_borrows(self, name: str, *,
+                                    proven_only: bool = False) -> list[str]:
         """Every ultimate storage `name` can alias, following ALL borrow chains
         (ALIAS + ELEMENT + FIELD + PTR + OPAQUE), nearest chain first.
 
@@ -751,7 +786,11 @@ class BorrowTracker:
         Depth-first in loan-registration order, so the head of the list is the
         nearest chain's root. Empty when `name` borrows nothing, and also when
         every reachable node sits on a cycle (no node without sources) -- both
-        leave the answer to the caller's `roots_or_self` fallback. Each
+        leave the answer to the caller's `roots_or_self` fallback.
+
+        `proven_only` leaves OPAQUE loans out: they stand for a callee whose
+        borrow fact does not exist yet, so a consumer RECORDING a fact of its
+        own from the walk would bake the assumption in for good. Each
         reachable node is expanded once and an expansion scans the edge set,
         so O(V*E) in the per-function borrow graph, iterative (no recursion
         depth tied to chain length).
@@ -762,7 +801,9 @@ class BorrowTracker:
         while stack:
             current = stack.pop()
             sources = [storage for storage, holders in self.loans.items()
-                       if current in holders]
+                       if current in holders
+                       and not (proven_only
+                                and holders[current].kind is BorrowKind.OPAQUE)]
             if not sources:
                 if current != name:
                     roots.append(current)
@@ -1249,6 +1290,9 @@ class FunctionTrackingState:
     # (alias, source) pairs the scope-escape check warned about: the
     # alias-rebind pass owes those no second warning at the source's rebind.
     escape_warned_aliases: set[tuple[str, str]] = field(default_factory=set)
+    # Names the scope-escape check moved to a function-scope slot, warned or
+    # precautionary. `hoisted_vars` also holds the branch pre-declarations.
+    escape_hoisted_vars: set[str] = field(default_factory=set)
     rvalue_vars: set[str] = field(default_factory=set)
     owned_locals: set[str] = field(default_factory=set)
     # Accumulator: all locals that were ever owned. Survives FlowFacts
@@ -1883,6 +1927,14 @@ class SemanticContext:
     # namespace ride in the record rather than on the state, which the
     # body-exit path nulls.
     deferred_generic_yield_settles: list['DeferredGenericYieldSettle'] = field(default_factory=list)
+    # Scope escapes whose diagnostic waits for a callee's borrow fact
+    # (`ScopeTracker.settle_deferred_escapes`).
+    deferred_escapes: list['DeferredEscape'] = field(default_factory=list)
+    # Names the scope-escape check hoisted inside a NESTED def, keyed by its
+    # function node: the nested body's own tracking state is discarded at
+    # scope exit, so they wait here for the analyzer to harvest them into
+    # `function_hoisted_vars` with the enclosing function's results.
+    nested_def_hoisted_vars: IdentityMap = field(default_factory=IdentityMap)
 
     # --- Consuming method tracking ---
     in_consuming_method: bool = False
@@ -2762,7 +2814,8 @@ class SemanticContext:
         for iterable in self.func.loop_var_iterable.get(name, ()):
             self.mark_param_structurally_mutated(_storage_root(iterable))
 
-    def mark_param_returned(self, name: str) -> None:
+    def mark_param_returned(self, name: str,
+                            _seen: 'set[str] | None' = None) -> None:
         """Mark a parameter as contributing to the return value (8b).
 
         Called when returning a reference derived from param storage, so we
@@ -2770,15 +2823,60 @@ class SemanticContext:
         but writes to current_returned_param_names instead.
         Traces loop variables back to their source iterables transitively.
         """
+        # The field climb below re-enters a name the loan walk already left,
+        # so the recursion needs its own guard.
+        seen = set() if _seen is None else _seen
+        if name in seen:
+            return
+        seen.add(name)
         if name == "self":
             self.func.current_returned_param_names.add("self")
             return
         if name in self.func.current_param_names and name not in self.func.current_rebound_params:
             self.func.current_returned_param_names.add(name)
         for iterable in self.func.loop_var_iterable.get(name, ()):
-            self.mark_param_returned(_storage_root(iterable))
+            self.mark_param_returned(_storage_root(iterable), seen)
         for src in self.func.bp_borrow_source_roots(name):
-            self.mark_param_returned(src)
+            self.mark_param_returned(src, seen)
+        # A returned local alias (`t = b.m; return t`) lends what it borrows
+        # from, and every source of a re-seated one: the caller cannot tell
+        # which is live.
+        for ultimate in self.func.borrow_tracker.all_storage_through_borrows(
+                name, proven_only=True):
+            self.mark_param_returned(ultimate, seen)
+        # A field-path key (`self.inner`, from `return self.inner.get()` or
+        # from an alias of `b.m`) lends its owning param. Unlike the mutation
+        # mark there is nothing speculative to guard: a returned reference
+        # into the field is a reference into the param -- unless the field
+        # only POINTS at the storage.
+        field_root = _storage_root(name)
+        if field_root != name and not self._key_member_is_indirection(name):
+            self.mark_param_returned(field_root, seen)
+
+    def _key_member_is_indirection(self, key: str) -> bool:
+        """`root.member` names a field that points AT storage (a `Ptr`, a
+        borrowing view) rather than holding it, so a borrow reached through it
+        is a borrow of the pointee and outlives `root`.
+
+        Assumes the pointer aims OUTSIDE its own record; one aimed at a
+        sibling field (`self.p = take_ptr(self.m)`) does lend `root`, and
+        nothing here can tell."""
+        root, _, member = key.partition(".")
+        root_type = (self.func.current_scope.lookup(root)
+                     if self.func.current_scope else None)
+        if root_type is None:
+            return False
+        bare = unwrap_ref_type(unwrap_qualifiers(root_type))
+        record = (self.registry.find_record(bare.name)
+                  if isinstance(bare, NominalType) else None)
+        if record is None:
+            return False
+        for info in self.registry.get_all_fields(record):
+            if info.name == member:
+                field_type = unwrap_ref_type(unwrap_qualifiers(info.type))
+                return (field_type.is_pointer()
+                        or is_borrowing_view_type(field_type))
+        return False
 
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""
