@@ -1203,6 +1203,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # the if/try/with hoist family). Includes the loop var when hoisted.
     "foreach.hoist_decl",
     "while.hoist_decl",             # body-declared var read after a while loop -> predecl before it
+    # The hoist the resumable frame already declares: registration only, no
+    # decl line, shared by every ladder (for/while/if/try/with/match).
+    "hoist.frame_declared",
     # Loop else blocks (lowering; the bare `{...}` past the loop's close
     # brace + its `__after_else_N:;` label -- run on normal completion,
     # jumped past by a break).
@@ -2924,8 +2927,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # match's `T*` capture hoist
     "match.hoist_ptr_slot",         # rvalue-reassigned hoist: T* + rebind slot
     "match.hoist_opt_ptr_local",    # ptr-repr Optional capture hoist: `T* name;`
-    "match.hoist_opt_ptr_frame",    # resumable twin: the P* frame member is
-                                    # the binding; no decl line
     "match.field_bind_opt_ptr_frame",  # the capture assign lifts through
                                        # optional_to_ptr into that member
     "match.hoist_optional_storage",  # capture hoist: `std::optional<T> name;` slot
@@ -3017,8 +3018,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.synthetic_default",      # non-exhaustive: `default: break;`
     "match.unreachable_tail",       # exhaustive + terminating arms tail
     "match.hoist_decl",             # sema-hoisted plain-value predecls
-    "match.hoist_value_frame",      # resumable hook mode: value hoist is a
-                                    # frame field, no decl at the match site
     # Emit-side finally-frame walks (recorded at emission -- the chain is
     # structural, so lowering never sees it; a no-op outside a compilation).
     # The with/try prefix keys on the walked segment's frame arms, so a

@@ -201,6 +201,7 @@ from .statements import (
     _nested_def_entry_reject,
     _nested_def_lowering_scope,
     _persistent_alias_name,
+    _register_frame_hoist,
     _resumable_deferred_recipe,
     _return_carries_value,
     _var_decl_type,
@@ -1974,26 +1975,18 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # gate's classification.
                 for tname in stmt.targets:
                     if (tname is not None and tname in frame_fields
-                            and tname not in declared):
-                        lt = gen_local_types.get(tname)
-                        if lt is not None:
-                            declared[tname] = unwrap_readonly(
-                                unwrap_ref_type(unwrap_send_sync(lt)))
-                            # Same value-opt keying as the AsyncForAdvance
-                            # loop var below: a value-opt-scalar unpack
-                            # target's narrowed reads must deref.
-                            if _value_opt_scalar(declared[tname],
-                                                 analyzer) is not None:
-                                lc.value_opt_bindings[tname] = (
-                                    ValueOptKind.SCALAR)
+                            and tname not in declared
+                            and gen_local_types.get(tname) is not None):
+                        _register_frame_hoist(
+                            tname, gen_local_types[tname], declared, lc)
             elif (isinstance(stmt, (rcfg.WithEnter, rcfg.AsyncWithSetup))
                     and stmt.item.target is not None
                     and stmt.item.target not in declared
                     and isinstance(stmt.item.enter_type, TpyType)):
                 # The `as`-target bind (sync or async with) is a skeleton
                 # frame write; reads classify against the sema enter type.
-                declared[stmt.item.target] = unwrap_readonly(
-                    unwrap_ref_type(unwrap_send_sync(stmt.item.enter_type)))
+                _register_frame_hoist(stmt.item.target, stmt.item.enter_type,
+                                      declared, lc)
         t = bb.terminator
         if isinstance(t, rcfg.Yield) and isinstance(t.payload,
                                                     rcfg.AwaitPayload):

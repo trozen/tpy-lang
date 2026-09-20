@@ -2844,6 +2844,47 @@ def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
                 and _f1_record(vtype, analyzer)
                 and _value_record_slot(vtype)))
 
+
+def _frame_declares_hoist(name: str, lc: '_LowerCtx') -> bool:
+    """Whether the resumable frame ALREADY declares this hoisted name. The
+    frame layout is the single authority for a resumable body's local
+    declarations, so a sema hoist over one of its members needs no predecl
+    (a second declaration would shadow the member for the rest of the state
+    block) and no flavor admission (the layout already fixed the member's
+    read/write model). Empty in a sync body. `frame_local_types` is the one
+    map read here and by `_frame_hoist_type`; a frame PARAM cannot reach
+    a hoist, because every caller checks `declared` -- seeded with the
+    params -- first. The capture-funcs conjunct keeps a nested def's OWN
+    fresh local on the ordinary hoist path; it does not decide a nested
+    local that collides with a frame member, which the caller's `declared`
+    check resolves to the frame field --
+    BUGS.md#nested-local-shadows-frame-field."""
+    return name in lc.frame_local_types and not lc.capture_funcs
+
+
+def _frame_hoist_type(name: str, raw: TpyType, lc: '_LowerCtx') -> TpyType:
+    """The type a CLAUSE's frame-declared hoist registers: the frame's own
+    slot type, which carries the branch-decl (Array-off) override the
+    clause's `raw` does not. `raw` stands in for a name with no slot of its
+    own -- the gate above lets none through, so it is only the default that
+    keeps this total."""
+    return lc.frame_local_types.get(name, raw)
+
+
+def _register_frame_hoist(name: str, raw: TpyType,
+                          declared: dict[str, TpyType],
+                          lc: '_LowerCtx') -> None:
+    """Enter a frame-declared name into the lowering scope WITHOUT a decl
+    line: the CALLER's type, normalized exactly as the resumable pass-1
+    registration normalizes it, plus the value-opt binding a narrowed read
+    derefs through. A clause resolves the frame's slot type through
+    `_frame_hoist_type` first; pass 1 keeps its first-decl-keyed type."""
+    vtype = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(raw)))
+    declared[name] = vtype
+    _register_value_opt_binding(name, vtype, lc)
+    _witness("hoist.frame_declared")
+
+
 def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
                           lc: '_LowerCtx', witness_tag: str,
                           flavors: 'Mapping[str, HoistFlavor]' = {}
@@ -2854,7 +2895,8 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
     CALLER's `declared` at function scope, and keeps the raw binding type
     there -- the same shape a normal str/bytes first-decl stores. A name
     already in `declared` (bound outside an enclosing loop) skips its
-    predecl -- it is already declared. The witness distinguishes the call
+    predecl -- it is already declared, as does a resumable frame member
+    (`_frame_declares_hoist`). The witness distinguishes the call
     site. `flavors` carries each non-VALUE name's admitted flavor (the
     ladder's `_nonvalue_hoist_flavor` verdict, or the tuple / unpack-target
     flavors its own predicates admit); a name absent from it takes the
@@ -2869,6 +2911,10 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
         # had in fact emitted.
         lc.unhandled_hoists.discard(name)
         if name in declared:
+            continue
+        if _frame_declares_hoist(name, lc):
+            _register_frame_hoist(name, _frame_hoist_type(name, raw, lc),
+                                  declared, lc)
             continue
         vtype = unwrap_ref_type(raw)
         flavor = flavors.get(name, HoistFlavor.VALUE)
@@ -3392,14 +3438,17 @@ def _hoist_ladder_head(name: str, raw: TpyType, declared: dict[str, TpyType],
                        ) -> 'TpyType | None':
     """The head every hoist ladder (for-each, while, try, with) walks for
     one hoisted name: a name already declared hoists nowhere, a native
-    global rejects, a value-family type takes the plain render -- all
-    three answer None (no flavor entry). The bare type comes back for the
+    global rejects, a name the resumable frame already declares hoists
+    nowhere either, a value-family type takes the plain render -- all
+    answer None (no flavor entry). The bare type comes back for the
     construct's own rungs and `_admit_nonvalue_hoist`."""
     if name in declared:
         return None
     if lc.prescan.binds_global(name):
         note_detail(reject_tag)
         raise ThirUnsupported(stmt_reject_reason(stmt))
+    if _frame_declares_hoist(name, lc):
+        return None
     bare = unwrap_ref_type(raw)
     if _try_hoist_type_ok(bare, lc.analyzer):
         return None
@@ -3414,9 +3463,8 @@ def _admit_nonvalue_hoist(name: str, bare: TpyType, lc: '_LowerCtx',
     construct's reject. `leaf_ok` opens the RESUMABLE kind for a resumable
     LEAF as OPT_STORAGE (the loop ladders: a loop-head hoisted var is a
     leaf-local in every constructed shape -- in-loop awaits included, an
-    ablation showed a frame_slots exclusion here is DEAD -- and a
-    frame-field flavor, should one ever arise, is caught by the corpus
-    snapshots rather than mis-rendering silently)."""
+    ablation showed a frame_slots exclusion here is DEAD). A frame FIELD
+    never reaches here: `_hoist_ladder_head` answers None for it."""
     resolved = resolve_pending_container(bare, lc.analyzer) or bare
     flavor = _nonvalue_hoist_flavor(name, resolved, lc)
     if (leaf_ok and flavor is HoistFlavor.RESUMABLE
@@ -3493,9 +3541,12 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
         rvalue-reassigned name gets the if-head rebind slot, otherwise
         reseats allocate one lazily at function top (BRANCH_RVALUE).
 
+    A name the resumable frame already declares takes neither a predecl nor
+    a flavor (`_frame_declares_hoist`); it registers only.
+
     Raises ThirUnsupported for the shapes outside this slice:
-    const/readonly hoists, borrow-form tuples, resumable bodies (the
-    rebind hoists have no drain point in the leaf emitters)."""
+    const/readonly hoists, borrow-form tuples, resumable non-frame hoists
+    (the rebind hoists have no drain point in the leaf emitters)."""
     analyzer = lc.analyzer
     borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
     ever_owned = analyzer.function_ever_owned_locals.get(lc.func, set())
@@ -3507,6 +3558,10 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
         if lc.prescan.binds_global(name):
             note_detail("if.hoist_native_global")
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        if _frame_declares_hoist(name, lc):
+            _register_frame_hoist(name, _frame_hoist_type(name, raw, lc),
+                                  declared, lc)
+            continue
         var_type = unwrap_ref_type(raw)
         # An un-annotated container hoist (`xs = [1]` / `xs = [2]`) carries
         # the pending literal type; resolve it up front so the registered
