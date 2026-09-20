@@ -1,0 +1,116 @@
+enum_map 0 8
+enum_map 1 10
+enum_map 2 12
+zip_filter_map 1 8
+zip_filter_map 3 10
+list_map_filter [10]
+reversed_list_map 12
+reversed_list_map 10
+reversed_list_map 8
+zip_frames 1 1
+zip_frames 2 2
+zip_frames 3 3
+zip_lvalue_gen 1 7
+rest 3
+zip_keys 1 10
+zip_keys 2 20
+map_values [14, 16]
+map_set [10]
+enum_genexpr_zip 15
+  Noisy.__iter__ 2
+enumerate 0 1
+enumerate 1 2
+  Noisy.__iter__ 2
+zip 1 10
+zip 2 20
+  Noisy.__iter__ 2
+map [2, 4]
+  Noisy.__iter__ 3
+filter [1, 3]
+  Noisy.__iter__ 3
+zip_call 10 1
+zip_call 20 2
+zip_call 30 3
+  Noisy.__iter__ 1
+lvalue 1 10
+lvalue_delegating 1 4
+lvalue_delegating 2 5
+lvalue_delegating 3 6
+lvalue_delegating_left 4 0
+  Cur.__iter__ 5
+lvalue_inherited 1 4
+lvalue_inherited 2 5
+lvalue_inherited 3 6
+lvalue_inherited_left 4
+  Cur.__iter__ 2
+self_iter 0 1
+self_iter 1 2
+  Cur.__iter__ 2
+derived 1 10
+derived 2 20
+delegating 1 10
+delegating 2 20
+delegating 3 30
+  Cur.__iter__ 3
+borrow_enumerate [(0, 1), (1, 2), (2, 3)] 3
+  Cur.__iter__ 3
+borrow_map [2, 4, 6] 3
+  Cur.__iter__ 3
+borrow_filter [1, 3] 3
+  Cur.__iter__ 5
+borrow_zip 1 4
+borrow_zip 2 5
+borrow_zip 3 6
+borrow_zip_left 4
+  Cur.__iter__ 5
+borrow_map_n [5, 7, 9] 4
+  Cur.__iter__ 5
+  Cur.__iter__ 2
+borrow_both 1 1
+borrow_both 2 2
+borrow_both_left 3 2
+  Rng.__iter__ 2
+fresh_self 1 10
+fresh_self 2 20
+  Noisy.__iter__ 2
+  Noisy.__iter__ 3
+order 1 1
+order 2 2
+  Noisy.__iter__ 1
+  Cur.__iter__ 1
+order_mixed 1 1
+  Noisy.__iter__ 2
+comprehension [10, 40]
+  Noisy.__iter__ 2
+cond_taken 2
+cond_skipped 0
+  Loud.__init__ 2
+cond_built 2
+  Noisy.__iter__ 2
+  Noisy.__iter__ 2
+  Noisy.__iter__ 2
+while_head 2
+nested_call [2, 4]
+nested_call_multi p 2
+genexpr_source 50
+and_operand
+dict_elem 2
+module_level 2
+async 2
+ctor_init 2
+method_source 1 10
+method_source 2 20
+static_source 1 10
+static_source 2 20
+field_of_temp 1 10
+field_of_temp 2 20
+closure 2
+try 2
+finally 1
+with 3
+match 2
+error_return 2
+  Noisy.__iter__ 2
+method 50
+  Noisy.__iter__ 2
+generator [23]

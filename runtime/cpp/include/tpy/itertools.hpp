@@ -11,12 +11,226 @@
 #include "dunder.hpp"
 #include "type_traits.hpp"
 
+#include <concepts>
 #include <cstdint>
 #include <expected>
+#include <iterator>
+#include <memory>
+#include <new>
 #include <optional>
+#include <ranges>
 #include <tuple>
+#include <utility>
 
 namespace tpy {
+
+namespace detail {
+
+// A compiled record whose own __iter__() hands back a separate iterator
+// object. That call is user code, so it is observable and cannot wait for the
+// first pull, and the iterator it returns may point into the record, so the
+// record cannot move afterwards. Owned, it is PINNED: the cursor is made at
+// the combinator call and the holder does not move. Where tpyc can, it binds
+// such a temporary to a local and passes the lvalue instead, which selects a
+// borrowing flavor and keeps the combinator movable. A runtime or @native type
+// with the same shape (a dict view, a set) is owned like a container: its
+// __iter__ runs at the first pull.
+template<typename C>
+concept separate_user_iterator =
+    is_tpy_record_v<C> && requires(C& c) { c.__iter__(); }
+    && !is_self_iterator_v<C>;
+
+// Storage a value is built INTO, straight from the prvalue that makes it, so a
+// move-only or immovable T works. `std::optional::emplace` cannot do that (it
+// constructs from its arguments, and an argument wrapper with a conversion
+// operator loses overload resolution to any converting ctor template on T).
+template<typename T>
+class elided_slot {
+    union { T value_; };
+    bool has_ = false;
+public:
+    elided_slot() {}
+    ~elided_slot() { if (has_) value_.~T(); }
+
+    elided_slot(elided_slot&& o) noexcept(std::is_nothrow_move_constructible_v<T>)
+        requires std::move_constructible<T> {
+        if (o.has_) {
+            ::new (static_cast<void*>(std::addressof(value_))) T(std::move(o.value_));
+            has_ = true;
+        }
+    }
+    elided_slot& operator=(elided_slot&&) = delete;
+
+    bool has() const { return has_; }
+    // `make()` returns T, by value or as a reference to copy from.
+    template<typename F>
+    void fill(F&& make) {
+        ::new (static_cast<void*>(std::addressof(value_))) T(make());
+        has_ = true;
+    }
+    T* operator->() { return std::addressof(value_); }
+};
+
+// The iterator a non-self source's __iter__() handed back, held in the form it
+// came in. A non-const reference is ALIASED: that iterator lives in the source
+// or beyond it (a member the record delegates to, `*this` typed as a base),
+// and CPython advances that very object. A value is built in place. A const
+// reference is copied -- no pull can go through it.
+template<typename C>
+class iter_cursor {
+    using R = decltype(tpy::__iter__(std::declval<C&>()));
+    static constexpr bool aliased =
+        std::is_lvalue_reference_v<R> && !std::is_const_v<std::remove_reference_t<R>>;
+    using held_t = std::conditional_t<aliased, std::remove_reference_t<R>*,
+                                      elided_slot<std::decay_t<R>>>;
+    held_t held_{};
+public:
+    bool seeded() const {
+        if constexpr (aliased) return held_ != nullptr;
+        else return held_.has();
+    }
+    void seed(C& c) {
+        if constexpr (aliased) held_ = std::addressof(tpy::__iter__(c));
+        else held_.fill([&]() -> R { return tpy::__iter__(c); });
+    }
+    decltype(auto) next() { return held_->__next__(); }
+};
+
+// The source an owning combinator holds by value, pulled through __next__().
+// No cursor exists while the combinator may still be moved: a self-iterator
+// needs none, and a container's is made at the first pull -- building it has
+// no side effect and nothing else can reach a container the combinator owns,
+// so the delay is unobservable. Whether a STARTED self-iterator may still be
+// relocated is that source's own contract, not this holder's.
+template<typename C>
+class owned_iter_source {
+    struct no_cursor {};
+    using cursor_t = std::conditional_t<is_self_iterator_v<C>, no_cursor, iter_cursor<C>>;
+    C src_;
+    [[no_unique_address]] cursor_t cur_;
+public:
+    explicit owned_iter_source(C&& c) : src_(std::move(c)) {}
+
+    owned_iter_source(owned_iter_source&& o)
+        noexcept(std::is_nothrow_move_constructible_v<C>)
+        requires (!separate_user_iterator<C>)
+        : src_(std::move(o.src_)) {
+#ifndef NDEBUG
+        if constexpr (!is_self_iterator_v<C>) {
+            if (o.cur_.seeded()) tpy_panic("owning combinator moved after its first pull");
+        }
+#endif
+    }
+    owned_iter_source& operator=(owned_iter_source&&) = delete;
+
+    // The observable half of iter(): a self-iterator's __iter__ is user code
+    // that CPython runs at the combinator call. The combinator calls start()
+    // on its sources in argument order.
+    void start() {
+        if constexpr (is_self_iterator_v<C>) (void)tpy::__iter__(src_);
+        else if constexpr (separate_user_iterator<C>) cur_.seed(src_);
+    }
+
+    decltype(auto) __next__() {
+        if constexpr (is_self_iterator_v<C>) {
+            return src_.__next__();
+        } else {
+            if (!cur_.seeded()) [[unlikely]] cur_.seed(src_);
+            return cur_.next();
+        }
+    }
+};
+
+// The begin/end twin of owned_iter_source, for the direct flavors that hand
+// out references to the container's own elements. A random-access container
+// keeps a POSITION instead of iterators: nothing points into it, so it moves at
+// any time and the pull loop stays free of a seeded-yet check. Any other
+// container makes its iterators at the first pull.
+template<typename C>
+class owned_range_source {
+    using It = begin_iter_t<C>;
+    static constexpr bool indexed = std::random_access_iterator<It>;
+    struct position { std::ptrdiff_t at = 0; };
+    using cursor_t = std::conditional_t<indexed, position,
+                                        std::optional<std::pair<It, It>>>;
+    C src_;
+    cursor_t cur_;
+public:
+    explicit owned_range_source(C&& c) : src_(std::move(c)) {}
+
+    owned_range_source(owned_range_source&& o)
+        noexcept(std::is_nothrow_move_constructible_v<C>)
+        : src_(std::move(o.src_)) {
+        if constexpr (indexed) {
+            cur_ = o.cur_;
+        } else {
+#ifndef NDEBUG
+            if (o.cur_.has_value()) tpy_panic("owning combinator moved after its first pull");
+#endif
+        }
+    }
+    owned_range_source& operator=(owned_range_source&&) = delete;
+
+    bool done() {
+        if constexpr (indexed) {
+            return cur_.at == std::ranges::end(src_) - std::ranges::begin(src_);
+        } else {
+            if (!cur_) [[unlikely]] cur_.emplace(src_.begin(), src_.end());
+            return cur_->first == cur_->second;
+        }
+    }
+
+    // The next element, by reference into the owned container. Only after a
+    // done() that answered false.
+    decltype(auto) take() {
+        if constexpr (indexed) return src_.begin()[cur_.at++];
+        else return *cur_->first++;
+    }
+};
+
+// An lvalue argument of a combinator that also owns a temporary one. A
+// self-iterator is pulled through a pointer: copying it would advance a
+// private copy where CPython advances the caller's object.
+template<typename C>
+class borrowed_iter_source {
+    struct no_cursor {};
+    using cursor_t = std::conditional_t<is_self_iterator_v<C>, no_cursor, iter_cursor<C>>;
+    C* src_;
+    [[no_unique_address]] cursor_t cur_;
+public:
+    explicit borrowed_iter_source(C& c) : src_(&c) {}
+
+    // Runs __iter__ now, in the combinator's argument order: the iterator
+    // points into the caller's object, so nothing here needs to wait.
+    void start() {
+        if constexpr (is_self_iterator_v<C>) (void)tpy::__iter__(*src_);
+        else cur_.seed(*src_);
+    }
+
+    decltype(auto) __next__() {
+        if constexpr (is_self_iterator_v<C>) return src_->__next__();
+        else return cur_.next();
+    }
+};
+
+// The member type an all-lvalue combinator holds an __iter__() result as: a
+// non-const reference stays a reference (the iterator is advanced in place),
+// anything else is a value -- a prvalue moved in, a const reference copied,
+// since nothing can pull through it.
+template<typename R>
+using iter_member_t = std::conditional_t<
+    std::is_lvalue_reference_v<R> && !std::is_const_v<std::remove_reference_t<R>>,
+    R, std::decay_t<R>>;
+
+// Per-argument holder of a mixed combinator: X is `C&` for an lvalue argument
+// and `C` for a temporary.
+template<typename X>
+using arg_source_t = std::conditional_t<
+    std::is_lvalue_reference_v<X>,
+    borrowed_iter_source<std::remove_reference_t<X>>,
+    owned_iter_source<X>>;
+
+} // namespace detail
 
 // -- enumerate --
 
@@ -25,7 +239,14 @@ class enumerate_iter : public next_iter_mixin<enumerate_iter<T, Iter>, std::tupl
     Iter iter_;
     int32_t index_;  // TPy uses int32; Python enumerate uses arbitrary-precision
 public:
-    enumerate_iter(Iter&& iter, int32_t start = 0) : iter_(std::move(iter)), index_(start) {}
+    // forward, not move: a self-iterator arrives as `Self&` and is advanced
+    // in place. A template because `Iter` may be a VALUE copied from a const
+    // reference (detail::iter_member_t).
+    template<typename U>
+        requires std::constructible_from<Iter, U&&>
+              && (!std::same_as<std::remove_cvref_t<U>, enumerate_iter>)
+    enumerate_iter(U&& iter, int32_t start = 0)
+        : iter_(std::forward<U>(iter)), index_(start) {}
 
     std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
         auto r = iter_.__next__();
@@ -44,21 +265,14 @@ public:
 template<typename T, typename Container>
 class owning_enumerate_iter
     : public next_iter_mixin<owning_enumerate_iter<T, Container>, std::tuple<int32_t, T>> {
-    using Iter = decltype(tpy::__iter__(std::declval<Container&>()));
-    Container owned_;
-    Iter iter_;
+    detail::owned_iter_source<Container> src_;
     int32_t index_;
 public:
     owning_enumerate_iter(Container&& c, int32_t start = 0)
-        : owned_(std::move(c)), iter_(tpy::__iter__(owned_)), index_(start) {}
-
-    // iter_ points into owned_; moving would invalidate it (e.g. for std::array).
-    // Rely on guaranteed copy elision from the factory functions.
-    owning_enumerate_iter(owning_enumerate_iter&&) = delete;
-    owning_enumerate_iter& operator=(owning_enumerate_iter&&) = delete;
+        : src_(std::move(c)), index_(start) { src_.start(); }
 
     std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
-        auto r = iter_.__next__();
+        auto r = src_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
         return std::tuple<int32_t, T>{index_++, unwrap_ref(*r)};
     }
@@ -102,21 +316,15 @@ template<typename T, typename Container>
 class owning_enumerate_direct_iter
     : public next_iter_mixin<owning_enumerate_direct_iter<T, Container>,
                              std::tuple<int32_t, val_or_ref_t<T>>> {
-    using CppIter = decltype(std::declval<Container&>().begin());
-    Container owned_;
-    CppIter it_;
-    CppIter end_;
+    detail::owned_range_source<Container> src_;
     int32_t index_;
 public:
     owning_enumerate_direct_iter(Container&& c, int32_t start = 0)
-        : owned_(std::move(c)), it_(owned_.begin()), end_(owned_.end()), index_(start) {}
-
-    owning_enumerate_direct_iter(owning_enumerate_direct_iter&&) = delete;
-    owning_enumerate_direct_iter& operator=(owning_enumerate_direct_iter&&) = delete;
+        : src_(std::move(c)), index_(start) {}
 
     std::expected<std::tuple<int32_t, val_or_ref_t<T>>, StopIteration> __next__() {
-        if (it_ == end_) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, val_or_ref_t<T>>{index_++, *it_++};
+        if (src_.done()) return tpy::make_unexpected(StopIteration{});
+        return std::tuple<int32_t, val_or_ref_t<T>>{index_++, src_.take()};
     }
 
     owning_enumerate_direct_iter& __iter__() { return *this; }
@@ -160,8 +368,7 @@ auto builtin_enumerate(Iterable& iterable) {
     if constexpr (detail::has_begin_end<Iterable>) {
         return enumerate_direct_iter<T, Iterable>(iterable);
     } else {
-        auto iter = tpy::__iter__(iterable);
-        return enumerate_iter<T, decltype(iter)>(std::move(iter));
+        return enumerate_iter<T, detail::iter_member_t<decltype(tpy::__iter__(iterable))>>(tpy::__iter__(iterable));
     }
 }
 
@@ -182,8 +389,7 @@ auto builtin_enumerate_start(Iterable& iterable, int32_t start) {
     if constexpr (detail::has_begin_end<Iterable>) {
         return enumerate_direct_iter<T, Iterable>(iterable, start);
     } else {
-        auto iter = tpy::__iter__(iterable);
-        return enumerate_iter<T, decltype(iter)>(std::move(iter), start);
+        return enumerate_iter<T, detail::iter_member_t<decltype(tpy::__iter__(iterable))>>(tpy::__iter__(iterable), start);
     }
 }
 
@@ -239,7 +445,13 @@ class zip_iter<zip_types<Ts...>, Iters...>
     : public next_iter_mixin<zip_iter<zip_types<Ts...>, Iters...>, std::tuple<Ts...>> {
     std::tuple<Iters...> iters_;
 public:
-    explicit zip_iter(Iters&&... iters) : iters_(std::move(iters)...) {}
+    // forward, not move: a self-iterator argument arrives as `Self&` and is
+    // advanced in place. A template because an `Iters` may be a VALUE copied
+    // from a const reference (detail::iter_member_t).
+    template<typename... Us>
+        requires (sizeof...(Us) == sizeof...(Iters))
+              && (std::constructible_from<Iters, Us&&> && ...)
+    explicit zip_iter(Us&&... iters) : iters_(std::forward<Us>(iters)...) {}
 
     std::expected<std::tuple<Ts...>, StopIteration> __next__() {
         std::tuple<std::optional<Ts>...> opts;
@@ -261,30 +473,27 @@ class owning_zip_iter;
 template<typename... Ts, typename... Containers>
 class owning_zip_iter<zip_types<Ts...>, Containers...>
     : public next_iter_mixin<owning_zip_iter<zip_types<Ts...>, Containers...>, std::tuple<Ts...>> {
-    std::tuple<Containers...> owned_;
-    // Store iterators by value (not reference). __iter__() on __next__-based
-    // types (map_iter, etc.) returns Self& -- storing that reference would
-    // dangle after make_iters returns. remove_reference_t copies the iterator.
-    std::tuple<std::remove_reference_t<decltype(tpy::__iter__(std::declval<Containers&>()))>...> iters_;
-
-    template<std::size_t... Is>
-    auto make_iters(std::index_sequence<Is...>) {
-        return std::tuple{tpy::__iter__(std::get<Is>(owned_))...};
-    }
+    std::tuple<detail::arg_source_t<Containers>...> srcs_;
 public:
+    // start() in the body, not in the holders' ctors: a tuple constructs its
+    // members in an unspecified order, and __iter__ is observable.
+    // Constrained so that a pinned zip does not claim to be movable through
+    // this template.
     template<typename... Us>
-    explicit owning_zip_iter(Us&&... cs)
-        : owned_(std::forward<Us>(cs)...),
-          iters_(make_iters(std::index_sequence_for<Containers...>{})) {}
+        requires (sizeof...(Us) == sizeof...(Containers))
+              && (std::constructible_from<detail::arg_source_t<Containers>, Us&&> && ...)
+    explicit owning_zip_iter(Us&&... cs) : srcs_(std::forward<Us>(cs)...) {
+        std::apply([](auto&... s) { (s.start(), ...); }, srcs_);
+    }
 
-    owning_zip_iter(const owning_zip_iter&) = delete;
-    owning_zip_iter& operator=(const owning_zip_iter&) = delete;
-    owning_zip_iter(owning_zip_iter&&) = delete;
-    owning_zip_iter& operator=(owning_zip_iter&&) = delete;
+    // Spelled: std::tuple reports itself movable whatever it holds.
+    owning_zip_iter(owning_zip_iter&&)
+        requires (std::move_constructible<detail::arg_source_t<Containers>> && ...)
+        = default;
 
     std::expected<std::tuple<Ts...>, StopIteration> __next__() {
         std::tuple<std::optional<Ts>...> opts;
-        if (!detail::zip_advance(iters_, opts, std::index_sequence_for<Containers...>{}))
+        if (!detail::zip_advance(srcs_, opts, std::index_sequence_for<Containers...>{}))
             return tpy::make_unexpected(StopIteration{});
         return detail::zip_collect<Ts...>(opts, std::index_sequence_for<Ts...>{});
     }
@@ -338,7 +547,9 @@ auto builtin_zip(Cs&... cs) {
     if constexpr ((detail::has_begin_end<Cs> && ...)) {
         return zip_direct_iter<zip_types<Ts...>, Cs...>(cs...);
     } else {
-        return zip_iter<zip_types<Ts...>, decltype(tpy::__iter__(cs))...>(tpy::__iter__(cs)...);
+        // Braces: __iter__ is observable, and only a braced list evaluates
+        // left to right.
+        return zip_iter<zip_types<Ts...>, detail::iter_member_t<decltype(tpy::__iter__(cs))>...>{tpy::__iter__(cs)...};
     }
 }
 
@@ -385,8 +596,10 @@ class owning_reversed_iter : public next_iter_mixin<owning_reversed_iter<T, Seq>
 public:
     owning_reversed_iter(Seq&& seq) : owned_(std::move(seq)), index_(tpy::__len__(owned_) - 1) {}
 
-    owning_reversed_iter(owning_reversed_iter&&) = delete;
-    owning_reversed_iter& operator=(owning_reversed_iter&&) = delete;
+    // An index into the owned sequence: nothing points into it, so it moves
+    // at any time. Never copied -- a copy would duplicate the sequence.
+    owning_reversed_iter(owning_reversed_iter&&) = default;
+    owning_reversed_iter(const owning_reversed_iter&) = delete;
 
     std::expected<T, StopIteration> __next__() {
         if (index_ < 0) return tpy::make_unexpected(StopIteration{});
@@ -421,8 +634,10 @@ class map_iter : public next_iter_mixin<map_iter<U, Iter, Fn>, U> {
     Iter iter_;
     Fn fn_;
 public:
-    map_iter(Iter&& iter, Fn fn)
-        : iter_(std::move(iter)), fn_(std::move(fn)) {}
+    template<typename It>
+        requires std::constructible_from<Iter, It&&>
+    map_iter(It&& iter, Fn fn)
+        : iter_(std::forward<It>(iter)), fn_(std::move(fn)) {}
 
     std::expected<U, StopIteration> __next__() {
         auto r = iter_.__next__();
@@ -441,19 +656,14 @@ public:
 template<typename U, typename Container, typename Fn>
 class owning_map_iter
     : public next_iter_mixin<owning_map_iter<U, Container, Fn>, U> {
-    using Iter = decltype(tpy::__iter__(std::declval<Container&>()));
-    Container owned_;
-    Iter iter_;
+    detail::owned_iter_source<Container> src_;
     Fn fn_;
 public:
     owning_map_iter(Fn fn, Container&& c)
-        : owned_(std::move(c)), iter_(tpy::__iter__(owned_)), fn_(std::move(fn)) {}
-
-    owning_map_iter(owning_map_iter&&) = delete;
-    owning_map_iter& operator=(owning_map_iter&&) = delete;
+        : src_(std::move(c)), fn_(std::move(fn)) { src_.start(); }
 
     std::expected<U, StopIteration> __next__() {
-        auto r = iter_.__next__();
+        auto r = src_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
         return fn_(unwrap_ref(*r));
     }
@@ -470,9 +680,8 @@ public:
 // template syntax (::tpy::builtin_map<{T}, {U}>).
 template<typename T, typename U, typename Fn, typename Iterable>
 auto builtin_map(Fn&& fn, Iterable& iterable) {
-    auto iter = tpy::__iter__(iterable);
-    return map_iter<U, decltype(iter), std::decay_t<Fn>>(
-        std::move(iter), std::forward<Fn>(fn));
+    return map_iter<U, detail::iter_member_t<decltype(tpy::__iter__(iterable))>, std::decay_t<Fn>>(
+        tpy::__iter__(iterable), std::forward<Fn>(fn));
 }
 
 // rvalue: own the container to prevent dangling iterators
@@ -519,19 +728,12 @@ public:
 template<typename U, typename Fn, typename... Containers>
 class owning_map_multi_iter
     : public next_iter_mixin<owning_map_multi_iter<U, Fn, Containers...>, U> {
-    using IterTuple = std::tuple<decltype(tpy::__iter__(std::declval<Containers&>()))...>;
-    std::tuple<Containers...> owned_;
-    IterTuple iters_;
+    std::tuple<detail::arg_source_t<Containers>...> srcs_;
     Fn fn_;
 
     template<size_t... Is>
-    static IterTuple make_iters(std::tuple<Containers...>& owned, std::index_sequence<Is...>) {
-        return IterTuple{tpy::__iter__(std::get<Is>(owned))...};
-    }
-
-    template<size_t... Is>
     std::expected<U, StopIteration> call_next(std::index_sequence<Is...>) {
-        auto results = std::tuple{std::get<Is>(iters_).__next__()...};
+        auto results = std::tuple{std::get<Is>(srcs_).__next__()...};
         if ((!std::get<Is>(results).has_value() || ...))
             return tpy::make_unexpected(StopIteration{});
         return fn_(static_cast<detail::fn_param_t<Fn, Is>>(unwrap_ref(*std::get<Is>(results)))...);
@@ -540,12 +742,14 @@ class owning_map_multi_iter
 public:
     template<typename... CCs>
     owning_map_multi_iter(Fn fn, CCs&&... cs)
-        : owned_{std::forward<CCs>(cs)...},
-          iters_(make_iters(owned_, std::index_sequence_for<Containers...>{})),
-          fn_(std::move(fn)) {}
+        : srcs_(std::forward<CCs>(cs)...), fn_(std::move(fn)) {
+        std::apply([](auto&... s) { (s.start(), ...); }, srcs_);
+    }
 
-    owning_map_multi_iter(owning_map_multi_iter&&) = delete;
-    owning_map_multi_iter& operator=(owning_map_multi_iter&&) = delete;
+    // Spelled: std::tuple reports itself movable whatever it holds.
+    owning_map_multi_iter(owning_map_multi_iter&&)
+        requires (std::move_constructible<detail::arg_source_t<Containers>> && ...)
+        = default;
 
     std::expected<U, StopIteration> __next__() {
         return call_next(std::index_sequence_for<Containers...>{});
@@ -561,16 +765,22 @@ public:
 // Variadic factory: lvalue (all iterables are lvalue references)
 template<typename U, typename Fn, typename... Its>
 auto builtin_map_n(Fn&& fn, Its&... its) {
-    auto iters = std::tuple{tpy::__iter__(its)...};
-    return map_multi_iter<U, std::decay_t<Fn>, decltype(iters)>(
-        std::move(iters), std::forward<Fn>(fn));
+    // Spelled, not deduced: CTAD would decay a self-iterator's `Self&` into a
+    // copy. Braces keep the observable __iter__ calls left to right.
+    using Iters = std::tuple<detail::iter_member_t<decltype(tpy::__iter__(its))>...>;
+    return map_multi_iter<U, std::decay_t<Fn>, Iters>(
+        Iters{tpy::__iter__(its)...}, std::forward<Fn>(fn));
 }
 
-// Variadic factory: rvalue (at least one iterable is an rvalue)
+// Variadic factory: at least one iterable is a temporary. Per argument, own
+// (temporary) or borrow (lvalue), like builtin_zip.
 template<typename U, typename Fn, typename... Its>
     requires ((!std::is_lvalue_reference_v<Its&&>) || ...)
 auto builtin_map_n(Fn&& fn, Its&&... its) {
-    return owning_map_multi_iter<U, std::decay_t<Fn>, std::remove_cvref_t<Its>...>(
+    return owning_map_multi_iter<U, std::decay_t<Fn>,
+        std::conditional_t<std::is_lvalue_reference_v<Its&&>,
+                           std::remove_reference_t<Its>&,
+                           std::remove_cvref_t<Its>>...>(
         std::forward<Fn>(fn), std::forward<Its>(its)...);
 }
 
@@ -582,8 +792,10 @@ class filter_iter : public next_iter_mixin<filter_iter<T, Iter, Fn>, T> {
     Iter iter_;
     Fn fn_;
 public:
-    filter_iter(Iter&& iter, Fn fn)
-        : iter_(std::move(iter)), fn_(std::move(fn)) {}
+    template<typename U>
+        requires std::constructible_from<Iter, U&&>
+    filter_iter(U&& iter, Fn fn)
+        : iter_(std::forward<U>(iter)), fn_(std::move(fn)) {}
 
     std::expected<T, StopIteration> __next__() {
         while (true) {
@@ -607,20 +819,15 @@ public:
 template<typename T, typename Container, typename Fn>
 class owning_filter_iter
     : public next_iter_mixin<owning_filter_iter<T, Container, Fn>, T> {
-    using Iter = decltype(tpy::__iter__(std::declval<Container&>()));
-    Container owned_;
-    Iter iter_;
+    detail::owned_iter_source<Container> src_;
     Fn fn_;
 public:
     owning_filter_iter(Fn fn, Container&& c)
-        : owned_(std::move(c)), iter_(tpy::__iter__(owned_)), fn_(std::move(fn)) {}
-
-    owning_filter_iter(owning_filter_iter&&) = delete;
-    owning_filter_iter& operator=(owning_filter_iter&&) = delete;
+        : src_(std::move(c)), fn_(std::move(fn)) { src_.start(); }
 
     std::expected<T, StopIteration> __next__() {
         while (true) {
-            auto r = iter_.__next__();
+            auto r = src_.__next__();
             if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
             auto&& elem = unwrap_ref(*r);
             if (fn_(elem)) {
@@ -671,23 +878,15 @@ public:
 template<typename T, typename Container, typename Fn>
 class owning_filter_direct_iter
     : public next_iter_mixin<owning_filter_direct_iter<T, Container, Fn>, val_or_ref<T>> {
-    using CppIter = decltype(std::declval<Container&>().begin());
-    Container owned_;
-    CppIter it_;
-    CppIter end_;
+    detail::owned_range_source<Container> src_;
     Fn fn_;
 public:
     owning_filter_direct_iter(Fn fn, Container&& c)
-        : owned_(std::move(c)), it_(owned_.begin()), end_(owned_.end()),
-          fn_(std::move(fn)) {}
-
-    owning_filter_direct_iter(owning_filter_direct_iter&&) = delete;
-    owning_filter_direct_iter& operator=(owning_filter_direct_iter&&) = delete;
+        : src_(std::move(c)), fn_(std::move(fn)) {}
 
     std::expected<val_or_ref<T>, StopIteration> __next__() {
-        while (it_ != end_) {
-            auto& elem = *it_;
-            ++it_;
+        while (!src_.done()) {
+            auto& elem = src_.take();
             if (fn_(elem)) {
                 return val_or_ref<T>(elem);
             }
@@ -710,9 +909,8 @@ auto builtin_filter(Fn&& fn, Iterable& iterable) {
         return filter_direct_iter<T, Iterable, std::decay_t<Fn>>(
             std::forward<Fn>(fn), iterable);
     } else {
-        auto iter = tpy::__iter__(iterable);
-        return filter_iter<T, decltype(iter), std::decay_t<Fn>>(
-            std::move(iter), std::forward<Fn>(fn));
+        return filter_iter<T, detail::iter_member_t<decltype(tpy::__iter__(iterable))>, std::decay_t<Fn>>(
+            tpy::__iter__(iterable), std::forward<Fn>(fn));
     }
 }
 

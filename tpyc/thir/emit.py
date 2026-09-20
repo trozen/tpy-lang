@@ -1000,8 +1000,7 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
     if e.owned_source:
         # The IIFE is the wrapper's in-place FACTORY: it returns the closure
         # as a prvalue, so neither the source (aggregate-initialized inside
-        # the `genexpr_state` holder) nor the closure is ever moved -- the
-        # owning combinators delete their move ctor.
+        # the `genexpr_state` holder) nor the closure is moved here.
         ind2 = ind1 + INDENT
         ind3 = ind2 + INDENT
         buf.write(f"::tpy::make_generator<{e.slot_cpp}>(std::in_place, "

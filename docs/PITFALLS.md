@@ -204,6 +204,31 @@ each must be one the type mapping requires at that position. Where the corpus
 does not reach a position, compile a probe and read its emit. For runtime operators,
 also inspect the callee: unchanged operator syntax can hide temporary allocations.
 
+### `runtime-template-kind-matrix`
+
+**Rule.** A runtime template is instantiated with every KIND of type the compiler can hand it,
+and the corpus reaches only a few of them. A change to one states, before the implementation,
+which kinds it must hold for and pins each in a compiled-once self-check
+(`runtime/cpp/tests/*.cpp`): for an iteration helper, a container, an inline container (whose
+iterators do not survive a move), a runtime view, a self-iterator, a user record whose
+`__iter__` returns a separate iterator, one returning a reference (to a member, to `*this` typed
+as a base, to a const), one returning an immovable or `@nocopy` value -- each as a temporary and
+as an lvalue, in every flavor the factory selects (owning, borrowing, mixed). A green suite is
+not evidence for a kind no case instantiates.
+
+**Example.** Making the owning `zip` / `enumerate` / `map` / `filter` movable passed the full
+suite four times, and each review round then found a kind the previous code broke: a dict-view
+temporary hit a `static_assert` written for user records; a self-iterator's `__iter__` was no
+longer called; a class delegating to a base-typed member iterated nothing; a `@nocopy` iterator
+returned by reference stopped compiling, because the holder copied what the old code aliased.
+Right: `runtime/cpp/tests/test_owning_combinator_move.cpp` holds one leg per kind, and an
+ablation of each mechanism fails a named check.
+
+**Check.** List the kinds and flavors the changed template is instantiated with; for each, find
+the self-check leg or the case section that instantiates it, and add the missing ones BEFORE
+changing the header. Then break each new mechanism in a scratch copy of the header and confirm a
+check fails.
+
 ### `const-source-const-loop-var`
 
 **Rule.** A loop variable that aliases its source -- the pointer form, `&(*it)` into a `T*` --

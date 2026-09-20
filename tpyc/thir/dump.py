@@ -349,7 +349,7 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRGenExpr):
         src = "" if e.iterable is None else _expr(e.iterable)
         elem = "" if e.element is None else _expr(e.element)
-        owned = (" [owned_source, nonmovable]" if e.nonmovable_source
+        owned = (" [owned_source, pinned]" if e.pinned_source
                  else " [owned_source]" if e.owned_source else "")
         return f"genexpr({elem} for %_ in {src}){owned}"
     if isinstance(e, THIRLambda):

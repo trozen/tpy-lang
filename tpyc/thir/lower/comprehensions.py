@@ -23,7 +23,6 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     IntLiteralType,
-    NominalType,
     OptionalType,
     OwnType,
     ReadonlyType,
@@ -58,7 +57,8 @@ from ..reject import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
     THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRMove)
-from .checks import _container_storage_call_rvalue
+from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
+                     _native_iter_combinator)
 from .predicates import (
     _mixed_own_storage_source,
     _storage_opt_ternary_elem,
@@ -166,26 +166,6 @@ def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
         return False
     return True
 
-def _native_iter_combinator(it, analyzer) -> bool:
-    """A builtin iterator COMBINATOR call (`zip`/`map`/`filter`/`reversed`/
-    `enumerate`/`iter`): a @native or @cpp_template callee whose result is the
-    structural `typing.Iterator` protocol over a C++ object that has
-    begin()/end(), which is what the comp loop calls unconditionally. The
-    complement of `_genfac_like_call`, which excludes exactly these callees so
-    the frame rows stay theirs; both verdicts key on the same fi flags so the
-    two arms cannot claim one call."""
-    if not isinstance(it, (TpyCall, TpyMethodCall)):
-        return False
-    fi = it.resolved_function_info
-    if fi is None or fi.is_generator:
-        return False
-    if not (fi.native_name or fi.native_function or fi.cpp_template):
-        return False
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(it))))
-    return (isinstance(rt, NominalType) and rt.is_protocol
-            and rt.qualified_name() == "typing.Iterator")
-
 def _reference_typed_elem(t: 'TpyType | None') -> bool:
     """The yielded element is a reference type (a tuple counts if ANY member
     is), so a combinator that hands back a COPY is observably wrong -- a
@@ -283,27 +263,6 @@ def _combinator_copies(it, analyzer) -> bool:
         return any(_source_arg_copies(a, analyzer, named_only=True)
                    for a in it.args)
     return True
-
-def _combinator_owning_flavor(it, analyzer) -> bool:
-    """Whether the combinator source `it` selects the runtime's OWNING
-    flavor: one source argument that is not a C++ lvalue (a call result, a
-    literal, a genexpr, another combinator) binds the factory's `&&`
-    overload, which moves the argument into an `owning_*_iter`. Every owning
-    flavor deletes its move ctor (it aliases its own slot), so a holder built
-    over it -- a genexpr's `genexpr_state` -- cannot be moved either, not
-    even before the first pull. Mirrors overload selection one node at a
-    time, like `_combinator_copies`; a non-source argument (`map`/`filter`'s
-    callable, `enumerate`'s start) never selects it."""
-    for a in it.args:
-        at = analyzer.get_expr_type(a)
-        if at is None:
-            return True
-        if get_iterable_element_type(at, registry=analyzer.registry) is None:
-            continue
-        if not is_lvalue_iterable(a, analyzer.registry.get_record,
-                                  analyzer.get_expr_type):
-            return True
-    return False
 
 def _iter_rvalue_source(it, analyzer) -> bool:
     """`iter(<rvalue>)`: `::tpy::__iter__` has no owning overload, so the
@@ -1540,8 +1499,8 @@ def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     # Decided here, off the route: the owning boundary that would move the
     # closure (a lazy combinator taking this genexpr as its rvalue argument)
     # only reads the verdict.
-    nonmovable = (owned and route.native_combinator
-                  and _combinator_owning_flavor(it, analyzer))
+    pinned = (owned and route.native_combinator
+              and _combinator_pins_source(it, analyzer))
     it_type = route.it_type
     sema_elem = route.et
     # The owned form binds off the holder's seeded optional and advances on
@@ -1696,7 +1655,7 @@ def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         iife_captures=iife_captures,
         inner_captures=inner_captures,
         owned_source=owned,
-        nonmovable_source=nonmovable,
+        pinned_source=pinned,
         unpack_targets=unpack_targets,
         unpack_target_cpps=unpack_cpps,
         const_loop_var=gen.const_loop_var,
@@ -1704,18 +1663,16 @@ def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     )
 
 
-def reject_nonmovable_genexpr_arg(call, arg, lowered, analyzer) -> None:
-    """The owning boundary: a lazy native combinator (`enumerate` / `zip` /
-    `filter` / `map` / `reversed` -- the `_native_iter_combinator` verdict)
-    stores a non-lvalue argument by moving it into the iterator it returns
+def reject_pinned_genexpr_arg(call, arg, lowered, analyzer) -> None:
+    """The owning boundary: a lazy native combinator stores a non-lvalue
+    argument by moving it into the iterator it returns
     (`builtin_enumerate(Iterable&&)`), so a genexpr argument's closure is
-    moved before its first pull. A movable closure survives that; one over
-    a non-movable source has no move ctor, and the C++ build fails deep in
-    the runtime -- so it is a located reject here instead, until producers
-    are movable while unstarted (TODO.md)."""
-    if (isinstance(lowered, THIRGenExpr) and lowered.nonmovable_source
+    moved before its first pull. A closure over a PINNED source has no move
+    ctor, and the C++ build fails deep in the runtime -- so it is a located
+    reject here instead (BUGS.md#separate-iter-temp-no-flush-slot)."""
+    if (isinstance(lowered, THIRGenExpr) and lowered.pinned_source
             and _native_iter_combinator(call, analyzer)):
-        raise ThirUnsupported("genexpr.nonmovable_into_owning",
+        raise ThirUnsupported("genexpr.pinned_into_owning",
                               loc=getattr(arg, "loc", None))
 
 

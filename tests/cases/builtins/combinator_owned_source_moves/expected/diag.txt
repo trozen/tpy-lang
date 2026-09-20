@@ -1,0 +1,1 @@
+main.py:40: warning: Method 'Deleg.__iter__' hides 'Cur.__iter__' -- any 'Cur' reference will call 'Cur.__iter__', not 'Deleg.__iter__' (differs from Python's dynamic dispatch); make 'Cur' a @dynamic protocol for runtime dispatch

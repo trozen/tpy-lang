@@ -808,6 +808,25 @@ using begin_iter_t = decltype(std::declval<C&>().begin());
 template<typename S>
 using aiter_type_t = std::decay_t<decltype(std::declval<S&>().__aiter__())>;
 
+// A self-iterator -- one whose __iter__() returns *this (S&) -- is its own
+// iterator: a holder keeps NO iterator state for it and calls the source's
+// __next__() directly, so moving the holder cannot dangle a stored
+// self-pointer. Exactly `S&`: a `Base&` may be *this of a class that inherits
+// its __iter__, or a base-typed MEMBER the class delegates to, and the type
+// cannot tell them apart -- so it is not self, and neither is a reference to
+// a member iterator (its __iter__ is not idempotent) or a fresh instance
+// returned by value.
+template<typename S>
+inline constexpr bool is_self_iterator_v =
+    std::is_lvalue_reference_v<decltype(::tpy::__iter__(std::declval<S&>()))>
+    && std::is_same_v<
+           std::remove_reference_t<decltype(::tpy::__iter__(std::declval<S&>()))>, S>;
+
+// A record tpyc compiled, as opposed to a runtime or @native type.
+template<typename T>
+inline constexpr bool is_tpy_record_v =
+    requires { std::remove_cvref_t<T>::__tpy_class_name__; };
+
 // Storage form for a resumable frame's for-loop VARIABLE. A non-value element
 // the source merely lends must alias it (`T&` -> frame_slot stores `T*`), so
 // mutation through the loop var reaches the source as CPython requires; a fresh

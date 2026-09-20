@@ -314,13 +314,13 @@ int32_t closure_pos(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
 //     print("map", list(x for x in map(triple, xs)))  # tpyc: ok
 //     print("gen", sum(x for x in gen()))  # tpyc: ok
 //     print("ranged", sum(x for x in ranged()))  # tpyc: ok
-//     # non-movable owning combinators over generator calls: zip pulls the
-//     # longer side once past the shorter one's end, like CPython.
+//     # owning combinators over generator calls: zip pulls the longer side once
+//     # past the shorter one's end, like CPython.
 //     print("zip_gens", sum(a + b for a, b in zip(gen(), four())))  # tpyc: ok
 //     print("zip_gens_long", sum(a + b for a, b in zip(four(), gen())))  # tpyc: ok
 //     print("enumerate_gen", sum(i * x for i, x in enumerate(gen())))  # tpyc: ok
-//     # a MOVABLE genexpr moved into a combinator's owning flavor before its first
-//     # pull: over a list name, and over a generator call (the frame is unstarted).
+//     # a genexpr moved into a combinator's owning flavor before its first pull:
+//     # over a list name, and over a generator call (the frame is unstarted).
 //     print("enumerate_genexpr", sum(i * v for i, v in enumerate(x * 2 for x in xs)))  # tpyc: ok
 //     print("zip_genexpr_gen", sum(a * b for a, b in zip((x for x in gen()), xs)))  # tpyc: ok
 //     print("filter_gen", list(x for x in filter(big, gen())))  # tpyc: ok

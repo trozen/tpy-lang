@@ -857,7 +857,10 @@ class THIRArgTemp(THIRExpr):
     the `move` wrap -- the arg copy+move cascade; a movable NAME at
     its last use skips the temp via `THIRMove` instead), and a record-ctor
     rvalue into a pointer-repr `Optional[record]` slot (`A __tmp_N = A(7);`
-    + the `addr_of` wrap -- the optional-pointer temporary face). Only
+    + the `addr_of` wrap -- the optional-pointer temporary face), and a
+    record temporary whose `__iter__` returns a separate iterator at a native
+    iterator callee's slot (`Noisy __tmp_N = Noisy(2);`, so the combinator
+    borrows it and stays movable). Only
     the flushable statement positions admit it (expr stmt / var-decl init /
     name assign / scalar field write / return): a while-condition hoist is
     the stale-snapshot miscompile (BUGS.md), an elif temp breaks the flat
@@ -1345,12 +1348,10 @@ class THIRGenExpr(THIRExpr):
       (`make_generator<slot>(std::in_place, [caps]() { return <lambda>; })`)
       and the lambda's init-capture builds the source once, eagerly, inside
       a `::tpy::genexpr_state` holder (`__st = ::tpy::genexpr_state{<iterable>}`
-      -- CPython's `iter()` runs at construction too). Nothing is ever
-      moved: the source is aggregate-initialized from its prvalue, the
-      closure is returned as a prvalue and the wrapper constructs it in
-      place (all guaranteed elision), because the runtime's owning
-      combinators (`zip` / `enumerate` / `filter` over a generator) alias
-      their own slot and delete their move ctor. The lambda seeds
+      -- CPython's `iter()` runs at construction too). The source is
+      aggregate-initialized from its prvalue, the closure is returned as a
+      prvalue and the wrapper constructs it in place (all guaranteed
+      elision). The lambda seeds
       `__st.beg` (an `optional<begin_iter_t<S>>` -- an iterator need not be
       default-constructible) on its first pull, so a MOVABLE source's
       closure may still be moved before then. The element binds off
@@ -1360,20 +1361,17 @@ class THIRGenExpr(THIRExpr):
       until the next advance, and advancing before the `return` would pull
       one source element ahead of the consumer where CPython pulls lazily.
 
-    Movability of the owned form's closure is the holder's: a MOVABLE
-    source (a container literal, a dict view, an `Own[container]` call, a
-    generator frame -- unstarted, so it has no self-pointer yet -- or a
-    combinator over lvalue arguments) may be moved by an owning consumer
-    BEFORE the first pull (the seed is lazy, so nothing points into
-    `__st.src` yet); after the first pull nothing moves it, since every
-    consumer that stores the closure moves it at construction. A
-    NON-movable source (`nonmovable_source`: a native combinator whose
-    owning flavor was selected by a non-lvalue argument, which deletes its
-    move ctor) is rejected at any owning boundary
-    (`genexpr.nonmovable_into_owning` -- another lazy combinator taking the
-    genexpr as its rvalue argument), until the runtime's producers become
-    movable while unstarted (TODO.md). A local binding (`g = (...)`) is not
-    lowered.
+    The owned form's closure may be moved by an owning consumer (another
+    lazy combinator taking the genexpr as its rvalue argument) BEFORE the
+    first pull: the seed is lazy, so nothing points into `__st.src` yet, and
+    a source is movable until then -- the runtime's owning combinators hold no
+    cursor into themselves before it. After the first pull nothing moves it,
+    since every consumer that stores the closure moves it at construction.
+    One source is PINNED (`pinned_source`): a combinator owning a record
+    temporary whose `__iter__` returns a separate iterator, which no arg temp
+    can lift out of a genexpr's source; its closure has no move ctor and is
+    rejected at an owning boundary (`genexpr.pinned_into_owning`). A local
+    binding (`g = (...)`) is not lowered.
 
     The multi-line render reads the enclosing statement indent off
     `_EmitState.stmt_indent_level`. Range sources take the counter-lambda
@@ -1385,10 +1383,9 @@ class THIRGenExpr(THIRExpr):
     iife_captures: str = ""
     inner_captures: str = ""
     owned_source: bool = False               # rvalue source: held in __st.src
-    # The holder cannot be moved even before the first pull (its source is a
-    # combinator's owning flavor, whose move ctor is deleted): decided by the
-    # source route, consumed by the owning-boundary reject.
-    nonmovable_source: bool = False
+    # The closure cannot be moved, not even before the first pull: decided by
+    # the source route, consumed by the owning-boundary reject.
+    pinned_source: bool = False
     # Tuple-unpack head (`n for p, n in items`): the lambda body binds
     # `auto& __tup_N = <deref>;` (the shared __tup counter, drawn at emit)
     # plus one line per named target (`unpack_target_cpps[i] name =

@@ -30,12 +30,25 @@ _SELFCHECKS = [
      "the generic yield slot's spelling, const-ness and copy count"),
     ("test_next_step_result.cpp",
      "the iterator step result's size and the range-for adapter's stepping"),
+    ("test_owning_combinator_move.cpp",
+     "owning combinators stay movable until their first pull"),
 ]
 
 
-@pytest.mark.parametrize("source, what", _SELFCHECKS,
-                         ids=[s for s, _ in _SELFCHECKS])
-def test_runtime_selfcheck(source, what, request, tmp_path):
+# Self-checks also built the way a release build sees the headers: their
+# debug-only guards compile out under NDEBUG, so the guarded paths must hold
+# without them.
+_RELEASE_SHAPE = {"test_owning_combinator_move.cpp"}
+_RELEASE_FLAGS = ("-O2", "-DNDEBUG")
+
+_BUILDS = [(s, w, ()) for s, w in _SELFCHECKS] + [
+    (s, w, _RELEASE_FLAGS) for s, w in _SELFCHECKS if s in _RELEASE_SHAPE]
+
+
+@pytest.mark.parametrize(
+    "source, what, flags", _BUILDS,
+    ids=[s + ("-release" if f else "") for s, _, f in _BUILDS])
+def test_runtime_selfcheck(source, what, flags, request, tmp_path):
     """Build and run a runtime self-check TU.
 
     Needs a host toolchain that can also RUN the result, so a cross compiler
@@ -49,7 +62,7 @@ def test_runtime_selfcheck(source, what, request, tmp_path):
     # the Mach-O flags -- so stop at the object; the run is skipped below.
     cross = exec_is_cross()
     cmd = [
-        *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}",
+        *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", *flags,
         "-I", str(RUNTIME_DIR),
         *(["-c"] if cross else []),
         str(src), "-o", str(binary.with_suffix(".o") if cross else binary),

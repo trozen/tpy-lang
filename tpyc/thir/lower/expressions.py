@@ -718,6 +718,7 @@ from .checks import (
     _container_slot_call_rvalue_arg,
     _native_container_call_arg,
     _native_record_call_arg,
+    _separate_iterator_temp_arg,
     _borrow_ret_record_marker_arg,
     _required_protocol_union_slot,
     _union_ctor_temp_arg,
@@ -8642,10 +8643,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # the construct template, iterable-position like the
                     # generator-factory arm (inner container names stay
                     # bare -- no own_iter outside this arm's last-use row).
+                    # allow_temps rides through like the generator-factory
+                    # arm's: a combinator argument that must be an lvalue
+                    # hoists at this statement.
                     _witness("call.inst_iter_arg")
                     lowered_args.append(_lower_expr(
                         arg, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.ITERABLE)))
+                        use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                     allow_temps=temp_args)))
                 elif (isinstance(arg, TpyCall)
                       and arg.resolved_function_info is not None
                       and arg.resolved_function_info.qualified_name
@@ -9065,7 +9070,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             callee_cpp = f"{escape_cpp_name(e.func_name)}.value()"
             _witness("call.opt_callable_unwrap")
         # Late import: comprehensions imports this module.
-        from .comprehensions import reject_nonmovable_genexpr_arg
+        from .comprehensions import reject_pinned_genexpr_arg
 
         def _free_arg(i: int, a: TpyExpr) -> THIRExpr:
             lowered = _lower_free_call_arg(
@@ -9076,9 +9081,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                  and dcbp is not None
                                  and i in dcbp))
             # A lazy combinator callee moves a genexpr argument's closure
-            # into its own storage; a non-movable closure rejects here
-            # rather than in the C++ build.
-            reject_nonmovable_genexpr_arg(e, a, lowered, analyzer)
+            # into its own storage; a pinned closure rejects here rather
+            # than in the C++ build.
+            reject_pinned_genexpr_arg(e, a, lowered, analyzer)
             return lowered
 
         return _er_wrap(THIRCall(
@@ -13174,6 +13179,22 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             ok = _native_call_arg_ok(
                 a, ptype, declared, analyzer,
                 storage_tuple_locals=lc.storage_tuple_locals)
+            _sit = (_separate_iterator_temp_arg(a, ptype, _callee_fi,
+                                                analyzer)
+                    if ok and temp_args else None)
+            if _sit is not None:
+                # A render choice over an argument the rows above admitted:
+                # with no flush slot here it keeps the bare, owned form. The
+                # record type is spelled, so a conditional operand can bank
+                # the temp in its region instead of building it eagerly.
+                _witness("argtemp.separate_iter_source")
+                return THIRArgTemp(
+                    result_type=_sit, cpp_type=lc.render_type(_sit),
+                    movable=_sit.is_movable(),
+                    init=_lower_expr(a, lc, declared,
+                                     use=replace(_NESTED_ARG_USE,
+                                                 allow_temps=True)),
+                    form=Form.BORROW, loc=getattr(a, "loc", None))
         else:
             ok = _plain_call_arg_ok(
                 a, ptype, declared, analyzer, temps_ok=temp_args,

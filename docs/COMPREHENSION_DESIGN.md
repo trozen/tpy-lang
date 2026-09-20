@@ -557,21 +557,19 @@ is shared with the list/set/dict comprehensions: a source one form iterates, the
 other does too. The rvalue form never moves its source at construction: the
 holder is aggregate-initialized from the source prvalue, the IIFE returns the
 closure as a prvalue and `generator_wrapper` constructs it in place -- all
-guaranteed elision -- so a non-movable source (the runtime's owning `zip` /
-`enumerate` / `filter` iterators over a non-lvalue argument delete their move
-ctor) works at an eager consumer (`sum`, `list`, a for-head, a structural
-protocol slot: all bind the prvalue by forwarding reference or `auto`). The
-closure's movability is the holder's. A MOVABLE closure (a literal, a dict
-view, an `Own[container]` call, an unstarted generator frame, a combinator over
-lvalue arguments) may be moved by an owning consumer -- another lazy combinator
-taking the genexpr as its rvalue argument, `enumerate(x * 2 for x in xs)` --
-before its first pull; the seed is lazy, so nothing points into the holder yet,
-and after the first pull nothing moves it. A NON-movable closure at such a
-boundary is a located reject, `genexpr.nonmovable_into_owning` (`THIRGenExpr.
-nonmovable_source`, decided by the source route, read by the combinator-call
-lowering), until the runtime's producers become movable while unstarted (the
-TODO.md item `Producers are movable only while unstarted`). A local binding of
-a genexpr is not lowered. One asymmetry with the comprehension
+guaranteed elision. The closure's movability is the holder's, and every source
+is movable until its first pull: a literal, a dict view, an `Own[container]`
+call, an unstarted generator frame, and the runtime's owning combinators,
+which hold no cursor into themselves before the first pull
+(`detail::owned_iter_source` / `owned_range_source` in `itertools.hpp`). So an owning consumer -- another lazy
+combinator taking the genexpr as its rvalue argument, `enumerate(x * 2 for x
+in xs)` -- may move the closure before its first pull; the seed is lazy, so
+nothing points into the holder yet, and after the first pull nothing moves it.
+One source pins its closure: a combinator owning a user-iterable temporary with
+a separate iterator, which no arg temp can lift out of a genexpr's source; at an
+owning boundary that is a located reject, `genexpr.pinned_into_owning`
+(`THIRGenExpr.pinned_source`, BUGS.md#separate-iter-temp-no-flush-slot).
+A local binding of a genexpr is not lowered. One asymmetry with the comprehension
 route: the genexpr source is lowered without arg temps (`allow_temps=False`)
 because its render sits inside the IIFE, which has no statement-level flush
 point for a hoisted `__tmp_N`, so a source call whose argument needs one

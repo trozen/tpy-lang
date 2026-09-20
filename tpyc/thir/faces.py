@@ -86,6 +86,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.iter_proto",           # gen-factory / iter() / dict-view rvalue
                                     # at a structural slot -> un-spelled
                                     # `auto __tmp_N = <rvalue>;` temp
+    "argtemp.separate_iter_source", # temporary of a record whose __iter__
+                                    # returns a separate iterator, at a lazy
+                                    # combinator's slot -> a spelled temp, so
+                                    # the combinator borrows instead of owning
     "argtemp.marker_protocol_literal",  # container literal at a PLAIN module
                                     # callee's structural slot -> the qualcall
                                     # loop's `auto __tmp_N = <self-spelled>` hoist

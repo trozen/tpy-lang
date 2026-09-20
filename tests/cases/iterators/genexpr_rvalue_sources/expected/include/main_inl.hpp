@@ -88,12 +88,11 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ranged::__next__() {
 }
 
 // def four() -> Iterator[int32]:
-//     # the copyable twin: the owning zip copies its frame sources
-//     # (BUGS.md#owning-zip-copies-frame-source).
-//     yield 0                                                       # -> S_RESUME_0
-//     yield 1                                                       # -> S_RESUME_1
-//     yield 2                                                       # -> S_RESUME_2
-//     yield 3                                                       # -> S_RESUME_3
+//     # the explicit-yield twin of `ranged`: a frame with no loop slots.
+//     yield 0                                                             # -> S_RESUME_0
+//     yield 1                                                             # -> S_RESUME_1
+//     yield 2                                                             # -> S_RESUME_2
+//     yield 3                                                             # -> S_RESUME_3
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_four::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

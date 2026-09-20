@@ -129,6 +129,7 @@ from ...value_category import (
 )
 from ...codegen_cpp.context import (
     escape_cpp_name,
+    is_lvalue_iterable,
     free_callee_cpp,
     imported_free_callee_cpp,
     module_qualified_callee_cpp,
@@ -14254,6 +14255,119 @@ def _method_recv_family(recv_type: 'TpyType | None', analyzer,
         if pred(recv_type, analyzer, tparam_bounds, method):
             return family
     return None
+
+
+def _native_iterator_callee(fi, result: 'TpyType | None') -> bool:
+    """A builtin iterator COMBINATOR callee (`zip`/`map`/`filter`/`reversed`/
+    `enumerate`/`iter`): @native or @cpp_template, not a generator, and its
+    result is the structural `typing.Iterator` protocol over a C++ object
+    that has begin()/end()."""
+    if fi is None or fi.is_generator:
+        return False
+    if not (fi.native_name or fi.native_function or fi.cpp_template):
+        return False
+    if result is None:
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(result)))
+    return (isinstance(rt, NominalType) and rt.is_protocol
+            and rt.qualified_name() == "typing.Iterator")
+
+
+def _native_iter_combinator(it, analyzer) -> bool:
+    """A call to a `_native_iterator_callee`, which is what the comp loop
+    calls begin()/end() on unconditionally. The complement of
+    `_genfac_like_call`, which excludes exactly these callees so the frame
+    rows stay theirs; both verdicts key on the same fi flags so the two arms
+    cannot claim one call."""
+    if not isinstance(it, (TpyCall, TpyMethodCall)):
+        return False
+    return _native_iterator_callee(it.resolved_function_info,
+                                   analyzer.get_expr_type(it))
+
+
+def _self_iterator_record(ri, analyzer) -> bool:
+    """Whether a compiled record is its own iterator: every `__iter__` it
+    declares or inherits returns a REFERENCE to exactly this record. An
+    ancestor's type does not count -- `return self` inherited from a base and
+    `return self.inner` delegating to a base-typed member have the same
+    signature -- and neither does a fresh instance of its own class
+    (`-> Own[Cur]`). The runtime asks the same question of the C++ type
+    (`is_self_iterator_v`, dunder.hpp)."""
+    overloads = analyzer.registry.get_method_overloads_with_parents(
+        ri, "__iter__")
+    if not overloads:
+        return False
+    for fi in overloads:
+        rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            fi.return_type)))
+        if isinstance(rt, OwnType):
+            return False
+        if analyzer.registry.get_record_for_type(rt) is not ri:
+            return False
+    return True
+
+
+def _separate_iterator_record_temp(a: TpyExpr, analyzer) -> 'TpyType | None':
+    """A TEMPORARY of a compiled record whose `__iter__` returns a separate
+    iterator object: the record type, else None. Its `__iter__` is user code
+    that runs at the combinator call, and the iterator may point into the
+    record, so a combinator that OWNS one is pinned -- the pair cannot move.
+    A self-iterator record, a runtime or @native type and an lvalue are never
+    this kind."""
+    at = analyzer.get_expr_type(a)
+    if at is None:
+        return None
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    if isinstance(at, OwnType):
+        at = unwrap_readonly(at.wrapped)
+    if not isinstance(at, NominalType) or at.is_protocol:
+        return None
+    ri = analyzer.registry.get_record_for_type(at)
+    if ri is None or ri.is_native:
+        return None
+    if not analyzer.registry.get_method_overloads_with_parents(ri, "__iter__"):
+        return None
+    if _self_iterator_record(ri, analyzer):
+        return None
+    if is_lvalue_iterable(a, analyzer.registry.get_record,
+                          analyzer.get_expr_type):
+        return None
+    return at
+
+
+def _separate_iterator_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                callee, analyzer) -> 'TpyType | None':
+    """A `_separate_iterator_record_temp` worth binding to a local at a native
+    iterator callee's `Iterable[T]` slot (`zip(Noisy(2), xs)`): the record
+    type to declare the local as, else None. Bound first, the argument is an
+    lvalue, the borrowing flavor is selected and the combinator stays
+    movable. A render choice only: the argument is admitted by the same rows
+    either way, and where no local can be made it keeps the owned, pinned
+    form. Only a constructor or free-function call is a candidate (the
+    sources the temp's init lowers), and only a MOVABLE record: a non-movable
+    temp cannot bank in a conditional operand and would be built on the arm
+    not taken."""
+    if callee is None or not _native_iterator_callee(callee,
+                                                     callee.return_type):
+        return None
+    if not isinstance(a, TpyCall):
+        return None
+    pb = _protocol_binding(ptype)
+    if pb is None or pb.name != "Iterable":
+        return None
+    at = _separate_iterator_record_temp(a, analyzer)
+    if at is None or not at.is_movable():
+        return None
+    return at
+
+
+def _combinator_pins_source(it, analyzer) -> bool:
+    """Whether the combinator call `it`, lowered where no arg temp can be made
+    (a genexpr's source), OWNS a `_separate_iterator_record_temp` and is
+    therefore pinned: it cannot be moved, and neither can a closure built
+    over it."""
+    return any(_separate_iterator_record_temp(a, analyzer) is not None
+               for a in it.args)
 
 
 def _user_iterator_iterable(u: 'TpyType | None', analyzer) -> bool:
