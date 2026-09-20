@@ -1803,7 +1803,7 @@ by implemented internal retained-alias inspection (M3.6) that preserves
 strict validation.
 M3.3-M3.6 are merged. The approved next batch is in
 [MIR_M3_REGIONS_PLAN.md](MIR_M3_REGIONS_PLAN.md): implemented M3.7 emitted
-storage regions and normal end events, then M3.8 internal retained-reference
+storage regions and normal end events, and implemented M3.8 internal retained-reference
 inspection at those ends. It does not change source behavior or checker authority.
 
 ## Scope matrix and remaining increments

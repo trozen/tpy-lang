@@ -111,6 +111,28 @@ def own(flag: bool) -> int32:
         saved = current
         flag = False
     return saved.value
+
+def nested_loops(outer: bool, inner: bool, stop: bool) -> int32:
+    result = 0
+    while outer:
+        local = Cell(1)
+        result = local.value
+        while inner:
+            inside = Cell(2)
+            result = inside.value
+            break
+        else:
+            fallback = Cell(3)
+            result = fallback.value
+            outer = False
+            if stop:
+                break
+            continue
+        outer = False
+    else:
+        final = Cell(4)
+        result = final.value
+    return result
 """
 
 
@@ -175,6 +197,21 @@ def test_loop_transfers_end_iteration_and_else_separately(artifacts: Artifacts) 
     assert sorted(counts.values()) == [1, 3]
 
 
+def test_inner_else_break_and_continue_end_scopes_inside_out(artifacts: Artifacts) -> None:
+    fn = artifacts[1]["nested_loops"]
+    assert isinstance(fn, MIRFunction), fn
+    result = analyze_scope_ends(fn)
+    parents = {r.id: r.parent for r in fn.regions}
+    exits = [(edge, events) for edge, events in result.ends.items() if len(events) == 2]
+    assert len(exits) == 2
+    for _, events in exits:
+        assert parents[events[0].region] == events[1].region
+    blocks = {b.id: b for b in fn.blocks}
+    targets = {blocks[edge.source].terminator.target for edge, _ in exits}
+    assert len(targets) == 2
+    assert sum(isinstance(blocks[target].terminator, MIRBranch) for target in targets) == 1
+
+
 def test_missing_placement_is_uncovered(artifacts: Artifacts) -> None:
     thir, _, _ = artifacts
     fn = thir["wrapper"]
@@ -220,6 +257,8 @@ def test_fresh_loop_activation_has_one_static_end() -> None:
     ("bypass_init", "end before activation initialization"),
     ("wrong_mode", "activation initialization"),
     ("body_residence", "body storage has nested residence"),
+    ("interior_entry", "entry into region interior"),
+    ("read_before_init", "read before definite assignment"),
 ])
 def test_invalid_region_contracts(damage: str, message: str) -> None:
     fn = region_fixture()
@@ -239,6 +278,12 @@ def test_invalid_region_contracts(damage: str, message: str) -> None:
         fn = replace(fn, blocks=(entry, replace(iteration, statements=(stmt,)), after))
     elif damage == "body_residence":
         fn = replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], storage_duration=MIRStorageDuration.BODY)))
+    elif damage == "interior_entry":
+        interior = replace(iteration, id=MIRBlockId(fn.id, 3), statements=())
+        fn = replace(fn, blocks=(replace(entry, terminator=MIRGoto(interior.id)), iteration, after, interior))
+    elif damage == "read_before_init":
+        read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsPresent(fn.slots[2].id))
+        fn = replace(fn, blocks=(entry, replace(iteration, statements=(read, *iteration.statements)), after))
     else:
         init_block = MIRBlockId(fn.id, 3)
         fn = replace(fn, blocks=(entry, replace(iteration, statements=(), terminator=MIRBranch(

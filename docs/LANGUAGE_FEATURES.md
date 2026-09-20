@@ -8553,13 +8553,14 @@ per holder payload, including retained copies and scalar union payload aliases.
 The dump shows possible referents and active dependencies. Backing duration is
 explicit, external inputs may alias, and unsupported facts remain uncovered
 (`MIR_M3_LIVENESS_PLAN.md`). No new diagnostics or change of checker authority
-is enabled; general storage-end events and lifetime checking remain planned.
+is enabled; complete cleanup events and authoritative lifetime checking remain planned.
 
 M3.3 models bounded reuse of body-hoisted ordinary/Optional record backing
 and exposes positive record-write events in `--dump-mir`
-(`MIR_M3_REUSE_PLAN.md`). Only constructor-backed OWN replacement sites gain
-cyclic coverage; cyclic initial construction, copy/move and in-place writes
-remain uncovered. M3.4 reports internal possible
+(`MIR_M3_REUSE_PLAN.md`). Its cyclic coverage is constructor-backed OWN
+replacement; M3.7 additionally admits fresh scope-prefix construction in
+loops. Cyclic body-lifetime initial construction, copy/move and in-place
+writes remain uncovered. M3.4 reports internal possible
 retained-object conflicts, including borrowed aggregate holders and existing
 acyclic in-place replacements, also visible in `--dump-mir`. These are logical-object
 retention checks, not proof of ended physical storage. Existing warnings,
@@ -8575,8 +8576,9 @@ cleanup and authoritative lifetime checking remain outside this proposal.
 
 M3.7 inventories the ends of positively identified emitted storage in ordinary
 synchronous branches/loops, including fresh loop activations and normal
-break/continue/return exits. M3.8 retained-reference inspection is approved
-next ([region plan](MIR_M3_REGIONS_PLAN.md)). This observes C++ placement;
+break/continue/return exits. M3.8 adds internal retained-reference inspection
+at those ends, also visible in `--dump-mir`
+([region plan](MIR_M3_REGIONS_PLAN.md)). This observes C++ placement;
 it does not make Python indentation a lifetime rule. Source acceptance,
 diagnostics and generated code remain unchanged.
 

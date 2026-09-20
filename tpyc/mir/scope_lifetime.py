@@ -6,15 +6,19 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from .coverage import scalar_wrapper
+from .dependencies import MIRDependencies, MIRReferent, _dependencies
 from .dump import _place
+from .liveness import MIRLiveness, _liveness
 from .nodes import (
     MIRBlockId, MIRConstruct, MIRCopy, MIREdge, MIRFunction, MIRMove,
     MIRNotCovered, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
     MIRRecordWrite, MIRRegionId, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRUnionPayload, MIRValueKind,
+    MIRUnionPayload, MIRValueKind, MIRPoint,
 )
+from .presence import MIRPresenceIssue, MIRPresenceIssueKind
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .validate import MIRPrepared, MIRValidationError, _validated_function
+from .retention import may_overlap
+from .validate import MIRPrepared, MIRPresenceError, MIRValidationError, _prepare_function, _validated_function
 
 
 @dataclass(frozen=True)
@@ -116,4 +120,86 @@ def dump_scope_ends(result: MIRScopeEnds | MIRNotCovered) -> str:
             payloads = ", ".join(sorted(_place(p) for p in event.payloads))
             lines.append(f"  bb{edge.source.index} edge {edge.arm}: r{event.region.index} "
                          f"{_place(event.storage)}" + (f" payloads={{{payloads}}}" if payloads else ""))
+    return "\n".join(lines) + "\n"
+
+
+@dataclass(frozen=True)
+class MIRScopeConflict:
+    edge: MIREdge
+    ended: MIRPlace
+    holder: MIRPlace
+    retained: MIRReferent
+
+
+@dataclass(frozen=True)
+class MIRScopeInspection:
+    function: MIRFunction
+    ends: MIRScopeEnds | MIRNotCovered
+    conflicts: tuple[MIRScopeConflict, ...] | MIRNotCovered
+    freshness: tuple[MIRPresenceIssue, ...]
+
+
+def inspect_scope_lifetimes(fn: MIRFunction) -> MIRScopeInspection:
+    """Inspect retained aliases without admitting stale payload accesses."""
+    prepared = _prepare_function(fn)
+    for issue in prepared.presence.issues:
+        if issue.kind is MIRPresenceIssueKind.SELECTION:
+            raise MIRPresenceError(issue.message)
+    live = _liveness(prepared)
+    dependencies = _dependencies(prepared, live)
+    ends = _scope_ends(prepared)
+    conflicts = _scope_conflicts(prepared, live, dependencies, ends)
+    return MIRScopeInspection(fn, ends, conflicts, prepared.presence.issues)
+
+
+def _scope_conflicts(prepared: MIRPrepared, liveness: MIRLiveness,
+                     dependencies: MIRDependencies | MIRNotCovered,
+                     ends: MIRScopeEnds | MIRNotCovered) -> tuple[MIRScopeConflict, ...] | MIRNotCovered:
+    fn = prepared.function
+    for result in (prepared.presence, liveness, dependencies, ends):
+        if isinstance(result, MIRNotCovered):
+            if result.body != fn.id:
+                raise MIRValidationError("uncovered analysis belongs to a different MIR body")
+        elif result.function is not fn:
+            raise MIRValidationError("scope inspection input belongs to a different MIR function")
+    for result in (dependencies, ends):
+        if isinstance(result, MIRNotCovered):
+            return MIRNotCovered(fn.id, "scope conflicts", f"{result.node_kind}: {result.reason}", result.loc)
+    blocks = {b.id: b for b in fn.blocks}
+    slots = {s.id: s for s in fn.slots}
+    regions = MIRRegionFlow(fn)
+    conflicts = []
+    for edge, events in ends.ends.items():
+        target = regions.edges[edge].target
+        live = liveness.live_in[target] if target is not None else frozenset()
+        if not live:
+            continue
+        block = blocks[edge.source]
+        incoming = dependencies.referents[MIRPoint(block.id, len(block.statements))]
+        retained_holders = sorted(((holder, refs) for holder, refs in incoming.items() if holder.root in live),
+                                  key=lambda pair: _place(pair[0]))
+        for event in events:
+            places = event.payloads if scalar_wrapper(slots[event.storage.root]) else (event.storage,)
+            for ended in sorted(places, key=_place):
+                for holder, refs in retained_holders:
+                    for retained in sorted(refs, key=lambda r: (r.external, _place(r.place))):
+                        if may_overlap(MIRReferent(ended), retained):
+                            conflicts.append(MIRScopeConflict(edge, ended, holder, retained))
+    return tuple(conflicts)
+
+
+def dump_scope_inspection(result: MIRScopeInspection) -> str:
+    lines = ["scope retention (possible read conflicts; cleanup and lifetime safety uncovered)"]
+    if isinstance(result.conflicts, MIRNotCovered):
+        lines.append(f"  not covered: {result.conflicts.reason}")
+    else:
+        for conflict in result.conflicts:
+            edge = conflict.edge
+            lines.append(f"  bb{edge.source.index} edge {edge.arm}: end {_place(conflict.ended)}; "
+                         f"{_place(conflict.holder)} retains {_place(conflict.retained.place)}")
+        if not result.conflicts:
+            lines.append("  no read conflicts in covered normal storage-end events")
+    for issue in result.freshness:
+        point = issue.point
+        lines.append(f"  freshness bb{point.block.index} before {point.index}: {issue.message}")
     return "\n".join(lines) + "\n"

@@ -15,7 +15,7 @@ from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
 from .storage import analyze_storage, dump_storage
 from .retention import analyze_retention, dump_retention
 from .payload_lifetime import dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes
-from .scope_lifetime import analyze_scope_ends, dump_scope_ends
+from .scope_lifetime import dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
 
 
 def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
@@ -54,7 +54,9 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
                 lines.append(dump_liveness(liveness))
                 dependencies = analyze_dependencies(result, liveness)
                 events = analyze_storage(result)
-                lines.append(dump_scope_ends(analyze_scope_ends(result)))
+                scope = inspect_scope_lifetimes(result)
+                lines.append(dump_scope_ends(scope.ends))
+                lines.append(dump_scope_inspection(scope))
                 lines.append(dump_dependencies(dependencies))
                 lines.append(dump_storage(events))
                 lines.append(dump_retention(analyze_retention(result, liveness, dependencies, events)))

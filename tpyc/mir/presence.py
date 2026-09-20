@@ -146,7 +146,7 @@ def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId],
     issues = []
     if place.root in alias_slots and place.root not in state.valid_aliases:
         issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.FRESHNESS,
-                                       "union payload alias used after holder replacement"))
+                                       "union payload alias used after holder replacement or storage end"))
     facts = dict(state.present)
     for projection in place.projections:
         if isinstance(projection, MIROptionalPayload) and facts.get(place.root) != frozenset({1}):

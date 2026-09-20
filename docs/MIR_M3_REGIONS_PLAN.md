@@ -1,6 +1,6 @@
 # M3.7/M3.8: emitted storage regions and retained references
 
-Status: approved 2026-09-20. M3.7 is implemented; M3.8 is next.
+Status: approved 2026-09-20. M3.7 and M3.8 are implemented on the branch.
 M3.1-M3.6 are merged. This continuation is architectural, analysis-only work;
 it does not change source acceptance, diagnostics, C++ emission or provenance
 authority. Work will stay on `mir-m3-regions-batch`, with one final commit for
@@ -67,8 +67,8 @@ the scope ends and is safe within this analysis's coverage.
   inside an inner loop's `else` target the enclosing loop.
 - Flattened `elif` chains do not introduce an enclosing synthetic `else`
   storage scope. Effectful condition temporary placement remains excluded.
-- MIR currently permits ordinary declarations only in the body-entry prefix,
-  assumes BODY duration for owned records/unions, and rejects ordinary
+- Before M3.7, MIR permitted ordinary declarations only in the body-entry prefix,
+  assumed BODY duration for owned records/unions, and rejected ordinary
   construction in CFG cycles. Merely lifting the declaration gate is unsound.
 
 Producer precedents are the storage/form decisions in
@@ -153,6 +153,10 @@ All return-value evaluation precedes its exit event.
 
 ## M3.8: references retained across an end
 
+Implemented by `inspect_scope_lifetimes` in `tpyc/mir/scope_lifetime.py`,
+including the `--dump-mir` consumer. It reuses the M3.6 inspection boundary
+and existing liveness/dependency/presence passes.
+
 Pair each end with incoming dependency facts at its source terminator and
 holder liveness on that particular successor edge. Use destination `live_in`,
 not the union over both successors; return has no reference continuation in
@@ -209,7 +213,10 @@ pointer-union backing defect outside this producer slice.
   both branch arms, normal/break/continue/return, while-else and nested-loop
   control from an else body. Pin return evaluation before ends.
 - Retention tests pair unsafe/safe/dead/reseated holders for records, borrowed
-  tuple/Optional/union leaves, scalar payload aliases and inline child fields.
+  tuple/Optional/union leaves and scalar payload aliases. Existing inline
+  field projections remain supported for caller-owned roots; constructed
+  owning parents with reference fields remain outside the existing record
+  constructor/layout gate, so no parent-construction coverage is implied.
   Add loop-carried old aliases and stale-alias reconstruction negatives. Use
   internal MIR for states the frontend rejects; no compiler test opens files
   from the snippet corpus.
@@ -257,8 +264,8 @@ plan, `MIR_ANALYSIS_PLAN.md`, `LANGUAGE_FEATURES.md`, `IR_DESIGN.md` status and
 | reject-valid-python-only-as-documented-divergence | No source rejection; emitted scope is not Python scope |
 | no-warning-on-valid-code | Possible-conflict inventories never become source warnings in this batch |
 
-Confidence: medium until implementation validates region-entry/reset behavior
-against nested loops and the independent trace oracle. The main risks are
+Confidence: the activation and edge contracts are covered by producer probes,
+structural negatives and bounded independent traces. The main risks remain
 incorrect producer placement, retaining initialization across activations,
 reviving stale scalar aliases, and claiming safety from read liveness alone.
 The design addresses these with positive facts, validated region transitions,

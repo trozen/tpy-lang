@@ -1717,8 +1717,9 @@ alongside related feature work; only the big-rock deferrals live here.
   conservative external overlap. Neither result proves physical lifetime
   safety or authorizes a source diagnostic or move.
   Its factored scope matrix files the excluded shapes/positions/sinks:
-  cyclic initial construction, copy/move and IN_PLACE; owned tuple/union
-  backing; views/containers; branch/loop-first bindings; calls/captures,
+  cyclic body-lifetime initial construction, copy/move and IN_PLACE; owned
+  tuple/union backing; views/containers; non-prefix/hoisted branch/loop-first
+  bindings; calls/captures,
   escaping stores/returns and general regions/cleanup remain later work.
   Initial alias/copy bindings rejected by THIR in the loop probe and narrowed
   Optional-to-Optional captures rejected by MIR remain separate coverage gaps.
@@ -1728,12 +1729,12 @@ alongside related feature work; only the big-rock deferrals live here.
   scalar Optional/union payload-end events and internal retained-alias
   inspection, preserving strict validation. Its factored matrix files the
   remaining positions/shapes/sinks: mixed/owning wrappers, parameter/field/
-  container/global writes, branch/loop-first declarations, escaping uses,
+  container/global writes, non-prefix/hoisted branch/loop-first declarations, escaping uses,
   views, calls, resumable bodies and general cleanup. Scalar narrowed-branch
   reassignment rejected by THIR and union constructor parameters remain
   separate coverage gaps. M3.3-M3.6 are merged.
   `docs/MIR_M3_REGIONS_PLAN.md` records implemented M3.7 emitted storage regions and
-  normal end events, followed by M3.8 retained-reference inspection; design
+  normal end events and M3.8 retained-reference inspection; design
   approval was given 2026-09-20. Its matrix files the remaining gaps: general hoists,
   non-prefix declarations, effectful temporaries, cyclic copy/move/in-place,
   owned aggregates, views/containers, calls/captures/escapes, for-loops,
