@@ -38,6 +38,26 @@ class MIRBlockId:
 
 
 @dataclass(frozen=True)
+class MIRRegionId:
+    body: MIRBodyId
+    index: int
+
+
+@dataclass(frozen=True)
+class MIRRegion:
+    id: MIRRegionId
+    parent: MIRRegionId | None
+    entry: MIRBlockId
+
+
+@dataclass(frozen=True)
+class MIREdge:
+    source: MIRBlockId
+    # Goto/return use arm 0; branches use 0 for true and 1 for false.
+    arm: int = 0
+
+
+@dataclass(frozen=True)
 class MIRPoint:
     block: MIRBlockId
     index: int
@@ -109,7 +129,8 @@ class MIRSlot:
     union_layout: MIRUnionLayout | None = None
     alias_source: 'MIRPlace | None' = None
     global_id: MIRGlobalId | None = None
-    storage_duration: MIRStorageDuration | None = None
+    storage_duration: MIRStorageDuration | MIRRegionId | None = None
+    residence: MIRRegionId | None = None
 
 
 @dataclass(frozen=True)
@@ -260,6 +281,7 @@ MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
 
 class MIRRecordWriteMode(Enum):
     INITIALIZE_ONCE = auto()
+    INITIALIZE_REGION = auto()
     OWN_SITE = auto()
     IN_PLACE = auto()
 
@@ -272,6 +294,7 @@ class MIRRecordWrite:
 
 class MIRPayloadWriteMode(Enum):
     INITIALIZE = auto()
+    INITIALIZE_REGION = auto()
     ASSIGN = auto()
 
 
@@ -316,6 +339,7 @@ class MIRBlock:
     id: MIRBlockId
     statements: tuple[MIRAssign, ...]
     terminator: MIRTerminator
+    region: MIRRegionId | None = None
 
 
 @dataclass(frozen=True)
@@ -335,6 +359,7 @@ class MIRFunction:
     records: tuple[MIRRecordLayout, ...] = ()
     receiver_init: MIRReceiverInit | None = None
     kind: MIRBodyKind = MIRBodyKind.FREE_FUNCTION
+    regions: tuple[MIRRegion, ...] = ()
 
 
 @dataclass(frozen=True)

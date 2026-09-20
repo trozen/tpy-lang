@@ -153,7 +153,8 @@ def test_dump_small_function() -> None:
                          (th.THIRReturn(th.THIRName(INT32, "x")),), th.THIRFunctionLayout())
     assert dump_function(lower(fn)) == (
         "fn test::fixture -> int32\nentry bb0\n"
-        "  %0: int32 parameter x\n  %1: int32 temporary\n"
+        "  %0: int32 parameter x\n  %1: int32 temporary residence=r0\n"
+        "region r0 parent=body entry=bb0\n"
         "bb0:\n  %1 = read %0\n  return %1\n")
 
 

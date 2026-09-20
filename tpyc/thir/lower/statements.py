@@ -82,6 +82,7 @@ from ...typesys import (
     AnyType,
     BIGINT,
     BOOL,
+    INT32,
     FloatLiteralType,
     RecursiveAliasInstanceType,
     IntLiteralType,
@@ -185,6 +186,7 @@ from ..reject import (
     stmt_reject_reason,
 )
 from ..nodes import (
+    THIRStoragePlacement,
     THIRCtorCall,
     THIRBorrowTupleLiteral,
     Form,
@@ -5585,6 +5587,21 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
                     and not value.deref):
                 result = replace(result, **{attr: replace(value, optional_read=replace(
                     value.optional_read, extract=False))})
+    if isinstance(result, (THIRVarDecl, THIRPtrLocalDecl)):
+        placement = None
+        if isinstance(result, THIRVarDecl):
+            if (result.owned_storage is not None
+                    or result.optional_layout is not None and result.optional_layout.payload in (BOOL, INT32)
+                    or result.union_layout is not None and all(
+                        m is None or m in (BOOL, INT32) for m in result.union_layout.elements)):
+                placement = THIRStoragePlacement.SCOPE
+        elif result.owned_storage is not None:
+            if result.kind in (PtrSlotKind.OPT_RVALUE, PtrSlotKind.RECORD_RVALUE):
+                placement = THIRStoragePlacement.SCOPE
+            elif result.kind is PtrSlotKind.RECORD_HOISTED:
+                placement = THIRStoragePlacement.BODY
+        if placement is not None:
+            result = replace(result, storage_placement=placement)
     return result
 
 

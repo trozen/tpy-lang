@@ -35,6 +35,7 @@ from ..typesys import (NoneType, OptionalType, TpyType, TupleType,
                        TypeParamRef, UnionType, VoidType, unwrap_qualifiers,
                        view_family_for_type)
 from .nodes import (
+    THIRStoragePlacement,
     Form,
     PrintForm,
     PtrSlotKind,
@@ -3521,6 +3522,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     indent = INDENT * indent_level
     state.stmt_indent_level = indent_level
     if isinstance(stmt, THIRVarDecl):
+        assert stmt.storage_placement in (None, THIRStoragePlacement.SCOPE)
         name = escape_cpp_name(stmt.name)
         if stmt.cpp_local_representation is LocalBinding.REBIND_SLOT:
             # F2d rvalue pointer-local: a direct init slot holding the value,
@@ -3599,6 +3601,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.temps.flush(out, indent)
             out.write(f"{indent}{cpp_type} {name} = {init_cpp};\n")
     elif isinstance(stmt, THIRPtrLocalDecl):
+        if stmt.storage_placement is not None:
+            assert ((stmt.storage_placement is THIRStoragePlacement.SCOPE
+                     and stmt.kind in (PtrSlotKind.OPT_RVALUE, PtrSlotKind.RECORD_RVALUE))
+                    or (stmt.storage_placement is THIRStoragePlacement.BODY
+                        and stmt.kind is PtrSlotKind.RECORD_HOISTED))
         # Slot-hoist pointer-repr locals. Slot NUMBERING follows a fixed
         # allocation order: the OPT kinds allocate the init slot before the
         # rebind slot; the UNION rvalue kind allocates the value slot before

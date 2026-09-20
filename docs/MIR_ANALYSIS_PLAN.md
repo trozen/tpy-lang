@@ -1801,7 +1801,10 @@ The approved M3.5/M3.6 continuation is in
 inline scalar Optional/union payload-end events (M3.5), followed
 by implemented internal retained-alias inspection (M3.6) that preserves
 strict validation.
-The existing M3.3/M3.4 commits stay on the branch until this batch is ready.
+M3.3-M3.6 are merged. The approved next batch is in
+[MIR_M3_REGIONS_PLAN.md](MIR_M3_REGIONS_PLAN.md): implemented M3.7 emitted
+storage regions and normal end events, then M3.8 internal retained-reference
+inspection at those ends. It does not change source behavior or checker authority.
 
 ## Scope matrix and remaining increments
 

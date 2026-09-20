@@ -320,8 +320,10 @@ def test_optional_transfer_capabilities(artifacts: Artifacts, copy: bool,
     slots[target.id.index] = replace(target, optional_layout=replace(
         target.optional_layout, readonly=target_readonly))
     operation = MIROptionalCopy(source.id) if copy else MIROptionalConstruct(source.id)
-    block = MIRBlock(fn.entry, (MIRAssign(MIRPlace(target.id), operation),), MIRReturn())
-    fn = replace(fn, slots=tuple(slots), return_type=VoidType(), blocks=(block,))
+    root = fn.blocks[0].region
+    block = MIRBlock(fn.entry, (MIRAssign(MIRPlace(target.id), operation),), MIRReturn(), root)
+    fn = replace(fn, slots=tuple(replace(s, residence=root) if s.residence else s for s in slots),
+                 return_type=VoidType(), blocks=(block,), regions=(fn.regions[0],))
     if source_readonly and not target_readonly:
         with pytest.raises(MIRValidationError, match="access mismatch"):
             validate_mir(fn)

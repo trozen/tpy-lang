@@ -1789,6 +1789,11 @@ class THIRFormConvert(THIRExpr):
 # --- Statements ---
 
 
+class THIRStoragePlacement(Enum):
+    SCOPE = auto()
+    BODY = auto()
+
+
 @dataclass(frozen=True)
 class THIRVarDecl(THIRStmt):
     """Local declaration with initializer (`name: T = init`).
@@ -1810,6 +1815,7 @@ class THIRVarDecl(THIRStmt):
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     storage_borrow: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
+    storage_placement: THIRStoragePlacement | None = field(default=None, kw_only=True)
     tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
     init: THIRExpr | None = None
     cpp_type: str | None = None
@@ -2000,6 +2006,7 @@ class THIRPtrLocalDecl(THIRStmt):
     alias_binding: THIRAliasBinding | None = field(default=None, kw_only=True)
     storage_borrow: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
+    storage_placement: THIRStoragePlacement | None = field(default=None, kw_only=True)
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     init: THIRExpr | None = None
     cpp_type: str | None = None

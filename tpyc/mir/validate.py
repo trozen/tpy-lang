@@ -14,12 +14,14 @@ from .nodes import (
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
+    MIRRegionId, MIREdge,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
 )
 from .presence import MIRPresence, _analyze_presence
 from .coverage import scalar_wrapper
+from .region_flow import MIRRegionFlow, outgoing_edges
 
 
 class MIRValidationError(ValueError):
@@ -55,6 +57,45 @@ def validate_function(fn: MIRFunction) -> None:
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise MIRValidationError(message)
+
+
+def _region_structure(fn: MIRFunction) -> MIRRegionFlow:
+    regions = {r.id: r for r in fn.regions}
+    blocks = {b.id: b for b in fn.blocks}
+    _require(len(regions) == len(fn.regions), "duplicate region ID")
+    if regions:
+        roots = [r for r in fn.regions if r.parent is None]
+        _require(len(roots) == 1 and roots[0].entry == fn.entry, "invalid body region")
+    for region in fn.regions:
+        _require(region.id.body == fn.id and region.id.index >= 0
+                 and region.entry in blocks and blocks[region.entry].region == region.id,
+                 "invalid region identity or entry")
+        seen = {region.id}
+        parent = region.parent
+        while parent is not None:
+            _require(parent in regions and parent not in seen, "invalid region ancestry")
+            seen.add(parent)
+            parent = regions[parent].parent
+    for block in fn.blocks:
+        _require(block.region in regions if regions else block.region is None, "missing block region")
+        _require(isinstance(block.terminator, (MIRGoto, MIRBranch, MIRReturn)), "missing or unknown terminator")
+        _require(all(target is None or target in blocks for _, target in outgoing_edges(block.id, block.terminator)),
+                 "invalid block target")
+    for slot in fn.slots:
+        local = slot.kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY)
+        _require(slot.residence in regions if regions and local else slot.residence is None,
+                 "invalid binding residence")
+        if isinstance(slot.storage_duration, MIRRegionId):
+            _require(slot.storage_duration in regions and regions[slot.storage_duration].parent is not None
+                     and local and slot.residence == slot.storage_duration,
+                     "invalid storage region")
+        elif slot.storage_duration is MIRStorageDuration.BODY and regions:
+            _require(slot.residence == roots[0].id, "body storage has nested residence")
+    flow = MIRRegionFlow(fn)
+    for transition in flow.edges.values():
+        for rid in transition.entered:
+            _require(regions[rid].entry == transition.target, "entry into region interior")
+    return flow
 
 
 def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
@@ -141,6 +182,7 @@ def _validate_structure(fn: MIRFunction) -> None:
     _require(len(slots) == len(fn.slots), "duplicate slot ID")
     _require(len(blocks) == len(fn.blocks), "duplicate block ID")
     _require(fn.entry in blocks, "missing entry block")
+    regions = _region_structure(fn)
     records = {r.type: r for r in fn.records}
     _require(len(records) == len(fn.records), "duplicate record layout")
     field_types: dict[MIRFieldId, TpyType] = {}
@@ -162,11 +204,13 @@ def _validate_structure(fn: MIRFunction) -> None:
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
         if slot.storage_duration is not None:
-            _require(isinstance(slot.storage_duration, MIRStorageDuration)
-                     and slot.value_kind in (MIRValueKind.RECORD_STORAGE, MIRValueKind.UNION)
+            _require(isinstance(slot.storage_duration, (MIRStorageDuration, MIRRegionId))
+                     and (slot.value_kind is MIRValueKind.RECORD_STORAGE or scalar_wrapper(slot)
+                          or slot.value_kind is MIRValueKind.UNION)
                      and ((slot.storage_duration is MIRStorageDuration.CALLER
                            and slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.UNION)
-                          or (slot.storage_duration is MIRStorageDuration.BODY
+                          or ((slot.storage_duration is MIRStorageDuration.BODY
+                               or isinstance(slot.storage_duration, MIRRegionId))
                               and slot.kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY))),
                      "invalid storage duration fact")
         if slot.kind is MIRSlotKind.GLOBAL:
@@ -376,6 +420,7 @@ def _validate_structure(fn: MIRFunction) -> None:
     owning_blocks: set[MIRBlockId] = set()
     payload_initializations: set[MIRSlotId] = set()
     payload_init_blocks: set[MIRBlockId] = set()
+    region_initializations: dict[MIRSlotId, MIRBlockId] = {}
     for block in fn.blocks:
         _require(block.id.body == fn.id and block.id.index >= 0,
                  "foreign or invalid block ID")
@@ -384,6 +429,12 @@ def _validate_structure(fn: MIRFunction) -> None:
             target_type = place_type(stmt.target, write=True)
             value = stmt.value
             target = slots[stmt.target.root]
+            if fn.regions:
+                active = regions.chains[block.region]
+                for sid in (*operands(value), stmt.target.root):
+                    _require(sid in slots, "unknown slot ID")
+                    residence = slots[sid].residence
+                    _require(residence is None or residence in active, "use outside binding residence")
             fact = stmt.storage_write
             if isinstance(fact, MIRPayloadWrite):
                 _require(isinstance(fact.mode, MIRPayloadWriteMode), "invalid payload write mode")
@@ -391,14 +442,27 @@ def _validate_structure(fn: MIRFunction) -> None:
                          and scalar_wrapper(target)
                          and isinstance(value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)),
                          "payload write needs local scalar wrapper operation")
-                if fact.mode is MIRPayloadWriteMode.INITIALIZE:
+                if fact.mode in (MIRPayloadWriteMode.INITIALIZE, MIRPayloadWriteMode.INITIALIZE_REGION):
                     _require(target.id not in payload_initializations, "repeated payload initialization")
                     payload_initializations.add(target.id)
-                    payload_init_blocks.add(block.id)
+                    if fact.mode is MIRPayloadWriteMode.INITIALIZE_REGION:
+                        _require(isinstance(target.storage_duration, MIRRegionId)
+                                 and target.storage_duration == block.region, "scoped initialization needs owning region")
+                        region_initializations[target.id] = block.id
+                    else:
+                        _require(not isinstance(target.storage_duration, MIRRegionId),
+                                 "scoped storage needs activation initialization")
+                        payload_init_blocks.add(block.id)
             elif isinstance(fact, MIRRecordWrite):
                 _require(isinstance(fact.mode, MIRRecordWriteMode), "invalid record write fact")
                 _require(isinstance(value, (MIRConstruct, MIRCopy, MIRMove)), "record write on non-record operation")
                 match fact.mode:
+                    case MIRRecordWriteMode.INITIALIZE_REGION:
+                        _require(not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE
+                                 and isinstance(target.storage_duration, MIRRegionId)
+                                 and target.storage_duration == block.region and fact.rebind_owner is None,
+                                 "scoped initialization needs owning region")
+                        region_initializations[target.id] = block.id
                     case MIRRecordWriteMode.INITIALIZE_ONCE | MIRRecordWriteMode.OWN_SITE:
                         _require(not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE
                                  and target.storage_duration is MIRStorageDuration.BODY and fact.rebind_owner is None,
@@ -496,7 +560,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                                      for src, dst in zip(elements, target.tuple_layout.elements)),
                              "tuple payload type or access mismatch")
                 case MIRConstruct() | MIRCopy() | MIRMove():
-                    if fact is None or fact.mode is not MIRRecordWriteMode.OWN_SITE:
+                    if fact is None or fact.mode not in (MIRRecordWriteMode.OWN_SITE, MIRRecordWriteMode.INITIALIZE_REGION):
+                        owning_blocks.add(block.id)
+                    if (fact is not None and fact.mode is MIRRecordWriteMode.INITIALIZE_REGION
+                            and isinstance(value, (MIRCopy, MIRMove))):
                         owning_blocks.add(block.id)
                     target = slots[stmt.target.root]
                     _require(target_type in records and (
@@ -569,6 +636,13 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and slots[value.operand].value_kind is MIRValueKind.SCALAR,
                              "not operand or result is not bool")
         term = block.terminator
+        if fn.regions:
+            used = (term.condition,) if isinstance(term, MIRBranch) else (
+                (term.value,) if isinstance(term, MIRReturn) and term.value is not None else ())
+            for sid in used:
+                _require(sid in slots, "unknown slot ID")
+                _require(slots[sid].residence is None or slots[sid].residence in regions.chains[block.region],
+                         "use outside binding residence")
         for successor in successors(term):
             _require(successor in blocks, "invalid block target")
             pred[successor].add(block.id)
@@ -588,6 +662,17 @@ def _validate_structure(fn: MIRFunction) -> None:
     cyclic = _cyclic_blocks(blocks, pred)
     _require(not owning_blocks.intersection(cyclic), "owning operation in cycle")
     _require(not payload_init_blocks.intersection(cyclic), "payload initialization in cycle")
+    for owner, initialization in {(slots[sid].storage_duration, bid)
+                                  for sid, bid in region_initializations.items()}:
+        pending = list(successors(blocks[initialization].terminator))
+        seen: set[MIRBlockId] = set()
+        while pending:
+            bid = pending.pop()
+            if owner not in regions.chains[blocks[bid].region] or bid in seen:
+                continue
+            _require(bid != initialization, "repeated initialization within region activation")
+            seen.add(bid)
+            pending.extend(successors(blocks[bid].terminator))
 
     reachable: set[MIRBlockId] = set()
     pending = [fn.entry]
@@ -605,10 +690,14 @@ def _validate_structure(fn: MIRFunction) -> None:
     outgoing = {bid: set(slots) for bid in reachable}
     work = deque(reachable)
     queued = set(reachable)
+    incoming_edges = {bid: [] for bid in reachable}
+    for edge, transition in regions.edges.items():
+        if edge.source in reachable and transition.target is not None:
+            incoming_edges[transition.target].append((edge.source, transition.reset))
     while work:
         bid = work.popleft()
         queued.remove(bid)
-        sources = [outgoing[p] for p in pred[bid] if p in reachable]
+        sources = [outgoing[source] - reset for source, reset in incoming_edges[bid]]
         if bid == fn.entry:
             sources.append(parameters)
         new_in = set.intersection(*sources)
@@ -620,6 +709,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                 if target not in queued:
                     work.append(target)
                     queued.add(target)
+    for edge, transition in regions.edges.items():
+        if edge.source in reachable:
+            required = transition.ended.intersection(region_initializations)
+            _require(required <= outgoing[edge.source], "storage end before activation initialization")
     for bid in reachable:
         assigned = incoming[bid].copy()
         block = blocks[bid]

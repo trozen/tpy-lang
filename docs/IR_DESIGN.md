@@ -16,6 +16,8 @@
 | `--dump-mir` debug output | Implemented for the bounded MIR subset; uncovered/unavailable bodies are reported explicitly |
 | MIR liveness pass | M3.1 backward may-liveness implemented for validated bounded MIR; debug output only, no move decisions |
 | MIR dependency pass | M3.2 per-payload referents and live dependencies implemented with explicit backing duration; debug output only, no lifetime-safety verdict |
+| MIR backing writes and scalar payload ends | M3.3-M3.6 merged: bounded write/end inventories and internal possible retained-reference conflicts; no source diagnostics or safety authority |
+| MIR emitted storage regions | M3.7 normal storage-end inventory implemented; M3.8 internal retained-reference inspection approved next ([region plan](MIR_M3_REGIONS_PLAN.md)) |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
 | MIR advisory loan checker (default mode) | Not started |
 | MIR safe opt-in enforcement mode | Not started |

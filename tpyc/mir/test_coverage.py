@@ -96,10 +96,11 @@ def test_statement_metadata_coverage(stmt: th.THIRStmt, reason: str) -> None:
     reject(function([stmt, th.THIRReturn(ONE)]), reason, type(stmt).__name__)
 
 
-def test_branch_declaration_and_late_declaration_are_not_covered() -> None:
+def test_branch_prefix_declaration_is_covered_but_late_declaration_is_not() -> None:
     decl = th.THIRVarDecl("y", INT32, ONE, loc=LOC)
-    reject(function([th.THIRIf(th.THIRLiteral(BOOL, True), (decl,)), th.THIRReturn(ONE)]),
-           "unsupported statement", "THIRVarDecl")
+    result = lower_function(function([th.THIRIf(th.THIRLiteral(BOOL, True), (decl,)), th.THIRReturn(ONE)]),
+                            MIRBodyId("test", "f"), kind=MIRBodyKind.FREE_FUNCTION)
+    assert isinstance(result, MIRFunction)
     reject(function([th.THIRAssign(X, ONE), decl, th.THIRReturn(ONE)]),
            "outside entry prefix", "THIRVarDecl")
 

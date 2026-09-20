@@ -1731,9 +1731,17 @@ alongside related feature work; only the big-rock deferrals live here.
   container/global writes, branch/loop-first declarations, escaping uses,
   views, calls, resumable bodies and general cleanup. Scalar narrowed-branch
   reassignment rejected by THIR and union constructor parameters remain
-  separate coverage gaps. Keep this
-  continuation stacked after M3.3/M3.4 and merge after both new steps pass
-  the integrated review/readiness gates.
+  separate coverage gaps. M3.3-M3.6 are merged.
+  `docs/MIR_M3_REGIONS_PLAN.md` records implemented M3.7 emitted storage regions and
+  normal end events, followed by M3.8 retained-reference inspection; design
+  approval was given 2026-09-20. Its matrix files the remaining gaps: general hoists,
+  non-prefix declarations, effectful temporaries, cyclic copy/move/in-place,
+  owned aggregates, views/containers, calls/captures/escapes, for-loops,
+  exceptional cleanup, destructors, resumables and authority transition.
+  The proposed branch/loop-local coverage needs positive placement and fresh
+  activation facts; existing BODY-lifetime OWN backing must not acquire a
+  loop-end event. The already tracked branch-local-source dangling-reference
+  bug is an analysis witness, not a source-behavior fix in this batch.
   Direct self-to-Optional pointer initializers remain uncovered;
   self-to-union capture is tracked as `BUGS.md#self-record-union-initializer`.
   Inferred/whole-readonly auto tuple copies remain MIR-uncovered until

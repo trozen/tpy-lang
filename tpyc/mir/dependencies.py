@@ -17,6 +17,7 @@ from .nodes import (
     MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, MIRValueKind,
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
+from .region_flow import MIRRegionFlow, outgoing_edges
 
 
 @dataclass(frozen=True)
@@ -170,6 +171,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     seed = {leaf: frozenset({MIRReferent(leaf, external=True)})
             for slot in fn.slots if slot.kind is MIRSlotKind.PARAMETER for leaf in leaves[slot.id]}
     blocks = {b.id: b for b in fn.blocks}
+    regions = MIRRegionFlow(fn)
     incoming: dict[MIRBlockId, dict[MIRPlace, frozenset[MIRReferent]]] = {fn.entry: seed.copy()}
     work = deque([fn.entry])
     queued = {fn.entry}
@@ -180,10 +182,14 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
         block = blocks[bid]
         for stmt in block.statements:
             transfer(stmt, state)
-        for dest in successors(block.terminator):
+        for edge, dest in outgoing_edges(bid, block.terminator):
+            if dest is None:
+                continue
             changed = dest not in incoming
             joined = incoming.setdefault(dest, {})
             for leaf, refs in state.items():
+                if leaf.root in regions.edges[edge].reset:
+                    continue
                 merged = joined.get(leaf, empty) | refs
                 if merged != joined.get(leaf, empty):
                     joined[leaf] = merged

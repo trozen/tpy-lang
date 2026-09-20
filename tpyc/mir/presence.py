@@ -11,8 +11,10 @@ from .nodes import (
     MIRAssign, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIRValueKind,
+    MIREdge, MIRReturn,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
 )
+from .region_flow import MIRRegionFlow
 
 Facts = frozenset[tuple[MIRSlotId, frozenset[int]]]
 # None means this boolean outcome is impossible, not that its facts are unknown.
@@ -39,6 +41,7 @@ class MIRPresence:
     points: Mapping[MIRPoint, Facts]
     domains: Mapping[MIRSlotId, frozenset[int]]
     issues: tuple[MIRPresenceIssue, ...]
+    edges: Mapping[MIREdge, Facts]
 
 
 @dataclass(eq=True)
@@ -158,6 +161,8 @@ def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId],
 def _analyze_presence(fn: MIRFunction) -> MIRPresence:
     """Solve selection/freshness after structural and definite-assignment checks."""
     blocks = {b.id: b for b in fn.blocks}
+    regions = MIRRegionFlow(fn)
+    edge_facts: dict[MIREdge, Facts] = {}
     booleans = {s.id for s in fn.slots if s.type == BOOL and s.value_kind is MIRValueKind.SCALAR}
     domains = {s.id: (frozenset({0, 1}) if s.value_kind is MIRValueKind.OPTIONAL
                      else frozenset(range(len(s.union_layout.elements))))
@@ -190,6 +195,8 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
         term = blocks[bid].terminator
         outgoing: list[tuple[MIRBlockId, bool | None, _State | None]] = []
         match term:
+            case MIRReturn():
+                edge_facts[MIREdge(bid)] = state.present
             case MIRGoto():
                 outgoing.append((term.target, None, state))
             case MIRBranch():
@@ -203,6 +210,23 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
                         branch = _State(facts, conditions, state.valid_aliases)
                     outgoing.append((target, truth, branch))
         for target, truth, branch in outgoing:
+            edge = MIREdge(bid, int(truth is False))
+            if branch is None:
+                edge_facts.pop(edge, None)
+            else:
+                edge_facts[edge] = branch.present
+                transition = regions.edges[edge]
+                forgotten = transition.reset | transition.ended
+                if forgotten:
+                    present = frozenset(f for f in branch.present if f[0] not in forgotten)
+                    conditions: dict[MIRSlotId, Outcomes] = {}
+                    for slot, outcomes in branch.conditions.items():
+                        if slot not in forgotten:
+                            kept = tuple(None if facts is None else frozenset(f for f in facts if f[0] not in forgotten)
+                                         for facts in outcomes)
+                            _remember(conditions, slot, (kept[0], kept[1]), present)
+                    stale = frozenset().union(*(aliases.get(s, frozenset()) for s in forgotten))
+                    branch = _State(present, conditions, branch.valid_aliases - stale - forgotten)
             key = (bid, target, truth)
             predecessors[target].add(key)
             if edges.get(key) != branch:
@@ -226,4 +250,5 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
                 issues.extend(_missing(place, state, alias_slots, point))
             state = _transfer(state, stmt, booleans, domains, aliases)
         points[MIRPoint(bid, len(blocks[bid].statements))] = state.present
-    return MIRPresence(fn, MappingProxyType(points), MappingProxyType(domains), tuple(issues))
+    return MIRPresence(fn, MappingProxyType(points), MappingProxyType(domains), tuple(issues),
+                       MappingProxyType(edge_facts))

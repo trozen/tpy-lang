@@ -45,7 +45,8 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
             if not isinstance(fact, MIRPayloadWrite):
                 return MIRNotCovered(fn.id, "payload ends", "missing payload write fact", stmt.loc)
             point = MIRPoint(block.id, index)
-            if point not in presence.points or fact.mode is MIRPayloadWriteMode.INITIALIZE:
+            if point not in presence.points or fact.mode in (
+                    MIRPayloadWriteMode.INITIALIZE, MIRPayloadWriteMode.INITIALIZE_REGION):
                 continue
             incoming = dict(presence.points[point])
             old = incoming.get(slot.id, presence.domains[slot.id])

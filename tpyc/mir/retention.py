@@ -62,7 +62,7 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
     for point, stmt in events.writes.items():
         fact = stmt.storage_write
         assert isinstance(fact, MIRRecordWrite)
-        if fact.mode is MIRRecordWriteMode.INITIALIZE_ONCE:
+        if fact.mode in (MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.INITIALIZE_REGION):
             continue
         incoming = dependencies.referents[point]
         live_after = liveness.points[MIRPoint(point.block, point.index + 1)]

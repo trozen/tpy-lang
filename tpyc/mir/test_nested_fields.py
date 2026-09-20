@@ -232,6 +232,7 @@ def test_field_borrow_requires_current_wrapper_proof(artifacts: Artifacts, name:
     direct = lower(functions["direct"])
     holder = replace(direct.slots[1], id=MIRSlotId(fn.id, len(fn.slots)), name="saved")
     block = next(block for block in fn.blocks if any(stmt.target.projections for stmt in block.statements))
+    holder = replace(holder, residence=block.region)
     store = next(stmt for stmt in block.statements if stmt.target.projections)
     source = replace(store.target, projections=store.target.projections[:-1])
     if name == "union_root":
@@ -244,7 +245,7 @@ def test_field_borrow_requires_current_wrapper_proof(artifacts: Artifacts, name:
         replace(b, statements=(borrow, *b.statements)) if b.id == block.id else b for b in fn.blocks))
     validate_function(guarded)
     # Moving the same borrow above its guard must lose permission to select the payload.
-    unguarded = replace(fn, slots=(*fn.slots, holder), blocks=tuple(
+    unguarded = replace(fn, slots=(*fn.slots, replace(holder, residence=fn.blocks[0].region)), blocks=tuple(
         replace(b, statements=(borrow, *b.statements)) if b.id == fn.entry else b for b in fn.blocks))
     with pytest.raises(MIRPresenceError):
         validate_function(unguarded)
@@ -275,6 +276,7 @@ def test_captured_field_survives_wrapper_replacement(artifacts: Artifacts, union
     borrow = replace(borrow, value=MIRBorrow(source))
     init = MIRAssign(MIRPlace(wrapper_id), construct)
     replace_wrapper = MIRAssign(MIRPlace(wrapper_id), clear)
+    wrapper = replace(wrapper, residence=block.region)
     fn = replace(fn, slots=(*fn.slots, wrapper), blocks=(replace(
         block, statements=(init, borrow, replace_wrapper, *block.statements[1:])),))
     validate_function(fn)

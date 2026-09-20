@@ -5,6 +5,7 @@ from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRRegionId,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
@@ -63,13 +64,19 @@ def dump_function(fn: MIRFunction) -> str:
                 access = f" payload-alias({_place(slot.alias_source)})"
             case _:
                 access = " readonly" if slot.global_id is not None and slot.readonly else ""
-        duration = f" duration={slot.storage_duration.name.lower()}" if slot.storage_duration is not None else ""
+        duration = (f" duration=r{slot.storage_duration.index}" if isinstance(slot.storage_duration, MIRRegionId)
+                    else f" duration={slot.storage_duration.name.lower()}" if slot.storage_duration is not None else "")
+        if slot.residence is not None:
+            duration += f" residence=r{slot.residence.index}"
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}{duration}")
     if fn.receiver_init is not None:
         init = fn.receiver_init
         values = ", ".join(repr(value.value) if isinstance(value, MIRConstant) else f"%{value.index}"
                            for value in init.fields)
         lines.append(f"initialize-receiver %{init.receiver.index} ({values})")
+    for region in fn.regions:
+        parent = f"r{region.parent.index}" if region.parent is not None else "body"
+        lines.append(f"region r{region.id.index} parent={parent} entry=bb{region.entry.index}")
     for block in fn.blocks:
         lines.append(f"bb{block.id.index}:")
         for stmt in block.statements:

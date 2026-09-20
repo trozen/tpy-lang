@@ -8573,6 +8573,13 @@ Strict MIR validation and source behavior remain unchanged; malformed or
 stale-alias witnesses are tested at the internal analysis boundary. General
 cleanup and authoritative lifetime checking remain outside this proposal.
 
+M3.7 inventories the ends of positively identified emitted storage in ordinary
+synchronous branches/loops, including fresh loop activations and normal
+break/continue/return exits. M3.8 retained-reference inspection is approved
+next ([region plan](MIR_M3_REGIONS_PLAN.md)). This observes C++ placement;
+it does not make Python indentation a lifetime rule. Source acceptance,
+diagnostics and generated code remain unchanged.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

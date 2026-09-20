@@ -16,6 +16,7 @@ from .nodes import (
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
+    MIRRegion, MIRRegionId,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
@@ -99,16 +100,24 @@ class _Coverage:
             else:
                 _require(fn, p.type in (BOOL, INT32), "unsupported parameter type")
                 self.bindings[p.name] = p.type
+        self.declarations(fn.body, 0)
+
+    def declarations(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
         prefix = True
-        for stmt in fn.body:
+        for stmt in stmts:
             if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
                 _require(stmt, prefix, "declaration outside entry prefix")
                 _require(stmt, stmt.name not in self.bindings, "duplicate binding")
+                if stmt.storage_placement is not None:
+                    _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.SCOPE,
+                             "hoisted initial backing")
+                if stmt.owned_storage is not None and loops:
+                    _require(stmt, isinstance(stmt.init, th.THIRCtorCall), "copy or move initialization in loop")
                 if stmt.union_layout is not None:
                     _require(stmt, isinstance(stmt, th.THIRVarDecl) and stmt.init is not None,
                              "unsupported union declaration")
                     _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const", "union_layout",
-                                  "cpp_local_representation", "union_literal"})
+                                  "cpp_local_representation", "union_literal", "storage_placement"})
                     self.union_layout(stmt, stmt.union_layout, stmt.resolved_type)
                     reference = any(isinstance(m, th.THIRBorrowedRecord) for m in stmt.union_layout.elements)
                     _require(stmt, stmt.form is (th.Form.BORROW if reference else th.Form.VALUE)
@@ -119,7 +128,7 @@ class _Coverage:
                     self.bindings[stmt.name] = stmt.union_layout.type
                     continue
                 if stmt.optional_layout is not None:
-                    allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", "optional_layout"}
+                    allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", "optional_layout", "storage_placement"}
                     if isinstance(stmt, th.THIRVarDecl):
                         reference = isinstance(stmt.optional_layout.payload, th.THIRBorrowedRecord)
                         if reference:
@@ -173,9 +182,9 @@ class _Coverage:
                              "initializer type mismatch")
                 self.bindings[stmt.name] = stmt.resolved_type
             else:
-                if not isinstance(stmt, th.THIRNoOpStmt):
+                if not isinstance(stmt, (th.THIRNoOpStmt, th.THIRNarrowAlias)):
                     prefix = False
-                self.stmt(stmt, 0)
+                self.stmt(stmt, loops)
 
     def record_value(self, expr: th.THIRExpr, typ: NominalType) -> None:
         definition = self.definitions.get(expr, typ)
@@ -208,7 +217,7 @@ class _Coverage:
     def owned(self, stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> None:
         fact = stmt.owned_storage
         self.reference(stmt, fact, stmt.resolved_type)
-        allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", "owned_storage"}
+        allowed = {"name", "resolved_type", "init", "cpp_type", "is_const", "owned_storage", "storage_placement"}
         if isinstance(stmt, th.THIRVarDecl):
             allowed.add("cpp_local_representation")
             _require(stmt, stmt.form in (th.Form.STORAGE, th.Form.BORROW), "owned declaration form")
@@ -811,15 +820,19 @@ class _Coverage:
                 raise MIRUnsupported(stmt, "unsupported statement")
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
-        saved = self.bindings.copy(), self.references.copy(), self.payload_aliases.copy()
-        for stmt in stmts:
-            self.stmt(stmt, loops)
-        self.bindings, self.references, self.payload_aliases = saved
+        saved = (self.bindings.copy(), self.references.copy(), self.payload_aliases.copy(),
+                 self.tuples.copy(), self.optionals.copy(), self.unions.copy(), self.fixed_owned.copy())
+        self.declarations(stmts, loops)
+        retained_fixed = saved[-1] & self.fixed_owned
+        (self.bindings, self.references, self.payload_aliases,
+         self.tuples, self.optionals, self.unions, self.fixed_owned) = saved
+        self.fixed_owned = retained_fixed
 
 
 @dataclass
 class _Block:
     id: MIRBlockId
+    region: MIRRegionId
     statements: list[MIRAssign] = field(default_factory=list)
     terminator: MIRTerminator | None = None
 
@@ -831,6 +844,8 @@ class _Builder:
         self.slots: list[MIRSlot] = []
         self.bindings: dict[str, MIRSlotId] = {}
         self.blocks: list[_Block] = []
+        self.region = MIRRegionId(body, 0)
+        self.regions = [MIRRegion(self.region, None, MIRBlockId(body, 0))]
         self.current: _Block | None = self.block()
         self.loops: list[tuple[MIRBlockId, MIRBlockId]] = []
         self.records = coverage.records
@@ -840,7 +855,7 @@ class _Builder:
         self.globals: dict[MIRGlobalId, MIRSlotId] = {}
 
     def block(self) -> _Block:
-        block = _Block(MIRBlockId(self.body, len(self.blocks)))
+        block = _Block(MIRBlockId(self.body, len(self.blocks)), self.region)
         self.blocks.append(block)
         return block
 
@@ -851,7 +866,7 @@ class _Builder:
              union_layout: th.THIRUnionLayout | None = None,
              alias_source: MIRPlace | None = None,
              global_binding: th.THIRGlobalBinding | None = None,
-             storage_duration: MIRStorageDuration | None = None) -> MIRSlotId:
+             storage_duration: MIRStorageDuration | MIRRegionId | None = None) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
         self.slots.append(MIRSlot(sid, reference.type if reference else (
             unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
@@ -874,7 +889,11 @@ class _Builder:
                                   alias_source=alias_source,
                                   global_id=MIRGlobalId(global_binding.module, global_binding.name)
                                   if global_binding is not None else None,
-                                  storage_duration=storage_duration))
+                                  storage_duration=storage_duration,
+                                  residence=(self.regions[0].id if storage_duration is MIRStorageDuration.BODY else
+                                             storage_duration if storage and isinstance(storage_duration, MIRRegionId)
+                                             else self.region) if kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY)
+                                  else None))
         return sid
 
     @staticmethod
@@ -940,6 +959,8 @@ class _Builder:
         self.current.statements.append(MIRAssign(target, value, loc, storage_write))
 
     def payload_write(self, dest: MIRSlotId, mode: MIRPayloadWriteMode) -> MIRPayloadWrite | None:
+        if mode is MIRPayloadWriteMode.INITIALIZE and self.region.index != 0:
+            mode = MIRPayloadWriteMode.INITIALIZE_REGION
         return MIRPayloadWrite(mode) if scalar_wrapper(self.slots[dest.index]) else None
 
     def place(self, expr: th.THIRExpr) -> MIRPlace:
@@ -1054,9 +1075,19 @@ class _Builder:
                 assert isinstance(expr, th.THIRMove)
                 return MIRMove(self.storage[expr.value.name])
 
+    def initial_mode(self) -> MIRRecordWriteMode:
+        return (MIRRecordWriteMode.INITIALIZE_ONCE if self.region.index == 0
+                else MIRRecordWriteMode.INITIALIZE_REGION)
+
+    def placement(self, stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> MIRRegionId | MIRStorageDuration:
+        _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.SCOPE,
+                 "missing direct storage placement")
+        return self.region if self.region.index else MIRStorageDuration.BODY
+
     def optional_record(self, expr: th.THIRCtorCall, fact: th.THIRBorrowedRecord,
                         mode: MIRRecordWriteMode) -> MIRRvalue:
-        storage = self.slot(fact.type, storage=True, storage_duration=MIRStorageDuration.BODY)
+        storage = self.slot(fact.type, storage=True, storage_duration=(self.region
+                            if mode is MIRRecordWriteMode.INITIALIZE_REGION else MIRStorageDuration.BODY))
         self.write(storage, self.record_value(expr), expr.loc, MIRRecordWrite(mode))
         reference = self.slot(fact.type, reference=fact)
         self.write(reference, MIRBorrow(MIRPlace(storage)), expr.loc)
@@ -1082,7 +1113,9 @@ class _Builder:
                     self.bindings[stmt.alias] = dest
                 case th.THIRVarDecl() if stmt.union_layout is not None:
                     dest = self.slot(stmt.union_layout.type, MIRSlotKind.LOCAL, stmt.name,
-                                     union_layout=stmt.union_layout, storage_duration=MIRStorageDuration.BODY)
+                                     union_layout=stmt.union_layout, storage_duration=(self.placement(stmt)
+                                         if all(m is None or m in (BOOL, INT32)
+                                                for m in stmt.union_layout.elements) else None))
                     self.write(dest, self.union_value(stmt.init, stmt.union_layout, stmt.union_literal), loc,
                                self.payload_write(dest, MIRPayloadWriteMode.INITIALIZE))
                     self.bindings[stmt.name] = dest
@@ -1092,8 +1125,11 @@ class _Builder:
                                self.payload_write(dest, MIRPayloadWriteMode.ASSIGN))
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.optional_layout is not None:
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,
-                                     optional_layout=stmt.optional_layout)
-                    value = (self.optional_record(stmt.init, stmt.owned_storage, MIRRecordWriteMode.INITIALIZE_ONCE)
+                                     optional_layout=stmt.optional_layout, storage_duration=(self.placement(stmt)
+                                         if stmt.optional_layout.payload in (BOOL, INT32) else None))
+                    if stmt.owned_storage is not None:
+                        self.placement(stmt)
+                    value = (self.optional_record(stmt.init, stmt.owned_storage, self.initial_mode())
                              if stmt.owned_storage is not None else self.optional_value(stmt.init))
                     self.write(dest, value, loc, self.payload_write(dest, MIRPayloadWriteMode.INITIALIZE))
                     self.bindings[stmt.name] = dest
@@ -1111,8 +1147,8 @@ class _Builder:
                                    self.payload_write(dest, MIRPayloadWriteMode.ASSIGN))
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.owned_storage is not None:
                     fact = stmt.owned_storage
-                    storage = self.slot(fact.type, storage=True, storage_duration=MIRStorageDuration.BODY)
-                    self.write(storage, self.record_value(stmt.init), loc, MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
+                    storage = self.slot(fact.type, storage=True, storage_duration=self.placement(stmt))
+                    self.write(storage, self.record_value(stmt.init), loc, MIRRecordWrite(self.initial_mode()))
                     holder = self.slot(fact.type, MIRSlotKind.LOCAL, stmt.name, fact)
                     self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
                     self.storage[stmt.name] = storage
@@ -1207,9 +1243,13 @@ class _Builder:
                     raise AssertionError("coverage and statement lowering disagree")
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...]) -> None:
-        bindings = self.bindings.copy()
+        bindings, storage, region = self.bindings.copy(), self.storage.copy(), self.region
+        assert self.current is not None and not self.current.statements
+        self.region = MIRRegionId(self.body, len(self.regions))
+        self.regions.append(MIRRegion(self.region, region, self.current.id))
+        self.current.region = self.region
         self.stmts(stmts)
-        self.bindings = bindings
+        self.bindings, self.storage, self.region = bindings, storage, region
 
     def build(self, initialization: MIRConstructorDefinition | None = None) -> MIRFunction:
         if self.fn.receiver is not None:
@@ -1253,11 +1293,12 @@ class _Builder:
             if b.id not in reachable:
                 continue
             assert b.terminator is not None
-            blocks.append(MIRBlock(b.id, tuple(b.statements), b.terminator))
+            blocks.append(MIRBlock(b.id, tuple(b.statements), b.terminator, b.region))
         kind = (MIRBodyKind.CONSTRUCTOR if initialization is not None else
                 MIRBodyKind.METHOD if self.fn.receiver is not None else MIRBodyKind.FREE_FUNCTION)
         fn = MIRFunction(self.body, self.fn.return_type, tuple(self.slots), tuple(blocks),
-                         self.blocks[0].id, tuple(d.layout for d in self.records.values()), receiver_init, kind)
+                         self.blocks[0].id, tuple(d.layout for d in self.records.values()), receiver_init, kind,
+                         tuple(r for r in self.regions if r.entry in reachable))
         validate_function(fn)
         return fn
 
