@@ -18,7 +18,7 @@
 | MIR dependency pass | M3.2 per-payload referents and live dependencies implemented with explicit backing duration; debug output only, no lifetime-safety verdict |
 | MIR backing writes and scalar payload ends | M3.3-M3.6 merged: bounded write/end inventories and internal possible retained-reference conflicts; no source diagnostics or safety authority |
 | MIR emitted storage regions | M3.7 normal storage-end inventory and M3.8 internal retained-reference inspection implemented; cleanup effects and lifetime-safety authority remain uncovered ([region plan](MIR_M3_REGIONS_PLAN.md)) |
-| MIR late declarations and ordinary hoists | M3.9 late direct declarations implemented; bounded M3.10 hoists approved next ([declaration plan](MIR_M3_DECLARATIONS_PLAN.md)) |
+| MIR late declarations and ordinary hoists | M3.9 late direct declarations and M3.10 bounded ordinary hoists implemented ([declaration plan](MIR_M3_DECLARATIONS_PLAN.md)) |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
 | MIR advisory loan checker (default mode) | Not started |
 | MIR safe opt-in enforcement mode | Not started |

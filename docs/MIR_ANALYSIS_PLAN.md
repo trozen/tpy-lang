@@ -1808,9 +1808,12 @@ inspection at those ends. It does not change source behavior or checker authorit
 
 M3.7/M3.8 are now merged. The approved next batch is
 [MIR_M3_DECLARATIONS_PLAN.md](MIR_M3_DECLARATIONS_PLAN.md): implemented M3.9
-late direct declarations with conditional initialization, then M3.10 positive
+late direct declarations with conditional initialization, and implemented M3.10 positive
 facts for bounded ordinary hoisted bindings and record backing.
 Default-constructed wrapper hoists and general cleanup stay outside that batch.
+Definite-assignment proof failures remain strict at the MIR validation boundary;
+lowering reports them as uncovered rather than accepting an uninitialized read.
+Constant-edge reasoning, including impossible zero-trip loop paths, stays deferred.
 
 ## Scope matrix and remaining increments
 

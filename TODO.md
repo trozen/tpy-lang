@@ -1740,13 +1740,17 @@ alongside related feature work; only the big-rock deferrals live here.
   owned aggregates, views/containers, calls/captures/escapes, for-loops,
   exceptional cleanup, destructors, resumables and authority transition.
   M3.7/M3.8 are merged. `docs/MIR_M3_DECLARATIONS_PLAN.md` records implemented
-  M3.9 late direct declarations and approved M3.10 bounded ordinary hoisted
+  M3.9 late direct declarations and implemented M3.10 bounded ordinary hoisted
   bindings/backing. Default-constructed scalar Optional/union
   hoists, optional-storage record hoists, while borrowed-tuple hoists,
   owning/mixed tuple backing, nonempty
   `hoist_slots`, unclassified rebind forms and the other matrix gaps remain
   explicit follow-up work; source availability and physical initialization
   must not be conflated to admit them.
+  Constant-edge definite-assignment reasoning remains separate work: valid
+  constant-loop bodies can be MIR-uncovered when the structural CFG retains
+  an impossible zero-trip path. Strict validation rejects missing assignment;
+  lowering converts only that proof failure to `MIRNotCovered`.
   Branch/loop-local coverage uses positive placement and fresh
   activation facts; existing BODY-lifetime OWN backing does not acquire a
   loop-end event. The already tracked branch-local-source dangling-reference

@@ -10,7 +10,6 @@ from ..thir import nodes as th
 from ..typesys import BOOL, INT32, INT64, STR, IntLiteralType, TpyType, TupleType
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
-from .validate import MIRValidationError
 
 LOC = SourceLocation(17, 4, "case.py")
 X = th.THIRName(INT32, "x", loc=LOC)
@@ -85,9 +84,9 @@ def test_unreachable_unsupported_nodes_still_fail_whole_body(
     (th.THIRBreak(loc=LOC), "outside loop"),
     (th.THIRContinue(loc=LOC), "outside loop"),
     (th.THIRIf(th.THIRLiteral(BOOL, True), (), hoist_decls=(("v", "int32_t"),), loc=LOC),
-     "unsupported metadata: hoist_decls"),
+     "missing or inconsistent hoisted binding facts"),
     (th.THIRWhile(th.THIRLiteral(BOOL, True), (), hoist_decls=(("v", "int32_t"),), loc=LOC),
-     "unsupported metadata: hoist_decls"),
+     "missing or inconsistent hoisted binding facts"),
     (th.THIRIf(th.THIRLiteral(BOOL, True), (), is_constexpr=True, loc=LOC),
      "unsupported metadata: is_constexpr"),
     (th.THIRAssign(X, ONE, slot_cpp="int32_t", loc=LOC), "unsupported metadata: slot_cpp"),
@@ -105,10 +104,9 @@ def test_branch_and_late_declarations_are_covered() -> None:
     assert isinstance(lower_function(late, MIRBodyId("test", "late"), kind=MIRBodyKind.FREE_FUNCTION), MIRFunction)
 
 
-def test_uninitialized_source_is_a_verifier_failure_not_coverage() -> None:
+def test_uninitialized_source_is_not_covered() -> None:
     fn = function([th.THIRVarDecl("y", INT32), th.THIRReturn(th.THIRName(INT32, "y"))])
-    with pytest.raises(MIRValidationError, match="definite assignment"):
-        lower_function(fn, MIRBodyId("test", "f"), kind=MIRBodyKind.FREE_FUNCTION)
+    reject(fn, "read before definite assignment")
 
 
 def test_function_metadata_and_fallthrough() -> None:

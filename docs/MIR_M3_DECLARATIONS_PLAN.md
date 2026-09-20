@@ -1,6 +1,6 @@
 # M3.9/M3.10: late declarations and bounded ordinary hoists
 
-Status: approved 2026-09-20. M3.9 is implemented; M3.10 is next.
+Status: approved 2026-09-20. M3.9 and M3.10 are implemented.
 M3.1-M3.8 are merged.
 This is an architectural, analysis-only continuation of
 [MIR_M3_REGIONS_PLAN.md](MIR_M3_REGIONS_PLAN.md). It changes neither source
@@ -78,10 +78,10 @@ filed branch-local dangling-reference defect.
 - The ordinary function producer currently leaves
   `THIRFunctionLayout.hoisted_locals` empty, even for real hoists. That field
   is not a sufficient inventory of emitted backing.
-- `_lower_record_ptr_slot_decl` already chooses `RECORD_HOISTED` for an
-  escape-hoisted record. It currently omits `owned_storage`, so the later
-  BODY-placement annotation does not fire. This is an explicit MIR metadata
-  coverage gap, not permission to infer placement from pointer form.
+- `_lower_record_ptr_slot_decl` chooses `RECORD_HOISTED` for an
+  escape-hoisted record. M3.10 supplies its `owned_storage` fact and the
+  corresponding BODY placement. MIR consumes those facts rather than
+  inferring placement from pointer form.
 
 Compile-only probes confirmed late declarations in free functions, methods
 and constructor tails; nested early exits; loop continues before construction;
@@ -127,6 +127,13 @@ are not added. Non-prefix OWN reseats continue to use their existing rules.
 Invariant: every newly admitted hoist has a complete semantic description
 from the producer that chose its emission; source binding availability and
 record backing engagement are never inferred from the existence of a slot.
+
+The strict validator still rejects reads without definite assignment.
+Lowering reports this specific proof failure as `MIRNotCovered`, through
+`MIRDefiniteAssignmentError`; structural/type validation failures still
+propagate. This also covers valid constant-condition loops whose impossible
+zero-trip edge remains in MIR's structural CFG. Constant-edge reasoning is
+separate work. This boundary adjustment was approved 2026-09-20.
 
 1. Carry structured hoisted-binding facts beside the existing render data on
    `THIRIf`/`THIRWhile`: source name, semantic type/access/layout, containing

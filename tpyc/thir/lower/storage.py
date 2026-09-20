@@ -12,7 +12,7 @@ from ...typesys import (
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
-    THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding,
+    THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
 )
 
 if TYPE_CHECKING:
@@ -61,6 +61,22 @@ def borrowed_record(typ: TpyType, readonly: bool,
             or info.parents or info.type_params):
         return None
     return THIRBorrowedRecord(typ, readonly)
+
+
+def hoisted_binding(name: str, typ: TpyType, analyzer: 'SemanticAnalyzer', *,
+                    borrow: bool = False, readonly: bool = False) -> THIRHoistedBinding | None:
+    if typ in (BOOL, INT32) and not borrow:
+        return THIRHoistedBinding(name, typ)
+    if isinstance(typ, TupleType):
+        layout = tuple_layout(typ, analyzer, borrow=borrow, readonly=readonly)
+        return THIRHoistedBinding(name, typ, tuple_layout=layout) if layout is not None else None
+    if not borrow:
+        return None
+    if isinstance(typ, OptionalType) and typ.uses_pointer_repr():
+        layout = optional_layout(typ, analyzer, borrow=True, readonly=readonly)
+        return THIRHoistedBinding(name, typ, optional_layout=layout) if layout is not None else None
+    reference = borrowed_record(typ, readonly, analyzer)
+    return THIRHoistedBinding(name, typ, borrowed_record=reference) if reference is not None else None
 
 
 def alias_binding(source: THIRExpr, typ: TpyType, readonly: bool,

@@ -1795,6 +1795,18 @@ class THIRStoragePlacement(Enum):
 
 
 @dataclass(frozen=True)
+class THIRHoistedBinding:
+    """An emitted predeclaration does not make the source binding available."""
+    name: str
+    type: TpyType
+    borrowed_record: THIRBorrowedRecord | None = None
+    optional_layout: THIROptionalLayout | None = None
+    tuple_layout: THIRTupleLayout | None = None
+    placement: THIRStoragePlacement = THIRStoragePlacement.SCOPE
+    initially_assigned: bool = False
+
+
+@dataclass(frozen=True)
 class THIRVarDecl(THIRStmt):
     """Local declaration with initializer (`name: T = init`).
 
@@ -2485,11 +2497,11 @@ class THIRIf(THIRStmt):
     cpp_type carries the full spelling per flavor: `T` for a value var,
     `std::optional<T>` for a single-bind non-value (OPTIONAL_STORAGE), a
     `T*` / `Base*` pointer-local for reassigned non-values and @dynamic
-    protocols. `hoist_slots` names the branch-bound borrow-tuple locals
-    with an owning-call source: emit writes their
-    `std::optional<std::tuple<...>> __slot_N;` (allocating N from the shared
-    slot counter, registered in `rebind_slots`) immediately before that
-    name's predecl line. The
+    protocols. `hoisted_bindings` records semantic facts for eligible
+    predeclarations; incomplete inventories are not usable for analysis.
+    `hoist_slots` reserves backing for branch-bound borrow-tuple locals
+    with an owning-call source. When used, the emitter writes their
+    `std::optional<std::tuple<...>> __slot_N;` at function entry. The
     narrowing-condition path never carries hoists (deferred)."""
     condition: THIRExpr
     then_body: tuple[THIRStmt, ...]
@@ -2497,6 +2509,7 @@ class THIRIf(THIRStmt):
     else_is_nested: bool = False
     hoist_decls: tuple[tuple[str, str], ...] = ()
     hoist_slots: tuple[tuple[str, str], ...] = ()
+    hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
     # A protocol-isinstance condition compiles to a CONCEPT test: the
     # keyword renders `if constexpr`. Per-node -- an
     # elif chain can mix constexpr and runtime members.
@@ -2517,6 +2530,7 @@ class THIRWhile(THIRStmt):
     body: tuple[THIRStmt, ...]
     orelse: tuple[THIRStmt, ...] = ()
     hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
 
 
 @dataclass(frozen=True)

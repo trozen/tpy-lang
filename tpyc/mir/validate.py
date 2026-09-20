@@ -32,6 +32,10 @@ class MIRPresenceError(MIRValidationError):
     """A payload access lacks a valid presence proof at its CFG position."""
 
 
+class MIRDefiniteAssignmentError(MIRValidationError):
+    """Structural CFG paths do not establish initialization before a read."""
+
+
 @dataclass(frozen=True)
 class MIRPrepared:
     function: MIRFunction
@@ -716,12 +720,15 @@ def _validate_structure(fn: MIRFunction) -> None:
             reads = set(operands(stmt.value))
             if stmt.target.projections or stmt.storage_write == MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN):
                 reads.add(stmt.target.root)
-            _require(reads <= assigned, "read before definite assignment")
+            if not reads <= assigned:
+                raise MIRDefiniteAssignmentError("read before definite assignment")
             if not stmt.target.projections:
                 assigned.add(stmt.target.root)
         term = block.terminator
         match term:
             case MIRBranch():
-                _require(term.condition in assigned, "branch before definite assignment")
+                if term.condition not in assigned:
+                    raise MIRDefiniteAssignmentError("branch before definite assignment")
             case MIRReturn() if term.value is not None:
-                _require(term.value in assigned, "return before definite assignment")
+                if term.value not in assigned:
+                    raise MIRDefiniteAssignmentError("return before definite assignment")

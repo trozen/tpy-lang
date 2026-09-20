@@ -8591,9 +8591,11 @@ diagnostics and generated code remain unchanged.
 
 M3.9 analyzes late direct declarations, including exits that skip their
 construction. Reads still require definite initialization. Bounded ordinary
-hoisted bindings and record backing are approved next as M3.10 in the
+hoisted bindings and record backing are analyzed by M3.10 in the
 [declaration plan](MIR_M3_DECLARATIONS_PLAN.md). Default-constructed wrapper
-hoists and general cleanup remain separate work; source behavior is unchanged.
+hoists and general cleanup remain separate work. A structural definite-assignment
+proof failure reports the body as uncovered, including constant-loop paths that
+MIR does not yet prune. Source behavior is unchanged.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

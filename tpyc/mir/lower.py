@@ -23,7 +23,7 @@ from .nodes import (
 )
 from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
-from .validate import MIRPresenceError, successors, validate_function
+from .validate import MIRDefiniteAssignmentError, MIRPresenceError, successors, validate_function
 
 
 def _literal(expr: th.THIRExpr) -> bool:
@@ -107,7 +107,9 @@ class _Coverage:
             if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
                 _require(stmt, stmt.name not in self.bindings, "duplicate binding")
                 if stmt.storage_placement is not None:
-                    _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.SCOPE,
+                    _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.SCOPE or (
+                        isinstance(stmt, th.THIRPtrLocalDecl) and stmt.kind is th.PtrSlotKind.RECORD_HOISTED
+                        and stmt.owned_storage is not None and stmt.storage_placement is th.THIRStoragePlacement.BODY),
                              "hoisted initial backing")
                 if stmt.owned_storage is not None and loops:
                     _require(stmt, isinstance(stmt.init, th.THIRCtorCall), "copy or move initialization in loop")
@@ -219,11 +221,17 @@ class _Coverage:
             _require(stmt, stmt.form in (th.Form.STORAGE, th.Form.BORROW), "owned declaration form")
         else:
             allowed.add("kind")
-            _require(stmt, stmt.kind is th.PtrSlotKind.RECORD_RVALUE, "owned declaration kind")
+            _require(stmt, stmt.kind in (th.PtrSlotKind.RECORD_RVALUE, th.PtrSlotKind.RECORD_HOISTED),
+                     "owned declaration kind")
+            if stmt.kind is th.PtrSlotKind.RECORD_HOISTED:
+                _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.BODY
+                         and isinstance(stmt.init, th.THIRCtorCall), "hoisted backing needs body constructor site")
         _plain(stmt, allowed)
         _require(stmt, stmt.init is not None and stmt.is_const == fact.readonly,
                  "owned declaration initializer or access")
         self.record_value(stmt.init, fact.type)
+        if isinstance(stmt, th.THIRPtrLocalDecl) and stmt.kind is th.PtrSlotKind.RECORD_HOISTED:
+            _require(stmt, self.records[fact.type].layout.movable, "hoisted constructor needs movable record")
         self.bindings[stmt.name] = fact.type
         self.references[stmt.name] = fact
         if (isinstance(stmt, th.THIRVarDecl) and stmt.form is th.Form.STORAGE
@@ -801,7 +809,9 @@ class _Coverage:
             case th.THIRIf() | th.THIRWhile():
                 allowed = {"condition", "then_body", "else_body", "else_is_nested"} if isinstance(
                     stmt, th.THIRIf) else {"condition", "body", "orelse"}
+                allowed |= {"hoist_decls", "hoisted_bindings"}
                 _plain(stmt, allowed)
+                self.hoists(stmt)
                 _require(stmt, self.expr(stmt.condition) == BOOL, "condition requires bool")
                 if isinstance(stmt, th.THIRIf):
                     for arm in (stmt.then_body, stmt.else_body):
@@ -814,6 +824,35 @@ class _Coverage:
                 _require(stmt, loops > 0, "loop control outside loop")
             case _:
                 raise MIRUnsupported(stmt, "unsupported statement")
+
+    def hoists(self, stmt: th.THIRIf | th.THIRWhile) -> None:
+        facts = stmt.hoisted_bindings
+        _require(stmt, all(isinstance(f, th.THIRHoistedBinding) for f in facts)
+                 and tuple(f.name for f in facts) == tuple(name for name, _ in stmt.hoist_decls),
+                 "missing or inconsistent hoisted binding facts")
+        for fact in facts:
+            _require(stmt, fact.name not in self.bindings and fact.initially_assigned is False
+                     and fact.placement is th.THIRStoragePlacement.SCOPE, "invalid hoisted binding placement or availability")
+            layouts = (fact.borrowed_record, fact.optional_layout, fact.tuple_layout)
+            _require(stmt, sum(f is not None for f in layouts) <= 1, "conflicting hoisted binding facts")
+            if fact.borrowed_record is not None:
+                self.reference(stmt, fact.borrowed_record, fact.type)
+                self.references[fact.name] = fact.borrowed_record
+                typ = fact.borrowed_record.type
+            elif fact.optional_layout is not None:
+                self.optional_layout(stmt, fact.optional_layout, fact.type)
+                _require(stmt, isinstance(fact.optional_layout.payload, th.THIRBorrowedRecord),
+                         "hoisted scalar optional storage")
+                self.optionals[fact.name] = fact.optional_layout
+                typ = fact.type
+            elif fact.tuple_layout is not None:
+                self.tuple_layout(stmt, fact.tuple_layout, fact.type)
+                self.tuples[fact.name] = fact.tuple_layout
+                typ = fact.type
+            else:
+                _require(stmt, fact.type in (BOOL, INT32), "unsupported hoisted value")
+                typ = fact.type
+            self.bindings[fact.name] = typ
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
         saved = (self.bindings.copy(), self.references.copy(), self.payload_aliases.copy(),
@@ -1076,6 +1115,9 @@ class _Builder:
                 else MIRRecordWriteMode.INITIALIZE_REGION)
 
     def placement(self, stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> MIRRegionId | MIRStorageDuration:
+        if (isinstance(stmt, th.THIRPtrLocalDecl) and stmt.kind is th.PtrSlotKind.RECORD_HOISTED
+                and stmt.storage_placement is th.THIRStoragePlacement.BODY):
+            return MIRStorageDuration.BODY
         _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.SCOPE,
                  "missing direct storage placement")
         return self.region if self.region.index else MIRStorageDuration.BODY
@@ -1144,7 +1186,9 @@ class _Builder:
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.owned_storage is not None:
                     fact = stmt.owned_storage
                     storage = self.slot(fact.type, storage=True, storage_duration=self.placement(stmt))
-                    self.write(storage, self.record_value(stmt.init), loc, MIRRecordWrite(self.initial_mode()))
+                    mode = (MIRRecordWriteMode.OWN_SITE if isinstance(stmt, th.THIRPtrLocalDecl)
+                            and stmt.kind is th.PtrSlotKind.RECORD_HOISTED else self.initial_mode())
+                    self.write(storage, self.record_value(stmt.init), loc, MIRRecordWrite(mode))
                     holder = self.slot(fact.type, MIRSlotKind.LOCAL, stmt.name, fact)
                     self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
                     self.storage[stmt.name] = storage
@@ -1198,6 +1242,7 @@ class _Builder:
                 case th.THIRReturn():
                     self.end(MIRReturn(self.expr(stmt.value) if stmt.value is not None else None, loc))
                 case th.THIRIf():
+                    self.hoists(stmt)
                     cond = self.expr(stmt.condition)
                     yes, no = self.block(), self.block()
                     self.end(MIRBranch(cond, yes.id, no.id, loc))
@@ -1216,6 +1261,7 @@ class _Builder:
                     else:
                         self.current = None
                 case th.THIRWhile():
+                    self.hoists(stmt)
                     cond_block, body, normal, after = self.block(), self.block(), self.block(), self.block()
                     self.end(MIRGoto(cond_block.id, loc))
                     self.current = cond_block
@@ -1237,6 +1283,12 @@ class _Builder:
                     self.end(MIRGoto(self.loops[-1][0], loc))
                 case _:
                     raise AssertionError("coverage and statement lowering disagree")
+
+    def hoists(self, stmt: th.THIRIf | th.THIRWhile) -> None:
+        for fact in stmt.hoisted_bindings:
+            self.bindings[fact.name] = self.slot(
+                fact.type, MIRSlotKind.LOCAL, fact.name, fact.borrowed_record,
+                optional_layout=fact.optional_layout, tuple_layout=fact.tuple_layout)
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...]) -> None:
         bindings, storage, region = self.bindings.copy(), self.storage.copy(), self.region
@@ -1310,7 +1362,7 @@ def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
         coverage.check()
         try:
             return _Builder(body, fn, coverage).build()
-        except MIRPresenceError as failure:
+        except (MIRPresenceError, MIRDefiniteAssignmentError) as failure:
             raise MIRUnsupported(fn, str(failure)) from failure
     except MIRUnsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,
@@ -1330,7 +1382,7 @@ def lower_constructor(ctor: th.THIRConstructor, body: MIRBodyId, *,
         coverage.records[initialization.layout.type] = initialization
         try:
             return _Builder(body, fn, coverage).build(initialization)
-        except MIRPresenceError as failure:
+        except (MIRPresenceError, MIRDefiniteAssignmentError) as failure:
             raise MIRUnsupported(ctor, str(failure)) from failure
     except MIRUnsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,

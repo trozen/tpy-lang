@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, global_name_binding, optional_layout, storage_borrow, tuple_layout, union_literal
+from .storage import alias_binding, borrowed_record, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
@@ -187,6 +187,8 @@ from ..reject import (
 )
 from ..nodes import (
     THIRStoragePlacement,
+    THIRHoistedBinding,
+    THIROptionalRead,
     THIRCtorCall,
     THIRBorrowTupleLiteral,
     Form,
@@ -2887,7 +2889,8 @@ def _register_frame_hoist(name: str, raw: TpyType,
 
 def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
                           lc: '_LowerCtx', witness_tag: str,
-                          flavors: 'Mapping[str, HoistFlavor]' = {}
+                          flavors: 'Mapping[str, HoistFlavor]' = {},
+                          bindings: list[THIRHoistedBinding] | None = None,
                           ) -> list[tuple[str, str]]:
     """Chain-head predecls for the branch-first-decls shared by try / with /
     for-each. A name spells its sema-resolved view type (render_type's
@@ -2939,7 +2942,7 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
             hoist_decls.append(_borrow_tuple_hoist_entry(
                 name, vtype, declared, lc, "try.hoist_mixed_own_tuple",
-                None))
+                None, bindings))
             _witness("try.hoist_borrow_tuple")
             continue
         if flavor is HoistFlavor.POINTER:
@@ -2954,6 +2957,7 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
                     and vtype.uses_pointer_repr()):
                 pointee = vtype.inner
             hoist_decls.append((name, f"{lc.render_type(pointee)}*"))
+            _record_hoisted_binding(bindings, name, vtype, lc, borrow=True)
             lc.pointers.add(name)
             lc.promote_movable(name)
             lc.branch_hoisted.add(name)
@@ -2979,6 +2983,7 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
             hoist_decls.append(
                 (name, f"const {lc.render_type(unwrap_readonly(vtype))}*"))
+            _record_hoisted_binding(bindings, name, vtype, lc, borrow=True, readonly=True)
             lc.pointers.add(name)
             lc.const_locals.add(name)
             lc.branch_hoisted.add(name)
@@ -2986,7 +2991,7 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             _witness("try.hoist_const_ptr")
             continue
         assert flavor is HoistFlavor.VALUE, (name, flavor)
-        hoist_decls.append(_value_hoist_entry(name, vtype, declared, lc))
+        hoist_decls.append(_value_hoist_entry(name, vtype, declared, lc, bindings))
     if hoist_decls:
         _witness(witness_tag)
     return hoist_decls
@@ -3176,9 +3181,18 @@ def _lower_rebind_rvalue(init: TpyExpr, slot_t: TpyType, lc: '_LowerCtx',
     return value
 
 
+def _record_hoisted_binding(bindings: list[THIRHoistedBinding] | None,
+                            name: str, typ: TpyType, lc: '_LowerCtx', *,
+                            borrow: bool = False, readonly: bool = False) -> None:
+    if bindings is not None:
+        fact = hoisted_binding(name, typ, lc.analyzer, borrow=borrow, readonly=readonly)
+        if fact is not None:
+            bindings.append(fact)
+
+
 def _value_hoist_entry(name: str, vtype: TpyType,
                        declared: dict[str, TpyType],
-                       lc: '_LowerCtx') -> tuple[str, str]:
+                       lc: '_LowerCtx', bindings: list[THIRHoistedBinding] | None = None) -> tuple[str, str]:
     """One value-family hoist predecl entry: resolve the str/bytes view
     spelling, render, and register the raw binding type in the caller's
     `declared` -- the single render shared by the try/with tail and the
@@ -3186,6 +3200,7 @@ def _value_hoist_entry(name: str, vtype: TpyType,
     render_src = _value_slot_render_type(vtype, lc)
     declared[name] = vtype
     _register_value_opt_binding(name, vtype, lc)
+    _record_hoisted_binding(bindings, name, vtype, lc)
     return (name, lc.render_type(render_src))
 
 
@@ -3360,7 +3375,8 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
 def _borrow_tuple_hoist_entry(name: str, var_type: 'TupleType',
                               declared: dict[str, TpyType],
                               lc: '_LowerCtx', mixed_witness: str,
-                              hoist_slots: 'list[tuple[str, str]] | None'
+                              hoist_slots: 'list[tuple[str, str]] | None',
+                              bindings: list[THIRHoistedBinding] | None = None,
                               ) -> tuple[str, str]:
     """One branch-BOUND borrow-form tuple hoist predecl (`std::tuple<...,
     T*> name;`, default-constructed null pointers) plus its read model: the
@@ -3392,6 +3408,10 @@ def _borrow_tuple_hoist_entry(name: str, var_type: 'TupleType',
     # the reseat renders target.
     lc.ensure_borrow_tuple_const()
     declared[name] = var_type
+    if name not in lc.own_borrow_tuple_locals and not any(
+            _btuple_owning_call_init(s, analyzer) for s in bt_srcs):
+        _record_hoisted_binding(bindings, name, var_type, lc, borrow=True,
+                                readonly=name in lc.const_borrow_tuple_locals)
     return (name, var_type.to_cpp_return_const()
             if name in lc.const_borrow_tuple_locals
             else var_type.to_cpp_return())
@@ -3523,7 +3543,7 @@ def _nonvalue_hoist_flavor(name: str, var_type: TpyType,
 
 def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                              declared: dict[str, TpyType], lc: '_LowerCtx',
-                             in_branch: bool
+                             in_branch: bool, bindings: list[THIRHoistedBinding],
                              ) -> tuple[list[tuple[str, str]],
                                         list[tuple[str, str]]]:
     """The if-chain flavor of the branch-first predecls: classify each
@@ -3619,7 +3639,7 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             hoist_decls.append(_borrow_tuple_hoist_entry(
                 name, var_type, declared, lc, "if.hoist_mixed_own_tuple",
-                hoist_slots))
+                hoist_slots, bindings))
             _witness("if.hoist_borrow_tuple")
             continue
         if isinstance(var_type, NominalType) and is_dyn_protocol(var_type):
@@ -3668,6 +3688,7 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                 # rebound kind rides too.
                 hoist_decls.append(
                     (name, f"const {lc.render_type(resolve_type)}*"))
+                _record_hoisted_binding(bindings, name, var_type, lc, borrow=True, readonly=True)
                 lc.pointers.add(name)
                 lc.const_locals.add(name)
                 lc.branch_hoisted.add(name)
@@ -3683,6 +3704,7 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                 _witness("if.hoist_optional_storage")
                 continue
             hoist_decls.append((name, f"{cpp}*"))
+            _record_hoisted_binding(bindings, name, var_type, lc, borrow=True)
             lc.pointers.add(name)
             lc.promote_movable(name)
             if (name in lc.prescan.rvalue_reassigned
@@ -3703,7 +3725,7 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
         if not _try_hoist_type_ok(var_type, analyzer):
             note_detail("if.hoist_type")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        hoist_decls.append(_value_hoist_entry(name, var_type, declared, lc))
+        hoist_decls.append(_value_hoist_entry(name, var_type, declared, lc, bindings))
         _witness("if.hoist_decl")
     return hoist_decls, hoist_slots
 
@@ -4750,8 +4772,7 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         _witness("decl.record_slot_rvalue")
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype, kind=kind, init=init,
-        owned_storage=(borrowed_record(vtype, False, lc.analyzer)
-                       if kind is PtrSlotKind.RECORD_RVALUE else None),
+        owned_storage=borrowed_record(vtype, False, lc.analyzer),
         cpp_type=lc.render_type(vtype), loc=loc)
 
 
@@ -9843,11 +9864,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # is a DIFFERENT OptionalType than the mutable target's,
                     # so a const-dropping copy can never match this arm.
                     _witness("reseat.opt_ptr_copy")
+                    source_type = declared[stmt.init.name]
+                    source_layout = optional_layout(source_type, analyzer, borrow=True,
+                        readonly=stmt.init.name in lc.const_locals or _param_is_const(
+                            stmt.init.name, lc.func, analyzer, lc.record_name))
                     return THIRAssign(
                         target=THIRName(result_type=vtype, name=stmt.name,
                                         loc=loc),
-                        value=THIRName(result_type=declared[stmt.init.name],
-                                       name=stmt.init.name, loc=loc),
+                        value=THIRName(result_type=source_type, name=stmt.init.name,
+                                       form=Form.BORROW if source_layout is not None else Form.VALUE,
+                                       optional_read=THIROptionalRead(source_layout, False)
+                                       if source_layout is not None else None, loc=loc),
                         loc=loc)
                 if (isinstance(stmt.init, TpyName)
                         and stmt.init.name not in lc.narrow.narrowed
@@ -14404,8 +14431,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # (the declaration order the reads need); a reject anywhere after a
         # partial registration is fine -- the whole body raises and the
         # partially-mutated lc is discarded with it.
+        hoisted_bindings: list[THIRHoistedBinding] = []
         hoist_decls, hoist_slots = _lower_if_hoist_predecls(
-            stmt, hoists, declared, lc, scope.in_branch)
+            stmt, hoists, declared, lc, scope.in_branch, hoisted_bindings)
         # Per-branch narrowing facts for a condition NO narrowing arm claims
         # (set in the plain-condition arm below; every arm that returns from
         # here on emits its own extraction).
@@ -14756,6 +14784,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             else_is_nested=else_is_nested,
             hoist_decls=tuple(hoist_decls),
             hoist_slots=tuple(hoist_slots),
+            hoisted_bindings=tuple(hoisted_bindings),
             loc=loc,
         )
     if isinstance(stmt, TpyBreak):
@@ -14920,9 +14949,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 continue
             while_flavors[_hname] = _admit_nonvalue_hoist(
                 _hname, _hbare, lc, stmt, "while.hoist_type", leaf_ok=True)
+        while_bindings: list[THIRHoistedBinding] = []
         while_hoist_decls = tuple(
             _lower_hoist_predecls(while_hoists, declared, lc,
-                                  "while.hoist_decl", while_flavors))
+                                  "while.hoist_decl", while_flavors, while_bindings))
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         oinfo = (_or_chain_narrow_info(stmt.condition, declared, analyzer)
                  if info is None else None)
@@ -15013,6 +15043,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                       "loop.while_else"),
             hoist_decls=while_hoist_decls,
+            hoisted_bindings=tuple(while_bindings),
             loc=loc,
         )
     if isinstance(stmt, TpyAssert):
