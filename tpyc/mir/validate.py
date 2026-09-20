@@ -709,10 +709,6 @@ def _validate_structure(fn: MIRFunction) -> None:
                 if target not in queued:
                     work.append(target)
                     queued.add(target)
-    for edge, transition in regions.edges.items():
-        if edge.source in reachable:
-            required = transition.ended.intersection(region_initializations)
-            _require(required <= outgoing[edge.source], "storage end before activation initialization")
     for bid in reachable:
         assigned = incoming[bid].copy()
         block = blocks[bid]

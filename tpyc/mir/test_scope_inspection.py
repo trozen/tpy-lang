@@ -4,13 +4,14 @@ from dataclasses import replace
 
 import pytest
 
-from .dependencies import _dependencies
+from ..typesys import BOOL
+from .dependencies import MIRReferent, _dependencies
 from .liveness import _liveness
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRConstant, MIREdge, MIRFunction,
-    MIRGoto, MIRNotCovered, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace,
+    MIRGoto, MIRNotCovered, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
     MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn,
-    MIRSlotKind,
+    MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .scope_lifetime import (
     MIRScopeEnds, _scope_conflicts, _scope_ends, analyze_scope_ends,
@@ -126,6 +127,37 @@ def test_reentering_and_reconstructing_does_not_erase_scalar_alias_failure() -> 
     assert result.freshness[0].point.block == after.id
 
 
+@pytest.mark.parametrize("read_inside", [False, True])
+def test_skipped_union_construction_keeps_old_payload_alias(read_inside: bool) -> None:
+    fn = stale_scalar_alias()
+    entry, initialize, after = fn.blocks
+    guard, skipped, end = (MIRBlockId(fn.id, i) for i in (3, 4, 5))
+    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), BOOL, MIRSlotKind.PARAMETER)
+    fn = replace(fn, slots=(*fn.slots, skip), blocks=(
+        replace(entry, terminator=MIRGoto(guard)),
+        replace(initialize, statements=(*initialize.statements, READ) if read_inside else initialize.statements),
+        replace(after, statements=() if read_inside else (READ,),
+                terminator=MIRBranch(FLAG, entry.id, end)),
+        MIRBlock(guard, (), MIRBranch(skip.id, skipped, initialize.id), initialize.region),
+        MIRBlock(skipped, (), MIRGoto(entry.id), entry.region),
+        MIRBlock(end, (), MIRReturn(fn.slots[3].id), entry.region)),
+        regions=(fn.regions[0], replace(fn.regions[1], entry=guard)))
+    prepared = _prepare_function(fn)
+    dependencies = _dependencies(prepared, _liveness(prepared))
+    assert dependencies.referents[MIRPoint(skipped, 0)][MIRPlace(ALIAS)] == frozenset({
+        MIRReferent(EXTRACT.value.source)})
+    assert CURRENT not in dict(prepared.presence.points[MIRPoint(skipped, 0)])
+    result = inspect_scope_lifetimes(fn)
+    assert MIREdge(guard, 0) not in result.ends.ends
+    assert bool(result.freshness) is not read_inside
+    assert bool(result.conflicts) is not read_inside
+    if read_inside:
+        validate_function(fn)
+    else:
+        with pytest.raises(MIRPresenceError, match="storage end"):
+            validate_function(fn)
+
+
 def test_inspection_still_rejects_missing_selection() -> None:
     fn = stale_scalar_alias()
     child = fn.blocks[1]
@@ -172,3 +204,35 @@ def test_dynamic_trace_finds_previous_activation_even_at_the_same_static_site() 
         conflicts = inspect_scope_lifetimes(fn).conflicts
         assert bool(conflicts) == bool(expired_reads)
         assert all(c.holder == observed and c.edge == MIREdge(LOOP, 0) for c in conflicts)
+
+
+@pytest.mark.parametrize("shape", ["record", "singleton", "mixed", "optional", "union"])
+@pytest.mark.parametrize("reseat_first", [False, True])
+def test_skipped_construction_preserves_old_holder_dependencies(shape: str, reseat_first: bool) -> None:
+    fn, observed = scoped_loop(shape, reseat_first=reseat_first)
+    entry, loop, again, end = fn.blocks
+    guard = MIRBlockId(fn.id, 4)
+    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), BOOL, MIRSlotKind.PARAMETER)
+    # Read the saved alias before this activation decides whether to construct.
+    reads = () if reseat_first else (loop.statements[3],)
+    statements = loop.statements if reseat_first else (*loop.statements[:3], loop.statements[4])
+    fn = replace(fn, slots=(*fn.slots, skip), blocks=(
+        replace(entry, terminator=MIRGoto(guard)), replace(loop, statements=statements),
+        replace(again, terminator=MIRGoto(guard)), end,
+        MIRBlock(guard, reads, MIRBranch(skip.id, AGAIN, LOOP), loop.region)),
+        regions=(fn.regions[0], replace(fn.regions[1], entry=guard)))
+    result = inspect_scope_lifetimes(fn)
+    assert MIREdge(guard, 0) not in result.ends.ends
+    assert bool(result.conflicts) is not reseat_first
+    assert all(c.holder == observed and c.edge == MIREdge(LOOP, 0) for c in result.conflicts)
+    saved = ("body", 0)
+    expired = set()
+    stale_reads = []
+    for activation, skipped in enumerate((False, True, False)):
+        if not reseat_first and saved in expired:
+            stale_reads.append(activation)
+        if skipped:
+            continue
+        saved = ("iteration", activation)
+        expired.add(saved)
+    assert stale_reads == ([] if reseat_first else [1, 2])

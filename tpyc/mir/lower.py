@@ -103,10 +103,8 @@ class _Coverage:
         self.declarations(fn.body, 0)
 
     def declarations(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
-        prefix = True
         for stmt in stmts:
             if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
-                _require(stmt, prefix, "declaration outside entry prefix")
                 _require(stmt, stmt.name not in self.bindings, "duplicate binding")
                 if stmt.storage_placement is not None:
                     _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.SCOPE,
@@ -182,8 +180,6 @@ class _Coverage:
                              "initializer type mismatch")
                 self.bindings[stmt.name] = stmt.resolved_type
             else:
-                if not isinstance(stmt, (th.THIRNoOpStmt, th.THIRNarrowAlias)):
-                    prefix = False
                 self.stmt(stmt, loops)
 
     def record_value(self, expr: th.THIRExpr, typ: NominalType) -> None:

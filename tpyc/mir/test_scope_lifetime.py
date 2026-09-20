@@ -254,7 +254,6 @@ def test_fresh_loop_activation_has_one_static_end() -> None:
     ("foreign", "storage region"),
     ("parent", "ancestry"),
     ("outside_read", "outside binding residence"),
-    ("bypass_init", "end before activation initialization"),
     ("wrong_mode", "activation initialization"),
     ("body_residence", "body storage has nested residence"),
     ("interior_entry", "entry into region interior"),
@@ -284,11 +283,6 @@ def test_invalid_region_contracts(damage: str, message: str) -> None:
     elif damage == "read_before_init":
         read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsPresent(fn.slots[2].id))
         fn = replace(fn, blocks=(entry, replace(iteration, statements=(read, *iteration.statements)), after))
-    else:
-        init_block = MIRBlockId(fn.id, 3)
-        fn = replace(fn, blocks=(entry, replace(iteration, statements=(), terminator=MIRBranch(
-            fn.slots[1].id, init_block, after.id)), after,
-            replace(iteration, id=init_block, terminator=MIRGoto(after.id))))
     with pytest.raises(MIRValidationError, match=message):
         validate_function(fn)
 

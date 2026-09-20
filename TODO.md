@@ -1718,9 +1718,9 @@ alongside related feature work; only the big-rock deferrals live here.
   safety or authorizes a source diagnostic or move.
   Its factored scope matrix files the excluded shapes/positions/sinks:
   cyclic body-lifetime initial construction, copy/move and IN_PLACE; owned
-  tuple/union backing; views/containers; non-prefix/hoisted branch/loop-first
+  tuple/union backing; views/containers; general hoisted branch/loop-first
   bindings; calls/captures,
-  escaping stores/returns and general regions/cleanup remain later work.
+  escaping stores/returns and general cleanup remain later work.
   Initial alias/copy bindings rejected by THIR in the loop probe and narrowed
   Optional-to-Optional captures rejected by MIR remain separate coverage gaps.
   This batch changes no source behavior or checker
@@ -1729,18 +1729,26 @@ alongside related feature work; only the big-rock deferrals live here.
   scalar Optional/union payload-end events and internal retained-alias
   inspection, preserving strict validation. Its factored matrix files the
   remaining positions/shapes/sinks: mixed/owning wrappers, parameter/field/
-  container/global writes, non-prefix/hoisted branch/loop-first declarations, escaping uses,
+  container/global writes, general hoisted branch/loop-first declarations, escaping uses,
   views, calls, resumable bodies and general cleanup. Scalar narrowed-branch
   reassignment rejected by THIR and union constructor parameters remain
   separate coverage gaps. M3.3-M3.6 are merged.
   `docs/MIR_M3_REGIONS_PLAN.md` records implemented M3.7 emitted storage regions and
   normal end events and M3.8 retained-reference inspection; design
   approval was given 2026-09-20. Its matrix files the remaining gaps: general hoists,
-  non-prefix declarations, effectful temporaries, cyclic copy/move/in-place,
+  effectful temporaries, cyclic copy/move/in-place,
   owned aggregates, views/containers, calls/captures/escapes, for-loops,
   exceptional cleanup, destructors, resumables and authority transition.
-  The proposed branch/loop-local coverage needs positive placement and fresh
-  activation facts; existing BODY-lifetime OWN backing must not acquire a
+  M3.7/M3.8 are merged. `docs/MIR_M3_DECLARATIONS_PLAN.md` records implemented
+  M3.9 late direct declarations and approved M3.10 bounded ordinary hoisted
+  bindings/backing. Default-constructed scalar Optional/union
+  hoists, optional-storage record hoists, while borrowed-tuple hoists,
+  owning/mixed tuple backing, nonempty
+  `hoist_slots`, unclassified rebind forms and the other matrix gaps remain
+  explicit follow-up work; source availability and physical initialization
+  must not be conflated to admit them.
+  Branch/loop-local coverage uses positive placement and fresh
+  activation facts; existing BODY-lifetime OWN backing does not acquire a
   loop-end event. The already tracked branch-local-source dangling-reference
   bug is an analysis witness, not a source-behavior fix in this batch.
   Direct self-to-Optional pointer initializers remain uncovered;

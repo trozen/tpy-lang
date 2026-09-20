@@ -1806,6 +1806,12 @@ M3.3-M3.6 are merged. The approved next batch is in
 storage regions and normal end events, and implemented M3.8 internal retained-reference
 inspection at those ends. It does not change source behavior or checker authority.
 
+M3.7/M3.8 are now merged. The approved next batch is
+[MIR_M3_DECLARATIONS_PLAN.md](MIR_M3_DECLARATIONS_PLAN.md): implemented M3.9
+late direct declarations with conditional initialization, then M3.10 positive
+facts for bounded ordinary hoisted bindings and record backing.
+Default-constructed wrapper hoists and general cleanup stay outside that batch.
+
 ## Scope matrix and remaining increments
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

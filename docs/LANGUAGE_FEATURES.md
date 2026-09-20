@@ -8589,6 +8589,12 @@ at those ends, also visible in `--dump-mir`
 it does not make Python indentation a lifetime rule. Source acceptance,
 diagnostics and generated code remain unchanged.
 
+M3.9 analyzes late direct declarations, including exits that skip their
+construction. Reads still require definite initialization. Bounded ordinary
+hoisted bindings and record backing are approved next as M3.10 in the
+[declaration plan](MIR_M3_DECLARATIONS_PLAN.md). Default-constructed wrapper
+hoists and general cleanup remain separate work; source behavior is unchanged.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

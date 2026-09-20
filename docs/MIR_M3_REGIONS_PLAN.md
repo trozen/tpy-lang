@@ -1,10 +1,10 @@
 # M3.7/M3.8: emitted storage regions and retained references
 
-Status: approved 2026-09-20. M3.7 and M3.8 are implemented on the branch.
-M3.1-M3.6 are merged. This continuation is architectural, analysis-only work;
+Status: approved 2026-09-20. M3.1-M3.8 are merged.
+This continuation is architectural, analysis-only work;
 it does not change source acceptance, diagnostics, C++ emission or provenance
-authority. Work will stay on `mir-m3-regions-batch`, with one final commit for
-M3.7 and one for M3.8, reviewed together before the user's merge.
+authority. M3.7 and M3.8 landed as separate commits, reviewed together.
+The approved continuation is [MIR_M3_DECLARATIONS_PLAN.md](MIR_M3_DECLARATIONS_PLAN.md).
 
 ## Concrete contract
 
@@ -59,9 +59,10 @@ the scope ends and is safe within this analysis's coverage.
 - Effective OWN replacement backing is function-hoisted even if its write is
   nested. A loop-local record captured by an outer alias can also become
   function-hoisted backing. Neither ends at the loop-body boundary.
-- `THIRIf.hoist_decls`/`hoist_slots` and `THIRWhile.hoist_decls` precede their
-  control statement. They remain uncovered until structured facts describe
-  their placement; do not parse their C++ strings.
+- `THIRIf.hoist_decls` and `THIRWhile.hoist_decls` precede their control
+  statement. `THIRIf.hoist_slots` reserves deferred backing, emitted at
+  function scope when used. These remain uncovered until structured facts
+  describe their placement; do not parse their C++ strings.
 - A `while`-`else` body has its own emitted braces after the loop. A `break`
   skips it. Its loop frame has already been popped, so control transfers
   inside an inner loop's `else` target the enclosing loop.

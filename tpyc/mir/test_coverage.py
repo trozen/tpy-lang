@@ -96,13 +96,13 @@ def test_statement_metadata_coverage(stmt: th.THIRStmt, reason: str) -> None:
     reject(function([stmt, th.THIRReturn(ONE)]), reason, type(stmt).__name__)
 
 
-def test_branch_prefix_declaration_is_covered_but_late_declaration_is_not() -> None:
+def test_branch_and_late_declarations_are_covered() -> None:
     decl = th.THIRVarDecl("y", INT32, ONE, loc=LOC)
     result = lower_function(function([th.THIRIf(th.THIRLiteral(BOOL, True), (decl,)), th.THIRReturn(ONE)]),
                             MIRBodyId("test", "f"), kind=MIRBodyKind.FREE_FUNCTION)
     assert isinstance(result, MIRFunction)
-    reject(function([th.THIRAssign(X, ONE), decl, th.THIRReturn(ONE)]),
-           "outside entry prefix", "THIRVarDecl")
+    late = function([th.THIRAssign(X, ONE), decl, th.THIRReturn(th.THIRName(INT32, "y"))])
+    assert isinstance(lower_function(late, MIRBodyId("test", "late"), kind=MIRBodyKind.FREE_FUNCTION), MIRFunction)
 
 
 def test_uninitialized_source_is_a_verifier_failure_not_coverage() -> None:
