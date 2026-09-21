@@ -1,7 +1,7 @@
 # M3 completion checklist
 
 Current planning index, updated 2026-09-21. Implementation exists through
-M3.13; merge status is separate. The numbered increment plans below record
+M3.15; merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -40,6 +40,9 @@ These boxes describe the current admitted subset only:
 - [x] Explicit physical scalar-wrapper initialization, independent of source
   assignment, with validation and lifetime consumers, and scalar Optional/union
   hoists from THIR ([M3.12/M3.13](MIR_M3_WRAPPER_STORAGE_PLAN.md)).
+- [x] Optional-backed record hoists with separate wrapper construction, record
+  engagement and source assignment, including logical overwrite and normal
+  scope-end inspection ([M3.14/M3.15](MIR_M3_RECORD_STORAGE_PLAN.md)).
 
 ## Remaining work packages
 
@@ -52,11 +55,12 @@ the others visible.
 - [x] Admit scalar Optional/union hoists with actual default selection facts.
   Physical construction is distinct from source assignment in M3.12;
   M3.13 connects the THIR producer ([wrapper storage plan](MIR_M3_WRAPPER_STORAGE_PLAN.md)).
-- [ ] Model optional-storage record hoists: wrapper lifetime, record engagement,
+- [x] Model optional-storage record hoists: wrapper lifetime, record engagement,
   source availability and per-binding backing identity. Do not substitute the
   existing per-operation BODY OWN-site model. The
   [M3.14/M3.15 plan](MIR_M3_RECORD_STORAGE_PLAN.md) records the approved bounded
-  batch. M3.14 implements the internal model; THIR integration remains pending.
+  batch. M3.14 implements the internal model; M3.15 connects positive THIR facts
+  for bounded plain-record if/while hoists.
 - [ ] Cover remaining owning/mixed aggregate backing and materialized expression
   temporaries, with positive producer facts for placement and each write.
 - [ ] Extend cyclic copy/move/in-place operations where their existing emitted

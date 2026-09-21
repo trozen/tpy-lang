@@ -14,7 +14,7 @@ from .nodes import (
     MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
     MIRRegion, MIRRegionId,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
@@ -41,6 +41,7 @@ class _Coverage:
         self.definitions = definitions
         self.records: dict[NominalType, MIRConstructorDefinition] = {}
         self.fixed_owned: set[str] = set()
+        self.optional_record_storage: dict[str, th.THIRBorrowedRecord] = {}
         self.tuples: dict[str, th.THIRTupleLayout] = {}
         self.tuple_exprs: IdentityMap[th.THIRExpr, th.THIRTupleLayout] = IdentityMap()
         self.optionals: dict[str, th.THIROptionalLayout] = {}
@@ -745,6 +746,18 @@ class _Coverage:
                     self.references[stmt.alias] = member
                 else:
                     self.payload_aliases.add(stmt.alias)
+            case th.THIRAssign() if stmt.optional_record_assignment is not None:
+                _plain(stmt, {"target", "value", "optional_record_assignment"})
+                _require(stmt, isinstance(stmt.target, th.THIRName), "optional record assignment needs local")
+                _plain(stmt.target, {"name"})
+                fact = stmt.optional_record_assignment
+                name = stmt.target.name
+                _require(stmt, self.optional_record_storage.get(name) == fact
+                         and self.bindings.get(name) == stmt.target.result_type == fact.type,
+                         "optional record backing mismatch")
+                _require(stmt, isinstance(stmt.value, th.THIRCtorCall), "optional record assignment needs constructor")
+                self.record_value(stmt.value, fact.type)
+                _require(stmt, self.records[fact.type].layout.movable, "optional backing needs movable record")
             case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.union_layout is not None:
                 _require(stmt, isinstance(stmt, th.THIRAssign) and isinstance(stmt.target, th.THIRName),
                          "unsupported union reseat")
@@ -847,9 +860,20 @@ class _Coverage:
         for fact in facts:
             _require(stmt, fact.name not in self.bindings and fact.initially_assigned is False
                      and fact.placement is th.THIRStoragePlacement.SCOPE, "invalid hoisted binding placement or availability")
-            layouts = (fact.borrowed_record, fact.optional_layout, fact.tuple_layout, fact.union_layout)
+            layouts = (fact.borrowed_record, fact.optional_layout, fact.tuple_layout, fact.union_layout,
+                       fact.optional_record_storage)
             _require(stmt, sum(f is not None for f in layouts) <= 1, "conflicting hoisted binding facts")
-            if fact.borrowed_record is not None:
+            if fact.optional_record_storage is not None:
+                reference = fact.optional_record_storage
+                self.reference(stmt, reference, fact.type)
+                _require(stmt, not reference.readonly, "optional record backing must be mutable")
+                definition = self.definitions.get(stmt, reference.type)
+                _require(stmt, definition.layout.movable, "optional backing needs movable record")
+                self.records[reference.type] = definition
+                self.references[fact.name] = reference
+                self.optional_record_storage[fact.name] = reference
+                typ = reference.type
+            elif fact.borrowed_record is not None:
                 self.reference(stmt, fact.borrowed_record, fact.type)
                 self.references[fact.name] = fact.borrowed_record
                 typ = fact.borrowed_record.type
@@ -886,11 +910,12 @@ class _Coverage:
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
         saved = (self.bindings.copy(), self.references.copy(), self.payload_aliases.copy(),
-                 self.tuples.copy(), self.optionals.copy(), self.unions.copy(), self.fixed_owned.copy())
+                 self.tuples.copy(), self.optionals.copy(), self.unions.copy(), self.fixed_owned.copy(),
+                 self.optional_record_storage.copy())
         self.declarations(stmts, loops)
-        retained_fixed = saved[-1] & self.fixed_owned
+        retained_fixed = saved[-2] & self.fixed_owned
         (self.bindings, self.references, self.payload_aliases,
-         self.tuples, self.optionals, self.unions, self.fixed_owned) = saved
+         self.tuples, self.optionals, self.unions, self.fixed_owned, self.optional_record_storage) = saved
         self.fixed_owned = retained_fixed
 
 
@@ -932,7 +957,8 @@ class _Builder:
              union_layout: th.THIRUnionLayout | None = None,
              alias_source: MIRPlace | None = None,
              global_binding: th.THIRGlobalBinding | None = None,
-             storage_duration: MIRStorageDuration | MIRRegionId | None = None) -> MIRSlotId:
+             storage_duration: MIRStorageDuration | MIRRegionId | None = None,
+             record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
         self.slots.append(MIRSlot(sid, reference.type if reference else (
             unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
@@ -956,6 +982,7 @@ class _Builder:
                                   global_id=MIRGlobalId(global_binding.module, global_binding.name)
                                   if global_binding is not None else None,
                                   storage_duration=storage_duration,
+                                  record_storage=record_storage,
                                   residence=(self.regions[0].id if storage_duration is MIRStorageDuration.BODY else
                                              storage_duration if storage and isinstance(storage_duration, MIRRegionId)
                                              else self.region) if kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY)
@@ -1242,6 +1269,12 @@ class _Builder:
                     self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
                     self.storage[stmt.name] = storage
                     self.bindings[stmt.name] = holder
+                case th.THIRAssign() if stmt.optional_record_assignment is not None:
+                    name = stmt.target.name
+                    storage = self.storage[name]
+                    self.write(storage, self.record_value(stmt.value), loc,
+                               MIRRecordWrite(MIRRecordWriteMode.OPTIONAL_ASSIGN))
+                    self.write(self.bindings[name], MIRBorrow(MIRPlace(storage)), loc)
                 case th.THIRAssign() if stmt.rebind_storage is not None:
                     holder = self.bindings[stmt.target.name]
                     value = self.record_value(stmt.value)
@@ -1335,6 +1368,15 @@ class _Builder:
 
     def hoists(self, stmt: th.THIRIf | th.THIRWhile) -> None:
         for fact in stmt.hoisted_bindings:
+            if fact.optional_record_storage is not None:
+                reference = fact.optional_record_storage
+                storage = self.slot(reference.type, MIRSlotKind.LOCAL, storage=True,
+                                    storage_duration=self.region if self.region.index else MIRStorageDuration.BODY,
+                                    record_storage=MIRRecordStorageKind.OPTIONAL)
+                self.current.statements.append(MIRRecordStorageInit(MIRPlace(storage), stmt.loc))
+                self.storage[fact.name] = storage
+                self.bindings[fact.name] = self.slot(reference.type, MIRSlotKind.LOCAL, fact.name, reference)
+                continue
             default = fact.physical_default
             dest = self.slot(
                 fact.type, MIRSlotKind.LOCAL, fact.name, fact.borrowed_record,

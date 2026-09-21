@@ -246,6 +246,17 @@ def _check_node(owner: str, node: THIRNode) -> None:
         if isinstance(node, THIRWalrus) and not fact.writable:
             _fail(owner, node, "global walrus needs writable binding")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
+        if isinstance(node, THIRAssign) and node.optional_record_assignment is not None:
+            fact = node.optional_record_assignment
+            if (not isinstance(fact, THIRBorrowedRecord) or fact.readonly is not False
+                    or not isinstance(node.target, THIRName)
+                    or node.target.result_type != fact.type
+                    or not isinstance(node.value, THIRCtorCall)
+                    or unwrap_readonly(unwrap_ref_type(node.value.result_type)) != fact.type
+                    or node.value.form is not Form.STORAGE
+                    or any(f is not None for f in (node.optional_layout, node.union_layout,
+                                                   node.alias_binding, node.storage_borrow, node.rebind_storage))):
+                _fail(owner, node, "invalid optional record assignment fact")
         if node.union_layout is not None:
             _check_union(owner, node, node.union_layout,
                          node.resolved_type if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else None)
@@ -702,6 +713,14 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         return
     if isinstance(node, (THIRIf, THIRWhile)):
         for binding in node.hoisted_bindings:
+            record = binding.optional_record_storage
+            if record is not None:
+                if (not isinstance(record, THIRBorrowedRecord) or record.readonly is not False
+                        or record.type != binding.type or binding.initially_assigned is not False
+                        or any(f is not None for f in (binding.borrowed_record, binding.optional_layout,
+                                                       binding.tuple_layout, binding.union_layout,
+                                                       binding.physical_default))):
+                    _fail(owner, node, "invalid optional record backing fact")
             if binding.optional_layout is not None:
                 _check_optional(owner, node, binding.optional_layout, binding.type)
             if binding.union_layout is not None:

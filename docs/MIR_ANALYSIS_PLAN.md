@@ -1828,6 +1828,9 @@ M3.12 separates physical wrapper initialization from source assignment, with
 actual default selections and independent must-facts. M3.13 admits scalar
 Optional/union if/while hoists through THIR
 ([wrapper storage plan](MIR_M3_WRAPPER_STORAGE_PLAN.md)).
+M3.14/M3.15 extend physical initialization to optional-backed plain-record
+hoists, separating record engagement and logical overwrite from wrapper
+lifetime and source assignment ([record storage plan](MIR_M3_RECORD_STORAGE_PLAN.md)).
 
 The following factored matrix covers the Cartesian product: a cell is M1 only
 when all three axes say M1 and the operation is in the explicit subset above.

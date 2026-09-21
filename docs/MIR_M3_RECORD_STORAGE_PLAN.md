@@ -1,7 +1,7 @@
 # Optional-backed record hoists: M3.14/M3.15
 
-Status: design approved. M3.14 implements the internal storage model;
-M3.15 producer integration remains pending. The completed batch closes the
+Status: implemented. M3.14 supplies the internal storage model;
+M3.15 connects the THIR producers. The batch closes the
 optional-storage record-hoist item of W1 in the
 [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md), within the admission
 limits below; it does not complete W1 or M3. Base: `29fc5fa3fd`.
@@ -21,10 +21,10 @@ def example(flag: bool) -> int32:
     return alias.value
 ```
 
-This already compiles. Its existing C++ has `std::optional<Cell> cell;`
+This already compiled before the batch. Its unchanged C++ has `std::optional<Cell> cell;`
 before the `if`, `cell = Cell(1);` inside it, and `Cell& alias = (*cell);`
-afterward. Source `cell` has type `Cell`, not `Optional[Cell]`. MIR currently
-reports missing hoisted-binding facts for this body.
+afterward. Source `cell` has type `Cell`, not `Optional[Cell]`. MIR now covers
+the body using explicit backing and assignment facts.
 
 Invariant: one hoisted source binding has one optional backing per activation
 of its emitted enclosing scope; wrapper construction, contained-record
@@ -140,11 +140,10 @@ visitors and tests together.
 ## Positive THIR facts and admission
 
 The shared `_optional_storage_hoist_entry` in `thir/lower/statements.py`
-currently records rendering and read/write conventions only. Give it a
-positive per-binding backing fact on the hoisted-binding metadata. The
-optional-local assignment route currently emits an unmarked `THIRAssign`;
-attach a positive constructor-assignment fact there. Validate consistency
-with the selected binding and layout. MIR must never infer these facts from
+records a positive per-binding backing fact on the hoisted-binding metadata.
+The optional-local assignment route attaches a positive constructor-assignment
+fact to `THIRAssign`. Validation checks consistency with the selected binding
+and layout. MIR must never infer these facts from
 `std::optional<...>` strings, pointer membership or a source type alone.
 
 Free functions, methods and constructor tails share the statement lowerer.
@@ -256,22 +255,23 @@ by the probes, and neither known defect is claimed fixed.
    unsupported siblings and distinct OWN-site controls. Verify the CLI dump
    for the newly covered bodies.
 
-Use one stacked branch, `mir-m3-record-hoists`, and finish each implementation
-step as one commit. The present design checkpoint is separate from completed
-implementation and must not be reported as M3.14.
+Use one stacked branch and finish each implementation step as one commit.
+Fold the approved design checkpoint into M3.14 when preparing those commits.
 
 Tests should exercise MIR directly or through unit-owned THIR sources; no
 compiler test may reach into `tests/cases`. Existing snippets remain C++/CPython
 controls. Add one condensed snippet only if corpus review finds the specific
 alias/hoist behavior lacks a focused runtime pin; do not duplicate incidental
-coverage blindly. Existing snapshots should not change. Consult before any
+coverage blindly. Corpus review found focused hoist coverage in
+`control_flow/hoist_nonvalue_branch`, `hoist_nonvalue_inner_scope` and
+`hoist_nonvalue_read_after_loop`, including mutation and nocopy guards; no
+additional snippet was needed. Existing snapshots should not change. Consult before any
 unexpected existing snapshot update.
 
-After approval: targeted tests per step, independent multi-agent defect review,
+Delivery gates: targeted tests per step, independent multi-agent defect review,
 master semantic-merge audit as needed, one full forced suite after the final
 implementation changes, then readiness/retrospective and commit preparation.
-Leave the branch for the user to merge. No full suite is needed for this
-documentation-only proposal.
+Leave the branch for the user to merge.
 
 Confidence: high in the producer semantics and backing/holder model, supported
 by code inspection, sibling surveys and runtime probes. The main implementation

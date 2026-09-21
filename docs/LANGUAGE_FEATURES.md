@@ -8614,8 +8614,9 @@ The approved [M3.14/M3.15 plan](MIR_M3_RECORD_STORAGE_PLAN.md) covers plain-reco
 if/while hoists backed by an implementation `std::optional<Cell>`. M3.14 models
 empty storage, an engaged record and an assigned source binding separately,
 including logical replacement without physical destruction on repeated writes.
-M3.15 THIR integration remains pending. Source semantics, diagnostics and C++
-emission are unchanged.
+M3.15 connects positive THIR backing and constructor-assignment facts for
+if/while hoists in the admitted synchronous functions, methods and constructor
+tails. Source semantics, diagnostics and C++ emission are unchanged.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

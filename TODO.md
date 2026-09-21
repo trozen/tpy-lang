@@ -1693,8 +1693,8 @@ alongside related feature work; only the big-rock deferrals live here.
   remain explicit unchecked work packages there, not an unspecified count of
   small numbered increments.
   `docs/MIR_M3_RECORD_STORAGE_PLAN.md` records approved M3.14/M3.15:
-  optional-backed record storage/engagement is implemented internally;
-  positive THIR facts for bounded if/while hoists remain next. Its factored
+  optional-backed record storage/engagement and positive THIR facts for bounded
+  plain-record if/while hoists are implemented. Its factored
   scope matrix maps excluded
   positions, shapes and slots to W1-W5 and M2/M4; those remain open.
   `docs/MIR_M3_LIVENESS_PLAN.md` records the approved M3.1/M3.2 design.
@@ -1734,8 +1734,8 @@ alongside related feature work; only the big-rock deferrals live here.
   exceptional cleanup, destructors, resumables and authority transition.
   M3.7/M3.8 are merged. `docs/MIR_M3_DECLARATIONS_PLAN.md` records implemented
   M3.9 late direct declarations and implemented M3.10 bounded ordinary hoisted
-  bindings/backing. Optional-storage record hoists, while borrowed-tuple hoists,
-  owning/mixed tuple backing, nonempty
+  bindings/backing. M3.14/M3.15 now cover bounded optional-storage record hoists.
+  While borrowed-tuple hoists, owning/mixed tuple backing, nonempty
   `hoist_slots`, unclassified rebind forms and the other matrix gaps remain
   explicit follow-up work; source availability and physical initialization
   must not be conflated to admit them.

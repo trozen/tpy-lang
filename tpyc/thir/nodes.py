@@ -1767,6 +1767,7 @@ class THIRHoistedBinding:
     physical_default: THIRWrapperDefault | None = None
     placement: THIRStoragePlacement = THIRStoragePlacement.SCOPE
     initially_assigned: bool = False
+    optional_record_storage: THIRBorrowedRecord | None = None
 
 
 @dataclass(frozen=True)
@@ -2048,6 +2049,7 @@ class THIRAssign(THIRStmt):
     statement so the qualified name stays a real
     lvalue (a statement-expression wrap would be an rvalue)."""
     target: THIRExpr
+    optional_record_assignment: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
     union_literal: THIRUnionLiteral | None = field(default=None, kw_only=True)

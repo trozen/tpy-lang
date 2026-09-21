@@ -2923,7 +2923,7 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
         if flavor is HoistFlavor.OPT_STORAGE:
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
             hoist_decls.append(_optional_storage_hoist_entry(
-                name, vtype, declared, lc))
+                name, vtype, declared, lc, bindings))
             _witness("with.hoist_optional_storage")
             continue
         if flavor is HoistFlavor.BORROW_TUPLE:
@@ -3418,7 +3418,8 @@ def _borrow_tuple_hoist_entry(name: str, var_type: 'TupleType',
 
 def _optional_storage_hoist_entry(name: str, var_type: TpyType,
                                   declared: dict[str, TpyType],
-                                  lc: '_LowerCtx') -> tuple[str, str]:
+                                  lc: '_LowerCtx',
+                                  bindings: list[THIRHoistedBinding] | None = None) -> tuple[str, str]:
     """One OPTIONAL_STORAGE hoist predecl (`std::optional<T> name;`) plus its
     read/write/move model: deref reads and `->` access via `pointers`, plain
     engaging assigns via `optional_locals`, last-use moves via
@@ -3428,6 +3429,9 @@ def _optional_storage_hoist_entry(name: str, var_type: TpyType,
     lc.pointers.add(name)
     lc.optional_locals.add(name)
     lc.movable_locals.add(name)
+    record = borrowed_record(var_type, False, lc.analyzer)
+    if bindings is not None and record is not None:
+        bindings.append(THIRHoistedBinding(name, var_type, optional_record_storage=record))
     return (name, f"std::optional<{lc.render_type(var_type)}>")
 
 
@@ -3699,7 +3703,7 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                 # OPTIONAL_STORAGE: single-bind rvalue local -- plain
                 # assigns engage the optional, reads deref through it.
                 hoist_decls.append(_optional_storage_hoist_entry(
-                    name, var_type, declared, lc))
+                    name, var_type, declared, lc, bindings))
                 _witness("if.hoist_optional_storage")
                 continue
             hoist_decls.append((name, f"{cpp}*"))
@@ -9400,11 +9404,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 note_detail("reseat.opt_storage_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.opt_storage")
+            value = _lower_rebind_rvalue(stmt.init, target_t, lc, declared, loc)
             return THIRAssign(
                 target=THIRName(result_type=target_t, name=stmt.name,
                                 loc=loc),
-                value=_lower_rebind_rvalue(stmt.init, target_t, lc, declared,
-                                           loc),
+                value=value,
+                optional_record_assignment=(borrowed_record(target_t, False, analyzer)
+                                            if isinstance(value, THIRCtorCall) else None),
                 loc=loc)
         # A None reseat of a wide-opt POINTER binding nulls the pointer
         # (`z = nullptr;`) -- slot or no slot; checked before the

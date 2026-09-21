@@ -165,7 +165,8 @@ Coverage is the intersection of these axes and existing operation gates:
 | Slot | Local wrapper hoists in their actual containing scope; existing parameter and scalar-return controls | New wrapper parameter reseats/returns, fields, elements, globals/captures and escapes: M2/W5/M4 |
 | Qualifier/operation | Existing scalar wrapper copies, selection, assignment, readonly-read controls and normal exits | New readonly writes, Own contracts, record copy/move/IN_PLACE cycles and custom effects: W1/W3/M4 |
 
-Optional-storage record hoists are the next distinct W1 backing problem:
+Optional-storage record hoists were the next distinct W1 backing problem,
+now covered within the [M3.14/M3.15 bounds](MIR_M3_RECORD_STORAGE_PLAN.md):
 `_optional_storage_hoist_entry` emits `std::optional<Cell>` for source type
 `Cell`. That is implementation backing, not source type `Optional[Cell]`.
 It has one backing per binding in the containing scope; existing BODY OWN

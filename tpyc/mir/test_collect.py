@@ -72,6 +72,28 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     assert out == dump(SOURCE)
 
 
+def test_record_hoist_dump_handles_a_contradictory_assignment_path() -> None:
+    out = dump('''from tpy import int32
+class Cell:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+
+def contradictory(flag: bool) -> int32:
+    if flag:
+        if flag:
+            return 0
+        else:
+            cell = Cell(1)
+    else:
+        return 0
+    return cell.value
+''')
+    assert re.search(r"fn .*::contradictory@[^\n]+ -> int32", out), out
+    assert "optional_assign" in out
+    assert "no conflicts in covered replacement events" in out
+
+
 def test_generic_and_resumable_bodies_are_not_monomorphic_functions() -> None:
     out = dump("""\
 from tpy import int32
