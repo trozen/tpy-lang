@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from contextlib import contextmanager
 from collections.abc import Iterator
 
-from ..identity_map import IdentityMap
+from ..identity_map import IdentityMap, IdentitySet
 from ..codegen_cpp.forms import LoopBinding, loop_binding_kind
 from ..type_def_registry import is_list, is_array, is_set, is_dict
 from ..parse import RebindStorage, SourceLocation
@@ -59,6 +59,8 @@ class _Coverage:
         self.range_counters: set[str] = set()
         self.containers: dict[str, th.THIRNativeContainer] = {}
         self.iteration_references: set[str] = set()
+        self.full_expressions: IdentitySet[th.THIRExpr] = IdentitySet()
+        self.active_temporaries: list[th.THIRCtorCall] | None = None
 
     def global_binding(self, expr: th.THIRName | th.THIRModuleVar | th.THIRWalrus,
                        *, write: bool = False) -> TpyType:
@@ -219,7 +221,7 @@ class _Coverage:
                          "unsupported local type or form")
                 _require(stmt, stmt.name not in self.bindings, "duplicate binding")
                 if stmt.init is not None:
-                    _require(stmt, self.expr(stmt.init) == stmt.resolved_type,
+                    _require(stmt, self.full_expression(stmt.init) == stmt.resolved_type,
                              "initializer type mismatch")
                 self.bindings[stmt.name] = stmt.resolved_type
             else:
@@ -244,14 +246,14 @@ class _Coverage:
         self.tuples[stmt.name] = layout
         self.tuple_roots[stmt.name] = self.tuple_roots[fact.source]
 
-    def record_value(self, expr: th.THIRExpr, typ: NominalType) -> None:
+    def record_value(self, expr: th.THIRExpr, typ: NominalType, *, temporary: bool = False) -> None:
         definition = self.definitions.get(expr, typ)
         self.records[typ] = definition
         _require(expr, unwrap_readonly(unwrap_ref_type(expr.result_type)) == typ,
                  "record initializer type mismatch")
         match expr:
             case th.THIRCtorCall():
-                _plain(expr, {"type_cpp", "args"})
+                _plain(expr, {"type_cpp", "args"} | ({"full_expression_storage"} if temporary else set()))
                 _require(expr, expr.form is th.Form.STORAGE, "constructor form")
                 params = definition.constructor.params
                 _require(expr, len(expr.args) == len(params), "incomplete constructor arguments")
@@ -689,6 +691,9 @@ class _Coverage:
     def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> TpyType | th.THIRBorrowedRecord:
         _plain(expr, {"receiver", "field_cpp", "field_identity", "is_arrow"})
         match expr.receiver:
+            case th.THIRCtorCall():
+                _require(expr, not write and not expr.is_arrow, "temporary field requires scalar read")
+                reference = self.temporary(expr.receiver)
             case th.THIRFieldAccess():
                 reference = self.field(expr.receiver)
                 _require(expr, isinstance(reference, th.THIRBorrowedRecord), "field needs record storage")
@@ -718,6 +723,29 @@ class _Coverage:
         member = th.THIRBorrowedRecord(unwrap_readonly(fact.type), readonly)
         self.reference(expr, member, expr.result_type)
         return member
+
+    def temporary(self, expr: th.THIRCtorCall) -> th.THIROwnedRecord:
+        fact = expr.full_expression_storage
+        _require(expr, self.active_temporaries is not None, "temporary needs full-expression boundary")
+        _require(expr, isinstance(fact, th.THIROwnedRecord) and fact.type == expr.result_type
+                 and fact.readonly is False, "missing or invalid full-expression storage")
+        self.record_value(expr, fact.type, temporary=True)
+        self.active_temporaries.append(expr)
+        return fact
+
+    def full_expression(self, expr: th.THIRExpr, *, discard: bool = False) -> TpyType:
+        assert self.active_temporaries is None
+        self.active_temporaries = []
+        try:
+            if discard and isinstance(expr, th.THIRCtorCall):
+                typ = self.temporary(expr).type
+            else:
+                typ = self.expr(expr)
+            if self.active_temporaries:
+                self.full_expressions.add(expr)
+            return typ
+        finally:
+            self.active_temporaries = None
 
     def expr(self, expr: th.THIRExpr) -> TpyType:
         _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
@@ -790,7 +818,10 @@ class _Coverage:
                     self.global_binding(expr, write=True)
                 else:
                     _require(expr, self.bindings.get(expr.name) == typ, "walrus needs existing scalar local")
+                before = len(self.active_temporaries or ())
                 _require(expr, self.expr(expr.value) == typ, "walrus type mismatch")
+                _require(expr, expr.global_binding is None or len(self.active_temporaries or ()) == before,
+                         "temporary global assignment")
                 writing = True
             case th.THIRUnaryNot():
                 _plain(expr, {"operand"})
@@ -822,8 +853,13 @@ class _Coverage:
                 writing = self.writes[expr.left] or self.writes[expr.right]
             case th.THIRValueSelect():
                 _plain(expr, {"lhs", "rhs", "op", "lhs_temp_cpp"})
-                _require(expr, expr.op in ("&&", "||") and typ == BOOL
-                         and self.expr(expr.lhs) == BOOL and self.expr(expr.rhs) == BOOL,
+                _require(expr, expr.op in ("&&", "||") and typ == BOOL, "unsupported value select")
+                before = len(self.active_temporaries or ())
+                _require(expr, self.expr(expr.lhs) == BOOL, "unsupported value select")
+                # A hoisted LHS has its own full expression and may extend a subobject's lifetime.
+                _require(expr, expr.lhs_temp_cpp is None or len(self.active_temporaries or ()) == before,
+                         "temporary in hoisted select operand")
+                _require(expr, self.expr(expr.rhs) == BOOL,
                          "unsupported value select")
                 # A pure bool select never needs a representation-changing temp.
                 _require(expr, expr.lhs_temp_cpp in (None, "auto&&"), "unsupported select temporary")
@@ -937,16 +973,19 @@ class _Coverage:
                          "write through scalar payload alias")
                 target_type = (self.field(stmt.target, write=True) if isinstance(stmt.target, th.THIRFieldAccess)
                                else self.expr(stmt.target))
-                _require(stmt, target_type == self.expr(stmt.value), "assignment type mismatch")
+                value_type = self.full_expression(stmt.value)
+                _require(stmt, not (isinstance(stmt.target, th.THIRName) and stmt.target.global_binding is not None
+                                   and stmt.value in self.full_expressions), "temporary global assignment")
+                _require(stmt, target_type == value_type, "assignment type mismatch")
             case th.THIRExprStmt():
                 _plain(stmt, {"expr", "void_cast"})
-                self.expr(stmt.expr)
+                self.full_expression(stmt.expr, discard=True)
             case th.THIRReturn():
                 _plain(stmt, {"value"})
                 if stmt.value is None:
                     _require(stmt, isinstance(self.fn.return_type, VoidType), "missing return value")
                 else:
-                    _require(stmt, self.expr(stmt.value) == self.fn.return_type, "return type mismatch")
+                    _require(stmt, self.full_expression(stmt.value) == self.fn.return_type, "return type mismatch")
             case th.THIRForRange():
                 self.range_loop(stmt, loops)
             case th.THIRForEach():
@@ -957,7 +996,7 @@ class _Coverage:
                 allowed |= {"hoist_decls", "hoisted_bindings"}
                 _plain(stmt, allowed)
                 self.hoists(stmt)
-                _require(stmt, self.expr(stmt.condition) == BOOL, "condition requires bool")
+                _require(stmt, self.full_expression(stmt.condition) == BOOL, "condition requires bool")
                 if isinstance(stmt, th.THIRIf):
                     for arm in (stmt.then_body, stmt.else_body):
                         self.scoped(arm, loops)
@@ -1125,6 +1164,7 @@ class _Builder:
         self.storage: dict[str, MIRSlotId] = {}
         self.global_facts = coverage.globals
         self.globals: dict[MIRGlobalId, MIRSlotId] = {}
+        self.full_expressions = coverage.full_expressions
 
     def block(self) -> _Block:
         block = _Block(MIRBlockId(self.body, len(self.blocks)), self.region)
@@ -1257,6 +1297,11 @@ class _Builder:
             fact = expr.global_binding
             return MIRPlace(self.globals[MIRGlobalId(fact.module, fact.name)])
         match expr:
+            case th.THIRCtorCall():
+                storage = self.slot(expr.result_type, storage=True, storage_duration=self.region)
+                self.write(storage, self.record_value(expr), expr.loc,
+                           MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION))
+                return MIRPlace(storage)
             case th.THIRSelf():
                 return MIRPlace(self.bindings["self"])
             case th.THIRNarrowedRead():
@@ -1273,7 +1318,7 @@ class _Builder:
                 assert isinstance(expr, th.THIRFieldAccess) and expr.field_identity is not None
                 member = expr.field_identity
                 base = self.place(expr.receiver)
-                inline = isinstance(expr.receiver, th.THIRFieldAccess) or (
+                inline = isinstance(expr.receiver, (th.THIRFieldAccess, th.THIRCtorCall)) or (
                     isinstance(expr.receiver, th.THIRSubscript) and isinstance(
                         self.tuple_exprs[expr.receiver.receiver].elements[expr.receiver.tuple_index], th.THIROwnedRecord))
                 deref = () if inline else (MIRDeref(),)
@@ -1380,6 +1425,27 @@ class _Builder:
             case _:
                 assert isinstance(expr, th.THIRMove)
                 return MIRMove(self.storage[expr.value.name])
+
+    @contextmanager
+    def full_expression(self, expr: th.THIRExpr) -> Iterator[None]:
+        if expr not in self.full_expressions:
+            yield
+            return
+        entry, after = self.block(), self.block()
+        self.end(MIRGoto(entry.id, expr.loc))
+        self.current = entry
+        with self.scope():
+            yield
+            self.end(MIRGoto(after.id, expr.loc))
+        self.current = after
+
+    def full_expression_value(self, expr: th.THIRExpr) -> MIRSlotId:
+        if expr not in self.full_expressions:
+            return self.expr(expr)
+        result = self.slot(expr.result_type)
+        with self.full_expression(expr):
+            self.write(result, MIRRead(MIRPlace(self.expr(expr))), expr.loc)
+        return result
 
     def initial_mode(self) -> MIRRecordWriteMode:
         return (MIRRecordWriteMode.INITIALIZE_ONCE if self.region.index == 0
@@ -1521,20 +1587,26 @@ class _Builder:
                 case th.THIRVarDecl():
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name)
                     if stmt.init is not None:
-                        self.write(dest, MIRRead(MIRPlace(self.expr(stmt.init))), loc)
+                        with self.full_expression(stmt.init):
+                            self.write(dest, MIRRead(MIRPlace(self.expr(stmt.init))), loc)
                     self.bindings[stmt.name] = dest
                 case th.THIRAssign():
                     if isinstance(stmt.target.result_type, TupleType):
                         self.write(self.place(stmt.target), MIRTupleCopy(self.tuple_expr(stmt.value)), loc)
                     else:
-                        self.write(self.place(stmt.target), MIRRead(MIRPlace(self.expr(stmt.value))), loc)
+                        with self.full_expression(stmt.value):
+                            self.write(self.place(stmt.target), MIRRead(MIRPlace(self.expr(stmt.value))), loc)
                 case th.THIRExprStmt():
-                    self.expr(stmt.expr)
+                    with self.full_expression(stmt.expr):
+                        if isinstance(stmt.expr, th.THIRCtorCall):
+                            self.place(stmt.expr)
+                        else:
+                            self.expr(stmt.expr)
                 case th.THIRReturn():
-                    self.end(MIRReturn(self.expr(stmt.value) if stmt.value is not None else None, loc))
+                    self.end(MIRReturn(self.full_expression_value(stmt.value) if stmt.value is not None else None, loc))
                 case th.THIRIf():
                     self.hoists(stmt)
-                    cond = self.expr(stmt.condition)
+                    cond = self.full_expression_value(stmt.condition)
                     yes, no = self.block(), self.block()
                     self.branch(cond, yes.id, no.id, loc)
                     exits = []
@@ -1556,7 +1628,7 @@ class _Builder:
                     cond_block, body, normal, after = self.block(), self.block(), self.block(), self.block()
                     self.end(MIRGoto(cond_block.id, loc))
                     self.current = cond_block
-                    self.branch(self.expr(stmt.condition), body.id, normal.id, loc)
+                    self.branch(self.full_expression_value(stmt.condition), body.id, normal.id, loc)
                     self.current = body
                     self.loops.append((cond_block.id, after.id))
                     self.scoped(stmt.body)

@@ -65,7 +65,7 @@ class THIRBorrowedRecord:
 
 @dataclass(frozen=True)
 class THIROwnedRecord:
-    """An inline aggregate member, distinct from a borrowed record identity."""
+    """Inline record storage, distinct from a borrowed record identity."""
     type: NominalType
     readonly: bool = False
 
@@ -846,6 +846,8 @@ class THIRCtorCall(THIRExpr):
     args: tuple[THIRExpr, ...] = ()
     # @native_c POD aggregate init: `::Name{args}`.
     brace_init: bool = False
+    # Only inline materialization sites have full-expression backing.
+    full_expression_storage: THIROwnedRecord | None = None
 
 
 @dataclass(frozen=True)

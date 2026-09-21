@@ -290,6 +290,13 @@ def _check_hoists(owner: str, node: THIRIf | THIRWhile | THIRForRange | THIRForE
 
 
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, THIRCtorCall) and node.full_expression_storage is not None:
+        fact = node.full_expression_storage
+        if (not isinstance(fact, THIROwnedRecord) or not isinstance(fact.type, NominalType)
+                or fact.type in (BOOL, INT32) or not fact.type.qualified_name()
+                or fact.type.type_args or fact.type.is_protocol or fact.type != node.result_type
+                or fact.readonly is not False or node.form is not Form.STORAGE or node.brace_init):
+            _fail(owner, node, "full-expression storage disagrees with constructor")
     if isinstance(node, THIRVarDecl) and node.native_container is not None:
         _check_native_container(owner, node, node.native_container, node.resolved_type)
         if (node.form is not Form.BORROW or not isinstance(node.init, THIRName)
@@ -499,7 +506,9 @@ def _check_node(owner: str, node: THIRNode) -> None:
         direct = isinstance(node.receiver, (THIRName, THIRSelf)) or (
             isinstance(node.receiver, THIRFieldAccess) and node.receiver.field_identity is not None) or (
             isinstance(node.receiver, THIRSubscript) and node.receiver.tuple_index is not None) or (
-            isinstance(node.receiver, THIRNarrowedRead) and node.receiver.union_extraction is not None)
+            isinstance(node.receiver, THIRNarrowedRead) and node.receiver.union_extraction is not None) or (
+            isinstance(node.receiver, THIRCtorCall) and node.receiver.full_expression_storage is not None
+            and fact.type in (BOOL, INT32) and not node.is_arrow)
         typ = unwrap_readonly(fact.type)
         record = (isinstance(typ, NominalType) and typ not in (BOOL, INT32)
                   and not typ.type_args and not typ.is_protocol)

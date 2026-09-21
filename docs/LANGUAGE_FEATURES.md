@@ -8651,6 +8651,13 @@ iteration, structural mutation, reference-target hoists and other element
 shapes remain uncovered. This is separate from tuple completeness and does
 not change generated C++, source diagnostics or borrow-checker authority.
 
+M3.22 adds the [full-expression temporary storage contract](MIR_M3_EXPRESSION_TEMPORARIES_PLAN.md)
+at the internal THIR/MIR boundary. Verified plain-record constructor temporaries
+use child storage regions; evaluated scalar results survive in the parent.
+Lazy operands share their enclosing expression's end, and loop conditions
+start a fresh activation each evaluation. M3.23's source producers are planned;
+general call temporaries, reference escapes and custom cleanup remain uncovered.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).
