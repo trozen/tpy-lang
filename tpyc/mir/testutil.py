@@ -14,12 +14,13 @@ from .nodes import (
 )
 from .region_flow import MIRRegionFlow
 from .validate import statement_reads
+from .coverage import owned_tuple
 
 
 @dataclass(frozen=True)
 class Reference:
     identity: int
-    path: tuple[MIRFieldId, ...] = ()
+    path: tuple[MIRFieldId | MIRTupleIndex, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,7 @@ class PayloadAlias:
 
 
 Value = int | bool | Reference | TupleValue | OptionalValue | UnionValue | PayloadAlias
-Record = dict[MIRFieldId, 'int | bool | Record']
+Record = dict[MIRFieldId | MIRTupleIndex, 'int | bool | Record']
 Heap = dict[int, Record]
 
 
@@ -151,7 +152,20 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     value = read(rhs.source)
                     assert isinstance(value, Reference)
                 case MIRTupleConstruct():
-                    value = TupleValue(tuple(values[src] for src in rhs.elements))
+                    target = slots[stmt.target.root]
+                    elements = []
+                    backing: Record = {}
+                    for i, src in enumerate(rhs.elements):
+                        if isinstance(src, MIRConstruct):
+                            layout = records[target.tuple_layout.elements[i].type]
+                            backing[MIRTupleIndex(i)] = {f.id: values[s] for f, s in zip(layout.fields, src.fields)}
+                            elements.append(Reference(next_identity, (MIRTupleIndex(i),)))
+                        else:
+                            elements.append(values[src])
+                    if owned_tuple(target):
+                        objects[next_identity] = backing
+                        next_identity += 1
+                    value = TupleValue(tuple(elements))
                 case MIRTupleCopy():
                     source = values[rhs.source]
                     assert isinstance(source, TupleValue)

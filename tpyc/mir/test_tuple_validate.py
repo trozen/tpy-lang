@@ -117,7 +117,7 @@ def test_tuple_layout_validation() -> None:
         (MIRTupleLayout(()), "tuple layout arity"),
         (MIRTupleLayout((MIRTupleElement(BOOL), MIRTupleElement(INT32))), "tuple scalar"),
         (MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.RECORD_STORAGE), MIRTupleElement(INT32))),
-         "tuple reference"),
+         "tuple slot"),
     ):
         invalid(replace(GOOD, slots=(*SLOTS[:3], replace(SLOTS[3], tuple_layout=layout), *SLOTS[4:])), reason)
     invalid(replace(GOOD, slots=(*SLOTS[:3], replace(SLOTS[3], kind=MIRSlotKind.PARAMETER), *SLOTS[4:])),

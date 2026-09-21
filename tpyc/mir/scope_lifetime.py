@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from types import MappingProxyType
 
-from .coverage import scalar_wrapper
+from .coverage import owned_tuple, scalar_wrapper
 from .dependencies import MIRDependencies, MIRReferent, _dependencies
 from .dump import _place
 from .liveness import MIRLiveness, _liveness
@@ -15,6 +15,7 @@ from .nodes import (
     MIRNotCovered, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
     MIRRecordWrite, MIRRegionId, MIRSlotId, MIRSlotKind, MIRStorageDuration,
     MIRUnionPayload, MIRValueKind, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRTupleInitialization,
 )
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind, MIREngagement
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -52,7 +53,7 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
     if not fn.regions:
         return MIRNotCovered(fn.id, "scope ends", "missing emitted storage regions")
     roots = {s.id: s for s in fn.slots if s.value_kind is MIRValueKind.RECORD_STORAGE
-             or s.kind is MIRSlotKind.LOCAL and scalar_wrapper(s)}
+             or owned_tuple(s) or s.kind is MIRSlotKind.LOCAL and scalar_wrapper(s)}
     for slot in roots.values():
         if slot.storage_duration is None:
             return MIRNotCovered(fn.id, "scope ends", f"missing storage placement for %{slot.id.index}")
@@ -68,7 +69,9 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
                 initialized[block.id].add(stmt.target.root)
                 continue
             record = isinstance(stmt.value, (MIRConstruct, MIRCopy, MIRMove))
-            if not isinstance(stmt.storage_write, MIRRecordWrite if record else MIRPayloadWrite):
+            expected = (MIRTupleInitialization if owned_tuple(roots[stmt.target.root])
+                        else MIRRecordWrite if record else MIRPayloadWrite)
+            if not isinstance(stmt.storage_write, expected):
                 return MIRNotCovered(fn.id, "scope ends", "missing storage initialization/write fact", stmt.loc)
             initialized[block.id].add(stmt.target.root)
     # A body-hoisted OWN site's optional backing can remain unengaged forever.

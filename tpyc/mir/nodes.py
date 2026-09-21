@@ -212,7 +212,7 @@ class MIRConstruct:
 
 @dataclass(frozen=True)
 class MIRTupleConstruct:
-    elements: tuple[MIRSlotId, ...]
+    elements: tuple[MIRSlotId | MIRConstruct, ...]
 
 
 @dataclass(frozen=True)
@@ -311,11 +311,16 @@ class MIRPayloadWrite:
 
 
 @dataclass(frozen=True)
+class MIRTupleInitialization:
+    """Initialize inline members together, once per backing activation."""
+
+
+@dataclass(frozen=True)
 class MIRAssign:
     target: MIRPlace
     value: MIRRvalue
     loc: SourceLocation | None = None
-    storage_write: MIRRecordWrite | MIRPayloadWrite | None = None
+    storage_write: MIRRecordWrite | MIRPayloadWrite | MIRTupleInitialization | None = None
 
 
 @dataclass(frozen=True)

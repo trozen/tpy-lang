@@ -2,7 +2,13 @@
 
 from dataclasses import MISSING, fields
 
-from .nodes import MIRSlot, MIRValueKind
+from .nodes import MIRSlot, MIRTupleElement, MIRTupleLayout, MIRValueKind
+
+
+def owned_tuple(slot: MIRSlot) -> bool:
+    return (slot.value_kind is MIRValueKind.TUPLE and isinstance(slot.tuple_layout, MIRTupleLayout)
+            and any(isinstance(m, MIRTupleElement) and m.kind is MIRValueKind.RECORD_STORAGE
+                    for m in slot.tuple_layout.elements))
 
 
 def scalar_wrapper(slot: MIRSlot) -> bool:

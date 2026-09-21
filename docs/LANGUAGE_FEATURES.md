@@ -8618,6 +8618,14 @@ M3.15 connects positive THIR backing and constructor-assignment facts for
 if/while hoists in the admitted synchronous functions, methods and constructor
 tails. Source semantics, diagnostics and C++ emission are unchanged.
 
+The [approved M3.16/M3.17 plan](MIR_M3_TUPLE_STORAGE_PLAN.md) extends MIR
+inspection to flat local tuples that own fresh plain records inline, such as
+`(Cell(1), 7)`. M3.16 implements the internal model, separating each owned
+element's lifetime from borrowed tuple payloads; M3.17 producer integration
+remains pending. This is analysis coverage, not a change to
+source behavior; tuple copy/move, hoists, mixed call-result producers and
+general expression temporaries remain separate work.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

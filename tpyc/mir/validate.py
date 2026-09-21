@@ -14,13 +14,13 @@ from .nodes import (
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode, MIRStorageInit, MIRRecordStorageInit, MIRStatement,
-    MIRRegionId, MIREdge, MIRRecordStorageKind,
+    MIRRegionId, MIREdge, MIRRecordStorageKind, MIRTupleInitialization,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
 )
 from .presence import MIRPresence, _analyze_presence
-from .coverage import scalar_wrapper
+from .coverage import owned_tuple, scalar_wrapper
 from .region_flow import MIRRegionFlow, outgoing_edges
 
 
@@ -117,7 +117,8 @@ def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
         case MIRConstruct(fields=fields):
             return fields
         case MIRTupleConstruct(elements=elements):
-            return elements
+            return tuple(s for element in elements
+                         for s in (element.fields if isinstance(element, MIRConstruct) else (element,)))
         case MIRCompare(left=left, right=right):
             return (left, right)
         case MIRNot(operand=operand):
@@ -235,7 +236,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                      "optional backing needs local record storage")
         if slot.storage_duration is not None:
             _require(isinstance(slot.storage_duration, (MIRStorageDuration, MIRRegionId))
-                     and (slot.value_kind is MIRValueKind.RECORD_STORAGE or scalar_wrapper(slot)
+                     and (slot.value_kind is MIRValueKind.RECORD_STORAGE or scalar_wrapper(slot) or owned_tuple(slot)
                           or slot.value_kind is MIRValueKind.UNION)
                      and ((slot.storage_duration is MIRStorageDuration.CALLER
                            and slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.UNION)
@@ -297,14 +298,21 @@ def _validate_structure(fn: MIRFunction) -> None:
         elif slot.value_kind is MIRValueKind.TUPLE:
             layout = slot.tuple_layout
             _require(isinstance(slot.type, TupleType) and isinstance(layout, MIRTupleLayout)
-                     and slot.form is Form.VALUE and not slot.readonly, "unsupported tuple slot")
+                     and slot.form is (Form.STORAGE if owned_tuple(slot) else Form.VALUE)
+                     and not slot.readonly, "unsupported tuple slot")
             _require(len(layout.elements) == len(slot.type.element_types), "tuple layout arity")
+            if owned_tuple(slot):
+                _require(slot.kind is MIRSlotKind.LOCAL and slot.storage_duration is not None,
+                         "owned tuple needs local backing placement")
             for member, typ in zip(layout.elements, slot.type.element_types):
                 _require(isinstance(member, MIRTupleElement) and type(member.readonly) is bool,
                          "invalid tuple element")
                 if member.kind is MIRValueKind.SCALAR:
                     _require(member.type in (BOOL, INT32) and typ == member.type and not member.readonly,
                              "invalid tuple scalar")
+                elif member.kind is MIRValueKind.RECORD_STORAGE:
+                    _require(member.type in records and unwrap_readonly(typ) == member.type
+                             and (typ == member.type or member.readonly), "invalid owned tuple record")
                 else:
                     _require(member.kind is MIRValueKind.BORROWED_RECORD
                              and isinstance(member.type, NominalType)
@@ -407,6 +415,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                     optional_member = False
                 case MIRField():
                     _require(kind is MIRValueKind.RECORD_STORAGE, "field needs record storage")
+                    tuple_member = False
                     _require(not (write and readonly), "store through readonly storage")
                     _require(isinstance(projection.id, MIRFieldId) and projection.id.owner == typ
                              and bool(projection.id.name), "field owner mismatch")
@@ -493,7 +502,20 @@ def _validate_structure(fn: MIRFunction) -> None:
                 continue
             value = stmt.value
             fact = stmt.storage_write
-            if isinstance(fact, MIRPayloadWrite):
+            if isinstance(fact, MIRTupleInitialization):
+                _require(not stmt.target.projections and owned_tuple(target)
+                         and isinstance(value, MIRTupleConstruct), "tuple initialization needs owning tuple construction")
+                _require(target.id not in initialized_storage, "repeated tuple initialization")
+                initialized_storage.add(target.id)
+                if isinstance(target.storage_duration, MIRRegionId):
+                    _require(target.storage_duration == block.region, "scoped initialization needs owning region")
+                    region_initializations[target.id] = block.id
+                else:
+                    _require(target.storage_duration is MIRStorageDuration.BODY
+                             and (not fn.regions or block.region == blocks[fn.entry].region),
+                             "tuple initialization needs owning placement")
+                    owning_blocks.add(block.id)
+            elif isinstance(fact, MIRPayloadWrite):
                 _require(isinstance(fact.mode, MIRPayloadWriteMode), "invalid payload write mode")
                 _require(not stmt.target.projections and target.kind is MIRSlotKind.LOCAL
                          and scalar_wrapper(target)
@@ -540,6 +562,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  "invalid in-place rebind owner or target")
             else:
                 _require(fact is None, "invalid storage write fact")
+            if owned_tuple(target) and not stmt.target.projections:
+                _require(isinstance(fact, MIRTupleInitialization), "owned tuple needs initialization fact")
             if target.record_storage is MIRRecordStorageKind.OPTIONAL and not stmt.target.projections:
                 _require(isinstance(fact, MIRRecordWrite) and fact.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN,
                          "optional backing needs explicit assignment fact")
@@ -614,11 +638,27 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and target.kind is not MIRSlotKind.PARAMETER,
                              "tuple operation needs tuple destination")
                     if isinstance(value, MIRTupleConstruct):
-                        elements = tuple(MIRTupleElement(slots[s].type, slots[s].value_kind, slots[s].readonly)
-                                         for s in value.elements)
+                        _require(len(value.elements) == len(target.tuple_layout.elements),
+                                 "tuple payload type or access mismatch")
+                        elements = []
+                        for source, member in zip(value.elements, target.tuple_layout.elements):
+                            if isinstance(source, MIRConstruct):
+                                _require(member.kind is MIRValueKind.RECORD_STORAGE,
+                                         "tuple constructor needs inline record member")
+                                fields = records[member.type].fields
+                                _require(len(source.fields) == len(fields) and all(
+                                    slot_type(s) == f.type and slots[s].value_kind is MIRValueKind.SCALAR
+                                    for s, f in zip(source.fields, fields)), "incomplete or mistyped tuple record construction")
+                                elements.append(member)
+                            else:
+                                _require(member.kind is not MIRValueKind.RECORD_STORAGE,
+                                         "inline tuple member needs constructor")
+                                elements.append(MIRTupleElement(slots[source].type, slots[source].value_kind,
+                                                               slots[source].readonly))
                     else:
                         source = slots[value.source]
                         _require(source.value_kind is MIRValueKind.TUPLE, "tuple copy needs tuple source")
+                        _require(not owned_tuple(source) and not owned_tuple(target), "owning tuple copy is unsupported")
                         elements = source.tuple_layout.elements
                     _require(len(elements) == len(target.tuple_layout.elements)
                              and all(compatible_element(src, dst)

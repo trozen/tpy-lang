@@ -6,7 +6,7 @@ from .nodes import (
     MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
+    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
 )
@@ -101,7 +101,10 @@ def dump_function(fn: MIRFunction) -> str:
                 case MIRConstruct(fields=fields):
                     rhs = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")"
                 case MIRTupleConstruct(elements=elements):
-                    rhs = "tuple (" + ", ".join(f"%{s.index}" for s in elements) + ")"
+                    rhs = "tuple (" + ", ".join(
+                        "construct (" + ", ".join(f"%{s.index}" for s in element.fields) + ")"
+                        if isinstance(element, MIRConstruct) else f"%{element.index}"
+                        for element in elements) + ")"
                 case MIRTupleCopy(source=source):
                     rhs = f"tuple-copy %{source.index}"
                 case MIROptionalConstruct(source=source):
@@ -130,7 +133,8 @@ def dump_function(fn: MIRFunction) -> str:
                 case _:
                     raise AssertionError("validated rvalue missing dump")
             fact = stmt.storage_write
-            write = f" [{fact.mode.name.lower()}]" if fact is not None else ""
+            write = (" [initialize-tuple]" if isinstance(fact, MIRTupleInitialization)
+                     else f" [{fact.mode.name.lower()}]" if fact is not None else "")
             lines.append(f"  {_place(stmt.target)} = {rhs}{write}{_location(stmt.loc)}")
         term = block.terminator
         match term:

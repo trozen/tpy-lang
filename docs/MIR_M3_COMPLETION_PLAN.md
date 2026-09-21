@@ -63,6 +63,11 @@ the others visible.
   for bounded plain-record if/while hoists.
 - [ ] Cover remaining owning/mixed aggregate backing and materialized expression
   temporaries, with positive producer facts for placement and each write.
+  The [approved M3.16/M3.17 batch](MIR_M3_TUPLE_STORAGE_PLAN.md) covers flat
+  constructor-owned local tuples, with mixed ownership at the internal IR
+  boundary. M3.16 implements the internal model; THIR integration is pending.
+  Nested/selected aggregates, mixed source
+  producers and expression temporaries remain separate work.
 - [ ] Extend cyclic copy/move/in-place operations where their existing emitted
   behavior is representable; preserve activation and retained-reference rules.
 

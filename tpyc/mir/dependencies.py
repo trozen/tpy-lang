@@ -18,6 +18,7 @@ from .nodes import (
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
+from .coverage import owned_tuple
 
 
 @dataclass(frozen=True)
@@ -63,7 +64,7 @@ def _leaves(slot: MIRSlot) -> tuple[MIRPlace, ...]:
 def _coverage(fn: MIRFunction) -> str | None:
     slots = {s.id: s for s in fn.slots}
     for slot in fn.slots:
-        root = (slot if slot.value_kind is MIRValueKind.RECORD_STORAGE else
+        root = (slot if slot.value_kind is MIRValueKind.RECORD_STORAGE or owned_tuple(slot) else
                 slots[slot.alias_source.root] if slot.alias_source is not None else None)
         if root is not None and root.storage_duration is None:
             return f"missing storage duration for %{root.id.index}"
@@ -108,7 +109,12 @@ def resolve_referents(place: MIRPlace, state: MIRReferents,
             if slots[place.root].value_kind is MIRValueKind.RECORD_STORAGE else state.get(leaf, empty))
     for projection in place.projections:
         match projection:
-            case MIRTupleIndex() | MIROptionalPayload() | MIRUnionPayload():
+            case MIRTupleIndex():
+                leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
+                member = slots[place.root].tuple_layout.elements[projection.index]
+                refs = (frozenset({MIRReferent(leaf)}) if member.kind is MIRValueKind.RECORD_STORAGE
+                        else state.get(leaf, empty))
+            case MIROptionalPayload() | MIRUnionPayload():
                 leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
                 refs = state.get(leaf, empty)
             case MIRDeref():
