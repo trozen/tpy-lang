@@ -24,9 +24,8 @@ from ..parse import RebindStorage, SourceLocation, TryTier
 from ..typesys import NominalType, ResolvedBinop, TpyType
 
 if TYPE_CHECKING:
-    # Compatibility metadata only (cpp_local_representation); imported under
-    # TYPE_CHECKING so THIR carries no runtime dependency on codegen.
-    from ..codegen_cpp.forms import LocalBinding
+    # The shared binding tags carry no runtime dependency on codegen here.
+    from ..codegen_cpp.forms import LocalBinding, LoopBinding
 
 
 class Form(Enum):
@@ -86,6 +85,19 @@ class THIRTupleStorageAlias:
     """An immutable name for existing tuple backing, with identical access."""
     source: str
     layout: THIRTupleLayout
+
+
+@dataclass(frozen=True)
+class THIRNativeContainer:
+    type: NominalType
+    element: TpyType | THIRBorrowedRecord
+    readonly: bool
+
+
+@dataclass(frozen=True)
+class THIRNativeIteration:
+    source: THIRNativeContainer
+    binding: 'LoopBinding'
 
 
 @dataclass(frozen=True)
@@ -1817,6 +1829,7 @@ class THIRVarDecl(THIRStmt):
     storage_placement: THIRStoragePlacement | None = field(default=None, kw_only=True)
     tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
     tuple_storage_alias: THIRTupleStorageAlias | None = field(default=None, kw_only=True)
+    native_container: THIRNativeContainer | None = field(default=None, kw_only=True)
     init: THIRExpr | None = None
     cpp_type: str | None = None
     form: Form = Form.VALUE
@@ -2607,6 +2620,7 @@ class THIRForRange(THIRStmt):
     # `if_branch_decls`): `{cpp_type} {name};` predecls before the loop.
     # Includes the loop var itself when `hoist_loop_var`.
     hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
 
 
 class TupleSourceBind(Enum):
@@ -2817,6 +2831,8 @@ class THIRForEach(THIRStmt):
     # (`std::vector<int32_t>* v = nullptr;` -- the hoisted container
     # unpack-target flavor; the with-family pointer hoist stays bare).
     hoist_ptr_inits: tuple[str, ...] = ()
+    hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
+    iteration: THIRNativeIteration | None = None
 
 
 @dataclass(frozen=True)
@@ -3523,6 +3539,7 @@ class THIRParam:
     optional_layout: THIROptionalLayout | None = None
     union_layout: THIRUnionLayout | None = None
     tuple_layout: THIRTupleLayout | None = None
+    native_container: THIRNativeContainer | None = None
 
 
 @dataclass(frozen=True)

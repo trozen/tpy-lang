@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
+from .storage import alias_binding, borrowed_record, native_container, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
@@ -140,6 +140,7 @@ from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr)
 from ...codegen_cpp.forms import (
+    loop_binding_kind,
     LocalBinding,
     is_plain_nonvalue,
     is_ptr_variant_union,
@@ -212,7 +213,7 @@ from ..nodes import (
     THIRExprStmt,
     THIRFieldAccess,
     THIRConsumingIter,
-    THIRForEach,
+    THIRForEach, THIRNativeIteration,
     THIRForIterProto,
     THIRForRange,
     THIRFormConvert,
@@ -4219,6 +4220,8 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
+            native_container=(native_container(vtype, is_const, lc.analyzer)
+                              if isinstance(src, THIRName) else None),
             storage_borrow=storage_borrow(src, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
@@ -15564,9 +15567,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # post-loop reads deref via lc.pointers.
             foreach_flavors[_hname] = _admit_nonvalue_hoist(
                 _hname, _hbare, lc, stmt, "foreach.hoist_type", leaf_ok=True)
+        foreach_bindings: list[THIRHoistedBinding] = []
         foreach_hoist_decls = tuple(
             _lower_hoist_predecls(foreach_hoists, declared, lc,
-                                  "foreach.hoist_decl", foreach_flavors))
+                                  "foreach.hoist_decl", foreach_flavors, foreach_bindings))
         body_declared = dict(declared)
         body_declared[stmt.var] = et
         # Frame-field shadowing: in a resumable
@@ -15899,6 +15903,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 hoist_loop_var=stmt.hoist_loop_var,
                 target_written=target_written,
                 hoist_decls=foreach_hoist_decls,
+                hoisted_bindings=tuple(foreach_bindings),
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                           "loop.for_else"),
                 loc=loc,
@@ -15975,6 +15980,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 const_loop_var=stmt.const_loop_var,
                 iterable_lvalue=True,
                 hoist_decls=foreach_hoist_decls,
+                hoisted_bindings=tuple(foreach_bindings),
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                           "loop.for_else"),
                 loc=loc,
@@ -16014,6 +16020,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         hoisted_bt = (_borrow_tuple_local_type(stmt.var, declared,
                                              lc.storage_tuple_locals)
                       if stmt.hoist_loop_var else None)
+        source_fact = (native_container(iterable.result_type,
+                       _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
+                       if route.iterable_lvalue and isinstance(iterable, THIRName)
+                       and route.consuming_native_name is None and not route.consuming_name else None)
+        iteration = (THIRNativeIteration(source_fact, loop_binding_kind(
+            et, stmt.const_loop_var, hoisted=stmt.hoist_loop_var)) if source_fact is not None else None)
         return THIRForEach(
             var=stmt.var,
             elem_type=et,
@@ -16028,6 +16040,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             hoisted_tuple_lift_cpp=(hoisted_bt.to_cpp_return()
                                     if hoisted_bt is not None else None),
             hoist_decls=foreach_hoist_decls,
+            hoisted_bindings=tuple(foreach_bindings),
+            iteration=iteration,
             hoist_ptr_inits=tuple(sorted(ptr_null_hoists)),
             orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                       "loop.for_else"),

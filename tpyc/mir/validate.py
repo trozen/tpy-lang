@@ -4,6 +4,7 @@ from collections import deque
 from dataclasses import dataclass
 
 from ..thir.nodes import Form
+from ..type_def_registry import is_list, is_array, is_set, is_dict
 from ..typesys import (
     BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, OptionalType, ReadonlyType, TupleType, TpyType, VoidType,
     UnionType, is_void_like_type, unwrap_readonly,
@@ -18,6 +19,8 @@ from .nodes import (
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
+    MIRContainerLayout, MIRContainerElements, MIRContainerStructure,
+    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
 )
 from .presence import MIRPresence, _analyze_presence
 from .coverage import owned_tuple, scalar_wrapper
@@ -109,6 +112,8 @@ def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
             _require(isinstance(source, MIRPlace), "invalid read place")
             return (source.root,)
         case (MIRAlias(source=source) | MIRMove(source=source)
+              | MIRIteratorInit(source=source) | MIRIteratorHasNext(source=source)
+              | MIRIteratorRead(source=source) | MIRIteratorAdvance(source=source)
               | MIRTupleCopy(source=source) | MIROptionalCopy(source=source) | MIRIsPresent(source=source)
               | MIRUnionCopy(source=source) | MIRIsAlternative(source=source)):
             return (source,)
@@ -251,7 +256,31 @@ def _validate_structure(fn: MIRFunction) -> None:
             global_ids.add(slot.global_id)
         else:
             _require(slot.global_id is None, "global identity on local slot")
-        if slot.value_kind is MIRValueKind.UNION:
+        if slot.value_kind in (MIRValueKind.BORROWED_CONTAINER, MIRValueKind.NATIVE_ITERATOR):
+            layout = slot.container_layout
+            _require(isinstance(layout, MIRContainerLayout) and isinstance(layout.element, MIRTupleElement)
+                     and slot.form is Form.BORROW and isinstance(slot.type, NominalType)
+                     and bool(slot.type.type_args), "invalid container or iterator layout")
+            member = layout.element
+            args = slot.type.type_args
+            _require((is_list(slot.type) or is_set(slot.type)) and len(args) == 1
+                     or is_dict(slot.type) and args == (INT32, INT32)
+                     or is_array(slot.type) and len(args) == 2 and type(args[1]) is int and args[1] >= 0,
+                     "invalid native container arguments")
+            _require((is_list(slot.type) or is_array(slot.type) or is_set(slot.type) or is_dict(slot.type))
+                     and slot.type.type_args[0] == member.type
+                     and (not is_dict(slot.type) or slot.type.type_args == (INT32, INT32)),
+                     "unsupported native container type")
+            _require(type(member.readonly) is bool and (
+                member.kind is MIRValueKind.SCALAR and member.type == INT32 and not member.readonly
+                or member.kind is MIRValueKind.BORROWED_RECORD and member.type in records
+                and member.readonly == slot.readonly
+                and (is_list(slot.type) or is_array(slot.type))
+                and all(f.type in (BOOL, INT32) for f in records[member.type].fields)),
+                "unsupported native element")
+            _require(slot.value_kind is not MIRValueKind.NATIVE_ITERATOR
+                     or slot.kind is MIRSlotKind.TEMPORARY, "iterator must be an internal temporary")
+        elif slot.value_kind is MIRValueKind.UNION:
             layout = slot.union_layout
             _require(isinstance(slot.type, UnionType) and isinstance(layout, MIRUnionLayout)
                      and slot.form is Form.VALUE and not slot.readonly
@@ -343,6 +372,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                  "union layout on non-union slot")
         _require(slot.value_kind is MIRValueKind.PAYLOAD_ALIAS or slot.alias_source is None,
                  "payload alias source on non-alias slot")
+        _require(slot.value_kind in (MIRValueKind.BORROWED_CONTAINER, MIRValueKind.NATIVE_ITERATOR)
+                 or slot.container_layout is None, "container layout on unrelated slot")
         _require(isinstance(slot.kind, MIRSlotKind), "invalid slot kind")
 
     if fn.receiver_init is not None:
@@ -384,6 +415,8 @@ def _validate_structure(fn: MIRFunction) -> None:
         inline_record = False
         for projection in place.projections:
             match projection:
+                case MIRContainerStructure() | MIRContainerElements():
+                    raise MIRValidationError("summary regions are analysis places, not direct element accesses")
                 case MIRUnionPayload():
                     _require(kind is MIRValueKind.UNION and slot.union_layout is not None,
                              "union projection needs union payload")
@@ -575,6 +608,29 @@ def _validate_structure(fn: MIRFunction) -> None:
                 _require(slots[operand].kind is not MIRSlotKind.GLOBAL or isinstance(value, MIRRead),
                          "global value needs explicit read")
             match value:
+                case MIRIteratorInit():
+                    source = slots[value.source]
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.NATIVE_ITERATOR
+                             and source.value_kind is MIRValueKind.BORROWED_CONTAINER
+                             and target.type == source.type and target.container_layout == source.container_layout
+                             and (not source.readonly or target.readonly), "iterator source or access mismatch")
+                case MIRIteratorHasNext() | MIRIteratorRead() | MIRIteratorAdvance():
+                    source = slots[value.source]
+                    _require(source.value_kind is MIRValueKind.NATIVE_ITERATOR
+                             and not stmt.target.projections, "iterator operation needs iterator source and local target")
+                    member = source.container_layout.element
+                    match value:
+                        case MIRIteratorHasNext():
+                            _require(target_type == BOOL and target.value_kind is MIRValueKind.SCALAR,
+                                     "iterator test needs bool target")
+                        case MIRIteratorAdvance():
+                            _require(target.id == source.id, "advance must update its iterator")
+                        case MIRIteratorRead():
+                            _require(target.type == member.type and target.value_kind is member.kind
+                                     and target.kind is not MIRSlotKind.PARAMETER
+                                     and (member.kind is MIRValueKind.SCALAR
+                                          or not (member.readonly or source.readonly) or target.readonly),
+                                     "iterator element type or access mismatch")
                 case MIRUnionConstruct() | MIRUnionCopy():
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.UNION
                              and target.kind is not MIRSlotKind.PARAMETER, "union operation needs local destination")
@@ -724,8 +780,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                     target = slots[stmt.target.root]
                     source = slots[value.source]
                     _require(not stmt.target.projections
-                             and target.value_kind is MIRValueKind.BORROWED_RECORD
-                             and source.value_kind is MIRValueKind.BORROWED_RECORD
+                             and target.value_kind in (MIRValueKind.BORROWED_RECORD, MIRValueKind.BORROWED_CONTAINER)
+                             and source.value_kind is target.value_kind
+                             and source.container_layout == target.container_layout
                              and target_type == source.type, "alias type mismatch")
                     _require(target.kind is not MIRSlotKind.PARAMETER, "reference parameter reseat")
                     _require(not source.readonly or target.readonly, "alias increases access")
@@ -742,6 +799,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(target_type == BOOL and slot_type(value.operand) == BOOL
                              and slots[value.operand].value_kind is MIRValueKind.SCALAR,
                              "not operand or result is not bool")
+                case _:
+                    raise MIRValidationError("unknown rvalue semantics")
         term = block.terminator
         if fn.regions:
             used = (term.condition,) if isinstance(term, MIRBranch) else (

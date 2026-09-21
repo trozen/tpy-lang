@@ -78,6 +78,8 @@ class MIRValueKind(Enum):
     OPTIONAL = auto()
     UNION = auto()
     PAYLOAD_ALIAS = auto()
+    BORROWED_CONTAINER = auto()
+    NATIVE_ITERATOR = auto()
 
 
 class MIRStorageDuration(Enum):
@@ -95,6 +97,12 @@ class MIRTupleElement:
     type: TpyType
     kind: MIRValueKind = MIRValueKind.SCALAR
     readonly: bool = False
+
+
+@dataclass(frozen=True)
+class MIRContainerLayout:
+    """The source type and element form of a native iterator, never its C++ type."""
+    element: MIRTupleElement
 
 
 @dataclass(frozen=True)
@@ -137,10 +145,21 @@ class MIRSlot:
     storage_duration: MIRStorageDuration | MIRRegionId | None = None
     residence: MIRRegionId | None = None
     record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT
+    container_layout: MIRContainerLayout | None = None
 
 
 @dataclass(frozen=True)
 class MIRDeref:
+    pass
+
+
+@dataclass(frozen=True)
+class MIRContainerStructure:
+    pass
+
+
+@dataclass(frozen=True)
+class MIRContainerElements:
     pass
 
 
@@ -182,7 +201,8 @@ class MIRRecordLayout:
 @dataclass(frozen=True)
 class MIRPlace:
     root: MIRSlotId
-    projections: tuple[MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload | MIRUnionPayload, ...] = ()
+    projections: tuple[MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload | MIRUnionPayload
+                       | MIRContainerStructure | MIRContainerElements, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -279,10 +299,31 @@ class MIRNot:
     operand: MIRSlotId
 
 
+@dataclass(frozen=True)
+class MIRIteratorInit:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
+class MIRIteratorHasNext:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
+class MIRIteratorRead:
+    source: MIRSlotId
+
+
+@dataclass(frozen=True)
+class MIRIteratorAdvance:
+    source: MIRSlotId
+
+
 MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
              | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy
              | MIROptionalConstruct | MIROptionalCopy | MIRIsPresent
-             | MIRUnionConstruct | MIRUnionCopy | MIRIsAlternative | MIRUnionExtract)
+             | MIRUnionConstruct | MIRUnionCopy | MIRIsAlternative | MIRUnionExtract
+             | MIRIteratorInit | MIRIteratorHasNext | MIRIteratorRead | MIRIteratorAdvance)
 
 
 class MIRRecordWriteMode(Enum):

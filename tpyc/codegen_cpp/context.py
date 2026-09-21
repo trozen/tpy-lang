@@ -45,6 +45,7 @@ from ..value_category import (
     CONTAINER_LITERAL_NODES,
 )
 from .forms import (
+    LoopBinding, loop_binding_kind,
     is_plain_nonvalue as _forms_is_plain_nonvalue,
     is_ptr_variant_union as _forms_is_ptr_variant_union,
     reads_storage_form_optional as _forms_reads_storage_form_optional,
@@ -683,34 +684,24 @@ def loop_var_binding(
     pre-declaration), so the per-iteration assignment from the storage
     element must lift element-wise; the caller passes the borrow C++ type.
     """
-    # Own[T] from consuming iterators uses the same binding as T.
+    kind = loop_binding_kind(elem_type, const_loop_var, hoisted=hoisted, consuming=consuming)
     if isinstance(elem_type, OwnType):
         elem_type = elem_type.wrapped
-    if hoisted:
-        if hoisted_tuple_lift_cpp is not None:
-            return (f"{cpp_var} = ::tpy::tuple_to_pointer"
-                    f"<{hoisted_tuple_lift_cpp}>({deref_expr});")
-        return f"{cpp_var} = {deref_expr};"
-    if consuming:
-        # Forwarding ref into OwnIter storage: zero-cost, move-ready.
-        return f"auto&& {cpp_var} = {deref_expr};"
-    # Composite types (variants, tuples) use reference binding -- they may
-    # contain heap-allocated members, making copies expensive. Peel readonly:
-    # a readonly[tuple[...]] yield is the same composite shape (and a typed
-    # copy of its borrow form would not even compile for pointer slots).
-    if isinstance(unwrap_readonly(elem_type), (UnionType, TupleType)):
-        if const_loop_var:
+    match kind:
+        case LoopBinding.ASSIGN:
+            if hoisted_tuple_lift_cpp is not None:
+                return (f"{cpp_var} = ::tpy::tuple_to_pointer"
+                        f"<{hoisted_tuple_lift_cpp}>({deref_expr});")
+            return f"{cpp_var} = {deref_expr};"
+        case LoopBinding.REFERENCE:
+            return f"auto&& {cpp_var} = {deref_expr};"
+        case LoopBinding.CONST_REFERENCE:
             return f"const auto& {cpp_var} = {deref_expr};"
-        return f"auto&& {cpp_var} = {deref_expr};"
-    if const_loop_var and elem_type.is_value_type():
-        if elem_type.is_expensive_copy():
+        case LoopBinding.CONST_TYPED_REFERENCE:
             return f"const {elem_type.to_cpp()}& {cpp_var} = {deref_expr};"
-        return f"{elem_type.to_cpp()} {cpp_var} = {deref_expr};"
-    if const_loop_var:
-        return f"const auto& {cpp_var} = {deref_expr};"
-    if elem_type.is_value_type():
-        return f"{elem_type.to_cpp()} {cpp_var} = {deref_expr};"
-    return f"auto&& {cpp_var} = {deref_expr};"
+        case LoopBinding.VALUE:
+            return f"{elem_type.to_cpp()} {cpp_var} = {deref_expr};"
+    raise AssertionError("unknown loop binding")
 
 
 def is_constructor_call(expr: 'TpyExpr',

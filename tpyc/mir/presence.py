@@ -13,6 +13,7 @@ from .nodes import (
     MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIRValueKind,
     MIREdge, MIRReturn, MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign, MIRRecordWrite, MIRRecordWriteMode,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
+    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
 )
 from .region_flow import MIRRegionFlow
 
@@ -128,7 +129,8 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
     present, conditions = state.present, state.conditions.copy()
     valid = state.valid_aliases
     if isinstance(stmt, MIRStorageInit) or isinstance(
-            value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)):
+            value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy,
+                    MIRIteratorInit, MIRIteratorAdvance)):
         match stmt if isinstance(stmt, MIRStorageInit) else value:
             case MIRStorageInit(alternative=alternative):
                 known = frozenset({alternative})
@@ -136,6 +138,8 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
                 known = frozenset({int(value.source is not None)})
             case MIRUnionConstruct():
                 known = frozenset({value.alternative})
+            case MIRIteratorInit() | MIRIteratorAdvance():
+                known = None
             case _:
                 known = dict(present).get(value.source)
         present = frozenset(f for f in present if f[0] != target)
@@ -149,9 +153,9 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
             present |= {(target, known)}
     elif target in booleans:
         match value:
-            case MIRIsPresent() | MIRIsAlternative():
+            case MIRIsPresent() | MIRIsAlternative() | MIRIteratorHasNext():
                 domain = (domains or {}).get(value.source, frozenset({0, 1}))
-                selected = (frozenset({1}) if isinstance(value, MIRIsPresent)
+                selected = (frozenset({1}) if isinstance(value, (MIRIsPresent, MIRIteratorHasNext))
                             else frozenset(value.alternatives))
                 outcomes = tuple(_combine(present, frozenset({(value.source, members)}))
                                  if members else None for members in (domain - selected, selected))
@@ -194,9 +198,9 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
     edge_engagement: dict[MIREdge, EngagementFacts] = {}
     optional_records = {s.id for s in fn.slots if s.record_storage is MIRRecordStorageKind.OPTIONAL}
     booleans = {s.id for s in fn.slots if s.type == BOOL and s.value_kind is MIRValueKind.SCALAR}
-    domains = {s.id: (frozenset({0, 1}) if s.value_kind is MIRValueKind.OPTIONAL
+    domains = {s.id: (frozenset({0, 1}) if s.value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.NATIVE_ITERATOR)
                      else frozenset(range(len(s.union_layout.elements))))
-               for s in fn.slots if s.value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION)}
+               for s in fn.slots if s.value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION, MIRValueKind.NATIVE_ITERATOR)}
     alias_slots = {s.id for s in fn.slots if s.value_kind is MIRValueKind.PAYLOAD_ALIAS}
     aliases_by_root: dict[MIRSlotId, set[MIRSlotId]] = {}
     for slot in fn.slots:
@@ -279,6 +283,10 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
             point = MIRPoint(bid, index)
             points[point] = state.present
             engagement[point] = state.engagement
+            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRIteratorRead, MIRIteratorAdvance))
+                    and dict(state.present).get(stmt.value.source) != frozenset({1})):
+                issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
+                                               "iterator operation without current availability proof"))
             places = [stmt.target] if stmt.target.projections else []
             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRRead, MIRUnionExtract, MIRBorrow)):
                 places.append(stmt.value.source)

@@ -11,6 +11,7 @@ from .nodes import (
     MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRStorageInit, MIREdge,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
+    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
 )
 from .region_flow import MIRRegionFlow
 from .validate import statement_reads
@@ -21,6 +22,17 @@ from .coverage import owned_tuple
 class Reference:
     identity: int
     path: tuple[MIRFieldId | MIRTupleIndex, ...] = ()
+
+
+@dataclass(frozen=True)
+class ContainerValue:
+    elements: tuple[int | Reference, ...]
+
+
+@dataclass(frozen=True)
+class IteratorValue:
+    source: ContainerValue
+    index: int = 0
 
 
 @dataclass(frozen=True)
@@ -44,7 +56,7 @@ class PayloadAlias:
     place: MIRPlace
 
 
-Value = int | bool | Reference | TupleValue | OptionalValue | UnionValue | PayloadAlias
+Value = int | bool | Reference | TupleValue | OptionalValue | UnionValue | PayloadAlias | ContainerValue | IteratorValue
 Record = dict[MIRFieldId | MIRTupleIndex, 'int | bool | Record']
 Heap = dict[int, Record]
 
@@ -141,13 +153,26 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     and slots[stmt.target.root].record_storage is MIRRecordStorageKind.OPTIONAL):
                 assert stmt.target.root in physical, "record assignment before wrapper initialization"
             match rhs:
+                case MIRIteratorInit():
+                    source = values[rhs.source]
+                    assert isinstance(source, ContainerValue)
+                    value = IteratorValue(source)
+                case MIRIteratorHasNext():
+                    source = values[rhs.source]
+                    assert isinstance(source, IteratorValue)
+                    value = source.index < len(source.source.elements)
+                case MIRIteratorRead() | MIRIteratorAdvance():
+                    source = values[rhs.source]
+                    assert isinstance(source, IteratorValue) and source.index < len(source.source.elements)
+                    value = (source.source.elements[source.index] if isinstance(rhs, MIRIteratorRead)
+                             else IteratorValue(source.source, source.index + 1))
                 case MIRConstant():
                     value = rhs.value
                 case MIRRead():
                     value = read(rhs.source)
                 case MIRAlias():
                     value = values[rhs.source]
-                    assert isinstance(value, Reference)
+                    assert isinstance(value, (Reference, ContainerValue))
                 case MIRBorrow():
                     value = read(rhs.source)
                     assert isinstance(value, Reference)

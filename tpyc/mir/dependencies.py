@@ -15,6 +15,8 @@ from .nodes import (
     MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId,
     MIRSlotKind, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct,
     MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, MIRValueKind,
+    MIRContainerStructure, MIRContainerElements,
+    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -42,7 +44,8 @@ class MIRDependencies:
 
 def _leaves(slot: MIRSlot) -> tuple[MIRPlace, ...]:
     match slot.value_kind:
-        case MIRValueKind.BORROWED_RECORD | MIRValueKind.PAYLOAD_ALIAS:
+        case (MIRValueKind.BORROWED_RECORD | MIRValueKind.PAYLOAD_ALIAS
+              | MIRValueKind.BORROWED_CONTAINER | MIRValueKind.NATIVE_ITERATOR):
             return (MIRPlace(slot.id),)
         case MIRValueKind.TUPLE:
             return tuple(MIRPlace(slot.id, (MIRTupleIndex(i),))
@@ -119,7 +122,7 @@ def resolve_referents(place: MIRPlace, state: MIRReferents,
                 refs = state.get(leaf, empty)
             case MIRDeref():
                 pass
-            case MIRField():
+            case MIRField() | MIRContainerStructure() | MIRContainerElements():
                 refs = frozenset(MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
                                  for r in refs)
             case _:
@@ -148,6 +151,17 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
         target, value = stmt.target, stmt.value
         result: dict[MIRPlace, frozenset[MIRReferent]] = {}
         match value:
+            case MIRIteratorInit(source=source):
+                result[target] = frozenset(
+                    MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
+                    for r in state.get(MIRPlace(source), empty)
+                    for projection in (MIRContainerStructure(), MIRContainerElements()))
+            case MIRIteratorAdvance(source=source):
+                result[target] = state.get(MIRPlace(source), empty)
+            case MIRIteratorRead(source=source):
+                if slots[target.root].value_kind is MIRValueKind.BORROWED_RECORD:
+                    result[target] = frozenset(r for r in state.get(MIRPlace(source), empty)
+                                               if isinstance(r.place.projections[-1], MIRContainerElements))
             case MIRAlias(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRBorrow(source=source):
@@ -169,7 +183,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 if source is not None and leaf in leaves[target.root]:
                     result[leaf] = state.get(MIRPlace(source), empty)
             case (MIRConstant() | MIRRead() | MIRCompare() | MIRNot() | MIRIsPresent()
-                  | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove()):
+                  | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove() | MIRIteratorHasNext()):
                 pass
             case _:
                 raise MIRValidationError("unknown dependency operation")

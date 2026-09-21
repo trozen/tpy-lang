@@ -22,7 +22,8 @@ from .nodes import (
     MIROptionalLayout, MIRUnionConstruct, MIRUnionCopy, MIRIsPresent,
     MIRGlobalId,
 )
-from .validate import MIRValidationError
+from .validate import MIRValidationError, operands
+from .test_iteration import fixture as iteration_fixture
 
 B = MIRBodyId("liveness", "test")
 P, X, Y, Z = (MIRSlotId(B, i) for i in range(4))
@@ -299,4 +300,10 @@ def test_emitted_operations_and_reference_copy_last_use() -> None:
             assert stmt.value.source in result.points[MIRPoint(block.id, index)]
             assert stmt.value.source not in result.points[MIRPoint(block.id, index + 1)]
             assert stmt.target.root in result.points[MIRPoint(block.id, index + 1)]
+    iteration = iteration_fixture()
+    live = analyze_liveness(iteration)
+    for block in iteration.blocks:
+        for index, stmt in enumerate(block.statements):
+            operations.add(type(stmt.value))
+            assert set(operands(stmt.value)) <= live.points[MIRPoint(block.id, index)]
     assert operations == set(MIRRvalue.__args__)

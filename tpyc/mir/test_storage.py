@@ -289,7 +289,8 @@ class Child(Cell):
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")
     assert fn.params[0].borrowed_record is None
-    not_covered(fn, "unsupported parameter type")
+    not_covered(fn, "unsupported metadata: native_container" if annotation == "list[Cell]"
+                else "unsupported parameter type")
 
 
 @pytest.mark.parametrize("body,reason", [

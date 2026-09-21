@@ -1711,6 +1711,12 @@ alongside related feature work; only the big-rock deferrals live here.
   remains separate because tracked emission and retained-alias defects need
   their own backing-storage analysis; the plan does not assume those paths
   already preserve Python identity.
+  `docs/MIR_M3_ORDINARY_FOR_PLAN.md` records the approved combined M3.19-M3.21
+  batch: iteration identities/dependencies, ordinary range CFG and native
+  scalar/record-element loops. M3.19's internal model and THIR facts are
+  implemented; M3.20/M3.21 source integration remains. Tuple-language
+  completeness is a separate workstream. Protocol iteration and the rest of
+  W2-W5 remain explicit gaps in the completion checklist.
   `docs/MIR_M3_LIVENESS_PLAN.md` records the approved M3.1/M3.2 design.
   `--dump-mir`, M3.1 backward liveness and M3.2 forward reference dependencies
   are implemented. Whole-holder precision

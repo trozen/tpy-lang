@@ -46,10 +46,11 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Sequence
 
-from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
+from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union, LoopBinding, loop_binding_kind
 from ..type_def_registry import (
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
+    is_list, is_array, is_set, is_dict,
 )
 from ..typesys import (
     BOOL, INT32, INT32_MIN, INT32_MAX, AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, TupleType,
@@ -72,6 +73,7 @@ from .nodes import (
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
     THIROwnedRecord, THIRStoragePlacement, THIRTupleStorageAlias,
+    THIRNativeContainer, THIRNativeIteration, THIRForEach, THIRForRange,
     THIROptionalLayout, THIROptionalRead,
     THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral, THIRWrapperDefault,
     THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
@@ -85,6 +87,31 @@ class THIRValidationError(Exception):
     """A lowered node violates a THIR structural invariant -- a lowering bug,
     never an unsupported shape (those must raise during lowering, not produce
     inconsistent THIR)."""
+
+
+def _check_native_container(owner: str, node: object, fact: THIRNativeContainer, typ: TpyType) -> None:
+    bare = unwrap_readonly(unwrap_ref_type(typ))
+    if (not isinstance(fact, THIRNativeContainer) or fact.type != bare
+            or not isinstance(bare, NominalType) or not bare.type_args
+            or not (is_list(bare) or is_array(bare) or is_set(bare) or is_dict(bare))
+            or type(fact.readonly) is not bool
+            or isinstance(unwrap_ref_type(typ), ReadonlyType) and not fact.readonly):
+        _fail(owner, node, "invalid native container fact")
+    member = fact.element
+    args = bare.type_args
+    if not ((is_list(bare) or is_set(bare)) and len(args) == 1
+            or is_dict(bare) and args == (INT32, INT32)
+            or is_array(bare) and len(args) == 2 and type(args[1]) is int and args[1] >= 0):
+        _fail(owner, node, "invalid native container arguments")
+    element_type = member.type if isinstance(member, THIRBorrowedRecord) else member
+    if (element_type != bare.type_args[0]
+            or is_dict(bare) and bare.type_args != (INT32, INT32)
+            or element_type != INT32 and not (
+                isinstance(member, THIRBorrowedRecord) and isinstance(member.type, NominalType)
+                and member.type.qualified_name() is not None and not member.type.type_args
+                and not member.type.is_protocol and member.type not in (BOOL, INT32)
+                and (is_list(bare) or is_array(bare)) and member.readonly is fact.readonly)):
+        _fail(owner, node, "invalid native element fact")
 
 
 def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType) -> None:
@@ -232,7 +259,61 @@ def _check_captures(owner: str, node: THIRLambda | THIRNestedDef) -> None:
                     _fail(owner, node, "invalid reference capture")
 
 
+def _check_hoists(owner: str, node: THIRIf | THIRWhile | THIRForRange | THIRForEach) -> None:
+    for binding in node.hoisted_bindings:
+        record = binding.optional_record_storage
+        if record is not None:
+            if (not isinstance(record, THIRBorrowedRecord) or record.readonly is not False
+                    or record.type != binding.type or binding.initially_assigned is not False
+                    or any(f is not None for f in (binding.borrowed_record, binding.optional_layout,
+                                                   binding.tuple_layout, binding.union_layout,
+                                                   binding.physical_default))):
+                _fail(owner, node, "invalid optional record backing fact")
+        if binding.optional_layout is not None:
+            _check_optional(owner, node, binding.optional_layout, binding.type)
+        if binding.union_layout is not None:
+            _check_union(owner, node, binding.union_layout, binding.type)
+        default = binding.physical_default
+        if default is not None:
+            optional = binding.optional_layout
+            union = binding.union_layout
+            scalar = (optional is not None and optional.payload in (BOOL, INT32) and union is None
+                      or union is not None and optional is None
+                      and all(m is None or m in (BOOL, INT32) for m in union.elements))
+            first = union.elements[0] if union is not None else None
+            expected = None if first is None else False if first == BOOL else 0
+            if (not scalar or binding.borrowed_record is not None or binding.tuple_layout is not None
+                    or not isinstance(default, THIRWrapperDefault)
+                    or type(default.alternative) is not int or default.alternative != 0
+                    or type(default.value) is not type(expected) or default.value != expected):
+                _fail(owner, node, "invalid physical wrapper default")
+
+
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, THIRVarDecl) and node.native_container is not None:
+        _check_native_container(owner, node, node.native_container, node.resolved_type)
+        if (node.form is not Form.BORROW or not isinstance(node.init, THIRName)
+                or node.init.form is not Form.BORROW
+                or unwrap_readonly(unwrap_ref_type(node.init.result_type)) != node.native_container.type
+                or node.is_const is not node.native_container.readonly
+                or any(f is not None for f in (node.alias_binding, node.storage_borrow, node.owned_storage,
+                    node.tuple_layout, node.tuple_storage_alias, node.optional_layout, node.union_layout,
+                    node.storage_placement))):
+            _fail(owner, node, "native container alias disagrees with binding")
+    if isinstance(node, (THIRIf, THIRWhile, THIRForRange, THIRForEach)):
+        _check_hoists(owner, node)
+    if isinstance(node, THIRForEach) and node.iteration is not None:
+        fact = node.iteration
+        if (not isinstance(fact, THIRNativeIteration) or not isinstance(node.iterable, THIRName)
+                or not node.iterable_lvalue or node.consuming or node.str_literal_iterable
+                or fact.binding is not loop_binding_kind(node.elem_type, node.const_loop_var,
+                                                         hoisted=node.hoist_loop_var)):
+            _fail(owner, node, "native iteration fact disagrees with emitted binding")
+        _check_native_container(owner, node, fact.source, node.iterable.result_type)
+        element = fact.source.element
+        if unwrap_readonly(unwrap_ref_type(node.elem_type)) != (
+                element.type if isinstance(element, THIRBorrowedRecord) else element):
+            _fail(owner, node, "native iteration element mismatch")
     if isinstance(node, (THIRLambda, THIRNestedDef)):
         _check_captures(owner, node)
     if isinstance(node, THIRCall) and node.resolved_callee is not None:
@@ -746,33 +827,6 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         _walk(owner, node.expr, return_type, argtemp_ok=True)
         return
     if isinstance(node, (THIRIf, THIRWhile)):
-        for binding in node.hoisted_bindings:
-            record = binding.optional_record_storage
-            if record is not None:
-                if (not isinstance(record, THIRBorrowedRecord) or record.readonly is not False
-                        or record.type != binding.type or binding.initially_assigned is not False
-                        or any(f is not None for f in (binding.borrowed_record, binding.optional_layout,
-                                                       binding.tuple_layout, binding.union_layout,
-                                                       binding.physical_default))):
-                    _fail(owner, node, "invalid optional record backing fact")
-            if binding.optional_layout is not None:
-                _check_optional(owner, node, binding.optional_layout, binding.type)
-            if binding.union_layout is not None:
-                _check_union(owner, node, binding.union_layout, binding.type)
-            default = binding.physical_default
-            if default is not None:
-                optional = binding.optional_layout
-                union = binding.union_layout
-                scalar = (optional is not None and optional.payload in (BOOL, INT32) and union is None
-                          or union is not None and optional is None
-                          and all(m is None or m in (BOOL, INT32) for m in union.elements))
-                first = union.elements[0] if union is not None else None
-                expected = None if first is None else False if first == BOOL else 0
-                if (not scalar or binding.borrowed_record is not None or binding.tuple_layout is not None
-                        or not isinstance(default, THIRWrapperDefault)
-                        or type(default.alternative) is not int or default.alternative != 0
-                        or type(default.value) is not type(expected) or default.value != expected):
-                    _fail(owner, node, "invalid physical wrapper default")
         # Conditions are flushable: _emit_if flushes before the `if (` /
         # inside the nested-elif block, _emit_while restructures the loop
         # head (`while (true) { <temps> if (!cond) break;`).
@@ -932,6 +986,11 @@ def validate_function(fn: THIRFunction) -> None:
                 or any(p.name == "self" for p in fn.params)):
             _fail(fn.name, fn, "invalid receiver fact")
     for param in fn.params:
+        if param.native_container is not None:
+            _check_native_container(fn.name, param, param.native_container, param.type)
+            if any(f is not None for f in (param.borrowed_record, param.optional_layout,
+                                          param.union_layout, param.tuple_layout)):
+                _fail(fn.name, param, "conflicting parameter facts")
         if param.tuple_layout is not None:
             if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):
                 _fail(fn.name, param, "conflicting parameter facts")
@@ -962,6 +1021,11 @@ def validate_function(fn: THIRFunction) -> None:
 def validate_constructor(ctor: THIRConstructor) -> None:
     owner = f"{ctor.record_name}.__init__"
     for param in ctor.params:
+        if param.native_container is not None:
+            _check_native_container(owner, param, param.native_container, param.type)
+            if any(f is not None for f in (param.borrowed_record, param.optional_layout,
+                                          param.union_layout, param.tuple_layout)):
+                _fail(owner, param, "conflicting parameter facts")
         if param.tuple_layout is not None:
             if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):
                 _fail(owner, param, "conflicting parameter facts")

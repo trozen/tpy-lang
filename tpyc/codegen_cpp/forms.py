@@ -28,6 +28,30 @@ from ..typesys import (
 from ..value_category import call_returns_cpp_ref, is_rvalue_source
 
 
+class LoopBinding(Enum):
+    ASSIGN = auto()
+    VALUE = auto()
+    REFERENCE = auto()
+    CONST_REFERENCE = auto()
+    CONST_TYPED_REFERENCE = auto()
+
+
+def loop_binding_kind(elem_type: TpyType, const_loop_var: bool, *,
+                      hoisted: bool = False, consuming: bool = False) -> LoopBinding:
+    if isinstance(elem_type, OwnType):
+        elem_type = elem_type.wrapped
+    if hoisted:
+        return LoopBinding.ASSIGN
+    if consuming:
+        return LoopBinding.REFERENCE
+    if isinstance(unwrap_readonly(elem_type), (UnionType, TupleType)):
+        return LoopBinding.CONST_REFERENCE if const_loop_var else LoopBinding.REFERENCE
+    if elem_type.is_value_type():
+        return (LoopBinding.CONST_TYPED_REFERENCE if const_loop_var and elem_type.is_expensive_copy()
+                else LoopBinding.VALUE)
+    return LoopBinding.CONST_REFERENCE if const_loop_var else LoopBinding.REFERENCE
+
+
 def _expr_type(analyzer, expr: TpyExpr) -> TpyType | None:
     """The codegen view of an expr's type: sema type with `ReadonlyType`
     stripped (C++ handles const via signatures). Mirrors

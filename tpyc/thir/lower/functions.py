@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
 from .callables import resolved_definition
-from .storage import borrowed_record, optional_layout, record_layout, tuple_parameter_layout
+from .storage import borrowed_record, native_container, optional_layout, record_layout, tuple_parameter_layout
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
@@ -1040,6 +1040,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     src_rt = func.return_type if stub is None else stub.return_type
     params = tuple(THIRParam(
         name=n, type=t,
+        native_container=native_container(t, _param_is_const(n, func, analyzer, record_name), analyzer),
         union_layout=_union_source_layout(n, t, lc),
         borrowed_record=borrowed_record(t, _param_is_const(n, func, analyzer, record_name),
                                         analyzer),

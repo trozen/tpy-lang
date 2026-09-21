@@ -87,6 +87,14 @@ normal early exits. Custom destructor effects also require W3.
 
 ### W2: additional ordinary control flow and bindings
 
+The [approved ordinary for-loop batch](MIR_M3_ORDINARY_FOR_PLAN.md) groups
+M3.19-M3.21 into one delivery: iteration identities/dependencies, range CFG,
+and native scalar/record-element loops. M3.19 implements the internal
+iterator/dependency model and positive THIR facts; source integration remains
+M3.20/M3.21. This batch
+does not include tuple-language fixes. Protocol iteration and the other W2
+positions remain open after that proposed batch.
+
 - [ ] `for` and iteration regions, including iterator/element dependencies,
   loop binding availability, `break`, `continue` and `else`.
 - [ ] Comprehension evaluation/binding regions and materialized temporaries.

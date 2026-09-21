@@ -9,6 +9,8 @@ from .nodes import (
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
+    MIRContainerStructure, MIRContainerElements,
+    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
 )
 from .validate import validate_function
 
@@ -31,6 +33,12 @@ def _place(place: MIRPlace) -> str:
                 text += ".payload"
             case MIRUnionPayload(alternative=alternative):
                 text += f".alternative[{alternative}]"
+            case MIRContainerStructure():
+                text += ".structure"
+            case MIRContainerElements():
+                text += ".elements"
+            case _:
+                raise ValueError("unknown place projection")
     return text
 
 
@@ -43,6 +51,13 @@ def dump_function(fn: MIRFunction) -> str:
         if slot.global_id is not None:
             name = f" {slot.global_id.module}::{slot.global_id.name}"
         match slot.value_kind:
+            case MIRValueKind.BORROWED_CONTAINER | MIRValueKind.NATIVE_ITERATOR:
+                access = (" native-iterator" if slot.value_kind is MIRValueKind.NATIVE_ITERATOR else " container-ref")
+                access += " readonly" if slot.readonly else " mutable"
+                member = slot.container_layout.element
+                access += f" element={member.type}:{member.kind.name.lower()}"
+                if member.readonly:
+                    access += ":readonly"
             case MIRValueKind.BORROWED_RECORD:
                 access = " readonly-ref" if slot.readonly else " mutable-ref"
             case MIRValueKind.RECORD_STORAGE:
@@ -90,6 +105,14 @@ def dump_function(fn: MIRFunction) -> str:
                              f"value={stmt.value.value!r}{_location(stmt.loc)}")
                 continue
             match stmt.value:
+                case MIRIteratorInit(source=source):
+                    rhs = f"iterator-init %{source.index}"
+                case MIRIteratorHasNext(source=source):
+                    rhs = f"iterator-has-next %{source.index}"
+                case MIRIteratorRead(source=source):
+                    rhs = f"iterator-read %{source.index}"
+                case MIRIteratorAdvance(source=source):
+                    rhs = f"iterator-advance %{source.index}"
                 case MIRConstant(value=value):
                     rhs = repr(value)
                 case MIRRead(source=source):

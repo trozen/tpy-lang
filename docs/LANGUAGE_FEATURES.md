@@ -8636,6 +8636,12 @@ declarations remain unconditional; their uses can occur in covered if/while
 regions. Rebinding, hoists, element binding and broader tuple contexts remain
 separate work. This does not change source semantics or C++ emission.
 
+The approved [ordinary for-loop analysis batch, M3.19-M3.21](MIR_M3_ORDINARY_FOR_PLAN.md)
+combines range CFG with native iterator/source dependencies and borrowed
+record-element holders. M3.19 supplies the internal iterator model, successful
+availability checks and captured source/element dependencies. THIR source
+integration remains M3.20/M3.21; this is separate from tuple completeness.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

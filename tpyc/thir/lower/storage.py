@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from ...symbol_binding import SymbolKind
+from ...type_def_registry import is_list, is_array, is_set, is_dict
 
 from ...parse.nodes import TpyFieldAccess, TpyName, TpySubscript, TupleElemCapture
 from ...typesys import (
@@ -14,6 +15,7 @@ from ..nodes import (
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
     THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
     THIRWrapperDefault, THIROwnedRecord,
+    THIRNativeContainer,
 )
 
 if TYPE_CHECKING:
@@ -62,6 +64,30 @@ def borrowed_record(typ: TpyType, readonly: bool,
             or info.parents or info.type_params):
         return None
     return THIRBorrowedRecord(typ, readonly)
+
+
+def native_container(typ: TpyType, readonly: bool,
+                     analyzer: 'SemanticAnalyzer') -> THIRNativeContainer | None:
+    readonly = readonly or isinstance(unwrap_ref_type(typ), ReadonlyType)
+    typ = unwrap_readonly(unwrap_ref_type(typ))
+    if not isinstance(typ, NominalType) or not typ.type_args:
+        return None
+    args = typ.type_args
+    if not ((is_list(typ) or is_set(typ)) and len(args) == 1
+            or is_dict(typ) and args == (INT32, INT32)
+            or is_array(typ) and len(args) == 2 and type(args[1]) is int and args[1] >= 0):
+        return None
+    element = args[0]
+    if element != INT32:
+        if not (is_list(typ) or is_array(typ)) or unwrap_readonly(unwrap_ref_type(element)) != element:
+            return None
+        element = borrowed_record(element, readonly, analyzer)
+        if element is None:
+            return None
+        record = analyzer.registry.get_record_for_type(element.type)
+        if any(f.type not in (BOOL, INT32) for f in record.fields):
+            return None
+    return THIRNativeContainer(typ, element, readonly)
 
 
 def hoisted_binding(name: str, typ: TpyType, analyzer: 'SemanticAnalyzer', *,
