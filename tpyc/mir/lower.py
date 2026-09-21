@@ -132,7 +132,9 @@ class _Coverage:
                         and stmt.owned_storage is not None and stmt.storage_placement is th.THIRStoragePlacement.BODY),
                              "hoisted initial backing")
                 if stmt.owned_storage is not None and loops:
-                    _require(stmt, isinstance(stmt.init, th.THIRCtorCall), "copy or move initialization in loop")
+                    _require(stmt, isinstance(stmt.init, th.THIRCtorCall)
+                             or stmt.storage_placement is th.THIRStoragePlacement.SCOPE,
+                             "loop copy or move needs scoped storage")
                 if isinstance(stmt, th.THIRVarDecl) and stmt.native_container is not None:
                     _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const",
                                   "cpp_local_representation", "native_container"})
@@ -300,9 +302,8 @@ class _Coverage:
                 and stmt.name not in self.fn.layout.reassigned_locals):
             self.fixed_owned.add(stmt.name)
 
-    def replacement(self, stmt: th.THIRAssign, loops: int) -> None:
+    def replacement(self, stmt: th.THIRAssign) -> None:
         _plain(stmt, {"target", "value", "rebind_storage", "slot_cpp"})
-        _require(stmt, loops == 0 or stmt.rebind_storage is RebindStorage.OWN, "owning operation in loop")
         name = self.reference_name(stmt.target)
         _require(stmt, name not in self.parameters, "reference parameter reseat")
         _require(stmt, stmt.rebind_storage in (RebindStorage.OWN, RebindStorage.IN_PLACE),
@@ -940,7 +941,6 @@ class _Coverage:
                     _require(stmt, isinstance(member, th.THIRBorrowedRecord)
                              and stmt.rebind_storage in (RebindStorage.OWN, RebindStorage.IN_PLACE),
                              "unsupported optional replacement storage")
-                    _require(stmt, loops == 0 or stmt.rebind_storage is RebindStorage.OWN, "owning operation in loop")
                     _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE or not member.readonly,
                              "readonly in-place replacement")
                     _require(stmt, isinstance(stmt.value, th.THIRCtorCall), "replacement needs constructor")
@@ -951,7 +951,7 @@ class _Coverage:
                              "optional slot without replacement storage")
                     self.optional_source(stmt.value, stmt.optional_layout)
             case th.THIRAssign() if stmt.rebind_storage is not None:
-                self.replacement(stmt, loops)
+                self.replacement(stmt)
             case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.alias_binding is not None or stmt.storage_borrow is not None:
                 self.borrow_binding(stmt)
             case th.THIRNoOpStmt():

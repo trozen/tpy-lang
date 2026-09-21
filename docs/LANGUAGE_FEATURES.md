@@ -8661,6 +8661,13 @@ constructor tails, including scalar locals, field RHS writes, returns and
 if/while conditions. General call temporaries (including constructors lowered
 as module-qualified calls), reference escapes and custom cleanup remain uncovered.
 
+M3.24 extends [cyclic record storage analysis](MIR_M3_CYCLIC_RECORD_STORAGE_PLAN.md)
+to region-local copy/move initialization and constructor IN_PLACE replacement
+across loops, including present Optional-record holders. M3.25 will connect
+already-supported source copy declarations.
+Source loop-local move-through remains a frontend gap; internal MIR coverage
+would not change its acceptance. C++ emission and checker authority stay unchanged.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

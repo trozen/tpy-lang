@@ -234,12 +234,19 @@ def test_missing_fact_does_not_infer_ownership_from_cpp(artifacts: Artifacts) ->
 
 
 @pytest.mark.parametrize("name,reason", [
-    ("loop", "owning operation in loop"),
     ("owned_call", "optional backing storage"), ("effectful", "effectful constructor argument"),
 ])
 def test_unsupported_storage_families_remain_uncovered(artifacts: Artifacts, name: str, reason: str) -> None:
     result = lower(artifacts[0][name], artifacts[1])
     assert isinstance(result, MIRNotCovered) and reason in result.reason
+
+
+def test_cyclic_optional_in_place_replacement(artifacts: Artifacts) -> None:
+    fn = lower(artifacts[0]["loop"], artifacts[1])
+    assert isinstance(fn, MIRFunction), fn
+    assert execute(fn, False) == execute(fn, True) == 0
+    writes = analyze_storage(fn)
+    assert any(s.storage_write.mode is MIRRecordWriteMode.IN_PLACE for s in writes.writes.values())
 
 
 @pytest.mark.parametrize("custom", ["custom_copy", "custom_move", "custom_destructor"])

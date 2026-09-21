@@ -220,5 +220,4 @@ def test_in_place_owner_and_projection_must_match_exactly() -> None:
         with pytest.raises(MIRValidationError, match="invalid in-place"):
             validate_function(replace(fn, blocks=(fn.blocks[0], replace(fn.blocks[1], statements=(
                 *block.statements, bad)), fn.blocks[2])))
-    with pytest.raises(MIRValidationError, match="owning operation in cycle"):
-        validate_function(replace(fn, blocks=(fn.blocks[0], replace(fn.blocks[1], terminator=block.terminator), fn.blocks[2])))
+    validate_function(replace(fn, blocks=(fn.blocks[0], replace(fn.blocks[1], terminator=block.terminator), fn.blocks[2])))

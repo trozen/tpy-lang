@@ -1686,6 +1686,12 @@ alongside related feature work; only the big-rock deferrals live here.
   completing M2 or enabling M5.
   `docs/MIR_M3_COMPLETION_PLAN.md` is the current M3 completion checklist and
   batch-order index; the increment history below records bounded coverage.
+  The approved `docs/MIR_M3_CYCLIC_RECORD_STORAGE_PLAN.md` scopes M3.24/M3.25:
+  region-local copy/move initialization and cyclic constructor IN_PLACE,
+  followed by existing source copy/replacement producers.
+  Source loop-local move-through, reused-slot copy/move, owning aggregate
+  operations and excluded position/shape/slot cells remain open; tuple
+  completeness stays separate.
   `docs/MIR_M3_WRAPPER_STORAGE_PLAN.md` records implemented M3.12/M3.13:
   separate physical-initialization/source-assignment facts and bool/int32
   Optional/union if/while hoists, for analysis only. Record

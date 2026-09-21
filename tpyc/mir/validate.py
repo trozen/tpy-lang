@@ -730,10 +730,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                              "tuple payload type or access mismatch")
                 case MIRConstruct() | MIRCopy() | MIRMove():
                     if fact is None or fact.mode not in (MIRRecordWriteMode.OWN_SITE, MIRRecordWriteMode.INITIALIZE_REGION,
-                                                         MIRRecordWriteMode.OPTIONAL_ASSIGN):
-                        owning_blocks.add(block.id)
-                    if (fact is not None and fact.mode is MIRRecordWriteMode.INITIALIZE_REGION
-                            and isinstance(value, (MIRCopy, MIRMove))):
+                                                         MIRRecordWriteMode.OPTIONAL_ASSIGN, MIRRecordWriteMode.IN_PLACE):
                         owning_blocks.add(block.id)
                     target = slots[stmt.target.root]
                     _require(target_type in records and (

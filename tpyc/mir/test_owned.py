@@ -224,15 +224,20 @@ def test_actual_producer_shapes_and_deterministic_dump(artifacts: Artifacts) -> 
     assert all(m.field_identity is not None for m in cell.mil_inits)
 
 
-def test_missing_definitions_and_cyclic_replacements_are_uncovered(artifacts: Artifacts) -> None:
+def test_missing_definitions_are_uncovered(artifacts: Artifacts) -> None:
     functions, constructors = artifacts
     for name, definitions, reason in (
         ("shared", MIRDefinitions(), "missing constructor definition"),
-        ("replacement_loop", MIRDefinitions(constructors), "owning operation in loop"),
     ):
         result = lower_function(functions[name], MIRBodyId("owned", name),
                                 kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
         assert isinstance(result, MIRNotCovered) and reason in result.reason
+
+
+def test_cyclic_in_place_replacement(artifacts: Artifacts) -> None:
+    fn = lower(artifacts[0]["replacement_loop"], artifacts[1])
+    assert execute(fn, False) == 1
+    assert execute(fn, True) == 2
 
 
 @pytest.mark.parametrize("change,reason", [
