@@ -82,6 +82,13 @@ class THIRTupleLayout:
 
 
 @dataclass(frozen=True)
+class THIRTupleStorageAlias:
+    """An immutable name for existing tuple backing, with identical access."""
+    source: str
+    layout: THIRTupleLayout
+
+
+@dataclass(frozen=True)
 class THIROptionalLayout:
     """An absent value or one scalar snapshot / borrowed record identity."""
     payload: TpyType | THIRBorrowedRecord
@@ -1804,6 +1811,7 @@ class THIRVarDecl(THIRStmt):
     owned_storage: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     storage_placement: THIRStoragePlacement | None = field(default=None, kw_only=True)
     tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
+    tuple_storage_alias: THIRTupleStorageAlias | None = field(default=None, kw_only=True)
     init: THIRExpr | None = None
     cpp_type: str | None = None
     form: Form = Form.VALUE

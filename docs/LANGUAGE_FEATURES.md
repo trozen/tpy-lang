@@ -8628,6 +8628,14 @@ This is analysis coverage, not a change to
 source behavior; tuple copy/move, hoists, mixed call-result producers and
 general expression temporaries remain separate work.
 
+M3.18 adds [immutable whole-tuple aliases](MIR_M3_TUPLE_ALIAS_PLAN.md) of
+constructor-owned body-local tuples, including alias chains in free functions,
+ordinary methods and constructor tails. MIR normalizes those names to the
+original backing: no copy or additional lifetime is introduced. Alias
+declarations remain unconditional; their uses can occur in covered if/while
+regions. Rebinding, hoists, element binding and broader tuple contexts remain
+separate work. This does not change source semantics or C++ emission.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

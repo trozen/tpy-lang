@@ -71,7 +71,7 @@ from .nodes import (
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
-    THIROwnedRecord, THIRStoragePlacement,
+    THIROwnedRecord, THIRStoragePlacement, THIRTupleStorageAlias,
     THIROptionalLayout, THIROptionalRead,
     THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral, THIRWrapperDefault,
     THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
@@ -305,6 +305,20 @@ def _check_node(owner: str, node: THIRNode) -> None:
         _check_optional(owner, node, read.layout)
         if node.opt_deref_check:
             _fail(owner, node, "checked optional read cannot claim plain extraction")
+    if isinstance(node, THIRVarDecl) and node.tuple_storage_alias is not None:
+        fact = node.tuple_storage_alias
+        if (not isinstance(fact, THIRTupleStorageAlias) or not fact.source
+                or not isinstance(node.init, THIRName) or node.init.name != fact.source
+                or node.init.result_type != node.resolved_type
+                or node.form is not Form.STORAGE or node.init.form is not Form.STORAGE
+                or node.is_const
+                or any(f is not None for f in (node.tuple_layout, node.storage_placement,
+                    node.owned_storage, node.alias_binding, node.storage_borrow,
+                    node.optional_layout, node.union_layout))):
+            _fail(owner, node, "tuple storage alias disagrees with its binding")
+        _check_tuple(owner, node, fact.layout, node.resolved_type)
+        if not fact.layout.owns_records:
+            _fail(owner, node, "tuple storage alias needs owned backing")
     if isinstance(node, (THIRVarDecl, THIRTupleLiteral, THIRBorrowTupleLiteral)):
         layout = node.tuple_layout
         if layout is not None:

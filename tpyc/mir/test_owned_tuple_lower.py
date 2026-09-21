@@ -201,16 +201,11 @@ def test_scalar_projection_does_not_admit_temporary_owned_backing(artifacts: Art
 ''', "missing tuple layout"),
     ('''def boundary() -> int32:
     pair = (Cell(1),)
-    alias = pair
-    return alias[0].value
-''', "unsupported metadata: cpp_local_representation"),
-    ('''def boundary() -> int32:
-    pair = (Cell(1),)
     pair = (Cell(2),)
     return pair[0].value
 ''', "missing tuple layout"),
 ])
-def test_owned_tuple_source_hoists_aliases_and_rebinds_remain_uncovered(source: str, reason: str) -> None:
+def test_owned_tuple_source_hoists_and_rebinds_remain_uncovered(source: str, reason: str) -> None:
     compiler, modules = _compile(SOURCE.split("def singleton", 1)[0] + source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn, = ctx.thir_functions.values()

@@ -1705,6 +1705,12 @@ alongside related feature work; only the big-rock deferrals live here.
   source mixed-own producers, nested/selected aggregates, tuple copy/move,
   rebind/hoists, expression temporaries and cyclic owning operations remain W1
   and M2/M4 prerequisites. Its factored matrix retains W2-W5 exclusions.
+  `docs/MIR_M3_TUPLE_ALIAS_PLAN.md` records approved M3.18:
+  implemented immutable whole aliases of constructor-owned body-local tuples.
+  Rebinding
+  remains separate because tracked emission and retained-alias defects need
+  their own backing-storage analysis; the plan does not assume those paths
+  already preserve Python identity.
   `docs/MIR_M3_LIVENESS_PLAN.md` records the approved M3.1/M3.2 design.
   `--dump-mir`, M3.1 backward liveness and M3.2 forward reference dependencies
   are implemented. Whole-holder precision

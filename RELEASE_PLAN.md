@@ -22,8 +22,17 @@ when its defect is one of:
 - a borrow-form vs storage-form spelling mismatch (const-ness, pointer
   vs payload slot) at a parameter, tuple element or Optional local.
 
+Tuple completeness below is an explicit exception to that deferral:
+tuple-related gaps and defects needed for that requirement remain in 0.6.0,
+including aliasing, rebinding and provenance, regardless of priority tag.
+
 Features:
 
+- Complete tuple support across all contexts -- `docs/LANGUAGE_FEATURES.md`,
+  "Tuples", and the tuple entries in `BUGS.md` / `TODO.md`. Includes element
+  and whole-tuple aliasing, rebinding, ownership, readonly access, nesting,
+  unpacking, calls/returns, fields/containers, globals, closures and
+  generator/async bodies; bounded MIR coverage alone does not satisfy this.
 - THIR migration -- SHIPPED (fallback -> 0, then the AST-codegen
   deletion). Residual track: TODO: "The post-cutover fix queue: shapes
   that are now compile errors"

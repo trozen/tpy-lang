@@ -1835,6 +1835,10 @@ M3.16/M3.17 add flat inline-record tuple backing, normal lifetimes and bounded
 constructor-literal producers. Borrowed siblings retain external dependencies;
 tuple copying, hoists and general temporaries remain uncovered
 ([tuple storage plan](MIR_M3_TUPLE_STORAGE_PLAN.md)).
+M3.18 admits immutable whole aliases and chains of those body-local constructor
+tuples, resolving their operations to the original backing without a copy or
+new lifetime ([tuple alias plan](MIR_M3_TUPLE_ALIAS_PLAN.md)). Tuple rebinding
+and its existing source defects remain separate from that normalization.
 
 The following factored matrix covers the Cartesian product: a cell is M1 only
 when all three axes say M1 and the operation is in the explicit subset above.

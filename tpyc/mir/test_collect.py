@@ -90,6 +90,28 @@ def owned_pair() -> int32:
     assert "scope ends (possible normal storage ends" in out
 
 
+def test_owned_tuple_alias_dump_uses_canonical_backing() -> None:
+    out = dump('''from tpy import int32
+class Cell:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+
+def alias_pair() -> int32:
+    pair = (Cell(1),)
+    saved = pair
+    chain = saved
+    chain[0].value = 9
+    return pair[0].value
+''')
+    body = out[out.index("::alias_pair@"):]
+    body = body.split("\nfn ", 1)[0]
+    assert "<MIR not covered:" not in body
+    assert body.count("[initialize-tuple]") == 1
+    assert "tuple-copy" not in body
+    assert "saved" not in body and "chain" not in body
+
+
 def test_record_hoist_dump_handles_a_contradictory_assignment_path() -> None:
     out = dump('''from tpy import int32
 class Cell:

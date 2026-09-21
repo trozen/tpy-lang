@@ -26,7 +26,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
-from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRUnionExtraction, THIRUnionLayout
+from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRTupleLayout, THIRUnionExtraction, THIRUnionLayout
 from .captures import CaptureSites
 from .predicates import (
     _borrow_tuple_return_type,
@@ -1019,7 +1019,7 @@ _BRANCH_SCOPED_SETS = (
     "iterator_object_locals",
     "ref_alias_locals", "value_opt_bindings", "storage_opt_locals",
     "const_storage_opt_locals",
-    "movable_locals", "storage_tuple_locals", "own_borrow_tuple_locals",
+    "movable_locals", "storage_tuple_locals", "owned_tuple_layouts", "own_borrow_tuple_locals",
     "optional_borrow_tuple_locals",
     "const_storage_tuple_locals",
     # The for-body registration of sema's `const_loop_var` binding: scoped to
@@ -1113,7 +1113,7 @@ class _LowerCtx:
                  "sema_movable_locals",
                  "params", "capture_funcs", "capture_sites",
                  "self_receiver", "self_cpp", "self_is_pointer",
-                 "record_name", "storage_tuple_locals",
+                 "record_name", "storage_tuple_locals", "owned_tuple_layouts",
                  "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
                  "const_storage_tuple_locals", "const_loop_vars",
                  "frame_own_tuple_types",
@@ -1567,6 +1567,8 @@ class _LowerCtx:
         # `_is_borrow_form_name`'s type verdict. Both stay unreachable via the
         # call/subscript arms rejecting an owned-tuple source.
         self.storage_tuple_locals: set[str] = set()
+        # Only unconditional constructor locals and their fixed aliases carry these facts.
+        self.owned_tuple_layouts: dict[str, THIRTupleLayout] = {}
         # The owned-MOVABLE tuple PARAM seed is the documented partial above
         # and stays unseeded. The `Own[tuple-with-pointer-repr-element]` param
         # seeds FOR REAL: the signature spells the storage tuple by value, so

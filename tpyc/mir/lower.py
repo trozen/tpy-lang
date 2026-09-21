@@ -43,6 +43,8 @@ class _Coverage:
         self.fixed_owned: set[str] = set()
         self.optional_record_storage: dict[str, th.THIRBorrowedRecord] = {}
         self.tuples: dict[str, th.THIRTupleLayout] = {}
+        self.tuple_roots: dict[str, str] = {}
+        self.body_declarations = {id(stmt) for stmt in fn.body if isinstance(stmt, th.THIRVarDecl)}
         self.tuple_exprs: IdentityMap[th.THIRExpr, th.THIRTupleLayout] = IdentityMap()
         self.optionals: dict[str, th.THIROptionalLayout] = {}
         self.unions: dict[str, th.THIRUnionLayout] = {}
@@ -158,6 +160,9 @@ class _Coverage:
                     self.optionals[stmt.name] = stmt.optional_layout
                     self.bindings[stmt.name] = unwrap_readonly(unwrap_ref_type(stmt.resolved_type))
                     continue
+                if isinstance(stmt, th.THIRVarDecl) and stmt.tuple_storage_alias is not None:
+                    self.tuple_alias(stmt)
+                    continue
                 if isinstance(stmt, th.THIRVarDecl) and isinstance(stmt.resolved_type, TupleType):
                     owning = isinstance(stmt.tuple_layout, th.THIRTupleLayout) and stmt.tuple_layout.owns_records
                     _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const", "tuple_layout"}
@@ -173,6 +178,8 @@ class _Coverage:
                     self.tuple_compatible(stmt, self.tuple_expr(stmt.init, allow_owned=owning), stmt.tuple_layout)
                     self.tuples[stmt.name] = stmt.tuple_layout
                     self.bindings[stmt.name] = stmt.resolved_type
+                    if owning and id(stmt) in self.body_declarations:
+                        self.tuple_roots[stmt.name] = stmt.name
                     continue
                 if stmt.owned_storage is not None:
                     self.owned(stmt)
@@ -191,6 +198,25 @@ class _Coverage:
                 self.bindings[stmt.name] = stmt.resolved_type
             else:
                 self.stmt(stmt, loops)
+
+    def tuple_alias(self, stmt: th.THIRVarDecl) -> None:
+        _plain(stmt, {"name", "resolved_type", "init", "tuple_storage_alias", "cpp_local_representation", "cpp_type"})
+        fact = stmt.tuple_storage_alias
+        _require(stmt, id(stmt) in self.body_declarations, "tuple alias needs unconditional body declaration")
+        _require(stmt, isinstance(fact, th.THIRTupleStorageAlias)
+                 and isinstance(stmt.init, th.THIRName) and fact.source == stmt.init.name
+                 and fact.source in self.tuple_roots, "tuple alias needs initialized local backing")
+        _require(stmt, stmt.name not in self.fn.layout.reassigned_locals
+                 and fact.source not in self.fn.layout.reassigned_locals
+                 and self.tuple_roots[fact.source] not in self.fn.layout.reassigned_locals,
+                 "tuple alias needs fixed bindings")
+        _require(stmt, stmt.form is th.Form.STORAGE and stmt.resolved_type == stmt.init.result_type,
+                 "tuple alias type or form mismatch")
+        layout = self.tuple_expr(stmt.init, allow_owned=True)
+        _require(stmt, fact.layout == layout and layout.owns_records, "tuple alias layout or access mismatch")
+        self.bindings[stmt.name] = stmt.resolved_type
+        self.tuples[stmt.name] = layout
+        self.tuple_roots[stmt.name] = self.tuple_roots[fact.source]
 
     def record_value(self, expr: th.THIRExpr, typ: NominalType) -> None:
         definition = self.definitions.get(expr, typ)
@@ -759,6 +785,11 @@ class _Coverage:
 
     def stmt(self, stmt: th.THIRStmt, loops: int) -> None:
         match stmt:
+            case th.THIRAssign(target=th.THIRName(name=name)) | th.THIRPtrLocalRebind(name=name):
+                _require(stmt, name not in self.tuple_roots, "owned tuple binding replacement is unsupported")
+            case th.THIRNarrowAlias(alias=name):
+                _require(stmt, name not in self.tuple_roots, "owned tuple binding replacement is unsupported")
+        match stmt:
             case th.THIRNarrowAlias():
                 _plain(stmt, {"alias", "variant_cpp", "member_cpp", "is_ptr_variant", "const_ref", "union_extraction"})
                 member = self.union_extraction(stmt, stmt.union_extraction)
@@ -932,6 +963,7 @@ class _Coverage:
             self.bindings[fact.name] = typ
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
+        tuple_roots = self.tuple_roots.copy()
         saved = (self.bindings.copy(), self.references.copy(), self.payload_aliases.copy(),
                  self.tuples.copy(), self.optionals.copy(), self.unions.copy(), self.fixed_owned.copy(),
                  self.optional_record_storage.copy())
@@ -940,6 +972,7 @@ class _Coverage:
         (self.bindings, self.references, self.payload_aliases,
          self.tuples, self.optionals, self.unions, self.fixed_owned, self.optional_record_storage) = saved
         self.fixed_owned = retained_fixed
+        self.tuple_roots = tuple_roots
 
 
 @dataclass
@@ -1336,6 +1369,8 @@ class _Builder:
                     if declaration:
                         self.bindings[name] = self.slot(fact.type, MIRSlotKind.LOCAL, name, fact)
                     self.write(self.bindings[name], value, loc)
+                case th.THIRVarDecl() if stmt.tuple_storage_alias is not None:
+                    self.bindings[stmt.name] = self.bindings[stmt.tuple_storage_alias.source]
                 case th.THIRVarDecl() if stmt.tuple_layout is not None:
                     owning = stmt.tuple_layout.owns_records
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,

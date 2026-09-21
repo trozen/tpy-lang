@@ -1,7 +1,7 @@
 # M3 completion checklist
 
 Current planning index, updated 2026-09-21. Implementation exists through
-M3.17; merge status is separate. The numbered increment plans below record
+M3.18; merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -46,6 +46,9 @@ These boxes describe the current admitted subset only:
 - [x] Flat inline-record tuple backing, internal mixed ownership, normal
   lifetimes and bounded constructor-literal THIR producers
   ([M3.16/M3.17](MIR_M3_TUPLE_STORAGE_PLAN.md)).
+- [x] Immutable whole aliases and chains of constructor-owned body-local
+  tuples, normalized to their original backing
+  ([M3.18](MIR_M3_TUPLE_ALIAS_PLAN.md)).
 
 ## Remaining work packages
 
@@ -71,6 +74,9 @@ the others visible.
   boundary. M3.16 implements the internal model; M3.17 connects THIR producers.
   Nested/selected aggregates, mixed source
   producers and expression temporaries remain separate work.
+  [M3.18](MIR_M3_TUPLE_ALIAS_PLAN.md) additionally covers fixed whole aliases
+  of body-local constructor tuples; alias reseating, owning tuple rebinding
+  and hoists remain open, including the source defects listed in that plan.
 - [ ] Extend cyclic copy/move/in-place operations where their existing emitted
   behavior is representable; preserve activation and retained-reference rules.
 

@@ -252,6 +252,7 @@ from ..nodes import (
     THIRReturn,
     THIRFinallyDeferredReturn,
     THIRTupleLiteral,
+    THIRTupleStorageAlias,
     THIRSelf,
     THIRSetItem,
     THIRSubscript,
@@ -9059,9 +9060,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # storage. Never moved -- an alias source is single-assignment.
                     src = _lower_expr(stmt.init, lc, declared)
                 declared[stmt.name] = vtype
+                tuple_alias = None
+                if isinstance(stmt.init, TpyName) and stmt.init.name in lc.owned_tuple_layouts:
+                    layout = lc.owned_tuple_layouts[stmt.init.name]
+                    if vtype == src.result_type and stmt.init.name not in lc.prescan.reassigned:
+                        tuple_alias = THIRTupleStorageAlias(stmt.init.name, layout)
+                        lc.owned_tuple_layouts[stmt.name] = layout
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
                     init=src, form=Form.STORAGE,
+                    tuple_storage_alias=tuple_alias,
                     cpp_local_representation=LocalBinding.STORAGE_TUPLE_ALIAS, loc=loc)
             # C1+C2 comprehension local: the init renders as the whole
             # stmt-expr; the decl line itself is the plain-value arm.
@@ -11013,6 +11021,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     layout = tuple_layout(tuple_t, analyzer, captures=stmt.init.elem_capture, own_records=True)
                     if layout is not None:
                         init = replace(init, tuple_layout=layout)
+                        if not scope.in_branch and stmt.name not in lc.prescan.reassigned:
+                            lc.owned_tuple_layouts[stmt.name] = layout
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=tuple_t, init=init,
                     cpp_type=cpp, form=Form.STORAGE, loc=loc, tuple_layout=layout,
