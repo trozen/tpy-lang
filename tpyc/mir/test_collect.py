@@ -72,6 +72,24 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     assert out == dump(SOURCE)
 
 
+def test_owned_tuple_dump_includes_each_inline_member() -> None:
+    out = dump('''from tpy import int32
+class Cell:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+
+def owned_pair() -> int32:
+    pair = (Cell(1), Cell(2))
+    pair[0].value = 9
+    return pair[0].value
+''')
+    assert re.search(r"fn .*::owned_pair@[^\n]+ ->", out)
+    assert "initialize-tuple-members %0[0], %0[1]" in out
+    assert "[initialize-tuple]" in out
+    assert "scope ends (possible normal storage ends" in out
+
+
 def test_record_hoist_dump_handles_a_contradictory_assignment_path() -> None:
     out = dump('''from tpy import int32
 class Cell:

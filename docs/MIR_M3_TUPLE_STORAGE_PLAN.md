@@ -1,7 +1,7 @@
 # Inline record tuple storage: M3.16/M3.17
 
-Status: design approved. M3.16 implements the internal storage model;
-M3.17 producer integration remains pending.
+Status: implemented. M3.16 supplies the internal storage model;
+M3.17 connects the bounded THIR producers.
 Base: `ec7a8ebbf4`. This batch addresses part of W1's owning/mixed aggregate
 backing item in the [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md).
 It does not close that item or complete M3.
@@ -18,8 +18,8 @@ def example() -> int32:
 ```
 
 Its C++ owns `std::tuple<Cell, int32_t>{Cell(1), 7}` and reads/writes the
-inline member through `std::get<0>(pair)`. MIR currently reports an unsupported
-tuple declaration. The proposed change makes the body inspectable through
+inline member through `std::get<0>(pair)`. MIR now covers the tuple declaration
+and makes the body inspectable through
 `--dump-mir`, without changing source acceptance, diagnostics or generated C++.
 
 Invariant: an inline record element has the identity `(tuple backing, index)`
@@ -35,13 +35,13 @@ Verified precedents:
 
 - `thir/lower/statements.py`'s `decl.storage_record_tuple` route already selects
   all-VALUE record captures, registers storage-form reads and emits inline C++.
-  It currently supplies neither owning tuple layout nor placement metadata.
-- `thir/lower/storage.py:tuple_layout` deliberately describes only scalar and
-  borrowed payloads. Ownership must come from a positive producer fact, not
+  It now supplies owning tuple layout and placement metadata.
+- `thir/lower/storage.py:tuple_layout` requires explicit capture and ownership
+  input for an owned payload. Ownership comes from a positive producer fact, not
   from the source tuple type, `auto`, or other rendered C++.
-- MIR already has tuple-index places and separate storage/holder identities,
-  but layout validation, dependency resolution and scope ends currently cannot
-  describe owned tuple elements. All of those consumers must change together.
+- MIR tuple-index places and separate storage/holder identities also describe
+  owned tuple elements. Layout validation, dependency resolution and scope ends
+  consume the distinction together.
 - M3.9/M3.10 supply direct-declaration placement and activation checks. Reuse
   those checks; tuple hoists are a different storage contract.
 
@@ -164,10 +164,11 @@ do not relax the current owning-operation cycle gates globally.
   behavior and dump coverage, plus explicit unsupported siblings. No compiler
   test reads from `tests/cases`. Test malformed metadata independently of source
   coverage failures.
-- Compare generated C++ and diagnostics to the existing behavior. Review focused
-  tuple cases first; add one condensed runtime case only if fresh-constructor,
-  mutation and nocopy behavior lacks a focused pin. No existing snapshot changes
-  are expected; consult before any unexpected refresh.
+- Compare generated C++ and diagnostics to the existing behavior. Existing
+  tuple cases focus on moves, unpacking, fields or frames. The new condensed
+  `tuple/constructor_owned_local` runtime case pins fresh constructor tuples,
+  indexed mutation and nocopy in the admitted synchronous positions. No existing
+  snapshot changes are expected; consult before any unexpected refresh.
 - `silent-copy-vs-alias`, `tuple-equals-scalar`: source nocopy controls and internal
   alias mutation distinguish identity from copying; test singleton/mixed forms.
 - `copy-warning-at-wrong-site`, `no-warning-on-valid-code`: no new copies or
@@ -187,7 +188,7 @@ do not relax the current owning-operation cycle gates globally.
   `reject-valid-python-only-as-documented-divergence`: debug coverage failures
   stay separate from source diagnostics and cannot reject a valid program.
 
-CPython parity: the proposed source contract preserves fresh-record identity
+CPython parity: the source contract preserves fresh-record identity
 and mutation. Independent singleton and multi-record `@nocopy` probes produce
 the same output under TPy and CPython and compile with deleted C++ copy
 constructors. No source behavior, exception, numerical, truthiness or syntax
@@ -201,7 +202,7 @@ THIR/C++ probes and the sibling survey. Implementation must update the full
 consumer set; incomplete layout support is the principal risk. Mixed source
 tuples and general temporaries are deliberately separate prerequisites.
 
-After approval, implement on `mir-m3-tuple-storage`. Finish M3.16 and M3.17 as
+Implement on one stacked branch. Finish M3.16 and M3.17 as
 one commit each, folding this proposal into M3.16. Run targeted tests per step,
 the multi-agent cumulative defect review and readiness/retrospective gates,
 and one full forced suite after final code changes. Check master for relevant

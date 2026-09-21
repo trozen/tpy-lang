@@ -65,9 +65,20 @@ class THIRBorrowedRecord:
 
 
 @dataclass(frozen=True)
+class THIROwnedRecord:
+    """An inline aggregate member, distinct from a borrowed record identity."""
+    type: NominalType
+    readonly: bool = False
+
+
+@dataclass(frozen=True)
 class THIRTupleLayout:
-    """Selected scalar snapshots or borrowed record identities, in order."""
-    elements: tuple[TpyType | THIRBorrowedRecord, ...]
+    """Selected scalar, borrowed or inline-owned members, in order."""
+    elements: tuple[TpyType | THIRBorrowedRecord | THIROwnedRecord, ...]
+
+    @property
+    def owns_records(self) -> bool:
+        return any(isinstance(m, THIROwnedRecord) for m in self.elements)
 
 
 @dataclass(frozen=True)

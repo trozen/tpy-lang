@@ -1699,8 +1699,8 @@ alongside related feature work; only the big-rock deferrals live here.
   positions, shapes and slots to W1-W5 and M2/M4; those remain open.
   `docs/MIR_M3_TUPLE_STORAGE_PLAN.md` records approved M3.16/M3.17:
   flat inline-record tuple backing and bounded constructor-literal THIR
-  integration. M3.16 implements the internal model; producer integration is
-  pending. Mixed owned/borrowed layouts are internal-only initially;
+  integration. Both steps are implemented. Mixed owned/borrowed layouts remain
+  internal-only initially;
   source mixed-own producers, nested/selected aggregates, tuple copy/move,
   rebind/hoists, expression temporaries and cyclic owning operations remain W1
   and M2/M4 prerequisites. Its factored matrix retains W2-W5 exclusions.

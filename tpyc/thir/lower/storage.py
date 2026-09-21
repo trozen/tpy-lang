@@ -13,7 +13,7 @@ from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
     THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
-    THIRWrapperDefault,
+    THIRWrapperDefault, THIROwnedRecord,
 )
 
 if TYPE_CHECKING:
@@ -140,13 +140,14 @@ def storage_borrow(source: THIRExpr, typ: TpyType, readonly: bool,
 
 def tuple_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
                  captures: tuple[TupleElemCapture, ...] | None = None,
-                 borrow: bool = False, readonly: bool = False) -> THIRTupleLayout | None:
+                 borrow: bool = False, readonly: bool = False,
+                 own_records: bool = False) -> THIRTupleLayout | None:
     """Describe only selected flat payloads, never infer ownership from a tuple type."""
     if not isinstance(typ, TupleType):
         return None
     if captures is not None and len(captures) != len(typ.element_types):
         return None
-    elements: list[TpyType | THIRBorrowedRecord] = []
+    elements: list[TpyType | THIRBorrowedRecord | THIROwnedRecord] = []
     for i, element in enumerate(typ.element_types):
         mode = captures[i] if captures is not None else (
             TupleElemCapture.REF if borrow else TupleElemCapture.VALUE)
@@ -155,6 +156,12 @@ def tuple_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
                 return None
             elements.append(element)
         else:
+            if own_records and captures is not None and mode is TupleElemCapture.VALUE:
+                reference = borrowed_record(element, readonly, analyzer)
+                if reference is None:
+                    return None
+                elements.append(THIROwnedRecord(reference.type, reference.readonly))
+                continue
             if mode not in (TupleElemCapture.REF, TupleElemCapture.CONST_REF):
                 return None
             reference = borrowed_record(

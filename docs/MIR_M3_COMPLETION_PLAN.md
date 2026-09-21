@@ -1,7 +1,7 @@
 # M3 completion checklist
 
 Current planning index, updated 2026-09-21. Implementation exists through
-M3.15; merge status is separate. The numbered increment plans below record
+M3.17; merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -43,6 +43,9 @@ These boxes describe the current admitted subset only:
 - [x] Optional-backed record hoists with separate wrapper construction, record
   engagement and source assignment, including logical overwrite and normal
   scope-end inspection ([M3.14/M3.15](MIR_M3_RECORD_STORAGE_PLAN.md)).
+- [x] Flat inline-record tuple backing, internal mixed ownership, normal
+  lifetimes and bounded constructor-literal THIR producers
+  ([M3.16/M3.17](MIR_M3_TUPLE_STORAGE_PLAN.md)).
 
 ## Remaining work packages
 
@@ -65,7 +68,7 @@ the others visible.
   temporaries, with positive producer facts for placement and each write.
   The [approved M3.16/M3.17 batch](MIR_M3_TUPLE_STORAGE_PLAN.md) covers flat
   constructor-owned local tuples, with mixed ownership at the internal IR
-  boundary. M3.16 implements the internal model; THIR integration is pending.
+  boundary. M3.16 implements the internal model; M3.17 connects THIR producers.
   Nested/selected aggregates, mixed source
   producers and expression temporaries remain separate work.
 - [ ] Extend cyclic copy/move/in-place operations where their existing emitted

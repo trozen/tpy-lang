@@ -71,6 +71,7 @@ from .nodes import (
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
+    THIROwnedRecord, THIRStoragePlacement,
     THIROptionalLayout, THIROptionalRead,
     THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral, THIRWrapperDefault,
     THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
@@ -93,7 +94,7 @@ def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType
             or len(layout.elements) != len(typ.element_types)):
         _fail(owner, node, "tuple layout disagrees with its type")
     for member, element in zip(layout.elements, typ.element_types):
-        if isinstance(member, THIRBorrowedRecord):
+        if isinstance(member, (THIRBorrowedRecord, THIROwnedRecord)):
             valid = (isinstance(member.type, NominalType)
                      and member.type.qualified_name() is not None
                      and not member.type.type_args and not member.type.is_protocol
@@ -105,6 +106,9 @@ def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType
             valid = member in (BOOL, INT32) and element == member
         if not valid:
             _fail(owner, node, "invalid tuple member fact")
+    if any(isinstance(m, THIROwnedRecord) for m in layout.elements):
+        if not isinstance(node, (THIRVarDecl, THIRTupleLiteral)):
+            _fail(owner, node, "owned tuple fact needs local constructor literal")
 
 
 def _iter_children(node: THIRNode):
@@ -308,6 +312,22 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _check_tuple(owner, node, layout, typ)
             if not isinstance(node, THIRVarDecl) and len(node.elements) != len(layout.elements):
                 _fail(owner, node, "tuple capture arity mismatch")
+            if any(isinstance(m, THIROwnedRecord) for m in layout.elements):
+                literal = node.init if isinstance(node, THIRVarDecl) else node
+                if (not isinstance(literal, THIRTupleLiteral) or literal.tuple_layout != layout
+                        or len(literal.elements) != len(layout.elements)
+                        or any(isinstance(m, THIRBorrowedRecord) for m in layout.elements)):
+                    _fail(owner, node, "owned tuple needs consistent constructor literal")
+                if isinstance(node, THIRVarDecl) and (
+                        node.form is not Form.STORAGE or node.storage_placement is not THIRStoragePlacement.SCOPE
+                        or any(f is not None for f in (node.owned_storage, node.alias_binding, node.storage_borrow,
+                                                      node.optional_layout, node.union_layout))):
+                    _fail(owner, node, "owned tuple needs direct storage declaration")
+                for member, value in zip(layout.elements, literal.elements):
+                    if isinstance(member, THIROwnedRecord) and (
+                            not isinstance(value, THIRCtorCall) or value.result_type != member.type
+                            or value.form is not Form.STORAGE):
+                        _fail(owner, node, "owned tuple member needs matching constructor")
     if isinstance(node, THIRSubscript) and node.tuple_index is not None:
         typ = unwrap_readonly(unwrap_ref_type(node.receiver.result_type))
         if (not isinstance(typ, TupleType) or type(node.tuple_index) is not int

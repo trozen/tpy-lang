@@ -1831,6 +1831,10 @@ Optional/union if/while hoists through THIR
 M3.14/M3.15 extend physical initialization to optional-backed plain-record
 hoists, separating record engagement and logical overwrite from wrapper
 lifetime and source assignment ([record storage plan](MIR_M3_RECORD_STORAGE_PLAN.md)).
+M3.16/M3.17 add flat inline-record tuple backing, normal lifetimes and bounded
+constructor-literal producers. Borrowed siblings retain external dependencies;
+tuple copying, hoists and general temporaries remain uncovered
+([tuple storage plan](MIR_M3_TUPLE_STORAGE_PLAN.md)).
 
 The following factored matrix covers the Cartesian product: a cell is M1 only
 when all three axes say M1 and the operation is in the explicit subset above.

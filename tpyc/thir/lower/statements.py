@@ -11006,9 +11006,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 declared[stmt.name] = tuple_t
                 cpp = "auto" if tuple_t.has_ref_elements() else None
                 _witness("decl.storage_record_tuple")
+                layout = None
+                if isinstance(init, THIRTupleLiteral) and all(
+                        typ in (BOOL, INT32) or isinstance(value, THIRCtorCall)
+                        for typ, value in zip(tuple_t.element_types, init.elements)):
+                    layout = tuple_layout(tuple_t, analyzer, captures=stmt.init.elem_capture, own_records=True)
+                    if layout is not None:
+                        init = replace(init, tuple_layout=layout)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=tuple_t, init=init,
-                    cpp_type=cpp, form=Form.STORAGE, loc=loc)
+                    cpp_type=cpp, form=Form.STORAGE, loc=loc, tuple_layout=layout,
+                    storage_placement=THIRStoragePlacement.SCOPE if layout is not None else None)
         else:
             # One verdict for this arm's three readers below. `vtype` is
             # the DECLARED slot until the str/bytes resolution past the
