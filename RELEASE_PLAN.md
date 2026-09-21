@@ -22,17 +22,19 @@ when its defect is one of:
 - a borrow-form vs storage-form spelling mismatch (const-ness, pointer
   vs payload slot) at a parameter, tuple element or Optional local.
 
-Tuple completeness below is an explicit exception to that deferral:
-tuple-related gaps and defects needed for that requirement remain in 0.6.0,
-including aliasing, rebinding and provenance, regardless of priority tag.
+The tuple requirement below is an explicit exception to that deferral: the
+tuple entries `docs/TUPLE_COMPLETION_PLAN.md` lists under 0.6.0 remain in
+0.6.0, including aliasing, rebinding and provenance, regardless of priority
+tag. A tuple entry that plan places under 0.7.0 or behind MIR does not block
+0.6.0, whatever its tag (scope narrowed 2026-09-21).
 
 Features:
 
-- Complete tuple support across all contexts -- `docs/LANGUAGE_FEATURES.md`,
-  "Tuples", and the tuple entries in `BUGS.md` / `TODO.md`. Includes element
-  and whole-tuple aliasing, rebinding, ownership, readonly access, nesting,
-  unpacking, calls/returns, fields/containers, globals, closures and
-  generator/async bodies; bounded MIR coverage alone does not satisfy this.
+- Tuples: no silent divergence and the everyday shapes compile --
+  `docs/TUPLE_COMPLETION_PLAN.md`, units U0-U4 (the element-vs-singleton
+  matrix as an instrument, every silent copy / dangle, the everyday
+  rejects, the small policy flips, the mixed-param diagnostics). Bounded
+  MIR coverage alone does not satisfy this.
 - THIR migration -- SHIPPED (fallback -> 0, then the AST-codegen
   deletion). Residual track: TODO: "The post-cutover fix queue: shapes
   that are now compile errors"
@@ -47,6 +49,10 @@ Features:
 
 ## 0.7.0 (queue to triage at 0.7 planning; not commitments)
 
+- Tuples, the structural half -- `docs/TUPLE_COMPLETION_PLAN.md`, units
+  U5-U7: one elementwise form rule in THIR, `str` / `bytes` view elements
+  (ABI change), the loud tail. U8 (per-element ownership at a mixed tuple
+  param) waits on MIR.
 - Borrow / provenance `HIGH` entries (the family defined under 0.6.0),
   fixed against the analysis-only MIR rather than patched one by one in
   the AST borrow tracker
