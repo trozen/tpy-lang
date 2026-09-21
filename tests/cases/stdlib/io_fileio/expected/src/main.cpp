@@ -80,7 +80,7 @@ void main() {
     std::cout << ::tpy::print_bool(cf.closed()) << "\n";
     {
         try {
-            ::tpystd::io::FileIO(-1);
+            (void)(::tpystd::io::FileIO(-1));
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
             std::cout << "negfd-ValueError" << "\n";

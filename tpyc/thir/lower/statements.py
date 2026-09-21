@@ -552,6 +552,7 @@ from .expressions import (
     _module_var_access_pair,
     _async_factory_wrap_cpp,
     _container_slice_recv_ok,
+    _constructs_value,
     _flush_witness,
     _own_tuple_shape_match,
     _ptr_read_derefs,
@@ -16437,14 +16438,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             eligible = _kind_detail("expr_stmt.", stmt.expr)
         if not eligible:
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        return THIRExprStmt(expr=_flush_witness(
-                                "flush.expr_stmt",
-                                _lower_expr(
-                                    stmt.expr, lc, declared,
-                                    use=_ExprUse(
-                                        result=_ExprResultUse.DISCARD,
-                                        allow_temps=True))),
-                            void_cast=void_cast,
+        discarded = _lower_expr(
+            stmt.expr, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.DISCARD, allow_temps=True))
+        # A discarded CONSTRUCTION renders a functional cast, and `T(name);`
+        # in statement position is a DECLARATION of `name` -- a build error
+        # in the name's own block, a silently default-constructed shadow in a
+        # nested one. Read off the LOWERED node: an @inline or macro
+        # expansion and a module-qualified spelling all arrive there.
+        return THIRExprStmt(expr=_flush_witness("flush.expr_stmt", discarded),
+                            void_cast=void_cast or _constructs_value(discarded),
                             loc=loc)
     if isinstance(stmt, TpyWith):
         begin_stmt()

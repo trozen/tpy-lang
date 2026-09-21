@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     Token()  # tpyc: ok
 //     return 0
 ::tpy::BigInt build_flag() {
-    Token();
+    (void)(Token());
     return ::tpy::BigInt(0);
 }
 

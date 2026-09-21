@@ -293,7 +293,7 @@ void main() {
     ::tpyapp::main::sec_literals();
     ::tpyapp::main::sec_setitem();
     Runner(Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2))).run();
-    Snap(Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2)));
+    (void)(Snap(Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2))));
     {
         Outer __tmp_2 = Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2));
         auto __src_0 = ::tpyapp::main::sec_gen(__tmp_2);

@@ -160,7 +160,7 @@ void main() {
     std::cout << ::tpy::print_bool(bc.closed()) << "\n";
     {
         try {
-            ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("x", 1)))), 0);
+            (void)(::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("x", 1)))), 0));
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
             std::cout << "bufsize-ValueError" << "\n";

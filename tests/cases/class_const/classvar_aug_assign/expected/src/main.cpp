@@ -13,9 +13,9 @@ namespace tpyapp::main {
 //     print(Counter.instances)
 void main() {
     Counter::instances = 0;
-    Counter();
-    Counter();
-    Counter();
+    (void)(Counter());
+    (void)(Counter());
+    (void)(Counter());
     Counter::instances = ::tpy::add_check<int32_t>(Counter::instances, 7);
     std::cout << Counter::instances << "\n";
 }

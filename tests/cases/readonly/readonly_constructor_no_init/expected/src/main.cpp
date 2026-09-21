@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     Logger()  # tpyc: ok
 //     return 0
 ::tpy::BigInt ok() {
-    Logger();
+    (void)(Logger());
     return ::tpy::BigInt(0);
 }
 

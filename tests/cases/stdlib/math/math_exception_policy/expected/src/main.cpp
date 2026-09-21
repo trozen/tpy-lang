@@ -894,7 +894,7 @@ void positions() {
     }
     {
         try {
-            Roots(-(1.0));
+            (void)(Roots(-(1.0)));
             std::cout << "constructor: unreachable" << "\n";
         } catch (const ::tpy::ValueError&) {
             std::cout << "constructor: caught domain" << "\n";

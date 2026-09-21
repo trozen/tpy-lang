@@ -751,6 +751,11 @@ class THIRCall(THIRExpr):
     callee_expr: 'THIRExpr | None' = None
     template_args_cpp: tuple[str, ...] | None = None
     resolved_callee: THIRResolvedCallee | None = None
+    # The callee is a TYPE, not a function: a builtin conversion, an
+    # enum-from-value, a module-qualified constructor. Those lower to a call
+    # node rather than a THIRCtorCall, so the arm that resolved the callee
+    # records it -- nothing downstream can tell from the render.
+    constructs: bool = False
 
 
 @dataclass(frozen=True)
@@ -3500,8 +3505,10 @@ class THIRExprStmt(THIRStmt):
     # A discarded expression statement (`n < 2`, `p.x`, `n + 1`, a bare
     # name or literal) renders `(void)(<expr>);`: the operands still
     # evaluate, but without the cast GCC's -Wunused-value rejects the pure
-    # forms under -Werror. Lowering decides this per row -- the render must
-    # not re-derive it by inspecting the expression's shape.
+    # forms under -Werror. A discarded CONSTRUCTION (`Tick(k)`, `str(s)`)
+    # takes it too: `T(name);` in statement position declares `name`.
+    # Lowering decides this per row -- the render must not re-derive it by
+    # inspecting the expression's shape.
     void_cast: bool = False
 
 

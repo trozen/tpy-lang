@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     Announcer()
 void main() {
-    Announcer();
+    (void)(Announcer());
 }
 
 // main()

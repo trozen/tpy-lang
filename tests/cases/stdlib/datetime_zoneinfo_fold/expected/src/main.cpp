@@ -97,7 +97,7 @@ void main() {
     {
         try {
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};
-            ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_9, ::tpy::BigInt(2));
+            (void)(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_9, ::tpy::BigInt(2)));
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
             std::cout << "ValueError-fold" << "\n";

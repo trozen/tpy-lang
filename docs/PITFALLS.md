@@ -78,9 +78,10 @@ free function, method, constructor, module-level statement, generator body, asyn
 comprehension, closure, context-manager body, `try`/`finally`, `@error_return` body, `match`
 arm. Across the value shapes too -- scalar, tuple, `Optional`, union, `str`/`bytes`, `Own[T]`,
 `readonly[T]`, `Ptr`/`Span`, `Box`/`Rc` -- and across the slot kinds: local, param, return,
-field, container element, global. The compiler decides
-each fact once and every position consumes that decision; a position with its own copy of the
-logic is where the next divergence lives.
+field, container element, global. And across the SPELLINGS of the construct: bare name,
+module-qualified, nested class, aliased import, the result of a macro or `@inline` expansion.
+The compiler decides each fact once and every position consumes that decision; a position with
+its own copy of the logic is where the next divergence lives.
 
 **Example.** `return h.get()` at an `Own[Obj]` return, where `get` returns a borrow. Wrong: a
 hard error at the return slot while the same call at an `Own` parameter, a container insert or a
@@ -89,9 +90,11 @@ one verdict at every owning slot, the warning "copies Obj into owned storage; us
 the copy, decided where the slot's ownership is decided and consumed by each position.
 
 **Check.** For the construct under change, compile the same subject at two positions other
-than the one the reporter saw and diff the emitted C++ for the subject. A difference is the
-defect. A fix that touches several consuming sites instead of the deciding site is the same
-defect in the compiler.
+than the one the reporter saw, and at each other spelling of it (`T(x)`, `mod.T(x)`,
+`Outer.T(x)`, an `@inline` body that expands to it), and diff the emitted C++ for the subject.
+A difference is the defect. A fix that touches several consuming sites instead of the deciding
+site is the same defect in the compiler -- and so is a verdict read off the source spelling
+when the lowered node already carries the answer.
 
 ### `conditional-operand-evaluates-in-place`
 

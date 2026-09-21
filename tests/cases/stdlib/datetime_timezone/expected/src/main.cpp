@@ -123,14 +123,14 @@ void main() {
     std::cout << ::tpy::print_bool(((::tpystd::datetime::timezone(::tpystd::datetime::timedelta())) == (::tpystd::datetime::UTC))) << "\n";
     {
         try {
-            ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(24)));
+            (void)(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(24))));
         } catch (const ::tpy::ValueError&) {
             std::cout << "ValueError-offset-hi" << "\n";
         }
     }
     {
         try {
-            ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-24)));
+            (void)(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-24))));
         } catch (const ::tpy::ValueError&) {
             std::cout << "ValueError-offset-lo" << "\n";
         }

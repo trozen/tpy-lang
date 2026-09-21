@@ -412,7 +412,7 @@ void main() {
     ::tpyapp::main::sec_readonly_root(ro_src);
     ::tpy::Bytes got = Runner(::tpyapp::main::mk()).run();
     std::cout << "method ret" << " " << ::tpy::BytesPrinter(got) << "\n";
-    Snap(::tpyapp::main::mk());
+    (void)(Snap(::tpyapp::main::mk()));
     Outer o = ::tpyapp::main::mk();
     {
         auto __src_0 = ::tpyapp::main::sec_gen(o);

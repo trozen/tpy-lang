@@ -1339,6 +1339,14 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
     return ok
 
 
+def _callee_is_type_initializer(fi: 'FunctionInfo | None') -> bool:
+    # Sema's synthetic record-constructor fi, or a builtin type's `__init__`
+    # overload: either way the call's callee is a type, whatever node the
+    # arm lowers it to.
+    return fi is not None and (
+        fi.is_constructor or (fi.is_method and fi.name == "__init__"))
+
+
 def _record_ctor_shape_supported(e: TpyCall, lc: '_LowerCtx',
                                  use: _ExprUse) -> bool:
     # A plain @native record's ctor emits through the same record branch as a
@@ -8138,6 +8146,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 args=(arg,),
                 cpp_template=(f"::tpy::EnumUtil<{spelled}>"
                               "::from_value({0})"),
+                constructs=True,
                 loc=loc)
         fi = e.resolved_function_info
         if fi is None:
@@ -8933,6 +8942,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 callee=e.func_name,
                 args=tuple(lowered_args),
                 cpp_template=template_fi.cpp_template,
+                constructs=True,
                 loc=loc,
             )
         # A @native free-function builtin (currently `len` -> `tpy::__len__`) carries
@@ -9096,6 +9106,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             native_name=native_name,
             cpp_template=cpp_template,
             callee_cpp=callee_cpp,
+            constructs=_callee_is_type_initializer(fi),
             form=form,
             loc=loc,
         ))
@@ -9459,6 +9470,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 args=(_lower_expr(e.args[0], lc, declared),),
                 cpp_template=(f"::tpy::EnumUtil<{spelled}>"
                               "::from_value({0})"),
+                constructs=True,
                 loc=loc)
         if e.is_nested_constructor:
             # `Outer.Inner(args)` -> `Outer::Inner(args)`. The type spelling
@@ -9821,6 +9833,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 callee_cpp=callee_cpp,
                 cpp_template=mk[1] if mk[0] == "template" else None,
                 template_args_cpp=mk_targs,
+                constructs=_callee_is_type_initializer(mfi),
                 form=_viewfam_result_form(mk_str),
                 loc=loc,
             )
@@ -16289,6 +16302,17 @@ def _flush_witness(pos: str, value: THIRExpr) -> THIRExpr:
             and any(isinstance(x, THIRArgTemp) for x in v.args)):
         _witness(pos)
     return value
+
+
+def _constructs_value(value: THIRExpr) -> bool:
+    """Whether a lowered expression is a call on a TYPE: a THIRCtorCall, or a
+    THIRCall whose arm recorded a type callee."""
+    v = value
+    while isinstance(v, (THIRCoerce, THIRFormConvert)):
+        v = v.expr if isinstance(v, THIRCoerce) else v.value
+    return isinstance(v, THIRCtorCall) or (
+        isinstance(v, THIRCall) and v.constructs)
+
 
 def _retag_bytes_literal_span(value: THIRExpr) -> THIRExpr:
     """Rewrite a bytes literal to its static-storage span render (BORROW) --

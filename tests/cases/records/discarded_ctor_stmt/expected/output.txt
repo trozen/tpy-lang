@@ -1,0 +1,54 @@
+  tick 1
+same-block:
+  tick 3
+  wrap 1
+  cell 3
+  cell 3
+  point 3
+call-arg:
+  tick 7
+  wrap 7
+nested-block:
+  tick 3
+  wrap 1
+other-args:
+  tick 0
+  tick 3
+  tick 4
+  tick 1
+spellings:
+  tock 3
+  inner 3
+  tick 3
+  after 3
+  bad color
+  bad kind
+ctor+method:
+  tick 5
+  tick 5
+generator:
+  tick 6
+  yielded 6
+closure:
+  tick 4
+with:
+  tick 4
+try-finally:
+  tick 4
+  tick 4
+match:
+  tick 4
+exception:
+  ok unraised
+conversions:
+  note 3
+  note 3
+  after abc 2 3 12
+plain-calls:
+  note 8
+  tick 8
+  tick 8
+  free init 8
+module-level:
+  tick 9
+  tick 9

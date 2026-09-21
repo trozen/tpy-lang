@@ -28,7 +28,7 @@ void reset() {
 //     print(count)
 void main() {
     ::tpyapp::main::bump();
-    P();
+    (void)(P());
     P::boost();
     std::cout << count << "\n";
     ::tpyapp::main::reset();
