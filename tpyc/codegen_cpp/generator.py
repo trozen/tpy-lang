@@ -891,25 +891,21 @@ class CodeGenerator:
         -- gcc inlines one only when it is declared `inline`, and only if its
         definition is in the consumer's TU. Past the limit nothing inlines
         it, and every consumer TU would parse it for nothing."""
+        inline = False
+
+        def linkage(code_lines: int) -> str:
+            nonlocal inline
+            # A genexpr in a header body the parser could not foresee (a
+            # function templated only by a protocol-typed param) has no inl
+            # file to go to.
+            inline = (code_lines <= _INLINE_NEXT_MAX_LINES
+                      and not (func.is_genexpr and not self._emits_inl))
+            return "inline " if inline else ""
+
         buf = io.StringIO()
-        self.gen_async.gen_coro_poll_def(buf, func, record_name=record_name)
-        body = buf.getvalue()
-        size = sum(1 for line in body.splitlines()
-                   if line.strip() and not line.lstrip().startswith("//"))
-        # A genexpr in a header body the parser could not foresee (a function
-        # templated only by a protocol-typed param) has no inl file to go to.
-        if size > _INLINE_NEXT_MAX_LINES or (func.is_genexpr and not self._emits_inl):
-            cpp.write(body + "\n")
-            return
-        struct_name = self.gen_async._struct_name_templated(func, record_name)
-        head = self.gen_async._resumable_body_method_decl(func, struct_name) + " {"
-        # Match the definition's own line: the source echo above it may quote
-        # the same declarator text inside a comment.
-        lines = body.split("\n")
-        at = [i for i, line in enumerate(lines) if line == head]
-        assert len(at) == 1, f"__next__ definition line not unique in {struct_name}"
-        lines[at[0]] = f"inline {head}"
-        self._inl_bodies.write("\n".join(lines) + "\n")
+        self.gen_async.gen_coro_poll_def(
+            buf, func, record_name=record_name, linkage=linkage)
+        (self._inl_bodies if inline else cpp).write(buf.getvalue() + "\n")
 
     def _inl_header(self, module: TpyModule) -> str:
         """`<mod>_inl.hpp`: the inline `__next__` bodies of this module's

@@ -20,7 +20,6 @@ from __future__ import annotations
 import contextlib
 import copy
 import io
-import re
 from dataclasses import dataclass, fields, is_dataclass
 from enum import IntEnum
 from functools import partial
@@ -269,49 +268,42 @@ class _CoroParam:
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"
 
 
-_BARE_STATE_JUMP = re.compile(r"\s*__state = (S_\w+);\n\s*continue;\n")
+class _CodeLineCounter(io.StringIO):
+    """A buffer that knows how many lines of code it holds: a size measure
+    that does not depend on whether source echo comments are on."""
+
+    @property
+    def code_lines(self) -> int:
+        return sum(1 for line in self.getvalue().splitlines()
+                   if line.strip() and not line.lstrip().startswith("//"))
 
 
-# A case body that runs some statements and then re-dispatches, and a store to
-# `__state` with the statement that follows it -- what `_single_loop_form`
-# reads off the rendered cases.
-_SEED_THEN_JUMP = re.compile(
-    r"(?P<seed>.*?)[ \t]*__state = (?P<label>S_\w+);\n\s*continue;\n", re.S)
-_EXHAUSTED_HEAD = re.compile(
-    r"[ \t]*if \((?P<test>[^\n]*)\) \{\n"
-    r"[ \t]*return ::tpy::make_unexpected\(::tpy::StopIteration\{\}\);\n"
-    r"[ \t]*\}\n")
-_TRAILING_CONTINUE = re.compile(
-    r"(?P<close>[ \t]*\})(?: else \{\n[ \t]*continue;\n[ \t]*\})?\n\Z"
-    r"|[ \t]*continue;\n\Z")
-_STATE_STORE = re.compile(
-    r"^[ \t]*__state = (?P<label>S_\w+);\n[ \t]*(?P<follows>[^\n]*)\n", re.M)
-
-
-def _negated(test: str) -> str:
-    """`!(test)`, or the operand itself when `test` is already one whole
-    negation (a range loop's exhaustion test is `!(i < stop)`)."""
-    if test.startswith("!(") and test.endswith(")"):
-        depth = 0
-        for pos, ch in enumerate(test[1:], start=1):
-            depth += (ch == "(") - (ch == ")")
-            if depth == 0:
-                if pos == len(test) - 1:
-                    return test[2:-1]
-                break
-    return f"!({test})"
+@dataclass
+class _LoopForm:
+    """How the state-transition sites render while a frame is emitted as ONE
+    plain loop (`_single_loop_plan`): every resume point is the loop head, so
+    a transfer to it is the loop's own `continue` and nothing stores a state
+    on the way."""
+    # The case labels that ARE the loop head: its own and every label whose
+    # case would only re-dispatch to it.
+    head_labels: frozenset[str]
+    loop_label: str
+    init_bb: int
+    loop_bb: int
+    # Exhaustion is recorded in `__state`, because asking the source again
+    # is not free and harmless (anything but a begin/end pair or a counter).
+    records_done: bool
+    # The exhaustion test may become the loop's own condition.
+    may_hoist_test: bool
+    # The constructor seeded this loop, so the first pull has nothing to do.
+    ctor_seeded_uid: 'int | None' = None
+    # Set by the advance emitter when it handed its test to the loop.
+    condition: 'str | None' = None
 
 
 def _state_jump(indent: str, label: str) -> str:
-    """A re-dispatch to `label`; `_bare_state_jump` recognizes this text."""
+    """A re-dispatch to the case `label`."""
     return f"{indent}__state = {label};\n{indent}continue;\n"
-
-
-def _bare_state_jump(case_body: str) -> 'str | None':
-    """The target label when a rendered case body only re-dispatches
-    (`__state = S_X; continue;`), else None."""
-    m = _BARE_STATE_JUMP.fullmatch(case_body)
-    return m.group(1) if m else None
 
 
 class _StateKind(IntEnum):
@@ -377,6 +369,9 @@ class AsyncCoroCodegen:
         # GENERATOR shape (yield -> __next__ -> expected<T, StopIteration>)
         # is selected transiently via `_resumable_shape`.
         self._shape: rcfg.ResumableShape = rcfg.ResumableShape.ASYNC
+        # Set while a body is emitted as one plain loop (`_emit_single_loop`);
+        # the state-transition sites read it.
+        self._loop_form: '_LoopForm | None' = None
 
     @contextlib.contextmanager
     def _resumable_shape(self, shape: 'rcfg.ResumableShape'):
@@ -2700,14 +2695,19 @@ class AsyncCoroCodegen:
         out.write(f"{INDENT}void cancel() {{ __cancel_pending = true; }}\n")
 
     def gen_coro_poll_def(self, out: "TextIO", func: TpyFunction,
-                            record_name: str | None = None) -> None:
+                            record_name: str | None = None, *,
+                            linkage: 'Callable[[int], str] | None' = None) -> None:
         """Emit the frame's body method, wherever the caller places it: the
         .cpp for an async `__poll__`, inline-in-hpp for a template, and
         `<mod>_inl.hpp` or the .cpp by size for a non-template generator's
         `__next__` (`CodeGenerator._emit_generator_next`). When
         `record_name` is given, the struct is `__coro_<Record>_<func>` and
         the body sees `self.X` as `__self.X` (parallels generator methods).
-        """
+
+        `linkage` is asked for the definition's specifier once its size is
+        known -- the number of code lines it renders to, source echo excluded
+        -- so a caller that places the definition by size never has to take
+        the rendered text apart to add one."""
         struct_name = self._struct_name_templated(func, record_name)
         cfg = self._build_resumable_cfg(func, record_name)
         has_yields = bool(cfg.yield_sites)
@@ -2715,8 +2715,8 @@ class AsyncCoroCodegen:
 
         self.ctx.emit_definition_echo(out, func.loc, markers=self._resume_markers(cfg))
         self._emit_template_header(out, func, record_name=record_name)
-        out.write(f"{self._resumable_body_method_decl(func, struct_name)} {{\n")
-        self._emit_resumable_body_prelude(out, has_yields)
+        body = _CodeLineCounter()
+        self._emit_resumable_body_prelude(body, has_yields)
 
         # Return-rewrite setup (the C++ Poll<T> type and DONE state
         # label so `return v` lowers correctly inside the state machine)
@@ -2728,8 +2728,13 @@ class AsyncCoroCodegen:
             with self._resumable_frame_ctx(func, record_name):
                 with self._resumable_return_lowering(func):
                     with self._thir_leaf_scope(leaf):
-                        self._emit_state_machine(out, func, cfg)
+                        self._emit_state_machine(body, func, cfg)
 
+        # The declarator line and the closing brace count too.
+        specifier = linkage(body.code_lines + 2) if linkage is not None else ""
+        out.write(f"{specifier}"
+                  f"{self._resumable_body_method_decl(func, struct_name)} {{\n")
+        out.write(body.getvalue())
         out.write(f"}}\n")
 
     # -- THIR resumable seam ----------------------------------------------
@@ -4346,6 +4351,11 @@ class AsyncCoroCodegen:
         # only re-dispatches shares its target's case instead, so a loop pays
         # one dispatch per element rather than one per empty join/resume hop.
         order = sorted(case_entries.items(), key=lambda kv: kv[1])
+        plan = self._single_loop_plan(func, cfg, case_entries, has_dtor)
+        if plan is not None:
+            self._emit_single_loop(out, func, cfg, case_entries, plan)
+            self.ctx.indent_level = 0
+            return
         after = self._resume_sources(cfg)
         bodies: dict[int, str] = {}
         for bb_id, _label in order:
@@ -4354,9 +4364,8 @@ class AsyncCoroCodegen:
             self._emit_case(buf, cfg, bb_id, case_entries, func)
             self.ctx.indent_level = 1
             bodies[bb_id] = buf.getvalue()
-        by_label = {label.cpp_name(): bb_id for bb_id, label in case_entries.items()}
-        jumps = {bb_id: by_label.get(_bare_state_jump(body) or "")
-                 for bb_id, body in bodies.items()}
+        jumps = {bb_id: self._redispatch_target(cfg, bb_id, case_entries, func)
+                 for bb_id in bodies}
         stacked: dict[int, list[_StateLabel]] = {}
         forwarded: set[int] = set()
         for bb_id, label in order:
@@ -4377,12 +4386,6 @@ class AsyncCoroCodegen:
             if label.kind is _StateKind.RESUME and label.idx in after:
                 return f"  // after: {after[label.idx]}"
             return ""
-        single_loop = self._single_loop_form(
-            func, cfg, order, bodies, stacked, forwarded, has_dtor)
-        if single_loop is not None:
-            out.write(single_loop)
-            self.ctx.indent_level = 0
-            return
         if cfg.yield_sites:
             out.write(f"{inner}while (true) switch (__state) {{\n")
         else:
@@ -4405,92 +4408,152 @@ class AsyncCoroCodegen:
         out.write(f"{inner}__builtin_unreachable();\n")
         self.ctx.indent_level = 0
 
-    def _single_loop_form(self, func: TpyFunction, cfg: 'rcfg.CFG',
-                          order: 'list[tuple[int, _StateLabel]]',
-                          bodies: 'dict[int, str]',
-                          stacked: 'dict[int, list[_StateLabel]]',
-                          forwarded: 'set[int]', has_dtor: bool) -> 'str | None':
-        """The body of a generator whose ONLY resume point is the head of its
-        one loop, or None when the frame is not that shape.
+    def _single_loop_plan(self, func: TpyFunction, cfg: 'rcfg.CFG',
+                          case_entries: dict[int, _StateLabel],
+                          has_dtor: bool) -> '_LoopForm | None':
+        """The loop form of a generator whose ONLY resume point is the head of
+        its one loop, or None when the frame is not that shape.
 
         Such a frame has two live cases: the entry, which only seeds the loop,
         and the loop head, which every yield resumes at and every `continue`
         re-enters. Dispatching on `__state` to reach the one place control can
         be buys nothing, and behind an out-of-line consumer the dispatch plus
-        a state store per element is the whole gap to a hand-written loop. The
-        loop is emitted as a plain `for (;;)`; `__state` keeps only what still
-        needs remembering: that the seed ran (unless the constructor ran it),
-        and that the source is exhausted (unless asking it again is free and
-        harmless -- a begin/end pair or a range counter)."""
+        a state store per element is the whole gap to a hand-written loop.
+        `__state` keeps only what still needs remembering: that the seed ran
+        (unless the constructor ran it), and that the source is exhausted
+        (unless asking it again is free and harmless -- a begin/end pair or a
+        range counter).
+
+        Read off the CFG, before anything is rendered: a case that would only
+        re-dispatch is a chain of empty `Fall` blocks."""
         if not (self._is_generator_shape() and func.is_genexpr):
             return None
         if has_dtor or cfg.finally_helpers:
             return None
-        live = [(bb, label) for bb, label in order if bb not in forwarded]
-        if len(live) != 2 or live[0][1].kind is not _StateKind.INITIAL:
+        plain = (rcfg.Fall, rcfg.Branch, rcfg.Yield, rcfg.Unreachable,
+                 rcfg.AsyncForAdvance)
+        if any(bb.region_stack or not isinstance(bb.terminator, plain)
+               for bb in cfg.blocks.values()):
             return None
-        (init_bb, _init_label), (loop_bb, loop_label) = live
-        group = ({loop_label.cpp_name()}
-                 | {a.cpp_name() for a in stacked.get(loop_bb, ())})
-        seed = _SEED_THEN_JUMP.fullmatch(bodies[init_bb])
-        if seed is None or seed.group("label") not in group:
+        heads = [bb_id for bb_id, bb in cfg.blocks.items()
+                 if isinstance(bb.terminator, rcfg.AsyncForAdvance)]
+        if len(heads) != 1 or heads[0] not in case_entries:
             return None
-        advances = [bb.terminator for bb in cfg.blocks.values()
-                    if isinstance(bb.terminator, rcfg.AsyncForAdvance)]
-        if len(advances) != 1:
+        loop_bb = heads[0]
+
+        def forwards_to_head(bb_id: int) -> bool:
+            seen: set[int] = set()
+            while bb_id != loop_bb:
+                if bb_id in seen:
+                    return False
+                seen.add(bb_id)
+                nxt = self._redispatch_target(cfg, bb_id, case_entries, func)
+                if nxt is None:
+                    return False
+                bb_id = nxt
+            return True
+
+        init = [bb_id for bb_id, label in case_entries.items()
+                if label.kind is _StateKind.INITIAL]
+        if len(init) != 1 or init[0] == loop_bb:
             return None
-        info = self._for_info(func, advances[0].uid)
+        # The entry runs its statements (the seed) and falls into the head.
+        last = cfg.blocks[self._fall_chain(cfg, init[0], case_entries)[-1]]
+        if not (isinstance(last.terminator, rcfg.Fall)
+                and forwards_to_head(last.terminator.next_bb)):
+            return None
+        others = [bb_id for bb_id in case_entries
+                  if bb_id != loop_bb and bb_id != init[0]]
+        if not all(forwards_to_head(bb_id) for bb_id in others):
+            return None
+        advance = cfg.blocks[loop_bb].terminator
+        info = self._for_info(func, advance.uid)
         idempotent = info is not None and info.strategy in ("begin_end", "range")
-        loop_body = bodies[loop_bb]
-        for store in _STATE_STORE.finditer(loop_body):
-            label, follows = store.group("label"), store.group("follows")
-            if label == "S_DONE":
-                if not follows.startswith("return "):
-                    return None
-            elif label not in group or not (follows == "continue;"
-                                            or follows.startswith("return ")):
-                return None
-        keep_done = "" if idempotent else "S_DONE"
-        loop_body = _STATE_STORE.sub(
-            lambda m: (m.group(0) if m.group("label") == keep_done
-                       else m.group(0)[m.group(0).index("\n") + 1:]),
-            loop_body)
-        # A `continue` that ends the loop body says nothing the closing brace
-        # does not, and gcc compiles the redundant `else { continue; }` arm of
-        # a filter into a measurably slower loop (10% behind an out-of-line
-        # consumer).
-        loop_body = _TRAILING_CONTINUE.sub(
-            lambda m: f"{m.group('close')}\n" if m.group("close") else "", loop_body)
+        head = cfg.blocks[loop_bb]
+        exhausted = cfg.blocks[advance.exhausted_bb]
+        # The test can lead the loop only where it leads the head's case and
+        # running out is nothing but the terminal return.
+        may_hoist = (idempotent and not head.stmts and not head.entry_narrowings
+                     and advance.exhausted_bb not in case_entries
+                     and not exhausted.stmts
+                     and isinstance(exhausted.terminator, rcfg.Unreachable))
+        init_stmts = [st for bb_id in self._fall_chain(cfg, init[0], case_entries)
+                      for st in cfg.blocks[bb_id].stmts]
+        seeded = (rcfg.resumable_state(func).ctor_loop_seed is not None
+                  and len(init_stmts) == 1
+                  and isinstance(init_stmts[0], rcfg.AsyncForIterSetup)
+                  and init_stmts[0].uid == advance.uid)
+        loop_label = case_entries[loop_bb].cpp_name()
+        return _LoopForm(
+            head_labels=frozenset(
+                [loop_label] + [case_entries[b].cpp_name() for b in others]),
+            loop_label=loop_label, init_bb=init[0], loop_bb=loop_bb,
+            records_done=not idempotent, may_hoist_test=may_hoist,
+            ctor_seeded_uid=advance.uid if seeded else None)
+
+    @staticmethod
+    def _fall_chain(cfg: 'rcfg.CFG', start_bb: int,
+                    case_entries: dict[int, _StateLabel]) -> list[int]:
+        """The blocks one case walks inline from `start_bb` along `Fall`
+        edges, up to the next case entry."""
+        chain = [start_bb]
+        while True:
+            t = cfg.blocks[chain[-1]].terminator
+            if not isinstance(t, rcfg.Fall) or t.next_bb in case_entries:
+                return chain
+            chain.append(t.next_bb)
+
+    def _emit_single_loop(self, out: "TextIO", func: TpyFunction,
+                          cfg: 'rcfg.CFG',
+                          case_entries: dict[int, _StateLabel],
+                          form: _LoopForm) -> None:
         inner = INDENT
-        out = io.StringIO()
-        if not idempotent:
-            out.write(f"{inner}if (__state == S_DONE) return "
-                      f"::tpy::make_unexpected(::tpy::StopIteration{{}});\n")
-        seeded = rcfg.resumable_state(func).ctor_loop_seed
-        seed_lines = [ln.strip() for ln in seed.group("seed").splitlines() if ln.strip()]
-        if seeded is None or [ln.replace("this->", "") for ln in seeded] != seed_lines:
-            out.write(f"{inner}if (__state == S_INITIAL) {{\n")
-            out.write(seed.group("seed"))
-            out.write(f"{inner}{INDENT}__state = {loop_label.cpp_name()};\n")
-            out.write(f"{inner}}}\n")
-        # The exhaustion test leads the loop. Where nothing has to be recorded
-        # on the way out it is the loop's own condition, with the terminal
-        # return AFTER the loop: gcc lays the in-loop spelling out with the
-        # cold return on the hot path (a measured 12% on an out-of-line
-        # consumer).
         stop = "::tpy::make_unexpected(::tpy::StopIteration{})"
-        head = _EXHAUSTED_HEAD.match(loop_body) if idempotent else None
-        if head is not None:
-            out.write(f"{inner}while ({_negated(head.group('test'))}) {{\n")
-            out.write(loop_body[head.end():])
+        self._loop_form = form
+        try:
+            self.ctx.indent_level = 2
+            seed = io.StringIO()
+            self._emit_case_body(seed, cfg, form.init_bb, case_entries, func,
+                                 tail=True)
+            body = io.StringIO()
+            self._emit_case_body(body, cfg, form.loop_bb, case_entries, func,
+                                 tail=True)
+            self.ctx.indent_level = 1
+        finally:
+            self._loop_form = None
+        if form.records_done:
+            out.write(f"{inner}if (__state == S_DONE) return {stop};\n")
+        if seed.getvalue():
+            out.write(f"{inner}if (__state == S_INITIAL) {{\n")
+            out.write(seed.getvalue())
+            out.write(f"{inner}{INDENT}__state = {form.loop_label};\n")
+            out.write(f"{inner}}}\n")
+        # Where nothing has to be recorded on the way out the exhaustion test
+        # is the loop's own condition, with the terminal return AFTER the
+        # loop: gcc lays the in-loop spelling out with the cold return on the
+        # hot path (a measured 12% on an out-of-line consumer).
+        if form.condition is not None:
+            out.write(f"{inner}while ({form.condition}) {{\n")
+            out.write(body.getvalue())
             out.write(f"{inner}}}\n")
             out.write(f"{inner}return {stop};\n")
         else:
             out.write(f"{inner}for (;;) {{\n")
-            out.write(loop_body)
+            out.write(body.getvalue())
             out.write(f"{inner}}}\n")
             out.write(f"{inner}__builtin_unreachable();\n")
-        return out.getvalue()
+
+    def _transfer(self, indent: str, label: str, *, tail: bool) -> str:
+        """A transfer of control to the case `label`. In the loop form the
+        only such case is the loop head: `continue`, or nothing where the
+        loop body ends anyway -- gcc compiles a redundant `else { continue; }`
+        arm of a filter into a measurably slower loop (10% behind an
+        out-of-line consumer)."""
+        form = self._loop_form
+        if form is None:
+            return _state_jump(indent, label)
+        assert label in form.head_labels, (label, form.head_labels)
+        return "" if tail else f"{indent}continue;\n"
 
     def _constructor_loop_seed(self, func: TpyFunction) -> 'list[str] | None':
         """The loop-seeding statements a genexpr frame runs in its CONSTRUCTOR,
@@ -4513,8 +4576,7 @@ class AsyncCoroCodegen:
         if len(infos) != 1:
             return None
         uid, info = infos[0]
-        if info.strategy != "begin_end" or any(
-                name == f"__for_src_{uid}" for name, _ in info.fields):
+        if info.strategy != "begin_end" or self._for_has_src_slot(info, uid):
             return None
         # `this->`: the constructor's param shadows the member of the same name.
         src = f"(this->{escape_cpp_name(loop.iterable.name)})"
@@ -4665,10 +4727,11 @@ class AsyncCoroCodegen:
             self._emit_case_body(body_buf, cfg, entry_bb, case_entries, func)
             self.ctx.indent_level -= len(tryctx_stack)
             # A body that only re-dispatches cannot throw: no region try.
-            jump = _bare_state_jump(body_buf.getvalue())
+            jump = self._redispatch_target(cfg, entry_bb, case_entries, func)
             if jump is not None and tryctx_stack:
                 tryctx_stack = []
-                body_buf = io.StringIO(_state_jump(body_indent, jump))
+                body_buf = io.StringIO(_state_jump(
+                    body_indent, case_entries[jump].cpp_name()))
 
             for region, extras in tryctx_stack:
                 guard = self._active_region_guard(region)
@@ -5223,7 +5286,7 @@ class AsyncCoroCodegen:
 
     def _emit_case_body(self, out: "TextIO", cfg: 'rcfg.CFG',
                          entry_bb: int, case_entries: dict[int, _StateLabel],
-                         func: TpyFunction) -> None:
+                         func: TpyFunction, *, tail: bool = False) -> None:
         """Emit the body of a case starting at entry_bb. Begins with the
         resume step (if entry_bb is a yield-resume), then walks BBs
         inline until a terminator exits the case."""
@@ -5246,12 +5309,99 @@ class AsyncCoroCodegen:
         tok = self._emit_resume_narrowings(narrow_buf, entry)
         walk_buf = io.StringIO()
         self._walk_inline(walk_buf, cfg, entry_bb, case_entries, func,
-                          chain_entry=entry)
+                          chain_entry=entry, tail=tail)
         self._restore_resume_narrowings(tok)
         # A body that only re-dispatches reads none of the re-established aliases.
-        if _bare_state_jump(walk_buf.getvalue()) is None:
+        if self._redispatch_target(cfg, entry_bb, case_entries, func) is None:
             out.write(narrow_buf.getvalue())
         out.write(walk_buf.getvalue())
+
+    @staticmethod
+    def _exited_regions(from_regions: tuple, to_regions: tuple) -> list:
+        common = 0
+        while (common < len(from_regions) and common < len(to_regions)
+               and from_regions[common] is to_regions[common]):
+            common += 1
+        return list(from_regions[common:])
+
+    def _region_exit_emits(self, from_regions: tuple, to_regions: tuple) -> bool:
+        """Whether `_emit_exit_region_finallies` writes anything on this edge."""
+        if not from_regions:
+            return False
+        for region in self._exited_regions(from_regions, to_regions):
+            if isinstance(region, rcfg.TryRegion):
+                if region.finally_helper_name is not None:
+                    return True
+            elif isinstance(region, rcfg.ExceptRegion):
+                if region.parent_finally is not None:
+                    return True
+            elif isinstance(region, rcfg.WithRegion):
+                return True
+        return (not _regions_have_pending_cleanup(to_regions)
+                and self._is_generator_shape()
+                and self.ctx.generator_has_finally_stop)
+
+    def _redispatch_target(self, cfg: 'rcfg.CFG', entry_bb: int,
+                           case_entries: dict[int, _StateLabel],
+                           func: TpyFunction) -> 'int | None':
+        """The case entry the case at `entry_bb` hands control to when that is
+        ALL it does -- it emits no statement, re-establishes nothing it reads,
+        and leaves no region with cleanup -- else None. Such a case can share
+        its target's label, cannot throw, and reads no narrowed alias."""
+        if entry_bb not in cfg._redispatch_cache:
+            cfg._redispatch_cache[entry_bb] = self._find_redispatch_target(
+                cfg, entry_bb, case_entries, func)
+        return cfg._redispatch_cache[entry_bb]
+
+    def _find_redispatch_target(self, cfg: 'rcfg.CFG', entry_bb: int,
+                                case_entries: dict[int, _StateLabel],
+                                func: TpyFunction) -> 'int | None':
+        is_async = not self._is_generator_shape()
+        if is_async and self._yield_at_resume(cfg, entry_bb) is not None:
+            return None     # an async resume polls its sub-future first
+        seen = {entry_bb}
+        cur = entry_bb
+        while True:
+            bb = cfg.blocks[cur]
+            if not all(self._stmt_emits_nothing(st, func) for st in bb.stmts):
+                return None
+            t = bb.terminator
+            # An await of a coroutine bound earlier constructs nothing: its
+            # suspend step is the transfer to its resume case.
+            if (is_async and isinstance(t, rcfg.Yield)
+                    and t.payload.prebuilt_slot is not None):
+                return t.resume_bb
+            if not isinstance(t, rcfg.Fall):
+                return None
+            nxt = t.next_bb
+            if nxt in case_entries:
+                if self._region_exit_emits(
+                        bb.region_stack, cfg.blocks[nxt].region_stack):
+                    return None
+                return nxt
+            if nxt in seen:
+                return None
+            seen.add(nxt)
+            cur = nxt
+
+    def _stmt_emits_nothing(self, stmt: object, func: TpyFunction) -> bool:
+        """A block statement the walker writes no code for: a leaf that
+        lowered to nothing (`pass`, a docstring), or the setup of a loop whose
+        source IS its iterator and needs no stash."""
+        if isinstance(stmt, rcfg.AsyncForIterSetup):
+            if stmt.is_async:
+                return False
+            info = self._for_info(func, stmt.uid)
+            return (info is not None and info.strategy == "next"
+                    and not self._for_has_src_slot(info, stmt.uid))
+        if isinstance(stmt, (rcfg.WithEnter, rcfg.AsyncWithSetup,
+                             rcfg.AsyncFinallyExit)):
+            return False
+        return self._leaf.leaf_emits_nothing(stmt)
+
+    @staticmethod
+    def _for_has_src_slot(info: 'GeneratorForInfo', uid: int) -> bool:
+        return any(fn == f"__for_src_{uid}" for fn, _ in info.fields)
 
     def _emit_exit_region_finallies(self, out: "TextIO", indent: str,
                                      from_regions: tuple,
@@ -5264,12 +5414,7 @@ class AsyncCoroCodegen:
         so we run them explicitly here."""
         if not from_regions:
             return
-        # Identify the common prefix length.
-        common = 0
-        while (common < len(from_regions) and common < len(to_regions)
-               and from_regions[common] is to_regions[common]):
-            common += 1
-        exited = list(from_regions[common:])
+        exited = self._exited_regions(from_regions, to_regions)
         guards = self.ctx.resumable_region_guards
         # Innermost first.
         for region in reversed(exited):
@@ -5347,7 +5492,8 @@ class AsyncCoroCodegen:
     def _walk_inline(self, out: "TextIO", cfg: 'rcfg.CFG',
                      start_bb: int, case_entries: dict[int, _StateLabel],
                      func: TpyFunction,
-                     chain_entry: 'dict[str, TpyType] | None' = None) -> None:
+                     chain_entry: 'dict[str, TpyType] | None' = None,
+                     *, tail: bool = False) -> None:
         """Walk BBs starting from start_bb, emitting their statements
         and following Fall/Branch terminators inline. Stops when the
         terminator is Yield/Return/Raise/Unreachable, or when a
@@ -5357,7 +5503,8 @@ class AsyncCoroCodegen:
         `chain_entry` is the narrowing-fact set already bound in this C++
         scope (the entry_narrowings of start_bb, which every inline
         Fall-successor shares); branch arms diff their own facts against
-        it so enclosing narrowings aren't re-cast."""
+        it so enclosing narrowings aren't re-cast. `tail`: nothing follows
+        this walk in the enclosing loop body (the loop form only)."""
         chain_entry = chain_entry or {}
         body_indent = self.ctx.indent()
         cur = start_bb
@@ -5410,8 +5557,9 @@ class AsyncCoroCodegen:
                         out, body_indent,
                         cfg.blocks[cur].region_stack,
                         cfg.blocks[t.next_bb].region_stack)
-                    out.write(_state_jump(
-                        body_indent, case_entries[t.next_bb].cpp_name()))
+                    out.write(self._transfer(
+                        body_indent, case_entries[t.next_bb].cpp_name(),
+                        tail=tail))
                     return
                 cur = t.next_bb
                 continue
@@ -5422,19 +5570,27 @@ class AsyncCoroCodegen:
                 self.ctx.indent_level += 1
                 self._walk_inline_or_jump(out, cfg, t.then_bb, case_entries,
                                             func, from_bb=cur,
-                                            outer_narrowings=chain_entry)
+                                            outer_narrowings=chain_entry,
+                                            tail=tail)
                 self.ctx.indent_level -= 1
-                out.write(f"{body_indent}}} else {{\n")
+                else_buf = io.StringIO()
                 self.ctx.indent_level += 1
-                self._walk_inline_or_jump(out, cfg, t.else_bb, case_entries,
+                self._walk_inline_or_jump(else_buf, cfg, t.else_bb, case_entries,
                                             func, from_bb=cur,
-                                            outer_narrowings=chain_entry)
+                                            outer_narrowings=chain_entry,
+                                            tail=tail)
                 self.ctx.indent_level -= 1
+                # The loop form's else arm at the end of the loop body can
+                # come out empty (a filter that failed: just go round).
+                if else_buf.getvalue() or self._loop_form is None:
+                    out.write(f"{body_indent}}} else {{\n")
+                    out.write(else_buf.getvalue())
                 out.write(f"{body_indent}}}\n")
                 return
             if isinstance(t, rcfg.AsyncForAdvance):
                 self._emit_async_for_advance(
-                    out, body_indent, cfg, t, case_entries, func, from_bb=cur)
+                    out, body_indent, cfg, t, case_entries, func, from_bb=cur,
+                    tail=tail)
                 return
             if isinstance(t, rcfg.MatchDispatch):
                 self._emit_match_dispatch(
@@ -5502,7 +5658,8 @@ class AsyncCoroCodegen:
                               case_entries: dict[int, _StateLabel],
                               func: TpyFunction,
                               from_bb: int,
-                              outer_narrowings: 'dict[str, TpyType] | None' = None) -> None:
+                              outer_narrowings: 'dict[str, TpyType] | None' = None,
+                              *, tail: bool = False) -> None:
         body_indent = self.ctx.indent()
         if target_bb in case_entries:
             # The target is its own case; it re-establishes narrowings from
@@ -5512,14 +5669,14 @@ class AsyncCoroCodegen:
                 out, body_indent,
                 cfg.blocks[from_bb].region_stack,
                 cfg.blocks[target_bb].region_stack)
-            out.write(_state_jump(body_indent,
-                                  case_entries[target_bb].cpp_name()))
+            out.write(self._transfer(
+                body_indent, case_entries[target_bb].cpp_name(), tail=tail))
         else:
             entry = cfg.blocks[target_bb].entry_narrowings
             tok = self._emit_resume_narrowings(out, entry,
                                                outer=outer_narrowings)
             self._walk_inline(out, cfg, target_bb, case_entries, func,
-                              chain_entry=entry)
+                              chain_entry=entry, tail=tail)
             self._restore_resume_narrowings(tok)
 
     def _emit_async_finally_exit(self, out: "TextIO", indent: str,
@@ -5697,7 +5854,7 @@ class AsyncCoroCodegen:
             self.ctx, iterable_expr, base_cpp,
             self.ctx.is_indirect_name(iterable_expr))
         self.ctx.temps.flush(out, indent)
-        if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
+        if self._for_has_src_slot(info, uid):
             out.write(f"{indent}__for_src_{uid}.emplace({src_cpp});\n")
             return f"(*__for_src_{uid})"
         return src_cpp
@@ -5715,6 +5872,8 @@ class AsyncCoroCodegen:
                      derived iterator, or no-ops for a self-iterator source)
         """
         uid = stmt.uid
+        if self._loop_form is not None and self._loop_form.ctor_seeded_uid == uid:
+            return
         if stmt.is_async:
             iter_cpp = self._leaf.render_region_expr(stmt.iterable_expr)
             self.ctx.temps.flush(out, indent)
@@ -5733,8 +5892,10 @@ class AsyncCoroCodegen:
             out.write(f"{indent}__for_it_{uid}.emplace(({src}).begin());\n")
             out.write(f"{indent}__for_end_{uid}.emplace(({src}).end());\n")
         elif strat == "next":
-            # Source IS the iterator; just stash a temporary if needed.
-            self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
+            # Source IS the iterator: a temporary one is stashed, a named one
+            # needs nothing here (`_stmt_emits_nothing` counts on that).
+            if self._for_has_src_slot(info, uid):
+                self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
         else:  # iter_next (universal)
             # A temporary source is stashed in `__for_src` first because
             # `tpy::__iter__` borrows its argument (it would otherwise dangle).
@@ -5774,11 +5935,14 @@ class AsyncCoroCodegen:
                     out, indent, f"*{ci}", f"*{st}", f"*{sp}", elem_type)
 
     def _for_advance_parts(self, func: TpyFunction,
-                           t: 'rcfg.AsyncForAdvance') -> tuple[str, str, list[str]]:
-        """Return (pre, exhausted_test, bind_post) for the AsyncForAdvance,
-        per strategy. `pre` runs before the exhaustion test; the loop exits
-        when `exhausted_test` is true; `bind_post` is the list of statements
-        that bind the loop var (and advance the cursor) on the live path."""
+                           t: 'rcfg.AsyncForAdvance'
+                           ) -> tuple[str, str, str, list[str]]:
+        """Return (pre, exhausted_test, live_test, bind_post) for the
+        AsyncForAdvance, per strategy. `pre` runs before the exhaustion test;
+        the loop exits when `exhausted_test` is true and goes on while
+        `live_test` is (the same test from the other side, for a loop that
+        takes it as its condition); `bind_post` is the list of statements that
+        bind the loop var (and advance the cursor) on the live path."""
         uid = t.uid
         stmt = t.stmt
         info = self._for_info(func, uid)
@@ -5801,7 +5965,7 @@ class AsyncCoroCodegen:
             else:
                 cont = f"{ci} < {st}"
                 bind_post = [f"{cpp_var} = ({ci})++;"]
-            return ("", f"!({cont})", bind_post)
+            return ("", f"!({cont})", cont, bind_post)
         if strat == "begin_end":
             it, end = f"(*__for_it_{uid})", f"(*__for_end_{uid})"
             if info.borrow_tuple_loop_var == stmt.var:
@@ -5821,7 +5985,7 @@ class AsyncCoroCodegen:
                 bind_post = [f"{cpp_var} = ::tpy::optional_to_ptr(*({it})++);"]
             else:
                 bind_post = [f"{cpp_var} = *({it})++;"]
-            return ("", f"{it} == {end}", bind_post)
+            return ("", f"{it} == {end}", f"!({it} == {end})", bind_post)
         # next / iter_next: __next__() into __for_r, exhaust on !has_value.
         r = f"(*__for_r_{uid})"
         if strat == "next":
@@ -5838,7 +6002,7 @@ class AsyncCoroCodegen:
         # or a value to move in, and `emplace` resolves to the right one.
         if info is not None and info.loop_var_field is not None \
                 and info.loop_var_field[0] == stmt.var:
-            return (pre, f"!{r}.has_value()",
+            return (pre, f"!{r}.has_value()", f"{r}.has_value()",
                     [f"{cpp_var}.emplace(::tpy::unwrap_ref_move(*{r}));"])
         elem = f"::tpy::unwrap_ref(*{r})"
         # Bind form mirrors the loop var's frame storage shape:
@@ -5851,13 +6015,13 @@ class AsyncCoroCodegen:
             bind_post = [f"{cpp_var}.emplace({elem});"]
         else:
             bind_post = [f"{cpp_var} = {elem};"]
-        return (pre, f"!{r}.has_value()", bind_post)
+        return (pre, f"!{r}.has_value()", f"{r}.has_value()", bind_post)
 
     def _for_src_expr(self, stmt: 'TpyForEach', uid: int,
                       info: 'GeneratorForInfo') -> str:
         """The iterator source for the `next` strategy advance: the stored
         `__for_src` (temporary) or the re-referencable named expression."""
-        if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
+        if self._for_has_src_slot(info, uid):
             return f"(*__for_src_{uid})"
         return self._leaf.render_region_expr(stmt.iterable)
 
@@ -5866,11 +6030,20 @@ class AsyncCoroCodegen:
                                   t: 'rcfg.AsyncForAdvance',
                                   case_entries: dict[int, _StateLabel],
                                   func: TpyFunction,
-                                  from_bb: int) -> None:
+                                  from_bb: int, *, tail: bool = False) -> None:
         """Emit the per-iteration advance for an AsyncForAdvance terminator
         (strategy-specific check + bind), then transfer to the body
         (`has_value_bb`) or loop exit (`exhausted_bb`)."""
-        pre, exhausted_test, bind_post = self._for_advance_parts(func, t)
+        pre, exhausted_test, live_test, bind_post = self._for_advance_parts(func, t)
+        form = self._loop_form
+        if form is not None and form.may_hoist_test and not pre:
+            form.condition = live_test
+            for line in bind_post:
+                out.write(f"{indent}{line}\n")
+            self._walk_inline_or_jump(
+                out, cfg, t.has_value_bb, case_entries, func, from_bb=from_bb,
+                tail=tail)
+            return
         if pre:
             out.write(f"{indent}{pre}\n")
         out.write(f"{indent}if ({exhausted_test}) {{\n")
@@ -5881,9 +6054,8 @@ class AsyncCoroCodegen:
             cfg.blocks[from_bb].region_stack,
             cfg.blocks[t.exhausted_bb].region_stack)
         if t.exhausted_bb in case_entries:
-            out.write(f"{inner}__state = "
-                      f"{case_entries[t.exhausted_bb].cpp_name()};\n")
-            out.write(f"{inner}continue;\n")
+            out.write(self._transfer(
+                inner, case_entries[t.exhausted_bb].cpp_name(), tail=False))
         else:
             # Exit BB isn't a case entry (shouldn't happen given
             # _compute_case_entries counts AsyncForAdvance successors,
@@ -5895,7 +6067,8 @@ class AsyncCoroCodegen:
         for line in bind_post:
             out.write(f"{indent}{line}\n")
         self._walk_inline_or_jump(
-            out, cfg, t.has_value_bb, case_entries, func, from_bb=from_bb)
+            out, cfg, t.has_value_bb, case_entries, func, from_bb=from_bb,
+            tail=tail)
 
     def _emit_unreachable_tail(self, out: "TextIO", indent: str,
                                  func: TpyFunction) -> None:
@@ -5906,7 +6079,8 @@ class AsyncCoroCodegen:
         if self._is_generator_shape():
             # Fell off the end of the generator body -> StopIteration.
             emit_prims.emit_finally_chain(self.ctx, out, indent)
-            out.write(f"{indent}__state = S_DONE;\n")
+            if self._loop_form is None or self._loop_form.records_done:
+                out.write(f"{indent}__state = S_DONE;\n")
             out.write(f"{indent}return ::tpy::make_unexpected("
                       f"::tpy::StopIteration{{}});\n")
             return
@@ -6083,7 +6257,11 @@ class AsyncCoroCodegen:
         yield_expr = self._leaf.render_yield_value(ys)
         self.ctx.temps.flush(out, indent)
         resume = _StateLabel(_StateKind.RESUME, t.suspension_index).cpp_name()
-        out.write(f"{indent}__state = {resume};\n")
+        # The loop form resumes at the loop head whatever the state says.
+        if self._loop_form is None:
+            out.write(f"{indent}__state = {resume};\n")
+        else:
+            assert resume in self._loop_form.head_labels, resume
         out.write(f"{indent}return {yield_expr};\n")
 
     def _emit_suspend(self, out: "TextIO", indent: str,

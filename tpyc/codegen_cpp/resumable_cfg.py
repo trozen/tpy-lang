@@ -979,6 +979,9 @@ class CFG:
     # port may use a different shape) -- typed `dict[int, object]` to
     # keep this module shape-neutral.
     _case_entries_cache: dict[int, object] | None = field(default=None, repr=False)
+    # Case entry -> the case it only re-dispatches to (None: it does more),
+    # filled by the emitter's `_redispatch_target`.
+    _redispatch_cache: 'dict[int, int | None]' = field(default_factory=dict, repr=False)
     _resume_to_yield_cache: dict[int, Yield] | None = field(default=None, repr=False)
 
     def bb(self, bb_id: int) -> BB:

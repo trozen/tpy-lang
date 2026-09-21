@@ -4555,6 +4555,11 @@ class ResumableLeafEmitter:
         node = self._lookup(self._body.leaves, stmt, "leaf statement")
         _emit_stmts(out, (node,), indent_level, self._state)
 
+    def leaf_emits_nothing(self, stmt) -> bool:
+        """A leaf statement that lowered to no code (`pass`, a docstring)."""
+        return isinstance(self._lookup(self._body.leaves, stmt, "leaf statement"),
+                          THIRNoOpStmt)
+
     def render_cond(self, cond) -> str:
         """Render a Branch terminator's condition; arg temps queue on the
         shared ctx sink and flush at the skeleton's existing flush point."""

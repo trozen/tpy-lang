@@ -2632,8 +2632,6 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_60_frame<T___src>::_
         if ((x > 1)) {
             if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
                 return x;
-            } else {
-                continue;
             }
         }
     }

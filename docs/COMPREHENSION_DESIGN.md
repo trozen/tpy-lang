@@ -662,8 +662,13 @@ kept name and binds another counts as handing it on, a consuming one included
 ### Emit shape
 
 A genexpr frame has one resume point and it is the loop head, so
-`_single_loop_form` (`tpyc/codegen_cpp/gen_async.py`) emits the body as a plain
-loop with no `switch (__state)`; `__state` keeps only what still has to be
+`_single_loop_plan` (`tpyc/codegen_cpp/gen_async.py`) reads that shape off the
+CFG before anything is rendered -- one loop advance, an entry that falls into
+its head, every other case an empty chain of `Fall` blocks onto it -- and the
+body is then emitted once as a plain loop with no `switch (__state)`: the
+state-transition sites (a transfer to a case, a yield's resume store, the
+terminal store, the loop advance) consult the active `_LoopForm`, so the
+stores and the redundant `continue`s are never written; `__state` keeps only what still has to be
 remembered. Over a borrowed container the begin/end pair is seeded in the
 CONSTRUCTOR (the iterators point outside the frame, so this neither pins it nor
 changes behaviour) and asking the source again after exhaustion is free, so
