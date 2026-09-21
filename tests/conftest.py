@@ -3123,9 +3123,12 @@ def _discover_from_dirs(base_dirs: list[Path]):
         prefix = base_dir.name
 
         for dirpath, dirnames, _filenames in os.walk(base_dir):
-            dirnames[:] = [
+            # Sorted: os.walk yields directory order, which differs
+            # per filesystem, and xdist requires every worker to collect
+            # the same order (remote workers may sit on another FS).
+            dirnames[:] = sorted(
                 d for d in dirnames if d not in _SKIP_DIRS
-            ]
+            )
 
             cur = Path(dirpath)
             if cur.name != "src":
