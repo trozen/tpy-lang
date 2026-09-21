@@ -272,6 +272,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    copy_call_arg,
     _binding_peel,
     _narrow_alias_name,
     _fresh_narrow_local,
@@ -9126,7 +9127,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # copy arm). The source stays live (copy, not move).
             copy_row = (_lower_copy_record(stmt.init, lc, declared,
                                            slot_type=vtype, loc=loc)
-                        if fn_top else None)
+                        if fn_top or (
+                            isinstance(copy_call_arg(stmt.init, analyzer), TpyName)
+                            and borrowed_record(vtype, False, analyzer) is not None
+                            and stmt.name not in lc.prescan.hoisted
+                            and stmt.name not in lc.prescan.reassigned
+                            and stmt.name not in lc.prescan.move_through
+                            and not lc.func.is_generator and not lc.func.is_async)
+                        else None)
             if copy_row is not None:
                 _witness("decl.copy_record")
                 declared[stmt.name] = vtype

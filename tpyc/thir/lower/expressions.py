@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
 from .callables import resolved_callee
-from .storage import direct_field, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
+from .storage import borrowed_record, direct_field, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from .captures import capture_facts
 from ... import qnames
 from ...parse.nodes import (
@@ -16571,12 +16571,12 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
                                       pos=SinkPos.CALL_ARG)),),
                 cpp_template=f"{stu.to_cpp()}({{0}})",
                 loc=loc)
-        # The container arm's record twin, same tail: a bare record NAME is
-        # `_lower_copy_record`'s `T(x)` row (every supporting sink
-        # intercepts it first), so what lands here is the source shapes no
-        # sink intercepts -- a field read, a borrow-returning call, an
-        # awaited borrow.
+        # Keep semantic copy identity for named plain records at sinks that
+        # reach the shared builtin route, including module-qualified calls.
         _witness("call.copy_record")
+        if isinstance(src, TpyName) and borrowed_record(stu, False, analyzer) is not None:
+            return replace(lower_copy_construct(src, stu, lc, declared, slot_type=rtype, loc=loc),
+                           cpp_type=stu.to_cpp())
         return THIRCall(
             result_type=rtype, callee=callee,
             args=(_lower_expr(

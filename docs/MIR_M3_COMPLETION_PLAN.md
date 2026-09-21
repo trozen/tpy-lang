@@ -1,7 +1,7 @@
 # M3 completion checklist
 
 Current planning index, updated 2026-09-21. Implementation exists through
-M3.24; review/merge status is separate. The numbered increment plans below record
+M3.25; review/merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -89,8 +89,8 @@ the others visible.
   replacement, then connects existing source copies/replacements. Source
   loop-local move-through has a separate frontend boundary; the batch
   does not close this box.
-  M3.24's internal activation/retention contract is implemented; source-copy
-  integration remains M3.25.
+  M3.24's internal activation/retention contract and M3.25's bounded source-copy
+  integration are implemented.
 
 Exit evidence: source binding availability, physical construction, payload
 engagement, replacement and end events remain distinct on every admitted path.

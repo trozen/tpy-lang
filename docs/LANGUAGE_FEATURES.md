@@ -8663,8 +8663,11 @@ as module-qualified calls), reference escapes and custom cleanup remain uncovere
 
 M3.24 extends [cyclic record storage analysis](MIR_M3_CYCLIC_RECORD_STORAGE_PLAN.md)
 to region-local copy/move initialization and constructor IN_PLACE replacement
-across loops, including present Optional-record holders. M3.25 will connect
-already-supported source copy declarations.
+across loops, including present Optional-record holders. M3.25 connects
+already-supported source copy declarations in ordinary functions, methods and
+constructor tails under existing while/range/native-for coverage. Direct,
+renamed and module-qualified copies use semantic copy facts while preserving
+the existing emitted C++.
 Source loop-local move-through remains a frontend gap; internal MIR coverage
 would not change its acceptance. C++ emission and checker authority stay unchanged.
 

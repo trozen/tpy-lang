@@ -1,6 +1,6 @@
 # Cyclic record storage: M3.24/M3.25
 
-Status: M3.24 implemented; M3.25 integration in progress.
+Status: M3.24 and M3.25 implemented, reviewed and verified; ready for merge.
 Base: `9950ab55fa`. Architectural scope: extend the storage/activation
 contract across THIR and MIR. This covers part of W1 in the
 [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md), not all of W1 or M3.
@@ -59,7 +59,8 @@ unchanged. Unsupported analysis means MIR not covered, not a source rejection.
 - Nested explicit copies compile, but take a generic `THIRCall` and local
   declaration without owned-storage facts. The function-top copy route uses
   `_lower_copy_record`/`lower_copy_construct` and `THIRCopy` to emit the same
-  `Cell(source)`. Normalization must preserve existing declaration and
+  `Cell(source)`. M3.25 uses that semantic node at the nested declaration and
+  shared named-record copy builtin routes, preserving declaration and
   last-use registrations as well as the emitted bytes.
 - `source = Cell(n); target = source` at the source's final use inside a loop
   fails before MIR with `decl.branch_slot_type`. The related if/hoisted defect
@@ -162,7 +163,7 @@ dataflow lattice or asymptotic solver cost is expected.
 
 After implementation: targeted tests, all review lenses, final full
 `rpytest --force-exec`, readiness/retrospective and one squashed commit per
-step on `mir-m3-cyclic-record-storage`. The user merges.
+step on `mir-m3-cyclic-record-storage-ready`. The user merges.
 
 ## Pitfalls and documentation
 
@@ -198,5 +199,33 @@ boundary above before implementation.
 
 M3.24 verification: the full MIR unit suite passes (1,235 tests), including
 fresh copy/move activations, normal exits, retained-holder siblings and the
-unchanged invalid-initialization gates. Final cumulative review and full-suite
-verification follow M3.25.
+unchanged invalid-initialization gates.
+
+## Delivery verification
+
+The final code checkpoint is `181862a276`, reviewed cumulatively against
+`9950ab55fa`. Architecture, safety, codegen, CPython parity, test coverage,
+conventions and documentation reviews are clean. The review fixes strengthened
+the dump assertion to require an actual copy instruction, corrected a stale
+copy-route comment and made the retained-alias witness distinguish an accidental
+copy from incorrect in-place replacement. All were included in the closing
+review; only this verification record follows that checkpoint.
+
+- Targeted source/MIR and new snippet verification: 28 passed, including
+  generated C++ execution and CPython parity.
+- Full `rpytest --force-exec`: 10,352 passed, 23 skipped in 345.18 seconds;
+  all 4,181 executable cases built and ran, with no execution-cache skips.
+- Existing snippets and snapshots are unchanged. Saved source probes and
+  independent callable/boundary probes emit byte-identical C++ before and
+  after the semantic-copy producer change.
+- Master remains at the reviewed base; no merge conflict or unreviewed code
+  tail exists. The added files are compiler tests, one snippet with its
+  generated snapshots, and the implementation plan.
+
+The readiness retrospective, including an independent second opinion triggered
+by the 20-file changeset, accepts the existing activation/retention machinery,
+bounded semantic-copy normalization and separate internal/source/runtime tests.
+It accepts the source-move exclusion as this branch's boundary, not the
+frontend defect itself: fixing the tracked loop-local move-through producer is
+the first follow-up. Reused-slot copy/move and the other matrix exclusions remain
+open; this batch does not complete W1 or M3.
