@@ -1,0 +1,182 @@
+# Tuple completion plan
+
+Status: OPEN. Scope decided 2026-09-21; nothing below is started.
+Measured on `e43c7a5398` (2026-09-21). Every figure here is valid for that
+tree only -- re-run the matrix before acting on a cell.
+
+The tracked plan for making a tuple element behave as designed. `RELEASE_PLAN.md`
+points here for the 0.6.0 tuple requirement; the entries themselves stay in
+`BUGS.md` / `TODO.md`, and this file only orders them, sizes them and records
+which release each unit belongs to.
+
+## The rule
+
+`docs/PITFALLS.md`, `tuple-equals-scalar`: element `i` of `tuple[T1, T2, ...]`
+at position P behaves exactly as `Ti` would as a standalone value at P -- same
+aliasing, copying, ownership, storage form and view-ness. Same SEMANTICS, not
+the same C++ spelling: a reference element keeps the `T*` stand-in, because a
+tuple of references is not assignable. The design entry is TODO: "A tuple
+element does NOT behave like the same type would as a singleton at that
+position".
+
+## Where it stands
+
+Element form x position, a singleton program and a tuple program per cell, run
+under TPy and CPython (mutate-and-observe for the reference rows, the emitted
+C++ form for `str` / `bytes`). `ok` = the tuple element behaves as the
+singleton does.
+
+| element form | param | return | field | collection | local | global |
+|---|---|---|---|---|---|---|
+| `Own[T]` (ref) | ok | ok | ok (both reject) | ok (both reject) | ok (both reject) | ok (both reject) |
+| borrow (ref) | ok alias | ok alias | ok copy+warn | D1 | ok alias | D2 |
+| value type | ok | ok | ok | ok | ok | ok |
+| `int` (BigInt) | ok | ok | ok | ok | ok | ok |
+| `str` | D3 | ok | ok | ok | D4 | ok |
+| `bytes` | D3, D6 | ok (D6) | ok (D6) | ok (D6) | D4, D6 | D6 |
+| mixed Own+borrow | D5 | ok | ok copy+warn | D1 | ok alias | D2 |
+
+- **D1** `BUGS.md#borrowed-tuple-at-own-call-arg` -- a borrowed tuple at an
+  owning container insert: literal source is a hard error, a local source an
+  unsupported-construct reject, only the call source warns like the scalar.
+- **D2** `BUGS.md#global-tuple-ref-storage-form` -- the tuple global copies
+  SILENTLY where the scalar global aliases.
+- **D3 / D4** `BUGS.md#str-tuple-element-local-owned` and design-entry instance
+  (1) -- a `str` / `bytes` element is owned storage at a param and a local where
+  the scalar is a free view.
+- **D5** `BUGS.md#consume-own-element-of-mixed-tuple` -- the `Own` element of a
+  mixed param cannot be consumed (loud).
+- **D6** `BUGS.md#bytes-tuple-element-subscript-read-rejects` -- `t[0]` on a
+  `bytes` element rejects at every position (loud).
+
+Positions outside that grid, same method. Aliases correctly: unpack of a call
+(and through a relay), swap, a two-reference return, a method returning a field
+tuple, a generator yield (unpacked or whole), `for a, b in xs`, `enumerate`,
+`zip`, `dict.items()`, a closure read, a `return` under a mutating `finally`.
+Wrong or missing: see units 1 and 2.
+
+## Units
+
+Each unit is its own branch through `/tpy-fix-bug` or `/tpy-add-feature`. A
+unit starts by RE-PROBING its entries: of the five entries re-measured on
+2026-09-21, three had moved since they were written. A unit is done when its
+matrix cells and its entries' repros match CPython (or warn), its entries are
+deleted from `BUGS.md`, and the box here is ticked with the merge commit.
+
+### 0.6.0
+
+- [ ] **U0 -- the matrix as an instrument.** Promote the probe into the repo so
+  every later unit is gated on its diff, and so a cell cannot drift unseen (D1
+  and D5 both changed character between two censuses with no work aimed at
+  them). `tuple/element_vs_singleton_global` and
+  `tuple/element_vs_singleton_collection` already pin two cells; missing are
+  the `bytes` row, the mixed row, and the unpack / yield / closure positions.
+  Shape to decide at the unit: condensed cases (one per position, a section
+  per element form) against a script under `scripts/`. Seed:
+  `/tmp/agents/tupmatrix/gen.py` and `/tmp/agents/tupprobe/gen.py` -- NOT
+  committed, and gone at the next reboot. Size: 1-2 days.
+- [ ] **U1 -- no silent tuple divergence.** Size: 2-3 weeks; the frame entries
+  are the risk. Order: the three HIGH first.
+  - [ ] `BUGS.md#owned-call-tuple-unpack-copies-live-source` (HIGH) -- the
+    correct render already exists for the literal-bound local.
+  - [ ] `BUGS.md#own-tuple-relay-loses-pointer-lift` (HIGH)
+  - [ ] `BUGS.md#global-tuple-ref-storage-form` (HIGH, D2) -- the large one: a
+    borrow-form global slot mirroring the local's. The stopgap warning is a U3
+    decision.
+  - [ ] `BUGS.md#borrow-unpack-target-rebind-writes-through`
+  - [ ] `BUGS.md#tuple-literal-subscript-store-skips-copy-check`
+  - [ ] `BUGS.md#own-tuple-arg-nested-member-silent-copy`
+  - [ ] `BUGS.md#walrus-tuple-binding-not-copy-checked`
+  - [ ] `BUGS.md#tuple-return-under-finally-captures-early`
+  - [ ] `BUGS.md#tuple-repack-yield-silent-elem-copy` (frame)
+  - [ ] `BUGS.md#resumable-alias-identity` (frame)
+  - [ ] `BUGS.md#frame-tuple-param-elem-alias-slot-address` (frame)
+  - [ ] `BUGS.md#tuple-unpack-view-outlives-reseat` (dangling view)
+  - [ ] `BUGS.md#loop-body-view-unpack-target-dangles` (dangling view)
+  - Also observed, not yet probed with a reference element: `x, k = h.f` on a
+    field tuple emits `auto __tup_1 = h.f;`, a whole-tuple copy. Probe it in
+    this unit; file or fold as the result says.
+- [ ] **U2 -- everyday shapes compile.** Loud rejects of ordinary Python,
+  measured 2026-09-21 (reject tag in brackets). Size: 1-2 weeks, batch-style;
+  each row is a lowering arm with a snapshot case and keeps the adjacent
+  `error_` pin. File a `BUGS.md` entry for a row only if the reject queue
+  (`scripts/thir_migration/review/`) does not already carry it.
+  - [ ] unpack of a local tuple: `t = (b, 1); x, k = t` [`stmt.tuple_unpack`];
+    the rebind after it (`x = Box(5)`) sits behind the same reject
+  - [ ] element read off a container: `t = xs[0]` on `list[tuple[Box, int32]]`
+    [`decl.slot_type`]
+  - [ ] `xs.append(t)` with a local or param tuple [`method.arg_shape`]
+  - [ ] `d["a"] = (b, 1)` [`setitem.family`]
+  - [ ] an `Optional` element local: `t: tuple[Box | None, int32] = (b, 1)`
+    [`decl.slot_type`]
+  - [ ] walrus of a tuple call: `(t := g(b))[1]` [`expr.walrus`]
+  - [ ] a tuple local at an `Own[tuple[...]]` arg: `take(t)`
+    [`call.arg_shape.own_tuple`]
+  - [ ] `BUGS.md#bytes-tuple-element-subscript-read-rejects` (D6), and the
+    `bytes` global unpack / `print(G)` rejects behind it
+  - [ ] `BUGS.md#rvalue-ref-tuple-unpack-address-of-rvalue` -- `a, b = stack.pop()`
+  - [ ] yield re-packing an owning local: `yield (t[0], t[1])` (a located
+    error today; decide with `tuple-repack-yield-silent-elem-copy`)
+- [ ] **U3 -- policy decisions, then the flips.** Each is small once decided;
+  none is decided. Present each on its own, leading with the generated code.
+  - [ ] D1 tier: the per-element arg check follows the scalar WARN tier
+    (`BUGS.md#borrowed-tuple-at-own-call-arg`; eight `error_` cases stop
+    erroring, `@nocopy` sources keep erroring).
+  - [ ] TODO: "Decide ONE policy for a borrow-returning call at a
+    tuple-element `Own[T]` slot" -- errors today where the scalar warns.
+  - [ ] TODO: "Warn at the mixed-tuple module GLOBAL as a stopgap" -- only
+    worth taking if D2's full fix slips out of 0.6.0.
+  - [ ] The `Optional`-wrapped mixed return ABI (`tuple[Own[A], B] | None`),
+    carved out of the design entry's step (b).
+- [ ] **U4 -- the mixed-param diagnostics.** The consume itself is MIR work
+  (U8); what 0.6.0 owes is that the limitation is SAID. Size: under a day.
+  - [ ] `BUGS.md#consume-own-element-of-mixed-tuple` -- replace the generic
+    unlowered-shape message with a located diagnostic naming the remedy (take
+    the owned element as its own `Own[T]` parameter), pinned by an `error_`
+    case for the PARAM flavour; the `p[0].n = 99` build failure gets the same.
+  - [ ] `BUGS.md#unconsumed-own-warning-whole-tuple-granular`
+
+### 0.7.0
+
+- [ ] **U5 -- one elementwise form question** (design entry step (c)). The
+  structural fix: "what form does element `i` take at position P" is decided
+  once, as a THIR fact, and every position consumes it -- instead of each
+  element kind re-deriving its form at each site, which is why the matrix
+  drifts. Prerequisites: TODO: "Make the tuple RENDER 3-valued instead of
+  stacking booleans over it" and TODO: "Sema mirrors codegen's tuple-render
+  pair at a different breadth". Needs `/tpy-add-feature`. Size: 2-3 weeks.
+- [ ] **U6 -- `str` / `bytes` view elements** (D3, D4). A view element at a
+  tuple param and a view-safe local, as the scalar has. ABI change with wide
+  snapshot churn, and it needs the loan a view inside a tuple takes on its
+  source, which is not tracked today. Do it ON U5, not before it: alone it is
+  a third per-site form rule. Also closes the `str`-view printed-tuple extra
+  copy. Size: 1-2 weeks.
+- [ ] **U7 -- the loud tail.** The remaining loud tuple entries in `BUGS.md`
+  (about 85 on 2026-09-21, most LOW or exotic), taken as ordinary batch work
+  by user-facing frequency. Size: 2-4 weeks.
+
+### Gated on MIR
+
+- [ ] **U8 -- per-element ownership at a mixed tuple param** (D5): the
+  per-element borrow/own param ABI and per-place partial move-out. Already
+  `deferred: MIR` in `BUGS.md` ("Return/param asymmetry for a MIXED
+  owned+borrow tuple", "General destructive move-out of aggregate members").
+
+## Out of scope here
+
+- Tuple-literal membership evaluating lazily where CPython builds the tuple
+  first: evaluation order is a postponed language decision, so no single site
+  of that class is fixed.
+- A reference-type local hoisted out of a branch that aliases a branch-local
+  source: the scalar form dangles the same way, so it belongs to the borrow /
+  provenance family, not to this plan.
+- `namedtuple`, variadic tuples, `match` sequence patterns, list unpacking:
+  features, tracked in `TODO.md`.
+
+## Keeping this current
+
+Tick a box with the merge commit when a unit lands, and delete the `BUGS.md`
+entries it closes. A defect found while working a unit becomes a line in that
+unit (and a `BUGS.md` entry), never a silent widening. When the matrix is
+re-run, replace the table and its date rather than appending to it. When U0-U4
+are ticked, the 0.6.0 tuple requirement is met.

@@ -369,6 +369,7 @@ Features this doc references or assumes, with one-line explanations and deeper-d
 | `README.md` | Quick start, build flags | Update when CLI changes |
 | `TODO.md` | Current priorities | Check before starting non-trivial work |
 | `RELEASE_PLAN.md` | Milestone slice of TODO.md: queued features for the next release. Bugs are NOT listed -- every `IMM`/`HIGH` entry in BUGS.md blocks the release, so the tags are the must-fix set | Short bullets only, each linking into TODO.md via a quoted greppable phrase; delete a release's section when it ships |
+| `docs/TUPLE_COMPLETION_PLAN.md` | Ordered, release-split work units for tuple-element-equals-scalar, with the measured element-form x position matrix | Tick units with their merge commit; re-run and replace the matrix, never append |
 | `BUGS.md` | Known compiler defects (incorrect output, crashes, miscompiles, rejection of valid code, missing safety diagnostics). Has a `## Compiler bugs` section and a `## Safety / borrow checker` section -- file borrow-checker / view-lifetime gaps in the latter | Add new bug entries here, not in TODO.md |
 
 **Before committing**: If code adds new features or changes behavior, update `docs/LANGUAGE_FEATURES.md` in the same commit to reflect the current state (Working/Planned/Open status).

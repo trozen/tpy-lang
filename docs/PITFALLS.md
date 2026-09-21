@@ -56,15 +56,19 @@ copying, ownership, storage form, view-ness), and an N-tuple has, element-wise, 
 each element would have alone. Changing a return type from `Obj` to `(Obj, int)` must not
 change how `Obj` behaves.
 
-**Example.** `def f(x: Own[Box])` renders `Box&&` and the body may move `x`; `def f(p:
-tuple[Own[Box], Box])` renders `const std::tuple<Box, const Box*>&`, so `owned, borrowed = p`
-emits `auto __tup_1 = p;`, a whole-tuple copy, and `owned.n = 99; borrowed.n = 77; return
-p[0].n + p[1].n` prints 78 under TPy and 176 under CPython: element 1 aliases, element 0 does
-not. Same axis, other shapes: `xs.append(v)` at `list[Box]` warns and copies, while at
-`list[tuple[Box, Box]]` the literal `xs.append((v, v))` is a hard error, a local `xs.append(t)` a
-warning and a call result `xs.append(make(v))` silent; `a: str = v` is `std::string_view a = v`
-while `t: tuple[str] = (v,)` is `std::tuple<std::string>(std::string(v))`.
-(open: `BUGS.md#consume-own-element-of-mixed-tuple`, `BUGS.md#borrowed-tuple-at-own-call-arg`,
+**Example.** `def mk() -> tuple[Own[Box], int32]`, then `t = mk()` / `x, k = t` / `x.n = 9` /
+`print(t[0].n)` prints 1 under TPy and 9 under CPython, with no warning: the unpack emits
+`auto __tup_1 = t;`, a whole-tuple copy, and moves out of the copy. The scalar twin (`t = mk()`
+off `-> Own[Box]`, then `x = t`) aliases, and so does the same unpack off a literal-bound
+`t = (Box(1), 1)`. Same axis, other shapes: `def f(x: Own[Box])` renders `Box&&` and the body may
+move `x`, while the `Own` element of `def f(p: tuple[Own[Box], Box])` can be neither unpacked,
+consumed nor written through; `xs.append(v)` at `list[Box]` warns and copies, while at
+`list[tuple[Box, Box]]` the literal `xs.append((v, v))` is a hard error, a local `xs.append(t)` an
+unsupported-construct reject and only the call result `xs.append(make(v))` warns like the scalar;
+`a: str = v` is `std::string_view a = v` while `t: tuple[str] = (v,)` is
+`std::tuple<std::string>(std::string(v))`.
+(open: `BUGS.md#owned-call-tuple-unpack-copies-live-source`,
+`BUGS.md#consume-own-element-of-mixed-tuple`, `BUGS.md#borrowed-tuple-at-own-call-arg`,
 `BUGS.md#str-tuple-element-local-owned`)
 
 **Check.** Wrap the subject in `(x,)` and `(x, 1)` and diff the three variants' emitted C++ for
