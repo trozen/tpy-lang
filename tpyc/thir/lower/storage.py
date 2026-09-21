@@ -13,6 +13,7 @@ from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
     THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
+    THIRWrapperDefault,
 )
 
 if TYPE_CHECKING:
@@ -71,6 +72,18 @@ def hoisted_binding(name: str, typ: TpyType, analyzer: 'SemanticAnalyzer', *,
         layout = tuple_layout(typ, analyzer, borrow=borrow, readonly=readonly)
         return THIRHoistedBinding(name, typ, tuple_layout=layout) if layout is not None else None
     if not borrow:
+        if isinstance(typ, OptionalType):
+            layout = optional_layout(typ, analyzer, borrow=False, readonly=readonly)
+            if layout is not None:
+                return THIRHoistedBinding(name, typ, optional_layout=layout,
+                                         physical_default=THIRWrapperDefault(0, None))
+        if isinstance(typ, UnionType):
+            layout = union_layout(typ, analyzer, borrow=False, readonly=readonly)
+            if layout is not None:
+                first = layout.elements[0]
+                default = None if first is None else False if first == BOOL else 0
+                return THIRHoistedBinding(name, typ, union_layout=layout,
+                                         physical_default=THIRWrapperDefault(0, default))
         return None
     if isinstance(typ, OptionalType) and typ.uses_pointer_repr():
         layout = optional_layout(typ, analyzer, borrow=True, readonly=readonly)

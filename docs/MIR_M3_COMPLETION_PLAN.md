@@ -1,7 +1,7 @@
 # M3 completion checklist
 
 Current planning index, updated 2026-09-21. Implementation exists through
-M3.12; merge status is separate. The numbered increment plans below record
+M3.13; merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -38,7 +38,8 @@ These boxes describe the current admitted subset only:
 - [x] Literal/not boolean edges and coherent unreachable inventory cleanup
   ([M3.11](MIR_M3_CONSTANT_CFG_PLAN.md)).
 - [x] Explicit physical scalar-wrapper initialization, independent of source
-  assignment, with validation and lifetime consumers ([M3.12](MIR_M3_WRAPPER_STORAGE_PLAN.md)).
+  assignment, with validation and lifetime consumers, and scalar Optional/union
+  hoists from THIR ([M3.12/M3.13](MIR_M3_WRAPPER_STORAGE_PLAN.md)).
 
 ## Remaining work packages
 
@@ -48,7 +49,7 @@ the others visible.
 
 ### W1: storage lifecycle
 
-- [ ] Admit scalar Optional/union hoists with actual default selection facts.
+- [x] Admit scalar Optional/union hoists with actual default selection facts.
   Physical construction is distinct from source assignment in M3.12;
   M3.13 connects the THIR producer ([wrapper storage plan](MIR_M3_WRAPPER_STORAGE_PLAN.md)).
 - [ ] Model optional-storage record hoists: wrapper lifetime, record engagement,

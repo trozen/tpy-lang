@@ -1795,6 +1795,12 @@ class THIRStoragePlacement(Enum):
 
 
 @dataclass(frozen=True)
+class THIRWrapperDefault:
+    alternative: int
+    value: bool | int | None
+
+
+@dataclass(frozen=True)
 class THIRHoistedBinding:
     """An emitted predeclaration does not make the source binding available."""
     name: str
@@ -1802,6 +1808,8 @@ class THIRHoistedBinding:
     borrowed_record: THIRBorrowedRecord | None = None
     optional_layout: THIROptionalLayout | None = None
     tuple_layout: THIRTupleLayout | None = None
+    union_layout: THIRUnionLayout | None = None
+    physical_default: THIRWrapperDefault | None = None
     placement: THIRStoragePlacement = THIRStoragePlacement.SCOPE
     initially_assigned: bool = False
 

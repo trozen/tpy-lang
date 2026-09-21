@@ -248,9 +248,6 @@ def hoists() -> Hoists:
                                 kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
         if name == "global_optional":
             assert isinstance(result, MIRNotCovered) and result.node_kind == "THIRName"
-        elif name in ("scalar_optional", "scalar_union"):
-            assert isinstance(result, MIRNotCovered), (name, result)
-            assert "hoisted binding facts" in result.reason
         else:
             assert isinstance(result, MIRFunction), (name, result)
             bodies[name] = result
@@ -268,6 +265,8 @@ def test_hoist_producers_preserve_results_and_shared_mutation(hoists: Hoists) ->
     for flag in (False, True):
         for name in ("scalar", "value_tuple", "loop_tuple", "loop_scalar"):
             assert execute(bodies[name], flag) == (1 if flag else 2)
+        for name in ("scalar_optional", "scalar_union"):
+            assert execute(bodies[name], flag) == (1 if flag else 0)
         assert execute(bodies["record"], flag) == 9
         assert execute(bodies["escaped_loop"], flag) == (9 if flag else 0)
         assert execute(bodies["nested"], flag, True) == (9 if flag else 0)

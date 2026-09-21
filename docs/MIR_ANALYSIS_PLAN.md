@@ -1825,8 +1825,8 @@ The current M3 completion checklist and batch order live in
 [MIR_M3_COMPLETION_PLAN.md](MIR_M3_COMPLETION_PLAN.md). Historical increment
 matrices describe their own admission boundaries, not total remaining scope.
 M3.12 separates physical wrapper initialization from source assignment, with
-actual default selections and independent must-facts. The approved M3.13 step
-admits scalar Optional/union hoists through THIR
+actual default selections and independent must-facts. M3.13 admits scalar
+Optional/union if/while hoists through THIR
 ([wrapper storage plan](MIR_M3_WRAPPER_STORAGE_PLAN.md)).
 
 The following factored matrix covers the Cartesian product: a cell is M1 only

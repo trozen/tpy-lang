@@ -1706,9 +1706,9 @@ alongside related feature work; only the big-rock deferrals live here.
   completing M2 or enabling M5.
   `docs/MIR_M3_COMPLETION_PLAN.md` is the current M3 completion checklist and
   batch-order index; the increment history below records bounded coverage.
-  The proposed next batch, `docs/MIR_M3_WRAPPER_STORAGE_PLAN.md`, introduces
-  separate physical-initialization/source-assignment facts and admits scalar
-  Optional/union hoists in two commits. It awaits design approval. Record
+  `docs/MIR_M3_WRAPPER_STORAGE_PLAN.md` records implemented M3.12/M3.13:
+  separate physical-initialization/source-assignment facts and bool/int32
+  Optional/union if/while hoists, for analysis only. Record
   backing engagement, owning aggregates, cyclic copy/move/in-place, broader
   CFG positions, cleanup, suspension and complete holder/escape propagation
   remain explicit unchecked work packages there, not an unspecified count of
@@ -1750,8 +1750,7 @@ alongside related feature work; only the big-rock deferrals live here.
   exceptional cleanup, destructors, resumables and authority transition.
   M3.7/M3.8 are merged. `docs/MIR_M3_DECLARATIONS_PLAN.md` records implemented
   M3.9 late direct declarations and implemented M3.10 bounded ordinary hoisted
-  bindings/backing. Default-constructed scalar Optional/union
-  hoists, optional-storage record hoists, while borrowed-tuple hoists,
+  bindings/backing. Optional-storage record hoists, while borrowed-tuple hoists,
   owning/mixed tuple backing, nonempty
   `hoist_slots`, unclassified rebind forms and the other matrix gaps remain
   explicit follow-up work; source availability and physical initialization

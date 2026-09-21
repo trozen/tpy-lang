@@ -480,6 +480,20 @@ class _Coverage:
             source = self.references[self.reference_name(expr)]
             _require(expr, source.type == target.payload.type
                      and (not source.readonly or target.payload.readonly), "optional capture access mismatch")
+        elif _literal(expr):
+            # Hoisted assignments contextualize the literal with the wrapper type.
+            _require(expr, expr.form is th.Form.VALUE, "unsupported optional literal form")
+            if isinstance(expr, th.THIRCoerce):
+                _plain(expr, {"expr", "coercion_name"})
+                _require(expr, expr.coercion_name == "int_literal_to_fixed_int" and target.payload == INT32
+                         and expr.result_type in (INT32, OptionalType(INT32)), "unsupported optional literal coercion")
+                expr = expr.expr
+            _plain(expr, {"value", "int_cpp"})
+            typ = INT32 if isinstance(expr.result_type, IntLiteralType) else expr.result_type
+            _require(expr, expr.form is th.Form.VALUE and typ in (target.payload, OptionalType(target.payload))
+                     and (target.payload == BOOL and type(expr.value) is bool
+                          or target.payload == INT32 and type(expr.value) is int and INT32_MIN <= expr.value <= INT32_MAX),
+                     "optional literal payload mismatch")
         else:
             _require(expr, self.expr(expr) == target.payload and not self.writes[expr],
                      "effectful or mistyped optional payload")
@@ -833,7 +847,7 @@ class _Coverage:
         for fact in facts:
             _require(stmt, fact.name not in self.bindings and fact.initially_assigned is False
                      and fact.placement is th.THIRStoragePlacement.SCOPE, "invalid hoisted binding placement or availability")
-            layouts = (fact.borrowed_record, fact.optional_layout, fact.tuple_layout)
+            layouts = (fact.borrowed_record, fact.optional_layout, fact.tuple_layout, fact.union_layout)
             _require(stmt, sum(f is not None for f in layouts) <= 1, "conflicting hoisted binding facts")
             if fact.borrowed_record is not None:
                 self.reference(stmt, fact.borrowed_record, fact.type)
@@ -841,9 +855,13 @@ class _Coverage:
                 typ = fact.borrowed_record.type
             elif fact.optional_layout is not None:
                 self.optional_layout(stmt, fact.optional_layout, fact.type)
-                _require(stmt, isinstance(fact.optional_layout.payload, th.THIRBorrowedRecord),
-                         "hoisted scalar optional storage")
                 self.optionals[fact.name] = fact.optional_layout
+                typ = fact.type
+            elif fact.union_layout is not None:
+                self.union_layout(stmt, fact.union_layout, fact.type)
+                _require(stmt, all(m is None or m in (BOOL, INT32) for m in fact.union_layout.elements),
+                         "unsupported hoisted union storage")
+                self.unions[fact.name] = fact.union_layout
                 typ = fact.type
             elif fact.tuple_layout is not None:
                 self.tuple_layout(stmt, fact.tuple_layout, fact.type)
@@ -852,6 +870,18 @@ class _Coverage:
             else:
                 _require(stmt, fact.type in (BOOL, INT32), "unsupported hoisted value")
                 typ = fact.type
+            wrapper = (fact.union_layout is not None or fact.optional_layout is not None
+                       and fact.optional_layout.payload in (BOOL, INT32))
+            if wrapper:
+                default = fact.physical_default
+                first = fact.union_layout.elements[0] if fact.union_layout is not None else None
+                expected = None if first is None else False if first == BOOL else 0
+                _require(stmt, isinstance(default, th.THIRWrapperDefault)
+                         and type(default.alternative) is int and default.alternative == 0
+                         and type(default.value) is type(expected) and default.value == expected,
+                         "missing or inconsistent physical wrapper default")
+            else:
+                _require(stmt, fact.physical_default is None, "physical default on non-wrapper hoist")
             self.bindings[fact.name] = typ
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
@@ -941,6 +971,10 @@ class _Builder:
     def optional_value(self, expr: th.THIRExpr | None) -> MIRRvalue:
         if expr is None or isinstance(expr, th.THIRLiteral) and expr.value is None:
             return MIROptionalConstruct()
+        if _literal(expr):
+            literal = expr.expr if isinstance(expr, th.THIRCoerce) else expr
+            typ = BOOL if type(literal.value) is bool else INT32
+            return MIROptionalConstruct(self.result(typ, MIRConstant(literal.value), expr.loc))
         if isinstance(expr, th.THIRName) and expr.optional_read is not None and not expr.optional_read.extract:
             return MIROptionalCopy(self.bindings[expr.name])
         if isinstance(expr, th.THIRName) and expr.result_type not in (BOOL, INT32):
@@ -1301,9 +1335,16 @@ class _Builder:
 
     def hoists(self, stmt: th.THIRIf | th.THIRWhile) -> None:
         for fact in stmt.hoisted_bindings:
-            self.bindings[fact.name] = self.slot(
+            default = fact.physical_default
+            dest = self.slot(
                 fact.type, MIRSlotKind.LOCAL, fact.name, fact.borrowed_record,
-                optional_layout=fact.optional_layout, tuple_layout=fact.tuple_layout)
+                optional_layout=fact.optional_layout, tuple_layout=fact.tuple_layout,
+                union_layout=fact.union_layout, storage_duration=(
+                    self.region if self.region.index else MIRStorageDuration.BODY) if default is not None else None)
+            self.bindings[fact.name] = dest
+            if default is not None:
+                self.current.statements.append(MIRStorageInit(MIRPlace(dest), default.alternative,
+                                                              MIRConstant(default.value), stmt.loc))
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...]) -> None:
         bindings, storage, region = self.bindings.copy(), self.storage.copy(), self.region

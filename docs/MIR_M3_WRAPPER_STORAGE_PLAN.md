@@ -1,6 +1,6 @@
 # M3.12/M3.13: physical initialization and wrapper hoists
 
-Status: design approved, 2026-09-21; M3.12 implemented, M3.13 next.
+Status: M3.12 and M3.13 implemented, 2026-09-21; merge status is separate.
 This is the first batch of W1 in the
 [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md#w1-storage-lifecycle).
 It is architectural and analysis-only: no source acceptance, diagnostics,
@@ -22,8 +22,8 @@ def example(flag: bool) -> int32:
 This already runs and returns 1 or 0. Emission declares
 `std::optional<int32_t> value;` before evaluating the `if` condition, then
 assigns it in each arm. The physical wrapper is initially empty, but Python
-has not assigned the source name. Current MIR deliberately leaves this hoist
-uncovered: its one assigned set cannot express both facts.
+has not assigned the source name. Before M3.12/M3.13 MIR left this hoist
+uncovered: one assigned set could not express both facts.
 
 The scalar union sibling declares `::tpy::Union<bool, int32_t> value;`.
 The runtime default constructor delegates to `std::variant`; its actual first
@@ -36,17 +36,17 @@ available to read. Both properties follow the object's actual activation.
 
 ## Evidence and precedents
 
-- `THIRHoistedBinding` already distinguishes initially unassigned hoists and
-  their placement. Extend its typed facts rather than parsing `hoist_decls`.
+- `THIRHoistedBinding` distinguishes initially unassigned hoists and their
+  placement. Its typed facts now carry physical defaults; MIR does not parse
+  `hoist_decls` render strings.
 - `_value_hoist_entry` in `thir/lower/statements.py` is the shared scalar and
-  wrapper declaration producer. `storage.hoisted_binding` deliberately omits
-  scalar Optional/union today; reuse `optional_layout` and `union_layout`.
-- `mir/validate.py` currently counts root writes as source assignments and
-  requires assignment destinations to be assigned. Wrapper physical assignment
-  must instead require constructed storage; RHS reads still require bindings.
-- `MIRPayloadWrite` distinguishes initialization from assignment already.
+  wrapper declaration producer. `storage.hoisted_binding` records scalar
+  Optional/union defaults using `optional_layout` and `union_layout`.
+- `mir/validate.py` requires constructed storage for wrapper assignment,
+  independently of source assignment. RHS reads still require assigned bindings.
+- `MIRPayloadWrite` distinguishes initialization from assignment.
   `payload_lifetime` and `scope_lifetime` separate payload replacement from
-  scope ends; extend those contracts rather than add another event analysis.
+  scope ends, including physical defaults without a source write.
 - `MIRRegionFlow` distinguishes source residence resets from physical storage
   endings. The two coincide for scoped scalar wrappers, but not in general.
 
@@ -57,15 +57,15 @@ the builtin bool alternative so CPython does not depend on an annotation
 converting a plain int into the int32 stub class. Inspected C++ confirms
 predeclarations precede conditions and later writes assign existing wrappers.
 
-## Proposed representation and transfer rules
+## Representation and transfer rules
 
 Keep one slot identity per inline wrapper. Its existing payload projection
 continues to name the same physical payload. Separate holder/backing slots
 would invent an addressable wrapper-alias model: the existing wrapper-copy
 operations copy values, while record alias operations refer to records.
 
-Introduce an explicit physical-default-initialization instruction, provisionally
-`MIRStorageInit`, in the statement union. It carries a local destination,
+`MIRStorageInit` is an explicit physical-default-initialization instruction
+in the statement union. It carries a local destination,
 source location and typed default selection/value. It is not a source
 assignment or an arbitrary expression evaluation. Initially support only
 scalar Optional and nonrecursive scalar union wrappers.
@@ -106,7 +106,7 @@ Assigning into an initially empty Optional has no old payload to end. On an
 early exit with no Python write, the Optional wrapper still ends; a scalar
 union also ends whichever default payload is active.
 
-Update every instruction consumer explicitly: validation, selection/freshness,
+Every instruction consumer handles it: validation, selection/freshness,
 liveness, dependencies, payload/scope ends, record-retention inspection, dump,
 reachability/slot inventory and the MIR test interpreter. Centralize instruction
 use/definition classification where shared; do not duplicate a new CFG walk.
@@ -120,6 +120,20 @@ predeclaration. MIR validates complete name/order correspondence and fact
 compatibility before lowering. Missing/unknown facts remain uncovered; invalid
 MIR remains a validation error. Ordinary uninitialized bool/int32 predecls must
 not acquire invented false/zero values through this extension.
+
+`THIRHoistedBinding.physical_default` carries `THIRWrapperDefault` with the
+actual tag and typed scalar/None value; its optional/union layout describes
+the physical wrapper. The shared `storage.hoisted_binding` producer records
+these alongside the existing declaration spelling. Optional payload literals
+contextualized with the wrapper type are checked at that destination, including
+the exact coercion, scalar type and int32 range; C++ emission does not change.
+
+Direct MIR tests pin construction versus assignment, actual default tags,
+must-construction versus may-end joins, repeated activation and stale aliases.
+Pipeline tests pin copied snapshots after reseats, free/method/constructor
+siblings, while/else, nested guard writes, break/continue/return scope ends,
+emitter placement and damaged producer facts. Existing record/tuple/readonly
+and parameter controls remain in the MIR suite.
 
 ## Batch boundaries
 

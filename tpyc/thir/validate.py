@@ -72,7 +72,7 @@ from .nodes import (
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
     THIROptionalLayout, THIROptionalRead,
-    THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral,
+    THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral, THIRWrapperDefault,
     THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
     THIRResolvedCallee, THIRFunctionIdentity, THIRCallableSignature,
     THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
@@ -701,6 +701,25 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         _walk(owner, node.expr, return_type, argtemp_ok=True)
         return
     if isinstance(node, (THIRIf, THIRWhile)):
+        for binding in node.hoisted_bindings:
+            if binding.optional_layout is not None:
+                _check_optional(owner, node, binding.optional_layout, binding.type)
+            if binding.union_layout is not None:
+                _check_union(owner, node, binding.union_layout, binding.type)
+            default = binding.physical_default
+            if default is not None:
+                optional = binding.optional_layout
+                union = binding.union_layout
+                scalar = (optional is not None and optional.payload in (BOOL, INT32) and union is None
+                          or union is not None and optional is None
+                          and all(m is None or m in (BOOL, INT32) for m in union.elements))
+                first = union.elements[0] if union is not None else None
+                expected = None if first is None else False if first == BOOL else 0
+                if (not scalar or binding.borrowed_record is not None or binding.tuple_layout is not None
+                        or not isinstance(default, THIRWrapperDefault)
+                        or type(default.alternative) is not int or default.alternative != 0
+                        or type(default.value) is not type(expected) or default.value != expected):
+                    _fail(owner, node, "invalid physical wrapper default")
         # Conditions are flushable: _emit_if flushes before the `if (` /
         # inside the nested-elif block, _emit_while restructures the loop
         # head (`while (true) { <temps> if (!cond) break;`).

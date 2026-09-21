@@ -8592,8 +8592,8 @@ diagnostics and generated code remain unchanged.
 M3.9 analyzes late direct declarations, including exits that skip their
 construction. Reads still require definite initialization. Bounded ordinary
 hoisted bindings and record backing are analyzed by M3.10 in the
-[declaration plan](MIR_M3_DECLARATIONS_PLAN.md). Default-constructed wrapper
-hoists and general cleanup remain separate work. A structural definite-assignment
+[declaration plan](MIR_M3_DECLARATIONS_PLAN.md). General cleanup remains
+separate work. A structural definite-assignment
 proof failure reports the body as uncovered. M3.11 folds branches on literal
 booleans and their `not` expressions before validation, so `while True` no longer
 has an impossible zero-trip path. Guard writes remain evaluated, and unreachable
@@ -8604,9 +8604,11 @@ propagation and comparison folding remain deferred
 The [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md) records the remaining
 storage, control-flow, cleanup, suspension and holder coverage. M3.12 separates
 physical wrapper construction from source binding assignment, with actual
-default tags and lifetime events. The approved M3.13 step connects scalar
-Optional/union hoists ([wrapper storage plan](MIR_M3_WRAPPER_STORAGE_PLAN.md));
-THIR coverage is unchanged by M3.12 alone.
+default tags and lifetime events. M3.13 connects scalar Optional/union if/while
+hoists in admitted free functions, methods and constructor tails
+([wrapper storage plan](MIR_M3_WRAPPER_STORAGE_PLAN.md)). C++ emission and source
+diagnostics are unchanged; optional-storage records and owning aggregates
+remain separate storage work.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
