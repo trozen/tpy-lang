@@ -1692,6 +1692,11 @@ alongside related feature work; only the big-rock deferrals live here.
   CFG positions, cleanup, suspension and complete holder/escape propagation
   remain explicit unchecked work packages there, not an unspecified count of
   small numbered increments.
+  `docs/MIR_M3_RECORD_STORAGE_PLAN.md` records approved M3.14/M3.15:
+  optional-backed record storage/engagement is implemented internally;
+  positive THIR facts for bounded if/while hoists remain next. Its factored
+  scope matrix maps excluded
+  positions, shapes and slots to W1-W5 and M2/M4; those remain open.
   `docs/MIR_M3_LIVENESS_PLAN.md` records the approved M3.1/M3.2 design.
   `--dump-mir`, M3.1 backward liveness and M3.2 forward reference dependencies
   are implemented. Whole-holder precision

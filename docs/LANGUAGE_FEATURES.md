@@ -8610,6 +8610,13 @@ hoists in admitted free functions, methods and constructor tails
 diagnostics are unchanged; optional-storage records and owning aggregates
 remain separate storage work.
 
+The approved [M3.14/M3.15 plan](MIR_M3_RECORD_STORAGE_PLAN.md) covers plain-record
+if/while hoists backed by an implementation `std::optional<Cell>`. M3.14 models
+empty storage, an engaged record and an assigned source binding separately,
+including logical replacement without physical destruction on repeated writes.
+M3.15 THIR integration remains pending. Source semantics, diagnostics and C++
+emission are unchanged.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

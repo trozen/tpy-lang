@@ -85,6 +85,11 @@ class MIRStorageDuration(Enum):
     CALLER = auto()
 
 
+class MIRRecordStorageKind(Enum):
+    DIRECT = auto()
+    OPTIONAL = auto()
+
+
 @dataclass(frozen=True)
 class MIRTupleElement:
     type: TpyType
@@ -131,6 +136,7 @@ class MIRSlot:
     global_id: MIRGlobalId | None = None
     storage_duration: MIRStorageDuration | MIRRegionId | None = None
     residence: MIRRegionId | None = None
+    record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT
 
 
 @dataclass(frozen=True)
@@ -284,6 +290,7 @@ class MIRRecordWriteMode(Enum):
     INITIALIZE_REGION = auto()
     OWN_SITE = auto()
     IN_PLACE = auto()
+    OPTIONAL_ASSIGN = auto()
 
 
 @dataclass(frozen=True)
@@ -320,7 +327,14 @@ class MIRStorageInit:
     loc: SourceLocation | None = None
 
 
-MIRStatement = MIRAssign | MIRStorageInit
+@dataclass(frozen=True)
+class MIRRecordStorageInit:
+    """Construct an empty backing wrapper, without constructing a record."""
+    target: MIRPlace
+    loc: SourceLocation | None = None
+
+
+MIRStatement = MIRAssign | MIRStorageInit | MIRRecordStorageInit
 
 
 @dataclass(frozen=True)

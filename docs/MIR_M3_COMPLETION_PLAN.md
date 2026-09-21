@@ -54,7 +54,9 @@ the others visible.
   M3.13 connects the THIR producer ([wrapper storage plan](MIR_M3_WRAPPER_STORAGE_PLAN.md)).
 - [ ] Model optional-storage record hoists: wrapper lifetime, record engagement,
   source availability and per-binding backing identity. Do not substitute the
-  existing per-operation BODY OWN-site model.
+  existing per-operation BODY OWN-site model. The
+  [M3.14/M3.15 plan](MIR_M3_RECORD_STORAGE_PLAN.md) records the approved bounded
+  batch. M3.14 implements the internal model; THIR integration remains pending.
 - [ ] Cover remaining owning/mixed aggregate backing and materialized expression
   temporaries, with positive producer facts for placement and each write.
 - [ ] Extend cyclic copy/move/in-place operations where their existing emitted

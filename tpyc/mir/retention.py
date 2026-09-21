@@ -7,7 +7,8 @@ from .dump import _location, _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import MIRField, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode
 from .storage import MIRStorageEvents
-from .validate import MIRValidationError, validate_function
+from .presence import MIREngagement
+from .validate import MIRValidationError, _validated_function
 
 
 @dataclass(frozen=True)
@@ -47,7 +48,7 @@ def may_overlap(left: MIRReferent, right: MIRReferent) -> bool:
 def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
                       dependencies: MIRDependencies | MIRNotCovered,
                       events: MIRStorageEvents | MIRNotCovered) -> MIRRetention | MIRNotCovered:
-    validate_function(fn)
+    prepared = _validated_function(fn)
     for result in (liveness, dependencies, events):
         if isinstance(result, MIRNotCovered):
             if result.body != fn.id:
@@ -64,6 +65,12 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
         assert isinstance(fact, MIRRecordWrite)
         if fact.mode in (MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.INITIALIZE_REGION):
             continue
+        if fact.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN:
+            engagement = prepared.presence.engagement.get(point)
+            if engagement is None:
+                continue
+            if MIREngagement.ENGAGED not in dict(engagement).get(stmt.target.root, frozenset()):
+                continue
         incoming = dependencies.referents[point]
         live_after = liveness.points[MIRPoint(point.block, point.index + 1)]
         affected = resolve_referents(stmt.target, incoming, slots)

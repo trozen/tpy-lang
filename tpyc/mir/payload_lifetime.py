@@ -11,7 +11,7 @@ from .liveness import MIRLiveness, _liveness
 from .nodes import (
     MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy,
     MIROptionalPayload, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
-    MIRUnionConstruct, MIRUnionCopy, MIRUnionPayload, MIRValueKind, MIRStorageInit,
+    MIRUnionConstruct, MIRUnionCopy, MIRUnionPayload, MIRValueKind, MIRStorageInit, MIRRecordStorageInit,
 )
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind
 from .validate import MIRPrepared, MIRPresenceError, MIRValidationError, _prepare_function, _validated_function
@@ -35,7 +35,7 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
     ends: dict[MIRPoint, frozenset[MIRPlace]] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
-            if isinstance(stmt, MIRStorageInit):
+            if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
                 continue
             value = stmt.value
             if not isinstance(value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)):

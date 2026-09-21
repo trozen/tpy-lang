@@ -7,7 +7,7 @@ from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind, MIRSlotId,
-    MIRPayloadWrite, MIRPayloadWriteMode,
+    MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRStorageInit, MIREdge,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
@@ -122,6 +122,10 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
     for _ in range(100):
         block = blocks[bid]
         for stmt in block.statements:
+            if isinstance(stmt, MIRRecordStorageInit):
+                physical[stmt.target.root] = OptionalValue()
+                values.pop(stmt.target.root, None)
+                continue
             if isinstance(stmt, MIRStorageInit):
                 physical[stmt.target.root] = (OptionalValue() if slots[stmt.target.root].value_kind is MIRValueKind.OPTIONAL
                                               else UnionValue(stmt.alternative, stmt.value.value))
@@ -132,6 +136,9 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
             if isinstance(stmt.storage_write, MIRPayloadWrite) and stmt.storage_write.mode is MIRPayloadWriteMode.ASSIGN:
                 assert stmt.target.root in physical, "assignment before storage initialization"
             rhs = stmt.value
+            if (not stmt.target.projections
+                    and slots[stmt.target.root].record_storage is MIRRecordStorageKind.OPTIONAL):
+                assert stmt.target.root in physical, "record assignment before wrapper initialization"
             match rhs:
                 case MIRConstant():
                     value = rhs.value

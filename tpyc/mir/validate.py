@@ -13,8 +13,8 @@ from .nodes import (
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
-    MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode, MIRStorageInit, MIRStatement,
-    MIRRegionId, MIREdge,
+    MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode, MIRStorageInit, MIRRecordStorageInit, MIRStatement,
+    MIRRegionId, MIREdge, MIRRecordStorageKind,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
@@ -142,7 +142,7 @@ def successors(term: MIRGoto | MIRBranch | MIRReturn) -> tuple[MIRBlockId, ...]:
 
 def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
     match stmt:
-        case MIRStorageInit():
+        case MIRStorageInit() | MIRRecordStorageInit():
             return ()
         case MIRAssign(target=target, value=value):
             return (*operands(value), target.root) if target.projections else operands(value)
@@ -152,7 +152,7 @@ def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
 
 def source_definition(stmt: MIRStatement) -> MIRSlotId | None:
     match stmt:
-        case MIRStorageInit():
+        case MIRStorageInit() | MIRRecordStorageInit():
             return None
         case MIRAssign(target=target):
             return None if target.projections else target.root
@@ -227,6 +227,12 @@ def _validate_structure(fn: MIRFunction) -> None:
     global_ids: set[MIRGlobalId] = set()
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
+        _require(isinstance(slot.record_storage, MIRRecordStorageKind), "invalid record storage kind")
+        if slot.record_storage is MIRRecordStorageKind.OPTIONAL:
+            _require(slot.value_kind is MIRValueKind.RECORD_STORAGE
+                     and slot.kind is MIRSlotKind.LOCAL
+                     and not slot.readonly and slot.storage_duration is not None,
+                     "optional backing needs local record storage")
         if slot.storage_duration is not None:
             _require(isinstance(slot.storage_duration, (MIRStorageDuration, MIRRegionId))
                      and (slot.value_kind is MIRValueKind.RECORD_STORAGE or scalar_wrapper(slot)
@@ -449,7 +455,7 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(block.id.body == fn.id and block.id.index >= 0,
                  "foreign or invalid block ID")
         for stmt in block.statements:
-            _require(isinstance(stmt, (MIRAssign, MIRStorageInit)), "unknown instruction")
+            _require(isinstance(stmt, (MIRAssign, MIRStorageInit, MIRRecordStorageInit)), "unknown instruction")
             target_type = place_type(stmt.target, write=True)
             target = slots[stmt.target.root]
             if fn.regions:
@@ -458,16 +464,22 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(sid in slots, "unknown slot ID")
                     residence = slots[sid].residence
                     _require(residence is None or residence in active, "use outside binding residence")
-            if isinstance(stmt, MIRStorageInit):
-                _require(not stmt.target.projections and target.kind is MIRSlotKind.LOCAL
-                         and scalar_wrapper(target), "physical initialization needs local scalar wrapper")
-                _require(type(stmt.alternative) is int and stmt.alternative == 0
-                         and isinstance(stmt.value, MIRConstant), "invalid wrapper default")
-                default_type = (None if target.value_kind is MIRValueKind.OPTIONAL
-                                or target.union_layout.elements[0] is None else target.union_layout.elements[0].type)
-                expected = None if default_type is None else False if default_type == BOOL else 0
-                _require(type(stmt.value.value) is type(expected) and stmt.value.value == expected,
-                         "invalid wrapper default value")
+            if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
+                match stmt:
+                    case MIRRecordStorageInit():
+                        _require(not stmt.target.projections
+                                 and target.record_storage is MIRRecordStorageKind.OPTIONAL,
+                                 "empty initialization needs optional record backing")
+                    case MIRStorageInit():
+                        _require(not stmt.target.projections and target.kind is MIRSlotKind.LOCAL
+                                 and scalar_wrapper(target), "physical initialization needs local scalar wrapper")
+                        _require(type(stmt.alternative) is int and stmt.alternative == 0
+                                 and isinstance(stmt.value, MIRConstant), "invalid wrapper default")
+                        default_type = (None if target.value_kind is MIRValueKind.OPTIONAL
+                                        or target.union_layout.elements[0] is None else target.union_layout.elements[0].type)
+                        expected = None if default_type is None else False if default_type == BOOL else 0
+                        _require(type(stmt.value.value) is type(expected) and stmt.value.value == expected,
+                                 "invalid wrapper default value")
                 _require(target.id not in payload_initializations, "repeated payload initialization")
                 payload_initializations.add(target.id)
                 if isinstance(target.storage_duration, MIRRegionId):
@@ -502,6 +514,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                 _require(isinstance(fact.mode, MIRRecordWriteMode), "invalid record write fact")
                 _require(isinstance(value, (MIRConstruct, MIRCopy, MIRMove)), "record write on non-record operation")
                 match fact.mode:
+                    case MIRRecordWriteMode.OPTIONAL_ASSIGN:
+                        _require(not stmt.target.projections
+                                 and target.record_storage is MIRRecordStorageKind.OPTIONAL
+                                 and isinstance(value, MIRConstruct) and fact.rebind_owner is None,
+                                 "optional backing assignment needs constructor")
                     case MIRRecordWriteMode.INITIALIZE_REGION:
                         _require(not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE
                                  and isinstance(target.storage_duration, MIRRegionId)
@@ -523,6 +540,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  "invalid in-place rebind owner or target")
             else:
                 _require(fact is None, "invalid storage write fact")
+            if target.record_storage is MIRRecordStorageKind.OPTIONAL and not stmt.target.projections:
+                _require(isinstance(fact, MIRRecordWrite) and fact.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN,
+                         "optional backing needs explicit assignment fact")
             if not stmt.target.projections:
                 _require(target.value_kind is not MIRValueKind.PAYLOAD_ALIAS or isinstance(value, MIRUnionExtract),
                          "payload alias requires extraction")
@@ -605,7 +625,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                                      for src, dst in zip(elements, target.tuple_layout.elements)),
                              "tuple payload type or access mismatch")
                 case MIRConstruct() | MIRCopy() | MIRMove():
-                    if fact is None or fact.mode not in (MIRRecordWriteMode.OWN_SITE, MIRRecordWriteMode.INITIALIZE_REGION):
+                    if fact is None or fact.mode not in (MIRRecordWriteMode.OWN_SITE, MIRRecordWriteMode.INITIALIZE_REGION,
+                                                         MIRRecordWriteMode.OPTIONAL_ASSIGN):
                         owning_blocks.add(block.id)
                     if (fact is not None and fact.mode is MIRRecordWriteMode.INITIALIZE_REGION
                             and isinstance(value, (MIRCopy, MIRMove))):
@@ -615,10 +636,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                         (not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE)
                         or stmt.target.projections in ((MIRDeref(),), (MIROptionalPayload(), MIRDeref()))),
                         "record destination type")
-                    if fact is not None and fact.mode is MIRRecordWriteMode.OWN_SITE:
+                    if fact is not None and fact.mode in (MIRRecordWriteMode.OWN_SITE, MIRRecordWriteMode.OPTIONAL_ASSIGN):
                         _require(records[target_type].movable, "reusable backing needs movable record")
                     if not stmt.target.projections:
-                        _require(stmt.target.root not in initialized_storage, "repeated storage initialization")
+                        _require(target.record_storage is MIRRecordStorageKind.OPTIONAL
+                                 or stmt.target.root not in initialized_storage, "repeated storage initialization")
                         initialized_storage.add(stmt.target.root)
                     else:
                         _require(isinstance(value, MIRConstruct) and records[target_type].movable,
@@ -729,7 +751,9 @@ def _validate_structure(fn: MIRFunction) -> None:
     parameters = {s.id for s in fn.slots if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
     writes = {bid: {sid for s in blocks[bid].statements if (sid := source_definition(s)) is not None}
               for bid in reachable}
-    physical_writes = {bid: {s.target.root for s in blocks[bid].statements if not s.target.projections}
+    physical_writes = {bid: {s.target.root for s in blocks[bid].statements if not s.target.projections
+                             and (slots[s.target.root].record_storage is not MIRRecordStorageKind.OPTIONAL
+                                  or isinstance(s, MIRRecordStorageInit))}
                        for bid in reachable}
     # Intersection is a must analysis; initialize at top, with a synthetic
     # parameter-only incoming edge at entry even if the entry has a back edge.
@@ -776,9 +800,13 @@ def _validate_structure(fn: MIRFunction) -> None:
                      "read before storage initialization")
             if isinstance(stmt, MIRAssign) and stmt.storage_write == MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN):
                 _require(stmt.target.root in constructed, "assignment before storage initialization")
+            if (isinstance(stmt, MIRAssign) and not stmt.target.projections
+                    and slots[stmt.target.root].record_storage is MIRRecordStorageKind.OPTIONAL):
+                _require(stmt.target.root in constructed, "record assignment before wrapper initialization")
             if (definition := source_definition(stmt)) is not None:
                 assigned.add(definition)
-            if not stmt.target.projections:
+            if not stmt.target.projections and (slots[stmt.target.root].record_storage is not MIRRecordStorageKind.OPTIONAL
+                                                or isinstance(stmt, MIRRecordStorageInit)):
                 constructed.add(stmt.target.root)
         term = block.terminator
         match term:
