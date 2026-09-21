@@ -1,8 +1,7 @@
 # A comprehension or generator expression whose SOURCE (or whose element
 # expression) reads a name narrowed by an enclosing `isinstance`. The lowered
-# body reads the extraction alias, so a genexpr's lambda must capture the
-# ALIAS -- capturing the union under its own name gave a body referring to an
-# uncaptured `__u`. The source ALIASES the caller's container, so the last
+# body reads the extraction alias, so a genexpr captures the narrowed VALUE --
+# the body must never refer to the union under a name it was not handed. The source ALIASES the caller's container, so the last
 # section mutates it after the call and reads the sum back.
 from typing import Iterator
 
@@ -41,7 +40,7 @@ def ranged(w: list[int32] | bytearray) -> int32:
     return 0
 
 
-# the same genexpr inside a generator frame (the outer IIFE's capture list)
+# the same genexpr inside a generator frame (the capture is a frame member)
 def gen(u: list[int32] | bytearray) -> Iterator[int32]:
     if isinstance(u, list):
         yield sum(x for x in u)  # tpyc: ok

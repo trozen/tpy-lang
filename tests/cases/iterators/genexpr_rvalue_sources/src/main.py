@@ -1,16 +1,14 @@
 # A generator expression over an RVALUE source (dict view, combinator, generator
 # call, Own[container] call, container-ctor call, literal) owns it: the source
-# is built in place inside the closure's holder and the iterator seeds on the
+# is built in place inside the genexpr's frame and the iterator seeds on the
 # first pull -- every source a comprehension iterates, the genexpr iterates too,
 # at every position, pulling a generator source lazily like CPython. The
-# closure may be moved by an owning consumer (another lazy combinator) before
+# frame may be moved by an owning consumer (another lazy combinator) before
 # its first pull, whatever its source
 # (builtins/combinator_owned_source_moves pins the owning-combinator source).
-# Excluded cells: a readonly receiver with a reference element
-# (BUGS.md#genexpr-readonly-source-slot); a nested genexpr as the source
+# Excluded cells: a nested genexpr as the source
 # (BUGS.md#genexpr-nested-source); a source call needing an arg temp
-# (BUGS.md#genexpr-source-needs-arg-temp); the comprehension position, where
-# a genexpr ELEMENT has no lowering at any source (BUGS.md#genexpr-comp-element).
+# (BUGS.md#genexpr-source-needs-arg-temp).
 from tpy import int32, readonly, Own, error_return, ReturnException
 from typing import Iterator
 import asyncio
@@ -186,7 +184,7 @@ def main() -> None:
     print("own_call", sum(x for x in make_list()))  # tpyc: ok
     print("borrow_call", sum(x for x in borrow_list(xs)))  # tpyc: ok
     # container-ctor call source (`list(xs)` / `sorted(xs)`): the built container
-    # is an rvalue held in the closure state like the Own[list] call above.
+    # is an rvalue held in the frame like the Own[list] call above.
     print("ctor_call_list", sum(x for x in list(xs)))  # tpyc: ok
     print("ctor_call_sorted", list(x for x in sorted(ys) if x > 10))  # tpyc: ok
     print("literal", sum(x * x for x in [1, 2, 3, 4]))  # tpyc: ok

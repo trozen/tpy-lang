@@ -634,6 +634,18 @@ class TpyGeneratorExpression(TpyExpr):
     element_expr: TpyExpr
     generator: TpyComprehensionGenerator
     result_elem_type: 'TpyType | None' = None  # set by sema
+    # Set by sema on the frame route: the generator function this expression
+    # creates, and the analyzed reads of the enclosing names it takes as
+    # reference captures (the function's params after its source, in order).
+    frame_func: 'TpyFunction | None' = None
+    frame_captures: 'tuple[TpyName, ...]' = ()
+    # Captures something may REBIND between two pulls. A reference field
+    # follows a rebind of a variable that lives in place; a local the enclosing
+    # body keeps behind a pointer it re-seats has no such field to follow.
+    frame_rebindable: 'tuple[str, ...]' = ()
+    # A `range(...)` source's bounds: the function takes them by value as its
+    # leading params and loops over a range of them, in place of a source.
+    frame_range_args: 'tuple[TpyExpr, ...]' = ()
 
     def children(self) -> list[TpyExpr]:
         return [self.element_expr, self.generator.iterable] + self.generator.conditions
@@ -1454,6 +1466,10 @@ class OverloadForm(Enum):
     DISPATCH = "dispatch"
 
 
+# The name prefix of every generator expression's function.
+GENEXPR_FUNC_PREFIX = "__genexpr_"
+
+
 @dataclass
 class TpyFunction:
     """Function definition.
@@ -1568,6 +1584,21 @@ class TpyFunction:
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
     builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_global")
     is_generator: bool = False  # Set by parser: body contains yield
+    # A generator expression's function: built by sema at the expression, its
+    # yield type inferred from the element, analyzed at its creation site.
+    is_genexpr: bool = False
+    # Params that are lexical captures of the enclosing function: the frame
+    # holds each by reference whatever its type, since the enclosing body may
+    # rebind the name between two pulls.
+    capture_params: 'tuple[str, ...]' = ()
+    # Set by sema on a genexpr's function: its deduced source slot is bound to
+    # a native container LVALUE (a nested def cannot give that one its concrete
+    # type), whose adaptor copies a value-tuple step result -- so an unpack
+    # head must not alias reference members through it.
+    genexpr_container_by_protocol: bool = False
+    # The function the genexpr is written in (None at module level): what a
+    # diagnostic about the body names, since the user never wrote this one.
+    genexpr_owner: str | None = None
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     # Set by sema for a generator whose yield type is an open `T`: does the
     # frame LEND what it yields (the `val_or_ref<T>` slot) or hand out a value?
@@ -1823,6 +1854,12 @@ class TpyModule:
     # CPython-extension glue (`m_doc`).
     docstring: str | None = None
     source_lines: list[str] = field(default_factory=list)  # Original source lines for source mapping
+    # Set by the parser: a generator expression, outside any generic function
+    # or record, in a body that may be emitted in a header (a method, a
+    # generator, an async def). Its frame is then a header generator whose
+    # `__next__` goes to `<mod>_inl.hpp`, a verdict asked before sema builds
+    # the function (a cycle peer can ask first).
+    has_header_genexpr: bool = False
     # Import tracking: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")
     #                  module_name -> None (for "import X")
     imports: dict[str, set[tuple[str, str]] | None] = field(default_factory=dict)

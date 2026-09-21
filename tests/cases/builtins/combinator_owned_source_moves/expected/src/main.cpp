@@ -129,6 +129,210 @@ __gen_pairs pairs(const std::vector<int32_t>& xs) {
     return __gen_pairs(xs);
 }
 
+namespace {
+
+// print("enum_genexpr_zip", sum(i + s for i, s in enumerate(a + b for a, b in zip(gen(), gen()))))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    std::tuple<int32_t, int32_t> __for_tup_gx;
+    int32_t a;
+    int32_t b;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_main_1_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame<T___src>&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// # a genexpr over an owning combinator, moved into an owning combinator
+// print("enum_genexpr_zip", sum(i + s for i, s in enumerate(a + b for a, b in zip(gen(), gen()))))  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_gx;
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
+        return (::tpy::add_check<int32_t>(a, b));
+    }
+    __builtin_unreachable();
+}
+
+// print("enum_genexpr_zip", sum(i + s for i, s in enumerate(a + b for a, b in zip(gen(), gen()))))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+__genexpr_main_1_frame<T___src> __genexpr_main_1(T___src&& __src) {
+    return __genexpr_main_1_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_main_1_frame<std::invoke_result_t<F_make>> __genexpr_main_1(std::in_place_t, F_make&& make) {
+    return __genexpr_main_1_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// print("enum_genexpr_zip", sum(i + s for i, s in enumerate(a + b for a, b in zip(gen(), gen()))))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    std::tuple<int32_t, int32_t> __for_tup_gx;
+    int32_t i;
+    int32_t s;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_2_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_main_2_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_2_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_2_frame<T___src>&) {
+        return os << "<generator __genexpr_main_2>";
+    }
+};
+
+// # a genexpr over an owning combinator, moved into an owning combinator
+// print("enum_genexpr_zip", sum(i + s for i, s in enumerate(a + b for a, b in zip(gen(), gen()))))  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_gx;
+        i = std::get<0>(__tup_1);
+        s = std::get<1>(__tup_1);
+        return (::tpy::add_check<int32_t>(i, s));
+    }
+    __builtin_unreachable();
+}
+
+// print("enum_genexpr_zip", sum(i + s for i, s in enumerate(a + b for a, b in zip(gen(), gen()))))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+__genexpr_main_2_frame<T___src> __genexpr_main_2(T___src&& __src) {
+    return __genexpr_main_2_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_main_2_frame<std::invoke_result_t<F_make>> __genexpr_main_2(std::in_place_t, F_make&& make) {
+    return __genexpr_main_2_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// print("genexpr_source", sum(a * b for a, b in zip(Quiet(2), xs)))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    std::tuple<int32_t, int32_t> __for_tup_gx;
+    int32_t a;
+    int32_t b;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_3_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_main_3_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_3_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_3_frame<T___src>&) {
+        return os << "<generator __genexpr_main_3>";
+    }
+};
+
+// print("genexpr_source", sum(a * b for a, b in zip(Quiet(2), xs)))  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_3_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_gx;
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
+        return (::tpy::mul_check<int32_t>(a, b));
+    }
+    __builtin_unreachable();
+}
+
+// print("genexpr_source", sum(a * b for a, b in zip(Quiet(2), xs)))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+__genexpr_main_3_frame<T___src> __genexpr_main_3(T___src&& __src) {
+    return __genexpr_main_3_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_main_3_frame<std::invoke_result_t<F_make>> __genexpr_main_3(std::in_place_t, F_make&& make) {
+    return __genexpr_main_3_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+}  // namespace
+
 // def main() -> None:
 //     xs = [10, 20, 30]
 //
@@ -374,31 +578,7 @@ void main() {
     std::cout << "map_values" << " " << ::tpy::ListPrinter(vs) << "\n";
     std::vector<int32_t> ss = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, ::tpyapp::main::make_set()));
     std::cout << "map_set" << " " << ::tpy::ListPrinter(ss) << "\n";
-    std::cout << "enum_genexpr_zip" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{::tpy::builtin_enumerate<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::gen(), ::tpyapp::main::gen())}]() mutable -> std::optional<int32_t> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                auto&& __tup_6 = *(*__st.beg);
-                int32_t a = std::get<0>(__tup_6);
-                int32_t b = std::get<1>(__tup_6);
-                return std::optional<int32_t>((::tpy::add_check<int32_t>(a, b)));
-            }
-            return std::nullopt;
-        };
-    }))}]() mutable -> std::optional<int32_t> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                auto&& __tup_7 = *(*__st.beg);
-                int32_t i = std::get<0>(__tup_7);
-                int32_t s = std::get<1>(__tup_7);
-                return std::optional<int32_t>((::tpy::add_check<int32_t>(i, s)));
-            }
-            return std::nullopt;
-        };
-    })) << "\n";
+    std::cout << "enum_genexpr_zip" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_2(std::in_place, [&]() { return ::tpy::builtin_enumerate<int32_t>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::gen(), ::tpyapp::main::gen()); })); })) << "\n";
     {
         Noisy __tmp_5 = Noisy(2);
         auto __src_12 = ::tpy::builtin_enumerate<int32_t>(__tmp_5);
@@ -407,9 +587,9 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             auto&& __for_tup_7 = ::tpy::unwrap_ref(*__r_13);
-        const auto& __tup_8 = __for_tup_7;
-        int32_t i = std::get<0>(__tup_8);
-        int32_t v = std::get<1>(__tup_8);
+        const auto& __tup_6 = __for_tup_7;
+        int32_t i = std::get<0>(__tup_6);
+        int32_t v = std::get<1>(__tup_6);
         std::cout << "enumerate" << " " << i << " " << v << "\n";
         }
     }
@@ -421,9 +601,9 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             auto&& __for_tup_8 = ::tpy::unwrap_ref(*__r_15);
-        const auto& __tup_9 = __for_tup_8;
-        int32_t a = std::get<0>(__tup_9);
-        int32_t b = std::get<1>(__tup_9);
+        const auto& __tup_7 = __for_tup_8;
+        int32_t a = std::get<0>(__tup_7);
+        int32_t b = std::get<1>(__tup_7);
         std::cout << "zip" << " " << a << " " << b << "\n";
         }
     }
@@ -441,9 +621,9 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             auto&& __for_tup_9 = ::tpy::unwrap_ref(*__r_17);
-        const auto& __tup_10 = __for_tup_9;
-        int32_t a = std::get<0>(__tup_10);
-        int32_t b = std::get<1>(__tup_10);
+        const auto& __tup_8 = __for_tup_9;
+        int32_t a = std::get<0>(__tup_8);
+        int32_t b = std::get<1>(__tup_8);
         std::cout << "zip_call" << " " << a << " " << b << "\n";
         }
     }
@@ -455,9 +635,9 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             auto&& __for_tup_10 = ::tpy::unwrap_ref(*__r_19);
-        const auto& __tup_11 = __for_tup_10;
-        int32_t a = std::get<0>(__tup_11);
-        int32_t b = std::get<1>(__tup_11);
+        const auto& __tup_9 = __for_tup_10;
+        int32_t a = std::get<0>(__tup_9);
+        int32_t b = std::get<1>(__tup_9);
         std::cout << "lvalue" << " " << a << " " << b << "\n";
         }
     }
@@ -469,9 +649,9 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             auto&& __for_tup_11 = ::tpy::unwrap_ref(*__r_21);
-        const auto& __tup_12 = __for_tup_11;
-        int32_t a = std::get<0>(__tup_12);
-        int32_t b = std::get<1>(__tup_12);
+        const auto& __tup_10 = __for_tup_11;
+        int32_t a = std::get<0>(__tup_10);
+        int32_t b = std::get<1>(__tup_10);
         std::cout << "lvalue_delegating" << " " << a << " " << b << "\n";
         }
     }
@@ -484,9 +664,9 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             auto&& __for_tup_12 = ::tpy::unwrap_ref(*__r_23);
-        const auto& __tup_13 = __for_tup_12;
-        int32_t a = std::get<0>(__tup_13);
-        int32_t b = std::get<1>(__tup_13);
+        const auto& __tup_11 = __for_tup_12;
+        int32_t a = std::get<0>(__tup_11);
+        int32_t b = std::get<1>(__tup_11);
         std::cout << "lvalue_inherited" << " " << a << " " << b << "\n";
         }
     }
@@ -498,9 +678,9 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             auto&& __for_tup_13 = ::tpy::unwrap_ref(*__r_25);
-        const auto& __tup_14 = __for_tup_13;
-        int32_t i = std::get<0>(__tup_14);
-        int32_t c = std::get<1>(__tup_14);
+        const auto& __tup_12 = __for_tup_13;
+        int32_t i = std::get<0>(__tup_12);
+        int32_t c = std::get<1>(__tup_12);
         std::cout << "self_iter" << " " << i << " " << c << "\n";
         }
     }
@@ -512,9 +692,9 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             auto&& __for_tup_14 = ::tpy::unwrap_ref(*__r_27);
-        const auto& __tup_15 = __for_tup_14;
-        int32_t a = std::get<0>(__tup_15);
-        int32_t b = std::get<1>(__tup_15);
+        const auto& __tup_13 = __for_tup_14;
+        int32_t a = std::get<0>(__tup_13);
+        int32_t b = std::get<1>(__tup_13);
         std::cout << "derived" << " " << a << " " << b << "\n";
         }
     }
@@ -526,9 +706,9 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             auto&& __for_tup_15 = ::tpy::unwrap_ref(*__r_29);
-        const auto& __tup_16 = __for_tup_15;
-        int32_t a = std::get<0>(__tup_16);
-        int32_t b = std::get<1>(__tup_16);
+        const auto& __tup_14 = __for_tup_15;
+        int32_t a = std::get<0>(__tup_14);
+        int32_t b = std::get<1>(__tup_14);
         std::cout << "delegating" << " " << a << " " << b << "\n";
         }
     }
@@ -549,9 +729,9 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             auto&& __for_tup_16 = ::tpy::unwrap_ref(*__r_31);
-        const auto& __tup_17 = __for_tup_16;
-        int32_t a = std::get<0>(__tup_17);
-        int32_t b = std::get<1>(__tup_17);
+        const auto& __tup_15 = __for_tup_16;
+        int32_t a = std::get<0>(__tup_15);
+        int32_t b = std::get<1>(__tup_15);
         std::cout << "borrow_zip" << " " << a << " " << b << "\n";
         }
     }
@@ -568,9 +748,9 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             auto&& __for_tup_17 = ::tpy::unwrap_ref(*__r_33);
-        const auto& __tup_18 = __for_tup_17;
-        int32_t a = std::get<0>(__tup_18);
-        int32_t b = std::get<1>(__tup_18);
+        const auto& __tup_16 = __for_tup_17;
+        int32_t a = std::get<0>(__tup_16);
+        int32_t b = std::get<1>(__tup_16);
         std::cout << "borrow_both" << " " << a << " " << b << "\n";
         }
     }
@@ -583,9 +763,9 @@ void main() {
             auto __r_35 = __itr_34.__next__();
             if (!__r_35.has_value()) break;
             auto&& __for_tup_18 = ::tpy::unwrap_ref(*__r_35);
-        const auto& __tup_19 = __for_tup_18;
-        int32_t a = std::get<0>(__tup_19);
-        int32_t b = std::get<1>(__tup_19);
+        const auto& __tup_17 = __for_tup_18;
+        int32_t a = std::get<0>(__tup_17);
+        int32_t b = std::get<1>(__tup_17);
         std::cout << "fresh_self" << " " << a << " " << b << "\n";
         }
     }
@@ -598,9 +778,9 @@ void main() {
             auto __r_37 = __itr_36.__next__();
             if (!__r_37.has_value()) break;
             auto&& __for_tup_19 = ::tpy::unwrap_ref(*__r_37);
-        const auto& __tup_20 = __for_tup_19;
-        int32_t a = std::get<0>(__tup_20);
-        int32_t b = std::get<1>(__tup_20);
+        const auto& __tup_18 = __for_tup_19;
+        int32_t a = std::get<0>(__tup_18);
+        int32_t b = std::get<1>(__tup_18);
         std::cout << "order" << " " << a << " " << b << "\n";
         }
     }
@@ -612,9 +792,9 @@ void main() {
             auto __r_39 = __itr_38.__next__();
             if (!__r_39.has_value()) break;
             auto&& __for_tup_20 = ::tpy::unwrap_ref(*__r_39);
-        const auto& __tup_21 = __for_tup_20;
-        int32_t a = std::get<0>(__tup_21);
-        int32_t b = std::get<1>(__tup_21);
+        const auto& __tup_19 = __for_tup_20;
+        int32_t a = std::get<0>(__tup_19);
+        int32_t b = std::get<1>(__tup_19);
         std::cout << "order_mixed" << " " << a << " " << b << "\n";
         }
     }
@@ -625,9 +805,9 @@ void main() {
         auto __beg_40 = __obj_40.begin();
         auto __end_40 = __obj_40.end();
         for (; __beg_40 != __end_40; ++__beg_40) {
-            auto& __tup_22 = *__beg_40;
-            int32_t a = std::get<0>(__tup_22);
-            int32_t b = std::get<1>(__tup_22);
+            auto& __tup_20 = *__beg_40;
+            int32_t a = std::get<0>(__tup_20);
+            int32_t b = std::get<1>(__tup_20);
             __result.push_back((::tpy::mul_check<int32_t>(a, b)));
         }
         std::move(__result);
@@ -653,19 +833,7 @@ void main() {
     std::cout << "nested_call" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_21))) << "\n";
     Quiet __tmp_22 = Quiet(2);
     std::cout << "nested_call_multi" << " " << "p" << " " << ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_22, xs))) << "\n";
-    std::cout << "genexpr_source" << " " << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, [&xs]() {
-        return [__st = ::tpy::genexpr_state{::tpy::builtin_zip<int32_t, int32_t>(Quiet(2), xs)}]() mutable -> std::optional<int32_t> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                auto&& __tup_23 = *(*__st.beg);
-                int32_t a = std::get<0>(__tup_23);
-                int32_t b = std::get<1>(__tup_23);
-                return std::optional<int32_t>((::tpy::mul_check<int32_t>(a, b)));
-            }
-            return std::nullopt;
-        };
-    })) << "\n";
+    std::cout << "genexpr_source" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_3(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(Quiet(2), xs); })) << "\n";
     if (((::tpy::__len__(xs) > 1) && (::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, Quiet(2)))) == 2))) {
         std::cout << "and_operand" << "\n";
     }
@@ -682,9 +850,9 @@ void main() {
             auto __r_42 = __itr_41.__next__();
             if (!__r_42.has_value()) break;
             auto&& __for_tup_21 = ::tpy::unwrap_ref(*__r_42);
-        const auto& __tup_24 = __for_tup_21;
-        int32_t a = std::get<0>(__tup_24);
-        int32_t b = std::get<1>(__tup_24);
+        const auto& __tup_21 = __for_tup_21;
+        int32_t a = std::get<0>(__tup_21);
+        int32_t b = std::get<1>(__tup_21);
         std::cout << "method_source" << " " << a << " " << b << "\n";
         }
     }
@@ -695,9 +863,9 @@ void main() {
             auto __r_44 = __itr_43.__next__();
             if (!__r_44.has_value()) break;
             auto&& __for_tup_22 = ::tpy::unwrap_ref(*__r_44);
-        const auto& __tup_25 = __for_tup_22;
-        int32_t a = std::get<0>(__tup_25);
-        int32_t b = std::get<1>(__tup_25);
+        const auto& __tup_22 = __for_tup_22;
+        int32_t a = std::get<0>(__tup_22);
+        int32_t b = std::get<1>(__tup_22);
         std::cout << "static_source" << " " << a << " " << b << "\n";
         }
     }
@@ -708,9 +876,9 @@ void main() {
             auto __r_46 = __itr_45.__next__();
             if (!__r_46.has_value()) break;
             auto&& __for_tup_23 = ::tpy::unwrap_ref(*__r_46);
-        const auto& __tup_26 = __for_tup_23;
-        int32_t a = std::get<0>(__tup_26);
-        int32_t b = std::get<1>(__tup_26);
+        const auto& __tup_23 = __for_tup_23;
+        int32_t a = std::get<0>(__tup_23);
+        int32_t b = std::get<1>(__tup_23);
         std::cout << "field_of_temp" << " " << a << " " << b << "\n";
         }
     }

@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import Any, Iterator, NamedTuple, TYPE_CHECKING
+from typing import Any, Callable, Iterator, NamedTuple, TYPE_CHECKING
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..macro_loader import MacroRegistry
@@ -19,6 +19,7 @@ from . import own_copy
 from .value_range import ValueRange
 
 if TYPE_CHECKING:
+    from ..parse import TpyGeneratorExpression
     from ..parse.type_resolver import TypeResolver
     from .scope_tracker import DeferredEscape
 
@@ -1178,6 +1179,9 @@ class FunctionTrackingState:
     # --- Analysis state (per-function) ---
     current_scope: Scope | None = None
     current_function: TpyFunction | _ModuleInitSentinel | None = None
+    # The function or method whose emitted body the code under analysis lands
+    # in: itself, or the one a nested def or a genexpr is written in.
+    body_root: TpyFunction | None = None
     current_ns: Namespace | None = None
     loop_depth: int = 0
     # One entry per loop whose body is open, innermost last; `break` and
@@ -1389,6 +1393,10 @@ class FunctionTrackingState:
     # --- Nested def tracking ---
     in_nested_def: bool = False
     nested_def_name: str | None = None
+    # Inside a nested-def analysis: the first literal id handed out in it. A
+    # pending container literal below it belongs to an ENCLOSING function,
+    # whose end -- not this nested def's -- settles its type.
+    nested_def_first_literal: int = 0
     # Inside a nested-def analysis: 'self' in outer_scope_locals is the
     # enclosing METHOD's receiver (not an ordinary local named self), so
     # assignment sites can reject rebinds with the receiver message.
@@ -1829,6 +1837,10 @@ class SemanticContext:
     # which would strand a closure's obligations away from the placeholder
     # they hold.
     own_copy_forwards: list = field(default_factory=list)
+    # The spans of both lists a genexpr's function filled while it was analyzed
+    # in the middle of an enclosing body: that function drained them already,
+    # so the enclosing body's drain leaves them out.
+    own_copy_inner_spans: list = field(default_factory=list)
 
     # Top-level names `register_globals` put in `global_scope` from their
     # ANNOTATION, before any statement was analyzed. Distinct from the
@@ -1935,6 +1947,30 @@ class SemanticContext:
     # scope exit, so they wait here for the analyzer to harvest them into
     # `function_hoisted_vars` with the enclosing function's results.
     nested_def_hoisted_vars: IdentityMap = field(default_factory=IdentityMap)
+
+    # --- Generator-expression functions ---
+    # Set by the analyzer: registers and analyzes a genexpr's function at the
+    # expression that creates it, under a function state of its own.
+    analyze_genexpr_function: 'Callable[[TpyFunction], None] | None' = None
+    genexpr_counter: int = 0
+    # genexpr function -> the function or method whose emitted body creates
+    # its frame (through any nested def or genexpr between them); None at
+    # module level. A table, not a node field: a pointer from the function
+    # back up to its creator would make the parse tree cyclic.
+    genexpr_roots: 'IdentityMap[TpyFunction, TpyFunction | None]' = field(
+        default_factory=IdentityMap)
+    # Bodies of the `for` statements whose iterable is being analyzed: a
+    # genexpr created there is pulled once per iteration, so those bodies run
+    # between its pulls.
+    for_head_bodies: 'list[list[TpyStmt]]' = field(default_factory=list)
+    # The genexprs created while the current statement is analyzed, each with
+    # the captures whose narrowing it took: a statement that KEEPS a lazy value
+    # (binds it to a name) lets the genexpr outlive it, which the statement
+    # checks once its bound type is known.
+    stmt_genexprs: 'list[tuple[TpyGeneratorExpression, tuple[str, ...]]]' = field(default_factory=list)
+    # The module's top-level statements while they are analyzed: the body a
+    # module-level statement's rebind scan looks through.
+    module_top_level_stmts: 'list[TpyStmt] | None' = None
 
     # --- Consuming method tracking ---
     in_consuming_method: bool = False
@@ -2169,16 +2205,25 @@ class SemanticContext:
             pass
         self.own_copy_roots.append(edge)
 
-    def own_copy_mark(self) -> tuple[int, int]:
+    def own_copy_mark(self) -> tuple[int, int, int]:
         """Where the body about to be analyzed starts contributing."""
-        return (len(self.own_copy_obligations), len(self.own_copy_forwards))
+        return (len(self.own_copy_obligations), len(self.own_copy_forwards),
+                len(self.own_copy_inner_spans))
 
-    def own_copy_drain(self, mark: tuple[int, int]) -> tuple[tuple, tuple]:
+    def own_copy_drain(self, mark: tuple[int, int, int]) -> tuple[tuple, tuple]:
         """The obligations and instantiation forwards the body recorded."""
-        obligations = tuple(self.own_copy_obligations[mark[0]:])
+        inner = self.own_copy_inner_spans[mark[2]:]
+
+        def outside(index: int, which: int) -> bool:
+            return not any(s[which][0] <= index < s[which][1] for s in inner)
+        obligations = tuple(
+            o for i, o in enumerate(self.own_copy_obligations[mark[0]:], mark[0])
+            if outside(i, 0))
         seen: set = set()
         forwards = []
-        for edge in self.own_copy_forwards[mark[1]:]:
+        for i, edge in enumerate(self.own_copy_forwards[mark[1]:], mark[1]):
+            if not outside(i, 1):
+                continue
             key = edge.key()
             if key in seen:
                 continue

@@ -5,7 +5,7 @@
 # @nocopy Box turns any silent copy into a compile error, and the escaped
 # prelude would reference the loop var where it is undeclared (C++ build error).
 # Covers the array (array_from_index), vector (stmt-expr), and generator-
-# (make_generator) lowerings, in element, condition, and walrus positions.
+# expression (frame) lowerings, in element, condition, and walrus positions.
 from tpy import int32
 from tplib.box import Box
 
@@ -30,7 +30,7 @@ def list_comp(n: int32) -> None:
 
 def genexpr(n: int32) -> None:
     # owned move-temp in BOTH the genexpr element (score(Box(i))) and its filter
-    # condition (is_small(Box(i))) -- each must flush into the lambda body.
+    # condition (is_small(Box(i))) -- each must flush inside the frame body.
     print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))
 
 

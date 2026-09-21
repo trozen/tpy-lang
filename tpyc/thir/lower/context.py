@@ -1128,7 +1128,7 @@ class _LowerCtx:
                  "rebind_ptr_frame_locals",
                  "oneshot_lift_locals", "alias_ptr_locals",
                  "const_alias_ptr_locals", "const_frame_bindings",
-                 "unpack_ptr_targets",
+                 "unpack_ptr_targets", "source_typed_holders",
                  "unhandled_hoists", "narrow", "literal_facts",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp",
@@ -1546,6 +1546,10 @@ class _LowerCtx:
         # re-points via `= &(std::get<i>(__tup_N));` off the deref'd
         # pointer holder. Populated only by `lower_resumable`.
         self.unpack_ptr_targets: frozenset = frozenset()
+        # Unpack holders that point into a step result whose C++ type only the
+        # iteration source knows: a member may be a value, a reference or a
+        # borrow pointer, so an alias target takes the normalizing read.
+        self.source_typed_holders: frozenset = frozenset()
         # The residue ledger must read the SAME facts `prescan.hoisted` does:
         # the module-init walk's carrier is synthetic, so its `id(func)` has no
         # analyzer entry and only the override carries its hoisted set. Left

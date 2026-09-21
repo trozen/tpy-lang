@@ -32,6 +32,72 @@ void main() {
     std::cout << ::tpy::ListPrinter((*r7)) << "\n";
 }
 
+namespace {
+
+// r4 = list(len(x) for x in ["a", "bb", "ccc"])
+template <::tpystd::typing::Iterable<std::string> T___src>
+struct __genexpr_module_1_frame : public ::tpy::next_iter_mixin<__genexpr_module_1_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    std::string x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_module_1_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_module_1_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_module_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_module_1_frame<T___src>&) {
+        return os << "<generator __genexpr_module_1>";
+    }
+};
+
+// # Generator expression
+// r4 = list(len(x) for x in ["a", "bb", "ccc"])  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<std::string> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_module_1_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        return ::tpy::__len__(x);
+    }
+    __builtin_unreachable();
+}
+
+// r4 = list(len(x) for x in ["a", "bb", "ccc"])
+template <::tpystd::typing::Iterable<std::string> T___src>
+__genexpr_module_1_frame<T___src> __genexpr_module_1(T___src&& __src) {
+    return __genexpr_module_1_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_module_1_frame<std::invoke_result_t<F_make>> __genexpr_module_1(std::in_place_t, F_make&& make) {
+    return __genexpr_module_1_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+}  // namespace
+
 // x = [10, 20, 30]
 //
 // # List comprehension
@@ -100,17 +166,7 @@ void __tpy_init() {
         std::move(__result);
     });
     r3 = &__global_slot_4;
-    static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{std::vector<std::string>{"a", "bb", "ccc"}}]() mutable -> std::optional<int32_t> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                const std::string& x = *(*__st.beg);
-                return std::optional<int32_t>(::tpy::__len__(x));
-            }
-            return std::nullopt;
-        };
-    }));
+    static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_module_1(std::in_place, [&]() { return std::vector<std::string>{"a", "bb", "ccc"}; }));
     r4 = &__global_slot_5;
     static std::vector<int32_t> __global_slot_6 = ({
         std::vector<int32_t> __result;

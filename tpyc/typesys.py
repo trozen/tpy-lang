@@ -4633,7 +4633,8 @@ class GenExprType(TpyType):
     """Generator expression type -- lazy iterable producing T.
 
     Internal type, not user-facing. Satisfies Iterable[T].
-    C++ representation is ::tpy::generator_wrapper<T, lambda> (auto-deduced).
+    The C++ type is the frame of the generator function sema builds for the
+    expression (auto-deduced where it is bound).
     """
     element_type: TpyType
 

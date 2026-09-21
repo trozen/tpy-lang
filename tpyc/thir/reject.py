@@ -246,11 +246,16 @@ def _strict_error(component: RejectComponent, node: object, where: str | None,
     from ..codegen_cpp.context import ThirRejectError
     if where is None:
         name = getattr(node, "name", None)
+        # The user wrote a generator expression, not its function: name the
+        # function the expression sits in, or the module.
+        in_genexpr = getattr(node, "is_genexpr", False)
+        if in_genexpr:
+            name = node.genexpr_owner
         if component == "ctor":
             where = "in a constructor"
         elif name:
             where = f"in function '{name}'"
-        elif component == "top_level":
+        elif component == "top_level" or in_genexpr:
             where = "at module level"
         else:
             where = "in this module"

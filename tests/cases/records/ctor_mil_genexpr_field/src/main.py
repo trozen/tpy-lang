@@ -1,6 +1,6 @@
-# A generator expression inside a constructor member-init list: the genexpr's
-# IIFE captures the ctor PARAM it reads, at a plain tuple field and at a nested
-# tuple field.
+# A generator expression inside a constructor member-init list: the genexpr
+# takes the ctor PARAM it reads, at a plain tuple field and at a nested tuple
+# field.
 from tpy import int32
 
 
@@ -8,7 +8,7 @@ class H:
     t: tuple[int32, int32]
 
     def __init__(self, d: dict[int32, int32]) -> None:
-        # The genexpr reads `d`, so its lambda must capture it.
+        # The genexpr reads `d`, a ctor param, from inside the init list.
         self.t = (sum(k for k in d), 1)
 
 

@@ -204,7 +204,8 @@ type from the .hpp. A small non-template generator's `__next__` (at
 most 40 rendered lines) is the one body that still emits `inline`, in
 `<mod>_inl.hpp` -- a file nothing includes from a header, only from a
 `.cpp` whose headers are all complete (see docs/ASYNC_DESIGN.md "Body
-placement").
+placement", which also covers where a generator expression's frame
+goes).
 
 A workspace-wide completeness-graph reject gate
 (`_check_workspace_completeness_cycles`) runs after decl

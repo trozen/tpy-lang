@@ -4,6 +4,170 @@
 namespace tpyapp::main {
 
 
+namespace {
+
+// print(all(x > 0 for x in nums))
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, bool> {
+    int32_t __state;
+    const std::array<int32_t, 5>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(const std::array<int32_t, 5>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<bool, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// print(all(x > 0 for x in nums))  # -> S_RESUME_0
+std::expected<bool, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (x > 0);
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(all(x > 0 for x in nums))
+__genexpr_main_1_frame __genexpr_main_1(const std::array<int32_t, 5>& __src) {
+    return __genexpr_main_1_frame(__src);
+}
+
+// print(all(x > 3 for x in nums))
+struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, bool> {
+    int32_t __state;
+    const std::array<int32_t, 5>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_2_frame(const std::array<int32_t, 5>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<bool, ::tpy::StopIteration> __next__();
+    __genexpr_main_2_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_2_frame&) {
+        return os << "<generator __genexpr_main_2>";
+    }
+};
+
+// print(all(x > 3 for x in nums))  # -> S_RESUME_0
+std::expected<bool, ::tpy::StopIteration> __genexpr_main_2_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (x > 3);
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(all(x > 3 for x in nums))
+__genexpr_main_2_frame __genexpr_main_2(const std::array<int32_t, 5>& __src) {
+    return __genexpr_main_2_frame(__src);
+}
+
+// print(any(x > 4 for x in nums))
+struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame, bool> {
+    int32_t __state;
+    const std::array<int32_t, 5>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_3_frame(const std::array<int32_t, 5>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<bool, ::tpy::StopIteration> __next__();
+    __genexpr_main_3_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_3_frame&) {
+        return os << "<generator __genexpr_main_3>";
+    }
+};
+
+// print(any(x > 4 for x in nums))  # -> S_RESUME_0
+std::expected<bool, ::tpy::StopIteration> __genexpr_main_3_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (x > 4);
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(any(x > 4 for x in nums))
+__genexpr_main_3_frame __genexpr_main_3(const std::array<int32_t, 5>& __src) {
+    return __genexpr_main_3_frame(__src);
+}
+
+// print(any(x > 10 for x in nums))
+struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_frame, bool> {
+    int32_t __state;
+    const std::array<int32_t, 5>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_4_frame(const std::array<int32_t, 5>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<bool, ::tpy::StopIteration> __next__();
+    __genexpr_main_4_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_4_frame&) {
+        return os << "<generator __genexpr_main_4>";
+    }
+};
+
+// print(any(x > 10 for x in nums))  # -> S_RESUME_0
+std::expected<bool, ::tpy::StopIteration> __genexpr_main_4_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (x > 10);
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(any(x > 10 for x in nums))
+__genexpr_main_4_frame __genexpr_main_4(const std::array<int32_t, 5>& __src) {
+    return __genexpr_main_4_frame(__src);
+}
+
+}  // namespace
+
 // # all() and any() builtins with lists and generator expressions
 // def main() -> None:
 //     t = [True, True, True]
@@ -65,54 +229,10 @@ void main() {
     std::cout << ::tpy::print_bool(::tpy::builtin_any(a2)) << "\n";
     std::cout << ::tpy::print_bool(::tpy::builtin_any(a3)) << "\n";
     std::array<int32_t, 5> nums = {1, 2, 3, 4, 5};
-    std::cout << ::tpy::print_bool(::tpy::builtin_all([&nums]() {
-        auto& __src = nums;
-        return ::tpy::make_generator<bool>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<bool> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<bool>((x > 0));
-                }
-                return std::nullopt;
-            }
-        );
-    }())) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_all([&nums]() {
-        auto& __src = nums;
-        return ::tpy::make_generator<bool>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<bool> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<bool>((x > 3));
-                }
-                return std::nullopt;
-            }
-        );
-    }())) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_any([&nums]() {
-        auto& __src = nums;
-        return ::tpy::make_generator<bool>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<bool> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<bool>((x > 4));
-                }
-                return std::nullopt;
-            }
-        );
-    }())) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_any([&nums]() {
-        auto& __src = nums;
-        return ::tpy::make_generator<bool>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<bool> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<bool>((x > 10));
-                }
-                return std::nullopt;
-            }
-        );
-    }())) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpyapp::main::__genexpr_main_1(nums))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpyapp::main::__genexpr_main_2(nums))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpyapp::main::__genexpr_main_3(nums))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpyapp::main::__genexpr_main_4(nums))) << "\n";
     std::vector<bool> empty = std::vector<bool>{};
     std::cout << ::tpy::print_bool(::tpy::builtin_all(empty)) << "\n";
     std::cout << ::tpy::print_bool(::tpy::builtin_any(empty)) << "\n";

@@ -35,6 +35,8 @@ from ..typesys import (
     ConcreteCoroType, make_concrete_coro, make_cancellable,
     bare_name, recorded_return_borrow_sources)
 from ..parse import (
+    collect_name_refs,
+    walk_body_stmts,
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
@@ -52,7 +54,7 @@ from ..coercions import CoercionContext
 from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
-    ScanResult, scan_reassigned_vars, parse_deref_view_key,
+    bound_names_of, ScanResult, scan_reassigned_vars, parse_deref_view_key,
     FactKills, collect_fact_kills, liveness_alias_sources,
 )
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
@@ -90,7 +92,8 @@ from ..value_category import (
     async_return_form, AsyncReturnForm, frame_factory_callee,
     frame_temp_arg_source,
 )
-from .expressions import _nested_def_free_names, _find_list_member
+from .expressions import (_nested_def_free_names, _find_list_member,
+                          _names_rebound_by)
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
     view_source_is_temporary, walk_view_source_leaves,
@@ -99,6 +102,7 @@ from .type_ops import signature_may_return_borrow as _signature_may_return_borro
 from tpyc import modules as builtin_modules
 from tpyc import qnames
 from ..type_def_registry import (
+    is_iterator_adapter,
     is_dict, is_array, is_span, is_list,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
@@ -1461,9 +1465,13 @@ class StatementAnalyzer:
                                         TpyTry, TpyMatch))
         if is_compound:
             self.ctx.func.compound_stack.append(stmt)
+        enclosing_genexprs = self.ctx.stmt_genexprs
+        self.ctx.stmt_genexprs = []
         try:
             self._analyze_stmt_dispatch(stmt)
+            self._check_retained_genexprs(stmt)
         finally:
+            self.ctx.stmt_genexprs = enclosing_genexprs
             if is_compound:
                 self.ctx.func.compound_stack.pop()
             bt.current_stmt = prev_stmt
@@ -1477,6 +1485,137 @@ class StatementAnalyzer:
             if pending:
                 self.ctx.func.non_null_ptr_vars |= pending
                 pending.clear()
+
+    def _check_retained_genexprs(self, stmt: TpyStmt) -> None:
+        """A statement that binds a LAZY value keeps every genexpr it created
+        alive past itself (`g = relay(x * k for x in xs)`), so a name the
+        genexpr captured can be rebound before it is pulled.
+
+        Only a binding can do that: a protocol-typed value cannot be stored in
+        a field or a container, and a `for` head is judged where the genexpr is
+        built (its loop body is in view there). What the genexpr was built on
+        is then checked against what can run while the kept value is live: a
+        narrowing it took does not hold, and a capture becomes one that may be
+        rebound."""
+        created = self.ctx.stmt_genexprs
+        if not created:
+            return
+        if isinstance(stmt, TpyVarDecl):
+            value, kept = stmt.init, {stmt.name}
+        elif isinstance(stmt, TpyAssign):
+            value = stmt.value
+            kept = {stmt.target.name} if isinstance(stmt.target, TpyName) else set()
+        elif isinstance(stmt, TpyTupleUnpack):
+            value, kept = stmt.value, {t for t in stmt.targets if t is not None}
+        else:
+            return
+        bound = self.ctx.get_expr_type(value) if value is not None else None
+        if bound is None or not self._holds_lazy_iteration(bound):
+            return
+        later = self._names_rebound_while_live(stmt, kept)
+        for gx, narrowed in created:
+            stale = [n for n in narrowed if later is None or n in later]
+            if stale:
+                raise self.ctx.error(
+                    f"'{stale[0]}' is narrowed here, but this generator "
+                    f"expression is kept past the statement and '{stale[0]}' "
+                    f"can be rebound before it runs; bind the narrowed value "
+                    f"to a local first", gx)
+            func = gx.frame_func
+            if func is not None:
+                gx.frame_rebindable = tuple(dict.fromkeys(
+                    gx.frame_rebindable
+                    + tuple(n for n in func.capture_params
+                            if later is None or n in later)))
+
+    @staticmethod
+    def _holds_lazy_iteration(typ: TpyType) -> bool:
+        """Whether a value of this type is iteration that has not run yet: a
+        genexpr, a generator, a lazy combinator."""
+        bare = unwrap_readonly(unwrap_own(unwrap_ref_type(typ)))
+        if isinstance(bare, GenExprType) or is_iterator_adapter(bare):
+            return True
+        return (is_protocol_type(bare)
+                and bare.qualified_name() in (qnames.ITERATOR, qnames.ITERABLE))
+
+    def _names_rebound_while_live(self, stmt: TpyStmt,
+                                  kept: 'set[str]') -> 'set[str] | None':
+        """The names something can rebind while the value `stmt` binds to
+        `kept` is still live: a binder between `stmt` and the end of the last
+        statement that reads a kept name, any binder in a loop `stmt` sits in
+        (it runs again before the next iteration's read), a `nonlocal` a nested
+        def declares. None when the body is not in view."""
+        fn = self.ctx.func.current_function
+        body = (fn.body if isinstance(fn, TpyFunction)
+                else self.ctx.module_top_level_stmts)
+        if body is None or stmt.loc is None:
+            return None
+        start = (stmt.loc.line, stmt.loc.column)
+        unknown = 1 << 60
+
+        def end_of(s: TpyStmt) -> int:
+            return (s.loc.end_line if s.loc is not None and s.loc.end_line
+                    else unknown)
+
+        # Where the kept value stops being live. A read inside a loop keeps it
+        # live to the end of the outermost such loop; a nested def that reads
+        # it, or no kept name at all, leaves the horizon open.
+        horizon = 0 if kept else unknown
+        # A statement that reads a kept name and binds another (`g = tmp`, the
+        # desugared halves of a tuple-literal unpack) hands the value on: the
+        # new name is kept too.
+        kept = set(kept)
+        grew = True
+        while grew:
+            grew = False
+
+            def on_stmt(s: TpyStmt) -> None:
+                nonlocal grew
+                if s is stmt or not any(kept & collect_name_refs(e) for e in s.exprs()):
+                    return
+                handed_on = bound_names_of(s) - kept
+                if handed_on and not isinstance(s, (TpyForEach, TpyWith)):
+                    kept.update(handed_on)
+                    grew = True
+            walk_body_stmts(body, lambda e: None, on_stmt)
+
+        def reads(stmts: 'list[TpyStmt]', loop_end: 'int | None') -> None:
+            nonlocal horizon
+            for s in stmts:
+                here = loop_end
+                if here is None and isinstance(s, (TpyForEach, TpyWhile)):
+                    here = end_of(s)
+                if isinstance(s, TpyNestedDef):
+                    if kept & _nested_def_free_names(s.func):
+                        horizon = unknown
+                    continue
+                if (s is not stmt and s.loc is not None
+                        and (s.loc.line, s.loc.column) > start
+                        and any(kept & collect_name_refs(e) for e in s.exprs())):
+                    horizon = max(horizon, here if here is not None else end_of(s))
+                for sub in s.sub_bodies():
+                    reads(sub, here)
+        reads(body, None)
+
+        names: set[str] = set()
+        enclosing = [s for s in self.ctx.func.compound_stack
+                     if isinstance(s, (TpyForEach, TpyWhile))]
+
+        def scan(stmts: 'list[TpyStmt]', always: bool) -> None:
+            def on_stmt(s: TpyStmt) -> None:
+                if s is stmt:
+                    return
+                if isinstance(s, TpyNestedDef) or always:
+                    names.update(_names_rebound_by(s))
+                elif (s.loc is not None
+                        and start < (s.loc.line, s.loc.column)
+                        and s.loc.line <= horizon):
+                    names.update(_names_rebound_by(s))
+            walk_body_stmts(stmts, lambda e: None, on_stmt)
+        scan(body, False)
+        for loop in enclosing:
+            scan(loop.body, True)
+        return names
 
     def _retire_block_nested_defs(self, stmt: TpyStmt) -> None:
         """End the reach of every nested `def` this statement's body bound:
@@ -1840,7 +1979,11 @@ class StatementAnalyzer:
                     ns_types_before=ns_types_before_foreach,
                     runs_once=runs_once, elem_type=elem_type)
             else:
-                iterable_type = self.expr.analyze_expr(stmt.iterable)
+                self.ctx.for_head_bodies.append(stmt.body)
+                try:
+                    iterable_type = self.expr.analyze_expr(stmt.iterable)
+                finally:
+                    self.ctx.for_head_bodies.pop()
                 is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
                 inner_iterable_type = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
                 # Resolve TypeParamRef to its bound for element type extraction
@@ -4396,8 +4539,16 @@ class StatementAnalyzer:
                 "the generator is abandoned before exhaustion (e.g. "
                 "'break' out of a for loop over it)", stmt)
         elem_type = func.generator_yield_type
-        assert elem_type is not None
-        yield_type = self.expr.analyze_expr_with_hint(stmt.value, elem_type)
+        if elem_type is None and func.is_genexpr:
+            # A genexpr declares no yield type: its one yield decides it.
+            yield_type = self.expr.analyze_expr(stmt.value)
+            elem_type = resolve_int_literals(yield_type, self.ctx.default_int_for_literal)
+            if isinstance(elem_type, FloatLiteralType):
+                elem_type = FLOAT
+            func.generator_yield_type = elem_type
+        else:
+            assert elem_type is not None
+            yield_type = self.expr.analyze_expr_with_hint(stmt.value, elem_type)
         stmt.value = self.compat.coerce_expr(
             stmt.value, yield_type, elem_type, "yield value",
             coercion_ctx=CoercionContext.RETURN)

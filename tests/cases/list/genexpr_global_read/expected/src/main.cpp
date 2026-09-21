@@ -6,6 +6,64 @@ namespace tpyapp::main {
 int32_t limit{};
 int32_t scale{};
 
+namespace {
+
+// return sum(i * scale for i in range(6) if i < limit)  # tpyc: ok
+template <typename F_limit>
+struct __genexpr_bump_1_frame : public ::tpy::next_iter_mixin<__genexpr_bump_1_frame<F_limit>, int32_t> {
+    int32_t __state;
+    int32_t __r0;
+    F_limit limit;
+    int32_t i;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __genexpr_bump_1_frame(int32_t __r0_, F_limit&& limit_)
+        : __state(S_INITIAL), __r0(std::move(__r0_)), limit(std::forward<F_limit>(limit_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_bump_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_bump_1_frame<F_limit>&) {
+        return os << "<generator __genexpr_bump_1>";
+    }
+};
+
+// # The subject: the filter reads the `global`-declared name, and the
+// # element expression reads a module global the function only reads.
+// return sum(i * scale for i in range(6) if i < limit)  # tpyc: ok  # -> S_RESUME_0
+template <typename F_limit>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_bump_1_frame<F_limit>::__next__() {
+    if (__state == S_INITIAL) {
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(__r0));
+        __state = S_JOIN_0;
+    }
+    while ((*__for_i_0) < (*__for_stop_0)) {
+        i = ((*__for_i_0))++;
+        if ((i < limit)) {
+            return (::tpy::mul_check<int32_t>(i, scale));
+        }
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// return sum(i * scale for i in range(6) if i < limit)  # tpyc: ok
+template <typename F_limit>
+__genexpr_bump_1_frame<F_limit> __genexpr_bump_1(int32_t __r0, F_limit&& limit) {
+    return __genexpr_bump_1_frame<F_limit>(__r0, std::forward<F_limit>(limit));
+}
+
+}  // namespace
+
 // def bump() -> int32:
 //     global limit
 //     limit = int32(4)
@@ -14,17 +72,7 @@ int32_t scale{};
 //     return sum(i * scale for i in range(6) if i < limit)  # tpyc: ok
 int32_t bump() {
     limit = 4;
-    return ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
-        [__i = int32_t(0), __stop = static_cast<int32_t>(6)]() mutable -> std::optional<int32_t> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                if ((i < limit)) {
-                    return std::optional<int32_t>((::tpy::mul_check<int32_t>(i, scale)));
-                }
-            }
-            return std::nullopt;
-        }
-    ));
+    return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_bump_1(6, limit));
 }
 
 // def main() -> None:

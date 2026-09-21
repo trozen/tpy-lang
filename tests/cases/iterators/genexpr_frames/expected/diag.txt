@@ -1,0 +1,4 @@
+main.py:232: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:234: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:242: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:286: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.

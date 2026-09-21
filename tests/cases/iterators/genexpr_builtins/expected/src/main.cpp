@@ -4,6 +4,233 @@
 namespace tpyapp::main {
 
 
+namespace {
+
+// squares: list[int32] = list(x * x for x in range(5))
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, int32_t> {
+    int32_t __state;
+    int32_t __r0;
+    int32_t x;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(int32_t __r0_)
+        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// # list() from genexpr
+// squares: list[int32] = list(x * x for x in range(5))  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
+    if (__state == S_INITIAL) {
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(__r0));
+        __state = S_JOIN_0;
+    }
+    while ((*__for_i_0) < (*__for_stop_0)) {
+        x = ((*__for_i_0))++;
+        return (::tpy::mul_check<int32_t>(x, x));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// squares: list[int32] = list(x * x for x in range(5))
+__genexpr_main_1_frame __genexpr_main_1(int32_t __r0) {
+    return __genexpr_main_1_frame(__r0);
+}
+
+// items.extend(x * 10 for x in range(3))
+struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, int32_t> {
+    int32_t __state;
+    int32_t __r0;
+    int32_t x;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_2_frame(int32_t __r0_)
+        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_2_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_2_frame&) {
+        return os << "<generator __genexpr_main_2>";
+    }
+};
+
+// items.extend(x * 10 for x in range(3))  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame::__next__() {
+    if (__state == S_INITIAL) {
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(__r0));
+        __state = S_JOIN_0;
+    }
+    while ((*__for_i_0) < (*__for_stop_0)) {
+        x = ((*__for_i_0))++;
+        return (::tpy::mul_check<int32_t>(x, 10));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// items.extend(x * 10 for x in range(3))
+__genexpr_main_2_frame __genexpr_main_2(int32_t __r0) {
+    return __genexpr_main_2_frame(__r0);
+}
+
+// mods: set[int32] = set(x % 3 for x in range(10))
+struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame, int32_t> {
+    int32_t __state;
+    int32_t __r0;
+    int32_t x;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_3_frame(int32_t __r0_)
+        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_3_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_3_frame&) {
+        return os << "<generator __genexpr_main_3>";
+    }
+};
+
+// # set() from genexpr
+// mods: set[int32] = set(x % 3 for x in range(10))  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_3_frame::__next__() {
+    if (__state == S_INITIAL) {
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(__r0));
+        __state = S_JOIN_0;
+    }
+    while ((*__for_i_0) < (*__for_stop_0)) {
+        x = ((*__for_i_0))++;
+        return (::tpy::mod_floor<int32_t>(x, 3));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// mods: set[int32] = set(x % 3 for x in range(10))
+__genexpr_main_3_frame __genexpr_main_3(int32_t __r0) {
+    return __genexpr_main_3_frame(__r0);
+}
+
+// d: dict[str, int32] = dict((str(x), x * x) for x in range(4))
+struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_frame, std::tuple<std::string, int32_t>> {
+    int32_t __state;
+    int32_t __r0;
+    int32_t x;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_4_frame(int32_t __r0_)
+        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+
+    std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __next__();
+    __genexpr_main_4_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_4_frame&) {
+        return os << "<generator __genexpr_main_4>";
+    }
+};
+
+// # dict() from genexpr of tuples
+// d: dict[str, int32] = dict((str(x), x * x) for x in range(4))  # -> S_RESUME_0
+std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __genexpr_main_4_frame::__next__() {
+    if (__state == S_INITIAL) {
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(__r0));
+        __state = S_JOIN_0;
+    }
+    while ((*__for_i_0) < (*__for_stop_0)) {
+        x = ((*__for_i_0))++;
+        return std::tuple<std::string, int32_t>{::tpy::fixed_to_str<int32_t>(x), (::tpy::mul_check<int32_t>(x, x))};
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// d: dict[str, int32] = dict((str(x), x * x) for x in range(4))
+__genexpr_main_4_frame __genexpr_main_4(int32_t __r0) {
+    return __genexpr_main_4_frame(__r0);
+}
+
+// print(" ".join(w.upper() for w in words))
+struct __genexpr_main_5_frame : public ::tpy::next_iter_mixin<__genexpr_main_5_frame, std::string> {
+    int32_t __state;
+    const std::vector<std::string>& __src;
+    std::string w;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::string>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::string>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_5_frame(const std::vector<std::string>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __genexpr_main_5_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_5_frame&) {
+        return os << "<generator __genexpr_main_5>";
+    }
+};
+
+// print(" ".join(w.upper() for w in words))  # -> S_RESUME_0
+std::expected<std::string, ::tpy::StopIteration> __genexpr_main_5_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        w = *((*__for_it_0))++;
+        return ::tpy::str_upper(w);
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(" ".join(w.upper() for w in words))
+__genexpr_main_5_frame __genexpr_main_5(const std::vector<std::string>& __src) {
+    return __genexpr_main_5_frame(__src);
+}
+
+}  // namespace
+
 // def main() -> None:
 //     # list() from genexpr
 //     squares: list[int32] = list(x * x for x in range(5))
@@ -26,60 +253,17 @@ namespace tpyapp::main {
 //     words: list[str] = ["hello", "world", "test"]
 //     print(" ".join(w.upper() for w in words))
 void main() {
-    std::vector<int32_t> squares = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
-        [__i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
-            while (__i < __stop) {
-                int32_t x = __i++;
-                return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, x)));
-            }
-            return std::nullopt;
-        }
-    ));
+    std::vector<int32_t> squares = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_1(5));
     std::cout << ::tpy::ListPrinter(squares) << "\n";
     std::vector<int32_t> items = {1, 2, 3};
-    ::tpy::list_extend(items, ::tpy::make_generator<int32_t>(
-        [__i = int32_t(0), __stop = static_cast<int32_t>(3)]() mutable -> std::optional<int32_t> {
-            while (__i < __stop) {
-                int32_t x = __i++;
-                return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, 10)));
-            }
-            return std::nullopt;
-        }
-    ));
+    ::tpy::list_extend(items, ::tpyapp::main::__genexpr_main_2(3));
     std::cout << ::tpy::ListPrinter(items) << "\n";
-    ::tpy::ordered_set<int32_t> mods = ::tpy::set_construct<int32_t>(::tpy::make_generator<int32_t>(
-        [__i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
-            while (__i < __stop) {
-                int32_t x = __i++;
-                return std::optional<int32_t>((::tpy::mod_floor<int32_t>(x, 3)));
-            }
-            return std::nullopt;
-        }
-    ));
+    ::tpy::ordered_set<int32_t> mods = ::tpy::set_construct<int32_t>(::tpyapp::main::__genexpr_main_3(10));
     std::cout << ::tpy::SetPrinter(mods) << "\n";
-    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::make_generator<std::tuple<std::string, int32_t>>(
-        [__i = int32_t(0), __stop = static_cast<int32_t>(4)]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
-            while (__i < __stop) {
-                int32_t x = __i++;
-                return std::optional<std::tuple<std::string, int32_t>>(std::tuple<std::string, int32_t>{::tpy::fixed_to_str<int32_t>(x), (::tpy::mul_check<int32_t>(x, x))});
-            }
-            return std::nullopt;
-        }
-    ));
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpyapp::main::__genexpr_main_4(4));
     std::cout << ::tpy::DictPrinter(d) << "\n";
     std::vector<std::string> words = {"hello", "world", "test"};
-    std::cout << ::tpy::str_join(" ", [&words]() {
-        auto& __src = words;
-        return ::tpy::make_generator<std::string>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
-                while (__beg != __end) {
-                    const std::string& w = *__beg++;
-                    return std::optional<std::string>(::tpy::str_upper(w));
-                }
-                return std::nullopt;
-            }
-        );
-    }()) << "\n";
+    std::cout << ::tpy::str_join(" ", ::tpyapp::main::__genexpr_main_5(words)) << "\n";
 }
 
 // main()

@@ -120,4 +120,42 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_four::__next__() {
     __builtin_unreachable();
 }
 
+// def framegen(xs: list[int32]) -> Iterator[int32]:
+//     # generator body: the source and the captured `xs` are frame members.
+//     yield sum(x for x in xs)  # tpyc: ok                                   # -> S_RESUME_0
+//     yield sum(a + b for a, b in zip(xs, xs))  # tpyc: ok                   # -> S_RESUME_1
+//     yield sum(x for x in gen())  # tpyc: ok                                # -> S_RESUME_2
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_framegen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_RESUME_0;
+        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_framegen_7(xs));
+    }
+    case S_RESUME_0: {  // after: yield sum(x for x in xs)  # tpyc: ok
+        __state = S_RESUME_1;
+        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_framegen_8(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(xs, xs); }));
+    }
+    case S_RESUME_1: {  // after: yield sum(a + b for a, b in zip(xs, xs))  # tpyc: ok
+        __state = S_RESUME_2;
+        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_framegen_9(std::in_place, [&]() { return ::tpyapp::main::gen(); }));
+    }
+    case S_RESUME_2: {  // after: yield sum(x for x in gen())  # tpyc: ok
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # generator body: the source and the captured `xs` are frame members.
+// yield sum(x for x in xs)  # tpyc: ok  # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __genexpr_framegen_7_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return x;
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
 } // namespace tpyapp::main

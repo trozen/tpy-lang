@@ -1,6 +1,5 @@
 # A generator expression reading a `global`-declared name. The name is a
-# namespace-scope object, so the lambda must NAME it, not capture it -- a
-# capture of one is ill-formed C++ (clang rejects it outright).
+# namespace-scope object, so the frame body NAMES it; it is not a capture.
 from tpy import int32
 
 limit: int32 = int32(3)

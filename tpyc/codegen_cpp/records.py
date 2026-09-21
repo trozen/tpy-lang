@@ -26,6 +26,7 @@ from ..parse import (
     is_docstring, is_super_del_call, is_base_init_call,
     collect_name_refs, collect_top_level_local_names, expr_reads_self_field,
 )
+from ..identity_map import IdentityMap
 from ..namespace import Namespace
 from ..sema.registration import build_record_self_type
 
@@ -121,6 +122,7 @@ class RecordGenerator:
         self.functions = functions
         self.gen_generators: GeneratorCodegen  # Set by CodeGenerator after init
         self.gen_async: AsyncCoroCodegen  # Set by CodeGenerator after init
+        self._def_modes: IdentityMap[TpyRecord, IdentityMap[TpyFunction, MethodEmitMode]] = IdentityMap()
 
     def sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
         """Sort records so parent classes come before children.
@@ -962,12 +964,7 @@ class RecordGenerator:
         trivial_mode = "def_cpp" if self.ctx.cycle_peers else "def_hpp"
         if self._ctor_all_protocols_optional(record) and mode == trivial_mode:
             out.write(f"\n{inline_prefix}{q}::{n}() : {n}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
-        if not self._ctor_can_be_out_of_line(record):
-            return
-        if not self.ctx.cycle_peers:
-            if self._method_body_is_small(init) != (mode == "def_hpp"):
-                return
-        elif mode == "def_hpp":
+        if self.ctor_def_mode(record) != mode:
             return
         out.write("\n")
         self.ctx.emit_definition_echo(out, init.loc)
@@ -1044,6 +1041,64 @@ class RecordGenerator:
         start = 1 if body and is_docstring(body[0]) else 0
         return cls._stmt_count(body[start:]) <= cls._SMALL_METHOD_STMT_THRESHOLD
 
+    def _body_def_mode(self, body_owner: TpyFunction) -> MethodEmitMode:
+        # Cycle members skip the def_hpp partition entirely (the .hpp can only
+        # see <peer>_fwd.hpp; inline bodies that touch a peer's complete type
+        # would fail to compile), so every out-of-line body goes to the .cpp.
+        if self.ctx.cycle_peers or not self._method_body_is_small(body_owner):
+            return "def_cpp"
+        return "def_hpp"
+
+    def ctor_def_mode(self, record: TpyRecord) -> MethodEmitMode | None:
+        """The partition `record`'s out-of-line constructor definition lands
+        in, or None when it is defined inside the struct."""
+        init = record.init_method
+        if (init is None or record.type_params or self._is_native(record)
+                or not self._ctor_can_be_out_of_line(record)):
+            return None
+        return self._body_def_mode(init)
+
+    def method_def_mode(self, method: TpyFunction,
+                        record: TpyRecord) -> MethodEmitMode | None:
+        """The partition `method`'s out-of-line definition lands in, or None
+        when no out-of-line definition is emitted for it (it is defined inside
+        the struct, or emits itself some other way)."""
+        modes = self._def_modes.get(record)
+        if modes is None:
+            modes = self._def_modes[record] = self._record_def_modes(record)
+        return modes.get(method)
+
+    def _record_def_modes(
+            self, record: TpyRecord) -> IdentityMap[TpyFunction, MethodEmitMode]:
+        modes: IdentityMap[TpyFunction, MethodEmitMode] = IdentityMap()
+        # A templated class keeps its methods inline in the struct.
+        if self._is_native(record) or record.type_params:
+            return modes
+        overload_dispatched: set[str] = set()
+        for method in record.methods:
+            if self._skip_method_emission(method):
+                continue
+            # Generators / async methods self-emit through GeneratorCodegen /
+            # AsyncCoroCodegen elsewhere (their factory bodies are inline
+            # methods that return the coro/generator struct, emitted next to
+            # the struct definition).
+            if method.is_generator or method.is_async:
+                continue
+            # Overload-dispatched methods emit specialized methods inline (one
+            # per stub) inside the struct -- not handled here. Track them so
+            # the const clone of an `@auto_readonly @overload` impl, which
+            # immediately follows the mutable impl in `record.methods`, also
+            # gets skipped (the mutable clone already emitted both stubs).
+            if self.ctx.analyzer.overload_groups.get(method):
+                overload_dispatched.add(method.name)
+                continue
+            if method.name in overload_dispatched:
+                continue
+            if not self._method_can_be_out_of_line(method, record):
+                continue
+            modes[method] = self._body_def_mode(method)
+        return modes
+
     def gen_record_method_defs(self, out: TextIO, record: TpyRecord,
                                 *, mode: MethodEmitMode) -> None:
         if not self._is_native(record) and self._record_shadows_local_type(record):
@@ -1079,39 +1134,8 @@ class RecordGenerator:
         self._gen_copy_ops(out, record, mode=mode)
         self._gen_move_and_destructor(out, record, mode=mode)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
-        overload_dispatched: set[str] = set()
-        want_small = mode == "def_hpp"
         for method in record.methods:
-            if self._skip_method_emission(method):
-                continue
-            # Generators / async methods self-emit through GeneratorCodegen /
-            # AsyncCoroCodegen elsewhere (their factory bodies are inline
-            # methods that return the coro/generator struct, emitted next to
-            # the struct definition).
-            if method.is_generator or method.is_async:
-                continue
-            # Overload-dispatched methods emit specialized methods inline (one
-            # per stub) inside the struct -- not handled here. Track them so
-            # the const clone of an `@auto_readonly @overload` impl, which
-            # immediately follows the mutable impl in `record.methods`, also
-            # gets skipped (the mutable clone already emitted both stubs).
-            overload_stubs = self.ctx.analyzer.overload_groups.get(method)
-            if overload_stubs:
-                overload_dispatched.add(method.name)
-                continue
-            if method.name in overload_dispatched:
-                continue
-            if not self._method_can_be_out_of_line(method, record):
-                continue
-            # Cycle members (Phase 8) skip the def_hpp partition entirely
-            # (the .hpp can only see <peer>_fwd.hpp; inline bodies that
-            # touch a peer's complete type would fail to compile). All
-            # out-of-line bodies for cycle members go to .cpp regardless
-            # of size.
-            if not self.ctx.cycle_peers:
-                if self._method_body_is_small(method) != want_small:
-                    continue
-            elif mode == "def_hpp":
+            if self.method_def_mode(method, record) != mode:
                 continue
             self.functions.gen_method_def(
                 out, method, record.name, dynamic_overrides,

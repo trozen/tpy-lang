@@ -37,7 +37,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import fields as dc_fields, replace
 
-from ...identity_map import IdentityMap
+from ...identity_map import IdentityMap, IdentitySet
 
 from ..reject import (ThirUnsupported, begin_stmt, note, note_detail,
                         stmt_reject_reason)
@@ -900,7 +900,8 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
                         ptr_loop_vars: 'set[str]',
                         slot_locals: 'set[str]',
                         borrow_tuple_loop_vars: 'set[str]',
-                        value_tuple_holders: 'set[str]') -> 'str | None':
+                        value_tuple_holders: 'set[str]',
+                        opt_ptr_loop_vars: 'set[str]') -> 'str | None':
     """Sync loop-advance admission (R3). The bind itself is skeleton for every
     family (`_for_advance_parts` composes it from the frame classification);
     what gates is whether the leaf READS mirror the bound shape. A
@@ -945,6 +946,11 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
         return None
     if stmt.var in slot_locals:
         _witness("res.loop_slot_bind")
+        return None
+    if stmt.var in opt_ptr_loop_vars:
+        # A pointer-repr Optional element: the skeleton binds the nullable
+        # `T*` with `optional_to_ptr`, and the reads are the OPT_PTR local's.
+        _witness("res.loop_opt_ptr_bind")
         return None
     return "res.loop_var"
 
@@ -1444,6 +1450,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     opt_tuple_holders: set[str] = set()
     borrow_tuple_loop_vars: set[str] = set()
     unpack_ptr_targets: set[str] = set()
+    opt_ptr_loop_vars: set[str] = set()
+    source_typed_holders: set[str] = set()
     # Pointer-form loop vars over a TUPLE element: the field points at the
     # source element's STORAGE tuple, so element reads are the value form
     # (`std::get<1>((*t)).v`) off the deref'd pointer. The `__for_tup_*`
@@ -1455,6 +1463,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             ptr_frame_locals.add(f_info.pointer_form_loop_var)
         if f_info.borrow_tuple_loop_var is not None:
             borrow_tuple_loop_vars.add(f_info.borrow_tuple_loop_var)
+        if f_info.opt_ptr_loop_var is not None:
+            opt_ptr_loop_vars.add(f_info.opt_ptr_loop_var)
+        if (f_info.pointer_form_payload is not None
+                and f_info.pointer_form_loop_var is not None):
+            source_typed_holders.add(f_info.pointer_form_loop_var)
         # Tuple-unpack targets aliasing a non-value container member: `T*`
         # fields the head unpack re-points via `= &(std::get<i>(__tup_N));`
         # -- the skeleton's pointer_form_unpack_targets seeding.
@@ -1781,7 +1794,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 t, analyzer, ptr_frame_locals,
                 frame_slots - coro_handle_slots,
                 borrow_tuple_loop_vars | borrow_tuple_locals,
-                value_tuple_locals | opt_tuple_holders)
+                value_tuple_locals | opt_tuple_holders,
+                opt_ptr_loop_vars)
             if reason is not None:
                 return _reject(reason)
             saw_sync_loop = True
@@ -1889,6 +1903,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.const_frame_bindings = frozenset(rstate.const_frame_bindings)
     lc.pointers.update(unpack_ptr_targets)
     lc.unpack_ptr_targets = frozenset(unpack_ptr_targets)
+    lc.source_typed_holders = frozenset(source_typed_holders)
     lc.value_tuple_frame_locals = frozenset(value_tuple_locals)
     lc.opt_tuple_holders = frozenset(opt_tuple_holders)
     lc.opt_ptr_frame_locals = frozenset(opt_ptr_locals)
@@ -2031,6 +2046,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     await_args: IdentityMap = IdentityMap()
     return_values: IdentityMap = IdentityMap()
     yield_values: IdentityMap = IdentityMap()
+    yield_temp_rights: IdentitySet = IdentitySet()
     suspend_exprs: IdentityMap = IdentityMap()
     region_exprs: IdentityMap = IdentityMap()
     match_dispatches: IdentityMap = IdentityMap()
@@ -2733,7 +2749,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if not (isinstance(yv_src, TpyName)
                         and (yv_src.name in lc.frame_slots
                              or yv_src.name in ptr_frame_locals
-                             or yv_src.name in alias_ptr_locals)):
+                             or yv_src.name in alias_ptr_locals
+                             # a pointer-repr Optional loop var, narrowed (sema
+                             # types the yield at the inner `T`): the nullable
+                             # `T*` points into the iterated container.
+                             or yv_src.name in opt_ptr_loop_vars)):
                     raise ThirUnsupported("res.yield_type")
                 # A frame_slot / pointer-form loop var / alias local NAME:
                 # every one of the three is frame-owned storage or a pointer
@@ -2767,9 +2787,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # SLOT-keyed, never source-keyed: the same narrowed value-opt
             # NAME must deref at an `int32` slot (`return (*val);`) and pass
             # whole at an `int32 | None` one.
+            # A VALUE slot takes a copy of what the expression computes, so an
+            # arg temp it needs (a record rvalue handed to a callee) may flush
+            # ahead of the `return` and die there; a borrow slot hands out a
+            # pointer that must survive the suspension, so it keeps no such
+            # right (the arms above).
             yv_lowered = _lower_expr(
                 ys.value, lc, declared, field_prechecked=yv_str_field,
-                allow_whole_optional=yv_valopt is not None)
+                allow_whole_optional=yv_valopt is not None,
+                use=_ExprUse(allow_temps=yt_bare.is_value_type()))
+            if yt_bare.is_value_type():
+                yield_temp_rights.add(ys)
             if (isinstance(ys.value, TpyName)
                     and ys.value.name in ptr_frame_locals
                     and isinstance(yv_lowered, THIRName)
@@ -2979,6 +3007,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     res_body = THIRResumableBody(
         leaves=leaves, conds=conds, await_args=await_args,
         return_values=return_values, yield_values=yield_values,
+        yield_temp_rights=yield_temp_rights,
         suspend_exprs=suspend_exprs, region_exprs=region_exprs,
         match_dispatches=match_dispatches,
         nested_def_bodies=nested_def_bodies,

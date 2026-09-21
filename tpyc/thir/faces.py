@@ -2306,8 +2306,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "name.opt_vtuple_deref",        # ... and the narrowed `(*t)` deref read
     "optptr.storage_name_lift",     # that name at a T* slot:
                                     # ::tpy::optional_to_ptr(p)
-    "genexpr.unpack",               # genexpr tuple-unpack head (per-target
-                                    # __tup_N binds in the lambda)
     "ret.ptr_opt_ternary",          # ptr-Optional return of a ternary
     # Enum value-binding renders (lowering).
     "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
@@ -2777,7 +2775,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "fn.overload_template_stub",    # per-stub emission over a set with a
                                     # protocol-param (template-header) stub
     "argtemp.genexpr_proto",        # genexpr at a structural protocol slot:
-                                    # the un-spelled auto make_generator temp
+                                    # the un-spelled auto frame temp
     "optptr.container_temp",        # container literal at an Optional
                                     # [container] slot: typed temp + &(...)
     "optptr.scalar_temp",           # scalar rvalue at an Optional[scalar]
@@ -2797,12 +2795,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # rvalue: same prescanned frame field
     "reseat.opt_frame_literal_in_place",  # ... that literal written through
                                     # the pointer instead (IN_PLACE)
-    "genexpr.range",                # the range-source counter lambda
-                                    # (1/2/3-arg, step checks on 3-arg)
-    "genexpr.filter",               # &&-joined filter conditions wrapping
-                                    # the yield inside the lambda
-    "genexpr.native_iterable",      # genexpr into a native Iterable consumer ->
-                                    # the make_generator IIFE (all/any/sum arg)
+    "genexpr.frame",                # genexpr created as a generator frame
+    "res.loop_opt_ptr_bind",        # pointer-repr Optional loop element (T*)
     "print.none_literal",           # print(None): the bare "None" string
                                     # literal
     "print.optval",                 # un-narrowed value-repr Optional[scalar/str]
@@ -2839,8 +2833,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`dict[str, JsonValue]`): the view render and the key the consumer
     # binds are both value-blind, so only the key slice decides.
     "iter.dict_keys_value_blind",
-    "foreach.genexpr_iterable",   # genexpr iterable: the make_generator
-                                  # lambda's rvalue owning capture
+    "foreach.genexpr_iterable",   # genexpr iterable: the frame, an rvalue
+                                  # the loop owns
     "foreach.list_repeat_local",  # lazy repeat local iterable: the
                                   # universal loop over the lvalue capture
     "print.opt_ptr_call",         # ptr-repr Optional-returning call print
@@ -3152,7 +3146,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.with_ctx",                 # with-region manager expression render
     "res.with_manager_field",       # borrowed manager read off a field
     "res.with_manager_getter",      # its accessor spelling (a reference-returning getter)
-    "genexpr.narrowed_capture",     # genexpr captures a narrowing alias
     "res.btuple_yield_borrow_call", # yield of a borrow-form tuple CALL
     "res.finally_helper",           # helper-based finally body routed (R6)
     "res.for_iter_setup",           # sync for-loop iterable/range render (R3)

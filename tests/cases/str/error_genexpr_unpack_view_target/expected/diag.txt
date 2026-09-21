@@ -1,1 +1,0 @@
-main.py:7: error: in function 'take': this construct is not yet supported by C++ code generation (genexpr.unpack)

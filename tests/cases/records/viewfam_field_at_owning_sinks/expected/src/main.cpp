@@ -97,6 +97,50 @@ __gen_sec_gen sec_gen(const Outer& o) {
     return __gen_sec_gen(o);
 }
 
+namespace {
+
+// joined = "-".join(r.name for r in rows)  # tpyc: ok
+struct __genexpr_sec_comp_1_frame : public ::tpy::next_iter_mixin<__genexpr_sec_comp_1_frame, std::string> {
+    int32_t __state;
+    const std::vector<Inner>& __src;
+    const Inner* r = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Inner>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Inner>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_sec_comp_1_frame(const std::vector<Inner>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __genexpr_sec_comp_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_sec_comp_1_frame&) {
+        return os << "<generator __genexpr_sec_comp_1>";
+    }
+};
+
+// joined = "-".join(r.name for r in rows)  # tpyc: ok  # -> S_RESUME_0
+std::expected<std::string, ::tpy::StopIteration> __genexpr_sec_comp_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        r = &(*((*__for_it_0))++);
+        return r->name;
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// joined = "-".join(r.name for r in rows)  # tpyc: ok
+__genexpr_sec_comp_1_frame __genexpr_sec_comp_1(const std::vector<Inner>& __src) {
+    return __genexpr_sec_comp_1_frame(__src);
+}
+
+}  // namespace
+
 // # comprehension element: the ordinary `[r.name for r in rows]`
 // def sec_comp(rows: list[Inner]) -> None:
 //     parts = [r.name for r in rows]  # tpyc: ok
@@ -157,18 +201,7 @@ void sec_comp(std::vector<Inner>& rows) {
         }
         std::move(__result);
     });
-    std::string joined = ::tpy::str_join("-", [&rows]() {
-        auto& __src = rows;
-        return ::tpy::make_generator<std::string>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
-                while (__beg != __end) {
-                    const auto& r = *__beg++;
-                    return std::optional<std::string>(r.name);
-                }
-                return std::nullopt;
-            }
-        );
-    }());
+    std::string joined = ::tpy::str_join("-", ::tpyapp::main::__genexpr_sec_comp_1(rows));
     Inner& r0 = ::tpy::__getitem__(rows, 0);
     r0.name = "ZZ";
     std::cout << "comp" << " " << ::tpy::__getitem__(parts, 0) << " " << ::tpy::__getitem__(parts, 1) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(tags, 0)) << " " << ::tpy::__len__(uniq) << " " << ::tpy::__getitem__(bymap, "s1") << " " << joined << " " << ::tpy::__getitem__(rows, 0).name << "\n";

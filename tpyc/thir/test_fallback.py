@@ -12,9 +12,12 @@ several bodies at once."""
 
 from __future__ import annotations
 
+from itertools import islice
+
 from ..compilation_context import (_current_compiler, activate_compiler,
                                    get_current_compiler)
 from .reject import (
+    _walk,
     begin_attempt,
     begin_stmt,
     classify_stmt,
@@ -1435,3 +1438,17 @@ def test_print_arg_reports_the_inner_reject_not_its_own_shape():
     reasons = _reasons(src)
     assert any("binop.narrowed_char_eq_literal" in k for k in reasons), reasons
     assert not any("print.arg." in k for k in reasons), reasons
+
+
+def test_analyzed_genexpr_body_stays_acyclic():
+    # The reject classifier walks a body with no visited set, and sema hangs
+    # a genexpr's function off the expression (sharing the element and filter
+    # nodes with it): nothing under that function may point back up to the
+    # body that creates it, or the walk never ends.
+    _, modules = _compile(
+        "from tpy import int32\n"
+        "def f(xs: list[int32], k: int32) -> int32:\n"
+        "    return sum(x * k for x in xs)\n")
+    entry = _entry(modules)
+    func = next(f for f in entry.ast.functions if f.name == "f")
+    assert len(list(islice(_walk(func), 10_000))) < 10_000

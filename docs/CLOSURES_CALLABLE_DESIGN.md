@@ -1164,5 +1164,6 @@ in CPython. No `no_cpython.txt` should be needed for generator tests.
 
 **Terminal note (2026-09-12).** The lambda-based simple-generator path of Phase
 5a was deleted (commit `06ded87f5d`): every generator, single-yield included, now
-lowers on the resumable frame. Generator *expressions* still render via
-`make_generator`. The body above is history.
+lowers on the resumable frame. Generator *expressions* followed on 2026-09-20
+(docs/COMPREHENSION_DESIGN.md "Generator Expressions"), and `generator_wrapper` /
+`make_generator` left the runtime with them. The body above is history.

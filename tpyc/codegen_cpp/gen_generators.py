@@ -61,6 +61,10 @@ class GeneratorForInfo:
     # (what sema's `varargs_as_const` flip makes the default for `*args`)
     # both yield a `const T*`, and a plain `T*` field would not compile.
     pointer_form_is_const: bool = False
+    # The pointee's C++ spelling when the TPy element type cannot give it: an
+    # `iter_next` unpack holder points into the step result, whose type only
+    # the source knows. None = spell it from the element type.
+    pointer_form_payload: str | None = None
     # (loop var name, fully-spelled C++ payload for its frame field). The
     # payload is derived from the ITERATION SOURCE rather than the TPy element
     # type -- e.g. `::tpy::for_elem_next_t<T_items>` -- so C++ decides at
@@ -86,6 +90,10 @@ class GeneratorForInfo:
     # members are NOT listed (they stay value-copy). Empty for non-unpack
     # loops and all-value tuples.
     pointer_form_unpack_targets: frozenset[str] = frozenset()
+    # Loop variable name when the element is a pointer-repr `Optional[T]` over
+    # a container that lends lvalues (`begin_end`): the frame field is the
+    # nullable `T*`, bound at the advance by `optional_to_ptr` of the slot.
+    opt_ptr_loop_var: str | None = None
     # Loop variable name when the iterator yields PROXY reference tuples
     # (dict_items: operator* returns std::tuple<const K&, V&> by value).
     # The loop element cannot be address-taken (`&(*it)` is ill-formed on
@@ -295,7 +303,8 @@ class GeneratorCodegen:
 
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int,
                               proto_param_names: frozenset[str] = frozenset(),
-                              proto_param_alias: dict[str, str] | None = None
+                              proto_param_alias: dict[str, str] | None = None,
+                              aliasing_source: bool = False
                               ) -> GeneratorForInfo | None:
         """Determine the iteration strategy and struct fields for a for-loop with yield.
 
@@ -478,6 +487,7 @@ class GeneratorCodegen:
             # tuple via tuple_to_pointer instead of a `T*` to the element.
             yields_proxy = iter_yields_ref_tuple_proxies(iterable_type)
             pointer_form_targets: frozenset[str] = frozenset()
+            opt_ptr_var: str | None = None
             if (stmt.is_tuple_unpack and isinstance(elem_for_form, TupleType)
                     and stmt.body and isinstance(stmt.body[0], TpyTupleUnpack)):
                 # Tuple-unpack over a stable lvalue container: alias the
@@ -504,9 +514,19 @@ class GeneratorCodegen:
                                     if aliased and not yields_proxy else None)
                 pointer_form_targets = frozenset(aliased)
             else:
-                pointer_form_var = (
+                # A pointer-repr `Optional[T]` element is NOT a `T*` to the
+                # container's slot: its loop var is the nullable `T*` every
+                # other position spells (`optional_to_ptr` at the advance), so
+                # a `None` test on it asks the element, not the slot's address.
+                opt_ptr_var = (
                     stmt.var
                     if (not yields_proxy
+                        and isinstance(unwrap_readonly(elem_for_form), OptionalType)
+                        and unwrap_readonly(elem_for_form).uses_pointer_repr())
+                    else None)
+                pointer_form_var = (
+                    stmt.var
+                    if (not yields_proxy and opt_ptr_var is None
                         and (elem_wants_borrow_form(native_elem)
                              or whole_tuple_loop_var_aliases(native_elem)))
                     else None
@@ -525,6 +545,7 @@ class GeneratorCodegen:
                                                      ReadonlyType)),
                 pointer_form_unpack_targets=pointer_form_targets,
                 borrow_tuple_loop_var=borrow_tuple_var,
+                opt_ptr_loop_var=opt_ptr_var,
             )
 
         # Universal default: ::tpy::__iter__() + __next__() loop.
@@ -563,11 +584,55 @@ class GeneratorCodegen:
         # value locals use rather than paying a slot for a choice that is not
         # open. A tuple-unpack loop keeps its own target classification, which
         # is a separate axis.
+        #
+        # A tuple-unpack head whose tuple has reference members points the
+        # HOLDER at the step result in the frame's own result slot, and its
+        # reference targets alias the members through it (`p =
+        # &std::get<0>(*__for_tup)`). The result stays there until the next
+        # advance, so the alias holds for the iteration, and nothing is copied
+        # to take it -- a proxy tuple of references (`zip`, `enumerate`,
+        # `dict.items()`) has no value form to copy into. Only where the source
+        # cannot be a native container LVALUE: that one's adaptor hands back a
+        # COPY of a value tuple, and a mutation through the target would then
+        # miss the source silently.
+        elem_bare = unwrap_ref_type(elem_type) if elem_type is not None else None
+        aliased_targets: frozenset[str] = frozenset()
+        if (aliasing_source and stmt.is_tuple_unpack
+                and isinstance(elem_bare, TupleType)
+                and stmt.body and isinstance(stmt.body[0], TpyTupleUnpack)):
+            aliased_targets = frozenset(
+                tname for tname, etype in zip(
+                    stmt.body[0].targets, elem_bare.element_types)
+                if tname is not None
+                and not unwrap_ref_type(etype).is_value_type()
+                and not isinstance(unwrap_ref_type(etype),
+                                   (ReadonlyType, OptionalType)))
+        # A pointer-repr `Optional[T]` element is the nullable `T*` here as
+        # under `begin_end`: the step result stays in the frame's result slot
+        # until the next advance, lent or fresh, so the pointer holds for the
+        # iteration.
+        elem_opt = unwrap_readonly(elem_bare) if elem_bare is not None else None
+        opt_ptr_var = (
+            stmt.var if (not stmt.is_tuple_unpack
+                         and isinstance(elem_opt, OptionalType)
+                         and elem_opt.uses_pointer_repr())
+            else None)
         loop_var_field = (
-            None if (stmt.is_tuple_unpack or elem_is_known_value(elem_type))
+            None if (stmt.is_tuple_unpack or opt_ptr_var is not None
+                     or elem_is_known_value(elem_type))
             else (stmt.var, f"::tpy::for_elem_next_t<{iter_src_cpp}>"))
         return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields,
                                 loop_var_field=loop_var_field,
+                                opt_ptr_loop_var=opt_ptr_var,
+                                pointer_form_is_const=(
+                                    src_is_const
+                                    or isinstance(elem_bare, ReadonlyType)),
+                                pointer_form_loop_var=(
+                                    stmt.var if aliased_targets else None),
+                                pointer_form_payload=(
+                                    f"::tpy::for_step_elem_t<{iter_src_cpp}>"
+                                    if aliased_targets else None),
+                                pointer_form_unpack_targets=aliased_targets,
                                 source_is_const=src_is_const,
                                 dep_units=self._iter_source_dep_units(
                                     iterable_type))

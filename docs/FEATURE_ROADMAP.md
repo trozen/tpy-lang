@@ -2430,9 +2430,10 @@ infrastructure.
 
 See `docs/COMPREHENSION_DESIGN.md` for full design.
 
-**Current state**: Done. `tpy::make_generator<T>(lambda)` wrapper satisfying
-`Iterable[T]`. Supports range sources, container sources, filter clauses, tuple
-unpacking, outer local capture.
+**Current state**: Done. A genexpr compiles to a generator frame (the struct a
+`def` generator gets) satisfying `Iterable[T]`. Supports range sources, container
+and rvalue iterable sources, filter clauses, tuple unpacking, reference capture of
+outer locals.
 
 **Dependencies**: List comprehension infrastructure (B9). Builtin function awareness
 in sema for fusion.

@@ -518,6 +518,50 @@ __coro_coro coro() {
     return __coro_coro();
 }
 
+namespace {
+
+// xs = list(x + 1 for x in xs)  # tpyc: ok
+struct __genexpr_call_rebinds_1_frame : public ::tpy::next_iter_mixin<__genexpr_call_rebinds_1_frame, int32_t> {
+    int32_t __state;
+    const std::vector<int32_t>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_call_rebinds_1_frame(const std::vector<int32_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_call_rebinds_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_call_rebinds_1_frame&) {
+        return os << "<generator __genexpr_call_rebinds_1>";
+    }
+};
+
+// xs = list(x + 1 for x in xs)  # tpyc: ok  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_call_rebinds_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (::tpy::add_check<int32_t>(x, 1));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// xs = list(x + 1 for x in xs)  # tpyc: ok
+__genexpr_call_rebinds_1_frame __genexpr_call_rebinds_1(const std::vector<int32_t>& __src) {
+    return __genexpr_call_rebinds_1_frame(__src);
+}
+
+}  // namespace
+
 // def call_rebinds() -> None:
 //     # inverse: container-returning call rebinds
 //     xs: list[int32] = [3, 1, 2]
@@ -530,18 +574,7 @@ void call_rebinds() {
     std::vector<int32_t>* xs = &__slot_1;
     (*xs) = ::tpy::builtin_sorted<int32_t>((*xs));
     std::cout << "call_rebinds sorted:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
-    (*xs) = ::tpy::construct<std::vector<int32_t>>([&xs]() {
-        auto& __src = (*xs);
-        return ::tpy::make_generator<int32_t>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<int32_t>((::tpy::add_check<int32_t>(x, 1)));
-                }
-                return std::nullopt;
-            }
-        );
-    }());
+    (*xs) = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_call_rebinds_1((*xs)));
     std::cout << "call_rebinds list:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
 }
 

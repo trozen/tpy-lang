@@ -5,26 +5,108 @@ namespace tpyapp::main {
 
 std::string LETTERS;
 
+namespace {
+
+// d = dict(((str(x), 0.0) for x in LETTERS))  # tpyc: ok
+struct __genexpr_from_global_1_frame : public ::tpy::next_iter_mixin<__genexpr_from_global_1_frame, std::tuple<std::string, double>> {
+    int32_t __state;
+    std::string __src;
+    char x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_from_global_1_frame(std::string_view __src_)
+        : __state(S_INITIAL), __src(std::string(__src_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __next__();
+    __genexpr_from_global_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_from_global_1_frame&) {
+        return os << "<generator __genexpr_from_global_1>";
+    }
+};
+
+// d = dict(((str(x), 0.0) for x in LETTERS))  # tpyc: ok  # -> S_RESUME_0
+std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __genexpr_from_global_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return std::tuple<std::string, double>{std::string(::tpy::char_to_str(x)), 0.0};
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// d = dict(((str(x), 0.0) for x in LETTERS))  # tpyc: ok
+__genexpr_from_global_1_frame __genexpr_from_global_1(std::string_view __src) {
+    return __genexpr_from_global_1_frame(__src);
+}
+
+}  // namespace
+
 // def from_global() -> None:
 //     d = dict(((str(x), 0.0) for x in LETTERS))  # tpyc: ok
 //     d["a"] += 1.0
 //     print(len(d), d["a"], d["c"])
 void from_global() {
-    ::tpy::ordered_map<std::string, double> d = ::tpy::dict_construct<std::string, double>([]() {
-        auto& __src = LETTERS;
-        return ::tpy::make_generator<std::tuple<std::string, double>>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::tuple<std::string, double>> {
-                while (__beg != __end) {
-                    char x = *__beg++;
-                    return std::optional<std::tuple<std::string, double>>(std::tuple<std::string, double>{std::string(::tpy::char_to_str(x)), 0.0});
-                }
-                return std::nullopt;
-            }
-        );
-    }());
+    ::tpy::ordered_map<std::string, double> d = ::tpy::dict_construct<std::string, double>(::tpyapp::main::__genexpr_from_global_1(LETTERS));
     ::tpy::__setitem__(d, "a", (::tpy::__getitem__(d, "a")) + (1.0));
     std::cout << ::tpy::__len__(d) << " " << ::tpy::print_float(::tpy::__getitem__(d, "a")) << " " << ::tpy::print_float(::tpy::__getitem__(d, "c")) << "\n";
 }
+
+namespace {
+
+// d = dict(((str(c), scale) for c in letters))  # tpyc: ok
+template <typename F_scale>
+struct __genexpr_from_local_2_frame : public ::tpy::next_iter_mixin<__genexpr_from_local_2_frame<F_scale>, std::tuple<std::string, double>> {
+    int32_t __state;
+    std::string_view __src;
+    F_scale scale;
+    char c;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string_view>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string_view>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_from_local_2_frame(std::string_view __src_, F_scale&& scale_)
+        : __state(S_INITIAL), __src(std::move(__src_)), scale(std::forward<F_scale>(scale_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __next__();
+    __genexpr_from_local_2_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_from_local_2_frame<F_scale>&) {
+        return os << "<generator __genexpr_from_local_2>";
+    }
+};
+
+// # The element expression reads an ordinary local, which IS captured.
+// d = dict(((str(c), scale) for c in letters))  # tpyc: ok  # -> S_RESUME_0
+template <typename F_scale>
+std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __genexpr_from_local_2_frame<F_scale>::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        c = *((*__for_it_0))++;
+        return std::tuple<std::string, double>{std::string(::tpy::char_to_str(c)), scale};
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// d = dict(((str(c), scale) for c in letters))  # tpyc: ok
+template <typename F_scale>
+__genexpr_from_local_2_frame<F_scale> __genexpr_from_local_2(std::string_view __src, F_scale&& scale) {
+    return __genexpr_from_local_2_frame<F_scale>(__src, std::forward<F_scale>(scale));
+}
+
+}  // namespace
 
 // def from_local() -> None:
 //     letters = "xy"
@@ -35,18 +117,7 @@ void from_global() {
 void from_local() {
     std::string_view letters = "xy";
     double scale = 2.0;
-    ::tpy::ordered_map<std::string, double> d = ::tpy::dict_construct<std::string, double>([&letters, &scale]() {
-        auto& __src = letters;
-        return ::tpy::make_generator<std::tuple<std::string, double>>(
-            [&scale, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::tuple<std::string, double>> {
-                while (__beg != __end) {
-                    char c = *__beg++;
-                    return std::optional<std::tuple<std::string, double>>(std::tuple<std::string, double>{std::string(::tpy::char_to_str(c)), scale});
-                }
-                return std::nullopt;
-            }
-        );
-    }());
+    ::tpy::ordered_map<std::string, double> d = ::tpy::dict_construct<std::string, double>(::tpyapp::main::__genexpr_from_local_2(letters, scale));
     std::cout << ::tpy::__len__(d) << " " << ::tpy::print_float(::tpy::__getitem__(d, "x")) << " " << ::tpy::print_float(::tpy::__getitem__(d, "y")) << "\n";
 }
 
@@ -59,9 +130,8 @@ void main() {
 }
 
 // # A generator expression over a STR source: the chars iterate off the same
-// # begin/end pair a container does. The module-global source also pins that the
-// # IIFE names the global directly -- capturing a namespace-scope object would be
-// # ill-formed C++.
+// # begin/end pair a container does. The module-global source also pins that a
+// # namespace-scope object is handed to the frame like any other borrowed source.
 // LETTERS = "abc"
 //
 // main()

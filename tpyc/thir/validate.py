@@ -944,8 +944,11 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     # arg temp reaching one is a lowering bug.
     for expr in body.return_values.values():
         _walk(owner, expr)
-    for expr in body.yield_values.values():
-        _walk(owner, expr)
+    # A yield value is flushable (the skeleton flushes ahead of its `return`)
+    # exactly where the lowering granted the right: a temp under any other
+    # yield is a lowering bug.
+    for ys, expr in body.yield_values.items():
+        _walk(owner, expr, argtemp_ok=ys in body.yield_temp_rights)
     # The deferred-return recipe is consulted by the return scaffolding, which
     # renders the capture into an `auto* p = ...;` line with no flush point.
     for stmt in body.deferred_returns.values():

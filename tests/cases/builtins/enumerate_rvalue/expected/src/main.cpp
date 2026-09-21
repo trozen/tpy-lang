@@ -10,6 +10,50 @@ std::vector<std::string> make_words() {
     return {"hello", "world", "test"};
 }
 
+namespace {
+
+// for i, s in enumerate(list(str(x) for x in nums)):
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, std::string> {
+    int32_t __state;
+    const std::array<int32_t, 3>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 3>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 3>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(const std::array<int32_t, 3>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// for i, s in enumerate(list(str(x) for x in nums)):  # -> S_RESUME_0
+std::expected<std::string, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return ::tpy::fixed_to_str<int32_t>(x);
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// for i, s in enumerate(list(str(x) for x in nums)):
+__genexpr_main_1_frame __genexpr_main_1(const std::array<int32_t, 3>& __src) {
+    return __genexpr_main_1_frame(__src);
+}
+
+}  // namespace
+
 // def main() -> None:
 //     # rvalue: function call result passed directly
 //     for i, s in enumerate(make_words()):
@@ -52,18 +96,7 @@ void main() {
     }
     std::array<int32_t, 3> nums = {1, 2, 3};
     {
-        auto __src_4 = ::tpy::builtin_enumerate<std::string>(::tpy::construct<std::vector<std::string>>([&nums]() {
-        auto& __src = nums;
-        return ::tpy::make_generator<std::string>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<std::string>(::tpy::fixed_to_str<int32_t>(x));
-                }
-                return std::nullopt;
-            }
-        );
-    }()));
+        auto __src_4 = ::tpy::builtin_enumerate<std::string>(::tpy::construct<std::vector<std::string>>(::tpyapp::main::__genexpr_main_1(nums)));
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

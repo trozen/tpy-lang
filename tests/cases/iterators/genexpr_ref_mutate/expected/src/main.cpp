@@ -4,6 +4,50 @@
 namespace tpyapp::main {
 
 
+namespace {
+
+// for b in (n for n in data):
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, ::tpy::val_or_ref<Node>> {
+    int32_t __state;
+    std::array<Node, 3>& __src;
+    Node* n = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::array<Node, 3>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::array<Node, 3>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(std::array<Node, 3>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// for b in (n for n in data):  # -> S_RESUME_0
+std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        n = &(*((*__for_it_0))++);
+        return (*n);
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// for b in (n for n in data):
+__genexpr_main_1_frame __genexpr_main_1(std::array<Node, 3>& __src) {
+    return __genexpr_main_1_frame(__src);
+}
+
+}  // namespace
+
 // def main() -> None:
 //     data = [Node(1), Node(2), Node(3)]
 //     for b in (n for n in data):
@@ -13,18 +57,7 @@ namespace tpyapp::main {
 void main() {
     std::array<Node, 3> data = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2)), Node(::tpy::BigInt(3))};
     {
-        auto __src_0 = [&data]() {
-        auto& __src = data;
-        return ::tpy::make_generator<::tpy::val_or_ref<Node>>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<::tpy::val_or_ref<Node>> {
-                while (__beg != __end) {
-                    auto&& n = *__beg++;
-                    return std::optional<::tpy::val_or_ref<Node>>(n);
-                }
-                return std::nullopt;
-            }
-        );
-    }();
+        auto __src_0 = ::tpyapp::main::__genexpr_main_1(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

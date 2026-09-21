@@ -6,8 +6,9 @@ Main orchestrator that wires all components together.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import Optional
+from typing import Callable, Optional
 
+from ..typesys import resolve_int_literals
 from ..typesys import (
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, peel_value_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
@@ -81,9 +82,10 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
 
 
 from ..diagnostics import Scope, Diagnostic, SemanticError
+from .. import qnames
 from .context import (
     SemanticContext, RecordContext, DeferredGenericYieldSettle,
-    MODULE_INIT_CONTEXT)
+    MODULE_INIT_CONTEXT, contains_pending_leaf)
 from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
@@ -238,6 +240,56 @@ def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
                 if _body_has_raise(case.body, exception_type):
                     return True
     return False
+
+
+class _GenexprTypeSlot:
+    """One type stored on a genexpr's function, as the (node, attr) slot the
+    ENCLOSING function's pending-type finalization rewrites: a type that comes
+    from a container literal of the enclosing function settles only when that
+    function ends, after the genexpr's own body is done."""
+
+    def __init__(self, get: 'Callable[[], TpyType]',
+                 put: 'Callable[[TpyType], None]') -> None:
+        self._get, self._put = get, put
+
+    @property
+    def type(self) -> TpyType:
+        return self._get()
+
+    @type.setter
+    def type(self, resolved: TpyType) -> None:
+        self._put(resolved)
+
+
+def _genexpr_param_slot(func: TpyFunction, fi: 'FunctionInfo | None',
+                        index: int) -> _GenexprTypeSlot:
+    # The AST param and the registered signature hold the same type and must
+    # settle together.
+    def put(resolved: TpyType) -> None:
+        func.params[index] = (func.params[index][0], resolved)
+        if fi is not None:
+            fi.params[index].type = unwrap_ref_type(resolved)
+    return _GenexprTypeSlot(lambda: func.params[index][1], put)
+
+
+def _genexpr_yield_slot(func: TpyFunction,
+                        fi: 'FunctionInfo | None') -> _GenexprTypeSlot:
+    # The return type, on the AST and in the registered signature, follows.
+    def put(resolved: TpyType) -> None:
+        func.generator_yield_type = resolved
+        returned = NominalType("Iterator", (resolved,), is_protocol=True,
+                               _module_qname=qnames.ITERATOR)
+        func.return_type = make_ref(returned)
+        if fi is not None:
+            fi.return_type = returned
+    return _GenexprTypeSlot(lambda: func.generator_yield_type, put)
+
+
+def _genexpr_local_slot(func: TpyFunction, name: str) -> _GenexprTypeSlot:
+    def put(resolved: TpyType) -> None:
+        func.generator_locals = [(n, resolved if n == name else t)
+                                 for n, t in func.generator_locals]
+    return _GenexprTypeSlot(lambda: dict(func.generator_locals)[name], put)
 
 
 class SemanticAnalyzer:
@@ -536,6 +588,8 @@ class SemanticAnalyzer:
         # Builder-trace expansion (phase 7) needs to splice synthesized
         # records/functions into the module while bodies are being analyzed.
         self._module = module
+        self.ctx.analyze_genexpr_function = self._analyze_genexpr_function
+        self._genexpr_enclosing: list = []
         # Module resolver -- consumed by `_infer_field_type_from_default`
         # (same-module record lookup) and the macro post-resolve step in
         # `register_record` (body TypeRefNodes on macro-added methods).
@@ -864,6 +918,7 @@ class SemanticAnalyzer:
         # against decl-finalized peer ModuleInfos (deps run first in
         # topo order in the declarations pass).
         if module.top_level_stmts:
+            self.ctx.module_top_level_stmts = module.top_level_stmts
             self._analyze_top_level(module.top_level_stmts, declared_globals)
         self._advance_phase(
             self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
@@ -1515,7 +1570,16 @@ class SemanticAnalyzer:
         for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
             if keep(name) and vtype is not None:
                 locals_dict[name] = vtype
-        _assert_no_pending_locals(locals_dict, func.name)
+        if func.is_genexpr:
+            # A loop var over a container literal of the ENCLOSING function
+            # settles with that function, like the source param it comes from.
+            enclosing = self._genexpr_enclosing[-1]
+            for name, typ in locals_dict.items():
+                if contains_pending_leaf(typ):
+                    enclosing.pending_elem_type_fields.append(
+                        (_genexpr_local_slot(func, name), "type"))
+        else:
+            _assert_no_pending_locals(locals_dict, func.name)
         _extract_proto_param_forwarding(
             locals_dict, func, self.ctx.func.write_history)
         func.generator_locals = list(locals_dict.items())
@@ -1580,12 +1644,17 @@ class SemanticAnalyzer:
         own_copy_mark = self.ctx.own_copy_mark()
 
         self.ctx.func.current_function = func
+        self.ctx.func.body_root = (self._genexpr_enclosing[-1].body_root
+                                   if func.is_genexpr else func)
         # Async def bodies are analyzed normally. The await-expression
         # analyzer (sema/expressions.py:_analyze_await) handles the supported
         # v1 forms (direct call to async def, Task[T], Future[T], structural
         # awaitable) and rejects unsupported shapes with a clear diagnostic.
-        # Resolve return type (sets is_protocol for cross-module imports)
-        func.return_type = make_ref(self.type_ops.resolve_type(func.return_type))
+        # Resolve return type (sets is_protocol for cross-module imports). A
+        # genexpr's function has none yet: its yield type is inferred from the
+        # element, at the yield.
+        if not (func.is_genexpr and func.return_type is None):
+            func.return_type = make_ref(self.type_ops.resolve_type(func.return_type))
         scope = Scope(parent=self.ctx.global_scope)
         self.ctx.func.current_scope = scope
 
@@ -1638,7 +1707,11 @@ class SemanticAnalyzer:
 
         # Shared core: bind params, prescan, analyze body
         scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
+        if func.is_genexpr:
+            self._hand_up_pending_types()
         self.deduction.resolve_all()
+        if func.is_genexpr:
+            self._register_genexpr_function(func, resolved_params)
 
         # Async coros use the same `func.generator_locals` slot as generators;
         # the field-rewrite path in expressions/statements is shared via the
@@ -1646,6 +1719,18 @@ class SemanticAnalyzer:
         # the return-statement rewrite).
         if func.is_generator or func.is_async:
             self._collect_generator_locals(func, local_ns, exclude_self=False)
+        if func.is_genexpr and func.generator_locals:
+            # A loop var over an enclosing container LITERAL still carries the
+            # literal's element type (`tuple[P, IntLiteral]`); the literal's
+            # own resolution would give the default int, and a frame field
+            # needs the type now.
+            func.generator_locals = [
+                (n, resolve_int_literals(t, self.ctx.default_int_for_literal))
+                for n, t in func.generator_locals]
+            loop = func.body[0]
+            if isinstance(loop, TpyForEach) and loop.elem_type is not None:
+                loop.elem_type = resolve_int_literals(
+                    loop.elem_type, self.ctx.default_int_for_literal)
         self.compat.drain_deferred_escape_checks()
         self._enqueue_generic_yield_settle()
 
@@ -1716,6 +1801,96 @@ class SemanticAnalyzer:
         self.ctx.func.current_function = None
         self.ctx.func.current_scope = None
         self.ctx.func.current_ns = None
+
+    def _analyze_genexpr_function(self, func: TpyFunction) -> None:
+        """Analyze a generator expression's function at the expression that
+        creates it, in the middle of the enclosing body's analysis.
+
+        The enclosing function's state is set aside whole and put back as
+        itself -- the inner analysis starts from a fresh state and never sees
+        it, so no snapshot is needed. Every enclosing name the body reads is a
+        param of `func`, which is why a module-level scope is the right parent.
+        The function joins `module.functions` so the later passes (const
+        inference, mutation propagation, frame emission) reach it like any
+        other generator; pass 7 skips it, since this is its analysis."""
+        live = self.ctx.func
+        self._genexpr_enclosing.append(live)
+        in_comprehension = self.ctx.in_comprehension
+        cond_depth = self.ctx.cond_operand_depth
+        consuming = self.ctx.in_consuming_method
+        top_level = self.ctx.is_top_level
+        for_heads = self.ctx.for_head_bodies
+        own_copy_from = self.ctx.own_copy_mark()
+        self.ctx.in_comprehension = 0
+        self.ctx.cond_operand_depth = 0
+        # The body is a FUNCTION body even where the expression sits at module
+        # level, and no enclosing `for` head is one of its own.
+        self.ctx.is_top_level = False
+        self.ctx.for_head_bodies = []
+        try:
+            self._analyze_function(func)
+        finally:
+            self._genexpr_enclosing.pop()
+            self.ctx.func = live
+            self.ctx.in_comprehension = in_comprehension
+            self.ctx.cond_operand_depth = cond_depth
+            self.ctx.in_consuming_method = consuming
+            self.ctx.is_top_level = top_level
+            self.ctx.for_head_bodies = for_heads
+            own_copy_to = self.ctx.own_copy_mark()
+            self.ctx.own_copy_inner_spans.append(
+                ((own_copy_from[0], own_copy_to[0]),
+                 (own_copy_from[1], own_copy_to[1])))
+        self._module.functions.append(func)
+
+    def _hand_up_pending_types(self) -> None:
+        """A genexpr's function can read a container literal of the ENCLOSING
+        function (its source, a capture), whose Array-vs-list verdict settles
+        only when that function's body ends. The nodes recorded as holding
+        such a type are finalized there, not at the end of this body."""
+        enclosing = self._genexpr_enclosing[-1]
+        inner = self.ctx.func
+        enclosing.pending_composite_exprs.extend(inner.pending_composite_exprs)
+        inner.pending_composite_exprs.clear()
+        enclosing.pending_elem_type_fields.extend(inner.pending_elem_type_fields)
+        inner.pending_elem_type_fields.clear()
+
+    def _register_genexpr_function(
+            self, func: TpyFunction,
+            resolved_params: 'list[tuple[str, TpyType]]') -> None:
+        """Register a genexpr's function once its body has settled the yield
+        type -- the signature a `def` generator declares up front."""
+        if func.generator_yield_type is None:
+            raise self.ctx.error(
+                "generator expression has no element to infer its type from", func)
+
+        # The yield type was read off the element while the body was still
+        # open; a loop var's view-vs-owned storage settled after that.
+        def settled(t: TpyType) -> TpyType:
+            verdict = self.ctx.view_storage_verdict(t)
+            return verdict if verdict is not None else t.map_inner_types(settled)
+        func.generator_yield_type = self.deduction._deep_resolve_pending(
+            settled(func.generator_yield_type))
+        func.return_type = NominalType(
+            "Iterator", (func.generator_yield_type,), is_protocol=True,
+            _module_qname=qnames.ITERATOR)
+        body_params = func.params
+        func.params = list(resolved_params)
+        try:
+            self.registrar.register_function(func)
+        finally:
+            func.params = body_params
+        func.return_type = make_ref(func.return_type)
+        fis = self.ctx.registry.get_function(func.name)
+        enclosing = self._genexpr_enclosing[-1]
+        fi = fis[-1] if fis else None
+        for i, (_, ptype) in enumerate(func.params):
+            if contains_pending_leaf(ptype):
+                enclosing.pending_elem_type_fields.append(
+                    (_genexpr_param_slot(func, fi, i), "type"))
+        if contains_pending_leaf(func.generator_yield_type):
+            enclosing.pending_elem_type_fields.append(
+                (_genexpr_yield_slot(func, fi), "type"))
 
     def _store_analysis_results(self, func: TpyFunction, scan: ScanResult) -> None:
         """Store prescan/liveness results for codegen consumption."""
@@ -2882,6 +3057,7 @@ class SemanticAnalyzer:
             self.ctx.reset_function_tracking()
             own_copy_mark = self.ctx.own_copy_mark()
             self.ctx.func.current_function = method
+            self.ctx.func.body_root = method
             # Resolve return type (sets is_protocol for cross-module imports)
             method.return_type = make_ref(self.type_ops.resolve_type(method.return_type))
             scope = Scope(parent=self.ctx.global_scope)
@@ -4073,7 +4249,8 @@ class SemanticAnalyzer:
         and @inline functions (inlined at call sites, not emitted standalone).
         """
         return ((func.is_inline and not func.is_stub)
-                or (func.is_overload_stub and func.is_stub))
+                or (func.is_overload_stub and func.is_stub)
+                or func.is_genexpr)
 
     def _drain_deferred_sema_macros(self, module: TpyModule) -> None:
         """Post-pass-7: run callbacks a macro deferred via

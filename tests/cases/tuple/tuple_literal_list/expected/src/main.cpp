@@ -4,6 +4,55 @@
 namespace tpyapp::main {
 
 
+namespace {
+
+// d2 = dict[str, int32]((k, v) for k, v in raw)
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, std::tuple<std::string, int32_t>> {
+    int32_t __state;
+    const std::array<std::tuple<std::string, int32_t>, 2>& __src;
+    std::tuple<std::string, int32_t> __for_tup_gx;
+    std::string k;
+    int32_t v;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<std::tuple<std::string, int32_t>, 2>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<std::tuple<std::string, int32_t>, 2>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(const std::array<std::tuple<std::string, int32_t>, 2>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// d2 = dict[str, int32]((k, v) for k, v in raw)  # -> S_RESUME_0
+std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        __for_tup_gx = *((*__for_it_0))++;
+        const auto& __tup_1 = __for_tup_gx;
+        k = std::get<0>(__tup_1);
+        v = std::get<1>(__tup_1);
+        return std::tuple<std::string, int32_t>{k, v};
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// d2 = dict[str, int32]((k, v) for k, v in raw)
+__genexpr_main_1_frame __genexpr_main_1(const std::array<std::tuple<std::string, int32_t>, 2>& __src) {
+    return __genexpr_main_1_frame(__src);
+}
+
+}  // namespace
+
 // def main() -> None:
 //     # Int literal tuples
 //     pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
@@ -29,20 +78,7 @@ void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
     std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "c") << "\n";
     std::array<std::tuple<std::string, int32_t>, 2> raw = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}};
-    ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>([&raw]() {
-        auto& __src = raw;
-        return ::tpy::make_generator<std::tuple<std::string, int32_t>>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
-                while (__beg != __end) {
-                    const auto& __tup_1 = *__beg++;
-                    std::string k = std::get<0>(__tup_1);
-                    int32_t v = std::get<1>(__tup_1);
-                    return std::optional<std::tuple<std::string, int32_t>>(std::tuple<std::string, int32_t>{k, v});
-                }
-                return std::nullopt;
-            }
-        );
-    }());
+    ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>(::tpyapp::main::__genexpr_main_1(raw));
     std::cout << ::tpy::__getitem__(d2, "x") << " " << ::tpy::__getitem__(d2, "y") << "\n";
 }
 

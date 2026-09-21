@@ -10,6 +10,8 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
+struct __genexpr_gen_4_frame;
+struct __genexpr_gen_5_frame;
 
 // def total(u: list[int32] | bytearray) -> int32:
 int32_t total(::tpy::Union<const ::tpy::ByteArray*, const std::vector<int32_t>*> u);
@@ -23,6 +25,10 @@ int32_t ranged(::tpy::Union<const ::tpy::ByteArray*, const std::vector<int32_t>*
 __gen_gen gen(::tpy::Union<const ::tpy::ByteArray*, const std::vector<int32_t>*> u);
 // def main() -> None:
 void main();
+// yield sum(x for x in u)  # tpyc: ok
+__genexpr_gen_4_frame __genexpr_gen_4(const std::vector<int32_t>& __src);
+// yield sum(x + 1 for x in u)
+__genexpr_gen_5_frame __genexpr_gen_5(const std::vector<int32_t>& __src);
 
 // def gen(u: list[int32] | bytearray) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
@@ -45,6 +51,58 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
         return os << "<generator gen>";
+    }
+};
+
+// yield sum(x for x in u)  # tpyc: ok
+struct __genexpr_gen_4_frame : public ::tpy::next_iter_mixin<__genexpr_gen_4_frame, int32_t> {
+    int32_t __state;
+    const std::vector<int32_t>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_gen_4_frame(const std::vector<int32_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_gen_4_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_gen_4_frame&) {
+        return os << "<generator __genexpr_gen_4>";
+    }
+};
+
+// yield sum(x + 1 for x in u)
+struct __genexpr_gen_5_frame : public ::tpy::next_iter_mixin<__genexpr_gen_5_frame, int32_t> {
+    int32_t __state;
+    const std::vector<int32_t>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_gen_5_frame(const std::vector<int32_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_gen_5_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_gen_5_frame&) {
+        return os << "<generator __genexpr_gen_5>";
     }
 };
 

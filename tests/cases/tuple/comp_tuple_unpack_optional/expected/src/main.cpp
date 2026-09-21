@@ -15,6 +15,56 @@ int32_t borrow(const P* p) {
     return p->x;
 }
 
+namespace {
+
+// total = sum(n for p, n in items)
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, int32_t> {
+    int32_t __state;
+    const std::vector<std::tuple<std::optional<P>, int32_t>>& __src;
+    std::tuple<std::optional<P>, int32_t> __for_tup_gx;
+    P* p = nullptr;
+    int32_t n;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<std::optional<P>, int32_t>>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<std::optional<P>, int32_t>>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(const std::vector<std::tuple<std::optional<P>, int32_t>>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// # Generator expression unpack (inlined genexpr path)
+// total = sum(n for p, n in items)  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        __for_tup_gx = *((*__for_it_0))++;
+        auto& __tup_1 = __for_tup_gx;
+        p = ::tpy::optional_to_ptr(std::get<0>(__tup_1));
+        n = std::get<1>(__tup_1);
+        return n;
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// total = sum(n for p, n in items)
+__genexpr_main_1_frame __genexpr_main_1(const std::vector<std::tuple<std::optional<P>, int32_t>>& __src) {
+    return __genexpr_main_1_frame(__src);
+}
+
+}  // namespace
+
 // def main() -> None:
 //     items: list[tuple[P | None, int32]] = [
 //         (P(int32(1)), int32(10)),
@@ -51,20 +101,7 @@ void main() {
         int32_t r = *__beg_1;
         std::cout << r << "\n";
     }
-    int32_t total = ::tpy::builtin_sum<int32_t>([&items]() {
-        auto& __src = items;
-        return ::tpy::make_generator<int32_t>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
-                while (__beg != __end) {
-                    auto& __tup_2 = *__beg++;
-                    auto& p = std::get<0>(__tup_2);
-                    int32_t n = std::get<1>(__tup_2);
-                    return std::optional<int32_t>(n);
-                }
-                return std::nullopt;
-            }
-        );
-    }());
+    int32_t total = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(items));
     std::cout << total << "\n";
 }
 

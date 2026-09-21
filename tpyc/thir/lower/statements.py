@@ -1862,10 +1862,9 @@ def _for_iter_proto_route(
             return None
         iterable_lvalue = True
     elif isinstance(it, TpyGeneratorExpression):
-        # A GENEXPR iterable (`for b in (n for n in data):`): the
-        # make_generator lambda is an rvalue owning capture
-        # (`auto __src_N = [..](){..}();`); the genexpr's own lowering
-        # gates which shapes route.
+        # A GENEXPR iterable (`for b in (n for n in data):`): the frame is
+        # an rvalue the loop owns (`auto __src_N = <frame creation>;`); the
+        # genexpr's own lowering gates which sources route.
         et = _resolved_loop_elem_type(stmt, analyzer)
         if not _for_each_elem_binding_ok(et):
             note_detail("foreach.elem_family."
@@ -7257,7 +7256,8 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                 note_detail("unpack.alias_elem")
                 raise ThirUnsupported("res.unpack")
             src_is_borrow_tuple = (src_name is not None and src_ref
-                                   and src_name not in lc.pointers)
+                                   and (src_name not in lc.pointers
+                                        or src_name in lc.source_typed_holders))
             binds.append("frame_ptr_elem" if src_is_borrow_tuple
                          else "frame_ptr_addr")
             wraps.append("")

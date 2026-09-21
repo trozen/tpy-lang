@@ -176,6 +176,7 @@ class ScopeTracker:
         outer_scope = self.ctx.func.current_scope
         outer_ns = self.ctx.func.current_ns
         saved = self.ctx.save_function_state()
+        body_root = self.ctx.func.body_root
         inner_scope = Scope(outer_scope)
         inner_ns = Namespace(parent=outer_ns) if outer_ns else None
 
@@ -183,7 +184,9 @@ class ScopeTracker:
         self.ctx.func.current_scope = inner_scope
         self.ctx.func.current_ns = inner_ns
         self.ctx.func.current_function = func_node
+        self.ctx.func.body_root = body_root
         self.ctx.func.in_nested_def = True
+        self.ctx.func.nested_def_first_literal = self.ctx.literal_counter
         self.ctx.func.nested_def_name = func_node.name
         try:
             with self.deferred_body():

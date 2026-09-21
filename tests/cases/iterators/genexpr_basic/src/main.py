@@ -45,7 +45,7 @@ def main() -> None:
     threshold: int32 = 3
     print(sum_items(x for x in range(10) if x > threshold))
 
-    # Lvalue source with outer local only in filter (exercises IIFE + inner capture)
+    # Lvalue source with outer local only in filter (a capture the element never reads)
     print(sum_items(x for x in items if x > threshold))
 
     # str.join with generator expression

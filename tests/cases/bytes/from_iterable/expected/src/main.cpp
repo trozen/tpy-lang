@@ -4,6 +4,133 @@
 namespace tpyapp::main {
 
 
+namespace {
+
+// print(bytes(x * 2 for x in xs))
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, int32_t> {
+    int32_t __state;
+    const std::vector<int32_t>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(const std::vector<int32_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// # Generator expression of int32 (the original user case from the REPL)
+// print(bytes(x * 2 for x in xs))  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (::tpy::mul_check<int32_t>(x, 2));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(bytes(x * 2 for x in xs))
+__genexpr_main_1_frame __genexpr_main_1(const std::vector<int32_t>& __src) {
+    return __genexpr_main_1_frame(__src);
+}
+
+// print(bytearray(x + 1 for x in xs))
+struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, int32_t> {
+    int32_t __state;
+    const std::vector<int32_t>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_2_frame(const std::vector<int32_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_2_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_2_frame&) {
+        return os << "<generator __genexpr_main_2>";
+    }
+};
+
+// print(bytearray(x + 1 for x in xs))  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (::tpy::add_check<int32_t>(x, 1));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(bytearray(x + 1 for x in xs))
+__genexpr_main_2_frame __genexpr_main_2(const std::vector<int32_t>& __src) {
+    return __genexpr_main_2_frame(__src);
+}
+
+// ba.extend(v for v in ys)
+struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame, uint8_t> {
+    int32_t __state;
+    const std::vector<uint8_t>& __src;
+    uint8_t v;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<uint8_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<uint8_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_3_frame(const std::vector<uint8_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<uint8_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_3_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_3_frame&) {
+        return os << "<generator __genexpr_main_3>";
+    }
+};
+
+// # bytearray.extend with a generator of uint8 (exercises the __next__ fallback
+// # in tpy::extend since generators aren't std::ranges::input_range).
+// ba.extend(v for v in ys)  # -> S_RESUME_0
+std::expected<uint8_t, ::tpy::StopIteration> __genexpr_main_3_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        v = *((*__for_it_0))++;
+        return v;
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// ba.extend(v for v in ys)
+__genexpr_main_3_frame __genexpr_main_3(const std::vector<uint8_t>& __src) {
+    return __genexpr_main_3_frame(__src);
+}
+
+}  // namespace
+
 // def main() -> None:
 //     # Iterable[int32] via list
 //     xs: list[int32] = [10, 20, 30]
@@ -49,31 +176,9 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n";
     std::vector<uint8_t> ys = {1, 2, 3};
     std::cout << ::tpy::BytesPrinter(::tpy::construct<::tpy::Bytes>(ys)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable([&xs]() {
-        auto& __src = xs;
-        return ::tpy::make_generator<int32_t>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, 2)));
-                }
-                return std::nullopt;
-            }
-        );
-    }())) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(::tpyapp::main::__genexpr_main_1(xs))) << "\n";
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable(xs)) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable([&xs]() {
-        auto& __src = xs;
-        return ::tpy::make_generator<int32_t>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<int32_t>((::tpy::add_check<int32_t>(x, 1)));
-                }
-                return std::nullopt;
-            }
-        );
-    }())) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable(::tpyapp::main::__genexpr_main_2(xs))) << "\n";
     ::tpy::ByteArray ba = ::tpy::ByteArray();
     ::tpy::bytes_extend_int_iterable(ba, xs);
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
@@ -82,18 +187,7 @@ void main() {
     ::tpy::ByteArray other = ::tpy::bytearray_from_int_iterable(std::array<int32_t, 2>{50, 60});
     ::tpy::extend(ba, other);
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    ::tpy::extend(ba, [&ys]() {
-        auto& __src = ys;
-        return ::tpy::make_generator<uint8_t>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<uint8_t> {
-                while (__beg != __end) {
-                    uint8_t v = *__beg++;
-                    return std::optional<uint8_t>(v);
-                }
-                return std::nullopt;
-            }
-        );
-    }());
+    ::tpy::extend(ba, ::tpyapp::main::__genexpr_main_3(ys));
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{0, 255})) << "\n";
     std::cout << ::tpy::BytesPrinter(::tpy::Bytes(ba)) << "\n";

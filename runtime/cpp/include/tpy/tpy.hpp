@@ -77,7 +77,7 @@
 // next_iter adapter: begin()/end() for __next__()-based iterators
 #include "next_iter.hpp"
 
-// Generator expression wrapper (depends on next_iter, <optional>, <expected>)
+// Resumable-frame iteration helpers (depends on next_iter, frame_slot, dunder)
 #include "generator.hpp"
 
 // SpanIter: lightweight iterator over contiguous span (depends on <span>, error_return)
