@@ -19,6 +19,7 @@
 | MIR backing writes and scalar payload ends | M3.3-M3.6 merged: bounded write/end inventories and internal possible retained-reference conflicts; no source diagnostics or safety authority |
 | MIR emitted storage regions | M3.7 normal storage-end inventory and M3.8 internal retained-reference inspection implemented; cleanup effects and lifetime-safety authority remain uncovered ([region plan](MIR_M3_REGIONS_PLAN.md)) |
 | MIR late declarations and ordinary hoists | M3.9 late direct declarations and M3.10 bounded ordinary hoists implemented ([declaration plan](MIR_M3_DECLARATIONS_PLAN.md)) |
+| MIR constant boolean edges | M3.11 folds literal/not boolean branches during construction and removes unreachable blocks, slots and regions before strict validation ([constant CFG plan](MIR_M3_CONSTANT_CFG_PLAN.md)); no mutable-variable propagation |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
 | MIR advisory loan checker (default mode) | Not started |
 | MIR safe opt-in enforcement mode | Not started |

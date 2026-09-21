@@ -252,6 +252,29 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
   with user approval; parameter reseats remain outside proposed M2.5
   coverage. Needs `/tpy-fix-bug`.
 
+- **[MED small] (rejects valid code, loud) A tuple literal combining a mutable record local and a readonly record parameter is rejected.** [`readonly-record-tuple-literal-rejected`]
+  With a `Cell` class whose constructor assigns its `int32` field `value`:
+
+  ```python
+  def example(source: readonly[Cell]) -> int32:
+      local = Cell(1)
+      pair = (local, source)
+      local.value = 9
+      return pair[0].value
+  ```
+
+  THIR lowering rejects the tuple declaration at
+  `stmt.var_decl:decl.tuple_literal_shape`; the scalar bindings work.
+  CPython, using the TPy annotation stubs, returns 9. A tuple containing
+  only the mutable local, `(local,)`, lowers; mutation after capture must
+  remain visible through that tuple. Preserve each element's access and
+  alias semantics when extending tuple-literal admission, and audit the
+  declaration, hoist, parameter and return siblings. This fails before MIR
+  construction and is distinct from the auto-copy metadata defect
+  `BUGS.md#readonly-auto-tuple-copy-fact`.
+  Confirmed during M3.11 probes on 2026-09-21; deferred for a separate fix
+  with user approval. Needs `/tpy-fix-bug`.
+
 - **[LOW medium] (latent THIR metadata) Auto copies of readonly borrowed tuples can claim mutable payloads.** [`readonly-auto-tuple-copy-fact`]
   For `def inspect(pair: tuple[Cell, int32], writer: Cell): saved = pair; writer.value = 7; return saved[0].value`, inferred deep constness can emit `const std::tuple<const Cell*, int32_t>& pair`; the `auto saved = pair` copy preserves those const pointers, but `THIRVarDecl.tuple_layout` claims a mutable Cell payload. Explicit whole-tuple readonly and alias chains have the same mismatch in free functions, methods and constructors. The `decl.btuple_alias` producer in `tpyc/thir/lower/statements.py` consults `const_borrow_tuple_locals`, whose `ensure_borrow_tuple_const` deliberately records only reassigned/hoisted bindings. Mutable parameter copies and mixed-access annotated elements remain correct. M2.7 MIR rejects the mismatched copy (`payload copy type or access mismatch`), so this neither changes emitted C++ nor admits unsafe analysis. Do not fix only the first parameter hop or broaden the existing const set without auditing its rendering/admission consumers; preserve the selected per-element source capabilities through all auto-copy chains. Related to, but distinct from, the tuple-unpack fact below. Needs `/tpy-fix-bug`.
 

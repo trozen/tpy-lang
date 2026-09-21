@@ -23,7 +23,7 @@ from .nodes import (
 )
 from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
-from .validate import MIRDefiniteAssignmentError, MIRPresenceError, successors, validate_function
+from .validate import MIRDefiniteAssignmentError, MIRPresenceError, operands, successors, validate_function
 
 
 def _literal(expr: th.THIRExpr) -> bool:
@@ -877,6 +877,7 @@ class _Builder:
         self.body = body
         self.fn = fn
         self.slots: list[MIRSlot] = []
+        self.constant_bools: dict[MIRSlotId, bool] = {}
         self.bindings: dict[str, MIRSlotId] = {}
         self.blocks: list[_Block] = []
         self.region = MIRRegionId(body, 0)
@@ -1031,14 +1032,28 @@ class _Builder:
     def result(self, typ: TpyType, value: MIRRvalue, loc: SourceLocation | None) -> MIRSlotId:
         dest = self.slot(typ)
         self.write(dest, value, loc)
+        # Only these expression temporaries have one definition; locals and select results can change.
+        if typ == BOOL:
+            match value:
+                case MIRConstant(value=constant) if type(constant) is bool:
+                    self.constant_bools[dest] = constant
+                case MIRNot(operand=operand) if operand in self.constant_bools:
+                    self.constant_bools[dest] = not self.constant_bools[operand]
         return dest
+
+    def branch(self, cond: MIRSlotId, yes: MIRBlockId, no: MIRBlockId,
+               loc: SourceLocation | None) -> None:
+        if cond in self.constant_bools:
+            self.end(MIRGoto(yes if self.constant_bools[cond] else no, loc))
+        else:
+            self.end(MIRBranch(cond, yes, no, loc))
 
     def select(self, cond: MIRSlotId, then: th.THIRExpr | MIRSlotId,
                otherwise: th.THIRExpr | MIRSlotId, typ: TpyType,
                loc: SourceLocation | None) -> MIRSlotId:
         dest = self.slot(typ)
         yes, no, join = self.block(), self.block(), self.block()
-        self.end(MIRBranch(cond, yes.id, no.id, loc))
+        self.branch(cond, yes.id, no.id, loc)
         for block, arm in ((yes, then), (no, otherwise)):
             self.current = block
             value = arm if isinstance(arm, MIRSlotId) else self.expr(arm)
@@ -1245,7 +1260,7 @@ class _Builder:
                     self.hoists(stmt)
                     cond = self.expr(stmt.condition)
                     yes, no = self.block(), self.block()
-                    self.end(MIRBranch(cond, yes.id, no.id, loc))
+                    self.branch(cond, yes.id, no.id, loc)
                     exits = []
                     for block, arm in ((yes, stmt.then_body), (no, stmt.else_body)):
                         self.current = block
@@ -1265,7 +1280,7 @@ class _Builder:
                     cond_block, body, normal, after = self.block(), self.block(), self.block(), self.block()
                     self.end(MIRGoto(cond_block.id, loc))
                     self.current = cond_block
-                    self.end(MIRBranch(self.expr(stmt.condition), body.id, normal.id, loc))
+                    self.branch(self.expr(stmt.condition), body.id, normal.id, loc)
                     self.current = body
                     self.loops.append((cond_block.id, after.id))
                     self.scoped(stmt.body)
@@ -1344,11 +1359,36 @@ class _Builder:
             blocks.append(MIRBlock(b.id, tuple(b.statements), b.terminator, b.region))
         kind = (MIRBodyKind.CONSTRUCTOR if initialization is not None else
                 MIRBodyKind.METHOD if self.fn.receiver is not None else MIRBodyKind.FREE_FUNCTION)
-        fn = MIRFunction(self.body, self.fn.return_type, tuple(self.slots), tuple(blocks),
+        fn = MIRFunction(self.body, self.fn.return_type, self.reachable_slots(blocks, receiver_init), tuple(blocks),
                          self.blocks[0].id, tuple(d.layout for d in self.records.values()), receiver_init, kind,
                          tuple(r for r in self.regions if r.entry in reachable))
         validate_function(fn)
         return fn
+
+    def reachable_slots(self, blocks: list[MIRBlock], receiver: MIRReceiverInit | None) -> tuple[MIRSlot, ...]:
+        retained = {s.id for s in self.slots if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
+        if receiver is not None:
+            retained.add(receiver.receiver)
+            retained.update(v for v in receiver.fields if isinstance(v, MIRSlotId))
+        for block in blocks:
+            for stmt in block.statements:
+                retained.add(stmt.target.root)
+                retained.update(operands(stmt.value))
+                if isinstance(stmt.storage_write, MIRRecordWrite) and stmt.storage_write.rebind_owner is not None:
+                    retained.add(stmt.storage_write.rebind_owner)
+            match block.terminator:
+                case MIRBranch(condition=condition):
+                    retained.add(condition)
+                case MIRReturn(value=value) if value is not None:
+                    retained.add(value)
+        pending = list(retained)
+        while pending:
+            source = self.slots[pending.pop().index].alias_source
+            if source is not None and source.root not in retained:
+                retained.add(source.root)
+                pending.append(source.root)
+        # Preserve IDs: consumers key by identity, and dead branches can leave gaps.
+        return tuple(s for s in self.slots if s.id in retained)
 
 
 def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,

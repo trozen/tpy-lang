@@ -1813,7 +1813,11 @@ facts for bounded ordinary hoisted bindings and record backing.
 Default-constructed wrapper hoists and general cleanup stay outside that batch.
 Definite-assignment proof failures remain strict at the MIR validation boundary;
 lowering reports them as uncovered rather than accepting an uninitialized read.
-Constant-edge reasoning, including impossible zero-trip loop paths, stays deferred.
+M3.11 removes impossible literal/not boolean edges during construction, including
+the zero-trip path of `while True`, and prunes unreachable slot/region metadata
+before strict validation ([constant CFG plan](MIR_M3_CONSTANT_CFG_PLAN.md)).
+Mutable-variable propagation, comparison folding and arbitrary truthiness stay
+deferred; every analysis consumes the same resulting structural CFG.
 
 ## Scope matrix and remaining increments
 

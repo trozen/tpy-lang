@@ -248,17 +248,14 @@ def hoists() -> Hoists:
                                 kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
         if name == "global_optional":
             assert isinstance(result, MIRNotCovered) and result.node_kind == "THIRName"
-        elif name in ("scalar_optional", "scalar_union", "constant_loop", "constant_method"):
+        elif name in ("scalar_optional", "scalar_union"):
             assert isinstance(result, MIRNotCovered), (name, result)
-            assert ("definite assignment" if name.startswith("constant_") else "hoisted binding facts") in result.reason
+            assert "hoisted binding facts" in result.reason
         else:
             assert isinstance(result, MIRFunction), (name, result)
             bodies[name] = result
     for ctor in ctx.thir_constructors.values():
         result = lower_constructor(ctor, MIRBodyId("hoists", ctor.record_name), definitions=definitions)
-        if ctor.record_name == "ConstantObserver":
-            assert isinstance(result, MIRNotCovered) and "definite assignment" in result.reason
-            continue
         assert isinstance(result, MIRFunction), result
         bodies[ctor.record_name] = result
     return functions, bodies, definitions, header + cpp
@@ -292,6 +289,15 @@ def test_hoist_producers_preserve_results_and_shared_mutation(hoists: Hoists) ->
         execute(bodies["Observer"], Reference(0), flag, heap=heap)
         assert tuple(heap[0].values()) == (9,)
         assert execute(bodies["method"], Reference(0), flag, heap=heap) == 9
+
+
+def test_constant_loop_initializes_hoist_in_each_callable(hoists: Hoists) -> None:
+    _, bodies, _, _ = hoists
+    assert execute(bodies["constant_loop"]) == 1
+    heap = {}
+    execute(bodies["ConstantObserver"], Reference(0), heap=heap)
+    assert tuple(heap[0].values()) == (1,)
+    assert execute(bodies["constant_method"], Reference(0), heap=heap) == 1
 
 
 def test_record_backing_has_body_duration_but_holder_keeps_lexical_residence(hoists: Hoists) -> None:

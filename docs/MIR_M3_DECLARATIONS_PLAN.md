@@ -131,9 +131,10 @@ record backing engagement are never inferred from the existence of a slot.
 The strict validator still rejects reads without definite assignment.
 Lowering reports this specific proof failure as `MIRNotCovered`, through
 `MIRDefiniteAssignmentError`; structural/type validation failures still
-propagate. This also covers valid constant-condition loops whose impossible
-zero-trip edge remains in MIR's structural CFG. Constant-edge reasoning is
-separate work. This boundary adjustment was approved 2026-09-20.
+propagate. This boundary adjustment was approved 2026-09-20. M3.11 subsequently
+removes impossible literal-boolean edges, including the zero-trip edge of
+`while True`; see the [constant CFG plan](MIR_M3_CONSTANT_CFG_PLAN.md).
+Other conditions still require proof over both structural successors.
 
 1. Carry structured hoisted-binding facts beside the existing render data on
    `THIRIf`/`THIRWhile`: source name, semantic type/access/layout, containing
