@@ -1,6 +1,8 @@
 """All-or-nothing lowering of scalar and record-storage THIR operations."""
 
 from dataclasses import dataclass, field
+from contextlib import contextmanager
+from collections.abc import Iterator
 
 from ..identity_map import IdentityMap
 from ..parse import RebindStorage, SourceLocation
@@ -17,6 +19,7 @@ from .nodes import (
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
     MIRRegion, MIRRegionId,
+    MIRRangeAdvance,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
@@ -50,6 +53,7 @@ class _Coverage:
         self.unions: dict[str, th.THIRUnionLayout] = {}
         self.payload_aliases: set[str] = set()
         self.globals: dict[MIRGlobalId, th.THIRGlobalBinding] = {}
+        self.range_counters: set[str] = set()
 
     def global_binding(self, expr: th.THIRName | th.THIRModuleVar | th.THIRWalrus,
                        *, write: bool = False) -> TpyType:
@@ -729,6 +733,7 @@ class _Coverage:
                          and isinstance(expr.expr, th.THIRLiteral), "unsupported coercion")
                 _require(expr, self.expr(expr.expr) == INT32, "unsupported literal coercion")
             case th.THIRWalrus():
+                _require(expr, expr.name not in self.range_counters, "range target write needs separate induction")
                 _plain(expr, {"name", "cpp_name", "value", "global_binding"})
                 if expr.global_binding is not None:
                     self.global_binding(expr, write=True)
@@ -786,8 +791,10 @@ class _Coverage:
     def stmt(self, stmt: th.THIRStmt, loops: int) -> None:
         match stmt:
             case th.THIRAssign(target=th.THIRName(name=name)) | th.THIRPtrLocalRebind(name=name):
+                _require(stmt, name not in self.range_counters, "range target write needs separate induction")
                 _require(stmt, name not in self.tuple_roots, "owned tuple binding replacement is unsupported")
             case th.THIRNarrowAlias(alias=name):
+                _require(stmt, name not in self.range_counters, "range target write needs separate induction")
                 _require(stmt, name not in self.tuple_roots, "owned tuple binding replacement is unsupported")
         match stmt:
             case th.THIRNarrowAlias():
@@ -887,6 +894,8 @@ class _Coverage:
                     _require(stmt, isinstance(self.fn.return_type, VoidType), "missing return value")
                 else:
                     _require(stmt, self.expr(stmt.value) == self.fn.return_type, "return type mismatch")
+            case th.THIRForRange():
+                self.range_loop(stmt, loops)
             case th.THIRIf() | th.THIRWhile():
                 allowed = {"condition", "then_body", "else_body", "else_is_nested"} if isinstance(
                     stmt, th.THIRIf) else {"condition", "body", "orelse"}
@@ -906,7 +915,35 @@ class _Coverage:
             case _:
                 raise MIRUnsupported(stmt, "unsupported statement")
 
-    def hoists(self, stmt: th.THIRIf | th.THIRWhile) -> None:
+    def range_loop(self, stmt: th.THIRForRange, loops: int) -> None:
+        _plain(stmt, {"var", "elem_type", "start", "stop", "start_is_literal", "stop_is_literal",
+                      "body", "step_kind", "orelse", "hoist_loop_var", "target_written",
+                      "hoist_decls", "hoisted_bindings"})
+        _require(stmt, stmt.elem_type == INT32 and stmt.step_kind in ("plus_one", "unit_neg"),
+                 "range needs int32 unit step")
+        _require(stmt, isinstance(stmt.var, str) and bool(stmt.var) and isinstance(stmt.stop, th.THIRExpr),
+                 "missing range target or stop")
+        _require(stmt, type(stmt.hoist_loop_var) is bool and type(stmt.target_written) is bool,
+                 "invalid range binding facts")
+        self.hoists(stmt)
+        for bound, literal in ((stmt.start, stmt.start_is_literal), (stmt.stop, stmt.stop_is_literal)):
+            _require(stmt, type(literal) is bool and literal is (bound is None or _literal(bound)),
+                     "range bound capture disagrees with expression")
+            if bound is not None:
+                _require(bound, (_literal(bound) or isinstance(bound, (th.THIRName, th.THIRFieldAccess, th.THIRSubscript)))
+                         and self.expr(bound) == INT32, "unsupported range bound")
+        _require(stmt, stmt.var not in self.range_counters, "nested range target changes outer induction")
+        _require(stmt, self.bindings.get(stmt.var) == INT32 if stmt.hoist_loop_var else stmt.var not in self.bindings,
+                 "range target residence mismatch")
+        bindings, counters = self.bindings.copy(), self.range_counters.copy()
+        self.bindings[stmt.var] = INT32
+        if not stmt.hoist_loop_var and not stmt.target_written:
+            self.range_counters.add(stmt.var)
+        self.scoped(stmt.body, loops + 1)
+        self.bindings, self.range_counters = bindings, counters
+        self.scoped(stmt.orelse, loops)
+
+    def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange) -> None:
         facts = stmt.hoisted_bindings
         _require(stmt, all(isinstance(f, th.THIRHoistedBinding) for f in facts)
                  and tuple(f.name for f in facts) == tuple(name for name, _ in stmt.hoist_decls),
@@ -1434,6 +1471,8 @@ class _Builder:
                     if self.current is not None:
                         self.end(MIRGoto(after.id, loc))
                     self.current = after
+                case th.THIRForRange():
+                    self.range_loop(stmt)
                 case th.THIRBreak():
                     self.end(MIRGoto(self.loops[-1][1], loc))
                 case th.THIRContinue():
@@ -1441,7 +1480,47 @@ class _Builder:
                 case _:
                     raise AssertionError("coverage and statement lowering disagree")
 
-    def hoists(self, stmt: th.THIRIf | th.THIRWhile) -> None:
+    def range_loop(self, stmt: th.THIRForRange) -> None:
+        loc = stmt.loc
+        self.hoists(stmt)
+        start = self.expr(stmt.start) if stmt.start is not None else self.result(INT32, MIRConstant(0), loc)
+        stop = self.expr(stmt.stop)
+        entry, normal, after = self.block(), self.block(), self.block()
+        self.end(MIRGoto(entry.id, loc))
+        self.current = entry
+        with self.scope():
+            direct = not (stmt.hoist_loop_var or stmt.target_written)
+            counter = self.slot(INT32, MIRSlotKind.LOCAL, stmt.var if direct else None)
+            self.write(counter, MIRRead(MIRPlace(start)), loc)
+            if direct:
+                self.bindings[stmt.var] = counter
+            head, body, advance = self.block(), self.block(), self.block()
+            self.end(MIRGoto(head.id, loc))
+            self.current = head
+            step = 1 if stmt.step_kind == "plus_one" else -1
+            cond = self.result(BOOL, MIRCompare("<" if step == 1 else ">", counter, stop), loc)
+            self.branch(cond, body.id, normal.id, loc)
+            self.current = body
+            self.loops.append((advance.id, after.id))
+            with self.scope():
+                if not direct:
+                    if not stmt.hoist_loop_var:
+                        self.bindings[stmt.var] = self.slot(INT32, MIRSlotKind.LOCAL, stmt.var)
+                    self.write(self.bindings[stmt.var], MIRRead(MIRPlace(counter)), loc)
+                self.stmts(stmt.body)
+            self.loops.pop()
+            if self.current is not None:
+                self.end(MIRGoto(advance.id, loc))
+            self.current = advance
+            self.write(counter, MIRRangeAdvance(counter, step), loc)
+            self.end(MIRGoto(head.id, loc))
+        self.current = normal
+        self.scoped(stmt.orelse)
+        if self.current is not None:
+            self.end(MIRGoto(after.id, loc))
+        self.current = after
+
+    def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange) -> None:
         for fact in stmt.hoisted_bindings:
             if fact.optional_record_storage is not None:
                 reference = fact.optional_record_storage
@@ -1463,14 +1542,21 @@ class _Builder:
                 self.current.statements.append(MIRStorageInit(MIRPlace(dest), default.alternative,
                                                               MIRConstant(default.value), stmt.loc))
 
-    def scoped(self, stmts: tuple[th.THIRStmt, ...]) -> None:
+    @contextmanager
+    def scope(self) -> Iterator[None]:
         bindings, storage, region = self.bindings.copy(), self.storage.copy(), self.region
         assert self.current is not None and not self.current.statements
         self.region = MIRRegionId(self.body, len(self.regions))
         self.regions.append(MIRRegion(self.region, region, self.current.id))
         self.current.region = self.region
-        self.stmts(stmts)
-        self.bindings, self.storage, self.region = bindings, storage, region
+        try:
+            yield
+        finally:
+            self.bindings, self.storage, self.region = bindings, storage, region
+
+    def scoped(self, stmts: tuple[th.THIRStmt, ...]) -> None:
+        with self.scope():
+            self.stmts(stmts)
 
     def build(self, initialization: MIRConstructorDefinition | None = None) -> MIRFunction:
         if self.fn.receiver is not None:

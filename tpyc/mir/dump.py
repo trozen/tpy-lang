@@ -11,6 +11,7 @@ from .nodes import (
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
     MIRContainerStructure, MIRContainerElements,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
+    MIRRangeAdvance,
 )
 from .validate import validate_function
 
@@ -105,6 +106,8 @@ def dump_function(fn: MIRFunction) -> str:
                              f"value={stmt.value.value!r}{_location(stmt.loc)}")
                 continue
             match stmt.value:
+                case MIRRangeAdvance(source=source, step=step):
+                    rhs = f"range-advance %{source.index} step={step}"
                 case MIRIteratorInit(source=source):
                     rhs = f"iterator-init %{source.index}"
                 case MIRIteratorHasNext(source=source):

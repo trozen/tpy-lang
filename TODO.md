@@ -1714,7 +1714,8 @@ alongside related feature work; only the big-rock deferrals live here.
   `docs/MIR_M3_ORDINARY_FOR_PLAN.md` records the approved combined M3.19-M3.21
   batch: iteration identities/dependencies, ordinary range CFG and native
   scalar/record-element loops. M3.19's internal model and THIR facts are
-  implemented; M3.20/M3.21 source integration remains. Tuple-language
+  implemented; M3.20 connects int32 unit-step range CFG and target lifetimes.
+  M3.21 native source integration remains. Tuple-language
   completeness is a separate workstream. Protocol iteration and the rest of
   W2-W5 remain explicit gaps in the completion checklist.
   `docs/MIR_M3_LIVENESS_PLAN.md` records the approved M3.1/M3.2 design.

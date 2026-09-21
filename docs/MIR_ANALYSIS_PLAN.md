@@ -1840,6 +1840,13 @@ tuples, resolving their operations to the original backing without a copy or
 new lifetime ([tuple alias plan](MIR_M3_TUPLE_ALIAS_PLAN.md)). Tuple rebinding
 and its existing source defects remain separate from that normalization.
 
+M3.19 adds native container/iterator holders, structural and element summary
+places, guarded element reads and captured dependencies. M3.20 connects
+unit-step int32 range CFG, once-captured bounds, independent induction when
+needed, target residence and normal transfers. Native source integration
+remains M3.21 ([ordinary iteration plan](MIR_M3_ORDINARY_FOR_PLAN.md)).
+These remain analysis-only; source acceptance and C++ emission are unchanged.
+
 The following factored matrix covers the Cartesian product: a cell is M1 only
 when all three axes say M1 and the operation is in the explicit subset above.
 Otherwise it is a filed gap assigned to the earliest applicable later stage;

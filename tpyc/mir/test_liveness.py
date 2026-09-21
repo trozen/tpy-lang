@@ -277,6 +277,11 @@ def owners() -> int32:
 def booleans(flag: bool, value: int32) -> bool:
     current = not flag
     return current or value > 0
+def range_target(stop: int32) -> int32:
+    result = 0
+    for index in range(stop):
+        result = index
+    return result
 """
 
 

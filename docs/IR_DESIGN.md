@@ -24,6 +24,7 @@
 | Optional-backed record hoists | M3.14 separates empty wrappers, engaged records and source assignment; M3.15 connects bounded plain-record if/while THIR facts ([record-storage plan](MIR_M3_RECORD_STORAGE_PLAN.md)) |
 | Inline-record tuple backing | M3.16 models flat owned/mixed payload identities and normal lifetimes; M3.17 connects bounded local constructor literals ([tuple-storage plan](MIR_M3_TUPLE_STORAGE_PLAN.md)) |
 | Immutable whole-tuple aliases | M3.18 normalizes fixed body-local aliases and chains to existing constructor-tuple backing ([alias plan](MIR_M3_TUPLE_ALIAS_PLAN.md)); no copying, reseating or new storage |
+| Ordinary iteration | M3.19 models native iterator identities and dependencies; M3.20 connects unit-step int32 range CFG, captures and target lifetimes ([iteration plan](MIR_M3_ORDINARY_FOR_PLAN.md)); native source integration remains M3.21 |
 | Remaining M3 scope | [Completion checklist](MIR_M3_COMPLETION_PLAN.md): storage lifecycle, additional CFG positions, cleanup, suspension and complete holder propagation |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
 | MIR advisory loan checker (default mode) | Not started |

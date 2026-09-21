@@ -319,11 +319,18 @@ class MIRIteratorAdvance:
     source: MIRSlotId
 
 
+@dataclass(frozen=True)
+class MIRRangeAdvance:
+    """Unit induction after a successful bounded int32 range iteration."""
+    source: MIRSlotId
+    step: int
+
+
 MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
              | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy
              | MIROptionalConstruct | MIROptionalCopy | MIRIsPresent
              | MIRUnionConstruct | MIRUnionCopy | MIRIsAlternative | MIRUnionExtract
-             | MIRIteratorInit | MIRIteratorHasNext | MIRIteratorRead | MIRIteratorAdvance)
+             | MIRIteratorInit | MIRIteratorHasNext | MIRIteratorRead | MIRIteratorAdvance | MIRRangeAdvance)
 
 
 class MIRRecordWriteMode(Enum):

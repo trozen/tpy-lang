@@ -90,6 +90,24 @@ def owned_pair() -> int32:
     assert "scope ends (possible normal storage ends" in out
 
 
+def test_range_dump_exposes_induction_and_unsupported_step() -> None:
+    out = dump('''from tpy import int32
+def covered(stop: int32) -> int32:
+    last = 7
+    for i in range(stop):
+        last = i
+    return last
+def uncovered(stop: int32) -> int32:
+    for i in range(0, stop, 2):
+        return i
+    return 7
+''')
+    body = out[out.index("::covered@"):].split("\nfn ", 1)[0]
+    assert "<MIR not covered:" not in body
+    assert "range-advance" in body
+    assert "<MIR not covered: unsupported metadata: step>" in out
+
+
 def test_owned_tuple_alias_dump_uses_canonical_backing() -> None:
     out = dump('''from tpy import int32
 class Cell:

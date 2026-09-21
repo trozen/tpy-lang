@@ -17,6 +17,7 @@ from .nodes import (
     MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, MIRValueKind,
     MIRContainerStructure, MIRContainerElements,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
+    MIRRangeAdvance,
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -183,7 +184,8 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 if source is not None and leaf in leaves[target.root]:
                     result[leaf] = state.get(MIRPlace(source), empty)
             case (MIRConstant() | MIRRead() | MIRCompare() | MIRNot() | MIRIsPresent()
-                  | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove() | MIRIteratorHasNext()):
+                  | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove() | MIRIteratorHasNext()
+                  | MIRRangeAdvance()):
                 pass
             case _:
                 raise MIRValidationError("unknown dependency operation")

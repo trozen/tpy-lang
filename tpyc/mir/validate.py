@@ -21,6 +21,7 @@ from .nodes import (
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
     MIRContainerLayout, MIRContainerElements, MIRContainerStructure,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
+    MIRRangeAdvance,
 )
 from .presence import MIRPresence, _analyze_presence
 from .coverage import owned_tuple, scalar_wrapper
@@ -114,6 +115,7 @@ def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
         case (MIRAlias(source=source) | MIRMove(source=source)
               | MIRIteratorInit(source=source) | MIRIteratorHasNext(source=source)
               | MIRIteratorRead(source=source) | MIRIteratorAdvance(source=source)
+              | MIRRangeAdvance(source=source)
               | MIRTupleCopy(source=source) | MIROptionalCopy(source=source) | MIRIsPresent(source=source)
               | MIRUnionCopy(source=source) | MIRIsAlternative(source=source)):
             return (source,)
@@ -608,6 +610,12 @@ def _validate_structure(fn: MIRFunction) -> None:
                 _require(slots[operand].kind is not MIRSlotKind.GLOBAL or isinstance(value, MIRRead),
                          "global value needs explicit read")
             match value:
+                case MIRRangeAdvance():
+                    source = slots[value.source]
+                    _require(not stmt.target.projections and target.id == source.id
+                             and target.type == INT32 and target.value_kind is MIRValueKind.SCALAR
+                             and target.kind is not MIRSlotKind.PARAMETER
+                             and type(value.step) is int and value.step in (-1, 1), "invalid range induction")
                 case MIRIteratorInit():
                     source = slots[value.source]
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.NATIVE_ITERATOR

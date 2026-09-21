@@ -90,10 +90,11 @@ normal early exits. Custom destructor effects also require W3.
 The [approved ordinary for-loop batch](MIR_M3_ORDINARY_FOR_PLAN.md) groups
 M3.19-M3.21 into one delivery: iteration identities/dependencies, range CFG,
 and native scalar/record-element loops. M3.19 implements the internal
-iterator/dependency model and positive THIR facts; source integration remains
-M3.20/M3.21. This batch
+iterator/dependency model and positive THIR facts. M3.20 connects int32
+unit-step range CFG, once-captured bounds and target residences; native source
+integration remains M3.21. This batch
 does not include tuple-language fixes. Protocol iteration and the other W2
-positions remain open after that proposed batch.
+positions remain open after this batch.
 
 - [ ] `for` and iteration regions, including iterator/element dependencies,
   loop binding availability, `break`, `continue` and `else`.

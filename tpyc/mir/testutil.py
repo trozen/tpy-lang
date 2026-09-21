@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 import operator
 
+from ..typesys import INT32_MIN, INT32_MAX
+
 from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId,
@@ -12,6 +14,7 @@ from .nodes import (
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
+    MIRRangeAdvance,
 )
 from .region_flow import MIRRegionFlow
 from .validate import statement_reads
@@ -153,6 +156,9 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     and slots[stmt.target.root].record_storage is MIRRecordStorageKind.OPTIONAL):
                 assert stmt.target.root in physical, "record assignment before wrapper initialization"
             match rhs:
+                case MIRRangeAdvance():
+                    value = values[rhs.source] + rhs.step
+                    assert INT32_MIN <= value <= INT32_MAX, "range induction overflow"
                 case MIRIteratorInit():
                     source = values[rhs.source]
                     assert isinstance(source, ContainerValue)

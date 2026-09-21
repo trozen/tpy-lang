@@ -8639,8 +8639,10 @@ separate work. This does not change source semantics or C++ emission.
 The approved [ordinary for-loop analysis batch, M3.19-M3.21](MIR_M3_ORDINARY_FOR_PLAN.md)
 combines range CFG with native iterator/source dependencies and borrowed
 record-element holders. M3.19 supplies the internal iterator model, successful
-availability checks and captured source/element dependencies. THIR source
-integration remains M3.20/M3.21; this is separate from tuple completeness.
+availability checks and captured source/element dependencies. M3.20 connects
+int32 range loops with literal steps +1/-1, once-captured scalar bounds,
+separate induction for written/reused targets, hoists and normal transfers.
+Native source integration remains M3.21; this is separate from tuple completeness.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

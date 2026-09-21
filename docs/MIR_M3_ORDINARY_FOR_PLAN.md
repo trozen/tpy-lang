@@ -1,7 +1,8 @@
 # Ordinary for-loop analysis: M3 W2 batch
 
 Status: approved. M3.19 implements the internal model and THIR facts;
-M3.20/M3.21 source integration is in progress. Review/merge status is separate.
+M3.20 connects unit-step int32 range CFG. M3.21 native integration is in
+progress. Review/merge status is separate.
 Base: `298e4df83d` (M3.18 merged).
 
 ## Contract
