@@ -900,145 +900,19 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
 
 
 def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
-    """The make_generator render of a generator expression: an outer
-    `[caps]()` IIFE binds the source and returns `make_generator` over an
-    inner mutable lambda that binds each element and yields
-    `optional<slot>`. A BORROWED source is aliased (`auto& __src`) and the
-    lambda seeds begin/end in its init-captures; an OWNED source is built
-    in place inside the lambda's `genexpr_state` holder, seeded on the first
-    pull and advanced on the next (see THIRGenExpr). Indents relative to the
-    enclosing statement (stmt_indent_level)."""
-    stmt_ind = INDENT * state.stmt_indent_level
-    ind1 = stmt_ind + INDENT
-    deref = "*(*__st.beg)" if e.owned_source else "*__beg++"
-
-    def binding_lines(ind: str) -> str:
-        # An unpack head draws its `__tup_N` off the shared per-function
-        # counter at emit, like the comp unpack; the single-var shape keeps
-        # the pre-rendered loop_var_binding line.
-        if not e.unpack_targets:
-            return f"{ind}{e.binding_cpp}\n"
-        tmp = f"__tup_{state.next_unpack()}"
-        # The owned form's source may hand out a PRVALUE proxy tuple (a
-        # dict view's `tuple<const K&, V&>`, a combinator's tuple), which
-        # only a forwarding reference binds non-const.
-        ref = ("const auto&" if e.const_loop_var
-               else "auto&&" if e.owned_source else "auto&")
-        out = f"{ind}{ref} {tmp} = {deref};\n"
-        for i, name in enumerate(e.unpack_targets):
-            if name is None:
-                continue
-            out += (f"{ind}{e.unpack_target_cpps[i]} "
-                    f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
-        return out
-
-    def yield_lines(buf: io.StringIO, ind: str, ind_inner: str) -> None:
-        # Cond/yield temps flush per-iteration inside the lambda, the yield
-        # wrapped in the &&-joined filter when conditions exist.
-        if e.conditions:
-            cp = state.temps.checkpoint()
-            cond_str = " && ".join(_emit_expr(c, state) for c in e.conditions)
-            state.temps.flush_since(buf, cp, ind)
-            buf.write(f"{ind}if ({cond_str}) {{\n")
-            cp2 = state.temps.checkpoint()
-            elem_s = _emit_expr(e.element, state)
-            state.temps.flush_since(buf, cp2, ind_inner)
-            buf.write(f"{ind_inner}return std::optional<{e.slot_cpp}>"
-                      f"({elem_s});\n")
-            buf.write(f"{ind}}}\n")
-        else:
-            cp = state.temps.checkpoint()
-            elem_s = _emit_expr(e.element, state)
-            state.temps.flush_since(buf, cp, ind)
-            buf.write(f"{ind}return std::optional<{e.slot_cpp}>({elem_s});\n")
-
+    """A generator expression's creation: the frame factory over the source
+    and the captured names. An OWNED source goes in as a factory the frame
+    calls to build it in place (see THIRGenExpr)."""
+    caps = "".join(f", {_emit_expr(c, state)}" for c in e.frame_captures)
     if e.range_args:
-        # The counter lambda: range bounds move into the init-captures, no
-        # IIFE at any arity.
-        ind2 = ind1 + INDENT
-        ind3 = ind2 + INDENT
-        cpp_iter = e.counter_cpp
-        args = [_emit_expr(a, state) for a in e.range_args]
-        if len(args) == 1:
-            captures = (f"__i = {cpp_iter}(0), "
-                        f"__stop = static_cast<{cpp_iter}>({args[0]})")
-        elif len(args) == 2:
-            captures = (f"__i = static_cast<{cpp_iter}>({args[0]}), "
-                        f"__stop = static_cast<{cpp_iter}>({args[1]})")
-        else:
-            captures = (f"__i = static_cast<{cpp_iter}>({args[0]}), "
-                        f"__stop = static_cast<{cpp_iter}>({args[1]}), "
-                        f"__step = static_cast<{cpp_iter}>({args[2]})")
-        buf = io.StringIO()
-        buf.write(f"::tpy::make_generator<{e.slot_cpp}>(\n")
-        buf.write(f"{ind1}[{e.inner_captures}{captures}]() mutable -> "
-                  f"std::optional<{e.slot_cpp}> {{\n")
-        if len(args) <= 2:
-            buf.write(f"{ind2}while (__i < __stop) {{\n")
-            buf.write(f"{ind3}{e.binding_cpp}\n")
-        else:
-            buf.write(f"{ind2}::tpy::range_check_step_nonzero(__step);\n")
-            if e.range_overflow_check:
-                buf.write(f"{ind2}::tpy::range_check_overflow<{cpp_iter}>"
-                          f"(__i, __stop, __step);\n")
-            buf.write(f"{ind2}while ((__step > 0) ? (__i < __stop) : "
-                      f"(__i > __stop)) {{\n")
-            buf.write(f"{ind3}{e.binding_cpp}\n")
-            buf.write(f"{ind3}__i += __step;\n")
-        yield_lines(buf, ind3, ind3 + INDENT)
-        buf.write(f"{ind2}}}\n")
-        buf.write(f"{ind2}return std::nullopt;\n")
-        buf.write(f"{ind1}}}\n")
-        buf.write(f"{stmt_ind})")
-        return buf.getvalue()
-
-    lambda_ind = ind1 + INDENT
-    ind2i = lambda_ind + INDENT
-    ind3i = ind2i + INDENT
-    iife = e.iife_captures.removesuffix(", ")
+        bounds = ", ".join(_emit_expr(a, state) for a in e.range_args)
+        return f"{e.frame_factory_cpp}({bounds}{caps})"
     src = _emit_expr(e.iterable, state)
-    buf = io.StringIO()
     if e.owned_source:
-        # The IIFE is the wrapper's in-place FACTORY: it returns the closure
-        # as a prvalue, so neither the source (aggregate-initialized inside
-        # the `genexpr_state` holder) nor the closure is moved here.
-        ind2 = ind1 + INDENT
-        ind3 = ind2 + INDENT
-        buf.write(f"::tpy::make_generator<{e.slot_cpp}>(std::in_place, "
-                  f"[{iife}]() {{\n")
-        buf.write(f"{ind1}return [{e.inner_captures}"
-                  f"__st = ::tpy::genexpr_state{{{src}}}]() mutable -> "
-                  f"std::optional<{e.slot_cpp}> {{\n")
-        buf.write(f"{ind2}if (!__st.beg) __st.beg = __st.src.begin();\n")
-        buf.write(f"{ind2}else if (*__st.beg != __st.src.end()) "
-                  f"++(*__st.beg);\n")
-        buf.write(f"{ind2}while (*__st.beg != __st.src.end()) {{\n")
-        buf.write(binding_lines(ind3))
-        yield_lines(buf, ind3, ind3 + INDENT)
-        # A filtered-out element advances here; a yielded one advances on
-        # the next pull, so its binding stays valid through the yield.
-        if e.conditions:
-            buf.write(f"{ind3}++(*__st.beg);\n")
-        buf.write(f"{ind2}}}\n")
-        buf.write(f"{ind2}return std::nullopt;\n")
-        buf.write(f"{ind1}}};\n")
-        buf.write(f"{stmt_ind}}})")
-        return buf.getvalue()
-    else:
-        buf.write(f"[{iife}]() {{\n")
-        buf.write(f"{ind1}auto& __src = {src};\n")
-        buf.write(f"{ind1}return ::tpy::make_generator<{e.slot_cpp}>(\n")
-        buf.write(f"{lambda_ind}[{e.inner_captures}__beg = __src.begin(), "
-                  f"__end = __src.end()]() mutable -> std::optional<{e.slot_cpp}> {{\n")
-        buf.write(f"{ind2i}while (__beg != __end) {{\n")
-        buf.write(binding_lines(ind3i))
-        yield_lines(buf, ind3i, ind3i + INDENT)
-    buf.write(f"{ind2i}}}\n")
-    buf.write(f"{ind2i}return std::nullopt;\n")
-    buf.write(f"{lambda_ind}}}\n")
-    buf.write(f"{ind1});\n")
-    buf.write(f"{stmt_ind}}}()")
-    return buf.getvalue()
+        return (f"{e.frame_factory_cpp}(std::in_place, "
+                f"[&]() {{ return {src}; }}{caps})")
+    return f"{e.frame_factory_cpp}({src}{caps})"
+
 
 
 def _emit_vararg_pack(e: 'THIRVarargPack', state: _EmitState) -> str:

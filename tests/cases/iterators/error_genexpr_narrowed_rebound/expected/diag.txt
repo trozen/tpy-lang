@@ -1,0 +1,1 @@
+main.py:11: error: 'k' is narrowed here, but the loop this generator expression feeds rebinds it between pulls; bind the narrowed value to a local first

@@ -347,11 +347,12 @@ def _expr(e: THIRExpr) -> str:
         return (f"comp[{e.kind}/{e.loop}]({e.container_cpp}, "
                 f"var %{e.var}{' const' if e.const_loop_var else ''})")
     if isinstance(e, THIRGenExpr):
-        src = "" if e.iterable is None else _expr(e.iterable)
-        elem = "" if e.element is None else _expr(e.element)
+        src = (f"range({_exprs(e.range_args)})" if e.range_args
+               else "" if e.iterable is None else _expr(e.iterable))
         owned = (" [owned_source, pinned]" if e.pinned_source
                  else " [owned_source]" if e.owned_source else "")
-        return f"genexpr({elem} for %_ in {src}){owned}"
+        caps = "".join(f", {_expr(c)}" for c in e.frame_captures)
+        return f"genexpr[{e.frame_factory_cpp}]({src}{caps}){owned}"
     if isinstance(e, THIRLambda):
         params = ", ".join(e.params_cpp)
         ret = f" -> {e.ret_cpp}" if e.ret_cpp is not None else ""

@@ -166,6 +166,12 @@ class _CoroParamKind(IntEnum):
         only the template-header constraint differs (a plain `typename`
         vs a concept) -- mirrors the non-generator Fn handling in
         `functions.py`.
+    CAPTURE: a lexical capture of a genexpr's function -- an enclosing name
+        the body reads. The same deduced `F_<pname>&&` forwarding slot as FN,
+        but what it is handed is always an LVALUE, so `F_<pname>` deduces a
+        reference and the field aliases the enclosing variable, whatever C++
+        type that variable has. Never a movable local: the frame does not own
+        what it points at.
     OWNED_COPY: a `str` / `bytes` param (is_owned_in_coro_frame). The field is
         the owned storage type (`std::string` / `tpy::bytes`), but the
         factory/ctor take the borrow form (`std::string_view` / `BytesView`) --
@@ -187,6 +193,13 @@ class _CoroParamKind(IntEnum):
     OWNED_VALUE = 5
     FN = 6
     OWNED_COPY = 7
+    CAPTURE = 8
+
+
+# The kinds whose C++ type is a deduced template arg taken by forwarding
+# reference (`X&&` in the ctor and the factory, `std::forward` into the field).
+_DEDUCED_SLOT_KINDS = (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN,
+                       _CoroParamKind.CAPTURE)
 
 
 @dataclass(frozen=True)
@@ -212,7 +225,7 @@ class _CoroParam:
         # name -- the factory body forwards by bare name.
         if self.kind is _CoroParamKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
-        if self.kind in (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN):
+        if self.kind in _DEDUCED_SLOT_KINDS:
             return f"{self.ctor_param_type}&& {self.cpp_name}"
         if self.kind is _CoroParamKind.OWNED_VALUE:
             return f"{self.ctor_param_type} {self.cpp_name}"
@@ -223,7 +236,7 @@ class _CoroParam:
     def ctor_param_decl(self) -> str:
         if self.kind is _CoroParamKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
-        if self.kind in (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN):
+        if self.kind in _DEDUCED_SLOT_KINDS:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
         if self.kind is _CoroParamKind.OWNED_VALUE:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
@@ -240,7 +253,7 @@ class _CoroParam:
             # std::move on it yields an rvalue that won't bind to the field
             # type for non-value Ts. Direct bind/copy is uniformly correct.
             return f"{self.cpp_name}({self.cpp_name}_)"
-        if self.kind in (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN):
+        if self.kind in _DEDUCED_SLOT_KINDS:
             # `T_<pname>` / `F_<pname>` is the class template param, so the
             # ctor's `&&` reference-collapses (a plain lvalue ref when the
             # factory deduced a borrowed lvalue). Forward to bind both the
@@ -257,6 +270,36 @@ class _CoroParam:
 
 
 _BARE_STATE_JUMP = re.compile(r"\s*__state = (S_\w+);\n\s*continue;\n")
+
+
+# A case body that runs some statements and then re-dispatches, and a store to
+# `__state` with the statement that follows it -- what `_single_loop_form`
+# reads off the rendered cases.
+_SEED_THEN_JUMP = re.compile(
+    r"(?P<seed>.*?)[ \t]*__state = (?P<label>S_\w+);\n\s*continue;\n", re.S)
+_EXHAUSTED_HEAD = re.compile(
+    r"[ \t]*if \((?P<test>[^\n]*)\) \{\n"
+    r"[ \t]*return ::tpy::make_unexpected\(::tpy::StopIteration\{\}\);\n"
+    r"[ \t]*\}\n")
+_TRAILING_CONTINUE = re.compile(
+    r"(?P<close>[ \t]*\})(?: else \{\n[ \t]*continue;\n[ \t]*\})?\n\Z"
+    r"|[ \t]*continue;\n\Z")
+_STATE_STORE = re.compile(
+    r"^[ \t]*__state = (?P<label>S_\w+);\n[ \t]*(?P<follows>[^\n]*)\n", re.M)
+
+
+def _negated(test: str) -> str:
+    """`!(test)`, or the operand itself when `test` is already one whole
+    negation (a range loop's exhaustion test is `!(i < stop)`)."""
+    if test.startswith("!(") and test.endswith(")"):
+        depth = 0
+        for pos, ch in enumerate(test[1:], start=1):
+            depth += (ch == "(") - (ch == ")")
+            if depth == 0:
+                if pos == len(test) - 1:
+                    return test[2:-1]
+                break
+    return f"!({test})"
 
 
 def _state_jump(indent: str, label: str) -> str:
@@ -493,6 +536,12 @@ class AsyncCoroCodegen:
             ptype_inner = unwrap_ref_type(ptype)
             actual = unwrap_readonly(ptype_inner)
             kind = self._classify_param_kind(ptype)
+            if pname in func.capture_params:
+                # A lexical capture: the deduced-type forwarding slot, which an
+                # lvalue argument makes a REFERENCE field of whatever C++ type
+                # the enclosing variable has (its storage form is the enclosing
+                # body's business, and a rebind there must stay visible here).
+                kind = _CoroParamKind.CAPTURE
             owned_init = ""
             if kind is _CoroParamKind.VALUE:
                 # Value types (incl. explicit views like StrView) store their
@@ -530,7 +579,7 @@ class AsyncCoroCodegen:
                 # Using `cpp_name` here would diverge when `pname`
                 # collides with a C++ keyword (e.g. `class` -> `class_`).
                 field_type = ctor_type = protocol_param_template_name(pname)
-            elif kind is _CoroParamKind.FN:
+            elif kind in (_CoroParamKind.FN, _CoroParamKind.CAPTURE):
                 # Concrete callable type deduced as `F_<pname>` (declared in
                 # `_emit_template_header`); stored by value, forwarded via
                 # `F_<pname>&&` -- same shape as STATIC_PROTOCOL.
@@ -734,7 +783,8 @@ class AsyncCoroCodegen:
         """
         return [f"typename {fn_param_template_name(pname)}"
                 for pname, ptype in func.params
-                if is_fn_type(unwrap_readonly(unwrap_ref_type(ptype)))]
+                if pname in func.capture_params
+                or is_fn_type(unwrap_readonly(unwrap_ref_type(ptype)))]
 
     def _record_template_args(self, record_name: str | None) -> tuple[str, ...]:
         """Type params of the enclosing record for a method, or () for a free
@@ -770,15 +820,18 @@ class AsyncCoroCodegen:
                             record_name: str | None = None) -> bool:
         """True iff the coro/generator struct is a C++ template -- because
         of explicit `[T, ...]` type params, a static-protocol-typed param
-        (`T_<pname>` template arg), OR (for a method) the enclosing record's
-        type params. Templated structs must emit their poll/__next__ body +
-        factory inline in the header. A non-template struct's body goes to
-        the .cpp, except a small generator `__next__`, which
-        `CodeGenerator._emit_generator_next` moves to `<mod>_inl.hpp` (and
-        `Compiler._module_emits_inl` approximates this test from the AST to
-        decide which modules emit that file)."""
+        (`T_<pname>` template arg), a deduced-type slot (an `Fn` param, a
+        genexpr's capture), OR (for a method) the enclosing record's type
+        params. Templated structs must emit their poll/__next__ body +
+        factory inline in the header: another module that reaches one
+        instantiates it there. A non-template struct's body goes to the .cpp,
+        except a small generator `__next__`, which
+        `CodeGenerator._emit_generator_next` moves to `<mod>_inl.hpp` when the
+        module emits one (`Compiler._module_emits_inl` decides that from the
+        AST)."""
         return (bool(func.type_params)
                 or bool(self._protocol_template_parts(func))
+                or bool(self._fn_template_parts(func))
                 or bool(self._record_template_parts(record_name)))
 
     def _emit_template_header(self, out: "TextIO", func: TpyFunction,
@@ -850,7 +903,7 @@ class AsyncCoroCodegen:
         extras = [p.field_type for p in cparams
                   if p.kind is _CoroParamKind.STATIC_PROTOCOL]
         extras += [p.field_type for p in cparams
-                   if p.kind is _CoroParamKind.FN]
+                   if p.kind in (_CoroParamKind.FN, _CoroParamKind.CAPTURE)]
         all_args = (list(self._record_template_args(record_name))
                     + list(func.type_params) + extras)
         if not all_args:
@@ -971,6 +1024,9 @@ class AsyncCoroCodegen:
         # declaration); `gen_factory`'s definition omits them.
         params = self._emit_params_decl(func, emit_defaults=True)
         out.write(f"{return_type_name} {escape_cpp_name(func.name)}({params});\n")
+        if self._builds_source_in_place(func):
+            header, ret, in_place_params, _ = self._in_place_factory_parts(func)
+            out.write(f"{header}\n{ret} {escape_cpp_name(func.name)}({in_place_params});\n")
         return True
 
     # -- Body partitioning ----------------------------------------------------
@@ -1691,9 +1747,13 @@ class AsyncCoroCodegen:
         # Loop vars whose field payload is spelled from the iteration
         # source; the trait decides alias-vs-own, so no TPy-side form.
         source_form_fields: dict[str, str] = {}
+        pointer_payloads: dict[str, str] = {}
         for info in state.for_loop_info.values():
             if info.pointer_form_loop_var is not None:
                 pointer_form_names.add(info.pointer_form_loop_var)
+                if info.pointer_form_payload is not None:
+                    pointer_payloads[info.pointer_form_loop_var] = (
+                        info.pointer_form_payload)
             pointer_form_names.update(info.pointer_form_unpack_targets)
             if info.loop_var_field is not None:
                 name, payload = info.loop_var_field
@@ -1750,6 +1810,7 @@ class AsyncCoroCodegen:
                 # address in `_emit_async_for_advance` / the tuple-unpack
                 # emit.
                 kind = rcfg.FrameLocalKind.PTR_ALIAS
+                payload = pointer_payloads.get(lname)
             elif lname in owning_tuple_locals:
                 # OWNING pointer-repr tuple local: the frame must hold the
                 # element storage (emplace writes, `(*name)` reads) -- a
@@ -1807,11 +1868,13 @@ class AsyncCoroCodegen:
                 kind = rcfg.FrameLocalKind.FRAME_SLOT
             elif ltype_inner.is_value_type():
                 kind = rcfg.FrameLocalKind.VALUE
-            elif (isinstance(ltype_inner, OptionalType)
-                    and ltype_inner.uses_pointer_repr()):
+            elif (isinstance(unwrap_readonly(ltype_inner), OptionalType)
+                    and unwrap_readonly(ltype_inner).uses_pointer_repr()):
                 # Pointer-repr Optional: bare `T* = nullptr` aliases the
                 # source and uses nullptr as both "uninitialized" and
-                # "None"; no outer `std::optional<...>` wrap.
+                # "None"; no outer `std::optional<...>` wrap. A `readonly`
+                # element (a loop var over a readonly container) is the same
+                # pointer, const through the frame's const bindings.
                 kind = rcfg.FrameLocalKind.OPT_PTR
             else:
                 kind = rcfg.FrameLocalKind.FRAME_SLOT
@@ -1901,9 +1964,11 @@ class AsyncCoroCodegen:
                 elif kind is rcfg.FrameLocalKind.OWNED_STR:
                     out.write(f"{INDENT}std::string {cpp_name};\n")
                 elif kind is rcfg.FrameLocalKind.PTR_ALIAS:
-                    inner_cpp = self.types.type_to_cpp(ltype_inner)
-                    out.write(
-                        f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
+                    # A payload is spelled from the source and carries its
+                    # own const.
+                    inner_cpp = (verdict.payload
+                                 or const_pfx + self.types.type_to_cpp(ltype_inner))
+                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
                 elif kind is rcfg.FrameLocalKind.OWNING_TUPLE_SLOT:
                     storage_cpp = ltype_inner.to_cpp_stored()
                     out.write(f"{INDENT}::tpy::frame_slot<{storage_cpp}> {cpp_name};\n")
@@ -1918,7 +1983,8 @@ class AsyncCoroCodegen:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
                 elif kind is rcfg.FrameLocalKind.OPT_PTR:
-                    inner_cpp = self.types.type_to_cpp(ltype_inner.inner)
+                    inner_cpp = self.types.type_to_cpp(
+                        unwrap_readonly(unwrap_readonly(ltype_inner).inner))
                     out.write(
                         f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
                 elif kind is rcfg.FrameLocalKind.REBIND_PTR:
@@ -2003,8 +2069,30 @@ class AsyncCoroCodegen:
             for i, p in enumerate(ctor_params))
         init_parts = ["__state(S_INITIAL)", *self._resumable_extra_ctor_inits()]
         init_parts.extend(p.ctor_init() for p in ctor_params)
+        ctor_seed = self._constructor_loop_seed(func)
+        rcfg.resumable_state(func).ctor_loop_seed = ctor_seed
+        ctor_body = " ".join(ctor_seed or ())
+        ctor_body = f"{{ {ctor_body} }}" if ctor_body else "{}"
         out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
-        out.write(f"{INDENT}{INDENT}: {', '.join(init_parts)} {{}}\n\n")
+        out.write(f"{INDENT}{INDENT}: {', '.join(init_parts)} {ctor_body}\n\n")
+        if self._builds_source_in_place(func):
+            # An rvalue source is built IN PLACE from a factory: the prvalue
+            # the factory returns initializes the field directly, so a source
+            # with no move constructor (a combinator pinned by the record
+            # temporary it owns) still reaches the frame, and no source is
+            # moved on the way in.
+            src, rest = ctor_params[0], ctor_params[1:]
+            make = self._in_place_factory_name(func)
+            in_place_params = ", ".join(
+                ["std::in_place_t", f"F_{make}&& {make}_"]
+                + [p.ctor_param_decl() for p in rest])
+            in_place_inits = [
+                "__state(S_INITIAL)", *self._resumable_extra_ctor_inits(),
+                f"{src.cpp_name}(std::forward<F_{make}>({make}_)())",
+                *(p.ctor_init() for p in rest)]
+            out.write(f"{INDENT}template <typename F_{make}>\n")
+            out.write(f"{INDENT}{struct_name}({in_place_params})\n")
+            out.write(f"{INDENT}{INDENT}: {', '.join(in_place_inits)} {{}}\n\n")
 
         if dtor_cases:
             self._emit_frame_dtor(out, struct_name, dtor_cases)
@@ -2053,6 +2141,51 @@ class AsyncCoroCodegen:
         args = self._factory_args_forwarded(func)
         out.write(f"{INDENT}return {struct_name}({args});\n")
         out.write(f"}}\n")
+        if self._builds_source_in_place(func):
+            header, ret, in_place_params, in_place_args = self._in_place_factory_parts(func)
+            out.write(f"{header}\n{ret} {escape_cpp_name(func.name)}({in_place_params}) {{\n")
+            out.write(f"{INDENT}return {ret}({in_place_args});\n")
+            out.write(f"}}\n")
+
+    def _builds_source_in_place(self, func: TpyFunction) -> bool:
+        """A genexpr frame whose source slot is a deduced type can be handed an
+        rvalue source, which it builds in place. A borrowed container keeps its
+        concrete type and is only ever bound by reference."""
+        if not func.is_genexpr:
+            return False
+        cparams = self._classify_params(func, None)
+        return bool(cparams) and cparams[0].kind is _CoroParamKind.STATIC_PROTOCOL
+
+    def _in_place_factory_parts(self, func: TpyFunction) -> tuple[str, str, str, str]:
+        """The genexpr factory overload that builds the source in place:
+        its template header, the frame type it returns (the source slot
+        deduced from what the factory argument returns), its params and the
+        args it forwards to the frame's in-place constructor."""
+        cparams = self._classify_params(func, None)
+        rest = cparams[1:]
+        make = self._in_place_factory_name(func)
+        parts = [f"typename {tp}" for tp in func.type_params]
+        parts.append(f"typename F_{make}")
+        parts.extend(f"typename {p.field_type}" for p in rest)
+        targs = (list(func.type_params) + [f"std::invoke_result_t<F_{make}>"]
+                 + [p.field_type for p in rest])
+        ret = f"{self.gen_struct_name(func, None)}<{', '.join(targs)}>"
+        params = ", ".join(["std::in_place_t", f"F_{make}&& {make}"]
+                           + [p.factory_param_decl() for p in rest])
+        args = ", ".join(
+            ["std::in_place", f"std::forward<F_{make}>({make})"]
+            + [f"std::forward<{p.ctor_param_type}>({p.cpp_name})" for p in rest])
+        return f"template <{', '.join(parts)}>", ret, params, args
+
+    @staticmethod
+    def _in_place_factory_name(func: TpyFunction) -> str:
+        """The name of the source factory's param in the in-place overloads
+        (`F_<name>` its deduced type), distinct from every capture -- a capture
+        spells `<name>` and `F_<name>` the same way."""
+        name = "make"
+        while name in func.capture_params:
+            name += "_"
+        return name
 
     def _factory_args_forwarded(
             self, func: TpyFunction,
@@ -2080,7 +2213,7 @@ class AsyncCoroCodegen:
         for cparam in self._classify_params(func, record_name):
             if cparam.cpp_name == "__self":
                 continue
-            if cparam.kind in (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN):
+            if cparam.kind in _DEDUCED_SLOT_KINDS:
                 parts.append(
                     f"std::forward<{cparam.ctor_param_type}>({cparam.cpp_name})")
             elif cparam.kind is _CoroParamKind.OWNED_VALUE:
@@ -3112,7 +3245,10 @@ class AsyncCoroCodegen:
                         # gen_coro_struct (matching hoisted user locals).
                         info = self.gen_generators._analyze_for_strategy(
                             s, cur_uid, proto_param_names=proto_param_names,
-                            proto_param_alias=proto_param_alias)
+                            proto_param_alias=proto_param_alias,
+                            aliasing_source=(
+                                func.is_genexpr
+                                and not func.genexpr_container_by_protocol))
                         if info is None:
                             raise rcfg._CFGNotYetSupported(
                                 "yield inside this for-loop shape is not yet "
@@ -3129,7 +3265,8 @@ class AsyncCoroCodegen:
                     # var or the proxy-ref borrow tuple (`d.items()`), which
                     # carries the const inside its element pointers.
                     _holder = (info.pointer_form_loop_var
-                               or info.borrow_tuple_loop_var)
+                               or info.borrow_tuple_loop_var
+                               or info.opt_ptr_loop_var)
                     if _holder is not None:
                         if info.pointer_form_is_const:
                             rcfg.mark_frame_const(
@@ -4204,10 +4341,6 @@ class AsyncCoroCodegen:
         has_dtor = bool(self._dtor_cleanup_cases(cfg))
         if has_dtor:
             out.write(f"{inner}try {{\n")
-        if cfg.yield_sites:
-            out.write(f"{inner}while (true) switch (__state) {{\n")
-        else:
-            out.write(f"{inner}switch (__state) {{\n")
         # Case-label order matches the enum in gen_coro_struct. Every body is
         # rendered once, in that order, before any is written: a body that
         # only re-dispatches shares its target's case instead, so a loop pays
@@ -4244,6 +4377,16 @@ class AsyncCoroCodegen:
             if label.kind is _StateKind.RESUME and label.idx in after:
                 return f"  // after: {after[label.idx]}"
             return ""
+        single_loop = self._single_loop_form(
+            func, cfg, order, bodies, stacked, forwarded, has_dtor)
+        if single_loop is not None:
+            out.write(single_loop)
+            self.ctx.indent_level = 0
+            return
+        if cfg.yield_sites:
+            out.write(f"{inner}while (true) switch (__state) {{\n")
+        else:
+            out.write(f"{inner}switch (__state) {{\n")
         for bb_id, label in order:
             if bb_id in forwarded:
                 continue
@@ -4261,6 +4404,122 @@ class AsyncCoroCodegen:
             out.write(f"{inner}}}\n")
         out.write(f"{inner}__builtin_unreachable();\n")
         self.ctx.indent_level = 0
+
+    def _single_loop_form(self, func: TpyFunction, cfg: 'rcfg.CFG',
+                          order: 'list[tuple[int, _StateLabel]]',
+                          bodies: 'dict[int, str]',
+                          stacked: 'dict[int, list[_StateLabel]]',
+                          forwarded: 'set[int]', has_dtor: bool) -> 'str | None':
+        """The body of a generator whose ONLY resume point is the head of its
+        one loop, or None when the frame is not that shape.
+
+        Such a frame has two live cases: the entry, which only seeds the loop,
+        and the loop head, which every yield resumes at and every `continue`
+        re-enters. Dispatching on `__state` to reach the one place control can
+        be buys nothing, and behind an out-of-line consumer the dispatch plus
+        a state store per element is the whole gap to a hand-written loop. The
+        loop is emitted as a plain `for (;;)`; `__state` keeps only what still
+        needs remembering: that the seed ran (unless the constructor ran it),
+        and that the source is exhausted (unless asking it again is free and
+        harmless -- a begin/end pair or a range counter)."""
+        if not (self._is_generator_shape() and func.is_genexpr):
+            return None
+        if has_dtor or cfg.finally_helpers:
+            return None
+        live = [(bb, label) for bb, label in order if bb not in forwarded]
+        if len(live) != 2 or live[0][1].kind is not _StateKind.INITIAL:
+            return None
+        (init_bb, _init_label), (loop_bb, loop_label) = live
+        group = ({loop_label.cpp_name()}
+                 | {a.cpp_name() for a in stacked.get(loop_bb, ())})
+        seed = _SEED_THEN_JUMP.fullmatch(bodies[init_bb])
+        if seed is None or seed.group("label") not in group:
+            return None
+        advances = [bb.terminator for bb in cfg.blocks.values()
+                    if isinstance(bb.terminator, rcfg.AsyncForAdvance)]
+        if len(advances) != 1:
+            return None
+        info = self._for_info(func, advances[0].uid)
+        idempotent = info is not None and info.strategy in ("begin_end", "range")
+        loop_body = bodies[loop_bb]
+        for store in _STATE_STORE.finditer(loop_body):
+            label, follows = store.group("label"), store.group("follows")
+            if label == "S_DONE":
+                if not follows.startswith("return "):
+                    return None
+            elif label not in group or not (follows == "continue;"
+                                            or follows.startswith("return ")):
+                return None
+        keep_done = "" if idempotent else "S_DONE"
+        loop_body = _STATE_STORE.sub(
+            lambda m: (m.group(0) if m.group("label") == keep_done
+                       else m.group(0)[m.group(0).index("\n") + 1:]),
+            loop_body)
+        # A `continue` that ends the loop body says nothing the closing brace
+        # does not, and gcc compiles the redundant `else { continue; }` arm of
+        # a filter into a measurably slower loop (10% behind an out-of-line
+        # consumer).
+        loop_body = _TRAILING_CONTINUE.sub(
+            lambda m: f"{m.group('close')}\n" if m.group("close") else "", loop_body)
+        inner = INDENT
+        out = io.StringIO()
+        if not idempotent:
+            out.write(f"{inner}if (__state == S_DONE) return "
+                      f"::tpy::make_unexpected(::tpy::StopIteration{{}});\n")
+        seeded = rcfg.resumable_state(func).ctor_loop_seed
+        seed_lines = [ln.strip() for ln in seed.group("seed").splitlines() if ln.strip()]
+        if seeded is None or [ln.replace("this->", "") for ln in seeded] != seed_lines:
+            out.write(f"{inner}if (__state == S_INITIAL) {{\n")
+            out.write(seed.group("seed"))
+            out.write(f"{inner}{INDENT}__state = {loop_label.cpp_name()};\n")
+            out.write(f"{inner}}}\n")
+        # The exhaustion test leads the loop. Where nothing has to be recorded
+        # on the way out it is the loop's own condition, with the terminal
+        # return AFTER the loop: gcc lays the in-loop spelling out with the
+        # cold return on the hot path (a measured 12% on an out-of-line
+        # consumer).
+        stop = "::tpy::make_unexpected(::tpy::StopIteration{})"
+        head = _EXHAUSTED_HEAD.match(loop_body) if idempotent else None
+        if head is not None:
+            out.write(f"{inner}while ({_negated(head.group('test'))}) {{\n")
+            out.write(loop_body[head.end():])
+            out.write(f"{inner}}}\n")
+            out.write(f"{inner}return {stop};\n")
+        else:
+            out.write(f"{inner}for (;;) {{\n")
+            out.write(loop_body)
+            out.write(f"{inner}}}\n")
+            out.write(f"{inner}__builtin_unreachable();\n")
+        return out.getvalue()
+
+    def _constructor_loop_seed(self, func: TpyFunction) -> 'list[str] | None':
+        """The loop-seeding statements a genexpr frame runs in its CONSTRUCTOR,
+        or None when it seeds at the first pull.
+
+        CPython takes `iter(source)` where the genexpr is written, and a
+        begin/end pair over a BORROWED container points outside the frame, so
+        seeding early does not pin the frame. (A container grown while the
+        genexpr is live invalidates the pair -- no loan covers a genexpr's
+        source yet, BUGS.md#combinator-arg-no-iteration-loan; a first-pull
+        seed would shorten that window by the stretch before the first pull,
+        not close it.) A source the frame owns is seeded at the first pull: its
+        iterators would point into the frame, which may still move before then."""
+        if not func.is_genexpr or not func.body:
+            return None
+        loop = func.body[0]
+        if not (isinstance(loop, TpyForEach) and isinstance(loop.iterable, TpyName)):
+            return None
+        infos = list(rcfg.resumable_state(func).for_info_by_uid.items())
+        if len(infos) != 1:
+            return None
+        uid, info = infos[0]
+        if info.strategy != "begin_end" or any(
+                name == f"__for_src_{uid}" for name, _ in info.fields):
+            return None
+        # `this->`: the constructor's param shadows the member of the same name.
+        src = f"(this->{escape_cpp_name(loop.iterable.name)})"
+        return [f"__for_it_{uid}.emplace({src}.begin());",
+                f"__for_end_{uid}.emplace({src}.end());"]
 
     def _case_is_no_throw(self, cfg: 'rcfg.CFG', entry_bb: int) -> bool:
         """True iff the case body that starts at `entry_bb` provably
@@ -5558,6 +5817,8 @@ class AsyncCoroCodegen:
                     f"<{borrow_cpp}>(*({it})++);"]
             elif info.pointer_form_loop_var == stmt.var:
                 bind_post = [f"{cpp_var} = &(*({it})++);"]
+            elif info.opt_ptr_loop_var == stmt.var:
+                bind_post = [f"{cpp_var} = ::tpy::optional_to_ptr(*({it})++);"]
             else:
                 bind_post = [f"{cpp_var} = *({it})++;"]
             return ("", f"{it} == {end}", bind_post)
@@ -5584,6 +5845,8 @@ class AsyncCoroCodegen:
         # pointer-form `T*` (alias), frame_slot `.emplace`, or value assign.
         if info is not None and info.pointer_form_loop_var == stmt.var:
             bind_post = [f"{cpp_var} = &({elem});"]
+        elif info is not None and info.opt_ptr_loop_var == stmt.var:
+            bind_post = [f"{cpp_var} = ::tpy::optional_to_ptr({elem});"]
         elif stmt.var in self.ctx.generator_frame_slot_locals:
             bind_post = [f"{cpp_var}.emplace({elem});"]
         else:

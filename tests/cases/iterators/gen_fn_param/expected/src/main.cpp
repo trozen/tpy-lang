@@ -17,34 +17,6 @@ int32_t double_(int32_t n) {
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 
-
-// def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
-template <typename F_pred>
-__gen_filterfalse<F_pred> filterfalse(F_pred&& pred, const std::vector<int32_t>& it) {
-    return __gen_filterfalse<F_pred>(std::forward<F_pred>(pred), it);
-}
-
-
-// def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
-template <typename F_pred>
-__gen_takewhile<F_pred> takewhile(F_pred&& pred, const std::vector<int32_t>& it) {
-    return __gen_takewhile<F_pred>(std::forward<F_pred>(pred), it);
-}
-
-
-// def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
-template <typename F_pred>
-__gen_tag<F_pred> tag(F_pred&& pred, const std::vector<int32_t>& it) {
-    return __gen_tag<F_pred>(std::forward<F_pred>(pred), it);
-}
-
-
-// def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
-template <typename F_fn>
-__gen_transform<F_fn> transform(F_fn&& fn, const std::vector<int32_t>& it) {
-    return __gen_transform<F_fn>(std::forward<F_fn>(fn), it);
-}
-
 // def main() -> None:
 //     nums: list[int32] = [1, 7, 2, 9, 3]
 //     for v in filterfalse(is_small, nums):
@@ -127,60 +99,6 @@ void main() {
         }
     }
 }
-
-// # Generator method with an Fn param + break, reading a scalar self field.
-// def keep(self, pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
-//     n: int32 = 0
-//     for x in it:
-//         if n >= self.cap:
-//             break
-//         if pred(x):
-//             yield x                                                           # -> S_RESUME_0
-//             n += 1
-template <typename F_pred>
-std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__() {
-    while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        n = 0;
-        __for_it_0.emplace((it).begin());
-        __for_end_0.emplace((it).end());
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield x
-        n = ::tpy::add_check<int32_t>(n, 1);
-        __state = S_JOIN_2;
-        continue;
-    }
-    case S_JOIN_2:
-    case S_JOIN_0: {
-        if ((*__for_it_0) == (*__for_end_0)) {
-            __state = S_JOIN_1;
-            continue;
-        }
-        x = *((*__for_it_0))++;
-        if ((n >= __self.cap)) {
-            __state = S_JOIN_1;
-            continue;
-        } else {
-            if (pred(x)) {
-                __state = S_RESUME_0;
-                return x;
-            } else {
-                __state = S_JOIN_2;
-                continue;
-            }
-        }
-    }
-    case S_JOIN_1: {
-        __state = S_DONE;
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    __builtin_unreachable();
-}
-
 
 // main()
 void __tpy_init() {

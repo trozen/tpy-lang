@@ -610,6 +610,12 @@ class Parser:
         self._module_aliases: dict[str, str] = {}
         self._bare_module_imports: set[str] = set()
         self._reverse_module_aliases: dict[str, str] = {}
+        # Genexprs outside any type-param scope seen so far, and whether one
+        # sits in a body that may be emitted in a header (a method, a
+        # generator, an async def): that frame's `__next__` goes to
+        # `<mod>_inl.hpp`, which the compiler must know before sema runs.
+        self._plain_genexpr_count: int = 0
+        self._has_header_genexpr: bool = False
         self._for_unpack_counter: int = 0
         self._multi_assign_counter: int = 0
         self._tuple_unpack_counter: int = 0
@@ -1182,7 +1188,7 @@ class Parser:
             for method in record.methods:
                 desugar_suspension_positions(method)
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, docstring=self._module_docstring, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings, recursive_union_names=self._recursive_union_names)
+        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, docstring=self._module_docstring, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings, recursive_union_names=self._recursive_union_names, has_header_genexpr=self._has_header_genexpr)
 
     def _is_protocol_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.Protocol."""
@@ -2332,6 +2338,7 @@ class Parser:
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None, property_names: set[str] | None = None) -> TpyFunction:
         """Parse a method definition."""
+        genexprs_before = self._plain_genexpr_count
         # Check decorators (@staticmethod, @readonly, @native("cpp_name"), @override)
         is_staticmethod = False
         is_classmethod = False
@@ -2642,6 +2649,9 @@ class Parser:
         else:
             body = self._parse_body(node.body)
 
+        if self._plain_genexpr_count != genexprs_before:
+            self._has_header_genexpr = True
+
         # Detect generator methods (yield in body)
         is_generator = _body_contains_yield(body)
         if is_generator:
@@ -2752,6 +2762,7 @@ class Parser:
         Awaitable[T] in PR 3 (codegen). v1 sema rejects async + @error_return,
         async + @noalloc, async + yield (async generators), and user
         __await__ methods -- each as 'not yet supported'."""
+        genexprs_before = self._plain_genexpr_count
         is_noalloc = False
         is_hotpath = False
         is_inline = False
@@ -3026,6 +3037,9 @@ class Parser:
         self._type_param_scope = old_scope
 
         is_generator = _body_contains_yield(body)
+        if (self._plain_genexpr_count != genexprs_before
+                and (is_generator or isinstance(node, ast.AsyncFunctionDef))):
+            self._has_header_genexpr = True
         if is_generator:
             # Validate: no 'return value' inside generator
             _check_no_return_value_in_generator(body, node.name)
@@ -4300,6 +4314,8 @@ class Parser:
                 raise ParseError("Async comprehensions not yet supported", node)
             generator = self._parse_comprehension_generator(gen)
             element_expr = self._parse_expr(node.elt)
+            if not self._type_param_scope:
+                self._plain_genexpr_count += 1
             return TpyGeneratorExpression(element_expr, generator, loc=loc)
 
         elif isinstance(node, ast.Set):

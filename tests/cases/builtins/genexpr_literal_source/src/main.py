@@ -1,7 +1,7 @@
 # A generator expression over a NON-LVALUE source (a container literal): the
-# literal is a prvalue, built once in place inside the lambda's holder
-# (`__st = ::tpy::genexpr_state{...}`, no move) whose iterator seeds on the
-# first pull, unlike a bare-name source which the IIFE aliases by reference.
+# literal is a prvalue, built once in place inside the genexpr's frame (no
+# move), whose iterator seeds on the first pull, unlike a bare-name source
+# which the frame holds by reference.
 from tpy import int32
 
 

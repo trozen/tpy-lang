@@ -4,44 +4,201 @@
 namespace tpyapp::main {
 
 
+namespace {
+
+// print(sum(x * x for x in [1, 2, 3, 4]))
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_main_1_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame<T___src>&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// print(sum(x * x for x in [1, 2, 3, 4]))  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<int32_t> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        return (::tpy::mul_check<int32_t>(x, x));
+    }
+    __builtin_unreachable();
+}
+
+// print(sum(x * x for x in [1, 2, 3, 4]))
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr_main_1_frame<T___src> __genexpr_main_1(T___src&& __src) {
+    return __genexpr_main_1_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_main_1_frame<std::invoke_result_t<F_make>> __genexpr_main_1(std::in_place_t, F_make&& make) {
+    return __genexpr_main_1_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// print(all(x > 0 for x in [1, 2, 3]))
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame<T___src>, bool> {
+    int32_t __state;
+    T___src __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_2_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_main_2_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<bool, ::tpy::StopIteration> __next__();
+    __genexpr_main_2_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_2_frame<T___src>&) {
+        return os << "<generator __genexpr_main_2>";
+    }
+};
+
+// print(all(x > 0 for x in [1, 2, 3]))  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<int32_t> T___src>
+std::expected<bool, ::tpy::StopIteration> __genexpr_main_2_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        return (x > 0);
+    }
+    __builtin_unreachable();
+}
+
+// print(all(x > 0 for x in [1, 2, 3]))
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr_main_2_frame<T___src> __genexpr_main_2(T___src&& __src) {
+    return __genexpr_main_2_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_main_2_frame<std::invoke_result_t<F_make>> __genexpr_main_2(std::in_place_t, F_make&& make) {
+    return __genexpr_main_2_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// print(any(x > 5 for x in [1, 2, 3]))
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame<T___src>, bool> {
+    int32_t __state;
+    T___src __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_3_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_main_3_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<bool, ::tpy::StopIteration> __next__();
+    __genexpr_main_3_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_3_frame<T___src>&) {
+        return os << "<generator __genexpr_main_3>";
+    }
+};
+
+// print(any(x > 5 for x in [1, 2, 3]))  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<int32_t> T___src>
+std::expected<bool, ::tpy::StopIteration> __genexpr_main_3_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        return (x > 5);
+    }
+    __builtin_unreachable();
+}
+
+// print(any(x > 5 for x in [1, 2, 3]))
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr_main_3_frame<T___src> __genexpr_main_3(T___src&& __src) {
+    return __genexpr_main_3_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_main_3_frame<std::invoke_result_t<F_make>> __genexpr_main_3(std::in_place_t, F_make&& make) {
+    return __genexpr_main_3_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+}  // namespace
+
 // def main() -> None:
 //     print(sum(x * x for x in [1, 2, 3, 4]))
 //     print(all(x > 0 for x in [1, 2, 3]))
 //     print(any(x > 5 for x in [1, 2, 3]))
 void main() {
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{std::array<int32_t, 4>{1, 2, 3, 4}}]() mutable -> std::optional<int32_t> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                int32_t x = *(*__st.beg);
-                return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, x)));
-            }
-            return std::nullopt;
-        };
-    })) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpy::make_generator<bool>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{std::array<int32_t, 3>{1, 2, 3}}]() mutable -> std::optional<bool> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                int32_t x = *(*__st.beg);
-                return std::optional<bool>((x > 0));
-            }
-            return std::nullopt;
-        };
-    }))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpy::make_generator<bool>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{std::array<int32_t, 3>{1, 2, 3}}]() mutable -> std::optional<bool> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                int32_t x = *(*__st.beg);
-                return std::optional<bool>((x > 5));
-            }
-            return std::nullopt;
-        };
-    }))) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 4>{1, 2, 3, 4}; })) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpyapp::main::__genexpr_main_2(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpyapp::main::__genexpr_main_3(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n";
 }
 
 // main()

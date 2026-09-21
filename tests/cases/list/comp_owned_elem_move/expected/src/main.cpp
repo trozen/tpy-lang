@@ -45,26 +45,70 @@ void list_comp(int32_t n) {
     std::cout << ::tpy::__len__(ys) << " " << ::tpy::__getitem__(ys, 0).get() << "\n";
 }
 
+namespace {
+
+// print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))
+struct __genexpr_genexpr_1_frame : public ::tpy::next_iter_mixin<__genexpr_genexpr_1_frame, int32_t> {
+    int32_t __state;
+    int32_t __r0;
+    int32_t i;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __genexpr_genexpr_1_frame(int32_t __r0_)
+        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_genexpr_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_genexpr_1_frame&) {
+        return os << "<generator __genexpr_genexpr_1>";
+    }
+};
+
+// # owned move-temp in BOTH the genexpr element (score(Box(i))) and its filter
+// # condition (is_small(Box(i))) -- each must flush inside the frame body.
+// print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_genexpr_1_frame::__next__() {
+    if (__state == S_INITIAL) {
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(__r0));
+        __state = S_JOIN_0;
+    }
+    while ((*__for_i_0) < (*__for_stop_0)) {
+        i = ((*__for_i_0))++;
+        int32_t __tmp_3 = i;
+        ::tpystd::tplib::box::Box<int32_t> __tmp_4 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_3));
+        if (::tpyapp::main::is_small(__tmp_4)) {
+            int32_t __tmp_5 = i;
+            ::tpystd::tplib::box::Box<int32_t> __tmp_6 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_5));
+            return ::tpyapp::main::score(__tmp_6);
+        }
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))
+__genexpr_genexpr_1_frame __genexpr_genexpr_1(int32_t __r0) {
+    return __genexpr_genexpr_1_frame(__r0);
+}
+
+}  // namespace
+
 // def genexpr(n: int32) -> None:
 //     # owned move-temp in BOTH the genexpr element (score(Box(i))) and its filter
-//     # condition (is_small(Box(i))) -- each must flush into the lambda body.
+//     # condition (is_small(Box(i))) -- each must flush inside the frame body.
 //     print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))
 void genexpr(int32_t n) {
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
-        [__i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<int32_t> {
-            while (__i < __stop) {
-                int32_t i = __i++;
-                int32_t __tmp_3 = i;
-                ::tpystd::tplib::box::Box<int32_t> __tmp_4 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_3));
-                if (::tpyapp::main::is_small(__tmp_4)) {
-                    int32_t __tmp_5 = i;
-                    ::tpystd::tplib::box::Box<int32_t> __tmp_6 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_5));
-                    return std::optional<int32_t>(::tpyapp::main::score(__tmp_6));
-                }
-            }
-            return std::nullopt;
-        }
-    )) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_genexpr_1(n)) << "\n";
 }
 
 // def filtered(n: int32) -> None:

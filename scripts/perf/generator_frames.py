@@ -1,8 +1,10 @@
-# Generator-frame speed probe: the same filtered loop as a genexpr (closure
-# render) and as a `def` generator (resumable frame), under a builtin consumer
-# (`sum`), a user-defined Iterable consumer and a scanning `any`. Run with
-# `uv run tpy scripts/perf/generator_frames.py` (add `--cxx clang` for the
-# other toolchain). The goal is a `def` column close to the genexpr one.
+# Generator-frame speed probe: the same filtered loop as a genexpr and as a
+# `def` generator, under a builtin consumer (`sum`), a user-defined Iterable
+# consumer and a scanning `any`. Both are resumable frames; a genexpr frame
+# takes the single-loop emit form (no `__state` dispatch), so the gap between
+# the columns is what that form is worth to a `def` generator of the same shape.
+# Run with `uv run tpy scripts/perf/generator_frames.py` (add `--cxx clang` for
+# the other toolchain).
 # `any` compares like with like: `genb` yields the tested bool itself, since
 # `any(v < 0 for v in gen(...))` would time a genexpr wrapped around a frame.
 import time

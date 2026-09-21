@@ -6,6 +6,50 @@ namespace tpyapp::main {
 int32_t a{};
 int32_t b{};
 
+namespace {
+
+// parts = list(str(x) for x in nums)  # tpyc: type(list[str])
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, std::string> {
+    int32_t __state;
+    const std::array<int32_t, 3>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 3>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 3>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(const std::array<int32_t, 3>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// parts = list(str(x) for x in nums)  # tpyc: type(list[str])  # -> S_RESUME_0
+std::expected<std::string, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return ::tpy::fixed_to_str<int32_t>(x);
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// parts = list(str(x) for x in nums)  # tpyc: type(list[str])
+__genexpr_main_1_frame __genexpr_main_1(const std::array<int32_t, 3>& __src) {
+    return __genexpr_main_1_frame(__src);
+}
+
+}  // namespace
+
 // def main() -> None:
 //     nums = [10, 20, 30]  # tpyc: type(Array[int32, 3])
 //     for n in nums:  # tpyc: type(int32)
@@ -37,18 +81,7 @@ void main() {
         int32_t n = *__beg_0;
         std::cout << ::tpy::fixed_to_str<int32_t>(n) << "\n";
     }
-    std::vector<std::string> parts = ::tpy::construct<std::vector<std::string>>([&nums]() {
-        auto& __src = nums;
-        return ::tpy::make_generator<std::string>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<std::string>(::tpy::fixed_to_str<int32_t>(x));
-                }
-                return std::nullopt;
-            }
-        );
-    }());
+    std::vector<std::string> parts = ::tpy::construct<std::vector<std::string>>(::tpyapp::main::__genexpr_main_1(nums));
     std::cout << ::tpy::ListPrinter(parts) << "\n";
     int32_t p = 4;
     int32_t q = 5;

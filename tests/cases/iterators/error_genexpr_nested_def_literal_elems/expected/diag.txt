@@ -1,0 +1,1 @@
+main.py:11: error: a generator expression in a nested function cannot iterate a container whose elements are container literals of the enclosing function with no declared type; annotate the container where it is created

@@ -3558,6 +3558,16 @@ class TypeCompatibility:
                     f"(parameter or global).",
                     expr
                 )
+            fn = self.ctx.func.current_function
+            if for_yield and isinstance(fn, TpyFunction) and fn.is_genexpr:
+                # A genexpr has no return annotation to put `Own[...]` in.
+                raise self.ctx.error(
+                    f"Cannot yield a freshly-constructed '{return_type}' from a "
+                    f"generator expression: it is handed out by reference and would "
+                    f"dangle. Use a list comprehension '[...]' to materialize owned "
+                    f"elements instead.",
+                    expr
+                )
             raise self.ctx.error(
                 f"Cannot {verb} local or temporary as reference. "
                 f"Reference type '{return_type}' is {verb}ed by reference. "

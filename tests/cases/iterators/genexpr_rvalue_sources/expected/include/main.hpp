@@ -24,6 +24,17 @@ struct __gen_ranged;
 struct __gen_four;
 struct __gen_framegen;
 struct __coro_aio;
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr___init___3_frame;
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr_keys_sum_4_frame;
+struct __genexpr_framegen_7_frame;
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+struct __genexpr_framegen_8_frame;
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr_framegen_9_frame;
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+struct __genexpr_aio_10_frame;
 
 // def gen() -> Iterator[int32]:
 __gen_gen gen();
@@ -47,7 +58,7 @@ __gen_framegen framegen(const std::vector<int32_t>& xs);
 __coro_aio aio(const std::vector<int32_t>& xs);
 // @error_return(Err)
 // def fallible(d: dict[int32, int32]) -> int32:
-std::expected<int32_t, Err> fallible(const ::tpy::ordered_map<int32_t, int32_t>& d);
+std::expected<int32_t, Err> fallible(::tpy::ordered_map<int32_t, int32_t>& d);
 // def by_match(n: int32, xs: list[int32]) -> int32:
 int32_t by_match(int32_t n, const std::vector<int32_t>& xs);
 // def big(v: int32) -> bool:
@@ -63,6 +74,33 @@ int32_t byte_sum(::tpy::BytesView data);
 int32_t closure_pos(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k);
 // def main() -> None:
 void main();
+// self.total = sum(v for v in self.d.values())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr___init___3_frame<T___src> __genexpr___init___3(T___src&& __src);
+template <typename F_make>
+__genexpr___init___3_frame<std::invoke_result_t<F_make>> __genexpr___init___3(std::in_place_t, F_make&& make);
+// return sum(k for k in self.d.keys())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr_keys_sum_4_frame<T___src> __genexpr_keys_sum_4(T___src&& __src);
+template <typename F_make>
+__genexpr_keys_sum_4_frame<std::invoke_result_t<F_make>> __genexpr_keys_sum_4(std::in_place_t, F_make&& make);
+// yield sum(x for x in xs)  # tpyc: ok
+__genexpr_framegen_7_frame __genexpr_framegen_7(const std::vector<int32_t>& __src);
+// yield sum(a + b for a, b in zip(xs, xs))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+__genexpr_framegen_8_frame<T___src> __genexpr_framegen_8(T___src&& __src);
+template <typename F_make>
+__genexpr_framegen_8_frame<std::invoke_result_t<F_make>> __genexpr_framegen_8(std::in_place_t, F_make&& make);
+// yield sum(x for x in gen())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr_framegen_9_frame<T___src> __genexpr_framegen_9(T___src&& __src);
+template <typename F_make>
+__genexpr_framegen_9_frame<std::invoke_result_t<F_make>> __genexpr_framegen_9(std::in_place_t, F_make&& make);
+// return sum(i * x for i, x in enumerate(xs))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+__genexpr_aio_10_frame<T___src> __genexpr_aio_10(T___src&& __src);
+template <typename F_make>
+__genexpr_aio_10_frame<std::invoke_result_t<F_make>> __genexpr_aio_10(std::in_place_t, F_make&& make);
 
 // class Node:
 struct Node {
@@ -274,6 +312,350 @@ struct __gen_framegen : public ::tpy::next_iter_mixin<__gen_framegen, int32_t> {
     }
 };
 
+// self.total = sum(v for v in self.d.values())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr___init___3_frame : public ::tpy::next_iter_mixin<__genexpr___init___3_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    int32_t v;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr___init___3_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr___init___3_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr___init___3_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr___init___3_frame<T___src>&) {
+        return os << "<generator __genexpr___init___3>";
+    }
+};
+// # ctor: a dict-view source off the `self.d` field receiver.
+// self.total = sum(v for v in self.d.values())  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<int32_t> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr___init___3_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = ::tpy::unwrap_ref(*(*__for_r_0));
+        return v;
+    }
+    __builtin_unreachable();
+}
+
+
+// self.total = sum(v for v in self.d.values())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr___init___3_frame<T___src> __genexpr___init___3(T___src&& __src) {
+    return __genexpr___init___3_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr___init___3_frame<std::invoke_result_t<F_make>> __genexpr___init___3(std::in_place_t, F_make&& make) {
+    return __genexpr___init___3_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// return sum(k for k in self.d.keys())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr_keys_sum_4_frame : public ::tpy::next_iter_mixin<__genexpr_keys_sum_4_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    int32_t k;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_keys_sum_4_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_keys_sum_4_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_keys_sum_4_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_keys_sum_4_frame<T___src>&) {
+        return os << "<generator __genexpr_keys_sum_4>";
+    }
+};
+// # method: a dict-view source off the `self.d` field receiver.
+// return sum(k for k in self.d.keys())  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<int32_t> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_keys_sum_4_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        k = ::tpy::unwrap_ref(*(*__for_r_0));
+        return k;
+    }
+    __builtin_unreachable();
+}
+
+
+// return sum(k for k in self.d.keys())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr_keys_sum_4_frame<T___src> __genexpr_keys_sum_4(T___src&& __src) {
+    return __genexpr_keys_sum_4_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_keys_sum_4_frame<std::invoke_result_t<F_make>> __genexpr_keys_sum_4(std::in_place_t, F_make&& make) {
+    return __genexpr_keys_sum_4_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// yield sum(x for x in xs)  # tpyc: ok
+struct __genexpr_framegen_7_frame : public ::tpy::next_iter_mixin<__genexpr_framegen_7_frame, int32_t> {
+    int32_t __state;
+    const std::vector<int32_t>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_framegen_7_frame(const std::vector<int32_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_framegen_7_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_framegen_7_frame&) {
+        return os << "<generator __genexpr_framegen_7>";
+    }
+};
+
+// yield sum(a + b for a, b in zip(xs, xs))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+struct __genexpr_framegen_8_frame : public ::tpy::next_iter_mixin<__genexpr_framegen_8_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    std::tuple<int32_t, int32_t> __for_tup_gx;
+    int32_t a;
+    int32_t b;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_framegen_8_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_framegen_8_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_framegen_8_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_framegen_8_frame<T___src>&) {
+        return os << "<generator __genexpr_framegen_8>";
+    }
+};
+// yield sum(a + b for a, b in zip(xs, xs))  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_framegen_8_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_gx;
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
+        return (::tpy::add_check<int32_t>(a, b));
+    }
+    __builtin_unreachable();
+}
+
+
+// yield sum(a + b for a, b in zip(xs, xs))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+__genexpr_framegen_8_frame<T___src> __genexpr_framegen_8(T___src&& __src) {
+    return __genexpr_framegen_8_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_framegen_8_frame<std::invoke_result_t<F_make>> __genexpr_framegen_8(std::in_place_t, F_make&& make) {
+    return __genexpr_framegen_8_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// yield sum(x for x in gen())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr_framegen_9_frame : public ::tpy::next_iter_mixin<__genexpr_framegen_9_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_framegen_9_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_framegen_9_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_framegen_9_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_framegen_9_frame<T___src>&) {
+        return os << "<generator __genexpr_framegen_9>";
+    }
+};
+// yield sum(x for x in gen())  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<int32_t> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_framegen_9_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        return x;
+    }
+    __builtin_unreachable();
+}
+
+
+// yield sum(x for x in gen())  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr_framegen_9_frame<T___src> __genexpr_framegen_9(T___src&& __src) {
+    return __genexpr_framegen_9_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_framegen_9_frame<std::invoke_result_t<F_make>> __genexpr_framegen_9(std::in_place_t, F_make&& make) {
+    return __genexpr_framegen_9_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// return sum(i * x for i, x in enumerate(xs))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+struct __genexpr_aio_10_frame : public ::tpy::next_iter_mixin<__genexpr_aio_10_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    std::tuple<int32_t, int32_t> __for_tup_gx;
+    int32_t i;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_aio_10_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_aio_10_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_aio_10_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_aio_10_frame<T___src>&) {
+        return os << "<generator __genexpr_aio_10>";
+    }
+};
+// # async body: an enumerate source with an unpack head.
+// return sum(i * x for i, x in enumerate(xs))  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_aio_10_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_gx;
+        i = std::get<0>(__tup_1);
+        x = std::get<1>(__tup_1);
+        return (::tpy::mul_check<int32_t>(i, x));
+    }
+    __builtin_unreachable();
+}
+
+
+// return sum(i * x for i, x in enumerate(xs))  # tpyc: ok
+template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
+__genexpr_aio_10_frame<T___src> __genexpr_aio_10(T___src&& __src) {
+    return __genexpr_aio_10_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_aio_10_frame<std::invoke_result_t<F_make>> __genexpr_aio_10(std::in_place_t, F_make&& make) {
+    return __genexpr_aio_10_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
 
 // def __init__(self, v: int32) -> None:
 //     self.val = v
@@ -283,33 +665,13 @@ inline Node::Node(int32_t v) : val(v) {}
 //     self.d = d
 //     # ctor: a dict-view source off the `self.d` field receiver.
 //     self.total = sum(v for v in self.d.values())  # tpyc: ok
-inline Tally::Tally(::tpy::ordered_map<int32_t, int32_t>&& d) : d(std::move(d)), total(::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, [this]() {
-    return [__st = ::tpy::genexpr_state{::tpy::dict_values(this->d)}]() mutable -> std::optional<int32_t> {
-        if (!__st.beg) __st.beg = __st.src.begin();
-        else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-        while (*__st.beg != __st.src.end()) {
-            int32_t v = *(*__st.beg);
-            return std::optional<int32_t>(v);
-        }
-        return std::nullopt;
-    };
-}))) {}
+inline Tally::Tally(::tpy::ordered_map<int32_t, int32_t>&& d) : d(std::move(d)), total(::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr___init___3(std::in_place, [&]() { return ::tpy::dict_values(this->d); }))) {}
 
 // def keys_sum(self) -> int32:
 //     # method: a dict-view source off the `self.d` field receiver.
 //     return sum(k for k in self.d.keys())  # tpyc: ok
 inline int32_t Tally::keys_sum() const {
-    return ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(std::in_place, [this]() {
-        return [__st = ::tpy::genexpr_state{::tpy::dict_keys(this->d)}]() mutable -> std::optional<int32_t> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                int32_t k = *(*__st.beg);
-                return std::optional<int32_t>(k);
-            }
-            return std::nullopt;
-        };
-    }));
+    return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_keys_sum_4(std::in_place, [&]() { return ::tpy::dict_keys(this->d); }));
 }
 
 // def __enter__(self) -> int32:

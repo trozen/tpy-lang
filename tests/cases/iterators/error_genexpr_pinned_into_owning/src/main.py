@@ -33,8 +33,8 @@ class Noisy:
 
 
 def total(xs: list[int32]) -> int32:
-    # `enumerate` moves the inner genexpr's closure into its own storage; the
-    # closure holds a `zip` that owns `Noisy(2)` in place, with its iterator
+    # `enumerate` moves the inner genexpr's frame into its own storage; the
+    # frame holds a `zip` that owns `Noisy(2)` in place, with its iterator
     # already made.
     return sum(i + s for i, s in enumerate(a * b for a, b in zip(Noisy(2), xs)))  # tpyc: error(/genexpr.pinned_into_owning/)
 

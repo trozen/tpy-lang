@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
-from ..identity_map import IdentityMap
+from ..identity_map import IdentityMap, IdentitySet
 from ..parse import RebindStorage, SourceLocation, TryTier
 from ..typesys import NominalType, ResolvedBinop, TpyType
 
@@ -1329,86 +1329,41 @@ class THIRComprehension(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRGenExpr(THIRExpr):
-    """A lazy generator expression (`x > 0 for x in xs`) as a make_generator
-    render -- an argument to a native Iterable consumer (`all`/`any`/`sum`),
-    a for-head, a container ctor. An outer IIFE captures the refs
-    (`iife_captures`), binds the source, and returns `make_generator<slot>`
-    over an inner mutable lambda that binds each element (`binding_cpp`, or
-    the unpack head) and yields `std::optional<slot>(<element>)` until
-    exhausted; `inner_captures` are the outer locals the element / filters
-    read. One flag decides how the source is bound:
+    """The CREATION of a generator expression (`x > 0 for x in xs`): a call of
+    the frame factory of the generator function sema built for it
+    (`frame_factory_cpp`). The body -- the loop, the filters, the yield -- is
+    that function's and lowers like any generator body; this node carries only
+    what the expression contributes where it is written:
 
-    * BORROWED (`owned_source` False -- an lvalue: a name, a field, a
-      borrow-returning call): the IIFE aliases it (`auto& __src =
-      <iterable>;`) and the lambda seeds `__beg`/`__end` in its
-      init-captures, advancing with `*__beg++`.
-    * OWNED (`owned_source` True -- every rvalue: a container literal, a dict
-      view, a native combinator, a generator call, an `Own[container]` call):
-      the IIFE is the wrapper's in-place factory
-      (`make_generator<slot>(std::in_place, [caps]() { return <lambda>; })`)
-      and the lambda's init-capture builds the source once, eagerly, inside
-      a `::tpy::genexpr_state` holder (`__st = ::tpy::genexpr_state{<iterable>}`
-      -- CPython's `iter()` runs at construction too). The source is
-      aggregate-initialized from its prvalue, the closure is returned as a
-      prvalue and the wrapper constructs it in place (all guaranteed
-      elision). The lambda seeds
-      `__st.beg` (an `optional<begin_iter_t<S>>` -- an iterator need not be
-      default-constructible) on its first pull, so a MOVABLE source's
-      closure may still be moved before then. The element binds off
-      `*(*__st.beg)` and the ADVANCE is deferred to the next pull: a
-      one-pass source (`NextIterator` over a combinator or a generator
-      frame) has no postfix `++`, its deref aliases the iterator's own slot
-      until the next advance, and advancing before the `return` would pull
-      one source element ahead of the consumer where CPython pulls lazily.
+    * the SOURCE (`iterable`), evaluated here. BORROWED (`owned_source` False
+      -- an lvalue: a name, a field, a borrow-returning call) it is handed over
+      by reference. OWNED (every rvalue: a container literal, a dict view, a
+      native combinator, a generator call, an `Own[container]` call, a range)
+      it is built IN PLACE inside the frame from a factory
+      (`f(std::in_place, [&]() { return <iterable>; }, ...)`), so no source is
+      moved on the way in and a source with no move constructor still gets
+      there.
+      A `range(...)` source is neither: its bounds (`range_args`) go in by
+      value and the body loops over a range of them, so the frame walks plain
+      counters.
+    * the reads of the enclosing names the body captures (`frame_captures`),
+      each bound as a reference field.
 
-    The owned form's closure may be moved by an owning consumer (another
-    lazy combinator taking the genexpr as its rvalue argument) BEFORE the
-    first pull: the seed is lazy, so nothing points into `__st.src` yet, and
-    a source is movable until then -- the runtime's owning combinators hold no
-    cursor into themselves before it. After the first pull nothing moves it,
-    since every consumer that stores the closure moves it at construction.
-    One source is PINNED (`pinned_source`): a combinator owning a record
-    temporary whose `__iter__` returns a separate iterator, which no arg temp
-    can lift out of a genexpr's source; its closure has no move ctor and is
-    rejected at an owning boundary (`genexpr.pinned_into_owning`). A local
-    binding (`g = (...)`) is not lowered.
-
-    The multi-line render reads the enclosing statement indent off
-    `_EmitState.stmt_indent_level`. Range sources take the counter-lambda
-    flavor below (no IIFE)."""
-    iterable: 'THIRExpr | None' = None       # the lowered source (both forms)
-    element: 'THIRExpr | None' = None
-    slot_cpp: str = ""
-    binding_cpp: str = ""
-    iife_captures: str = ""
-    inner_captures: str = ""
-    owned_source: bool = False               # rvalue source: held in __st.src
-    # The closure cannot be moved, not even before the first pull: decided by
+    A frame is movable until its first pull, like its source -- so an owning
+    consumer (another lazy combinator taking the genexpr as its rvalue
+    argument) may move it. One source is PINNED (`pinned_source`): a
+    combinator owning a record temporary whose `__iter__` returns a separate
+    iterator, which no arg temp can lift out of a genexpr's source; its frame
+    has no move constructor and is rejected at an owning boundary
+    (`genexpr.pinned_into_owning`)."""
+    iterable: 'THIRExpr | None' = None
+    owned_source: bool = False
+    # The frame cannot be moved, not even before the first pull: decided by
     # the source route, consumed by the owning-boundary reject.
     pinned_source: bool = False
-    # Tuple-unpack head (`n for p, n in items`): the lambda body binds
-    # `auto& __tup_N = <deref>;` (the shared __tup counter, drawn at emit)
-    # plus one line per named target (`unpack_target_cpps[i] name =
-    # std::get<i>(__tup_N);` -- None targets are `_` discards). Empty for
-    # the single-loop-var shape (binding_cpp).
-    unpack_targets: tuple = ()
-    unpack_target_cpps: tuple = ()
-    const_loop_var: bool = False
-    # Filter conditions (`x for x in xs if x > t`): &&-joined truthy exprs
-    # wrapping the yield (`if (...) { return optional<slot>(elem); }` --
-    # the conditional yield arm; cond/yield temps flush inside
-    # the lambda body at their own indents).
-    conditions: tuple = ()
-    # RANGE source (`x for x in range(...)`): the counter-lambda flavor.
-    # `range_args` are the lowered bounds
-    # (1-3, each cast `static_cast<counter_cpp>(...)` in the init-captures);
-    # `binding_cpp` carries the pre-rendered `{counter} {var} = __i++;`
-    # (2-arg) / `= __i;` (3-arg, the emit adds `__i += __step;`); nargs==3
-    # adds the step checks (`range_overflow_check` gates the fixed-int
-    # overflow probe).
+    frame_factory_cpp: str = ""
     range_args: tuple = ()
-    counter_cpp: str = ""
-    range_overflow_check: bool = False
+    frame_captures: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -3649,6 +3604,12 @@ class THIRResumableBody:
     await_args: 'IdentityMap'
     return_values: 'IdentityMap'
     yield_values: 'IdentityMap' = field(default_factory=IdentityMap)
+    # The yields (TpyYield keys of `yield_values`) whose lowering granted an
+    # arg-temp right: a VALUE slot takes a copy of what the expression
+    # computes, so a temp may flush ahead of the `return` and die there. A
+    # borrow slot hands out a pointer the temp would not outlive, and is
+    # absent here.
+    yield_temp_rights: 'IdentitySet' = field(default_factory=IdentitySet)
     # ERASED/BORROWED await operands (keyed by the operand expr) and
     # bound-method await receivers (keyed by the receiver expr, R5):
     # the skeleton keeps its move / & / .get() / __self-prepend wrap, the leaf

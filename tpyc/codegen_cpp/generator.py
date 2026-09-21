@@ -157,6 +157,12 @@ class CodeGenerator:
         """
         self.inl_header_code: str | None = None
         self._inl_bodies = io.StringIO()
+        self._emits_inl = emits_inl
+        self._source_genexprs: IdentityMap[TpyFunction | None, list[TpyFunction]] | None = None
+        self._method_records: IdentityMap[TpyFunction, TpyRecord] = IdentityMap()
+        for record in module.all_records():
+            for method in record.methods:
+                self._method_records[method] = record
         self._inl_modules = list(inl_modules or ())
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
@@ -693,6 +699,8 @@ class CodeGenerator:
         for func in module.functions:
             if func.skip_codegen:
                 continue
+            if self._genexpr_in_source(func):
+                continue    # emitted above the body that creates it
             if func.is_generator:
                 if self._resumable_generator_eligible(func, None):
                     # Generator lowered onto the resumable frame. Non-template
@@ -725,8 +733,9 @@ class CodeGenerator:
                     self.gen_async.gen_factory(cpp, func)
                     cpp.write("\n")
                 continue
-            if self.functions.is_template_function(func):
+            if not self._function_body_in_source(func):
                 continue
+            self._emit_source_genexprs(cpp, module, [func])
             self.functions.gen_function_def(cpp, func)
             cpp.write("\n")
 
@@ -761,7 +770,12 @@ class CodeGenerator:
         # Non-trivial method bodies live in the .cpp (matches free-function
         # placement). Trivial bodies stay in the .hpp -- emitted earlier by
         # the matching `mode="def_hpp"` pass in `_generate_protocol_ordering`.
+        # A nested record's method definitions sit with its outermost record's.
+        family: dict[str, list[TpyFunction]] = {}
+        for record in module.all_records():
+            family.setdefault(record.name.split(".")[0], []).extend(record.methods)
         for record in self.records.sort_records_by_inheritance(module.records):
+            self._emit_source_genexprs(cpp, module, family.get(record.name, []))
             self.records.gen_record_method_defs(cpp, record, mode="def_cpp")
 
         # Generate module init function and main()
@@ -795,6 +809,7 @@ class CodeGenerator:
         if self.ctx.thir_top_level is None:
             reject_attempt("top_level", module)
         commit_attempt()
+        self._emit_source_genexprs(cpp, module, [None])
         self.functions.gen_module_init(cpp, module.top_level_stmts, init_globals,
                                        has_user_main=False, module_name=tpy_module_name)
         # Only generate C++ main() for entry point module
@@ -815,6 +830,58 @@ class CodeGenerator:
 
         return hpp.getvalue(), cpp.getvalue()
 
+    def _function_body_in_source(self, func: TpyFunction) -> bool:
+        """A free function whose one body is a plain definition in the .cpp."""
+        return not (func.skip_codegen or func.is_generator or func.is_async
+                    or self.functions.is_template_function(func))
+
+    def _genexpr_in_source(self, func: TpyFunction) -> bool:
+        """A generator expression whose frame lives in the .cpp, whole: only
+        the body that creates it can name it, so when that body is a plain
+        definition in the .cpp the header has no use for the frame. A body in
+        a header (a template, a small method, an inlined function) or a
+        resumable frame, which may hold the genexpr's frame by value, keeps
+        it in the header."""
+        if not func.is_genexpr:
+            return False
+        root = self.analyzer.ctx.genexpr_roots.get(func)
+        if root is None:
+            return True     # module level: the init function
+        record = self._method_records.get(root)
+        if record is None:
+            return self._function_body_in_source(root)
+        if root is record.init_method:
+            return self.records.ctor_def_mode(record) == "def_cpp"
+        return self.records.method_def_mode(root, record) == "def_cpp"
+
+    def _emit_source_genexprs(
+            self, cpp: TextIO, module: TpyModule,
+            roots: "list[TpyFunction | None]") -> None:
+        """The .cpp-resident genexpr frames the bodies of `roots` create (None
+        is the module init), each a whole unit with internal linkage."""
+        if self._source_genexprs is None:
+            self._source_genexprs = IdentityMap()
+            for f in module.functions:
+                if self._genexpr_in_source(f):
+                    root = self.analyzer.ctx.genexpr_roots.get(f)
+                    self._source_genexprs.setdefault(root, []).append(f)
+        units = [f for root in roots
+                 for f in self._source_genexprs.get(root, ())
+                 if self._resumable_generator_eligible(f, None)]
+        if not units:
+            return
+        cpp.write("namespace {\n\n")
+        with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+            for func in units:
+                self.gen_async.gen_coro_struct(cpp, func)
+                cpp.write("\n")
+                self.gen_async.gen_coro_poll_def(cpp, func)
+                cpp.write("\n")
+                self.gen_async.gen_coro_finally_top_def(cpp, func)
+                self.gen_async.gen_factory(cpp, func)
+                cpp.write("\n")
+        cpp.write("}  // namespace\n\n")
+
     def _emit_generator_next(self, cpp: TextIO, func: TpyFunction,
                              record_name: str | None) -> None:
         """A non-template generator's `__next__` definition: `inline` in
@@ -829,7 +896,9 @@ class CodeGenerator:
         body = buf.getvalue()
         size = sum(1 for line in body.splitlines()
                    if line.strip() and not line.lstrip().startswith("//"))
-        if size > _INLINE_NEXT_MAX_LINES:
+        # A genexpr in a header body the parser could not foresee (a function
+        # templated only by a protocol-typed param) has no inl file to go to.
+        if size > _INLINE_NEXT_MAX_LINES or (func.is_genexpr and not self._emits_inl):
             cpp.write(body + "\n")
             return
         struct_name = self.gen_async._struct_name_templated(func, record_name)
@@ -983,7 +1052,8 @@ class CodeGenerator:
             if func.is_async and not func.skip_codegen:
                 units.append((func, None, True))
         for func in module.functions:
-            if func.skip_codegen or not func.is_generator:
+            if (func.skip_codegen or not func.is_generator
+                    or self._genexpr_in_source(func)):
                 continue
             units.append((func, None, False))
         for record in module.all_records():
@@ -1492,6 +1562,8 @@ class CodeGenerator:
 
     def _gen_function_forward_decl(self, hpp: TextIO, func: TpyFunction) -> bool:
         """Emit the callable's declaration at either signature scheduling point."""
+        if self._genexpr_in_source(func):
+            return False
         if func.is_generator:
             if not self._resumable_generator_eligible(func, None):
                 return False
@@ -1649,7 +1721,7 @@ class CodeGenerator:
         # can reference the struct type name).
         emitted_gen_fwd = False
         for func in module.functions:
-            if func.skip_codegen:
+            if func.skip_codegen or self._genexpr_in_source(func):
                 continue
             if func.is_generator:
                 if self._resumable_generator_eligible(func, None):

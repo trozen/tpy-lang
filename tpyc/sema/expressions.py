@@ -9,6 +9,7 @@ from contextlib import ExitStack
 from dataclasses import replace as dc_replace
 from typing import Literal, TYPE_CHECKING
 
+from ..typesys import peel_value_readonly
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, RecordInfo, disambiguated_pair,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
@@ -27,8 +28,8 @@ from ..typesys import (
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
     unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, owned_tuple_storage_type,
     ConcreteCoroType,
-    yield_always_borrows,
     RecursiveAliasInstanceType, recursive_union_alternatives)
+from ..parse.nodes import GENEXPR_FUNC_PREFIX
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
@@ -43,7 +44,7 @@ from ..parse import (
     TpyIfExpr, TpyNamedExpr, TpyAwait,
     TpyLambda, TpyStarUnpack,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
-    TpyNestedDef,
+    TpyNestedDef, TpyIf, TpyYield, TpyTry, TpyAugAssign, TpyNonlocal,
     collect_name_refs,
 )
 from .. import qnames
@@ -59,7 +60,7 @@ from ..type_def_registry import (
 from ..namespace import BindingKind, NameBinding
 from .frame_traits import build_closure_frame
 from ..coercions import CoercionContext, resolve_coercion
-from ..prescan import _expr_to_narrowing_key
+from ..prescan import _expr_to_narrowing_key, bound_names_of, walrus_names_of
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
@@ -130,6 +131,40 @@ def _collect_body_local_defs(stmts: list[TpyStmt]) -> set[str]:
 
     walk_body_stmts(stmts, lambda e: None, on_stmt)
     return defs
+
+
+def _has_pending_literal_below(typ: TpyType, first_own: int) -> bool:
+    """`typ` is, or nests, a pending container literal created before literal
+    id `first_own`."""
+    if isinstance(typ, (PendingListType, PendingDictType, PendingSetType)):
+        return typ.literal_id < first_own
+    return any(_has_pending_literal_below(t, first_own) for t in typ.inner_types())
+
+
+def _names_rebound_by(stmt: TpyStmt) -> set[str]:
+    """The names this ONE statement can leave bound to a different value than
+    before: the whole-name binders and walruses prescan enumerates, an
+    `except ... as` target, and every `nonlocal` a nested def declares (it may
+    run whenever the def is called). An augmented assignment is not one: it
+    updates the value the name already has, which keeps its narrowing."""
+    names = set() if isinstance(stmt, TpyAugAssign) else set(bound_names_of(stmt))
+    names |= walrus_names_of(stmt)
+    if isinstance(stmt, TpyTry):
+        names.update(h.binding for h in stmt.handlers if h.binding is not None)
+    if isinstance(stmt, TpyNestedDef):
+        def on_inner(inner: TpyStmt) -> None:
+            if isinstance(inner, TpyNonlocal):
+                names.update(inner.names)
+        walk_body_stmts(stmt.func.body, lambda e: None, on_inner)
+    return names
+
+
+def _rebound_in(stmts: list[TpyStmt]) -> set[str]:
+    """Every name some statement of a body can rebind."""
+    names: set[str] = set()
+    walk_body_stmts(stmts, lambda e: None,
+                    lambda stmt: names.update(_names_rebound_by(stmt)))
+    return names
 
 
 def _nested_def_free_names(func: TpyFunction) -> set[str]:
@@ -3452,54 +3487,195 @@ class ExpressionAnalyzer:
         elem_type = self._resolve_comp_iterable(gen, expr)
         # Stamped where the comprehensions stamp it: lowering reads the fact
         # off the head (an `Iterator[Own[T]]` source has no genexpr lowering
-        # yet) and `_enter_comp_scope` keeps the loop var non-const.
+        # yet).
         gen.owns_elements = isinstance(elem_type, OwnType)
+        return self._analyze_genexpr_function(expr, elem_type)
 
-        if self.scopes is None:
-            raise RuntimeError("generator expression requires ScopeTracker")
-        result_elem_type = self._enter_comp_scope(gen, expr, elem_type, None)
+    def _analyze_genexpr_function(self, expr: TpyGeneratorExpression,
+                                  elem_type: TpyType) -> TpyType:
+        """A genexpr is a generator function created where it is written.
 
-        if isinstance(result_elem_type, IntLiteralType):
-            result_elem_type = self.ctx.default_int_type
-        elif isinstance(result_elem_type, FloatLiteralType):
-            result_elem_type = FLOAT
+        Its source is the first param, already analyzed above in this
+        function's flow (it is evaluated at creation); every enclosing local
+        the element and filters read is a further param, taken by reference.
+        The body is analyzed once, as a function, so every per-function fact
+        the frame emitter reads comes from the ordinary lifecycle."""
+        gen = expr.generator
+        outer = self.ctx.func.current_function
+        loc = expr.loc
+        inner: list[TpyStmt] = [TpyYield(expr.element_expr, loc=expr.element_expr.loc or loc)]
+        for cond in reversed(gen.conditions):
+            inner = [TpyIf(cond, inner, [], loc=cond.loc or loc)]
+        # A `range(...)` source: its bounds are evaluated here, where the
+        # genexpr is written, and handed over by value; the body loops over a
+        # range of them, which the frame walks with plain counters instead of
+        # an iterator over a Range object.
+        # The function's own names (source, range bounds, unpack holder) must
+        # not shadow a name the body reads from the enclosing function.
+        body_names = collect_name_refs(expr.element_expr)
+        for cond in gen.conditions:
+            body_names |= collect_name_refs(cond)
+        body_names |= {n for n in (gen.unpack_vars or [gen.var]) if n is not None}
+
+        def fresh(base: str) -> str:
+            # A frame's constructor spells a param `<name>_`, so a name one
+            # underscore away from a body name collides there too.
+            name, n = base, 0
+            while any(name in (other, other + "_") or name + "_" == other
+                      for other in body_names):
+                n += 1
+                name = f"{base}{n}"
+            return name
+        range_args: list[TpyExpr] = []
+        it = gen.iterable
+        if (isinstance(it, TpyCall) and it.func_name == "range" and not it.kwargs
+                and 1 <= len(it.args) <= 3
+                and not any(isinstance(a, TpyStarUnpack) for a in it.args)):
+            range_args = list(it.args)
+        src_name = fresh("__src")
+        bound_names = [fresh(f"__r{i}") for i in range(len(range_args))]
+        src: TpyExpr = TpyName(src_name, loc=loc)
+        if range_args:
+            src = TpyCall(TpyName("range", loc=loc),
+                          [TpyName(n, loc=loc) for n in bound_names], loc=loc)
+        if gen.unpack_vars is not None:
+            synth = fresh("__for_tup_gx")
+            unpack = TpyTupleUnpack(targets=list(gen.unpack_vars),
+                                    value=TpyName(synth, loc=loc), loc=loc)
+            loop = TpyForEach(synth, src, [unpack] + inner, loc=loc, is_tuple_unpack=True)
         else:
-            result_elem_type = resolve_int_literals(result_elem_type, self.ctx.default_int_for_literal)
+            loop = TpyForEach(gen.var, src, inner, loc=loc)
+        self.ctx.genexpr_counter += 1
+        if not isinstance(outer, TpyFunction):
+            outer = None    # module level: the init sentinel
+        owner = outer.name if outer is not None else "module"
+        # A loop var binds a copy of a value element, so a `readonly` on one
+        # (a view of a readonly dict) says nothing about it -- the for
+        # statement peels it the same way.
+        src_elem = peel_value_readonly(
+            resolve_int_literals(elem_type, self.ctx.default_int_for_literal))
+        if isinstance(src_elem, TupleType):
+            src_elem = TupleType(tuple(
+                peel_value_readonly(t) for t in src_elem.element_types))
+        src_type: TpyType = NominalType("Iterable", (src_elem,), is_protocol=True,
+                                        _module_qname=qnames.ITERABLE)
+        # A borrowed container keeps its own type: the frame walks it by
+        # begin/end, and a reference element (or a tuple member) aliases the
+        # source instead of riding a copied step result.
+        it_type = self.ctx.get_expr_type(gen.iterable)
+        container_lvalue = (
+            is_stable_address_lvalue(gen.iterable) and it_type is not None
+            and not is_protocol_type(unwrap_readonly(unwrap_ref_type(it_type)))
+            and builtin_modules.is_native_iterable(
+                unwrap_readonly(unwrap_ref_type(it_type)),
+                registry=self.ctx.registry))
+        # A nested def cannot hand an unsettled literal type of ITS enclosing
+        # function any further up, so there the deduced source slot stands in
+        # for the container's own type.
+        by_protocol = (container_lvalue and self.ctx.func.in_nested_def
+                       and contains_pending_leaf(it_type))
+        # The ELEMENT has no stand-in: the loop var is a frame field and needs
+        # its type when the nested def ends, before the literal settles
+        # (BUGS.md#genexpr-nested-def-literal-record-unpack).
+        if self.ctx.func.in_nested_def and _has_pending_literal_below(
+                elem_type, self.ctx.func.nested_def_first_literal):
+            raise self.ctx.error(
+                "a generator expression in a nested function cannot iterate a "
+                "container whose elements are container literals of the "
+                "enclosing function with no declared type; annotate the "
+                "container where it is created", gen.iterable)
+        if container_lvalue and not by_protocol:
+            src_type = unwrap_ref_type(it_type)
+        source_params: list[tuple[str, TpyType]] = [(src_name, src_type)]
+        if range_args:
+            source_params = [
+                (n, resolve_int_literals(
+                    unwrap_ref_type(self.ctx.get_expr_type(a) or elem_type),
+                    self.ctx.default_int_for_literal))
+                for n, a in zip(bound_names, range_args)]
+        func = TpyFunction(
+            name=f"{GENEXPR_FUNC_PREFIX}{owner}_{self.ctx.genexpr_counter}",
+            params=source_params, return_type=None, body=[loop],
+            is_generator=True, is_genexpr=True, loc=loc)
+        func.genexpr_container_by_protocol = by_protocol
+        func.genexpr_owner = owner if outer is not None else None
+        self.ctx.genexpr_roots[func] = self.ctx.func.body_root
+        # Every type param in scope where the expression is written is one of
+        # the function's own: the enclosing record's, then the enclosing
+        # function's.
+        rec = self.ctx.record_ctx
+        if rec is not None and rec.type_params:
+            func.type_params = list(rec.type_params)
+            func.type_param_kinds = list(rec.type_param_kinds or [])
+            func.type_param_bounds = dict(rec.type_param_bounds or {})
+        if outer is not None:
+            func.type_params = func.type_params + list(outer.type_params)
+            func.type_param_kinds = func.type_param_kinds + list(outer.type_param_kinds)
+            func.type_param_bounds = {**func.type_param_bounds, **outer.type_param_bounds}
+        # Inside a nested def the names it captured from ITS enclosing function
+        # are capturable too: the frame takes a reference either way.
+        assigned = (self.ctx.func.definitely_assigned
+                    | (self.ctx.func.outer_scope_locals or set()))
+        captures = [n for n in sorted(_nested_def_free_names(func)) if n in assigned]
+        reads = tuple(TpyName(name, loc=loc) for name in captures)
+        narrowed: list[str] = []
+        rebindable = [n for n in captures if self._capture_may_be_rebound(n)]
+        for read in reads:
+            # A capture borrows the enclosing variable whatever that variable
+            # owns, so the param never takes its `Own`.
+            captured = unwrap_own(self.analyze_expr(read))
+            declared = (self.ctx.func.current_scope.lookup(read.name)
+                        if self.ctx.func.current_scope is not None else None)
+            bare = (unwrap_readonly(unwrap_ref_type(declared))
+                    if declared is not None else None)
+            is_narrowed = (isinstance(bare, (OptionalType, UnionType))
+                           and captured != bare)
+            if is_narrowed and read.name not in rebindable:
+                narrowed.append(read.name)
+            if is_narrowed and read.name in rebindable:
+                # The body runs at each PULL, and something between two pulls
+                # can rebind this name: the narrowing proved at creation does
+                # not hold there, so the body sees the declared type and
+                # checks its own reads.
+                if not isinstance(bare, OptionalType):
+                    raise self.ctx.error(
+                        f"'{read.name}' is narrowed here, but the loop this "
+                        f"generator expression feeds rebinds it between pulls; "
+                        f"bind the narrowed value to a local first", read)
+                captured = unwrap_ref_type(declared)
+                self.ctx.set_expr_type(read, captured)
+            func.params.append((read.name, captured))
+        func.capture_params = tuple(captures)
+        assert self.ctx.analyze_genexpr_function is not None
+        self.ctx.analyze_genexpr_function(func)
+        assert func.generator_yield_type is not None
+        # Creating the frame hands the source and the captures to the function
+        # the way a call hands over its arguments, so its mutation facts reach
+        # this function the same way: a body that mutates through its loop var
+        # or a capture keeps the enclosing param a mutable borrow.
+        fis = self.ctx.registry.get_function(func.name)
+        if fis:
+            creation = TpyCall(TpyName(func.name, loc=loc),
+                               (range_args or [gen.iterable]) + list(reads), loc=loc)
+            creation.resolved_function_info = fis[-1]
+            self.calls._check_loop_var_arg_mutation(creation)
+            self.calls._record_mutation_call_edges(creation)
+        expr.frame_func = func
+        expr.frame_captures = reads
+        expr.frame_rebindable = tuple(rebindable)
+        self.ctx.stmt_genexprs.append((expr, tuple(narrowed)))
+        expr.frame_range_args = tuple(range_args)
+        expr.result_elem_type = func.generator_yield_type
+        return GenExprType(func.generator_yield_type)
 
-        expr.result_elem_type = result_elem_type
-        self._track_pending_elem_field(expr, "result_elem_type", result_elem_type)
-        # Genexpr borrow ABI: a bare non-value (non-readonly) element is handed
-        # out by reference (val_or_ref slot), zero-copy, like a def-generator's
-        # Iterator[T]. readonly / value elements keep the value (copy) slot.
-        # `yield_always_borrows`, not the slot predicate: an open `T` element
-        # borrows only at its reference instantiations, and a genexpr's slot is
-        # settled here, at its definition, with no per-instantiation verdict.
-        if yield_always_borrows(result_elem_type):
-            # A freshly-constructed element would dangle in the borrow slot.
-            # Accept borrows of the captured iteration (the loop var / its
-            # fields); reject fresh constructions and point at the
-            # list-comprehension form, which materializes owned storage.
-            # (Genexprs have no Own[] surface, so there is no owned opt-in.)
-            saved = self.ctx.func.bp_is_safe_to_return(gen.var)
-            self.ctx.func.bp_set_safe_to_return(gen.var, True)
-            try:
-                dangles = self.compat.is_dangling_return(expr.element_expr)
-            finally:
-                if not saved:
-                    self.ctx.func.bp_set_safe_to_return(gen.var, False)
-            if dangles:
-                raise self.ctx.error(
-                    f"Cannot yield a freshly-constructed '{result_elem_type}' from a "
-                    f"generator expression: it is handed out by reference and would "
-                    f"dangle. Use a list comprehension '[...]' to materialize owned "
-                    f"elements instead.",
-                    expr.element_expr,
-                )
-            # Hand out a mutable borrow (the loop var aliases the live source
-            # element), mirroring a def-generator borrow yield -- so the slot is
-            # val_or_ref<T> (T&), not const, and consumer mutation propagates.
-            gen.const_loop_var = False
-        return GenExprType(result_elem_type)
+    def _capture_may_be_rebound(self, name: str) -> bool:
+        """Whether something that runs between two pulls of a genexpr created
+        here can rebind `name`: the body of a `for` it feeds, or a closure
+        that writes the name. An argument-position consumer (`sum`, `any`,
+        `list`) pulls to the end inside one expression, so nothing can."""
+        if name in self.ctx.func.closure_written_names:
+            return True
+        return any(name in _rebound_in(body) for body in self.ctx.for_head_bodies)
 
     def _track_pending_elem_field(self, node: object, attr: str, typ: TpyType) -> None:
         """Record a comprehension element/key/value-type snapshot for finalization.

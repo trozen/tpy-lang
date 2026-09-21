@@ -1,0 +1,1 @@
+main.py:18: error: 'k' is narrowed here, but this generator expression is kept past the statement and 'k' can be rebound before it runs; bind the narrowed value to a local first

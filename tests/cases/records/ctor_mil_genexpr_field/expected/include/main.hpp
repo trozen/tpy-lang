@@ -12,8 +12,15 @@ struct N;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __genexpr___init___1_frame;
+struct __genexpr___init___2_frame;
+
 // def main() -> None:
 void main();
+// self.t = (sum(k for k in d), 1)
+__genexpr___init___1_frame __genexpr___init___1(const ::tpy::ordered_map<int32_t, int32_t>& __src);
+// self.t = (1, (sum(k for k in d), "a"))
+__genexpr___init___2_frame __genexpr___init___2(const ::tpy::ordered_map<int32_t, int32_t>& __src);
 
 // class H:
 struct H {
@@ -50,38 +57,68 @@ inline std::ostream& operator<<(std::ostream& os, const N& obj) {
     return os;
 }
 
+// self.t = (sum(k for k in d), 1)
+struct __genexpr___init___1_frame : public ::tpy::next_iter_mixin<__genexpr___init___1_frame, int32_t> {
+    int32_t __state;
+    const ::tpy::ordered_map<int32_t, int32_t>& __src;
+    int32_t k;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<int32_t, int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<int32_t, int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr___init___1_frame(const ::tpy::ordered_map<int32_t, int32_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr___init___1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr___init___1_frame&) {
+        return os << "<generator __genexpr___init___1>";
+    }
+};
+
+// self.t = (1, (sum(k for k in d), "a"))
+struct __genexpr___init___2_frame : public ::tpy::next_iter_mixin<__genexpr___init___2_frame, int32_t> {
+    int32_t __state;
+    const ::tpy::ordered_map<int32_t, int32_t>& __src;
+    int32_t k;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<int32_t, int32_t>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<int32_t, int32_t>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr___init___2_frame(const ::tpy::ordered_map<int32_t, int32_t>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr___init___2_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr___init___2_frame&) {
+        return os << "<generator __genexpr___init___2>";
+    }
+};
+
 
 // def __init__(self, d: dict[int32, int32]) -> None:
-//     # The genexpr reads `d`, so its lambda must capture it.
+//     # The genexpr reads `d`, a ctor param, from inside the init list.
 //     self.t = (sum(k for k in d), 1)
-inline H::H(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_t, int32_t>{::tpy::builtin_sum<int32_t>([&d]() {
-    auto& __src = d;
-    return ::tpy::make_generator<int32_t>(
-        [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
-            while (__beg != __end) {
-                int32_t k = *__beg++;
-                return std::optional<int32_t>(k);
-            }
-            return std::nullopt;
-        }
-    );
-}()), 1}) {}
+inline H::H(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_t, int32_t>{::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr___init___1(d)), 1}) {}
 
 // def __init__(self, d: dict[int32, int32]) -> None:
 //     # ... the same capture one tuple level deeper.
 //     self.t = (1, (sum(k for k in d), "a"))
-inline N::N(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_t, std::tuple<int32_t, std::string>>{1, std::tuple<int32_t, std::string>{::tpy::builtin_sum<int32_t>([&d]() {
-    auto& __src = d;
-    return ::tpy::make_generator<int32_t>(
-        [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
-            while (__beg != __end) {
-                int32_t k = *__beg++;
-                return std::optional<int32_t>(k);
-            }
-            return std::nullopt;
-        }
-    );
-}()), "a"}}) {}
+inline N::N(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_t, std::tuple<int32_t, std::string>>{1, std::tuple<int32_t, std::string>{::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr___init___2(d)), "a"}}) {}
 
 // def inner(self) -> int32:
 //     a, b = self.t

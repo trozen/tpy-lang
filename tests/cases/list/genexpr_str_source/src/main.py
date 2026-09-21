@@ -1,7 +1,6 @@
 # A generator expression over a STR source: the chars iterate off the same
-# begin/end pair a container does. The module-global source also pins that the
-# IIFE names the global directly -- capturing a namespace-scope object would be
-# ill-formed C++.
+# begin/end pair a container does. The module-global source also pins that a
+# namespace-scope object is handed to the frame like any other borrowed source.
 LETTERS = "abc"
 
 

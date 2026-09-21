@@ -1,0 +1,95 @@
+module_level 140
+module_nested_literal 3
+and_operand True
+  Noisy.__iter__ 2
+and_pinned True
+ternary 140
+if_condition big
+while_head 3
+comp_element [6, 14]
+lambda 15
+nested_def 15
+nested_def_own_literal 3
+for_head 2
+for_head 6
+iterable_param 12
+generator_param [102, 104, 106]
+owning_enumerate 0 2
+owning_enumerate 1 4
+owning_enumerate 2 6
+zip_two 2 11
+zip_two 4 21
+zip_two 6 31
+map_over [4, 6, 8]
+str_join 1,2,3
+  gen 0
+  gen 1
+  gen 2
+any_short_circuit True
+rebind_observed 10
+rebind_observed 22
+rebind_observed 36
+ref_mutated_live [1, 3, 5]
+enclosing_loop_var 18
+walrus 10
+generic True False
+narrowed 12 0
+narrowed_rebound 2
+narrowed_rebound 4
+narrowed_rebound 12
+ctor_init 12 method 30
+kept_rebindable 110
+kept_rebindable 122
+kept_rebindable 136
+cross_module_method 12
+cross_module_fn_generator [2, 4, 6]
+  weigh heavy 2 light 1
+nested_record_method 10
+  audit kept 2 dropped 1
+source_ctor 18 1 3 source_method 15
+method_own_list 15
+field 6
+set 6 dict 50
+range 14 22
+nested_literal 3 6
+nested_literal_mutated [[1], [2, 3, 9]]
+multi_filter 12
+tuple_elem [(1, 1), (2, 4), (3, 9)]
+raises two
+record_temp 12
+ref_elem 11 12
+record_unpack 24 [11, 13]
+record_unpack_literal 10
+param_loop_var_mutated 23 11 12
+param_capture_mutated 3 [11, 12]
+param_yield_mutated 111 112
+zip_unpack 23 11 12
+enumerate_unpack 43 21 22
+items_unpack 27 13 14
+view_unpack 8
+optional_filter 11
+optional_readonly 24 24
+optional_view 105
+generator_unpack 24 11 12
+capture_names 18 18 6 60
+capture_reseated 9 306 1
+  bound 3
+range_bound 0
+range_bound 1
+range_bound 2
+generic_method 3 1
+narrowed_for_head 2
+narrowed_for_head 4
+narrowed_for_head 6
+narrowed_loop_closure 47
+narrowed_kept 102
+narrowed_kept 104
+narrowed_kept 106
+narrowed_kept None
+narrowed_closure_written 54
+def_yield_temp [0, 2, 4]
+generator_body [12, 18]
+async 18
+by_match finally
+by_match finally
+match 5 12

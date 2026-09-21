@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Union
 
 from ..identity_map import IdentityMap
 from ..parse.nodes import (
+    GENEXPR_FUNC_PREFIX,
     TpyAssert, TpyAssign, TpyAwait, TpyBreak, TpyContinue, TpyExceptHandler,
     TpyExpr, TpyExprStmt, TpyForEach, TpyIf, TpyName,
     TpyMatch,
@@ -46,7 +47,7 @@ from ..parse.nodes import (
     stmts_have_any_return as _stmts_have_any_return,
 )
 from ..typesys import TypeParamRef
-from .context import (CodeGenError, module_to_cpp_namespace,
+from .context import (CodeGenError, escape_cpp_name, module_to_cpp_namespace,
                       resumable_struct_name)
 
 if TYPE_CHECKING:
@@ -103,6 +104,10 @@ class ResumableFuncState:
     for_fields: 'list[tuple[str, str]]' = field(default_factory=list)
     for_loop_info: 'IdentityMap' = field(default_factory=IdentityMap)
     for_info_by_uid: 'dict[int, GeneratorForInfo]' = field(default_factory=dict)
+    # The loop-seeding statements the frame's CONSTRUCTOR was emitted with
+    # (None = it seeds at the first pull). Recorded at struct emission and read
+    # by the body emission, which must not drop a seed the constructor lacks.
+    ctor_loop_seed: 'list[str] | None' = None
     async_for_struct_names: 'dict[int, str]' = field(default_factory=dict)
     # ptr-slot prescan (_prescan_resumable_ptr_slots): an rvalue write into a
     # pointer-form frame local materializes its backing storage in a
@@ -326,10 +331,11 @@ class FrameLocalKind(Enum):
 class FrameLocalLayout:
     """Placement verdict for one hoisted local. `const` applies to the
     pointer kinds (PTR_ALIAS / OPT_PTR: `const T*` when the local is one of
-    the frame's const bindings). `payload` is the frame_slot field's C++ payload
-    spelling for the kinds that cannot re-derive it from the local's type --
-    SOURCE_FORM_SLOT (spelled from the iteration source) and
-    MIXED_TUPLE_SLOT (the mixed render); None for every other kind.
+    the frame's const bindings). `payload` is the field's C++ payload spelling
+    for the kinds that cannot re-derive it from the local's type --
+    SOURCE_FORM_SLOT (spelled from the iteration source), MIXED_TUPLE_SLOT (the
+    mixed render), and a PTR_ALIAS whose pointee only the iteration source
+    knows (an unpack holder pointing into the step result); None otherwise.
 
     `effective_type` is the local's tuple type with per-element ownership made
     explicit (`Own[...]` on the elements the frame owns) for a tuple whose
@@ -379,7 +385,8 @@ def frame_struct_name(name: str, owner_record: 'str | None' = None,
                       shape: ResumableShape = ResumableShape.ASYNC) -> str:
     """Resumable-frame struct name from raw strings: `<prefix><name>` for
     free functions, `<prefix><Owner>_<name>` for methods, where the prefix
-    is `__coro_` for the async shape and `__gen_` for the generator one.
+    is `__coro_` for the async shape and `__gen_` for the generator one. A
+    generator expression's frame is `<name>_frame` instead.
 
     Single source of truth for the frame a function emits for itself, for
     the sub-coroutine struct of a statically-resolved await (always
@@ -387,6 +394,11 @@ def frame_struct_name(name: str, owner_record: 'str | None' = None,
     generator a `__for_src` field embeds, and for the async-with prescan
     (which only has the context manager's `NominalType.name`).
     """
+    # A generator expression's function is compiler-named, so the name already
+    # stands apart from a `def` generator's; the frame only needs telling from
+    # its factory.
+    if owner_record is None and name.startswith(GENEXPR_FUNC_PREFIX):
+        return f"{escape_cpp_name(name)}_frame"
     # The spelling itself (incl. the collision-free form for a nested
     # owner like `Outer.Inner`) is the context helper's; this only picks
     # the prefix from the shape.

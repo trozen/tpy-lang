@@ -4,6 +4,111 @@
 namespace tpyapp::main {
 
 
+namespace {
+
+// print(list(x * 2 for x in [1, 2, 3]))
+template <::tpystd::typing::Iterable<int32_t> T___src>
+struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame<T___src>, int32_t> {
+    int32_t __state;
+    T___src __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_1_frame(T___src&& __src_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+
+    template <typename F_make>
+    __genexpr_main_1_frame(std::in_place_t, F_make&& make_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_1_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame<T___src>&) {
+        return os << "<generator __genexpr_main_1>";
+    }
+};
+
+// print(list(x * 2 for x in [1, 2, 3]))  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<int32_t> T___src>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame<T___src>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state == S_INITIAL) {
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        return (::tpy::mul_check<int32_t>(x, 2));
+    }
+    __builtin_unreachable();
+}
+
+// print(list(x * 2 for x in [1, 2, 3]))
+template <::tpystd::typing::Iterable<int32_t> T___src>
+__genexpr_main_1_frame<T___src> __genexpr_main_1(T___src&& __src) {
+    return __genexpr_main_1_frame<T___src>(std::forward<T___src>(__src));
+}
+template <typename F_make>
+__genexpr_main_1_frame<std::invoke_result_t<F_make>> __genexpr_main_1(std::in_place_t, F_make&& make) {
+    return __genexpr_main_1_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
+}
+
+// print(sorted(list(x * 2 for x in nums)))
+struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, int32_t> {
+    int32_t __state;
+    const std::array<int32_t, 5>& __src;
+    int32_t x;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 5>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_main_2_frame(const std::array<int32_t, 5>& __src)
+        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_main_2_frame& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_2_frame&) {
+        return os << "<generator __genexpr_main_2>";
+    }
+};
+
+// print(sorted(list(x * 2 for x in nums)))  # -> S_RESUME_0
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (::tpy::mul_check<int32_t>(x, 2));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// print(sorted(list(x * 2 for x in nums)))
+__genexpr_main_2_frame __genexpr_main_2(const std::array<int32_t, 5>& __src) {
+    return __genexpr_main_2_frame(__src);
+}
+
+}  // namespace
+
 // # list() from iterators, both standalone and nested inside generic calls
 // def main() -> None:
 //     # Standalone
@@ -20,32 +125,11 @@ namespace tpyapp::main {
 //     print(all(list(iter(bools))))
 void main() {
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(std::in_place, []() {
-        return [__st = ::tpy::genexpr_state{std::array<int32_t, 3>{1, 2, 3}}]() mutable -> std::optional<int32_t> {
-            if (!__st.beg) __st.beg = __st.src.begin();
-            else if (*__st.beg != __st.src.end()) ++(*__st.beg);
-            while (*__st.beg != __st.src.end()) {
-                int32_t x = *(*__st.beg);
-                return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, 2)));
-            }
-            return std::nullopt;
-        };
-    }))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n";
     std::array<std::string, 2> words = {"hello", "world"};
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::__iter__(words))) << "\n";
     std::array<int32_t, 5> nums = {5, 3, 1, 4, 2};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::construct<std::vector<int32_t>>([&nums]() {
-        auto& __src = nums;
-        return ::tpy::make_generator<int32_t>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
-                while (__beg != __end) {
-                    int32_t x = *__beg++;
-                    return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, 2)));
-                }
-                return std::nullopt;
-            }
-        );
-    }()))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_2(nums)))) << "\n";
     std::cout << ::tpy::builtin_sum<int32_t>(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n";
     std::array<bool, 3> bools = {true, true, false};
     std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpy::construct<std::vector<bool>>(::tpy::__iter__(bools)))) << "\n";

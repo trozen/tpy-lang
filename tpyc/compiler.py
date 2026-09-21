@@ -1092,12 +1092,14 @@ class Compiler:
 
     def _module_emits_inl(self, mod_name: str) -> bool:
         """Whether `mod_name` emits `<mod>_inl.hpp`. Decided from the AST
-        (any generator function or method) rather than from what codegen
+        (any generator function or method, or a generator expression in a
+        body that may be emitted in a header, whose frame is a generator sema
+        builds later) rather than from what codegen
         emitted, so a dependent generated first -- a cycle peer -- sees the
         same answer. Explicitly generic generators define their bodies in
         the header and don't count; one templated only by a protocol-typed
-        param does (sema decides that), so its module gets a file with no
-        bodies."""
+        param or by its captures does (sema decides that), so its module gets
+        a file with no bodies."""
         cached = self._emits_inl_cache.get(mod_name)
         if cached is not None:
             return cached
@@ -1110,8 +1112,13 @@ class Compiler:
         if compiled is None:
             return False
         module = compiled.ast
-        if any(f.is_generator and not f.skip_codegen and not f.type_params
-               for f in module.functions):
+        if module.has_header_genexpr:
+            return True
+        # A genexpr's function joins the list during sema, so it answers
+        # through the parser's flag or the verdict would depend on when it is
+        # asked.
+        if any(f.is_generator and not f.is_genexpr and not f.skip_codegen
+               and not f.type_params for f in module.functions):
             return True
         return any(m.is_generator and not m.type_params
                    for record in module.all_records()
@@ -2909,7 +2916,9 @@ class Compiler:
         # Export all user-defined functions
         exported_funcs: set[str] = set()
         for func in compiled.ast.functions:
-            if func.is_overload_stub:
+            # A genexpr's function is nothing a module can import, wherever
+            # the expression was written.
+            if func.is_overload_stub or func.is_genexpr:
                 continue
             func_infos = analyzer.registry.get_function(func.name)
             if func_infos:

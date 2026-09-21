@@ -297,6 +297,9 @@ class TestDataclassDefaults:
             # Forward-referenced annotations keep their quotes in `f.type`.
             if f.type.strip("'\"") == "IdentityMap":
                 assert isinstance(getattr(body, f.name), IdentityMap), f.name
+            elif f.type.strip("'\"") == "IdentitySet":
+                # A set of nodes is keyed by identity like the maps are.
+                assert isinstance(getattr(body, f.name), IdentitySet), f.name
             else:
                 # A name-keyed table is the one shape that may be a dict;
                 # anything else keyed by a node must say IdentityMap.

@@ -1,79 +1,32 @@
 /**
- * TurboPython Runtime - Generator Wrapper
+ * TurboPython Runtime - Resumable-frame iteration helpers
  *
- * Wraps a callable returning optional<T> into an iterator with __next__()
- * and __iter__(), used for generator expressions.
+ * How a generator frame drives the source of a `for` loop it suspends inside:
+ * a self-iterator in place, any other source through an iterator the frame
+ * owns.
  *
- * Depends on: <optional>, <expected>
+ * Depends on: next_iter.hpp, frame_slot.hpp, dunder.hpp
  */
 
 #pragma once
 
-#include "core.hpp"
 #include "next_iter.hpp"
 #include "frame_slot.hpp"
 #include "dunder.hpp"
 
-#include <expected>
-#include <optional>
 #include <type_traits>
 #include <utility>
 
 namespace tpy {
 
-// A generator expression's OWNED source together with the iterator the closure
-// seeds on its first pull. Held as one aggregate built straight from the
-// source prvalue (aggregate init, guaranteed elision), and
-// `make_generator(std::in_place, factory)` below builds the closure in place
-// too, so constructing a genexpr moves nothing. The seed is lazy so that an
-// owning consumer may still move the closure before its first pull.
+// The element of a source's step result AS IT SITS in the frame's result slot:
+// what a pointer into that slot points at, whichever form the source handed
+// back (a lent `T&`, a fresh value, a proxy tuple of references). The slot
+// keeps the result until the next advance, so the pointer holds for the
+// iteration and nothing is copied or converted to take it.
 template<typename S>
-struct genexpr_state {
-    S src;
-    std::optional<begin_iter_t<S>> beg;
-};
-template<typename S> genexpr_state(S) -> genexpr_state<S>;
-
-// Generator expression wrapper: stores a mutable callable returning optional<T>,
-// provides __next__() and __iter__() so it integrates with direct __next__() loops.
-// Inherits begin()/end() from next_iter_mixin so C++ range-for works too.
-template<typename T, typename F>
-class generator_wrapper : public next_iter_mixin<generator_wrapper<T, F>, T> {
-    F fn_;
-public:
-    explicit generator_wrapper(F&& fn) : fn_(std::move(fn)) {}
-    // In-place form: `make()` returns the closure as a prvalue, so `fn_` is
-    // initialized without a move -- the only way to hold a non-movable closure.
-    template<typename Factory>
-    explicit generator_wrapper(std::in_place_t, Factory&& make) : fn_(make()) {}
-
-    std::expected<T, StopIteration> __next__() {
-        auto opt = fn_();
-        if (opt.has_value()) return *std::move(opt);
-        return tpy::make_unexpected(StopIteration{});
-    }
-
-    generator_wrapper& __iter__() { return *this; }
-
-    friend std::ostream& operator<<(std::ostream& os, const generator_wrapper&) {
-        return os << "<generator>";
-    }
-};
-
-template<typename T, typename F>
-generator_wrapper<T, F> make_generator(F&& fn) {
-    return generator_wrapper<T, F>(std::forward<F>(fn));
-}
-
-// The genexpr rvalue-source render: `make` is the IIFE that evaluates the
-// source and returns the closure holding its `genexpr_state`; the wrapper is
-// built in place from that prvalue, never moving the closure (see above).
-template<typename T, typename Factory>
-generator_wrapper<T, std::invoke_result_t<Factory&>>
-make_generator(std::in_place_t, Factory&& make) {
-    return generator_wrapper<T, std::invoke_result_t<Factory&>>(
-        std::in_place, std::forward<Factory>(make));
-}
+using for_step_elem_t = std::remove_reference_t<
+    decltype(::tpy::unwrap_ref(*std::declval<iter_result_t<S>&>()))>;
 
 // Resumable-frame `for x in <Iterable>` iterator handling. The source `src` is
 // already frame-resident (a captured param, a frame-held local, or a moved-in

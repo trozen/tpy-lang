@@ -11299,10 +11299,9 @@ def _native_iterable_range_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
 
 def _native_iterable_genexpr_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     """A generator expression into a NATIVE builtin's `Iterable[T]` slot
-    (`all(x > 0 for x in xs)`): the make_generator IIFE binds directly. Admitted
-    broadly here; `_lower_genexpr` raises for the shapes outside its slice
-    (range / filter / non-lvalue / unpack / owned / narrowed), so an unsupported
-    genexpr rejects rather than misrouting."""
+    (`all(x > 0 for x in xs)`): the frame creation binds directly. Admitted
+    broadly here; `_lower_genexpr` raises for the sources outside its slice, so
+    an unsupported genexpr rejects rather than misrouting."""
     if not isinstance(a, TpyGeneratorExpression):
         return False
     pb = _protocol_binding(ptype)

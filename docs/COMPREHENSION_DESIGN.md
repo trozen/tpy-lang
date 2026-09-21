@@ -12,7 +12,7 @@
 | 6 | Dict comprehension: `{key: value for var in iterable if cond}` | Done |
 | 7 | Set comprehension: `{expr for var in iterable if cond}` | Done |
 | 8 | `range(N)` -> Array: compile-time-known size produces `std::array<T, N>` | Done |
-| 9 | Generator expressions: `(expr for x in iterable)` -> lazy `make_generator` wrapper | Done |
+| 9 | Generator expressions: `(expr for x in iterable)` -> a generator frame | Done |
 
 ### Future Extensions
 
@@ -513,67 +513,178 @@ squares: list[int32] = list(x * x for x in range(5))
 
 ### Implementation
 
-The codegen produces a mutable C++ lambda returning `optional<T>`, wrapped in
-`tpy::generator_wrapper<T, F>` via `tpy::make_generator<T>(lambda)`. The
-wrapper provides `__next__()` (returning `std::expected<T, StopIteration>`) and
-`__iter__()`, integrating with the standard iterator infrastructure.
+A generator expression is an anonymous GENERATOR FUNCTION, created where the
+expression is written and compiled by the one resumable-frame emitter every
+`def` generator goes through. There is no separate genexpr producer.
 
 ```python
-result = sum_positive(x * x for x in data if x > 0)
+result = sum_positive(x * x + k for x in data if x > 0)
 ```
 
-```cpp
-auto __tmp_1 = tpy::make_generator<int32_t>(
-    [&, __beg = data.begin(), __end = data.end()]() mutable
-        -> std::optional<int32_t> {
-        while (__beg != __end) {
-            int32_t x = *__beg++;
-            if (x > 0) { return std::optional<int32_t>(x * x); }
-        }
-        return std::nullopt;
-    }
-);
-auto result = sum_positive(__tmp_1);
+Sema builds the function at the expression (`_analyze_genexpr_function`,
+`tpyc/sema/expressions.py`):
+
+```python
+def __genexpr_f_1(__src, k):        # source first, then the captures
+    for x in __src:
+        if x > 0:
+            yield x * x + k
 ```
+
+and analyzes it ONCE, through the ordinary `_analyze_function` lifecycle, under
+a function state of its own (the enclosing function's state is set aside and
+put back as itself). Every per-function fact the frame emitter reads -- frame
+locals, const verdicts, mutation facts, deferred yield-borrow checks -- comes
+from that lifecycle; nothing is filled in by hand. Three things are specific to
+a genexpr:
+
+- **The yield type is inferred** from the element at its one `yield`; the
+  function is registered once the body has settled it.
+- **The source is analyzed at the creation site**, in the enclosing function's
+  flow, because that is where it is evaluated (CPython's eager
+  `iter(outermost)`).
+- **Captures are params taken by reference.** A capture is every enclosing
+  name the element and filters read (`self` and a nested def's own captures
+  included). The frame holds each in a deduced-type forwarding slot, which an
+  lvalue argument makes a reference field of whatever C++ type the enclosing
+  variable has -- so the storage form of that variable stays the enclosing
+  body's business, and a rebind between two pulls is visible in the body.
+
+Creating the frame hands the source and the captures over the way a call hands
+over its arguments, and is recorded as one: a body that mutates through its
+loop var or through a capture keeps the enclosing param a mutable borrow.
+
+```cpp
+template <typename F_k>
+struct __genexpr_f_1_frame : ::tpy::next_iter_mixin<__genexpr_f_1_frame<F_k>, int32_t> {
+    int32_t __state;                     // every frame carries it; unread in this form
+    const std::vector<int32_t>& __src;   // borrowed source
+    F_k k;                               // deduced: `const int32_t&`
+    int32_t x;
+    ::tpy::frame_loop_slot<...> __for_it_0, __for_end_0;
+    __genexpr_f_1_frame(const std::vector<int32_t>& __src, F_k&& k_)
+        : __state(S_INITIAL), __src(__src), k(std::forward<F_k>(k_))
+        { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+    std::expected<int32_t, ::tpy::StopIteration> __next__() {
+        while (!((*__for_it_0) == (*__for_end_0))) {
+            x = *((*__for_it_0))++;
+            if ((x > 0)) { return x * x + k; }
+        }
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+};
+auto result = sum_positive(__genexpr_f_1(data, k));
+```
+
+**Where the frame is emitted.** Only the body that creates a genexpr can name
+its frame (the function is never exported), so the frame goes where that body
+goes. A body that is a plain definition in the `.cpp` -- a non-template
+function, a larger method or constructor of a non-generic record, the module
+init -- gets the whole frame (struct, `__next__`, factory) in an anonymous
+namespace directly above it, and the header never mentions it. A body emitted
+in a header (a generic function or record, a function templated by a
+protocol-typed param, a small method) keeps the frame in the header, and so
+does a generator or `async` body, whose own frame struct may hold the genexpr's
+by value. There it is placed like any generator frame: a TEMPLATE frame (a
+capture, a deduced source, the owner's type params) is inline in the header
+whole, since another module calling that body instantiates it; a non-template
+one has its struct in the header, its factory in the `.cpp` and its `__next__`
+in `<mod>_inl.hpp` -- or in the `.cpp` when the module emits no such file. `CodeGenerator._genexpr_in_source` asks the same partition predicates
+the drivers place the bodies with. The struct is named after the function with
+a `_frame` suffix (`__genexpr_<function>_<n>_frame`), so it reads apart from a
+`def` generator's `__gen_<name>`.
 
 Key properties:
 - **General** -- works with any function accepting `Iterable[T]`, not just builtins
 - **Lazy** -- elements computed on demand, no intermediate collection
-- **Zero allocation** -- lambda + wrapper live on stack
-- **Zero-cost with templates** -- `Iterable[T]` params compile as C++ templates,
-  so the compiler inlines through `make_generator` + lambda
+- **Zero allocation** -- the frame lives where the expression is consumed
+- **One producer** -- a genexpr behaves exactly like the hand-written generator
+  it is equivalent to, because it is one
 
-### Codegen strategies
+### The source
 
-| Source | Strategy | State |
-|--------|----------|-------|
-| `range(N)`, `range(start, stop)` | Counter lambda | `__i`, `__stop` init-captures |
-| `range(start, stop, step)` | Counter lambda with step checks | `__i`, `__stop`, `__step` init-captures |
-| Lvalue source (name, field, borrow-returning call) | IIFE aliases it (`auto& __src`) + begin/end captures | Iterator init-captures |
-| Rvalue source (literal, dict view, combinator, generator call, `Own[container]` call) | The IIFE is the wrapper's in-place factory (`make_generator<T>(std::in_place, [caps]() { return <lambda>; })`); the lambda's init-capture builds the source once inside a `::tpy::genexpr_state` holder (`__st = ::tpy::genexpr_state{<src>}`), whose `beg` (an `optional<begin_iter_t<S>>`) is seeded on the first pull and advanced on the next | Owned source + lazily seeded iterator, in one holder |
+| Source | How the frame takes it |
+|--------|------------------------|
+| `range(...)` | The bounds are evaluated at creation and go in BY VALUE; the body loops over a range of them, which the frame walks with plain counters |
+| Stable lvalue container (name, field, subscript) | Its own type, by reference; walked by begin/end, so a reference element -- or a record unpacked from a tuple element -- aliases the source |
+| Any rvalue (literal, dict view, combinator, generator call, `Own[container]` call), or a non-container iterable | A deduced slot the frame OWNS, built IN PLACE from a factory: `f(std::in_place, [&] { return <source>; }, captures...)` initializes the field from the prvalue the factory returns (guaranteed elision) |
 
 The source classification (`_source_route` in `tpyc/thir/lower/comprehensions.py`)
 is shared with the list/set/dict comprehensions: a source one form iterates, the
-other does too. The rvalue form never moves its source at construction: the
-holder is aggregate-initialized from the source prvalue, the IIFE returns the
-closure as a prvalue and `generator_wrapper` constructs it in place -- all
-guaranteed elision. The closure's movability is the holder's, and every source
-is movable until its first pull: a literal, a dict view, an `Own[container]`
-call, an unstarted generator frame, and the runtime's owning combinators,
-which hold no cursor into themselves before the first pull
-(`detail::owned_iter_source` / `owned_range_source` in `itertools.hpp`). So an owning consumer -- another lazy
-combinator taking the genexpr as its rvalue argument, `enumerate(x * 2 for x
-in xs)` -- may move the closure before its first pull; the seed is lazy, so
-nothing points into the holder yet, and after the first pull nothing moves it.
-One source pins its closure: a combinator owning a user-iterable temporary with
-a separate iterator, which no arg temp can lift out of a genexpr's source; at an
-owning boundary that is a located reject, `genexpr.pinned_into_owning`
-(`THIRGenExpr.pinned_source`, BUGS.md#separate-iter-temp-no-flush-slot).
-A local binding of a genexpr is not lowered. One asymmetry with the comprehension
-route: the genexpr source is lowered without arg temps (`allow_temps=False`)
-because its render sits inside the IIFE, which has no statement-level flush
-point for a hoisted `__tmp_N`, so a source call whose argument needs one
-rejects (BUGS.md#genexpr-source-needs-arg-temp).
+other does too. The in-place form never moves its source, makes no allocation,
+and admits a source with NO move constructor -- a combinator owning a
+user-iterable temporary with a separate iterator. That is the one source that
+pins its frame; at an owning boundary (another lazy combinator taking the
+genexpr as its rvalue argument) it is a located reject,
+`genexpr.pinned_into_owning` (`THIRGenExpr.pinned_source`,
+BUGS.md#separate-iter-temp-no-flush-slot). Every other frame is movable until
+its first pull, like its source, so `enumerate(x * 2 for x in xs)` may move it.
+
+A container LITERAL local of the enclosing function (`xs = [1, 2, 3]`) has not
+settled Array-vs-list when the genexpr over it is analyzed; the genexpr
+function's recorded types are handed up to the enclosing function's
+finalization, so the literal stays a `std::array` and the frame's param follows
+it. (Inside a nested def the deduced slot stands in: a nested def cannot hand
+an unsettled type of ITS enclosing function any further up.)
+
+A local binding of a genexpr is not lowered. One asymmetry with the
+comprehension route: the genexpr source is lowered with no arg-temp right, so a
+source call whose argument needs a hoisted temp rejects
+(BUGS.md#genexpr-source-needs-arg-temp).
+
+### Narrowing of a captured name
+
+The body runs at each pull, later than the creation. A narrowing proved at the
+creation holds in the body only where nothing can rebind the name between two
+pulls (`_capture_may_be_rebound`): an argument-position consumer (`sum`, `any`,
+`list`, `str.join`) pulls to the end inside one expression, so the capture is
+taken at its narrowed type (`const int32_t&` bound to `*k`). A `for` head whose
+loop body assigns the name, or a closure that writes it, breaks that: the
+capture is the whole `T | None`, the body reads it through the checked deref,
+and sema warns. A non-Optional union narrowed in that position is a compile
+error.
+
+A lazy value BOUND to a name outlives its statement too: `g = relay(x * k for x
+in xs)`, or a lazy combinator over the genexpr. The statement that binds it
+scans the rest of the enclosing body (`_check_retained_genexprs` in
+`tpyc/sema/statements.py`; the module's top-level statements at module level)
+for a rebind of a narrowed capture while the value is still live -- from the
+binding, by source position so a rebind later on the same line counts, up to
+the last read of the kept name, widened to the end of any loop that read sits
+in. A name the value is handed on to (`h = g`) is kept as well, a `nonlocal`
+write in a nested def counts as a rebind, and a nested def READING the kept
+name leaves the range open. A rebind inside that range is a located error
+naming the fix (bind the narrowed value to a local first). The scan cannot see
+types of statements it has not reached yet, so ANY statement that reads the
+kept name and binds another counts as handing it on, a consuming one included
+(BUGS.md#genexpr-kept-scan-consumer-binding).
+
+### Emit shape
+
+A genexpr frame has one resume point and it is the loop head, so
+`_single_loop_form` (`tpyc/codegen_cpp/gen_async.py`) emits the body as a plain
+loop with no `switch (__state)`; `__state` keeps only what still has to be
+remembered. Over a borrowed container the begin/end pair is seeded in the
+CONSTRUCTOR (the iterators point outside the frame, so this neither pins it nor
+changes behaviour) and asking the source again after exhaustion is free, so
+nothing is remembered at all. A frame that owns its source seeds at the first
+pull -- its iterators would point into the frame, which may still move -- and
+records exhaustion, since CPython never touches a finished source again.
+Measured against the closure render this replaced, the same generated sources
+built by hand at `-O3 -DNDEBUG` so both sides share one command line
+(`scripts/perf/generator_frames.py`, gcc-14 / clang-20, ms, closure -> frame):
+`sum` 76 -> 78 / 87 -> 86, a user `Iterable` consumer 77 -> 77 / 86 -> 85, `any`
+70 -> 72 / 103 -> 106. The same frames WITHOUT this form measured `sum` 79 /
+86, user 84 / 99, `any` 85 / 89 -- the form is worth 8% and 15% on the two gcc
+rows and 14% on clang's user row. (TODO.md's generator-frames perf entry quotes
+`uv run tpy` runs from another day; its absolute figures differ by a few ms.)
+Two gcc layout facts are encoded in the emitter: the terminal return sits AFTER
+the loop (12% on an out-of-line consumer), and a filter's redundant trailing
+`else { continue; }` is dropped (10%).
+
+The form is written against the frame's CFG shape but enabled for genexpr
+frames only; a `def` generator of the same shape still emits the state switch
+(TODO.md "The single-loop emit form for `def` generators").
 
 ### Rvalue binding
 
@@ -581,7 +692,7 @@ Generator expressions produce rvalue temporaries. Two mechanisms handle this:
 
 1. **User-defined functions** with protocol template params (`T_items& items`):
    `is_temporary_expr` recognizes `TpyGeneratorExpression`, triggering temp
-   hoisting (`auto __tmp_N = make_generator<T>(...);`).
+   hoisting (`auto __tmp_N = <frame creation>;`).
 
 2. **Runtime functions** (`str_join`, `list_extend`, `construct`, `dict_construct`):
    Non-range overloads in `iterable_ops.hpp` use forwarding references
@@ -591,20 +702,20 @@ Generator expressions produce rvalue temporaries. Two mechanisms handle this:
 
 `GenExprType(element_type)` is an internal-only type (not user-facing). It
 satisfies `Iterable[T]` and `Iterator[T]` protocols via special cases in
-`protocols.py`. The C++ type is always `auto` (deduced from `make_generator`).
+`protocols.py`. The C++ type is always `auto` (the frame of the function sema
+builds for the expression, deduced where it is bound).
 
-### Future optimization: fused IIFE for builtins
+### Future optimization: consumer fusion for builtins
 
 As a transparent optimization, the compiler could fuse `builtin(genexpr)`
-patterns into a single IIFE, bypassing the generator wrapper:
+patterns into a single loop, with no generator object at all:
 
 ```python
 total = sum(x * x for x in range(100))
-# -> fused accumulation loop, no make_generator
+# -> fused accumulation loop, no frame
 ```
 
-This is deferred -- the lambda approach is correct and efficient enough as
-baseline. Fusion can be added later without changing semantics.
+This is deferred -- the frame is correct and efficient enough as baseline. Fusion can be added later without changing semantics.
 
 ---
 

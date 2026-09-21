@@ -8693,9 +8693,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         arg, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.ITERABLE)))
                 elif isinstance(arg, TpyGeneratorExpression):
-                    # A genexpr rvalue (`list(x * x for x in xs)`): the
-                    # make_generator IIFE binds directly; _lower_genexpr
-                    # rejects the shapes outside its slice.
+                    # A genexpr rvalue (`list(x * x for x in xs)`): the frame
+                    # creation binds directly; _lower_genexpr rejects the
+                    # sources outside its slice.
                     _witness("call.inst_genexpr_arg")
                     lowered_args.append(_lower_expr(
                         arg, lc, declared,
@@ -9080,8 +9080,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 readonly_target=(params is not None
                                  and dcbp is not None
                                  and i in dcbp))
-            # A lazy combinator callee moves a genexpr argument's closure
-            # into its own storage; a pinned closure rejects here rather
+            # A lazy combinator callee moves a genexpr argument's frame
+            # into its own storage; a pinned frame rejects here rather
             # than in the C++ build.
             reject_pinned_genexpr_arg(e, a, lowered, analyzer)
             return lowered
@@ -10657,8 +10657,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return _lower_lambda(e, lc, declared)
     if isinstance(e, TpyGeneratorExpression):
         # A genexpr at an ITERABLE-consuming position (`list(x * x for x in
-        # xs)`, `items.extend(x * 10 for x in range(3))`): the
-        # make_generator render binds in place. Other value positions are
+        # xs)`, `items.extend(x * 10 for x in range(3))`): the frame
+        # creation binds in place. Other value positions are
         # unwitnessed and keep the dispatch-tail reject. Late import:
         # comprehensions imports this module.
         if use.result is _ExprResultUse.ITERABLE:
@@ -14450,8 +14450,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                              form=Form.STORAGE, loc=getattr(a, "loc", None))
     if isinstance(a, TpyGeneratorExpression) and not (
             protocol_slots and _protocol_arg_slot(ptype) is not None):
-        # A genexpr into a native builtin's Iterable slot -> the make_generator
-        # IIFE renders INLINE (`all(x > 0 for x in xs)` -- the @cpp_template
+        # A genexpr into a native builtin's Iterable slot -> the frame creation
+        # renders INLINE (`all(x > 0 for x in xs)` -- the @cpp_template
         # `{0}` substitution). A STRUCTURAL user slot hoists the auto temp
         # instead (the protocol block's genexpr arm below). Late import:
         # comprehensions imports this module.
@@ -15106,7 +15106,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if (isinstance(a, TpyGeneratorExpression)
                 and not is_dyn_protocol(proto)):
             # A genexpr at a STRUCTURAL slot (`sum_items(x * x for x in
-            # range(5))`): the make_generator render hoists into the same
+            # range(5))`): the frame creation hoists into the same
             # un-spelled auto temp as the iterator rvalues.
             if not temp_args:
                 raise ThirUnsupported(

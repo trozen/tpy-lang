@@ -6394,9 +6394,8 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
     elif (isinstance(a, TpyGeneratorExpression)
           and not is_dyn_protocol(proto)):
         # A genexpr at a STRUCTURAL slot (`sum_items(x * x for x in
-        # range(5))`): the make_generator render hoists into the same
-        # un-spelled auto temp; the genexpr's own lowering gates the
-        # source/element shapes (a reject there falls the body back).
+        # range(5))`): the frame creation hoists into the same un-spelled
+        # auto temp; the genexpr's own lowering gates the source shapes.
         return temps_ok
     elif isinstance(a, TpyStrLiteral) and not is_dyn_protocol(proto):
         # A str LITERAL at a STRUCTURAL slot (`count_chars("hello")` at
@@ -10612,10 +10611,10 @@ def _method_call_arg_ok(
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
         func_name: 'str | None' = None) -> bool:
     if isinstance(a, TpyGeneratorExpression):
-        # A genexpr arg renders its make_generator IIFE in place at any
-        # method slot (`", ".join(str(x) for x in nums)` -- the render is
-        # position-blind); the genexpr's own lowering
-        # gates the source/element shapes, so a bad shape still rejects.
+        # A genexpr arg renders its frame creation in place at any method
+        # slot (`", ".join(str(x) for x in nums)` -- the render is
+        # position-blind); the genexpr's own lowering gates the source
+        # shapes, so a bad shape still rejects.
         return True
     if not _plain_member_call_markers_ok(e, targs_ok=True):
         # generator_ok/coro_factory_ok unconditionally: the call-level gate

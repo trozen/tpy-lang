@@ -122,7 +122,6 @@ from ..nodes import (
     THIRFormConvert,
     THIRFunction,
     THIRFunctionLayout,
-    THIRGenExpr,
     THIRIf,
     THIRLiteral,
     THIRMilInit,
@@ -3118,11 +3117,6 @@ def _rejects_global_slot(node) -> bool:
     if isinstance(node, THIRAssign):
         # An OWN reseat's slot rides the hoist lines (static + global prefix
         # at module scope), like RECORD_HOISTED's; nothing block-scoped.
-        return False
-    if isinstance(node, THIRGenExpr):
-        # `slot_cpp` here is the make_generator YIELD-slot spelling
-        # (`optional<slot>`), not a `__slot_N` allocation -- _emit_genexpr
-        # calls next_slot() nowhere.
         return False
     return bool(getattr(node, "slot_cpp", None))
 

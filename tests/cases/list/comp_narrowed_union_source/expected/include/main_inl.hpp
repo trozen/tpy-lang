@@ -5,4 +5,55 @@
 
 namespace tpyapp::main {
 
+// # the same genexpr inside a generator frame (the capture is a frame member)
+// def gen(u: list[int32] | bytearray) -> Iterator[int32]:
+//     if isinstance(u, list):
+//         yield sum(x for x in u)  # tpyc: ok              # -> S_RESUME_0
+//         yield sum(x + 1 for x in u)                      # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        if (std::holds_alternative<const std::vector<int32_t>*>(u)) {
+            auto& __u = *std::get<const std::vector<int32_t>*>(u);
+            __state = S_RESUME_0;
+            return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_gen_4(__u));
+        } else {
+            auto& __u = *std::get<const ::tpy::ByteArray*>(u);
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_RESUME_0: {  // after: yield sum(x for x in u)  # tpyc: ok
+        auto& __u = *std::get<const std::vector<int32_t>*>(u);
+        __state = S_RESUME_1;
+        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_gen_5(__u));
+    }
+    case S_RESUME_1:  // after: yield sum(x + 1 for x in u)
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// yield sum(x for x in u)  # tpyc: ok  # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __genexpr_gen_4_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return x;
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// yield sum(x + 1 for x in u)  # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __genexpr_gen_5_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (::tpy::add_check<int32_t>(x, 1));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
 } // namespace tpyapp::main

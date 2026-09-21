@@ -32,7 +32,7 @@ namespace tpy {
 template<typename T, typename Container>
     requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
 void list_extend(std::vector<T>& v, Container&& other) {
-    auto __iter = tpy::__iter__(other);
+    auto&& __iter = tpy::__iter__(other);
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
@@ -46,7 +46,7 @@ template<typename T, typename Container>
     requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
 void list_set_slice(std::vector<T>& vec, BasicSlice sl, Container&& other) {
     std::vector<T> tmp;
-    auto __iter = tpy::__iter__(other);
+    auto&& __iter = tpy::__iter__(other);
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
@@ -61,7 +61,7 @@ template<typename T, typename Container>
     requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
 void list_set_stepped_slice(std::vector<T>& vec, Slice sl, Container&& other) {
     std::vector<T> tmp;
-    auto __iter = tpy::__iter__(other);
+    auto&& __iter = tpy::__iter__(other);
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
@@ -77,7 +77,8 @@ template<typename Container>
 inline std::string str_join(std::string_view sep, Container&& items) {
     std::string result;
     bool first = true;
-    auto __iter = tpy::__iter__(items);
+    // A self-iterator (a generator frame) hands back itself and has no copy.
+    auto&& __iter = tpy::__iter__(items);
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
@@ -94,7 +95,7 @@ template<typename Container, typename Iterable>
     requires (!std::ranges::input_range<std::remove_reference_t<Iterable>>)
 Container from_range(Iterable&& iterable) {
     Container result;
-    auto __iter = tpy::__iter__(iterable);
+    auto&& __iter = tpy::__iter__(iterable);
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
@@ -109,7 +110,7 @@ template<typename K, typename V, typename Iterable>
     requires (!std::ranges::input_range<std::remove_reference_t<Iterable>>)
 ordered_map<K, V> dict_from_pairs(Iterable&& iterable) {
     ordered_map<K, V> result;
-    auto __iter = tpy::__iter__(iterable);
+    auto&& __iter = tpy::__iter__(iterable);
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
