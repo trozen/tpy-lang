@@ -8655,8 +8655,11 @@ M3.22 adds the [full-expression temporary storage contract](MIR_M3_EXPRESSION_TE
 at the internal THIR/MIR boundary. Verified plain-record constructor temporaries
 use child storage regions; evaluated scalar results survive in the parent.
 Lazy operands share their enclosing expression's end, and loop conditions
-start a fresh activation each evaluation. M3.23's source producers are planned;
-general call temporaries, reference escapes and custom cleanup remain uncovered.
+start a fresh activation each evaluation. M3.23 connects scalar constructor
+field reads and discarded constructors in ordinary functions, methods and
+constructor tails, including scalar locals, field RHS writes, returns and
+if/while conditions. General call temporaries (including constructors lowered
+as module-qualified calls), reference escapes and custom cleanup remain uncovered.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

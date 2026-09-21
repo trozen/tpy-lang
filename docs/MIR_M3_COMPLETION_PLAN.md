@@ -1,7 +1,7 @@
 # M3 completion checklist
 
 Current planning index, updated 2026-09-21. Implementation exists through
-M3.22; review/merge status is separate. The numbered increment plans below record
+M3.23; review/merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -76,8 +76,9 @@ the others visible.
   producers and expression temporaries remain separate work.
   The approved [M3.22/M3.23 batch](MIR_M3_EXPRESSION_TEMPORARIES_PLAN.md)
   models hook-free record constructor full-expression temporaries. M3.22
-  supplies the internal lowering contract; M3.23's source integration is
-  planned. Named argument temporaries and aggregate materialization remain open.
+  supplies the internal lowering contract; M3.23 connects scalar constructor
+  reads/discards in ordinary expressions and conditions. Named argument
+  temporaries and aggregate materialization remain open.
   [M3.18](MIR_M3_TUPLE_ALIAS_PLAN.md) additionally covers fixed whole aliases
   of body-local constructor tuples; alias reseating, owning tuple rebinding
   and hoists remain open, including the source defects listed in that plan.

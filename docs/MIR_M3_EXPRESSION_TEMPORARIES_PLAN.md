@@ -1,6 +1,6 @@
 # Full-expression record temporaries: M3.22/M3.23
 
-Status: M3.22 implemented at the internal boundary; M3.23 in progress.
+Status: M3.22 and M3.23 implemented, reviewed and verified; ready for delivery.
 Base: `d0dedbee52`. This batch covers part of W1's expression-storage gap in
 [the M3 completion checklist](MIR_M3_COMPLETION_PLAN.md). It does not complete
 W1 or M3. Tuple-language completeness remains a separate release workstream.
@@ -94,6 +94,11 @@ Every axis must admit a cell; metadata alone never opens another axis.
 Cyclic copy/move and in-place replacement remain a separate W1 task. No
 owning-operation cycle gate is relaxed by this batch.
 
+Imported bare constructor names use the same fact producer when their verified
+definitions are supplied. Module-qualified constructor syntax currently lowers
+through `THIRCall`, not `THIRCtorCall`; that route stays uncovered with the
+general-call boundary. This is an analysis gap, not a source rejection.
+
 ## Pitfalls and verification
 
 - `silent-copy-vs-alias`, `copy-warning-at-wrong-site`, `tuple-equals-scalar`:
@@ -116,3 +121,21 @@ owning-operation cycle gate is relaxed by this batch.
 Design probes matched CPython for scalar reads/writes, conditions, discarded
 construction and lazy operands. Structural lifetime tests are essential:
 hook-free source programs cannot observe destruction timing themselves.
+
+## Review and verification
+
+All seven review lenses are clean: architecture, safety, code generation,
+CPython parity, test coverage, conventions and documentation. Review closed
+two coverage gaps: global walrus assignments now obey the same exclusion as
+ordinary global assignments, and a hoisted select LHS cannot inherit inline
+temporary lifetime. Their supported controls and exclusions are pinned.
+
+The final code checkpoint is `5ee84f912f`; subsequent changes only record
+documentation and verification. The 48 focused tests pass. Final
+`rpytest --force-exec`: 10,280 passed, 23 skipped; 4,180 C++ cases built and
+ran, with zero execution-cache skips. Existing snapshots are unchanged.
+
+Independent readiness review accepted reuse of regions/activation, positive
+producer facts, parent-resident scalar results and the explicit no-call/no-hook
+boundary. Internal retention tests establish analysis behavior, not source
+escape admission. The remaining W1-W5 work stays in the completion checklist.

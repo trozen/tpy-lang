@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
 from .callables import resolved_callee
-from .storage import direct_field, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
+from .storage import direct_field, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from .captures import capture_facts
 from ... import qnames
 from ...parse.nodes import (
@@ -6299,10 +6299,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                          pos=SinkPos.RECEIVER,
                          forms=_ONLY_FIELD_RECV_BORROW | _LEND_OK),
             subscript_prechecked=isinstance(e.obj, TpySubscript))
+        receiver = full_expression_record(receiver, analyzer)
         return _self_recv_positioned(THIRFieldAccess(
             result_type=rtype,
             field_identity=direct_field(e, analyzer, receiver)
-            if (isinstance(receiver, (THIRName, THIRSelf, THIRSubscript, THIRFieldAccess))
+            if (isinstance(receiver, (THIRName, THIRSelf, THIRSubscript, THIRFieldAccess, THIRCtorCall))
                 or isinstance(receiver, THIRNarrowedRead) and receiver.union_extraction is not None) else None,
             receiver=receiver,
             field_cpp=_field_cpp(e),

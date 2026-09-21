@@ -1,5 +1,6 @@
 """Semantic storage facts recorded alongside the selected lowering operation."""
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from ...symbol_binding import SymbolKind
@@ -15,7 +16,7 @@ from ..nodes import (
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
     THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
     THIRWrapperDefault, THIROwnedRecord,
-    THIRNativeContainer,
+    THIRNativeContainer, THIRCtorCall,
 )
 
 if TYPE_CHECKING:
@@ -267,6 +268,17 @@ def union_literal(expr: THIRExpr | None, layout: THIRUnionLayout) -> THIRUnionLi
     return None
 
 
+def full_expression_record(expr: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRExpr:
+    if not isinstance(expr, THIRCtorCall) or expr.form is not Form.STORAGE or expr.brace_init:
+        return expr
+    layout = record_layout(expr.result_type, analyzer)
+    if (layout is None or layout.type != expr.result_type or not layout.unique_constructor
+            or layout.custom_copy or layout.custom_move or layout.custom_destructor
+            or any(f.type not in (BOOL, INT32) for f in layout.fields)):
+        return expr
+    return replace(expr, full_expression_storage=THIROwnedRecord(layout.type))
+
+
 def direct_field(expr: TpyFieldAccess,
                  analyzer: 'SemanticAnalyzer',
                  receiver: THIRExpr | None = None) -> THIRFieldIdentity | None:
@@ -276,7 +288,8 @@ def direct_field(expr: TpyFieldAccess,
     field_receiver = (isinstance(expr.obj, TpyFieldAccess)
                       and isinstance(receiver, THIRFieldAccess)
                       and receiver.field_identity is not None)
-    if ((not isinstance(expr.obj, TpyName) and not tuple_receiver and not field_receiver)
+    temporary_receiver = isinstance(receiver, THIRCtorCall) and receiver.full_expression_storage is not None
+    if ((not isinstance(expr.obj, TpyName) and not tuple_receiver and not field_receiver and not temporary_receiver)
             or expr.hidden_call is not None
             or expr.deref_depth or expr.needs_optional_runtime_check
             or expr.unbound_self_parent_type is not None

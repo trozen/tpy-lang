@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, native_container, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
+from .storage import alias_binding, borrowed_record, full_expression_record, native_container, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
@@ -16455,6 +16455,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         discarded = _lower_expr(
             stmt.expr, lc, declared,
             use=_ExprUse(result=_ExprResultUse.DISCARD, allow_temps=True))
+        discarded = full_expression_record(discarded, lc.analyzer)
         # A discarded CONSTRUCTION renders a functional cast, and `T(name);`
         # in statement position is a DECLARATION of `name` -- a build error
         # in the name's own block, a silently default-constructed shadow in a
