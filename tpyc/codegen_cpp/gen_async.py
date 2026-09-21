@@ -20,7 +20,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import io
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from enum import IntEnum
 from functools import partial
 from typing import NoReturn, TYPE_CHECKING
@@ -29,7 +29,8 @@ from ..identity_map import IdentityMap
 from ..namespace import Namespace
 from ..parse.nodes import (
     RebindStorage,
-    TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
+    TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyAugAssign, TpyVarDecl,
+    TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
     TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWhile, TpyWith, TpyWithItem,
     TpyTupleUnpack, TpyNestedDef, TpySubscript,
@@ -65,19 +66,101 @@ _FRESH_COLLECTION_NODES = (
 )
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol
 from ..value_category import (async_return_form, AsyncReturnForm,
-                              frame_factory_callee,
+                              for_source_is_rvalue, frame_factory_callee,
                               materializing_temp_source, peel_coerce)
 from .gen_generators import (GeneratorCodegen, GeneratorForInfo,
                              owned_view_frame_params)
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
+                                  is_bytes_type,
                                   is_bytes_category, is_owned_in_coro_frame,
                                   is_str_view_type, is_bytes_view_type,
                                   is_free_copy_scalar, view_owned_copy_init)
 from . import emit_prims
-from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, qualified_cpp_name
+from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext,
+                      FrameSourceUnnameable, qualified_cpp_name,
+                      ternary_iterable_lends_storage)
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp, default_emittable
 from . import resumable_cfg as rcfg
+
+
+@dataclass
+class _FrameFormInputs:
+    """The name sets one frame local's field FORM is read off.
+
+    `_frame_form_inputs` fills the half that is settled before the for and
+    with prescans run; `_frame_layout` adds what those decide. Split so both
+    the layout and the for prescan read one classifier
+    (`_frame_local_form`)."""
+    owning_tuple_locals: 'dict[str, TpyType | None]'
+    own_rebind_names: 'frozenset[str]'
+    pointer_form_names: 'set[str]'
+    borrow_tuple_names: 'set[str]' = field(default_factory=set)
+    owning_str: 'set[str]' = field(default_factory=set)
+    source_form_fields: 'dict[str, str]' = field(default_factory=dict)
+    pointer_payloads: 'dict[str, str]' = field(default_factory=dict)
+
+
+def _cannot_hold_a_borrow(t: 'TpyType') -> bool:
+    """Whether a value of `t` is PROVABLY self-contained: it can carry no
+    reference to storage outside itself.
+
+    Only the scalar family and the owned string buffers qualify. Everything
+    else -- a view, a `Ptr`, a record (whose fields may be pointers), a
+    container, a tuple, a union, anything unknown -- is treated as able to
+    hold a borrow, because the answer here decides how long the storage a
+    binding may point into is kept alive."""
+    bare = unwrap_readonly(unwrap_own(unwrap_ref_type(t)))
+    return (is_free_copy_scalar(bare) or is_big_int_type(bare)
+            or is_str_type(bare) or is_bytes_type(bare))
+
+
+def _loop_bound_names(stmts: 'list[TpyStmt]') -> 'IdentityMap':
+    """Per for-loop in `stmts`, every name that loop can BIND -- its own
+    target, and its body's and orelse's, nested bodies included.
+
+    One bottom-up walk of the whole body, so a nested loop's names are
+    collected once rather than once per enclosing loop. An
+    over-approximation on purpose: the caller turns "this name could hold an
+    element" into a lifetime decision, so a missed binding is a dangling read
+    while a spurious one only costs a frame field. Nested defs are excluded
+    -- their locals are the closure's, not this body's."""
+    per_loop: IdentityMap = IdentityMap()
+
+    def collect(ss: 'list[TpyStmt]') -> 'set[str]':
+        out: 'set[str]' = set()
+        for s in ss:
+            inner: 'set[str]' = set()
+            for body in s.sub_bodies():
+                inner |= collect(body)
+            if isinstance(s, TpyNestedDef):
+                continue
+            if isinstance(s, TpyVarDecl):
+                out.add(s.name)
+            elif isinstance(s, (TpyAssign, TpyAugAssign)):
+                if isinstance(s.target, TpyName):
+                    out.add(s.target.name)
+            elif isinstance(s, TpyTupleUnpack):
+                out.update(t for t in s.targets if t is not None)
+            elif isinstance(s, TpyForEach):
+                out.add(s.var)
+            elif isinstance(s, TpyWith):
+                out.update(i.target for i in s.items if i.target is not None)
+            elif isinstance(s, TpyTry):
+                out.update(h.binding for h in s.handlers
+                           if h.binding is not None)
+            elif isinstance(s, TpyMatch):
+                for case in s.cases:
+                    for cap in iter_capture_bindings(case.pattern):
+                        out.add(cap.name)
+            out.update(w.target for w in walrus_bindings(s))
+            if isinstance(s, TpyForEach):
+                per_loop[s] = inner | {s.var}
+            out |= inner
+        return out
+
+    collect(stmts)
+    return per_loop
 
 
 def _stmts_have_return(stmts: "list[TpyStmt]") -> bool:
@@ -1717,162 +1800,217 @@ class AsyncCoroCodegen:
 
     # -- Frame-local placement -------------------------------------------------
 
+    def _frame_form_inputs(self, func: TpyFunction) -> '_FrameFormInputs':
+        """The name sets a frame local's field FORM is read off, minus the
+        ones the for and with prescans fill in.
+
+        Split out of `_frame_layout` so the for prescan -- which runs before
+        those -- can ask the SAME classifier whether a local's field lends
+        storage instead of growing a second answer to that question."""
+        return _FrameFormInputs(
+            owning_tuple_locals=self.ctx.owning_generator_tuple_locals(func),
+            own_rebind_names=self.ctx.analyzer.function_own_rebind_names.get(
+                func, frozenset()),
+            # Statement-level borrow aliases (single-assign / tuple-unpack)
+            # get a `T*` field rather than an owning frame_slot<T>: a `T*`
+            # field kept live across suspensions.
+            pointer_form_names=set(self._classify_pointer_alias_locals(func)),
+        )
+
+    def _loop_lends_element_out(self, func: TpyFunction,
+                                bound_names: 'set[str]') -> bool:
+        """Whether this loop can bind something out of its elements into
+        frame storage that may point back at an element.
+
+        Such a binding is read after the loop's own block is gone, so
+        whatever it may point into has to outlive that block. The question is
+        answered off the bound name's TYPE, conservatively: only a provably
+        self-contained type (`_cannot_hold_a_borrow`) is a copy that needs
+        nothing kept alive. A name that is not a frame local at all dies with
+        the block and cannot be read later.
+
+        Leans on the rejects that stop a borrow from travelling FURTHER than
+        a frame local: into a field (`assign.field_write_shape`) or into a
+        container (`method.arg_shape`), and on the borrow checker's
+        "reference to 'x' may outlive its storage". Without those this
+        question would have to be asked of the whole body, not of its
+        bindings.
+        """
+        frame_types = dict(func.generator_locals or [])
+        for name in bound_names:
+            if name not in frame_types:
+                continue
+            ltype = frame_types[name]
+            if ltype is None or not _cannot_hold_a_borrow(ltype):
+                return True
+        return False
+
+    def _frame_local_form(
+            self, lname: str, ltype_inner: 'TpyType',
+            inp: '_FrameFormInputs',
+    ) -> 'tuple[rcfg.FrameLocalKind, str | None, TpyType | None]':
+        """One frame local's field form, plus the payload spelling and
+        effective type the form needs.
+
+        Arm PRECEDENCE is load-bearing: pointer-form is checked before
+        `is_value_type` because a pointer-form `__for_tup` holder is itself a
+        value tuple; borrow-tuple excludes `__for_tup_*` holders (their form
+        is the loop machinery's call) unless the loop classified them
+        borrow-tuple explicitly.
+        """
+        source_form_fields = inp.source_form_fields
+        pointer_form_names = inp.pointer_form_names
+        borrow_tuple_names = inp.borrow_tuple_names
+        owning_str = inp.owning_str
+        owning_tuple_locals = inp.owning_tuple_locals
+        own_rebind_names = inp.own_rebind_names
+        pointer_payloads = inp.pointer_payloads
+        payload: str | None = None
+        effective_type: 'TpyType | None' = None
+        # A protocol-typed local has no concrete C++ backing -- only
+        # captured params carry the deduced template arg `T_<pname>`. A
+        # *single-assignment* alias of a bare protocol param (`xs = it`)
+        # is forwarded to that param by sema (see
+        # `_extract_proto_param_forwarding`) and never reaches here.
+        # What lands here is the unforwarded remainder -- chiefly a
+        # *reassigned* alias -- which has no single backing param. The
+        # verdict is a kind (not an error) so non-frame consumers can
+        # classify; rendering a frame FIELD for it raises at the struct
+        # emit.
+        if self.functions.protocols.is_static_protocol_param(ltype_inner):
+            kind = rcfg.FrameLocalKind.PROTOCOL
+        elif lname in source_form_fields:
+            # Loop var whose alias-vs-own choice belongs to C++: the
+            # payload is spelled from the source's iteration protocol,
+            # and frame_slot's specializations supply either form. Comes
+            # before the type-directed arms below -- they would re-derive
+            # a form from the TPy element type, which is exactly what
+            # this field exists to stop doing.
+            kind = rcfg.FrameLocalKind.SOURCE_FORM_SLOT
+            payload = source_form_fields[lname]
+        elif lname in owning_str:
+            # `with X() as label:` -- `__enter__` returns by value;
+            # storing the view across suspensions would dangle. Use
+            # owning storage. See `_prescan_with_stmts`.
+            kind = rcfg.FrameLocalKind.OWNED_STR
+        elif lname in pointer_form_names:
+            # Pointer-form alias: a for-loop var (non-value element
+            # over a stable source) or a tuple-unpack target bound to
+            # a non-value container member. Stored as `T*` (alias the
+            # live element) rather than `frame_slot<T>` (value-copy),
+            # so mutations propagate and resume preserves aliasing;
+            # also works for @nocopy / move-only elements. Bound by
+            # address in `_emit_async_for_advance` / the tuple-unpack
+            # emit.
+            kind = rcfg.FrameLocalKind.PTR_ALIAS
+            payload = pointer_payloads.get(lname)
+        elif lname in owning_tuple_locals:
+            # OWNING pointer-repr tuple local: the frame must hold the
+            # element storage (emplace writes, `(*name)` reads) -- a
+            # borrow `std::tuple<..., T*>` field can't own, and the
+            # owning rvalue can't be address-taken into it. A MIXED tuple
+            # has no fully-owned storage form to hold: its borrowed
+            # element must keep pointing at the caller's object, so its
+            # payload is the mixed render.
+            #
+            # The ownership axis reads off the EFFECTIVE type: a literal
+            # init's per-element verdict carries no `Own` in the declared
+            # type (there is no user spelling for it), so the oracle hands
+            # the Own-wrapped image back and every arm below keys on that.
+            eff = owning_tuple_locals[lname] or ltype_inner
+            effective_type = eff
+            if isinstance(eff, TupleType) and eff.is_mixed_own():
+                kind = rcfg.FrameLocalKind.MIXED_TUPLE_SLOT
+                payload = self.types.tuple_borrow_cpp(eff)
+            else:
+                kind = rcfg.FrameLocalKind.OWNING_TUPLE_SLOT
+        elif (isinstance(ltype_inner, TupleType)
+                and ltype_inner.has_pointer_repr_element()
+                and (not lname.startswith("__for_tup_")
+                     or lname in borrow_tuple_names)):
+            # Borrow-form tuple local (std::tuple<..., T*>): a value-form
+            # field would copy the element across the suspension (the
+            # silent-copy divergence). Pointers default-construct to
+            # null, so no frame_slot wrapper is needed.
+            kind = rcfg.FrameLocalKind.BORROW_TUPLE
+        elif (lname in own_rebind_names
+                and emit_prims.is_plain_nonvalue(
+                    self.ctx, unwrap_own(ltype_inner))):
+            # Some rvalue rebind of this local must keep the superseded
+            # object alive for a loan (sema's OWN verdict), which an
+            # owning `frame_slot<T>` cannot: the local goes pointer-form
+            # over per-site materialization fields, and its IN_PLACE
+            # rebinds assign through the pointer.
+            kind = rcfg.FrameLocalKind.REBIND_PTR
+        elif (isinstance(ltype_inner, OwnType)
+                and not unwrap_own(ltype_inner).is_value_type()
+                and not is_dyn_protocol(
+                    unwrap_readonly(ltype_inner.wrapped))):
+            # `Own[T]` over a REFERENCE type reports as a value here, but the
+            # object it names is built at the BINDING, later than the frame.
+            # A bare field would default-construct at frame creation and then
+            # assign -- which is not the object's real constructor, and is
+            # deleted outright once T holds a non-default-constructible
+            # member (a `Box`, `Rc`, `Mutex`). The slot's placement-new runs
+            # the actual constructor at the actual construction point.
+            #
+            # A coroutine/adapter handle is the exception: `Own[@dynamic P]`
+            # renders as a `std::optional<coro>` / `unique_ptr` that already
+            # default-constructs empty and takes the value by assignment, so
+            # a slot around it would just double-wrap.
+            kind = rcfg.FrameLocalKind.FRAME_SLOT
+        elif ltype_inner.is_value_type():
+            kind = rcfg.FrameLocalKind.VALUE
+        elif (isinstance(unwrap_readonly(ltype_inner), OptionalType)
+                and unwrap_readonly(ltype_inner).uses_pointer_repr()):
+            # Pointer-repr Optional: bare `T* = nullptr` aliases the
+            # source and uses nullptr as both "uninitialized" and
+            # "None"; no outer `std::optional<...>` wrap. A `readonly`
+            # element (a loop var over a readonly container) is the same
+            # pointer, const through the frame's const bindings.
+            kind = rcfg.FrameLocalKind.OPT_PTR
+        else:
+            kind = rcfg.FrameLocalKind.FRAME_SLOT
+        return (kind, payload, effective_type)
+
     def _frame_layout(self, func: TpyFunction) -> 'rcfg.FrameLayoutPlan':
         """Get-or-build the frame-local placement plan for this body: one
         `FrameLocalLayout` verdict per `func.generator_locals` name.
 
         Must run after the for/with/alias prescans and the await/arg lifting
         have populated `ResumableFuncState` (every caller sits downstream of
-        `_build_resumable_cfg`). Arm PRECEDENCE is load-bearing: pointer-form
-        is checked before `is_value_type` because a pointer-form `__for_tup`
-        holder is itself a value tuple; borrow-tuple excludes `__for_tup_*`
-        holders (their form is the loop machinery's call) unless the loop
-        classified them borrow-tuple explicitly.
+        `_build_resumable_cfg`) -- but only the LOOP-VAR and with-target arms
+        depend on those; the rest is `_frame_form_inputs`.
         """
         state = rcfg.resumable_state(func)
         if state.frame_layout is not None:
             return state.frame_layout
 
-        owning_str = state.with_owning_str_targets
-        owning_tuple_locals = self.ctx.owning_generator_tuple_locals(func)
-        pointer_form_names: set[str] = set()
-        borrow_tuple_names: set[str] = set()
-        own_rebind_names = self.ctx.analyzer.function_own_rebind_names.get(
-            func, frozenset())
+        inp = self._frame_form_inputs(func)
+        inp.owning_str.update(state.with_owning_str_targets)
         # Loop vars whose field payload is spelled from the iteration
         # source; the trait decides alias-vs-own, so no TPy-side form.
-        source_form_fields: dict[str, str] = {}
-        pointer_payloads: dict[str, str] = {}
         for info in state.for_loop_info.values():
             if info.pointer_form_loop_var is not None:
-                pointer_form_names.add(info.pointer_form_loop_var)
+                inp.pointer_form_names.add(info.pointer_form_loop_var)
                 if info.pointer_form_payload is not None:
-                    pointer_payloads[info.pointer_form_loop_var] = (
+                    inp.pointer_payloads[info.pointer_form_loop_var] = (
                         info.pointer_form_payload)
-            pointer_form_names.update(info.pointer_form_unpack_targets)
+            inp.pointer_form_names.update(info.pointer_form_unpack_targets)
             if info.loop_var_field is not None:
                 name, payload = info.loop_var_field
-                source_form_fields[name] = payload
+                inp.source_form_fields[name] = payload
             if info.borrow_tuple_loop_var is not None:
-                borrow_tuple_names.add(info.borrow_tuple_loop_var)
+                inp.borrow_tuple_names.add(info.borrow_tuple_loop_var)
         # A `with ... as t` target joins the same family for the same reason: its
         # payload is spelled from `__enter__()` (`with_enter_t<CM>`) because
         # alias-vs-own is not decidable here either.
-        source_form_fields.update(state.with_target_payloads)
-        # Statement-level borrow aliases (single-assign / tuple-unpack)
-        # also get a `T*` field rather than an owning frame_slot<T>: a `T*`
-        # field kept live across suspensions.
-        pointer_form_names.update(self._classify_pointer_alias_locals(func))
+        inp.source_form_fields.update(state.with_target_payloads)
 
         bindings: dict[str, rcfg.FrameLocalLayout] = {}
         for lname, ltype in (func.generator_locals or []):
-            ltype_inner = unwrap_ref_type(ltype)
-            # A protocol-typed local has no concrete C++ backing -- only
-            # captured params carry the deduced template arg `T_<pname>`. A
-            # *single-assignment* alias of a bare protocol param (`xs = it`)
-            # is forwarded to that param by sema (see
-            # `_extract_proto_param_forwarding`) and never reaches here.
-            # What lands here is the unforwarded remainder -- chiefly a
-            # *reassigned* alias -- which has no single backing param. The
-            # verdict is a kind (not an error) so non-frame consumers can
-            # classify; rendering a frame FIELD for it raises at the struct
-            # emit.
-            payload: str | None = None
-            effective_type: 'TpyType | None' = None
-            if self.functions.protocols.is_static_protocol_param(ltype_inner):
-                kind = rcfg.FrameLocalKind.PROTOCOL
-            elif lname in source_form_fields:
-                # Loop var whose alias-vs-own choice belongs to C++: the
-                # payload is spelled from the source's iteration protocol,
-                # and frame_slot's specializations supply either form. Comes
-                # before the type-directed arms below -- they would re-derive
-                # a form from the TPy element type, which is exactly what
-                # this field exists to stop doing.
-                kind = rcfg.FrameLocalKind.SOURCE_FORM_SLOT
-                payload = source_form_fields[lname]
-            elif lname in owning_str:
-                # `with X() as label:` -- `__enter__` returns by value;
-                # storing the view across suspensions would dangle. Use
-                # owning storage. See `_prescan_with_stmts`.
-                kind = rcfg.FrameLocalKind.OWNED_STR
-            elif lname in pointer_form_names:
-                # Pointer-form alias: a for-loop var (non-value element
-                # over a stable source) or a tuple-unpack target bound to
-                # a non-value container member. Stored as `T*` (alias the
-                # live element) rather than `frame_slot<T>` (value-copy),
-                # so mutations propagate and resume preserves aliasing;
-                # also works for @nocopy / move-only elements. Bound by
-                # address in `_emit_async_for_advance` / the tuple-unpack
-                # emit.
-                kind = rcfg.FrameLocalKind.PTR_ALIAS
-                payload = pointer_payloads.get(lname)
-            elif lname in owning_tuple_locals:
-                # OWNING pointer-repr tuple local: the frame must hold the
-                # element storage (emplace writes, `(*name)` reads) -- a
-                # borrow `std::tuple<..., T*>` field can't own, and the
-                # owning rvalue can't be address-taken into it. A MIXED tuple
-                # has no fully-owned storage form to hold: its borrowed
-                # element must keep pointing at the caller's object, so its
-                # payload is the mixed render.
-                #
-                # The ownership axis reads off the EFFECTIVE type: a literal
-                # init's per-element verdict carries no `Own` in the declared
-                # type (there is no user spelling for it), so the oracle hands
-                # the Own-wrapped image back and every arm below keys on that.
-                eff = owning_tuple_locals[lname] or ltype_inner
-                effective_type = eff
-                if isinstance(eff, TupleType) and eff.is_mixed_own():
-                    kind = rcfg.FrameLocalKind.MIXED_TUPLE_SLOT
-                    payload = self.types.tuple_borrow_cpp(eff)
-                else:
-                    kind = rcfg.FrameLocalKind.OWNING_TUPLE_SLOT
-            elif (isinstance(ltype_inner, TupleType)
-                    and ltype_inner.has_pointer_repr_element()
-                    and (not lname.startswith("__for_tup_")
-                         or lname in borrow_tuple_names)):
-                # Borrow-form tuple local (std::tuple<..., T*>): a value-form
-                # field would copy the element across the suspension (the
-                # silent-copy divergence). Pointers default-construct to
-                # null, so no frame_slot wrapper is needed.
-                kind = rcfg.FrameLocalKind.BORROW_TUPLE
-            elif (lname in own_rebind_names
-                    and emit_prims.is_plain_nonvalue(
-                        self.ctx, unwrap_own(ltype_inner))):
-                # Some rvalue rebind of this local must keep the superseded
-                # object alive for a loan (sema's OWN verdict), which an
-                # owning `frame_slot<T>` cannot: the local goes pointer-form
-                # over per-site materialization fields, and its IN_PLACE
-                # rebinds assign through the pointer.
-                kind = rcfg.FrameLocalKind.REBIND_PTR
-            elif (isinstance(ltype_inner, OwnType)
-                    and not unwrap_own(ltype_inner).is_value_type()
-                    and not is_dyn_protocol(
-                        unwrap_readonly(ltype_inner.wrapped))):
-                # `Own[T]` over a REFERENCE type reports as a value here, but the
-                # object it names is built at the BINDING, later than the frame.
-                # A bare field would default-construct at frame creation and then
-                # assign -- which is not the object's real constructor, and is
-                # deleted outright once T holds a non-default-constructible
-                # member (a `Box`, `Rc`, `Mutex`). The slot's placement-new runs
-                # the actual constructor at the actual construction point.
-                #
-                # A coroutine/adapter handle is the exception: `Own[@dynamic P]`
-                # renders as a `std::optional<coro>` / `unique_ptr` that already
-                # default-constructs empty and takes the value by assignment, so
-                # a slot around it would just double-wrap.
-                kind = rcfg.FrameLocalKind.FRAME_SLOT
-            elif ltype_inner.is_value_type():
-                kind = rcfg.FrameLocalKind.VALUE
-            elif (isinstance(unwrap_readonly(ltype_inner), OptionalType)
-                    and unwrap_readonly(ltype_inner).uses_pointer_repr()):
-                # Pointer-repr Optional: bare `T* = nullptr` aliases the
-                # source and uses nullptr as both "uninitialized" and
-                # "None"; no outer `std::optional<...>` wrap. A `readonly`
-                # element (a loop var over a readonly container) is the same
-                # pointer, const through the frame's const bindings.
-                kind = rcfg.FrameLocalKind.OPT_PTR
-            else:
-                kind = rcfg.FrameLocalKind.FRAME_SLOT
+            kind, payload, effective_type = self._frame_local_form(
+                lname, unwrap_ref_type(ltype), inp)
             bindings[lname] = rcfg.FrameLocalLayout(
                 kind=kind,
                 # A pointer into const storage needs `const T*`. The binding's
@@ -1989,10 +2127,11 @@ class AsyncCoroCodegen:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}::tpy::frame_slot<{cpp_type}> {cpp_name};\n")
 
-        # Synthetic fields for CFG-decomposed for-loops (iterator, sentinel,
-        # step result, source copy). frame_loop_slot has frame_slot's storage
-        # but unchecked reads: only this loop's own emitted code reads them,
-        # after its init.
+        # Synthetic fields for for-loops: iterator, sentinel and step result
+        # for a CFG-decomposed one, plus the source holder, which a loop that
+        # keeps its block-local iterators also takes when it lends an element
+        # out. frame_loop_slot has frame_slot's storage but unchecked reads:
+        # only this loop's own emitted code reads them, after its init.
         for fname, ftype in state.for_fields:
             out.write(f"{INDENT}::tpy::frame_loop_slot<{ftype}> {fname};\n")
 
@@ -3205,13 +3344,94 @@ class AsyncCoroCodegen:
         # partially-appended loop-var entries behind -- they would emit as
         # duplicate frame fields.
         local_hoists: list[tuple[str, "TpyType"]] = []
+        # Non-suspending loops whose FRESH source the frame owns:
+        # {TpyForEach -> (field name, its C++ type)}. Separate from `uid_map`,
+        # which the CFG builder reads as "decompose this loop".
+        src_fields: IdentityMap = IdentityMap()
+        # One bottom-up pass for the whole body, so a nested loop's bound
+        # names are not re-walked once per enclosing loop.
+        loop_bound_names = _loop_bound_names(body)
+
+        def mark_loop_var_const(s: TpyForEach, info: GeneratorForInfo) -> None:
+            # A loop var bound into const storage joins the frame's const
+            # bindings BEFORE this loop's body is walked, so a nested loop, an
+            # alias or a view slot inside it spells itself against the
+            # constness its source actually has. The unpack targets ride the
+            # same holder -- a `T*` loop var or the proxy-ref borrow tuple
+            # (`d.items()`), which carries the const inside its element
+            # pointers.
+            holder = (info.pointer_form_loop_var
+                      or info.borrow_tuple_loop_var
+                      or info.opt_ptr_loop_var)
+            if holder is not None:
+                if info.pointer_form_is_const:
+                    rcfg.mark_frame_const(state, holder,
+                                          *info.pointer_form_unpack_targets)
+            elif info.loop_var_field is not None and info.source_is_const:
+                # The slot's payload is spelled from the const source, so the
+                # element it lends is const too.
+                rcfg.mark_frame_const(state, s.var)
+
+        def non_suspending(s: TpyForEach) -> None:
+            """A loop whose body does not suspend keeps its block-local
+            iterators and every peephole the sync route gives it. The frame
+            takes its source only where the source is FRESH and the body can
+            bind something out of an element into frame storage that is not
+            provably self-contained: a temporary iterable lives as long as
+            anything bound from its elements might point into it, and no
+            longer.
+
+            Where the frame can name no slot type for such a source (a lazy
+            combinator over a temporary), the holder stays in the block, as
+            on the sync route -- a binding read after the next suspension
+            then reads freed storage
+            (`BUGS.md#combinator-elem-outlives-block-holder`).
+
+            This is also the only pass that sees such a loop at all, so the
+            element's constness reaches the frame's const bindings from here
+            (`docs/PITFALLS.md#const-source-const-loop-var`); that half is
+            about the ELEMENT and applies to an lvalue source too."""
+            try:
+                info = self.gen_generators._analyze_for_strategy(
+                    s, counter[0], proto_param_names=proto_param_names,
+                    proto_param_alias=proto_param_alias,
+                    aliasing_source=(
+                        func.is_genexpr
+                        and not func.genexpr_container_by_protocol))
+            except FrameSourceUnnameable:
+                # Discriminated from the strategy analysis by its own type so
+                # an unrelated located diagnostic is not swallowed here.
+                info = None
+            if info is not None:
+                mark_loop_var_const(s, info)
+            if info is None or not (
+                    for_source_is_rvalue(s, self.ctx.analyzer)
+                    and self._loop_lends_element_out(
+                        func, loop_bound_names[s])):
+                # Existing storage outlives the loop by itself, and a loop
+                # that lends nothing out needs nothing kept: either way the
+                # holder stays where the sync route puts it, in the block.
+                src_fields[s] = None
+                return
+            src = next((f for f in info.fields
+                        if f[0] == f"__for_src_{counter[0]}"), None)
+            if src is not None:
+                counter[0] += 1
+                fields_out.append(src)
+                # Only the source is embedded, so only its own emit-ordering
+                # deps are.
+                dep_units_out.extend(info.dep_units)
+            src_fields[s] = src
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
-                if isinstance(s, TpyForEach) and (
-                        s.is_async
-                        or rcfg._stmts_have_any_suspension(s.body)
-                        or rcfg._stmts_have_any_suspension(s.orelse)):
+                suspends = isinstance(s, TpyForEach) and (
+                    s.is_async
+                    or rcfg._stmts_have_any_suspension(s.body)
+                    or rcfg._stmts_have_any_suspension(s.orelse))
+                if isinstance(s, TpyForEach) and not suspends:
+                    non_suspending(s)
+                if suspends:
                     cur_uid = counter[0]
                     counter[0] += 1
                     uid_map[id(s)] = cur_uid
@@ -3242,6 +3462,23 @@ class AsyncCoroCodegen:
                         info = GeneratorForInfo(
                             uid=cur_uid, strategy="async_for", fields=[])
                     else:
+                        if (for_source_is_rvalue(s, self.ctx.analyzer)
+                                and ternary_iterable_lends_storage(
+                                    s.iterable,
+                                    self.ctx.analyzer.registry.get_record,
+                                    self.types.get_resolved_type)):
+                            # The frame would OWN a head one of whose arms is
+                            # storage it must not own: emplacing the whole
+                            # conditional copies that arm away from its owner.
+                            # Two arms that agree are fine -- both lend, or
+                            # both are fresh.
+                            raise CodeGenError(
+                                "iterating a conditional whose arms are an "
+                                "existing object and a fresh one is not "
+                                "supported: the loop would have to borrow "
+                                "and own the same source. Bind the iterable "
+                                "to a name before the loop and iterate that "
+                                "name instead", loc=s.loc)
                         # Sync for-loop: reuse the legacy strategy analysis so
                         # range / begin_end peepholes (a plain counter / begin-
                         # end iterators) carry over instead of the slower
@@ -3262,26 +3499,7 @@ class AsyncCoroCodegen:
                         dep_units_out.extend(info.dep_units)
                     for_loop_info[s] = info
                     info_by_uid[cur_uid] = info
-                    # A loop var bound into const storage joins the frame's
-                    # const bindings BEFORE this loop's body is walked, so a
-                    # nested loop, an alias or a view slot inside it spells
-                    # itself against the constness its source actually has.
-                    # The unpack targets ride the same holder -- a `T*` loop
-                    # var or the proxy-ref borrow tuple (`d.items()`), which
-                    # carries the const inside its element pointers.
-                    _holder = (info.pointer_form_loop_var
-                               or info.borrow_tuple_loop_var
-                               or info.opt_ptr_loop_var)
-                    if _holder is not None:
-                        if info.pointer_form_is_const:
-                            rcfg.mark_frame_const(
-                                state, _holder,
-                                *info.pointer_form_unpack_targets)
-                    elif (info.loop_var_field is not None
-                            and info.source_is_const):
-                        # The slot's payload is spelled from the const source,
-                        # so the element it lends is const too.
-                        rcfg.mark_frame_const(state, s.var)
+                    mark_loop_var_const(s, info)
                     elem_t = (unwrap_ref_type(s.elem_type)
                               if s.elem_type else None)
                     if elem_t is None:
@@ -3309,6 +3527,7 @@ class AsyncCoroCodegen:
         state.async_for_struct_names = struct_names_out
         state.for_loop_info = for_loop_info
         state.for_info_by_uid = info_by_uid
+        state.for_src_fields = src_fields
         state.for_prescanned = True
         return uid_map
 
@@ -4578,6 +4797,8 @@ class AsyncCoroCodegen:
         uid, info = infos[0]
         if info.strategy != "begin_end" or self._for_has_src_slot(info, uid):
             return None
+        # A bare name is one evaluation however often it is written, so the
+        # pair cannot straddle two objects and needs no binding to name.
         # `this->`: the constructor's param shadows the member of the same name.
         src = f"(this->{escape_cpp_name(loop.iterable.name)})"
         return [f"__for_it_{uid}.emplace({src}.begin());",
@@ -5839,13 +6060,16 @@ class AsyncCoroCodegen:
     def _for_info(self, func: TpyFunction, uid: int) -> 'GeneratorForInfo | None':
         return rcfg.resumable_state(func).for_info_by_uid.get(uid)
 
-    def _for_src_access(self, out: "TextIO", indent: str,
-                        iterable_expr: 'TpyExpr', uid: int,
-                        info: 'GeneratorForInfo') -> str:
-        """Resolve the for-loop source expression for the begin_end / next
-        strategies. When the iterable is a temporary (the pre-scan allocated
-        `__for_src_<uid>`), store it once here and return the stored access;
-        otherwise return the (re-evaluable) named expression."""
+    def _for_src_store(self, out: "TextIO", indent: str,
+                       iterable_expr: 'TpyExpr', uid: int,
+                       info: 'GeneratorForInfo') -> 'tuple[str | None, str]':
+        """Move an RVALUE for-loop source into its `__for_src_<uid>` frame
+        slot. Returns `(slot access or None, the source render)`; None means
+        the source is an lvalue and the frame holds nothing.
+
+        The slot is the frame's ownership of the iteration: a fresh value has
+        no other owner, so anything the loop lends out of its elements would
+        dangle at the first suspension without it."""
         # The leaf hands over a BARE render for every narrowed-optional
         # iterable it admits, so this unwrap is the single owner of the
         # narrowed-Optional / indirect-name deref.
@@ -5854,10 +6078,34 @@ class AsyncCoroCodegen:
             self.ctx, iterable_expr, base_cpp,
             self.ctx.is_indirect_name(iterable_expr))
         self.ctx.temps.flush(out, indent)
-        if self._for_has_src_slot(info, uid):
-            out.write(f"{indent}__for_src_{uid}.emplace({src_cpp});\n")
-            return f"(*__for_src_{uid})"
-        return src_cpp
+        slot_cpp = next((t for fn, t in info.fields
+                         if fn == f"__for_src_{uid}"), None)
+        if slot_cpp is None:
+            return (None, src_cpp)
+        emplace = emit_prims.for_src_emplace(f"__for_src_{uid}", slot_cpp, src_cpp)
+        out.write(f"{indent}{emplace}\n")
+        return (f"(*__for_src_{uid})", src_cpp)
+
+    def _for_src_access(self, out: "TextIO", indent: str,
+                        iterable_expr: 'TpyExpr', uid: int,
+                        info: 'GeneratorForInfo') -> str:
+        """A spelling of the for-loop source that may be READ MORE THAN ONCE,
+        naming a single evaluation.
+
+        `begin()` and `end()` both come off it: an impure accessor runs once,
+        as CPython runs it, and the pair cannot straddle two different
+        objects. An rvalue is named by its frame slot, an lvalue by a
+        block-local reference binding -- not by a `frame_slot<T&>`, whose
+        stored pointer would name a sibling frame field and be invalidated by
+        a frame move. A caller that reads the source ONCE takes
+        `_for_src_store`'s own spelling and needs no binding."""
+        slot, src_cpp = self._for_src_store(out, indent, iterable_expr, uid,
+                                            info)
+        if slot is not None:
+            return slot
+        name = f"__for_obj_{uid}"
+        out.write(f"{indent}auto& {name} = {src_cpp};\n")
+        return name
 
     def _emit_async_for_iter_setup(self, out: "TextIO", indent: str,
                                     stmt: 'rcfg.AsyncForIterSetup',
@@ -5892,18 +6140,24 @@ class AsyncCoroCodegen:
             out.write(f"{indent}__for_it_{uid}.emplace(({src}).begin());\n")
             out.write(f"{indent}__for_end_{uid}.emplace(({src}).end());\n")
         elif strat == "next":
-            # Source IS the iterator: a temporary one is stashed, a named one
-            # needs nothing here (`_stmt_emits_nothing` counts on that).
+            # Source IS the iterator, and the advance names it again -- so
+            # only the frame's ownership of an rvalue is settled here; an
+            # lvalue needs no binding, nothing reads one
+            # (`_stmt_emits_nothing` counts on that, so a named source must
+            # not even reach the render).
             if self._for_has_src_slot(info, uid):
-                self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
+                self._for_src_store(out, indent, stmt.iterable_expr, uid, info)
         else:  # iter_next (universal)
             # A temporary source is stashed in `__for_src` first because
             # `tpy::__iter__` borrows its argument (it would otherwise dangle).
             # The init/next go through resumable_iter_* so a self-iterator
             # source (a move-only generator) is driven in place instead of
             # copied into the iterator slot -- see generator.hpp.
-            src = self._for_src_access(out, indent, stmt.iterable_expr, uid,
-                                       info)
+            # One read, so no binding: the render already names one
+            # evaluation.
+            slot, src_cpp = self._for_src_store(out, indent,
+                                                stmt.iterable_expr, uid, info)
+            src = slot if slot is not None else src_cpp
             out.write(f"{indent}::tpy::resumable_iter_init(__for_itr_{uid}, {src});\n")
 
     def _emit_for_range_setup(self, out: "TextIO", indent: str,

@@ -442,9 +442,9 @@ __coro_a_match_arm a_match_arm(int32_t m) {
 ::tpystd::tpy::Poll<std::string> __coro_a_record::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __obj_0 = {1, 2};
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
+        auto __beg_0 = (*__for_src_0).begin();
+        auto __end_0 = (*__for_src_0).end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::with_cell(c);

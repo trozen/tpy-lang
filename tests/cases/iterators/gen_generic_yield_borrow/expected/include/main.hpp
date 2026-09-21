@@ -549,8 +549,9 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_first_then_res
         return (*head);
     }
     case S_RESUME_0: {  // after: yield head  # tpyc: ok
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -665,8 +666,9 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_in_with<T>::__
     }
     case S_JOIN_2: {
         try {
-            __for_it_0.emplace((items).begin());
-            __for_end_0.emplace((items).end());
+            auto& __for_obj_0 = items;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (::tpy::BaseException& __exc_0) {
@@ -774,8 +776,9 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_in_try<T>::__n
     case S_INITIAL:  // entry
     case S_JOIN_2: {
         try {
-            __for_it_0.emplace((items).begin());
-            __for_end_0.emplace((items).end());
+            auto& __for_obj_0 = items;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -931,16 +934,18 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_via_local<T>::
             auto&& src = *__beg_0;
             (*box).push_back(src);
         }
-        __for_it_0.emplace(((*box)).begin());
-        __for_end_0.emplace(((*box)).end());
+        auto& __for_obj_0 = (*box);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0:  // after: yield first  # tpyc: ok
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            __for_it_1.emplace(((*box)).begin());
-            __for_end_1.emplace(((*box)).end());
+            auto& __for_obj_1 = (*box);
+            __for_it_1.emplace((__for_obj_1).begin());
+            __for_end_1.emplace((__for_obj_1).end());
             __state = S_JOIN_1;
             continue;
         }
@@ -1079,8 +1084,9 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_with_nested<T>
     case S_INITIAL: {  // entry
         // def bump: frame member
         std::cout << "nested-helper" << " " << bump(1) << "\n";
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -1300,8 +1306,9 @@ template <typename T, ::tpystd::typing::Iterator<T> T_extra>
 std::expected<T, ::tpy::StopIteration> __gen_mixed<T, T_extra>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -1430,8 +1437,9 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Holder_walk<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((__self.items).begin());
-        __for_end_0.emplace((__self.items).end());
+        auto& __for_obj_0 = __self.items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

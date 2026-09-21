@@ -256,8 +256,11 @@ which compiles and copies. Right: `const Node* n = nullptr;`. Same cell from the
 `def sizes(*xs: list[int32])` whose loop over the pack suspends.
 
 **Check.** For an iteration whose source is `readonly`, a `self` field under a const receiver, or
-an unmutated `*args` pack, read the loop var's frame field in the emitted C++: an owning
-`frame_slot<T>` or a non-const `T*` is the defect. Then mutate the SOURCE between two pulls and
+an unmutated `*args` pack, read the loop var's frame field in the emitted C++: a non-const `T*`
+is the defect, and so is an owning `frame_slot<T>` the loop's own ADVANCE writes. A
+`frame_slot<T>` that nothing in the body names is not this defect -- a loop whose body does not
+suspend keeps a block-local loop variable and the frame declares an unused slot beside it
+(TODO.md, "Only hoist resumable-frame locals that are live across a suspension"). Then mutate the SOURCE between two pulls and
 read it back through the next one under both interpreters -- a const alias shows the change, a
 copy shows the stale value, and a read-only body cannot tell them apart.
 

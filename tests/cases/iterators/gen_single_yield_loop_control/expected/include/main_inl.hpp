@@ -16,8 +16,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_take::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         i = 0;
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -57,8 +58,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_take::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -213,8 +215,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto_while::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_iter_post_break::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -256,8 +259,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_iter_post_break::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_post_continue::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

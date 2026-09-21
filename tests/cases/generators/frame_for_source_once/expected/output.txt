@@ -1,0 +1,59 @@
+named 101
+named 102
+named total 203
+param 101
+param 102
+param after 101 102
+field 101
+field 102
+field after 101 102
+subscript 101
+subscript 102
+subscript after 101 102
+accessor 101
+accessor 102
+accessor after 101 calls 1
+property 101
+property 102
+property after 101 102
+own_call 10
+own_call churn 40
+own_call 20
+own_call churn 40
+copy 101
+copy churn 40
+copy 102
+copy churn 40
+copy after 1 2
+literal 4
+literal churn 40
+literal 5
+literal churn 40
+slice_mut 102
+slice_mut 103
+slice_mut total 205
+slice_const 2
+slice_const churn 40
+slice_const 3
+slice_const churn 40
+ternary_lv 101
+ternary_lv total 101
+ternary_tmp 10
+ternary_tmp churn 40
+walrus 110
+walrus churn 40
+walrus 120
+walrus churn 40
+walrus target 230
+str_tmp a
+str_tmp b
+str_tmp c
+gen_call 7
+gen_call churn 40
+gen_call 8
+gen_call churn 40
+async_accessor 203 calls 1
+async_slice 5
+gx_named 12
+gx_own_call 30
+gx_accessor 3 calls 1

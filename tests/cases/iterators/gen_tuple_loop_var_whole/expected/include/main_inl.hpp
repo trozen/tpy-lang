@@ -14,8 +14,9 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -47,8 +48,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -116,8 +118,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((__self.xs).begin());
-        __for_end_0.emplace((__self.xs).end());
+        auto& __for_obj_0 = __self.xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -150,8 +153,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((__self.xs).begin());
-        __for_end_0.emplace((__self.xs).end());
+        auto& __for_obj_0 = __self.xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

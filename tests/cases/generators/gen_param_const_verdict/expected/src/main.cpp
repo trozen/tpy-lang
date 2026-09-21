@@ -64,8 +64,9 @@ __gen_chain_hop chain_hop(Shelf& s) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         t = 0;
-        __for_it_0.emplace((::tpy::__getitem__(s.rows, 0)).begin());
-        __for_end_0.emplace((::tpy::__getitem__(s.rows, 0)).end());
+        auto& __for_obj_0 = ::tpy::__getitem__(s.rows, 0);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -126,8 +127,9 @@ __gen_alias_mut alias_mut(std::vector<Depot>& ds) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         t = 0;
-        __for_it_0.emplace((ds).begin());
-        __for_end_0.emplace((ds).end());
+        auto& __for_obj_0 = ds;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -257,8 +259,9 @@ int32_t drive_match(const Box& b) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         t = 0;
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

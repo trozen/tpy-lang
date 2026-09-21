@@ -103,8 +103,9 @@ __gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         i = 0;
-        __for_it_0.emplace((pairs).begin());
-        __for_end_0.emplace((pairs).end());
+        auto& __for_obj_0 = pairs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

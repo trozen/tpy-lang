@@ -32,8 +32,9 @@ __gen_walk_value walk_value(const std::vector<std::tuple<int32_t, int32_t>>& xs)
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         total = 0;
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

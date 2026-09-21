@@ -44,8 +44,9 @@ __coro_work work(int32_t n) {
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::work(2))));
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::work(3))));
         total = 0;
-        __for_it_0.emplace(((*tasks)).begin());
-        __for_end_0.emplace(((*tasks)).end());
+        auto& __for_obj_0 = (*tasks);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

@@ -19,8 +19,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         nums.emplace(std::array<int32_t, 3>{1, 2, 3});
         d.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}}));
         s.emplace(::tpy::ordered_set<int32_t>({7, 8}));
-        __for_it_0.emplace(((*nums)).begin());
-        __for_end_0.emplace(((*nums)).end());
+        auto& __for_obj_0 = (*nums);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

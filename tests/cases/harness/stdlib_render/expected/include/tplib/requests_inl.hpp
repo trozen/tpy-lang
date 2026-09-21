@@ -13,8 +13,9 @@ namespace tpystd::tplib::requests {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_CaseInsensitiveDict___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((__self._store).begin());
-        __for_end_0.emplace((__self._store).end());
+        auto& __for_obj_0 = __self._store;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -42,8 +43,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_CaseInsensitiveDic
 inline std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((__self._store).begin());
-        __for_end_0.emplace((__self._store).end());
+        auto& __for_obj_0 = __self._store;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

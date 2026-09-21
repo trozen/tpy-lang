@@ -12,8 +12,9 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -42,8 +43,9 @@ inline std::expected<::tpy::val_or_ref<Rec>, ::tpy::StopIteration> __gen_mut::__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         recs.push_back(Rec(4));
-        __for_it_0.emplace((recs).begin());
-        __for_end_0.emplace((recs).end());
+        auto& __for_obj_0 = recs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -72,8 +74,9 @@ inline std::expected<::tpy::val_or_ref<Rec>, ::tpy::StopIteration> __gen_mut::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_sub_hop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((grid).begin());
-        __for_end_0.emplace((grid).end());
+        auto& __for_obj_0 = grid;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -83,8 +86,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sub_hop::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         rows = &(*((*__for_it_0))++);
-        __for_it_1.emplace((::tpy::__getitem__((*rows), 0)).begin());
-        __for_end_1.emplace((::tpy::__getitem__((*rows), 0)).end());
+        auto& __for_obj_1 = ::tpy::__getitem__((*rows), 0);
+        __for_it_1.emplace((__for_obj_1).begin());
+        __for_end_1.emplace((__for_obj_1).end());
         __state = S_JOIN_1;
         continue;
     }
@@ -115,8 +119,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sub_hop::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_chain_hop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((::tpy::__getitem__(s.rows, 0)).begin());
-        __for_end_0.emplace((::tpy::__getitem__(s.rows, 0)).end());
+        auto& __for_obj_0 = ::tpy::__getitem__(s.rows, 0);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -146,8 +151,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_chain_hop::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((ds).begin());
-        __for_end_0.emplace((ds).end());
+        auto& __for_obj_0 = ds;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -177,8 +183,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_ro::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_mut::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((ds).begin());
-        __for_end_0.emplace((ds).end());
+        auto& __for_obj_0 = ds;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -208,8 +215,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_to_mut_callee::__next_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         ::tpyapp::main::bump(xs);
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -339,8 +347,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_match_ro::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Bag_scan::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((ys).begin());
-        __for_end_0.emplace((ys).end());
+        auto& __for_obj_0 = ys;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

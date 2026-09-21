@@ -17,8 +17,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
         return -1;
     }
     case S_RESUME_0: {  // after: yield -1
-        __for_it_0.emplace((rows).begin());
-        __for_end_0.emplace((rows).end());
+        auto& __for_obj_0 = rows;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -28,8 +29,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         r = *((*__for_it_0))++;
-        __for_it_1.emplace((cols).begin());
-        __for_end_1.emplace((cols).end());
+        auto& __for_obj_1 = cols;
+        __for_it_1.emplace((__for_obj_1).begin());
+        __for_end_1.emplace((__for_obj_1).end());
         __state = S_JOIN_1;
         continue;
     }

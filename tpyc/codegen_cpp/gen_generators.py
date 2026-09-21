@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..parse.nodes import (
-    TpyFunction, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
+    TpyFunction, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpySubscript, TpyTupleUnpack,
 )
 from ..typesys import expand_fi_template, IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_always_borrows, yield_borrow_slot_cpp, yield_slot_borrows
 from tpyc import modules as builtin_modules
@@ -15,13 +15,14 @@ from ..symbol_binding import SymbolKind, lookup_imported
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
                                   is_owned_in_coro_frame)
 from . import emit_prims
-from .context import (CodeGenError, expand_cpp_template,
-                      qualify_native_name)
-from .resumable_cfg import (ResumableShape, _stmts_have_any_suspension,
-                            frame_struct_qualname, recursive_delegation_error,
+from .context import (CodeGenError, FrameSourceUnnameable,
+                      expand_cpp_template, qualify_native_name)
+from .resumable_cfg import (ResumableShape, frame_struct_qualname,
+                            recursive_delegation_error, resumable_state,
                             same_module_dep_unit)
 from .protocols import protocol_param_template_name
-from ..value_category import property_access_returns_cpp_ref
+from ..value_category import (for_source_is_rvalue,
+                              property_access_returns_cpp_ref)
 
 
 @dataclass(frozen=True)
@@ -211,6 +212,7 @@ def elem_is_known_value(elem_type: 'TpyType | None') -> bool:
 
 
 if TYPE_CHECKING:
+    from ..typesys import FunctionInfo
     from .context import CodeGenContext
     from .types import TypeMapper
     from .functions import FunctionGenerator
@@ -379,7 +381,7 @@ class GeneratorCodegen:
         # Iterator[T] protocol -- iterable already has __next__()
         if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "typing.Iterator":
             fields: list[tuple[str, str]] = []
-            if self.ctx.is_temporary_expr(stmt.iterable):
+            if for_source_is_rvalue(stmt, self.ctx.analyzer):
                 # The source iterator must live in the frame: re-emitting
                 # the expression per advance would restart it every pass.
                 # With the source struct known, spell the result slot from
@@ -440,7 +442,7 @@ class GeneratorCodegen:
             iter_cpp = self.types.type_to_cpp(iterable_type)
             result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
             fields = []
-            if self.ctx.is_temporary_expr(stmt.iterable):
+            if for_source_is_rvalue(stmt, self.ctx.analyzer):
                 fields.append((f"__for_src_{uid}", iter_cpp))
             fields.append((f"__for_r_{uid}", result_type))
             return GeneratorForInfo(uid=uid, strategy="next", fields=fields,
@@ -452,7 +454,7 @@ class GeneratorCodegen:
                          and builtin_modules.is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry))
         native_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry) if is_builtin_ni else None
         if native_elem is not None:
-            container_cpp = (self._auto_readonly_result_decltype(stmt.iterable)
+            container_cpp = (self._source_result_decltype(stmt.iterable)
                              or self.types.type_to_cpp(iterable_type))
             # A const-rooted lvalue chain (self.field in a readonly method,
             # const param/local, a const frame binding) renders const, so
@@ -471,7 +473,7 @@ class GeneratorCodegen:
             # field path, container subscript) is borrowed instead -- copying
             # it into the frame would hide loop-var mutations from the source
             # (CPython aliasing semantics).
-            if self.ctx.is_temporary_expr(stmt.iterable):
+            if for_source_is_rvalue(stmt, self.ctx.analyzer):
                 fields.insert(0, (f"__for_src_{uid}", container_cpp))
             # Non-value element type with stable lvalue source: the loop var
             # becomes T* (aliasing the container element) instead of
@@ -566,11 +568,11 @@ class GeneratorCodegen:
             (f"__for_itr_{uid}", iter_field_type),
             (f"__for_r_{uid}", result_field_type),
         ]
-        if self.ctx.is_temporary_expr(stmt.iterable):
+        if for_source_is_rvalue(stmt, self.ctx.analyzer):
             # `tpy::__iter__` borrows its argument, so a temporary source
             # must be stored in the frame first or the iterator dangles.
             if self.functions.protocols.is_static_protocol_param(iterable_type):
-                raise CodeGenError(
+                raise FrameSourceUnnameable(
                     "iterating a temporary protocol-typed iterable across a "
                     "suspension is not supported; bind the elements first "
                     "(e.g. `xs = list(...)`) and iterate those",
@@ -745,6 +747,35 @@ class GeneratorCodegen:
                     if f is not None else None)
         return None
 
+    def _source_result_decltype(self, expr: TpyExpr) -> str | None:
+        """Frame-slot spelling for a for-loop source whose C++ result type the
+        resolved TPy type cannot express, deduced by C++ instead of named.
+
+        Two shapes qualify, for the same reason: the receiver's const-ness
+        picks a different C++ TYPE, not the same type under a `const`. A
+        SLICE of a const container is `std::span<const T>` where
+        `type_to_cpp(Span[T])` says `std::span<T>` -- the element const rides
+        INSIDE the span, so no qualifier on the named type reaches it. The
+        `@auto_readonly` call below is the same problem one node kind over.
+        A sync body sidesteps both with `auto`; a frame field must name a
+        type, so it names the same deduction.
+
+        What the frame then OWNS for a slice is a VIEW, not the elements: the
+        sliced container has to outlive it. That holds because a slice of a
+        TEMPORARY receiver is refused where the slice is taken, so the
+        receiver of an admitted one is storage the caller already keeps.
+        """
+        if (isinstance(expr, TpySubscript)
+                and expr.slice_function_info is not None):
+            fi = expr.slice_function_info
+            # The receiver is not among `params` for a builtin method; the
+            # slice object is the only declared one.
+            ptypes = [p.type for p in fi.params]
+            if len(ptypes) != 1:
+                return None
+            return self._declval_call_decltype(fi, expr.obj, ptypes, None)
+        return self._auto_readonly_result_decltype(expr)
+
     def _auto_readonly_result_decltype(self, expr: TpyExpr) -> str | None:
         """Frame-slot spelling for a call to an `@auto_readonly` method,
         deduced by C++ instead of named from the resolved TPy type.
@@ -782,18 +813,31 @@ class GeneratorCodegen:
             return None
         if expr.deref_depth or expr.kwargs or expr.double_star_unpack:
             return None
-        recv_type = self.types.get_resolved_type(expr.obj)
-        if recv_type is None:
-            return None
-        recv_cpp = self.types.type_to_cpp(
-            unwrap_readonly(unwrap_ref_type(recv_type)))
-        qual = "const " if self.ctx.is_const_storage_source(expr.obj) else ""
-        recv = f"std::declval<{qual}{recv_cpp}&>()"
-        args: list[str] = []
+        atypes: list[TpyType] = []
         for a in expr.args:
             atype = self.types.get_resolved_type(a)
             if atype is None:
                 return None
+            atypes.append(atype)
+        return self._declval_call_decltype(fi, expr.obj, atypes,
+                                           expr.inferred_type_args)
+
+    def _declval_call_decltype(self, fi: 'FunctionInfo', recv_expr: TpyExpr,
+                               arg_types: 'list[TpyType]',
+                               inferred_type_args: 'tuple | None'
+                               ) -> str | None:
+        """`decltype(...)` of `fi` called on `recv_expr` with arguments of
+        `arg_types` -- the receiver probed at the const-ness the frame gives
+        it, so C++ picks the same overload the emitted call will."""
+        recv_type = self.types.get_resolved_type(recv_expr)
+        if recv_type is None:
+            return None
+        recv_cpp = self.types.type_to_cpp(
+            unwrap_readonly(unwrap_ref_type(recv_type)))
+        qual = "const " if self.ctx.is_const_storage_source(recv_expr) else ""
+        recv = f"std::declval<{qual}{recv_cpp}&>()"
+        args: list[str] = []
+        for atype in arg_types:
             bare = unwrap_readonly(unwrap_ref_type(atype))
             # A reference-typed argument is probed as an lvalue: `declval<T>()`
             # is an xvalue and would not bind the `T&` parameter the callee
@@ -805,7 +849,7 @@ class GeneratorCodegen:
         # free function with the receiver prepended, plain member call).
         if fi.cpp_template:
             call = expand_cpp_template(
-                expand_fi_template(fi, expr.inferred_type_args), recv, *args)
+                expand_fi_template(fi, inferred_type_args), recv, *args)
         elif fi.native_function and fi.native_name:
             call = (f"{qualify_native_name(fi.native_name)}"
                     f"({', '.join([recv, *args])})")
@@ -827,7 +871,7 @@ class GeneratorCodegen:
         """
         resolved = self._resolve_generator_call(stmt.iterable)
         if resolved is None:
-            raise CodeGenError(
+            raise FrameSourceUnnameable(
                 "a for-loop with a yield/await in its body over an "
                 "Iterator-returning expression is only supported for a "
                 "direct call to a generator; bind the elements first "
@@ -836,7 +880,7 @@ class GeneratorCodegen:
         callee = resolved.func
         call_node = resolved.call
         if self.functions.protocols.get_all_protocol_params(callee.params):
-            raise CodeGenError(
+            raise FrameSourceUnnameable(
                 f"cannot iterate '{callee.name}(...)' here: a generator "
                 "with protocol-typed parameters cannot be embedded in a "
                 "resumable frame yet; bind the elements first "
@@ -851,7 +895,7 @@ class GeneratorCodegen:
         if callee.type_params:
             args = getattr(call_node, "inferred_type_args", None)
             if not args or len(args) != len(callee.type_params):
-                raise CodeGenError(
+                raise FrameSourceUnnameable(
                     f"cannot iterate '{callee.name}(...)' here: the generic "
                     "generator's type arguments were not resolved at the "
                     "call site", loc=stmt.loc)
@@ -867,17 +911,25 @@ class GeneratorCodegen:
         `func`'s resumable frame embeds by value via a `__for_src` field --
         emit-ordering dependencies (the embedded struct must be complete
         first)."""
+        state = resumable_state(func)
         targets: list[tuple[str, str | None]] = []
+
+        def frame_holds_source(s: TpyForEach) -> bool:
+            info = state.for_loop_info.get(s)
+            if info is not None:
+                return any(n.startswith("__for_src_") for n, _ in info.fields)
+            return state.for_src_fields.get(s) is not None
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
+                # Whether the loop SUSPENDS does not enter it; whether the
+                # frame ends up HOLDING the source does. A loop whose holder
+                # stays in its block names no field, so it orders nothing.
                 if (isinstance(s, TpyForEach) and not s.is_async
-                        and (_stmts_have_any_suspension(s.body)
-                             or _stmts_have_any_suspension(s.orelse))):
+                        and frame_holds_source(s)):
                     t = self.types.get_resolved_type(s.iterable)
                     if (t is not None and is_protocol_type(t)
-                            and t.qualified_name() == "typing.Iterator"
-                            and self.ctx.is_temporary_expr(s.iterable)):
+                            and t.qualified_name() == "typing.Iterator"):
                         r = self._resolve_generator_call(s.iterable)
                         # Same-module only: the keys are bare `(name, owner)`
                         # pairs, so a cross-module callee would match a
@@ -891,5 +943,7 @@ class GeneratorCodegen:
                 for b in (s.sub_bodies() if hasattr(s, "sub_bodies") else ()):
                     walk(b)
 
-        walk(func.body)
+        # The prescan's verdicts are keyed on the nodes of the await-lifted
+        # body, so the walk must see those same nodes.
+        walk(state.lifted_body or func.body)
         return targets

@@ -24,6 +24,7 @@ from ..codegen_cpp.context import (
     escape_cpp_string, expand_cpp_template, loop_var_binding,
     qualify_native_name,
 )
+from ..codegen_cpp import emit_prims
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
     is_array, is_big_int_type, is_bytearray_type, is_bytes_type,
@@ -2033,7 +2034,16 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     iterable_cpp = _emit_expr(stmt.iterable, state)
     if stmt.str_literal_iterable:
         iterable_cpp = f"std::string_view({iterable_cpp})"
-    out.write(f"{indent}{binding_kw} {obj} = {iterable_cpp};\n")
+    if stmt.frame_src_field is not None:
+        # A fresh source whose elements this body binds into borrowing frame
+        # storage: the frame owns the source so those bindings stay valid
+        # past the state block.
+        emplace = emit_prims.for_src_emplace(stmt.frame_src_field,
+                                       stmt.frame_src_cpp or "", iterable_cpp)
+        out.write(f"{indent}{emplace}\n")
+        obj = f"(*{stmt.frame_src_field})"
+    else:
+        out.write(f"{indent}{binding_kw} {obj} = {iterable_cpp};\n")
     out.write(f"{indent}auto {beg} = {obj}.begin();\n")
     out.write(f"{indent}auto {end} = {obj}.end();\n")
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
@@ -2072,7 +2082,16 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
         indent = INDENT * lvl
     state.temps.flush(out, indent)
     binding_kw = "auto&" if stmt.iterable_lvalue else "auto"
-    out.write(f"{indent}{binding_kw} {src} = {it_cpp};\n")
+    if stmt.frame_src_field is not None:
+        # A fresh source the frame owns (see THIRForEach): the loop's own
+        # capture binds the slot instead of a block-local copy that dies with
+        # the state block.
+        emplace = emit_prims.for_src_emplace(stmt.frame_src_field,
+                                       stmt.frame_src_cpp or "", it_cpp)
+        out.write(f"{indent}{emplace}\n")
+        out.write(f"{indent}auto& {src} = (*{stmt.frame_src_field});\n")
+    else:
+        out.write(f"{indent}{binding_kw} {src} = {it_cpp};\n")
     out.write(f"{indent}auto&& {itr} = ::tpy::__iter__({src});\n")
     r = f"__r_{state.next_loop_index()}"
     out.write(f"{indent}for (;;) {{\n")

@@ -30,8 +30,9 @@ __gen_each_byte each_byte(std::optional<::tpy::BytesView> b) {
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         n = 0;
-        __for_it_0.emplace(((*s)).begin());
-        __for_end_0.emplace(((*s)).end());
+        auto& __for_obj_0 = (*s);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

@@ -89,8 +89,9 @@ void main() {
     case S_INITIAL: {  // entry
         n = 0;
         if ((__self.lst.has_value())) {
-            __for_it_0.emplace(((*__self.lst)).begin());
-            __for_end_0.emplace(((*__self.lst)).end());
+            auto& __for_obj_0 = (*__self.lst);
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_1;
             continue;
         } else {

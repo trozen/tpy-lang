@@ -226,8 +226,9 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_cycle<T, T_it>
     }
     case S_JOIN_1: {
         if ((::tpy::__len__((*saved)) > 0)) {
-            __for_it_1.emplace(((*saved)).begin());
-            __for_end_1.emplace(((*saved)).end());
+            auto& __for_obj_1 = (*saved);
+            __for_it_1.emplace((__for_obj_1).begin());
+            __for_end_1.emplace((__for_obj_1).end());
             __state = S_JOIN_2;
             continue;
         } else {

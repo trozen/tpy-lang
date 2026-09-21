@@ -14,8 +14,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Series_items::__next__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         tmp.emplace(std::array<int32_t, 3>{__self.a, __self.b, (::tpy::add_check<int32_t>(__self.a, __self.b))});
-        __for_it_0.emplace(((*tmp)).begin());
-        __for_end_0.emplace(((*tmp)).end());
+        auto& __for_obj_0 = (*tmp);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

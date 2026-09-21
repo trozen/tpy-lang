@@ -59,8 +59,9 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_walk::
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_pass::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -94,8 +95,9 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_p
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_break::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -133,8 +135,9 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_b
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_return::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

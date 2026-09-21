@@ -111,8 +111,9 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     }
     case S_JOIN_2: {
         try {
-            __for_it_0.emplace((xs).begin());
-            __for_end_0.emplace((xs).end());
+            auto& __for_obj_0 = xs;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (::tpy::BaseException& __exc_0) {
@@ -172,8 +173,9 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_2: {
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

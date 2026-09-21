@@ -97,8 +97,9 @@ template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_filterfalse<F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((it).begin());
-        __for_end_0.emplace((it).end());
+        auto& __for_obj_0 = it;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -168,8 +169,9 @@ template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_takewhile<F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((it).begin());
-        __for_end_0.emplace((it).end());
+        auto& __for_obj_0 = it;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -243,8 +245,9 @@ template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((it).begin());
-        __for_end_0.emplace((it).end());
+        auto& __for_obj_0 = it;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -316,8 +319,9 @@ template <typename F_fn>
 std::expected<int32_t, ::tpy::StopIteration> __gen_transform<F_fn>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((it).begin());
-        __for_end_0.emplace((it).end());
+        auto& __for_obj_0 = it;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -389,8 +393,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         n = 0;
-        __for_it_0.emplace((it).begin());
-        __for_end_0.emplace((it).end());
+        auto& __for_obj_0 = it;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

@@ -287,8 +287,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ptr_ro::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((g.rows).begin());
-        __for_end_0.emplace((g.rows).end());
+        auto& __for_obj_0 = g.rows;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -322,8 +323,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ro::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ptr_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((::tpy::deref_check(p).rows).begin());
-        __for_end_0.emplace((::tpy::deref_check(p).rows).end());
+        auto& __for_obj_0 = ::tpy::deref_check(p).rows;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -420,8 +422,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_alias_root::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_root::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((hs).begin());
-        __for_end_0.emplace((hs).end());
+        auto& __for_obj_0 = hs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

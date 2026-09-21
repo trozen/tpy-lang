@@ -41,8 +41,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         if ((__self.lst.has_value())) {
-            __for_it_0.emplace(((*__self.lst)).begin());
-            __for_end_0.emplace(((*__self.lst)).end());
+            auto& __for_obj_0 = (*__self.lst);
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_1;
             continue;
         } else {
@@ -79,8 +80,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__ne
     case S_INITIAL: {  // entry
         h = ::tpy::optional_to_ptr(__self.lst);
         if ((h != nullptr)) {
-            __for_it_0.emplace(((*h)).begin());
-            __for_end_0.emplace(((*h)).end());
+            auto& __for_obj_0 = (*h);
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_1;
             continue;
         } else {
@@ -116,8 +118,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_simple_alias::_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         a = &(__self.plain);
-        __for_it_0.emplace(((*a)).begin());
-        __for_end_0.emplace(((*a)).end());
+        auto& __for_obj_0 = (*a);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -172,8 +175,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Bumper_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((__self.cells).begin());
-        __for_end_0.emplace((__self.cells).end());
+        auto& __for_obj_0 = __self.cells;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

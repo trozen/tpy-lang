@@ -14,8 +14,9 @@ inline std::expected<std::tuple<::tpy::BigInt, Box*>, ::tpy::StopIteration> __ge
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         i = 0;
-        __for_it_0.emplace((boxes).begin());
-        __for_end_0.emplace((boxes).end());
+        auto& __for_obj_0 = boxes;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

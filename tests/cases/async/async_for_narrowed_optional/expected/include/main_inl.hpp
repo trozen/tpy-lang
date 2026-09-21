@@ -17,8 +17,9 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_each_byte::__nex
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        __for_it_0.emplace(((*b)).begin());
-        __for_end_0.emplace(((*b)).end());
+        auto& __for_obj_0 = (*b);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

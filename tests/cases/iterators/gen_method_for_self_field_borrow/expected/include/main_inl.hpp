@@ -17,8 +17,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_bump::__next__(
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        __for_it_0.emplace((__self.nodes).begin());
-        __for_end_0.emplace((__self.nodes).end());
+        auto& __for_obj_0 = __self.nodes;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

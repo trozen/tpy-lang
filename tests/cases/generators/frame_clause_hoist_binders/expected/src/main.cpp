@@ -255,9 +255,9 @@ __gen_gen_own_record_loop gen_own_record_loop() {
 std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_union::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __obj_0 = {1, 2};
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
+        auto __beg_0 = (*__for_src_0).begin();
+        auto __end_0 = (*__for_src_0).end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::union_pair(i);

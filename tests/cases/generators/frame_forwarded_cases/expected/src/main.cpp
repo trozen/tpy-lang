@@ -57,8 +57,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_try::__next__() {
     case S_INITIAL:  // entry
     case S_JOIN_3: {
         try {
-            __for_it_0.emplace((xs).begin());
-            __for_end_0.emplace((xs).end());
+            auto& __for_obj_0 = xs;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -134,8 +135,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
     }
     case S_JOIN_3: {
         try {
-            __for_it_0.emplace((xs).begin());
-            __for_end_0.emplace((xs).end());
+            auto& __for_obj_0 = xs;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (::tpy::BaseException& __exc_0) {
@@ -174,8 +176,9 @@ __gen_in_with in_with(const std::vector<int32_t>& xs) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_in_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -235,8 +238,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_break_continue::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -324,8 +328,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_return_in_finally::__next__()
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -430,8 +435,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
     case S_INITIAL:  // entry
     case S_JOIN_3: {
         try {
-            __for_it_0.emplace((xs).begin());
-            __for_end_0.emplace((xs).end());
+            auto& __for_obj_0 = xs;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -525,8 +531,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stop_in_region::__next__() {
         }
     }
     case S_JOIN_0: {
-        __for_it_1.emplace((xs).begin());
-        __for_end_1.emplace((xs).end());
+        auto& __for_obj_1 = xs;
+        __for_it_1.emplace((__for_obj_1).begin());
+        __for_end_1.emplace((__for_obj_1).end());
         __state = S_JOIN_3;
         continue;
     }
@@ -599,8 +606,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stop_in_region::__next__() {
     case S_INITIAL:  // entry
     case S_JOIN_4: {
         try {
-            __for_it_0.emplace((xs).begin());
-            __for_end_0.emplace((xs).end());
+            auto& __for_obj_0 = xs;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -664,8 +672,9 @@ __gen_stop_in_region stop_in_region(const std::vector<int32_t>& xs) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         total = 0;
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -773,8 +782,9 @@ __coro_async_loop async_loop(const std::vector<int32_t>& xs) {
     }
     case S_JOIN_3: {
         try {
-            __for_it_0.emplace((xs).begin());
-            __for_end_0.emplace((xs).end());
+            auto& __for_obj_0 = xs;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (...) {

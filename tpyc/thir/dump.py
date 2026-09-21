@@ -477,7 +477,11 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         # `[rvalue]` marks an owning `auto __obj_N` capture (vs the `auto&` alias).
         const = " [const]" if stmt.const_loop_var else ""
         rval = "" if stmt.iterable_lvalue else " [rvalue]"
-        lines = [f"{pad}for %{stmt.var}{const}{rval} in {_expr(stmt.iterable)}:"]
+        # `[frame_src=N]`: the resumable frame owns the source in that field.
+        fsrc = ("" if stmt.frame_src_field is None
+                else f" [frame_src={stmt.frame_src_field}]")
+        lines = [f"{pad}for %{stmt.var}{const}{rval}{fsrc} "
+                 f"in {_expr(stmt.iterable)}:"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         _extend_orelse(lines, stmt.orelse, depth)
@@ -650,7 +654,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return lines
     if isinstance(stmt, THIRForIterProto):
         const = " const" if stmt.const_loop_var else ""
-        lines = [f"{pad}for %{stmt.var}{const}: {_ty(stmt.elem_type)} "
+        fsrc = ("" if stmt.frame_src_field is None
+                else f" [frame_src={stmt.frame_src_field}]")
+        lines = [f"{pad}for %{stmt.var}{const}{fsrc}: {_ty(stmt.elem_type)} "
                  f"in iter_proto({_expr(stmt.iterable)}):"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))

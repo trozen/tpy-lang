@@ -17,8 +17,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_drain::__next__() {
     case S_INITIAL: {  // entry
         snap.emplace(s.snapshot());
         (*snap).push_back(4);
-        __for_it_0.emplace(((*snap)).begin());
-        __for_end_0.emplace(((*snap)).end());
+        auto& __for_obj_0 = (*snap);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
