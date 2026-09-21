@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 from .dump import _location, _place
 from .liveness import MIRPoint
-from .nodes import MIRAssign, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWrite
+from .nodes import MIRAssign, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWrite, MIRStorageInit
 from .validate import successors, validate_function
 
 
@@ -29,6 +29,8 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
     writes: dict[MIRPoint, MIRAssign] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
+            if isinstance(stmt, MIRStorageInit):
+                continue
             match stmt.value:
                 case MIRConstruct() | MIRCopy() | MIRMove():
                     if not isinstance(stmt.storage_write, MIRRecordWrite):

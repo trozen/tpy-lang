@@ -6,11 +6,14 @@ import operator
 from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind,
-    MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind, MIRSlotId,
+    MIRPayloadWrite, MIRPayloadWriteMode,
+    MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRStorageInit, MIREdge,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
 )
+from .region_flow import MIRRegionFlow
+from .validate import statement_reads
 
 
 @dataclass(frozen=True)
@@ -50,9 +53,13 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
     params = [s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
     assert len(params) == len(args)
     values = dict(zip(params, args))
+    regions = MIRRegionFlow(fn)
     objects = heap if heap is not None else {}
     blocks = {b.id: b for b in fn.blocks}
     slots = {s.id: s for s in fn.slots}
+    physical: dict[MIRSlotId, Value] = {
+        sid: value for sid, value in values.items()
+        if slots[sid].value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION)}
     global_values = global_state if global_state is not None else {}
     for slot in fn.slots:
         if slot.global_id is not None:
@@ -115,6 +122,15 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
     for _ in range(100):
         block = blocks[bid]
         for stmt in block.statements:
+            if isinstance(stmt, MIRStorageInit):
+                physical[stmt.target.root] = (OptionalValue() if slots[stmt.target.root].value_kind is MIRValueKind.OPTIONAL
+                                              else UnionValue(stmt.alternative, stmt.value.value))
+                values.pop(stmt.target.root, None)
+                continue
+            assert all(sid in values or slots[sid].global_id is not None for sid in statement_reads(stmt)), \
+                "source read before assignment"
+            if isinstance(stmt.storage_write, MIRPayloadWrite) and stmt.storage_write.mode is MIRPayloadWriteMode.ASSIGN:
+                assert stmt.target.root in physical, "assignment before storage initialization"
             rhs = stmt.value
             match rhs:
                 case MIRConstant():
@@ -204,14 +220,22 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     global_values[identity] = value
                 else:
                     values[stmt.target.root] = value
+                    if slots[stmt.target.root].value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION):
+                        physical[stmt.target.root] = value
         term = block.terminator
         match term:
             case MIRReturn(value=result):
                 return values[result] if result is not None else None
             case MIRBranch(condition=condition, then=then, otherwise=otherwise):
+                edge = MIREdge(bid, int(not values[condition]))
                 bid = then if values[condition] else otherwise
             case MIRGoto(target=target):
+                edge = MIREdge(bid)
                 bid = target
             case _:
                 raise AssertionError(term)
+        for sid in regions.edges[edge].reset:
+            values.pop(sid, None)
+        for sid in regions.edges[edge].ended:
+            physical.pop(sid, None)
     raise AssertionError("unexpected nontermination")

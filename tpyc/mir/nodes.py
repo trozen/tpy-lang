@@ -312,6 +312,18 @@ class MIRAssign:
 
 
 @dataclass(frozen=True)
+class MIRStorageInit:
+    """Construct a physical wrapper without assigning its source binding."""
+    target: MIRPlace
+    alternative: int
+    value: MIRConstant
+    loc: SourceLocation | None = None
+
+
+MIRStatement = MIRAssign | MIRStorageInit
+
+
+@dataclass(frozen=True)
 class MIRGoto:
     target: MIRBlockId
     loc: SourceLocation | None = None
@@ -337,7 +349,7 @@ MIRTerminator = MIRGoto | MIRBranch | MIRReturn
 @dataclass(frozen=True)
 class MIRBlock:
     id: MIRBlockId
-    statements: tuple[MIRAssign, ...]
+    statements: tuple[MIRStatement, ...]
     terminator: MIRTerminator
     region: MIRRegionId | None = None
 

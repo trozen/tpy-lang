@@ -9,7 +9,7 @@ from ..typesys import BOOL, INT32, NominalType, unwrap_readonly
 from .dump import _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlockId, MIRBorrow, MIRCompare, MIRConstant,
+    MIRAlias, MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRCompare, MIRConstant,
     MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFunction, MIRIsAlternative,
     MIRIsPresent, MIRMove, MIRNot, MIRNotCovered, MIROptionalConstruct,
     MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId,
@@ -134,7 +134,9 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     leaves = {s.id: _leaves(s) for s in fn.slots}
     empty: frozenset[MIRReferent] = frozenset()
 
-    def transfer(stmt: MIRAssign, state: dict[MIRPlace, frozenset[MIRReferent]]) -> None:
+    def transfer(stmt: MIRStatement, state: dict[MIRPlace, frozenset[MIRReferent]]) -> None:
+        if isinstance(stmt, MIRStorageInit):
+            return
         target, value = stmt.target, stmt.value
         result: dict[MIRPlace, frozenset[MIRReferent]] = {}
         match value:

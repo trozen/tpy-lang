@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBranch, MIRFunction, MIRGoto, MIRReturn,
+    MIRStatement, MIRBlockId, MIRBranch, MIRFunction, MIRGoto, MIRReturn,
     MIRPoint, MIRSlotId, MIRTerminator,
 )
-from .validate import MIRPrepared, MIRValidationError, _validated_function, operands, successors
+from .validate import MIRPrepared, MIRValidationError, _validated_function, source_definition, statement_reads, successors
 
 
 @dataclass(frozen=True)
@@ -66,11 +66,9 @@ def _liveness(prepared: MIRPrepared) -> MIRLiveness:
                     pending.append(root)
         return frozenset(result)
 
-    def before(stmt: MIRAssign, after: frozenset[MIRSlotId]) -> frozenset[MIRSlotId]:
-        uses = frozenset(operands(stmt.value))
-        if stmt.target.projections:
-            return close(after | uses | {stmt.target.root})
-        return close((after - {stmt.target.root}) | uses)
+    def before(stmt: MIRStatement, after: frozenset[MIRSlotId]) -> frozenset[MIRSlotId]:
+        definition = source_definition(stmt)
+        return close((after - {definition}) | frozenset(statement_reads(stmt)))
 
     incoming = {bid: frozenset() for bid in order}
     outgoing = incoming.copy()

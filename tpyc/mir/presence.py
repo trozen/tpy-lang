@@ -8,7 +8,7 @@ from types import MappingProxyType
 
 from ..typesys import BOOL
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
+    MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIRValueKind,
     MIREdge, MIRReturn,
@@ -94,7 +94,7 @@ def _join(states: list[_State]) -> _State:
     return _State(present, conditions, frozenset.intersection(*(s.valid_aliases for s in states)))
 
 
-def _transfer(state: _State, stmt: MIRAssign, booleans: set[MIRSlotId],
+def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
               domains: dict[MIRSlotId, frozenset[int]] | None = None,
               aliases: dict[MIRSlotId, frozenset[MIRSlotId]] | None = None) -> _State:
     if stmt.target.projections:
@@ -102,8 +102,11 @@ def _transfer(state: _State, stmt: MIRAssign, booleans: set[MIRSlotId],
     target, value = stmt.target.root, stmt.value
     present, conditions = state.present, state.conditions.copy()
     valid = state.valid_aliases
-    if isinstance(value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)):
-        match value:
+    if isinstance(stmt, MIRStorageInit) or isinstance(
+            value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)):
+        match stmt if isinstance(stmt, MIRStorageInit) else value:
+            case MIRStorageInit(alternative=alternative):
+                known = frozenset({alternative})
             case MIROptionalConstruct():
                 known = frozenset({int(value.source is not None)})
             case MIRUnionConstruct():

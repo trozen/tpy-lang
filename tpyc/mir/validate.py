@@ -13,7 +13,7 @@ from .nodes import (
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
-    MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
+    MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode, MIRStorageInit, MIRStatement,
     MIRRegionId, MIREdge,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
@@ -138,6 +138,26 @@ def successors(term: MIRGoto | MIRBranch | MIRReturn) -> tuple[MIRBlockId, ...]:
             return ()
         case _:
             raise MIRValidationError("missing or unknown terminator")
+
+
+def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
+    match stmt:
+        case MIRStorageInit():
+            return ()
+        case MIRAssign(target=target, value=value):
+            return (*operands(value), target.root) if target.projections else operands(value)
+        case _:
+            raise MIRValidationError("unknown instruction")
+
+
+def source_definition(stmt: MIRStatement) -> MIRSlotId | None:
+    match stmt:
+        case MIRStorageInit():
+            return None
+        case MIRAssign(target=target):
+            return None if target.projections else target.root
+        case _:
+            raise MIRValidationError("unknown instruction")
 
 
 def _cyclic_blocks(blocks: dict[MIRBlockId, MIRBlock],
@@ -429,16 +449,37 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(block.id.body == fn.id and block.id.index >= 0,
                  "foreign or invalid block ID")
         for stmt in block.statements:
-            _require(isinstance(stmt, MIRAssign), "unknown instruction")
+            _require(isinstance(stmt, (MIRAssign, MIRStorageInit)), "unknown instruction")
             target_type = place_type(stmt.target, write=True)
-            value = stmt.value
             target = slots[stmt.target.root]
             if fn.regions:
                 active = regions.chains[block.region]
-                for sid in (*operands(value), stmt.target.root):
+                for sid in (*statement_reads(stmt), stmt.target.root):
                     _require(sid in slots, "unknown slot ID")
                     residence = slots[sid].residence
                     _require(residence is None or residence in active, "use outside binding residence")
+            if isinstance(stmt, MIRStorageInit):
+                _require(not stmt.target.projections and target.kind is MIRSlotKind.LOCAL
+                         and scalar_wrapper(target), "physical initialization needs local scalar wrapper")
+                _require(type(stmt.alternative) is int and stmt.alternative == 0
+                         and isinstance(stmt.value, MIRConstant), "invalid wrapper default")
+                default_type = (None if target.value_kind is MIRValueKind.OPTIONAL
+                                or target.union_layout.elements[0] is None else target.union_layout.elements[0].type)
+                expected = None if default_type is None else False if default_type == BOOL else 0
+                _require(type(stmt.value.value) is type(expected) and stmt.value.value == expected,
+                         "invalid wrapper default value")
+                _require(target.id not in payload_initializations, "repeated payload initialization")
+                payload_initializations.add(target.id)
+                if isinstance(target.storage_duration, MIRRegionId):
+                    _require(target.storage_duration == block.region, "scoped initialization needs owning region")
+                    region_initializations[target.id] = block.id
+                else:
+                    _require(target.storage_duration is MIRStorageDuration.BODY
+                             and (not fn.regions or block.region == blocks[fn.entry].region),
+                             "physical initialization needs owning placement")
+                    payload_init_blocks.add(block.id)
+                continue
+            value = stmt.value
             fact = stmt.storage_write
             if isinstance(fact, MIRPayloadWrite):
                 _require(isinstance(fact.mode, MIRPayloadWriteMode), "invalid payload write mode")
@@ -686,44 +727,59 @@ def _validate_structure(fn: MIRFunction) -> None:
             reachable.add(bid)
             pending.extend(successors(blocks[bid].terminator))
     parameters = {s.id for s in fn.slots if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
-    writes = {bid: {s.target.root for s in blocks[bid].statements if not s.target.projections}
+    writes = {bid: {sid for s in blocks[bid].statements if (sid := source_definition(s)) is not None}
               for bid in reachable}
+    physical_writes = {bid: {s.target.root for s in blocks[bid].statements if not s.target.projections}
+                       for bid in reachable}
     # Intersection is a must analysis; initialize at top, with a synthetic
     # parameter-only incoming edge at entry even if the entry has a back edge.
     incoming = {bid: set(slots) for bid in reachable}
     outgoing = {bid: set(slots) for bid in reachable}
+    physical_in = {bid: set(slots) for bid in reachable}
+    physical_out = {bid: set(slots) for bid in reachable}
     work = deque(reachable)
     queued = set(reachable)
     incoming_edges = {bid: [] for bid in reachable}
     for edge, transition in regions.edges.items():
         if edge.source in reachable and transition.target is not None:
-            incoming_edges[transition.target].append((edge.source, transition.reset))
+            incoming_edges[transition.target].append((edge.source, transition.reset, transition.ended))
     while work:
         bid = work.popleft()
         queued.remove(bid)
-        sources = [outgoing[source] - reset for source, reset in incoming_edges[bid]]
+        sources = [outgoing[source] - reset for source, reset, _ in incoming_edges[bid]]
+        constructed = [physical_out[source] - ended for source, _, ended in incoming_edges[bid]]
         if bid == fn.entry:
             sources.append(parameters)
+            constructed.append(parameters)
         new_in = set.intersection(*sources)
         new_out = new_in | writes[bid]
+        new_physical_in = set.intersection(*constructed)
+        new_physical_out = new_physical_in | physical_writes[bid]
         incoming[bid] = new_in
-        if new_out != outgoing[bid]:
+        physical_in[bid] = new_physical_in
+        if new_out != outgoing[bid] or new_physical_out != physical_out[bid]:
             outgoing[bid] = new_out
+            physical_out[bid] = new_physical_out
             for target in successors(blocks[bid].terminator):
                 if target not in queued:
                     work.append(target)
                     queued.add(target)
     for bid in reachable:
         assigned = incoming[bid].copy()
+        constructed = physical_in[bid].copy()
         block = blocks[bid]
         for stmt in block.statements:
-            reads = set(operands(stmt.value))
-            if stmt.target.projections or stmt.storage_write == MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN):
-                reads.add(stmt.target.root)
+            reads = set(statement_reads(stmt))
             if not reads <= assigned:
                 raise MIRDefiniteAssignmentError("read before definite assignment")
+            _require(all(sid in constructed for sid in reads if scalar_wrapper(slots[sid])),
+                     "read before storage initialization")
+            if isinstance(stmt, MIRAssign) and stmt.storage_write == MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN):
+                _require(stmt.target.root in constructed, "assignment before storage initialization")
+            if (definition := source_definition(stmt)) is not None:
+                assigned.add(definition)
             if not stmt.target.projections:
-                assigned.add(stmt.target.root)
+                constructed.add(stmt.target.root)
         term = block.terminator
         match term:
             case MIRBranch():

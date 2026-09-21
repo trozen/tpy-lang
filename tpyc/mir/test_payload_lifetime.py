@@ -132,7 +132,7 @@ def test_missing_fact_is_uncovered_even_on_unreachable_write(optional: bool, unr
 
 @pytest.mark.parametrize("optional", [False, True])
 @pytest.mark.parametrize("malformation, message", [
-    ("assign_first", "read before definite assignment"),
+    ("assign_first", "assignment before storage initialization"),
     ("double_init", "repeated payload initialization"),
     ("cyclic_init", "payload initialization in cycle"),
     ("bad_mode", "invalid payload write mode"),
@@ -178,7 +178,7 @@ def test_assignment_requires_initialization_on_every_predecessor() -> None:
         MIRBlock(YES, (write(False, 2, fact=INIT),), MIRGoto(JOIN)),
         MIRBlock(NO, (), MIRGoto(JOIN)),
         MIRBlock(JOIN, (write(False, 0),), MIRReturn(VALUE)))
-    with pytest.raises(MIRValidationError, match="read before definite assignment"):
+    with pytest.raises(MIRValidationError, match="assignment before storage initialization"):
         analyze_payload_ends(fn)
 
 

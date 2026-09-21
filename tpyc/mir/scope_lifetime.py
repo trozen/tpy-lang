@@ -13,7 +13,7 @@ from .nodes import (
     MIRBlockId, MIRConstruct, MIRCopy, MIREdge, MIRFunction, MIRMove,
     MIRNotCovered, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
     MIRRecordWrite, MIRRegionId, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRUnionPayload, MIRValueKind, MIRPoint,
+    MIRUnionPayload, MIRValueKind, MIRPoint, MIRStorageInit,
 )
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -57,6 +57,9 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
         for stmt in block.statements:
             if stmt.target.projections or stmt.target.root not in roots:
                 continue
+            if isinstance(stmt, MIRStorageInit):
+                initialized[block.id].add(stmt.target.root)
+                continue
             record = isinstance(stmt.value, (MIRConstruct, MIRCopy, MIRMove))
             if not isinstance(stmt.storage_write, MIRRecordWrite if record else MIRPayloadWrite):
                 return MIRNotCovered(fn.id, "scope ends", "missing storage initialization/write fact", stmt.loc)
@@ -74,7 +77,7 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
         for edge, target in outgoing_edges(bid, blocks[bid].terminator):
             if target is None or edge not in presence.edges:
                 continue
-            branch = state - regions.edges[edge].reset
+            branch = state - regions.edges[edge].ended
             updated = incoming.get(target, frozenset()) | branch
             if target not in incoming or updated != incoming[target]:
                 incoming[target] = updated

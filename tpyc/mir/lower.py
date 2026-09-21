@@ -10,7 +10,7 @@ from ..typesys import (
     NoneType, OptionalType, ReadonlyType, TupleType, UnionType, VoidType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRStorageInit, MIRStatement,
     MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
@@ -23,7 +23,7 @@ from .nodes import (
 )
 from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
-from .validate import MIRDefiniteAssignmentError, MIRPresenceError, operands, successors, validate_function
+from .validate import MIRDefiniteAssignmentError, MIRPresenceError, statement_reads, successors, validate_function
 
 
 def _literal(expr: th.THIRExpr) -> bool:
@@ -868,7 +868,7 @@ class _Coverage:
 class _Block:
     id: MIRBlockId
     region: MIRRegionId
-    statements: list[MIRAssign] = field(default_factory=list)
+    statements: list[MIRStatement] = field(default_factory=list)
     terminator: MIRTerminator | None = None
 
 
@@ -1373,8 +1373,9 @@ class _Builder:
         for block in blocks:
             for stmt in block.statements:
                 retained.add(stmt.target.root)
-                retained.update(operands(stmt.value))
-                if isinstance(stmt.storage_write, MIRRecordWrite) and stmt.storage_write.rebind_owner is not None:
+                retained.update(statement_reads(stmt))
+                if (isinstance(stmt, MIRAssign) and isinstance(stmt.storage_write, MIRRecordWrite)
+                        and stmt.storage_write.rebind_owner is not None):
                     retained.add(stmt.storage_write.rebind_owner)
             match block.terminator:
                 case MIRBranch(condition=condition):

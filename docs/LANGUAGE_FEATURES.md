@@ -8601,6 +8601,13 @@ blocks and their unused storage metadata disappear together. Mutable-variable
 propagation and comparison folding remain deferred
 ([constant CFG plan](MIR_M3_CONSTANT_CFG_PLAN.md)). Source behavior is unchanged.
 
+The [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md) records the remaining
+storage, control-flow, cleanup, suspension and holder coverage. M3.12 separates
+physical wrapper construction from source binding assignment, with actual
+default tags and lifetime events. The approved M3.13 step connects scalar
+Optional/union hoists ([wrapper storage plan](MIR_M3_WRAPPER_STORAGE_PLAN.md));
+THIR coverage is unchanged by M3.12 alone.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

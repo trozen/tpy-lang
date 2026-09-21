@@ -5,7 +5,7 @@ from .nodes import (
     MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
-    MIRRegionId,
+    MIRRegionId, MIRStorageInit,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
@@ -80,6 +80,10 @@ def dump_function(fn: MIRFunction) -> str:
     for block in fn.blocks:
         lines.append(f"bb{block.id.index}:")
         for stmt in block.statements:
+            if isinstance(stmt, MIRStorageInit):
+                lines.append(f"  initialize-storage {_place(stmt.target)} alternative={stmt.alternative} "
+                             f"value={stmt.value.value!r}{_location(stmt.loc)}")
+                continue
             match stmt.value:
                 case MIRConstant(value=value):
                     rhs = repr(value)

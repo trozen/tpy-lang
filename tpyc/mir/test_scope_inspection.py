@@ -11,7 +11,7 @@ from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRConstant, MIREdge, MIRFunction,
     MIRGoto, MIRNotCovered, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
     MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit,
 )
 from .scope_lifetime import (
     MIRScopeEnds, _scope_conflicts, _scope_ends, analyze_scope_ends,
@@ -110,8 +110,15 @@ def test_scope_end_invalidates_scalar_alias_without_erasing_its_referent() -> No
     assert "freshness" in dump_scope_inspection(result)
 
 
-def test_reentering_and_reconstructing_does_not_erase_scalar_alias_failure() -> None:
+@pytest.mark.parametrize("physical_default", [False, True])
+def test_reentering_and_reconstructing_does_not_erase_scalar_alias_failure(physical_default: bool) -> None:
     fn = stale_scalar_alias()
+    if physical_default:
+        child = fn.blocks[1]
+        init, extract = child.statements
+        fn = replace(fn, blocks=(fn.blocks[0], replace(child, statements=(
+            MIRStorageInit(init.target, 0, MIRConstant(None)),
+            replace(init, storage_write=MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN)), extract)), fn.blocks[2]))
     exit_id = MIRBlockId(fn.id, 3)
     after = fn.blocks[2]
     fn = replace(fn, blocks=(*fn.blocks[:2], replace(after, terminator=MIRBranch(

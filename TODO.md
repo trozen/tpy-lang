@@ -1704,6 +1704,15 @@ alongside related feature work; only the big-rock deferrals live here.
   elements and broader call/closure execution remain explicit M2/M3/M4 gaps.
   Bounded M3 liveness and all-holder propagation are implemented, without
   completing M2 or enabling M5.
+  `docs/MIR_M3_COMPLETION_PLAN.md` is the current M3 completion checklist and
+  batch-order index; the increment history below records bounded coverage.
+  The proposed next batch, `docs/MIR_M3_WRAPPER_STORAGE_PLAN.md`, introduces
+  separate physical-initialization/source-assignment facts and admits scalar
+  Optional/union hoists in two commits. It awaits design approval. Record
+  backing engagement, owning aggregates, cyclic copy/move/in-place, broader
+  CFG positions, cleanup, suspension and complete holder/escape propagation
+  remain explicit unchecked work packages there, not an unspecified count of
+  small numbered increments.
   `docs/MIR_M3_LIVENESS_PLAN.md` records the approved M3.1/M3.2 design.
   `--dump-mir`, M3.1 backward liveness and M3.2 forward reference dependencies
   are implemented. Whole-holder precision
