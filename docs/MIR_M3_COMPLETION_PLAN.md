@@ -1,7 +1,7 @@
 # M3 completion checklist
 
 Current planning index, updated 2026-09-21. Implementation exists through
-M3.18; merge status is separate. The numbered increment plans below record
+M3.21; review/merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -91,8 +91,9 @@ The [approved ordinary for-loop batch](MIR_M3_ORDINARY_FOR_PLAN.md) groups
 M3.19-M3.21 into one delivery: iteration identities/dependencies, range CFG,
 and native scalar/record-element loops. M3.19 implements the internal
 iterator/dependency model and positive THIR facts. M3.20 connects int32
-unit-step range CFG, once-captured bounds and target residences; native source
-integration remains M3.21. This batch
+unit-step range CFG, once-captured bounds and target residences. M3.21 connects
+fixed borrowed list/Array scalar and plain-record elements, set[int32] and
+dict[int32, int32] keys, with readonly and retained element aliases. This batch
 does not include tuple-language fixes. Protocol iteration and the other W2
 positions remain open after this batch.
 

@@ -2028,6 +2028,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             record_layout=layout,
             params=tuple(THIRParam(
                 name=n, type=t, union_layout=_union_source_layout(n, t, lc),
+                native_container=native_container(
+                    t, _param_is_const(n, init_method, analyzer, record.name), analyzer),
                 optional_layout=optional_layout(
                     t, analyzer, borrow=True,
                     readonly=_param_is_const(n, init_method, analyzer, record.name)),

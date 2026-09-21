@@ -5,6 +5,8 @@ from contextlib import contextmanager
 from collections.abc import Iterator
 
 from ..identity_map import IdentityMap
+from ..codegen_cpp.forms import LoopBinding, loop_binding_kind
+from ..type_def_registry import is_list, is_array, is_set, is_dict
 from ..parse import RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..typesys import (
@@ -20,6 +22,7 @@ from .nodes import (
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
     MIRRegion, MIRRegionId,
     MIRRangeAdvance,
+    MIRContainerLayout, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
@@ -54,6 +57,8 @@ class _Coverage:
         self.payload_aliases: set[str] = set()
         self.globals: dict[MIRGlobalId, th.THIRGlobalBinding] = {}
         self.range_counters: set[str] = set()
+        self.containers: dict[str, th.THIRNativeContainer] = {}
+        self.iteration_references: set[str] = set()
 
     def global_binding(self, expr: th.THIRName | th.THIRModuleVar | th.THIRWalrus,
                        *, write: bool = False) -> TpyType:
@@ -82,9 +87,15 @@ class _Coverage:
             self.references["self"] = fn.receiver
             self.parameters.add("self")
         for p in fn.params:
-            _plain(p, {"name", "type", "borrowed_record", "optional_layout", "union_layout", "tuple_layout"})
+            _plain(p, {"name", "type", "borrowed_record", "optional_layout", "union_layout", "tuple_layout", "native_container"})
             _require(fn, p.name not in self.bindings, "duplicate binding")
-            if p.tuple_layout is not None:
+            if p.native_container is not None:
+                _require(p, all(f is None for f in (p.borrowed_record, p.optional_layout, p.union_layout, p.tuple_layout)),
+                         "conflicting parameter facts")
+                self.container(p, p.native_container, p.type)
+                self.containers[p.name] = p.native_container
+                self.bindings[p.name] = p.native_container.type
+            elif p.tuple_layout is not None:
                 _require(p, all(f is None for f in (p.borrowed_record, p.optional_layout, p.union_layout)),
                          "conflicting parameter facts")
                 self.tuple_layout(p, p.tuple_layout, p.type)
@@ -120,6 +131,17 @@ class _Coverage:
                              "hoisted initial backing")
                 if stmt.owned_storage is not None and loops:
                     _require(stmt, isinstance(stmt.init, th.THIRCtorCall), "copy or move initialization in loop")
+                if isinstance(stmt, th.THIRVarDecl) and stmt.native_container is not None:
+                    _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const",
+                                  "cpp_local_representation", "native_container"})
+                    self.container(stmt, stmt.native_container, stmt.resolved_type)
+                    _require(stmt, stmt.form is th.Form.BORROW and stmt.is_const == stmt.native_container.readonly
+                             and self.container_name(stmt.init) == stmt.native_container
+                             and stmt.name not in self.fn.layout.reassigned_locals,
+                             "container alias needs fixed matching borrowed source")
+                    self.containers[stmt.name] = stmt.native_container
+                    self.bindings[stmt.name] = stmt.native_container.type
+                    continue
                 if stmt.union_layout is not None:
                     _require(stmt, isinstance(stmt, th.THIRVarDecl) and stmt.init is not None,
                              "unsupported union declaration")
@@ -299,6 +321,35 @@ class _Coverage:
                  and type(ref.readonly) is bool, "unsupported reference fact")
         _require(node, unwrap_readonly(unwrap_ref_type(typ)) == ref.type,
                  "reference type mismatch")
+
+    def container(self, node: object, fact: th.THIRNativeContainer, typ: TpyType) -> None:
+        bare = unwrap_readonly(unwrap_ref_type(typ))
+        _require(node, isinstance(fact, th.THIRNativeContainer) and isinstance(bare, NominalType)
+                 and fact.type == bare and type(fact.readonly) is bool
+                 and (not isinstance(unwrap_ref_type(typ), ReadonlyType) or fact.readonly),
+                 "invalid native container fact")
+        args = bare.type_args
+        _require(node, ((is_list(bare) or is_set(bare)) and len(args) == 1
+                       or is_dict(bare) and args == (INT32, INT32)
+                       or is_array(bare) and len(args) == 2 and type(args[1]) is int and args[1] >= 0),
+                 "unsupported native container type")
+        member = fact.element
+        if isinstance(member, th.THIRBorrowedRecord):
+            self.reference(node, member, args[0])
+            _require(node, (is_list(bare) or is_array(bare)) and member.readonly == fact.readonly,
+                     "unsupported native record element")
+            self.records[member.type] = self.definitions.get(node, member.type)
+        else:
+            _require(node, member == args[0] == INT32, "unsupported native scalar element")
+
+    def container_name(self, expr: th.THIRExpr) -> th.THIRNativeContainer:
+        _require(expr, isinstance(expr, th.THIRName), "container source needs local name")
+        _plain(expr, {"name", "is_last_use", "is_movable", "deref"})
+        fact = self.containers.get(expr.name)
+        _require(expr, fact is not None and expr.form is th.Form.BORROW
+                 and expr.name not in self.fn.layout.reassigned_locals, "container source needs fixed borrowed binding")
+        self.container(expr, fact, expr.result_type)
+        return fact
 
     def reference_name(self, expr: th.THIRExpr) -> str:
         match expr:
@@ -791,6 +842,8 @@ class _Coverage:
     def stmt(self, stmt: th.THIRStmt, loops: int) -> None:
         match stmt:
             case th.THIRAssign(target=th.THIRName(name=name)) | th.THIRPtrLocalRebind(name=name):
+                _require(stmt, name not in self.containers and name not in self.iteration_references,
+                         "iteration source or reference target cannot be reseated")
                 _require(stmt, name not in self.range_counters, "range target write needs separate induction")
                 _require(stmt, name not in self.tuple_roots, "owned tuple binding replacement is unsupported")
             case th.THIRNarrowAlias(alias=name):
@@ -896,6 +949,8 @@ class _Coverage:
                     _require(stmt, self.expr(stmt.value) == self.fn.return_type, "return type mismatch")
             case th.THIRForRange():
                 self.range_loop(stmt, loops)
+            case th.THIRForEach():
+                self.native_loop(stmt, loops)
             case th.THIRIf() | th.THIRWhile():
                 allowed = {"condition", "then_body", "else_body", "else_is_nested"} if isinstance(
                     stmt, th.THIRIf) else {"condition", "body", "orelse"}
@@ -943,7 +998,38 @@ class _Coverage:
         self.bindings, self.range_counters = bindings, counters
         self.scoped(stmt.orelse, loops)
 
-    def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange) -> None:
+    def native_loop(self, stmt: th.THIRForEach, loops: int) -> None:
+        _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var", "iterable_lvalue",
+                      "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings", "iteration"})
+        fact = stmt.iteration
+        _require(stmt, isinstance(fact, th.THIRNativeIteration) and stmt.iterable_lvalue is True
+                 and type(stmt.const_loop_var) is bool and type(stmt.hoist_loop_var) is bool
+                 and isinstance(stmt.var, str) and bool(stmt.var), "missing or invalid native iteration facts")
+        source = self.container_name(stmt.iterable)
+        _require(stmt, source == fact.source, "native iteration source disagrees with binding")
+        member = source.element
+        reference = member if isinstance(member, th.THIRBorrowedRecord) else None
+        typ = reference.type if reference else member
+        _require(stmt, unwrap_readonly(stmt.elem_type) == typ
+                 and fact.binding is loop_binding_kind(stmt.elem_type, stmt.const_loop_var, hoisted=stmt.hoist_loop_var)
+                 and fact.binding in (LoopBinding.VALUE, LoopBinding.ASSIGN, LoopBinding.REFERENCE, LoopBinding.CONST_REFERENCE)
+                 and (reference is None or not stmt.hoist_loop_var and stmt.const_loop_var == reference.readonly),
+                 "unsupported native target binding")
+        self.hoists(stmt)
+        _require(stmt, stmt.var not in self.range_counters and stmt.var not in self.iteration_references,
+                 "nested loop replaces outer iteration binding")
+        _require(stmt, self.bindings.get(stmt.var) == typ if stmt.hoist_loop_var else stmt.var not in self.bindings,
+                 "native target residence mismatch")
+        bindings, references, targets = self.bindings.copy(), self.references.copy(), self.iteration_references.copy()
+        self.bindings[stmt.var] = typ
+        if reference:
+            self.references[stmt.var] = reference
+            self.iteration_references.add(stmt.var)
+        self.scoped(stmt.body, loops + 1)
+        self.bindings, self.references, self.iteration_references = bindings, references, targets
+        self.scoped(stmt.orelse, loops)
+
+    def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange | th.THIRForEach) -> None:
         facts = stmt.hoisted_bindings
         _require(stmt, all(isinstance(f, th.THIRHoistedBinding) for f in facts)
                  and tuple(f.name for f in facts) == tuple(name for name, _ in stmt.hoist_decls),
@@ -1000,6 +1086,7 @@ class _Coverage:
             self.bindings[fact.name] = typ
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
+        containers = self.containers.copy()
         tuple_roots = self.tuple_roots.copy()
         saved = (self.bindings.copy(), self.references.copy(), self.payload_aliases.copy(),
                  self.tuples.copy(), self.optionals.copy(), self.unions.copy(), self.fixed_owned.copy(),
@@ -1010,6 +1097,7 @@ class _Coverage:
          self.tuples, self.optionals, self.unions, self.fixed_owned, self.optional_record_storage) = saved
         self.fixed_owned = retained_fixed
         self.tuple_roots = tuple_roots
+        self.containers = containers
 
 
 @dataclass
@@ -1050,22 +1138,27 @@ class _Builder:
              union_layout: th.THIRUnionLayout | None = None,
              alias_source: MIRPlace | None = None,
              global_binding: th.THIRGlobalBinding | None = None,
+             container: th.THIRNativeContainer | None = None, iterator: bool = False,
              storage_duration: MIRStorageDuration | MIRRegionId | None = None,
              record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
-        self.slots.append(MIRSlot(sid, reference.type if reference else (
+        self.slots.append(MIRSlot(sid, container.type if container else reference.type if reference else (
             unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
             if optional_layout is not None or union_layout is not None or tuple_layout is not None else typ), kind, name,
                                   form=(th.Form.STORAGE if storage or tuple_layout is not None and tuple_layout.owns_records
-                                        else th.Form.BORROW if reference or alias_source else th.Form.VALUE),
-                                  value_kind=(MIRValueKind.RECORD_STORAGE if storage else
+                                        else th.Form.BORROW if reference or alias_source or container else th.Form.VALUE),
+                                  value_kind=(MIRValueKind.NATIVE_ITERATOR if iterator else
+                                              MIRValueKind.BORROWED_CONTAINER if container else
+                                              MIRValueKind.RECORD_STORAGE if storage else
                                               MIRValueKind.BORROWED_RECORD if reference else
                                               MIRValueKind.TUPLE if tuple_layout is not None else
                                               MIRValueKind.UNION if union_layout is not None else
                                               MIRValueKind.PAYLOAD_ALIAS if alias_source is not None else
                                               MIRValueKind.OPTIONAL if optional_layout is not None else MIRValueKind.SCALAR),
                                   readonly=(not global_binding.writable if global_binding is not None else
+                                            container.readonly if container else
                                             reference.readonly if reference else alias_source is not None),
+                                  container_layout=MIRContainerLayout(self.payload(container.element)) if container else None,
                                   tuple_layout=self.layout(tuple_layout) if tuple_layout is not None else None,
                                   optional_layout=self.optional_layout(optional_layout)
                                   if optional_layout is not None else None,
@@ -1318,6 +1411,10 @@ class _Builder:
             match stmt:
                 case th.THIRNoOpStmt():
                     continue
+                case th.THIRVarDecl() if stmt.native_container is not None:
+                    dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name, container=stmt.native_container)
+                    self.write(dest, MIRAlias(self.bindings[stmt.init.name]), loc)
+                    self.bindings[stmt.name] = dest
                 case th.THIRNarrowAlias():
                     fact = stmt.union_extraction
                     member = fact.layout.elements[fact.alternative]
@@ -1473,6 +1570,8 @@ class _Builder:
                     self.current = after
                 case th.THIRForRange():
                     self.range_loop(stmt)
+                case th.THIRForEach():
+                    self.native_loop(stmt)
                 case th.THIRBreak():
                     self.end(MIRGoto(self.loops[-1][1], loc))
                 case th.THIRContinue():
@@ -1520,7 +1619,37 @@ class _Builder:
             self.end(MIRGoto(after.id, loc))
         self.current = after
 
-    def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange) -> None:
+    def native_loop(self, stmt: th.THIRForEach) -> None:
+        loc = stmt.loc
+        self.hoists(stmt)
+        fact = stmt.iteration.source
+        iterator = self.slot(fact.type, container=fact, iterator=True)
+        self.write(iterator, MIRIteratorInit(self.bindings[stmt.iterable.name]), loc)
+        head, body, advance, normal, after = (self.block() for _ in range(5))
+        self.end(MIRGoto(head.id, loc))
+        self.current = head
+        self.branch(self.result(BOOL, MIRIteratorHasNext(iterator), loc), body.id, normal.id, loc)
+        self.current = body
+        self.loops.append((advance.id, after.id))
+        with self.scope():
+            if not stmt.hoist_loop_var:
+                reference = fact.element if isinstance(fact.element, th.THIRBorrowedRecord) else None
+                self.bindings[stmt.var] = self.slot(stmt.elem_type, MIRSlotKind.LOCAL, stmt.var, reference)
+            self.write(self.bindings[stmt.var], MIRIteratorRead(iterator), loc)
+            self.stmts(stmt.body)
+        self.loops.pop()
+        if self.current is not None:
+            self.end(MIRGoto(advance.id, loc))
+        self.current = advance
+        self.write(iterator, MIRIteratorAdvance(iterator), loc)
+        self.end(MIRGoto(head.id, loc))
+        self.current = normal
+        self.scoped(stmt.orelse)
+        if self.current is not None:
+            self.end(MIRGoto(after.id, loc))
+        self.current = after
+
+    def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange | th.THIRForEach) -> None:
         for fact in stmt.hoisted_bindings:
             if fact.optional_record_storage is not None:
                 reference = fact.optional_record_storage
@@ -1565,6 +1694,7 @@ class _Builder:
         for p in self.fn.params:
             self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
                                                p.borrowed_record, optional_layout=p.optional_layout,
+                                               container=p.native_container,
                                                union_layout=p.union_layout, tuple_layout=p.tuple_layout,
                                                storage_duration=MIRStorageDuration.CALLER
                                                if p.union_layout is not None and all(

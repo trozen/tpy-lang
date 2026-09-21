@@ -8642,7 +8642,14 @@ record-element holders. M3.19 supplies the internal iterator model, successful
 availability checks and captured source/element dependencies. M3.20 connects
 int32 range loops with literal steps +1/-1, once-captured scalar bounds,
 separate induction for written/reused targets, hoists and normal transfers.
-Native source integration remains M3.21; this is separate from tuple completeness.
+M3.21 connects fixed borrowed list/Array parameters and aliases with int32 or
+plain-record elements, plus set[int32] and dict[int32, int32] keys. Iterator
+captures retain their source; saved record aliases retain the selected element
+across advance and target-scope exit. Mutable/readonly access, hoisted scalar
+targets, free functions, methods and constructor tails are covered. Protocol
+iteration, structural mutation, reference-target hoists and other element
+shapes remain uncovered. This is separate from tuple completeness and does
+not change generated C++, source diagnostics or borrow-checker authority.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

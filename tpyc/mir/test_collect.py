@@ -108,6 +108,25 @@ def uncovered(stop: int32) -> int32:
     assert "<MIR not covered: unsupported metadata: step>" in out
 
 
+def test_native_dump_reports_captured_source_and_element_dependencies() -> None:
+    out = dump('''from tpy import int32
+class Cell:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+def walk(xs: list[Cell]) -> int32:
+    result = 0
+    for cell in xs:
+        cell.value = 7
+        result = cell.value
+    return result
+''')
+    body = out[out.index("::walk@"):].split("\nfn ", 1)[0]
+    assert "<MIR not covered:" not in body
+    assert "iterator-init" in body and "iterator-read" in body
+    assert ".structure" in body and ".elements" in body
+
+
 def test_owned_tuple_alias_dump_uses_canonical_backing() -> None:
     out = dump('''from tpy import int32
 class Cell:

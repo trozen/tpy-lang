@@ -1,8 +1,9 @@
 # Ordinary for-loop analysis: M3 W2 batch
 
 Status: approved. M3.19 implements the internal model and THIR facts;
-M3.20 connects unit-step int32 range CFG. M3.21 native integration is in
-progress. Review/merge status is separate.
+M3.20 connects unit-step int32 range CFG; M3.21 connects the native sources
+listed below. Cumulative review, readiness and forced verification passed.
+The batch is ready for one merge checkpoint; it has not been merged.
 Base: `298e4df83d` (M3.18 merged).
 
 ## Contract
@@ -37,7 +38,10 @@ Tuple-language completeness stays in a separate session and remains a 0.6.0
 release requirement. This batch advances W2 and supplies its necessary M2 place
 facts; it neither closes all of W2 nor declares M3 complete.
 
-## Evidence and existing patterns
+## Pre-batch evidence and existing patterns
+
+These observations describe the starting point at `298e4df83d`; the changes
+below supply the missing facts and representations.
 
 - MIR's `THIRWhile` lowering already separates exhaustion/else from break and
   restores the enclosing loop stack before lowering else. Extend that pattern;
@@ -216,6 +220,10 @@ diagnostics; debug coverage reasons remain separate from source rejection.
   iterator must not be modeled as automatically borrowing its source.
 - `BUGS.md#dict-grows-during-own-iteration` is why structural iterator
   dependencies and element-reference dependencies must stay distinguishable.
+- `BUGS.md#opt-ptr-local-non-name-sources` blocks None-initialized Optional
+  locals reseated from loop elements before MIR. Aggregate-holder retention is
+  tested at the internal MIR boundary; this batch does not expand that source
+  acceptance or mixed scalar/reference union coverage.
 
 No new defect has been established by this design survey. Independent design
 review found no CPython-parity blocker in the admitted source slice; existing
@@ -251,3 +259,25 @@ Leave three clean commits unmerged and unpushed for one user merge checkpoint.
 Update LANGUAGE_FEATURES, IR_DESIGN and MIR_ANALYSIS_PLAN alongside the relevant
 implementation. Approval covers these three steps, not tuple completeness,
 arbitrary effects or exceptional/frame lifetime semantics.
+
+## Verification and review
+
+Verified 2026-09-21 on master `e43c7a5398` plus this batch:
+
+- MIR/THIR integration: 1,541 tests passed after the master merge.
+- Producer-boundary regressions and related checks: 73 passed, including the
+  unchanged generic-Array and auto-readonly source snapshots.
+- Final `rpytest --force-exec`: 10,231 passed, 23 skipped; 4,179 C++ cases
+  built and ran, with no execution-cache skips. Existing snapshots are unchanged.
+- Cumulative architecture, codegen, safety, CPython parity, test coverage,
+  conventions and documentation reviews are clean after fixes. Independent
+  readiness/retrospective and merge-interference review found no remaining
+  blocker. Final code review and test frontier: `8e833e0621`; later changes
+  record verification and arrange the three commits.
+
+Retrospective: retain explicit iterator operations, conservative element
+regions, shared binding decisions and actual emitted scopes. Optional analysis
+facts need conservative producers as well as strict consumers: unsupported
+source shapes publish no fact, and explicit readonly access survives even
+when inferred constness is absent. The aggregate-holder tests establish MIR
+behavior, not acceptance of currently unsupported source forms.

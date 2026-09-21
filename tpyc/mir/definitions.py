@@ -60,8 +60,8 @@ def constructor_initialization(ctor: th.THIRConstructor) -> MIRConstructorDefini
     params = {p.name: p.type for p in ctor.params}
     require(ctor, len(params) == len(ctor.params), "duplicate constructor parameter")
     for p in ctor.params:
-        plain(p, {"name", "type"})
-        require(p, p.type in (BOOL, INT32), "constructor parameter type")
+        plain(p, {"name", "type", "native_container"})
+        require(p, p.type in (BOOL, INT32) or p.native_container is not None, "constructor parameter type")
     initialized: set[str] = set()
     for mil in ctor.mil_inits:
         plain(mil, {"field_cpp", "field_identity", "value"})
@@ -79,6 +79,8 @@ def constructor_initialization(ctor: th.THIRConstructor) -> MIRConstructorDefini
 
 def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
     definition = constructor_initialization(ctor)
+    for param in ctor.params:
+        require(param, param.type in (BOOL, INT32), "constructor parameter type")
     for stmt in ctor.body:
         require(stmt, isinstance(stmt, th.THIRNoOpStmt), "constructor body effects")
         plain(stmt, set())
