@@ -230,12 +230,116 @@ using arg_source_t = std::conditional_t<
     borrowed_iter_source<std::remove_reference_t<X>>,
     owned_iter_source<X>>;
 
+// -- The form a combinator hands an element on --
+//
+// Spelled off the SOURCE, never off a type the compiler names: an element the
+// source lends is lent on, with the source's const (an element of a
+// `const std::vector<Cell>&` is a `const Cell&`), and an element the source
+// builds is carried by value, since there is nothing to point at. A value
+// type is always carried by value, which is what a `for` binds anyway.
+
+// What a `__next__()` step carries.
+template<typename S>
+using step_value_t = typename decltype(std::declval<S&>().__next__())::value_type;
+
+// A step's element as a MEMBER of a combinator's tuple. A lent element
+// (`val_or_ref<X>`) becomes the reference `X&`, const included; anything
+// else -- a fresh value, a nested combinator's tuple -- is carried as it came.
+template<typename V>
+struct step_member { using type = V; };
+template<typename X>
+struct step_member<val_or_ref<X>> {
+    using type = std::conditional_t<val_or_ref<X>::is_val, std::remove_const_t<X>, X&>;
+};
+// A nested combinator's tuple step is handed on as `unwrap_ref_move` hands it
+// on: its lent members stay lent and an OWNED member (an inner owning flavor's
+// `X&&`) is moved into the outer tuple, so nothing points at the inner step
+// once it is gone.
+template<typename... Ts>
+struct step_member<std::tuple<Ts...>> {
+    using type = decltype(tpy::unwrap_ref_move(std::declval<std::tuple<Ts...>&>()));
+};
+template<typename S>
+using step_member_t = typename step_member<step_value_t<S>>::type;
+
+// What a begin()/end() source's iterator dereferences to. A proxy prvalue
+// (`std::vector<bool>`) stands for its iterator's value type.
+template<typename It>
+using deref_t = decltype(*std::declval<It&>());
+template<typename It>
+struct prvalue_elem { using type = std::remove_cvref_t<deref_t<It>>; };
+template<typename It>
+    requires requires { typename std::iter_value_t<It>; }
+struct prvalue_elem<It> { using type = std::iter_value_t<It>; };
+
+template<typename It>
+struct range_elem {
+    using ref = deref_t<It>;
+    static constexpr bool lent =
+        std::is_lvalue_reference_v<ref> && !is_value_type_v<std::remove_cvref_t<ref>>;
+    // As a tuple member: the reference itself, or the value.
+    using member = std::conditional_t<
+        lent, ref,
+        std::conditional_t<std::is_lvalue_reference_v<ref>,
+                           std::remove_cvref_t<ref>, typename prvalue_elem<It>::type>>;
+    // As a step result: an `expected` cannot hold a reference, so a lent
+    // element rides in `val_or_ref` (a `const X` payload keeps the const).
+    using step = std::conditional_t<lent, val_or_ref<std::remove_reference_t<ref>>, member>;
+};
+template<typename C>
+using range_member_t = typename range_elem<begin_iter_t<C>>::member;
+template<typename C>
+using range_step_t = typename range_elem<begin_iter_t<C>>::step;
+
+// A member an OWNING combinator lends out of a source it holds: an rvalue
+// reference, so a collect moves the element out of the container that dies
+// with the combinator, while a `for` still binds it as an lvalue. A const
+// element is only ever copied. Only the TUPLE flavors carry this form: a
+// single-element step rides in `val_or_ref`, which lends or owns a copy but
+// cannot say "owned reference", so a collect over `filter(f, make())` copies
+// where one over `enumerate(make())` moves. Owning the source OBJECT is not owning its
+// ELEMENTS: a borrowed range held by value (a `std::span`, a dict view)
+// points at a caller's container, and its elements stay lent -- the
+// standard's `enable_borrowed_range` is the fact consulted.
+template<typename M, typename C>
+using owned_member_t = std::conditional_t<
+    std::is_lvalue_reference_v<M> && !std::is_const_v<std::remove_reference_t<M>>
+        && !std::ranges::enable_borrowed_range<std::remove_cvref_t<C>>,
+    std::remove_reference_t<M>&&, M>;
+
+// Hand `v` on as tuple member `M`: an rvalue-reference member takes the
+// element's value, anything else the reference or value as it came.
+template<typename M, typename V>
+decltype(auto) as_member(V&& v) {
+    if constexpr (std::is_rvalue_reference_v<M>) return std::move(v);
+    else return std::forward<V>(v);
+}
+
+// The member an owned source hands on. A CONTAINER the combinator holds
+// lends into storage that dies with the combinator, so its member is owned;
+// a self-iterator it holds (a nested combinator, a user iterator) lends from
+// wherever it points, so its step is handed on as it came.
+template<typename C>
+using owned_source_member_t = std::conditional_t<
+    is_self_iterator_v<C>,
+    step_member_t<owned_iter_source<C>>,
+    owned_member_t<step_member_t<owned_iter_source<C>>, C>>;
+
+// A value `__getitem__` hands back, as a step result.
+template<typename R>
+using result_step_t = std::conditional_t<
+    std::is_lvalue_reference_v<R> && !is_value_type_v<std::remove_cvref_t<R>>,
+    val_or_ref<std::remove_reference_t<R>>, std::remove_cvref_t<R>>;
+
 } // namespace detail
 
 // -- enumerate --
 
-template<typename T, typename Iter>
-class enumerate_iter : public next_iter_mixin<enumerate_iter<T, Iter>, std::tuple<int32_t, T>> {
+template<typename Iter>
+class enumerate_iter
+    : public next_iter_mixin<enumerate_iter<Iter>,
+                             std::tuple<int32_t, detail::step_member_t<Iter>>> {
+    using elem_t = detail::step_member_t<Iter>;
     Iter iter_;
     int32_t index_;  // TPy uses int32; Python enumerate uses arbitrary-precision
 public:
@@ -248,10 +352,10 @@ public:
     enumerate_iter(U&& iter, int32_t start = 0)
         : iter_(std::forward<U>(iter)), index_(start) {}
 
-    std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
+    std::expected<std::tuple<int32_t, elem_t>, StopIteration> __next__() {
         auto r = iter_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, T>{index_++, unwrap_ref(*r)};
+        return std::tuple<int32_t, elem_t>{index_++, unwrap_ref_move(*r)};
     }
 
     enumerate_iter& __iter__() { return *this; }
@@ -262,19 +366,21 @@ public:
 };
 
 // Owning variant: moves the container in so rvalue arguments don't dangle.
-template<typename T, typename Container>
+template<typename Container>
 class owning_enumerate_iter
-    : public next_iter_mixin<owning_enumerate_iter<T, Container>, std::tuple<int32_t, T>> {
+    : public next_iter_mixin<owning_enumerate_iter<Container>,
+                             std::tuple<int32_t, detail::owned_source_member_t<Container>>> {
+    using elem_t = detail::owned_source_member_t<Container>;
     detail::owned_iter_source<Container> src_;
     int32_t index_;
 public:
     owning_enumerate_iter(Container&& c, int32_t start = 0)
         : src_(std::move(c)), index_(start) { src_.start(); }
 
-    std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
+    std::expected<std::tuple<int32_t, elem_t>, StopIteration> __next__() {
         auto r = src_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, T>{index_++, unwrap_ref(*r)};
+        return std::tuple<int32_t, elem_t>{index_++, detail::as_member<elem_t>(unwrap_ref_move(*r))};
     }
 
     owning_enumerate_iter& __iter__() { return *this; }
@@ -286,11 +392,12 @@ public:
 
 // Direct-iteration variant: uses C++ begin/end to get references to container
 // elements instead of going through __iter__/__next__() which copies.
-template<typename T, typename Container>
+template<typename Container>
 class enumerate_direct_iter
-    : public next_iter_mixin<enumerate_direct_iter<T, Container>,
-                             std::tuple<int32_t, val_or_ref_t<T>>> {
-    using CppIter = decltype(std::declval<Container&>().begin());
+    : public next_iter_mixin<enumerate_direct_iter<Container>,
+                             std::tuple<int32_t, detail::range_member_t<Container>>> {
+    using elem_t = detail::range_member_t<Container>;
+    using CppIter = begin_iter_t<Container>;
     Container& container_;
     CppIter it_;
     CppIter end_;
@@ -299,9 +406,9 @@ public:
     enumerate_direct_iter(Container& c, int32_t start = 0)
         : container_(c), it_(c.begin()), end_(c.end()), index_(start) {}
 
-    std::expected<std::tuple<int32_t, val_or_ref_t<T>>, StopIteration> __next__() {
+    std::expected<std::tuple<int32_t, elem_t>, StopIteration> __next__() {
         if (it_ == end_) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, val_or_ref_t<T>>{index_++, *it_++};
+        return std::tuple<int32_t, elem_t>{index_++, *it_++};
     }
 
     enumerate_direct_iter& __iter__() { return *this; }
@@ -312,19 +419,20 @@ public:
 };
 
 // Owning direct-iteration variant for rvalue containers.
-template<typename T, typename Container>
+template<typename Container>
 class owning_enumerate_direct_iter
-    : public next_iter_mixin<owning_enumerate_direct_iter<T, Container>,
-                             std::tuple<int32_t, val_or_ref_t<T>>> {
+    : public next_iter_mixin<owning_enumerate_direct_iter<Container>,
+                             std::tuple<int32_t, detail::owned_member_t<detail::range_member_t<Container>, Container>>> {
+    using elem_t = detail::owned_member_t<detail::range_member_t<Container>, Container>;
     detail::owned_range_source<Container> src_;
     int32_t index_;
 public:
     owning_enumerate_direct_iter(Container&& c, int32_t start = 0)
         : src_(std::move(c)), index_(start) {}
 
-    std::expected<std::tuple<int32_t, val_or_ref_t<T>>, StopIteration> __next__() {
+    std::expected<std::tuple<int32_t, elem_t>, StopIteration> __next__() {
         if (src_.done()) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, val_or_ref_t<T>>{index_++, src_.take()};
+        return std::tuple<int32_t, elem_t>{index_++, detail::as_member<elem_t>(src_.take())};
     }
 
     owning_enumerate_direct_iter& __iter__() { return *this; }
@@ -363,51 +471,28 @@ using fn_param_t = std::tuple_element_t<N, typename fn_params<std::remove_cvref_
 
 // lvalue: direct iteration for containers (preserves references),
 // __iter__/__next__() fallback for TPy iterators
-template<typename T, typename Iterable>
-auto builtin_enumerate(Iterable& iterable) {
+template<typename Iterable>
+auto builtin_enumerate(Iterable& iterable, int32_t start = 0) {
     if constexpr (detail::has_begin_end<Iterable>) {
-        return enumerate_direct_iter<T, Iterable>(iterable);
+        return enumerate_direct_iter<Iterable>(iterable, start);
     } else {
-        return enumerate_iter<T, detail::iter_member_t<decltype(tpy::__iter__(iterable))>>(tpy::__iter__(iterable));
+        return enumerate_iter<detail::iter_member_t<decltype(tpy::__iter__(iterable))>>(
+            tpy::__iter__(iterable), start);
     }
 }
 
 // rvalue: own the container to prevent dangling iterators
-template<typename T, typename Iterable>
+template<typename Iterable>
     requires (!std::is_lvalue_reference_v<Iterable&&>)
-auto builtin_enumerate(Iterable&& iterable) {
+auto builtin_enumerate(Iterable&& iterable, int32_t start = 0) {
     if constexpr (detail::has_begin_end<Iterable>) {
-        return owning_enumerate_direct_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable));
+        return owning_enumerate_direct_iter<std::remove_cvref_t<Iterable>>(std::move(iterable), start);
     } else {
-        return owning_enumerate_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable));
-    }
-}
-
-// lvalue with start
-template<typename T, typename Iterable>
-auto builtin_enumerate_start(Iterable& iterable, int32_t start) {
-    if constexpr (detail::has_begin_end<Iterable>) {
-        return enumerate_direct_iter<T, Iterable>(iterable, start);
-    } else {
-        return enumerate_iter<T, detail::iter_member_t<decltype(tpy::__iter__(iterable))>>(tpy::__iter__(iterable), start);
-    }
-}
-
-// rvalue with start
-template<typename T, typename Iterable>
-    requires (!std::is_lvalue_reference_v<Iterable&&>)
-auto builtin_enumerate_start(Iterable&& iterable, int32_t start) {
-    if constexpr (detail::has_begin_end<Iterable>) {
-        return owning_enumerate_direct_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable), start);
-    } else {
-        return owning_enumerate_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable), start);
+        return owning_enumerate_iter<std::remove_cvref_t<Iterable>>(std::move(iterable), start);
     }
 }
 
 // -- zip (variadic) --
-
-// Tag to carry element types through partial specialization (two-pack workaround).
-template<typename... Ts> struct zip_types {};
 
 namespace detail {
 
@@ -421,28 +506,42 @@ bool zip_advance(Tuple& iters, std::tuple<Opts...>& opts, std::index_sequence<Is
     ((ok = ok && [&]{
         auto r = std::get<Is>(iters).__next__();
         if (!r.has_value()) return false;
-        std::get<Is>(opts).emplace(tpy::unwrap_ref(*r));
+        std::get<Is>(opts).emplace(tpy::unwrap_ref_move(*r));
         return true;
     }()), ...);
     return ok;
 }
 
-// Build a tuple by moving out of the optionals.
-template<typename... Ts, std::size_t... Is>
-std::tuple<Ts...> zip_collect(std::tuple<std::optional<Ts>...>& opts, std::index_sequence<Is...>) {
-    return std::tuple<Ts...>{std::move(*std::get<Is>(opts))...};
+// `std::optional` cannot hold a reference: a lent member waits in a
+// `val_or_ref` between the advance and the collect.
+template<typename M>
+using zip_slot_t = std::conditional_t<std::is_reference_v<M>,
+                                      val_or_ref<std::remove_reference_t<M>>, M>;
+
+// Build the tuple out of the slots: a lent member binds the reference, a
+// value or an owned member moves out.
+template<typename Tuple, typename Opts, std::size_t... Is>
+Tuple zip_collect(Opts& opts, std::index_sequence<Is...>) {
+    return Tuple{as_member<std::tuple_element_t<Is, Tuple>>(
+        tpy::unwrap_ref_move(*std::get<Is>(opts)))...};
 }
+
+// The tuple a set of pulled sources yields, one member per source; a source
+// the combinator owns lends its member as owned.
+template<typename Src>
+struct zip_member { using type = step_member_t<Src>; };
+template<typename C>
+struct zip_member<owned_iter_source<C>> { using type = owned_source_member_t<C>; };
+template<typename... Srcs>
+using zip_tuple_t = std::tuple<typename zip_member<Srcs>::type...>;
 
 } // namespace detail
 
 // Primary template (never instantiated directly).
-template<typename TypeTag, typename... Iters>
-class zip_iter;
-
-// Partial specialization unpacks the element types from the tag.
-template<typename... Ts, typename... Iters>
-class zip_iter<zip_types<Ts...>, Iters...>
-    : public next_iter_mixin<zip_iter<zip_types<Ts...>, Iters...>, std::tuple<Ts...>> {
+template<typename... Iters>
+class zip_iter
+    : public next_iter_mixin<zip_iter<Iters...>, detail::zip_tuple_t<Iters...>> {
+    using tuple_t = detail::zip_tuple_t<Iters...>;
     std::tuple<Iters...> iters_;
 public:
     // forward, not move: a self-iterator argument arrives as `Self&` and is
@@ -453,11 +552,11 @@ public:
               && (std::constructible_from<Iters, Us&&> && ...)
     explicit zip_iter(Us&&... iters) : iters_(std::forward<Us>(iters)...) {}
 
-    std::expected<std::tuple<Ts...>, StopIteration> __next__() {
-        std::tuple<std::optional<Ts>...> opts;
+    std::expected<tuple_t, StopIteration> __next__() {
+        std::tuple<std::optional<detail::zip_slot_t<typename detail::zip_member<Iters>::type>>...> opts;
         if (!detail::zip_advance(iters_, opts, std::index_sequence_for<Iters...>{}))
             return tpy::make_unexpected(StopIteration{});
-        return detail::zip_collect<Ts...>(opts, std::index_sequence_for<Ts...>{});
+        return detail::zip_collect<tuple_t>(opts, std::index_sequence_for<Iters...>{});
     }
 
     zip_iter& __iter__() { return *this; }
@@ -467,12 +566,13 @@ public:
     }
 };
 
-template<typename TypeTag, typename... Containers>
-class owning_zip_iter;
-
-template<typename... Ts, typename... Containers>
-class owning_zip_iter<zip_types<Ts...>, Containers...>
-    : public next_iter_mixin<owning_zip_iter<zip_types<Ts...>, Containers...>, std::tuple<Ts...>> {
+template<typename... Containers>
+class owning_zip_iter
+    : public next_iter_mixin<owning_zip_iter<Containers...>,
+                             detail::zip_tuple_t<detail::arg_source_t<Containers>...>> {
+    using tuple_t = detail::zip_tuple_t<detail::arg_source_t<Containers>...>;
+    template<typename C>
+    using member_t = typename detail::zip_member<detail::arg_source_t<C>>::type;
     std::tuple<detail::arg_source_t<Containers>...> srcs_;
 public:
     // start() in the body, not in the holders' ctors: a tuple constructs its
@@ -491,11 +591,11 @@ public:
         requires (std::move_constructible<detail::arg_source_t<Containers>> && ...)
         = default;
 
-    std::expected<std::tuple<Ts...>, StopIteration> __next__() {
-        std::tuple<std::optional<Ts>...> opts;
+    std::expected<tuple_t, StopIteration> __next__() {
+        std::tuple<std::optional<detail::zip_slot_t<member_t<Containers>>>...> opts;
         if (!detail::zip_advance(srcs_, opts, std::index_sequence_for<Containers...>{}))
             return tpy::make_unexpected(StopIteration{});
-        return detail::zip_collect<Ts...>(opts, std::index_sequence_for<Ts...>{});
+        return detail::zip_collect<tuple_t>(opts, std::index_sequence_for<Containers...>{});
     }
 
     owning_zip_iter& __iter__() { return *this; }
@@ -506,14 +606,12 @@ public:
 };
 
 // Direct-iteration zip: uses C++ begin/end for reference-preserving iteration.
-template<typename TypeTag, typename... Containers>
-class zip_direct_iter;
-
-template<typename... Ts, typename... Containers>
-class zip_direct_iter<zip_types<Ts...>, Containers...>
-    : public next_iter_mixin<zip_direct_iter<zip_types<Ts...>, Containers...>,
-                             std::tuple<val_or_ref_t<Ts>...>> {
-    std::tuple<decltype(std::declval<Containers&>().begin())...> its_;
+template<typename... Containers>
+class zip_direct_iter
+    : public next_iter_mixin<zip_direct_iter<Containers...>,
+                             std::tuple<detail::range_member_t<Containers>...>> {
+    using tuple_t = std::tuple<detail::range_member_t<Containers>...>;
+    std::tuple<begin_iter_t<Containers>...> its_;
     std::tuple<decltype(std::declval<Containers&>().end())...> ends_;
 
     template<std::size_t... Is>
@@ -521,14 +619,14 @@ class zip_direct_iter<zip_types<Ts...>, Containers...>
         return ((std::get<Is>(its_) == std::get<Is>(ends_)) || ...);
     }
     template<std::size_t... Is>
-    std::tuple<val_or_ref_t<Ts>...> deref_and_advance(std::index_sequence<Is...>) {
-        return std::tuple<val_or_ref_t<Ts>...>{*std::get<Is>(its_)++...};
+    tuple_t deref_and_advance(std::index_sequence<Is...>) {
+        return tuple_t{*std::get<Is>(its_)++...};
     }
 public:
     explicit zip_direct_iter(Containers&... cs)
         : its_(cs.begin()...), ends_(cs.end()...) {}
 
-    std::expected<std::tuple<val_or_ref_t<Ts>...>, StopIteration> __next__() {
+    std::expected<tuple_t, StopIteration> __next__() {
         if (any_at_end(std::index_sequence_for<Containers...>{}))
             return tpy::make_unexpected(StopIteration{});
         return deref_and_advance(std::index_sequence_for<Containers...>{});
@@ -542,43 +640,50 @@ public:
 };
 
 // lvalue factory: direct iteration for containers, __iter__ fallback otherwise
-template<typename... Ts, typename... Cs>
+template<typename... Cs>
 auto builtin_zip(Cs&... cs) {
     if constexpr ((detail::has_begin_end<Cs> && ...)) {
-        return zip_direct_iter<zip_types<Ts...>, Cs...>(cs...);
+        return zip_direct_iter<Cs...>(cs...);
     } else {
         // Braces: __iter__ is observable, and only a braced list evaluates
         // left to right.
-        return zip_iter<zip_types<Ts...>, detail::iter_member_t<decltype(tpy::__iter__(cs))>...>{tpy::__iter__(cs)...};
+        return zip_iter<detail::iter_member_t<decltype(tpy::__iter__(cs))>...>{tpy::__iter__(cs)...};
     }
 }
 
 // Mixed factory (at least one rvalue): per-arg own (rvalue) or borrow (lvalue).
 // std::tuple natively supports reference members, so lvalue args store as C&
 // (zero-copy borrow) while rvalue args store as C (moved in).
-template<typename... Ts, typename... Cs>
+template<typename... Cs>
     requires ((!std::is_lvalue_reference_v<Cs&&>) || ...)
 auto builtin_zip(Cs&&... cs) {
-    return owning_zip_iter<zip_types<Ts...>,
+    return owning_zip_iter<
         std::conditional_t<std::is_lvalue_reference_v<Cs&&>,
                            std::remove_reference_t<Cs>&,
                            std::remove_cvref_t<Cs>>...>(
         std::forward<Cs>(cs)...);
 }
 
-
 // -- reversed --
 
-template<typename T, typename Seq>
-class reversed_iter : public next_iter_mixin<reversed_iter<T, Seq>, T> {
-    const Seq& seq_;
+namespace detail {
+// What `seq[i]` hands back, as a step result: a container lends its element
+// (const included), a `str` builds a `char`.
+template<typename Seq>
+using getitem_step_t = result_step_t<decltype(tpy::__getitem__(std::declval<Seq&>(), int32_t{}))>;
+}
+
+template<typename Seq>
+class reversed_iter : public next_iter_mixin<reversed_iter<Seq>, detail::getitem_step_t<Seq>> {
+    using step_t = detail::getitem_step_t<Seq>;
+    Seq& seq_;
     int32_t index_;
 public:
-    reversed_iter(const Seq& seq) : seq_(seq), index_(tpy::__len__(seq) - 1) {}
+    reversed_iter(Seq& seq) : seq_(seq), index_(tpy::__len__(seq) - 1) {}
 
-    std::expected<T, StopIteration> __next__() {
+    std::expected<step_t, StopIteration> __next__() {
         if (index_ < 0) return tpy::make_unexpected(StopIteration{});
-        return tpy::__getitem__(seq_, index_--);
+        return step_t(tpy::__getitem__(seq_, index_--));
     }
 
     reversed_iter& __iter__() { return *this; }
@@ -589,8 +694,10 @@ public:
 };
 
 // Owning variant for rvalue sequences.
-template<typename T, typename Seq>
-class owning_reversed_iter : public next_iter_mixin<owning_reversed_iter<T, Seq>, T> {
+template<typename Seq>
+class owning_reversed_iter
+    : public next_iter_mixin<owning_reversed_iter<Seq>, detail::getitem_step_t<Seq>> {
+    using step_t = detail::getitem_step_t<Seq>;
     Seq owned_;
     int32_t index_;
 public:
@@ -601,9 +708,9 @@ public:
     owning_reversed_iter(owning_reversed_iter&&) = default;
     owning_reversed_iter(const owning_reversed_iter&) = delete;
 
-    std::expected<T, StopIteration> __next__() {
+    std::expected<step_t, StopIteration> __next__() {
         if (index_ < 0) return tpy::make_unexpected(StopIteration{});
-        return tpy::__getitem__(owned_, index_--);
+        return step_t(tpy::__getitem__(owned_, index_--));
     }
 
     owning_reversed_iter& __iter__() { return *this; }
@@ -613,21 +720,28 @@ public:
     }
 };
 
-// lvalue: store reference (container outlives the loop)
-template<typename T, typename Seq>
-auto builtin_reversed(const Seq& seq) {
-    return reversed_iter<T, Seq>(seq);
+// lvalue: store reference (container outlives the loop); `Seq` deduces the
+// argument's const, so a const sequence lends const elements.
+template<typename Seq>
+auto builtin_reversed(Seq& seq) {
+    return reversed_iter<Seq>(seq);
 }
 
 // rvalue: own the container
-template<typename T, typename Seq>
+template<typename Seq>
     requires (!std::is_lvalue_reference_v<Seq&&>)
 auto builtin_reversed(Seq&& seq) {
-    return owning_reversed_iter<T, std::remove_cvref_t<Seq>>(std::move(seq));
+    return owning_reversed_iter<std::remove_cvref_t<Seq>>(std::move(seq));
 }
 
 
 // -- map --
+//
+// `U` is what the callable hands back, in the step form the compiler
+// declares for it: the callable's signature is the compiler's fact (a borrow
+// return is `val_or_ref<T>`, a borrow-form tuple has `val_or_ref` members
+// where its C++ spelling has pointers), unlike a source's element, which
+// only the source itself can name.
 
 template<typename U, typename Iter, typename Fn>
 class map_iter : public next_iter_mixin<map_iter<U, Iter, Fn>, U> {
@@ -676,16 +790,14 @@ public:
 };
 
 // lvalue: iterate via __iter__/__next__() protocol.
-// T is the input element type -- unused in the body but required by the codegen
-// template syntax (::tpy::builtin_map<{T}, {U}>).
-template<typename T, typename U, typename Fn, typename Iterable>
+template<typename U, typename Fn, typename Iterable>
 auto builtin_map(Fn&& fn, Iterable& iterable) {
     return map_iter<U, detail::iter_member_t<decltype(tpy::__iter__(iterable))>, std::decay_t<Fn>>(
         tpy::__iter__(iterable), std::forward<Fn>(fn));
 }
 
 // rvalue: own the container to prevent dangling iterators
-template<typename T, typename U, typename Fn, typename Iterable>
+template<typename U, typename Fn, typename Iterable>
     requires (!std::is_lvalue_reference_v<Iterable&&>)
 auto builtin_map(Fn&& fn, Iterable&& iterable) {
     return owning_map_iter<U, std::remove_cvref_t<Iterable>, std::decay_t<Fn>>(
@@ -787,8 +899,11 @@ auto builtin_map_n(Fn&& fn, Its&&... its) {
 
 // -- filter --
 
-template<typename T, typename Iter, typename Fn>
-class filter_iter : public next_iter_mixin<filter_iter<T, Iter, Fn>, T> {
+// Over an iterator source the step passes through as it came: a lent element
+// stays lent, a fresh one moves on.
+template<typename Iter, typename Fn>
+class filter_iter : public next_iter_mixin<filter_iter<Iter, Fn>, detail::step_value_t<Iter>> {
+    using step_t = detail::step_value_t<Iter>;
     Iter iter_;
     Fn fn_;
 public:
@@ -797,13 +912,12 @@ public:
     filter_iter(U&& iter, Fn fn)
         : iter_(std::forward<U>(iter)), fn_(std::move(fn)) {}
 
-    std::expected<T, StopIteration> __next__() {
+    std::expected<step_t, StopIteration> __next__() {
         while (true) {
             auto r = iter_.__next__();
             if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-            auto&& elem = unwrap_ref(*r);
-            if (fn_(elem)) {
-                return elem;
+            if (fn_(unwrap_ref(*r))) {
+                return std::move(r);
             }
         }
     }
@@ -816,22 +930,23 @@ public:
 };
 
 // Owning variant for rvalue iterables (protocol path).
-template<typename T, typename Container, typename Fn>
+template<typename Container, typename Fn>
 class owning_filter_iter
-    : public next_iter_mixin<owning_filter_iter<T, Container, Fn>, T> {
+    : public next_iter_mixin<owning_filter_iter<Container, Fn>,
+                             detail::step_value_t<detail::owned_iter_source<Container>>> {
+    using step_t = detail::step_value_t<detail::owned_iter_source<Container>>;
     detail::owned_iter_source<Container> src_;
     Fn fn_;
 public:
     owning_filter_iter(Fn fn, Container&& c)
         : src_(std::move(c)), fn_(std::move(fn)) { src_.start(); }
 
-    std::expected<T, StopIteration> __next__() {
+    std::expected<step_t, StopIteration> __next__() {
         while (true) {
             auto r = src_.__next__();
             if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-            auto&& elem = unwrap_ref(*r);
-            if (fn_(elem)) {
-                return elem;
+            if (fn_(unwrap_ref(*r))) {
+                return std::move(r);
             }
         }
     }
@@ -844,11 +959,11 @@ public:
 };
 
 // Direct-iteration variant: uses C++ begin/end for reference-preserving filter.
-// Returns val_or_ref<T> so non-value types yield references into the container.
-template<typename T, typename Container, typename Fn>
+template<typename Container, typename Fn>
 class filter_direct_iter
-    : public next_iter_mixin<filter_direct_iter<T, Container, Fn>, val_or_ref<T>> {
-    using CppIter = decltype(std::declval<Container&>().begin());
+    : public next_iter_mixin<filter_direct_iter<Container, Fn>, detail::range_step_t<Container>> {
+    using step_t = detail::range_step_t<Container>;
+    using CppIter = begin_iter_t<Container>;
     CppIter it_;
     CppIter end_;
     Fn fn_;
@@ -856,12 +971,12 @@ public:
     filter_direct_iter(Fn fn, Container& c)
         : it_(c.begin()), end_(c.end()), fn_(std::move(fn)) {}
 
-    std::expected<val_or_ref<T>, StopIteration> __next__() {
+    std::expected<step_t, StopIteration> __next__() {
         while (it_ != end_) {
-            auto& elem = *it_;
+            auto&& elem = *it_;
             ++it_;
             if (fn_(elem)) {
-                return val_or_ref<T>(elem);
+                return step_t(elem);
             }
         }
         return tpy::make_unexpected(StopIteration{});
@@ -875,20 +990,21 @@ public:
 };
 
 // Owning direct-iteration variant for rvalue containers.
-template<typename T, typename Container, typename Fn>
+template<typename Container, typename Fn>
 class owning_filter_direct_iter
-    : public next_iter_mixin<owning_filter_direct_iter<T, Container, Fn>, val_or_ref<T>> {
+    : public next_iter_mixin<owning_filter_direct_iter<Container, Fn>, detail::range_step_t<Container>> {
+    using step_t = detail::range_step_t<Container>;
     detail::owned_range_source<Container> src_;
     Fn fn_;
 public:
     owning_filter_direct_iter(Fn fn, Container&& c)
         : src_(std::move(c)), fn_(std::move(fn)) {}
 
-    std::expected<val_or_ref<T>, StopIteration> __next__() {
+    std::expected<step_t, StopIteration> __next__() {
         while (!src_.done()) {
-            auto& elem = src_.take();
+            auto&& elem = src_.take();
             if (fn_(elem)) {
-                return val_or_ref<T>(elem);
+                return step_t(elem);
             }
         }
         return tpy::make_unexpected(StopIteration{});
@@ -903,27 +1019,27 @@ public:
 
 // lvalue: direct iteration for containers (preserves references),
 // __iter__/__next__() fallback for TPy iterators
-template<typename T, typename Fn, typename Iterable>
+template<typename Fn, typename Iterable>
 auto builtin_filter(Fn&& fn, Iterable& iterable) {
     if constexpr (detail::has_begin_end<Iterable>) {
-        return filter_direct_iter<T, Iterable, std::decay_t<Fn>>(
+        return filter_direct_iter<Iterable, std::decay_t<Fn>>(
             std::forward<Fn>(fn), iterable);
     } else {
-        return filter_iter<T, detail::iter_member_t<decltype(tpy::__iter__(iterable))>, std::decay_t<Fn>>(
+        return filter_iter<detail::iter_member_t<decltype(tpy::__iter__(iterable))>, std::decay_t<Fn>>(
             tpy::__iter__(iterable), std::forward<Fn>(fn));
     }
 }
 
 // rvalue: own the container to prevent dangling iterators
-template<typename T, typename Fn, typename Iterable>
+template<typename Fn, typename Iterable>
     requires (!std::is_lvalue_reference_v<Iterable&&>)
 auto builtin_filter(Fn&& fn, Iterable&& iterable) {
     if constexpr (detail::has_begin_end<Iterable>) {
-        return owning_filter_direct_iter<T, std::remove_cvref_t<Iterable>,
+        return owning_filter_direct_iter<std::remove_cvref_t<Iterable>,
                                          std::decay_t<Fn>>(
             std::forward<Fn>(fn), std::move(iterable));
     } else {
-        return owning_filter_iter<T, std::remove_cvref_t<Iterable>,
+        return owning_filter_iter<std::remove_cvref_t<Iterable>,
                                   std::decay_t<Fn>>(
             std::forward<Fn>(fn), std::move(iterable));
     }
@@ -931,17 +1047,17 @@ auto builtin_filter(Fn&& fn, Iterable&& iterable) {
 
 // -- filter(None, ...) -- truthy filtering via to_bool
 
-template<typename T, typename Iterable>
+template<typename Iterable>
 auto builtin_filter_truthy(Iterable& iterable) {
     auto pred = [](const auto& x) -> bool { return to_bool(x); };
-    return builtin_filter<T>(pred, iterable);
+    return builtin_filter(pred, iterable);
 }
 
-template<typename T, typename Iterable>
+template<typename Iterable>
     requires (!std::is_lvalue_reference_v<Iterable&&>)
 auto builtin_filter_truthy(Iterable&& iterable) {
     auto pred = [](const auto& x) -> bool { return to_bool(x); };
-    return builtin_filter<T>(pred, std::move(iterable));
+    return builtin_filter(pred, std::move(iterable));
 }
 
 } // namespace tpy

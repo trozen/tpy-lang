@@ -23,7 +23,7 @@ bool positive_x(const Point& p) {
 void main() {
     std::array<Point, 4> pts = {Point(-1, 0), Point(2, 3), Point(-5, 1), Point(4, 5)};
     {
-        auto __src_0 = ::tpy::builtin_filter<Point>(positive_x, pts);
+        auto __src_0 = ::tpy::builtin_filter(positive_x, pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

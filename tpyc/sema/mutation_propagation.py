@@ -10,8 +10,9 @@ from __future__ import annotations
 from typing import Optional
 
 from ..typesys import (
-    FunctionInfo, CONST_PARAMS_METHODS, recorded_return_borrow_sources,
-    view_is_inherently_const,
+    FunctionInfo, MutationCallEdge, CONST_PARAMS_METHODS,
+    recorded_return_borrow_sources, view_is_inherently_const,
+    is_bodyless_binding,
 )
 
 # Methods that must never be inferred const regardless of body analysis.
@@ -87,62 +88,110 @@ def propagate_mutation_facts(functions: list[FunctionInfo]) -> None:
         fi.call_edges = None
 
 
-def _resolve_single(fi: FunctionInfo) -> None:
-    """Compute mutated_params, structural_mutated_params, and self_mutated for a function whose callees are resolved."""
-    result: set[int] = set(fi.direct_mutated_params or frozenset())
-    struct_result: set[int] = set(fi.direct_structural_mutated_params or frozenset())
-    self_mutated = bool(fi.direct_self_mutated)
-    for edge in (fi.call_edges or []):
-        callee_mp = edge.callee_fi.mutated_params
-        callee_smp = edge.callee_fi.structural_mutated_params
+class _Facts:
+    """One function's mutation facts folded over its direct marks and its
+    call edges: the three lattices (`mutated`, `structural`, `elem`) and the
+    self flag, each monotone in the callees' facts."""
+    __slots__ = ("mutated", "structural", "elem", "self_mutated")
+
+    def __init__(self, fi: FunctionInfo, *, from_resolved: bool = False):
+        # A cycle's fixed point refolds from the CURRENT estimate; a single
+        # function (and a fresh cycle iteration) starts from the direct marks.
+        if from_resolved:
+            self.mutated = set(fi.mutated_params or frozenset())
+            self.structural = set(fi.structural_mutated_params or frozenset())
+            self.elem = set(fi.elem_mutated_params or frozenset())
+        else:
+            self.mutated = set(fi.direct_mutated_params or frozenset())
+            self.structural = set(fi.direct_structural_mutated_params or frozenset())
+            self.elem = set(fi.direct_elem_mutated_params or frozenset())
+        self.self_mutated = bool(fi.direct_self_mutated)
+
+    def fold_edge(self, edge: MutationCallEdge) -> None:
+        callee = edge.callee_fi
+        callee_mp = callee.mutated_params
+        callee_smp = callee.structural_mutated_params
+        callee_emp = callee.elem_mutated_params
         if callee_mp is None:
-            # Unknown callee -- conservative: mark all flowing params as mutated.
-            for _callee_idx, caller_idx in edge.param_map.items():
-                result.add(caller_idx)
+            # Unknown callee -- conservative: every flowing param is mutated
+            # in every way. Except a lent slot at a BODY-LESS callee: with no
+            # body there is nothing that writes through what the slot lends
+            # (`next(it)` advances the handle, it does not touch `xs`); a
+            # `@native` that wrote through an element it was lent would be
+            # a runtime lying about itself, like one that ignored `@readonly`.
+            stub = is_bodyless_binding(callee)
+            for callee_idx, caller_idx in edge.param_map.items():
+                if stub and callee_idx in edge.lent:
+                    continue
+                self.mutated.add(caller_idx)
+                self.elem.add(caller_idx)
             if edge.receiver_is_self:
-                self_mutated = True
+                self.self_mutated = True
         else:
             for callee_idx, caller_idx in edge.param_map.items():
+                # A param bound through a lending call reaches the caller's
+                # storage only through what the callee writes THROUGH it;
+                # what the callee does to the param itself (advances the
+                # combinator) touches nothing the caller passed.
+                if callee_idx in edge.lent:
+                    if callee_emp is not None and callee_idx in callee_emp:
+                        self.mutated.add(caller_idx)
+                        self.elem.add(caller_idx)
+                    continue
                 if callee_idx in callee_mp:
-                    result.add(caller_idx)
+                    self.mutated.add(caller_idx)
+                if callee_emp is not None and callee_idx in callee_emp:
+                    self.elem.add(caller_idx)
             # Propagate self-mutation: if callee mutates its self and is called
             # as self.method(), the caller also mutates self.
-            if edge.receiver_is_self and edge.callee_fi.self_mutated:
-                self_mutated = True
+            if edge.receiver_is_self and callee.self_mutated:
+                self.self_mutated = True
         # Structural mutation propagation: more specific than mutated_params.
         if callee_smp is not None:
             for callee_idx, caller_idx in edge.param_map.items():
-                if callee_idx in callee_smp:
-                    struct_result.add(caller_idx)
+                if callee_idx in callee_smp and callee_idx not in edge.lent:
+                    self.structural.add(caller_idx)
         elif callee_mp is None:
             # Unknown callee: conservative -- treat all flowing params as structurally mutated
-            for _callee_idx, caller_idx in edge.param_map.items():
-                struct_result.add(caller_idx)
-    # Sentinel -1 means "self" was passed as a function argument and the
-    # callee mutated that parameter.  Convert to self_mutated flag.
-    if -1 in result:
-        self_mutated = True
-        result.discard(-1)
-    if -1 in struct_result:
-        self_mutated = True
-        struct_result.discard(-1)
-    fi.mutated_params = frozenset(result)
-    fi.structural_mutated_params = frozenset(struct_result)
-    fi.self_mutated = self_mutated
+            stub = is_bodyless_binding(callee)
+            for callee_idx, caller_idx in edge.param_map.items():
+                if not (stub and callee_idx in edge.lent):
+                    self.structural.add(caller_idx)
+
+    def store(self, fi: FunctionInfo) -> bool:
+        """Write the facts to `fi`; True when any of them changed."""
+        # Sentinel -1 means "self" was passed as a function argument and the
+        # callee mutated that parameter.  Convert to self_mutated flag.
+        for lattice in (self.mutated, self.structural, self.elem):
+            if -1 in lattice:
+                self.self_mutated = True
+                lattice.discard(-1)
+        new = (frozenset(self.mutated), frozenset(self.structural),
+               frozenset(self.elem), self.self_mutated)
+        old = (fi.mutated_params, fi.structural_mutated_params,
+               fi.elem_mutated_params, fi.self_mutated)
+        (fi.mutated_params, fi.structural_mutated_params,
+         fi.elem_mutated_params, fi.self_mutated) = new
+        return new != old
+
+
+def _resolve_single(fi: FunctionInfo) -> None:
+    """Compute the mutation facts for a function whose callees are resolved."""
+    facts = _Facts(fi)
+    for edge in (fi.call_edges or []):
+        facts.fold_edge(edge)
+    facts.store(fi)
 
 
 def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
     """Resolve mutation facts for functions in cycles via fixed-point iteration.
 
-    Both mutated_params and self_mutated lattices are monotone (only grow),
-    so convergence is guaranteed. We bound iterations as a safety measure.
-    structural_mutated_params is propagated in parallel.
+    Every lattice is monotone (only grows), so convergence is guaranteed. We
+    bound iterations as a safety measure.
     """
     # Initialize with direct mutations
     for fi in cycle_fis:
-        fi.mutated_params = frozenset(fi.direct_mutated_params or frozenset())
-        fi.structural_mutated_params = frozenset(fi.direct_structural_mutated_params or frozenset())
-        fi.self_mutated = bool(fi.direct_self_mutated)
+        _Facts(fi).store(fi)
 
     # Safety bound: each iteration must add at least one param/self-mutation somewhere.
     max_iters = sum(len(fi.params) + 1 for fi in cycle_fis) + 1
@@ -150,46 +199,10 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
     for _ in range(max_iters):
         changed = False
         for fi in cycle_fis:
-            old_mp = fi.mutated_params
-            old_smp = fi.structural_mutated_params
-            old_sm = fi.self_mutated
-            result: set[int] = set(fi.direct_mutated_params or frozenset())
-            struct_result: set[int] = set(fi.direct_structural_mutated_params or frozenset())
-            self_mutated = bool(fi.direct_self_mutated)
+            facts = _Facts(fi)
             for edge in (fi.call_edges or []):
-                callee_mp = edge.callee_fi.mutated_params
-                callee_smp = edge.callee_fi.structural_mutated_params
-                if callee_mp is None:
-                    for _callee_idx, caller_idx in edge.param_map.items():
-                        result.add(caller_idx)
-                    if edge.receiver_is_self:
-                        self_mutated = True
-                else:
-                    for callee_idx, caller_idx in edge.param_map.items():
-                        if callee_idx in callee_mp:
-                            result.add(caller_idx)
-                    if edge.receiver_is_self and edge.callee_fi.self_mutated:
-                        self_mutated = True
-                if callee_smp is not None:
-                    for callee_idx, caller_idx in edge.param_map.items():
-                        if callee_idx in callee_smp:
-                            struct_result.add(caller_idx)
-                elif callee_mp is None:
-                    for _callee_idx, caller_idx in edge.param_map.items():
-                        struct_result.add(caller_idx)
-            # Sentinel -1 means "self" was passed as a function argument
-            if -1 in result:
-                self_mutated = True
-                result.discard(-1)
-            if -1 in struct_result:
-                self_mutated = True
-                struct_result.discard(-1)
-            new_mp = frozenset(result)
-            new_smp = frozenset(struct_result)
-            if new_mp != old_mp or new_smp != old_smp or self_mutated != old_sm:
-                fi.mutated_params = new_mp
-                fi.structural_mutated_params = new_smp
-                fi.self_mutated = self_mutated
+                facts.fold_edge(edge)
+            if facts.store(fi):
                 changed = True
         if not changed:
             break
@@ -197,23 +210,17 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
         # Did not converge -- conservatively mark all params/self flowing through
         # unresolved edges
         for fi in cycle_fis:
-            result = set(fi.mutated_params or frozenset())
-            struct_result = set(fi.structural_mutated_params or frozenset())
+            facts = _Facts(fi, from_resolved=True)
+            facts.self_mutated = bool(fi.self_mutated)
             for edge in (fi.call_edges or []):
                 if edge.callee_fi.mutated_params is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
-                        result.add(caller_idx)
-                        struct_result.add(caller_idx)
+                        facts.mutated.add(caller_idx)
+                        facts.structural.add(caller_idx)
+                        facts.elem.add(caller_idx)
                     if edge.receiver_is_self:
-                        fi.self_mutated = True
-            if -1 in result:
-                fi.self_mutated = True
-                result.discard(-1)
-            if -1 in struct_result:
-                fi.self_mutated = True
-                struct_result.discard(-1)
-            fi.mutated_params = frozenset(result)
-            fi.structural_mutated_params = frozenset(struct_result)
+                        facts.self_mutated = True
+            facts.store(fi)
 
 
 def infer_method_const(all_fis: list[FunctionInfo]) -> None:

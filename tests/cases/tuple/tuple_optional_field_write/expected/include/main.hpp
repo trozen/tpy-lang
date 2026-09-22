@@ -13,7 +13,7 @@ struct GlobalCopier;
 struct SubscriptCtor;
 
 extern T* g_anchor;
-extern std::tuple<std::optional<T>, std::optional<T>> g_pair;
+extern std::tuple<T*, T*> g_pair;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:
@@ -124,7 +124,7 @@ inline void Holder::copy_from_field(const Holder& other) {
 //     # Source is a value global -- already storage-form, direct copy.
 //     self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
 inline GlobalCopier::GlobalCopier() {
-    this->pair = g_pair;
+    this->pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(g_pair);
 }
 
 // def __init__(self, items: list[tuple[T | None, T | None]]) -> None:

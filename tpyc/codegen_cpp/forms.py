@@ -102,6 +102,13 @@ class LocalBinding(Enum):
     OTHER = auto()
 
 
+def is_borrow_form_tuple_global(t: TpyType | None) -> bool:
+    """`TupleType.takes_borrow_slot_as_global` over an optional, possibly
+    non-tuple binding type: the declaration, the extern, the module-init
+    write and every read consult this one verdict."""
+    return isinstance(t, TupleType) and t.takes_borrow_slot_as_global()
+
+
 def is_plain_nonvalue(t: TpyType) -> bool:
     """Non-value type needing indirection (record, list, dict, set, recursive-
     union wrapper). Unwraps `Own[T]`; excludes pointer-repr Optional and

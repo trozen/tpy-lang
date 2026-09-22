@@ -11,8 +11,8 @@ struct T;
 
 extern T* t1;
 extern T* t2;
-extern std::tuple<std::optional<T>, std::optional<T>> g;
-extern std::tuple<std::optional<T>, std::optional<T>> g_partial;
+extern std::tuple<T*, T*> g;
+extern std::tuple<T*, T*> g_partial;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def consume(p: tuple[T | None, T | None]) -> None:

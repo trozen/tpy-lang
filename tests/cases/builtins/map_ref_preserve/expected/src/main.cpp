@@ -38,7 +38,7 @@ Point& scale(Point& p, int32_t factor) {
 void main() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4), Point(5, 6)};
     {
-        auto __src_0 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+        auto __src_0 = ::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -51,7 +51,7 @@ void main() {
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
     std::cout << ::tpy::__getitem__(pts, 2).x << "\n";
     {
-        auto __src_2 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>([](Point& p) -> Point& { return ::tpyapp::main::scale(p, 2); }, pts);
+        auto __src_2 = ::tpy::builtin_map<::tpy::val_or_ref<Point>>([](Point& p) -> Point& { return ::tpyapp::main::scale(p, 2); }, pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

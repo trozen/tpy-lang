@@ -32,6 +32,8 @@ _SELFCHECKS = [
      "the iterator step result's size and the range-for adapter's stepping"),
     ("test_owning_combinator_move.cpp",
      "owning combinators stay movable until their first pull"),
+    ("test_combinator_elem_form.cpp",
+     "combinators hand an element on in the form its source steps it"),
 ]
 
 

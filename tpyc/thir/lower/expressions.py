@@ -316,7 +316,7 @@ from .predicates import (
     _const_default_param_form,
     _f1_container_ref,
     _f1_record,
-    _f1_ref,
+    record_like,
     _f1_tuple,
     _union_member_match,
     frame_temp_arg_slot,
@@ -748,7 +748,7 @@ from .checks import (
     _template_record_rvalue_call_shape,
     _er_record_rvalue_call_shape,
     _record_rvalue_temp_arg,
-    _method_rvalue_f1_record,
+    _method_rvalue_record_like,
     _typed_dict_ctor_call,
     _native_ctx_manager_ok,
     _open_tparam_param_read,
@@ -938,7 +938,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or (use.admits(SinkForm.RECORD_COPY)
                   and fi is not None
                   and call_returns_cpp_ref(analyzer, fi)
-                  and _f1_record(ret, analyzer)
+                  and record_like(ret, analyzer)
                   and _witness("call.field_copy_borrow_ret"))
               # A per-element-Own record tuple result (`make_pair()` ->
               # `std::tuple<Counter, Counter>`): borrow and storage
@@ -1057,7 +1057,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or (use.admits(SinkForm.BORROW_RET_PASSTHROUGH)
                   and fi is not None
                   and call_returns_cpp_ref(analyzer, fi)
-                  and (_f1_record(ret, analyzer)
+                  and (record_like(ret, analyzer)
                        or _alias_ref_container(ret))
                   and _witness("call.borrow_ret_passthrough"))
               # The FIELD-READ receiver twin (the dedicated flag --
@@ -1067,7 +1067,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and result is _ExprResultUse.RECEIVER
                   and fi is not None
                   and call_returns_cpp_ref(analyzer, fi)
-                  and _f1_record(ret, analyzer)
+                  and record_like(ret, analyzer)
                   and _witness("call.field_recv_borrow_ret"))
               # The pointer-repr-tuple LAMBDA-return body (`lambda p:
               # label(str(p.x), p)` at an `Fn[..., tuple[str, Ref[T]]]`
@@ -1250,7 +1250,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                        is not None)
                   and _witness("call.btuple_slot"))
               or (result is _ExprResultUse.BORROW_BIND
-                  and _f1_record(record, analyzer))
+                  and record_like(record, analyzer))
               # A BORROW container return at the alias-decl sink
               # (`std::vector<T>& items = identity<...>(t);` -- the
               # container twin of the record borrow-bind rung).
@@ -1317,7 +1317,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or (error_return_raw and fi is not None
                   and fi.error_return_type is not None
                   and call_returns_cpp_ref(analyzer, fi)
-                  and _f1_record(ret, analyzer)
+                  and record_like(ret, analyzer)
                   and _witness("call.er_ref_bind"))
               # A BORROW-returning record call consumed under the global
               # ptr-slot's address-of lift only (`p = &(get_item<Point>(
@@ -1328,7 +1328,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or (use.admits(SinkForm.ADDR_CALL)
                   and fi is not None
                   and call_returns_cpp_ref(analyzer, fi)
-                  and _f1_record(ret, analyzer)
+                  and record_like(ret, analyzer)
                   and _witness("call.recv_borrow_ret"))
               # The `copy()` builtin at a value-consuming sink. Every
               # callee-shape classifier above rejects a special builtin, so
@@ -1555,7 +1555,7 @@ def _template_arg_unreferenced(kind: 'tuple[str, str] | None',
                                arg_index: int) -> bool:
     """A @cpp_template callee whose body never substitutes `{arg_index}`: the
     expansion cannot contain that arg's render, so its shape is unobservable
-    (`filter(None, xs)` -> `::tpy::builtin_filter_truthy<T>({1})`, where the
+    (`filter(None, xs)` -> `::tpy::builtin_filter_truthy({1})`, where the
     `None` predicate selects the callee and then vanishes). Asks the shared
     brace-grammar scanner rather than testing for a substring -- a `{{0}}`
     literal-brace escape is not a reference."""
@@ -3101,7 +3101,7 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
         # Any reference-form result aliases the chosen operand, so the axis
         # IS the admission -- the per-type residue (which truthiness test
         # the LHS spells) comes from the shared classifier inside the arm.
-        if res_u is not None and _f1_ref(res_u, analyzer):
+        if res_u is not None and record_like(res_u, analyzer):
             if _contains_isinstance_fact(e.left):
                 rej("valuesel.isinstance_lhs")
             return _lower_container_select(e, res_u, lc, declared, loc, rej)
@@ -3384,7 +3384,7 @@ def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
     if isinstance(side, TpyFieldAccess):
         st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             analyzer.get_expr_type(side))))
-        if _f1_record(st, analyzer):
+        if record_like(st, analyzer):
             return _ExprUse(result=_ExprResultUse.BORROW_BIND,
                             allow_temps=temps_ok,
                             slot_target=slot)
@@ -3755,7 +3755,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     int_cpp=render_int_literal_value(
                         lit_val, resolved,
                         default_int_type=analyzer.ctx.default_int_type,
-                        type_to_cpp=lambda t: t.to_cpp()),
+                        type_to_cpp=lambda t: lc.render_type(t)),
                     loc=loc)
             # An un-flagged TARGET-LESS position rejects the fits-i64
             # slice: the fold belongs there, and only `fold_ok` marks the
@@ -4026,7 +4026,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # A record needle is a reference type, so Python's `x is e` leg
             # of containment is observable on it -- which is what admits the
             # form here; the render is the same helper every needle takes.
-            record_needle = native_recv and _f1_record(lt_bare, analyzer)
+            record_needle = native_recv and record_like(lt_bare, analyzer)
             if (native_recv
                     and (_resolved_scalar(lt, analyzer)
                          or _resolved_viewfam_value(lt, analyzer) is not None
@@ -4153,12 +4153,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             if not ((is_dict(ct) or is_set(ct))
                     and (_resolved_scalar(lt, analyzer)
                          or (isinstance(e.left, TpyName)
-                             and _f1_record(lt_bare, analyzer))
+                             and record_like(lt_bare, analyzer))
                          # A record ctor RVALUE needle (`time(0) in {time(0),
                          # time(1)}`) renders bare inside `contains(...)` just
                          # like the name row -- it is a value position, so the
                          # ctor's own emit is the whole render.
-                         or (_f1_record(lt_bare, analyzer)
+                         or (record_like(lt_bare, analyzer)
                              and _record_rvalue_source_shape(e.left, analyzer))
                          or (_resolved_str_value(lt, analyzer) is not None
                              and ((_vkc := view_key_target(ct)) is None
@@ -4374,7 +4374,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 needle = THIRCoerce(
                     result_type=pt, expr=needle,
                     coercion_name=_BIGINT_NARROW,
-                    wrap=f"({{0}}).to_fixed_check<{pt.to_cpp()}>()", loc=loc)
+                    wrap=f"({{0}}).to_fixed_check<{lc.render_type(pt)}>()", loc=loc)
         return THIRMembership(
             result_type=rtype,
             receiver=_lower_expr(e.right, lc, declared, use=recv_use,
@@ -4661,7 +4661,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             if isinstance(side, TpyFieldAccess):
                 st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     analyzer.get_expr_type(side))))
-                if (_f1_ref(st, analyzer)
+                if (record_like(st, analyzer)
                         or _value_tuple(st, analyzer) is not None):
                     return _ExprUse(result=_ExprResultUse.BORROW_BIND)
             # Compare operands are target-less, so a both-literal
@@ -4791,7 +4791,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                         result_type=_pt,
                         expr=(left if e.resolved_binop.is_reverse else right),
                         coercion_name=_BIGINT_NARROW,
-                        wrap=f"({{0}}).to_fixed_check<{_pt.to_cpp()}>()",
+                        wrap=f"({{0}}).to_fixed_check<{lc.render_type(_pt)}>()",
                         loc=loc)
                     _witness("narrow.binop_param")
                     if e.resolved_binop.is_reverse:
@@ -5922,7 +5922,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     or _is_type_param_slot(rtype)
                     or _eligible_ptr_value(rtype, analyzer)
                     or (use.result is _ExprResultUse.RECEIVER
-                        and _f1_record(rtype, analyzer))
+                        and record_like(rtype, analyzer))
                     # A user-iterator F1-record field in the for-head
                     # (`for k in r.headers:`, the bare `auto& __src_N =`
                     # member bind) and an F1-record field compare operand
@@ -5930,24 +5930,24 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # parens) both render the plain member read.
                     or (use.result in (_ExprResultUse.ITERABLE,
                                        _ExprResultUse.BORROW_BIND)
-                        and _f1_record(rtype, analyzer))
+                        and record_like(rtype, analyzer))
                     # A stored-awaitable field at the BORROWED suspend
                     # operand (`await self.evt` -> `__sub_0 = &(__self.evt)`)
                     # -- the skeleton owns the `&(..)` wrap; the operand is
                     # the bare member read.
                     or (use.result is _ExprResultUse.SUSPEND
-                        and _f1_record(rtype, analyzer)
+                        and record_like(rtype, analyzer)
                         and _witness("field.suspend_borrow"))
                     # A field-access lvalue manager (`with self.mgr:`): the
                     # bare member read is the lvalue the `auto& __ctx_N`
                     # bind borrows (with.manager_borrowed_field's expr half).
                     or (use.admits(SinkForm.CTX_MANAGER)
-                        and _f1_record(rtype, analyzer))
+                        and record_like(rtype, analyzer))
                     # The record FIELD-WRITE copy sink consumes the F1 field
                     # read whole (`h.p = h2.p;` -- the bare member read, the
                     # assign copies).
                     or (use.admits(SinkForm.RECORD_COPY)
-                        and _f1_record(rtype, analyzer))
+                        and record_like(rtype, analyzer))
                     # A CONTAINER field in a for-head that reaches the generic
                     # iterable position -- the RESUMABLE frame's
                     # (`(__self.nodes).begin()`). The sync for-head has its
@@ -6412,7 +6412,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # lookup that panics KeyError on miss). The receiver is the enum
             # TYPE name (no value-position lowering); only the str index lowers.
             _witness("subscript.enum_from_name")
-            cpp_type = e.enum_from_name.to_cpp()
+            cpp_type = lc.render_type(e.enum_from_name)
             return THIREnumWrap(
                 result_type=rtype,
                 wrap=f"::tpy::EnumUtil<{cpp_type}>::from_name({{0}})",
@@ -6704,7 +6704,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                           # receiver and index only, so a record element slot
                           # never renders an element read here.
                           or (use.result is _ExprResultUse.SETITEM_TARGET
-                              and _f1_record(rtype, analyzer)))
+                              and record_like(rtype, analyzer)))
                 # A None-narrowed pointer-repr `Optional[record]` NAME reads
                 # its deref (`(*g)[i]`), the same shape the container arm's
                 # `_optrecv_deref` row renders one sink over.
@@ -6963,7 +6963,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             record_recv_ok = (
                 use.result is _ExprResultUse.RECEIVER
                 and _container_record_elem(recv_t, analyzer)
-                and _f1_record(rtype, analyzer) and index_ok)
+                and record_like(rtype, analyzer) and index_ok)
             # A whole TUPLE element read in RECEIVER position (the inner of
             # `items[i][N].field`): the `::tpy::__getitem__(items, i)`
             # storage-tuple `T&` lvalue, consumed by the outer `std::get`.
@@ -6994,7 +6994,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             # Any reference-form member: the whole-element
                             # `T&` read is member-agnostic, so what the
                             # member IS never reaches the render.
-                            or _f1_ref(mm, analyzer)
+                            or record_like(mm, analyzer)
                             # A NESTED tuple member: same argument, and a
                             # tuple is not on the axis.
                             or isinstance(mm, TupleType))
@@ -7050,7 +7050,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                      # A dict VALUE element is the same checked
                      # `__getitem__` lvalue (`print(d[k])`).
                      or is_dict(recv_peeled))
-                and (_f1_record(unwrap_readonly(unwrap_ref_type(
+                and (record_like(unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(rtype))), analyzer)
                      # A WRAPPER-union element (`depth(zs[1])` on
                      # `zs: list[Tree]`): the same checked element lvalue
@@ -7071,7 +7071,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                      or is_dict(recv_peeled))
                 and isinstance(_vr_rb, NominalType) and _vr_rb.is_record
                 and _vr_rb.is_value_type()
-                and _f1_record(_vr_rb, analyzer)
+                and record_like(_vr_rb, analyzer)
                 and index_ok
                 and bool(_witness("subscript.value_record_elem")))
             # A VALUE-tuple element read consumed whole by the standalone
@@ -7182,7 +7182,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     field_prechecked=isinstance(e.obj, TpyFieldAccess)),
                 index=_lower_expr(e.index, lc, declared),
                 record_getitem=True,
-                form=(Form.BORROW if _f1_record(rtype, analyzer)
+                form=(Form.BORROW if record_like(rtype, analyzer)
                       else Form.VALUE),
                 loc=loc)
         # Container or str subscript -> the checked dunder
@@ -7208,7 +7208,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             if sub_str is not None:
                 _witness("subscript.bytes_elem")
         form = _viewfam_result_form(sub_str)
-        if _f1_record(rtype, analyzer):
+        if record_like(rtype, analyzer):
             # A record element (`ps[i]`) is a `T&` borrow, consumed by field
             # access / the REF_ALIAS alias bind (mirrors the tuple record
             # element's BORROW tag).
@@ -7233,7 +7233,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                            if isinstance(e.obj, TpyName)
                            and e.obj.name in lc.narrow.narrowed else None)
         idx_obj_type = analyzer.get_expr_type(e.obj)
-        if narrowed_recv_u is not None and _f1_ref(rtype, analyzer) and (
+        if narrowed_recv_u is not None and record_like(rtype, analyzer) and (
                 is_dict(idx_obj_type) or is_list(idx_obj_type)
                 or is_array(idx_obj_type) or is_span(idx_obj_type)):
             form = Form.BORROW
@@ -7494,7 +7494,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             return THIRWalrus(
                 result_type=vtu, name=e.target,
                 cpp_name=escape_cpp_name(e.target),
-                value=wv, slot_cpp=vtu.to_cpp(), borrow_cpp=bc,
+                value=wv, slot_cpp=lc.render_type(vtu), borrow_cpp=bc,
                 tail="name", loc=loc)
         if e.target in lc.prescan.hoisted:
             raise ThirUnsupported("expr.walrus")
@@ -7526,7 +7526,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # of those (its `T* g{}` slot is seeded into lc.pointers), so it
             # copies the slot pointer instead of addressing it.
             src = e.value
-            if not _f1_ref(vtu, analyzer):
+            if not record_like(vtu, analyzer):
                 note_detail("walrus.borrow_alias_shape")
                 raise ThirUnsupported("expr.walrus")
             if isinstance(src, TpyName):
@@ -7654,7 +7654,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 cpp_name=escape_cpp_name(e.target),
                 value=lowered_value,
                 cpp_type=cvt.to_cpp_return(),
-                slot_cpp=cvt.to_cpp(), borrow_cpp=cvt.to_cpp_return(),
+                slot_cpp=lc.render_type(cvt), borrow_cpp=cvt.to_cpp_return(),
                 tail="name", loc=loc)
         # An owned-tuple return off a CALL (`(t := make_pair(5))` at a
         # declared `Own[tuple[..]]` / owned-movable return) takes the
@@ -7720,7 +7720,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if (not resumable
                 and need_predecl
                 and ((is_plain_nonvalue(vtu) and e.target in ever_owned
-                      and _f1_ref(vtu, analyzer))
+                      and record_like(vtu, analyzer))
                      # An OWNED-MOVABLE tuple walrus (`(t := make_pair(5))`
                      # at a declared `tuple[int32, Own[Box]]` return): the
                      # same deferred-init slot; reads deref `(*t)` and
@@ -7903,10 +7903,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 or (elem_storage
                     and _storage_opt_ternary_result(rtype, analyzer)
                     is not None)
-                # A plain F1-record ternary of lvalue arms renders bare (an
+                # A plain record / container ternary of lvalue arms renders bare (an
                 # lvalue when both arms are lvalues -- the Own-slot copy /
                 # REF_ALIAS sources); arm shapes gate in _lower_if_expr.
-                or _f1_record(unwrap_readonly(unwrap_ref_type(
+                or record_like(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(rtype))), analyzer)
                 # A ternary of `Own[@dynamic P]`-returning calls (sema
                 # strips the Own from the ternary's own type): renders
@@ -8164,7 +8164,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     expr=_lower_expr(e.args[1], lc, declared),
                     coercion_name="any_cast",
                     wrap=("::tpy::any_cast_or_panic<"
-                          f"{e.cast_target_type.to_cpp()}>({{0}})"),
+                          f"{lc.render_type(e.cast_target_type)}>({{0}})"),
                     loc=loc)
             # `typing.cast(T, x)` non-Any: a compile-time no-op rendering the
             # bare source.
@@ -8201,7 +8201,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 u = einfo.underlying_type
                 arg = THIRCoerce(result_type=u, expr=arg,
                                  coercion_name=_BIGINT_NARROW,
-                                 wrap="({0})" + f".to_fixed_check<{u.to_cpp()}>()",
+                                 wrap="({0})" + f".to_fixed_check<{lc.render_type(u)}>()",
                                  loc=loc)
             return THIRCall(
                 result_type=rtype, callee=e.func_name,
@@ -8270,12 +8270,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 assert ri is not None, "lowered ctor has no record"
                 if ri.is_native_exception_class:
                     # A native exception spells its `@native` name
-                    # (`::tpy::OSError`) via to_cpp() / native_cpp_names --
-                    # the module qualification would give the wrong
-                    # `::tpystd::builtins::` path. _f1_record guarantees
-                    # to_cpp() == the resolver's spelling.
+                    # (`::tpy::OSError`) through the resolver's
+                    # native_cpp_names -- the module qualification would give
+                    # the wrong `::tpystd::builtins::` path.
                     _witness("ctor.native")
-                    type_cpp = unwrap_readonly(rtype).to_cpp()
+                    type_cpp = lc.render_type(unwrap_readonly(rtype))
                 elif ri.is_native:
                     # A plain @native record spells record_info.native_name;
                     # @native_c PODs
@@ -8348,7 +8347,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             "ctor mutated-slot rvalue temp outside a flush position")
                     _witness("argtemp.ctor_mut_rvalue")
                     args.append(THIRArgTemp(
-                        result_type=rec, cpp_type=rec.to_cpp(), movable=unwrap_ref_type(rec).is_movable(),
+                        result_type=rec, cpp_type=lc.render_type(rec), movable=unwrap_ref_type(rec).is_movable(),
                         # `R __tmp_N = <init>;` IS a storage decl sink, so
                         # the init takes the STORAGE result use -- the same
                         # thread the marker-protocol record hoist gives its
@@ -8376,7 +8375,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         "container-literal ctor arg on the make path")
                     _witness("argtemp.container_literal")
                     args.append(THIRArgTemp(
-                        result_type=_ct_slot, cpp_type=_ct_slot.to_cpp(),
+                        result_type=_ct_slot, cpp_type=lc.render_type(_ct_slot),
                         init=_ct_lowered, form=Form.BORROW,
                         movable=unwrap_ref_type(_ct_slot).is_movable(),
                         loc=getattr(a, "loc", None)))
@@ -9203,7 +9202,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 allow_record=True, allow_nested=True, allow_optional=True,
                 retype_scalars=True, suppress_move=True)
             for x in e.elements)
-        elem_cpp = elem_type.to_cpp()
+        elem_cpp = lc.render_type(elem_type)
         if is_array(result_type):
             # Aggregate build via array_from_index (the __rep_N counter draws at
             # emit); the stop bound rides the N template arg, count is unused.
@@ -9217,7 +9216,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return THIRListRepeat(
             result_type=result_type, elements=elements, count=count,
             count_bigint=count_bigint, elem_cpp=elem_cpp, lazy=lazy,
-            result_cpp="" if lazy else result_type.to_cpp(), loc=loc)
+            result_cpp="" if lazy else lc.render_type(result_type), loc=loc)
     if isinstance(e, (TpyArrayLiteral, TpySetLiteral)):
         container_type = use.slot_target or rtype
         if not _container_literal_shape_ok(
@@ -9552,7 +9551,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # deduce from.
                 type_cpp = lc.render_type(_nested_res)
             else:
-                type_cpp = NominalType(e.nested_type_name).to_cpp()
+                type_cpp = lc.render_type(NominalType(e.nested_type_name))
             return THIRCtorCall(
                 result_type=rtype, type_cpp=type_cpp,
                 args=tuple(_lower_expr(a, lc, declared) for a in e.args),
@@ -9976,7 +9975,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         and not e.inferred_type_args
                         and lit_member is None
                         and not e.needs_optional_runtime_check
-                        and _f1_record(unwrap_readonly(unwrap_ref_type(
+                        and record_like(unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(declared[e.obj.name]))),
                             analyzer)
                         and _eligible_scalar(rtype)):
@@ -10086,7 +10085,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                and fi.cpp_template is not None
                                and not recv_type.is_pointer()
                                and not _native_record_recv(recv_type, analyzer)
-                               and _f1_record(recv_type, analyzer))
+                               and record_like(recv_type, analyzer))
             if fam is not None:
                 shape_ok = fam.shape_ok(
                     e, fi, declared, analyzer,
@@ -10230,7 +10229,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     t_init = _lower_expr(a, lc, declared,
                                          use=_ExprUse(slot_target=tt))
                     return THIRArgTemp(
-                        result_type=tt, cpp_type=tt.to_cpp(), movable=unwrap_ref_type(tt).is_movable(),
+                        result_type=tt, cpp_type=lc.render_type(tt), movable=unwrap_ref_type(tt).is_movable(),
                         init=t_init,
                         form=Form.VALUE, loc=getattr(a, "loc", None))
                 # A container LITERAL into a pointer-repr Optional[container]
@@ -10301,7 +10300,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         # The temp hoists at the slot's type and is movable
                         # off it, so the conditional-region defer matches.
                         return THIRArgTemp(
-                            result_type=fslot, cpp_type=fslot.to_cpp(),
+                            result_type=fslot, cpp_type=lc.render_type(fslot),
                             init=_lower_literal_arg(
                                 a, fslot, lc, declared,
                                 "factory-method container-literal arg on "
@@ -10313,7 +10312,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             frame_capturing=True) is not None:
                         _witness("argtemp.gen_factory")
                         return THIRArgTemp(
-                            result_type=fslot, cpp_type=fslot.to_cpp(),
+                            result_type=fslot, cpp_type=lc.render_type(fslot),
                             init=_lower_expr(a, lc, declared,
                                              use=_RECORD_TEMP_FLUSH_USE),
                             movable=unwrap_ref_type(fslot).is_movable(),
@@ -10597,7 +10596,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                len(e.expr.elements))
             inner = _lower_expr(e.expr, lc, declared,
                                 use=_ExprUse(slot_target=arr_t))
-            inner = replace(inner, typed_brace_cpp=arr_t.to_cpp())
+            inner = replace(inner, typed_brace_cpp=lc.render_type(arr_t))
             _witness("coerce.span_array_literal")
         elif (e.coercion.name in _SPANLIKE_COERCIONS
               and isinstance(e.expr, TpyFieldAccess)
@@ -11369,7 +11368,7 @@ def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
         _witness("lambda.btuple_ret")
         ret_cpp = ret_type.to_cpp_return()
     else:
-        ret_cpp = ret_type.to_cpp()
+        ret_cpp = lc.render_type(ret_type)
     return THIRLambda(
         result_type=analyzer.get_expr_type(e),
         capture_cpp=capture,
@@ -11613,7 +11612,7 @@ def lower_print_sink(file_val: TpyExpr, lc: '_LowerCtx',
         # consumer takes like any other record sink; the subscript arm owns
         # the receiver/index decision.
         rtype = analyzer.get_expr_type(file_val)
-        if _f1_record(rtype, analyzer):
+        if record_like(rtype, analyzer):
             _witness("print.file_elem_sink")
             return _lower_expr(file_val, lc, declared,
                                use=_ExprUse(result=_ExprResultUse.RECEIVER))
@@ -12092,7 +12091,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                            use=_ExprUse(slot_target=_dmember))
     _cp_elem = (unwrap_readonly(_unwrap_own(su_elem))
                 if isinstance(su_elem, OwnType) else su_elem)
-    if _f1_record(_cp_elem, lc.analyzer):
+    if record_like(_cp_elem, lc.analyzer):
         # `(copy(p), n)` -- the shared copy-construct row (`Point(p)`) at a
         # record element slot (the `Own[Point]` tuple-element flavor peels
         # -- the Own is the slot's ownership spelling, the copy render is
@@ -12105,7 +12104,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
             _witness("containerlit.copy_record")
             return copy_row
     if (isinstance(e, TpyMethodCall)
-            and _f1_record(lc.analyzer.get_expr_type(e), lc.analyzer)):
+            and record_like(lc.analyzer.get_expr_type(e), lc.analyzer)):
         # A record-returning method-call rvalue element (`rc.clone()`): the
         # bare call lands in the make_vector/make_ordered_set slot, so it
         # lowers under BORROW_BIND -- the record-return admission the
@@ -12622,6 +12621,17 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                         OptionalType)):
                 note_detail("btuple.elem_source")
                 raise ThirUnsupported("expr.tuple_literal")
+            if not _f1_record(unwrap_readonly(unwrap_ref_type(et_bare)),
+                              analyzer):
+                # A container FIELD element would sit in the tuple as `T*`
+                # exactly like a record field, but no reader of a container
+                # tuple element derefs that pointer yet (`t[0][k] = v` hands
+                # `__setitem__` the pointer, `len(t[0])` rejects), so
+                # admitting the bind would turn a located reject into a C++
+                # build failure. The reader is the tuple element
+                # completion's (docs/TUPLE_COMPLETION_PLAN.md).
+                note_detail("btuple.elem_container_field")
+                raise ThirUnsupported("expr.tuple_literal")
             _witness("btuple.elem_field")
             lift = not _already_pointer_source(elem, lc)
         elif isinstance(elem, TpySubscript):
@@ -13036,7 +13046,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
             st = resolved if slot is None else slot
             # TempState.create's movable: the resolved slot's own type.
             args.append(THIRArgTemp(
-                result_type=st, cpp_type=st.to_cpp(),
+                result_type=st, cpp_type=lc.render_type(st),
                 init=init, form=Form.VALUE,
                 movable=unwrap_ref_type(st).is_movable(),
                 loc=getattr(a, "loc", None)))
@@ -13090,7 +13100,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
             slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
             _witness("argtemp.generic_container_literal")
             args.append(THIRArgTemp(
-                result_type=slot, cpp_type=slot.to_cpp(), movable=unwrap_ref_type(slot).is_movable(),
+                result_type=slot, cpp_type=lc.render_type(slot), movable=unwrap_ref_type(slot).is_movable(),
                 init=_lower_literal_arg(
                     a, slot, lc, declared,
                     "generic container-literal arg on the make_vector path"),
@@ -13209,7 +13219,7 @@ def _container_literal_argtemp(a: TpyExpr, ptype: 'TpyType | None',
     slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
     lowered = _lower_literal_arg(a, slot, lc, declared, reject)
     _witness("argtemp.container_literal")
-    return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
+    return THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot),
                        init=lowered, form=Form.BORROW,
                        movable=unwrap_ref_type(slot).is_movable(),
                        loc=getattr(a, "loc", None))
@@ -13278,7 +13288,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             if _template_arg_unreferenced(kind, arg_index):
                 # A @cpp_template that never spells `{i}` DISCARDS this
                 # arg's render (`filter(None, xs)` ->
-                # `builtin_filter_truthy<T>({1})`), so no shape check can
+                # `builtin_filter_truthy({1})`), so no shape check can
                 # matter -- the expansion cannot contain it.
                 _witness("call.template_arg_dropped")
                 return THIRLiteral(result_type=analyzer.get_expr_type(a),
@@ -13754,7 +13764,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                                   use=_ExprUse(slot_target=slot))
             if isinstance(lowered, THIRListRepeat):
                 _witness("argtemp.list_repeat")
-                return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
+                return THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot),
                                    init=lowered, form=Form.BORROW,
                                    movable=unwrap_ref_type(slot).is_movable(),
                                    loc=getattr(a, "loc", None))
@@ -13775,7 +13785,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                 # keeps the empty verdict this site always had.
                 use=_ExprUse(result=_ExprResultUse.STORAGE,
                              pos=SinkPos.CALL_ARG, forms=_NO_FORMS))
-            return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(), movable=unwrap_ref_type(slot).is_movable(),
+            return THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot), movable=unwrap_ref_type(slot).is_movable(),
                                init=lowered, form=Form.BORROW,
                                loc=getattr(a, "loc", None))
     dc = _deref_coerce_arg(a, ptype, declared, lc.analyzer)
@@ -13797,7 +13807,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             raise ThirUnsupported(
                 "deref-coerce arg-temp outside a flush position")
         _witness("argtemp.deref_coerce")
-        return THIRArgTemp(result_type=dslot, cpp_type=dslot.to_cpp(), movable=unwrap_ref_type(dslot).is_movable(),
+        return THIRArgTemp(result_type=dslot, cpp_type=lc.render_type(dslot), movable=unwrap_ref_type(dslot).is_movable(),
                            init=coerced, form=Form.BORROW,
                            loc=getattr(a, "loc", None))
     # The frame-capturing TEMPORARY argument: the free-call twin of the
@@ -14380,7 +14390,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                          lc.analyzer)
         comp = _lower_comprehension(a, slot_c, lc, declared, pointers)
         _witness("argtemp.comprehension")
-        return THIRArgTemp(result_type=slot_c, cpp_type=slot_c.to_cpp(),
+        return THIRArgTemp(result_type=slot_c, cpp_type=lc.render_type(slot_c),
                            movable=unwrap_ref_type(slot_c).is_movable(),
                            init=comp, form=Form.BORROW,
                            loc=getattr(a, "loc", None))
@@ -15000,7 +15010,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         _witness("argtemp.protocol_union_literal")
         # Movable comes off the temp's own (demoted sema) type, so the
         # conditional-region defer decision matches.
-        return THIRArgTemp(result_type=_pul, cpp_type=_pul.to_cpp(),
+        return THIRArgTemp(result_type=_pul, cpp_type=lc.render_type(_pul),
                            init=init, addr_of=True, form=Form.BORROW,
                            movable=unwrap_ref_type(_pul).is_movable(),
                            loc=getattr(a, "loc", None))
@@ -15019,7 +15029,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             use=replace(_NESTED_ARG_USE, result=_ExprResultUse.ITERABLE,
                         allow_temps=True))
         _witness("argtemp.protocol_union_iter")
-        return THIRArgTemp(result_type=_pui, cpp_type=_pui.to_cpp(),
+        return THIRArgTemp(result_type=_pui, cpp_type=lc.render_type(_pui),
                            init=init, addr_of=True, form=Form.BORROW,
                            movable=unwrap_ref_type(_pui).is_movable(),
                            loc=getattr(a, "loc", None))
@@ -15351,7 +15361,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 # qualcall loop has no temp machinery), so the hoist is a
                 # FREE-call-position row only.
                 not marker_arg
-                and _method_rvalue_f1_record(a, lc.analyzer)
+                and _method_rvalue_record_like(a, lc.analyzer)
                 and _mfi is not None and _mfi.native_name is None
                 and not _mfi.native_function and _mfi.cpp_template is None)
             if not plain_own_method:
@@ -15359,7 +15369,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if rec_pt is not None:
             _witness("argtemp.record_rvalue")
             return THIRArgTemp(
-                result_type=rec_pt, cpp_type=rec_pt.to_cpp(), movable=unwrap_ref_type(rec_pt).is_movable(),
+                result_type=rec_pt, cpp_type=lc.render_type(rec_pt), movable=unwrap_ref_type(rec_pt).is_movable(),
                 # A module-qualified ctor source (TpyMethodCall) lowers via
                 # the marker path, whose result gate needs the temp's
                 # STORAGE sink named; the TpyCall ctor path is result-blind.
@@ -15818,7 +15828,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
-    if ow_slot is not None and ow_method and _f1_record(ow_slot, lc.analyzer):
+    if ow_slot is not None and ow_method and record_like(ow_slot, lc.analyzer):
         # An Own-slot record METHOD-call rvalue (admitted by
         # _own_record_rvalue_arg -- `Arc.new(Mutex.new(0))`): the inline
         # rvalue binds the T&& slot; lower under BORROW_BIND like the
@@ -16010,7 +16020,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                      else inner)
             # Movable comes off the temp's own type, so the defer decision
             # inside a conditional region matches the temp it describes.
-            return THIRArgTemp(result_type=tmp_t, cpp_type=tmp_t.to_cpp(),
+            return THIRArgTemp(result_type=tmp_t, cpp_type=lc.render_type(tmp_t),
                                init=_lower_expr(a, lc, declared, use=init_use),
                                addr_of=True,
                                movable=unwrap_ref_type(tmp_t).is_movable(),
@@ -16225,7 +16235,7 @@ def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
                     "ctor mutated-slot rvalue temp outside a flush position")
             _witness("argtemp.ctor_mut_rvalue")
             lowered.append(THIRArgTemp(
-                result_type=rec, cpp_type=rec.to_cpp(), movable=unwrap_ref_type(rec).is_movable(),
+                result_type=rec, cpp_type=lc.render_type(rec), movable=unwrap_ref_type(rec).is_movable(),
                 init=_lower_expr(a, lc, declared), form=Form.BORROW,
                 loc=getattr(a, "loc", None)))
         else:
@@ -16290,7 +16300,7 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             variant_cpp=(bl.to_cpp_const_ptr_variant() if readonly_target
                          else bl.to_cpp_ptr_variant()),
             value=_lower_expr(a, lc, declared, use=_RECORD_TEMP_USE),
-            temp_cpp=blt.to_cpp(),
+            temp_cpp=lc.render_type(blt),
             form=Form.BORROW, loc=getattr(a, "loc", None))
     dl = _union_dict_literal_temp_arg(a, ptype, lc.analyzer)
     if dl is not None:
@@ -16308,7 +16318,7 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                          else dl.to_cpp_ptr_variant()),
             value=_lower_expr(a, lc, declared,
                               use=_ExprUse(result=_ExprResultUse.STORAGE)),
-            temp_cpp=dlt.to_cpp(),
+            temp_cpp=lc.render_type(dlt),
             form=Form.BORROW, loc=getattr(a, "loc", None))
     slot = _arg_ptr_union_slot(ptype, lc.analyzer, readonly_target=readonly_target)
     if slot is None:
@@ -16340,7 +16350,7 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # while the placement there must defer, which the
             # conditional-operand exit check rejects for this row.
             value=_lower_expr(a, lc, declared, use=_RECORD_TEMP_FLUSH_USE),
-            temp_cpp=at.to_cpp(),
+            temp_cpp=lc.render_type(at),
             form=Form.BORROW, loc=loc)
     if not isinstance(a, TpyName):
         return None
@@ -16578,7 +16588,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         _witness("call.copy_tuple_storage")
         return THIRBorrowTupleLiteral(
             result_type=stu,
-            spelled_cpp=_resolve_tuple_pending(stu, analyzer).to_cpp(),
+            spelled_cpp=lc.render_type(_resolve_tuple_pending(stu, analyzer)),
             elements=_copy_elems,
             addr_of=tuple(False for _ in _copy_elems),
             elem_wraps=(), loc=loc)
@@ -16597,7 +16607,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         return THIRCall(
             result_type=rtype, callee=callee,
             args=(_lower_expr(src, lc, declared),),
-            cpp_template=f"{stu.to_cpp()}({{0}})",
+            cpp_template=f"{lc.render_type(stu)}({{0}})",
             loc=loc)
     _copy_ptr_ok = False
     _copy_rec_ptr_ok = False
@@ -16640,7 +16650,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
                 use=(_ExprUse(result=_ExprResultUse.STORAGE)
                      if _copy_ptr_ok or is_rvalue_source(analyzer, src)
                      else _COPY_SRC_USE)),),
-            cpp_template=f"{stu.to_cpp()}({{0}})",
+            cpp_template=f"{lc.render_type(stu)}({{0}})",
             loc=loc)
     if _f1_record(stu, analyzer) and (_cc_form or _copy_rec_ptr_ok):
         if _copy_rec_ptr_ok:
@@ -16655,21 +16665,21 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
                 args=(_lower_expr(src, lc, declared,
                                   use=_ExprUse(
                                       pos=SinkPos.CALL_ARG)),),
-                cpp_template=f"{stu.to_cpp()}({{0}})",
+                cpp_template=f"{lc.render_type(stu)}({{0}})",
                 loc=loc)
         # Keep semantic copy identity for named plain records at sinks that
         # reach the shared builtin route, including module-qualified calls.
         _witness("call.copy_record")
         if isinstance(src, TpyName) and borrowed_record(stu, False, analyzer) is not None:
             return replace(lower_copy_construct(src, stu, lc, declared, slot_type=rtype, loc=loc),
-                           cpp_type=stu.to_cpp())
+                           cpp_type=lc.render_type(stu))
         return THIRCall(
             result_type=rtype, callee=callee,
             args=(_lower_expr(
                 src, lc, declared,
                 use=(_ExprUse(result=_ExprResultUse.STORAGE)
                      if is_rvalue_source(analyzer, src) else _COPY_SRC_USE)),),
-            cpp_template=f"{stu.to_cpp()}({{0}})",
+            cpp_template=f"{lc.render_type(stu)}({{0}})",
             loc=loc)
     _cp_str = _resolved_str_value(stu, analyzer)
     _cp_bytes = (None if _cp_str is not None
@@ -16684,7 +16694,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         # (`std::string_view(s)`) -- materializing it instead would leave the
         # same-typed sink holding a view into a dead temporary.
         _cp_res = _cp_str if _cp_str is not None else _cp_bytes
-        _cp_tmpl = f"{_cp_res.to_cpp()}({{0}})"
+        _cp_tmpl = f"{lc.render_type(_cp_res)}({{0}})"
         if (_cp_bytes is not None and not is_bytes_view_type(_cp_res)
                 and _view_at_runtime(src, lc)):
             # A `bytes` PARAM is resolved OWNED but passed as the span, and
@@ -16713,7 +16723,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         return THIRCall(
             result_type=rtype, callee=callee,
             args=(_lower_expr(src, lc, declared),),
-            cpp_template=f"{stu.to_cpp()}({{0}})",
+            cpp_template=f"{lc.render_type(stu)}({{0}})",
             loc=loc)
     # The one copy() shape with no admitted row: name the copied payload's
     # family so the tally ranks the missing rows instead of one opaque tail.
@@ -17385,13 +17395,13 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
         dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
               if dt is not None else None)
         if (arm.name != "self" and not isinstance(dt, OwnType)
-                and _f1_record(dt, analyzer)):
+                and record_like(dt, analyzer)):
             return THIROptionalPtrArg(
                 result_type=popt, form=Form.BORROW,
                 value=_lower_expr(arm, lc, declared), addr_of=True, loc=loc)
     elif (_container_elem_lvalue_subscript(arm, declared, analyzer,
                                            lc.pointers)
-          and _f1_record(at, analyzer)):
+          and record_like(at, analyzer)):
         # A plain record ELEMENT arm (`ns[0] if c else None`): the address of
         # the live element, the NAME arm's addr-of one receiver shape over.
         _witness("ifexpr.optptr_elem_addr")
@@ -17550,7 +17560,7 @@ def _lower_record_prvalue_arm(arm: TpyExpr, rec_t: 'TpyType',
         if not isinstance(carg, TpyName):
             return None
         at = analyzer.get_expr_type(carg)
-        if not (_f1_record(at, analyzer) and unwrap_readonly(
+        if not (record_like(at, analyzer) and unwrap_readonly(
                 unwrap_ref_type(unwrap_send_sync(at))) == rec_t):
             return None
         return THIRCopy(result_type=rec_t,
@@ -17738,7 +17748,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         _witness("ifexpr.container_comp_arm")
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.VALUE, loc=loc)
-    if _f1_ref(rec_t, analyzer):
+    if record_like(rec_t, analyzer):
         # A plain reference-axis ternary -- a record or a container, one arm
         # on the same axis: a same-type lvalue ternary is itself an lvalue,
         # so bare NAME arms render with no per-arm conversion (each a plain
@@ -17977,7 +17987,7 @@ def _lower_int_literal(value: int, result_type: TpyType, lc: '_LowerCtx',
         int_cpp=render_int_literal_value(
             value, None,
             default_int_type=lc.analyzer.ctx.default_int_type,
-            type_to_cpp=lambda t: t.to_cpp()),
+            type_to_cpp=lambda t: lc.render_type(t)),
         loc=loc)
 
 
@@ -18011,7 +18021,7 @@ def _retarget_int_literal(v: THIRLiteral, slot: TpyType,
         int_cpp=render_int_literal_value(
             v.value, st,
             default_int_type=lc.analyzer.ctx.default_int_type,
-            type_to_cpp=lambda t: t.to_cpp()))
+            type_to_cpp=lambda t: lc.render_type(t)))
 
 
 def _slot_literal_retype(v: 'THIRExpr | None',
@@ -18098,7 +18108,7 @@ def _unbound_self_field_access(e: TpyFieldAccess, lc: '_LowerCtx',
         result_type=rtype,
         receiver=THIRSelf(result_type=e.unbound_self_parent_type,
                           form=Form.BORROW, cpp=lc.self_cpp, loc=loc),
-        field_cpp=(f"{e.unbound_self_parent_type.to_cpp()}::"
+        field_cpp=(f"{lc.render_type(e.unbound_self_parent_type)}::"
                    f"{_field_cpp(e)}"),
         is_arrow=True,
         form=form,

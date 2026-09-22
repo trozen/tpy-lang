@@ -44,7 +44,7 @@ void main() {
     auto __tmp_6 = std::array<int32_t, 2>{1, 2};
     std::cout << ::tpyapp::main::pair<int32_t>(__tmp_5, __tmp_6) << "\n";
     {
-        auto __src_0 = ::tpy::builtin_enumerate<int32_t>(std::vector<int32_t>{});
+        auto __src_0 = ::tpy::builtin_enumerate(std::vector<int32_t>{});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -69,7 +69,7 @@ void main() {
     }
     std::cout << "iter done" << "\n";
     {
-        auto __src_4 = ::tpy::builtin_reversed<int32_t>(std::vector<int32_t>{});
+        auto __src_4 = ::tpy::builtin_reversed(std::vector<int32_t>{});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

@@ -231,7 +231,13 @@ has already run for a peer module's methods but not for this
 module's own. An edge gate must therefore never read `is_readonly`
 -- a RECEIVER fact that also arrives late -- as "the callee mutates
 nothing"; only a callee with no body facts at all (`native` /
-builtin stub) may stand on the declaration.
+builtin stub) may stand on the declaration. Such a callee is
+conservatively taken to mutate every argument it is handed, with one
+exemption: a slot bound through a call that LENDS the caller's storage
+(`MutationCallEdge.lent` -- a combinator result, a handle into it)
+propagates only the callee's element mutation (`elem_mutated_params`),
+and a body-less callee has no body to write through an element with,
+so `next(it)` over `it = zip(xs, ys)` leaves `xs` and `ys` const.
 
 Const inference reads recorded return-borrow roots through
 `typesys.recorded_return_borrow_sources`. Receiver inference retains its

@@ -16,7 +16,7 @@ void main() {
     std::array<Point, 2> points = {Point(1, 2), Point(3, 4)};
     std::array<int32_t, 2> scales = {10, 20};
     {
-        auto __src_0 = ::tpy::builtin_zip<Point, int32_t>(points, scales);
+        auto __src_0 = ::tpy::builtin_zip(points, scales);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

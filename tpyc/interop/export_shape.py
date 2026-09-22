@@ -24,7 +24,9 @@ from ..parse.nodes import (
     TpyFieldAccess, TpyName, TpyReturn, walk_body_stmts,
     is_docstring, is_none_return,
 )
-from ..type_def_registry import _boundary_inner
+from ..type_def_registry import (
+    _boundary_inner, boundary_optional_inner, boundary_optional_is_pointer,
+    boundary_type_name, is_function_boundary_marshallable)
 from ..typesys import NominalType, OwnType, ReadonlyType
 from ..value_category import peel_coerce
 
@@ -174,7 +176,15 @@ def boundary_alias_records(params, registry,
     for n, t in params:
         if n == "self":
             continue
-        cinfo = registry.get_record_for_type(_boundary_inner(t))
+        opt = boundary_optional_inner(t)
+        if opt is not None:
+            # Only the `T*` form borrows the live payload; the value form
+            # (a value class, or under Own) is a copy with no object behind it.
+            if not boundary_optional_is_pointer(t):
+                continue
+            cinfo = registry.get_record_for_type(opt)
+        else:
+            cinfo = registry.get_record_for_type(_boundary_inner(t))
         if cinfo is not None:
             out[n] = cinfo
     return out
@@ -288,7 +298,13 @@ def nocopy_borrow_return_error(ret_type: 'TpyType', registry) -> 'str | None':
     sema_validators.validate_export_class_dunders) so the set can't drift."""
     if isinstance(ret_type, OwnType):
         return None
-    info = registry.get_record_for_type(_boundary_inner(ret_type))
+    inner = _boundary_inner(ret_type)
+    opt = boundary_optional_inner(inner)
+    if opt is not None:
+        # `-> Optional[Cls]` is the same borrow behind a None gate; the
+        # present arm still copies out.
+        inner = opt
+    info = registry.get_record_for_type(inner)
     if info is None or not info.is_nocopy or info.is_value_type:
         return None
     return (f"is a @nocopy class '{info.name}' returned by reference, which "
@@ -339,6 +355,21 @@ def unsupported_wrapper_param_form(params: 'list[ParamInfo]') -> 'str | None':
             return _VARARG_TAIL
         if p.is_kwargs:
             return _KWARG_TAIL
+    return None
+
+
+def slot_unmarshallable_reason(t: 'TpyType | None') -> 'str | None':
+    """Why `t` cannot cross a DUNDER SLOT, else None. A slot pins its
+    operand and return shapes (CPython supplies the operands directly, the
+    emit binds each through the bare value marshaller), so the None gate
+    the function/method boundary admits has no place here: `Optional[T]`
+    is refused with the rule named, ahead of the generic admission."""
+    if boundary_optional_inner(t) is not None:
+        return (f"is '{boundary_type_name(t)}', and an Optional does not "
+                f"cross a dunder slot yet (a slot pins its operand and "
+                f"return shapes -- use a plain method for the None case)")
+    if not is_function_boundary_marshallable(t, False):
+        return "cannot cross the CPython boundary"
     return None
 
 

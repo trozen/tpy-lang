@@ -3114,6 +3114,20 @@ def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
     return None
 
 
+def global_binds_by_reference(t: 'TpyType | None') -> bool:
+    """A module global whose binding is a POINTER SLOT (a reference type) or
+    a tuple of pointer slots (`TupleType.takes_borrow_slot_as_global`): bound
+    once at module init, so rebinding it from a function body is refused --
+    a slot aimed at a function's storage would dangle. The tuple form has to
+    be named here because `is_value_type()` alone calls it a value."""
+    if t is None:
+        return False
+    t = unwrap_readonly(t)
+    if isinstance(t, TupleType):
+        return t.takes_borrow_slot_as_global()
+    return not t.is_value_type()
+
+
 def collapse_tuple_own_elements(var_type: 'TpyType') -> 'TpyType':
     """Collapse per-element `Own[T]` -> `T` in a tuple type.
 
@@ -3244,6 +3258,18 @@ def contains_type_param(
             for a in t.type_args if isinstance(a, TpyType)
         )
     return any(contains_type_param(inner, names) for inner in t.inner_types())
+
+
+def type_param_names(t: TpyType) -> frozenset[str]:
+    """The names of every TypeParamRef in the type (recursively), walked the
+    way `contains_type_param` walks."""
+    if isinstance(t, TypeParamRef):
+        return frozenset({t.name})
+    if isinstance(t, NominalType) and t.type_args:
+        inner = [a for a in t.type_args if isinstance(a, TpyType)]
+    else:
+        inner = list(t.inner_types())
+    return frozenset().union(*(type_param_names(i) for i in inner))
 
 
 def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NominalType']) -> TpyType:
@@ -4048,6 +4074,19 @@ class TupleType(TpyType):
         # so the whole-tuple move model does not fit (it stays a const& borrow).
         return self.has_own_element() and not self.has_ref_elements()
 
+    def takes_borrow_slot_as_global(self) -> bool:
+        """A module global of this tuple type is a tuple of POINTER SLOTS
+        (`std::tuple<T*, ...>`, bound once at module init, never rebound
+        from a function body) -- the tuple of the slot every reference-typed
+        global is, so an element aliases the object it was given as the
+        scalar global does. The tuple as a whole answers `is_value_type()`,
+        which is why the global classification cannot ask that. An owned
+        element (sema marks a fresh literal element or an owning call's
+        element `Own` on the binding) keeps the storage form: the owned
+        half needs static backing."""
+        return (self.has_pointer_repr_element() and not self.has_own_element()
+                and not self.needs_wrapper())
+
     def is_mixed_own(self) -> bool:
         # The complement of is_owned_movable() among Own-carrying tuples: an
         # owned element AND a borrow element, so the tuple has no single form --
@@ -4313,7 +4352,9 @@ def view_is_inherently_const(t: 'TpyType') -> bool:
     counterpart under const inference -- a real return-type change behind
     the user's back. StrView, BytesView, Span[readonly[T]], and
     SpanIter[readonly[T]] are inherently const, so const-ifying their
-    enclosing method is a no-op on the declared return type.
+    enclosing method is a no-op on the declared return type; so is an
+    `Iterator` handle over a VALUE element (`Iterator[str]`), whose steps
+    are copies whatever the receiver's const-ness.
     """
     from tpyc.type_def_registry import is_str_view_type, is_bytes_view_type, is_span_iter
     if is_str_view_type(t) or is_bytes_view_type(t):
@@ -4322,7 +4363,28 @@ def view_is_inherently_const(t: 'TpyType') -> bool:
         return True
     if is_span_iter(t):
         return isinstance(t.type_args[0], ReadonlyType)
+    if (isinstance(t, NominalType) and t.is_protocol
+            and t.qualified_name() == "typing.Iterator" and t.type_args):
+        # A value element is a copy per step -- unless the value is or
+        # carries a mutable alias (a `Span[T]`, a `Ptr[T]`, a tuple holding
+        # one), which const would turn into its readonly twin like the
+        # SpanIter arm above.
+        elem = t.type_args[0]
+        return isinstance(elem, TpyType) and _value_carries_no_mutable_alias(elem)
     return False
+
+
+def _value_carries_no_mutable_alias(t: 'TpyType') -> bool:
+    """A VALUE type whose copy aliases nothing mutable: not a pointer, not a
+    non-readonly borrowing view, and no tuple element that is one."""
+    from tpyc.type_def_registry import is_borrowing_view_type
+    if not t.is_value_type() or t.is_pointer():
+        return False
+    if is_borrowing_view_type(t) and not view_is_inherently_const(t):
+        return False
+    if isinstance(t, TupleType):
+        return all(_value_carries_no_mutable_alias(e) for e in t.element_types)
+    return True
 
 
 def span_inner_element(t: 'TpyType') -> 'TpyType':
@@ -5819,6 +5881,10 @@ class MutationCallEdge:
     callee_fi: 'FunctionInfo'
     param_map: dict[int, int]  # callee_param_idx -> caller_param_idx; caller -1 = self passed as arg
     receiver_is_self: bool = False  # True when callee is called as self.method()
+    # Callee params bound through a call that LENDS the caller's storage (a
+    # combinator, a borrow-returning call): only the callee's element
+    # mutation of such a param reaches the caller's storage.
+    lent: frozenset[int] = frozenset()
 
 
 @dataclass
@@ -5920,6 +5986,13 @@ class FunctionInfo:
     # Like mutated_params, but only structural mutations (append/insert/clear/del/etc.) that
     # invalidate element references. Excludes element-ref taking (a=items[0]) and field writes.
     # None = not yet analyzed; frozenset() = no structural mutation.
+    elem_mutated_params: Optional[frozenset[int]] = None
+    # Like mutated_params, but only mutations THROUGH what the param lends --
+    # a loop variable over it, an element or field borrow off it -- not of the
+    # param itself (an advance of an iterator, an append). An argument bound
+    # through a call that lends its result (`g(zip(xs, ys))`) carries only
+    # this: advancing the combinator mutates nothing the caller passed.
+    # Subset of mutated_params. None = not yet analyzed.
     return_borrows_from: Optional[frozenset[int]] = None
     # Param indices whose storage the return value borrows from (8b).
     # -1 = self (methods only); 0, 1, ... = regular params.
@@ -5927,6 +6000,7 @@ class FunctionInfo:
     # Phase 1 local facts (set during sema, consumed by Phase 2 propagation)
     direct_mutated_params: Optional[frozenset[int]] = None
     direct_structural_mutated_params: Optional[frozenset[int]] = None
+    direct_elem_mutated_params: Optional[frozenset[int]] = None
     call_edges: Optional[list['MutationCallEdge']] = None
     # Method type-params whose `U: T` bound was used representationally in the
     # body (e.g. `Ptr[U] -> Ptr[T]` coercion). Codegen reads this at call sites
@@ -6111,6 +6185,30 @@ class FunctionInfo:
         if self.has_variadic:
             return 2**31
         return len(self.params)
+
+
+def is_bodyless_binding(fn) -> bool:
+    """A callable with NO body or MIL emit at all, so nothing is lowered
+    for it -- a `FunctionInfo` or the `TpyFunction` it was registered from.
+
+    A call-site dispatch to a runtime symbol / template -- method-style
+    `@native("push_back")` (native_name), `@cpp_template(...)`, free
+    `@native(function=True)` (native_function) -- or any `...` stub (is_stub
+    covers declaration-only stubs like `cast`, native-class method stubs, and
+    bare-`@native` methods whose native_name stays None). Covers the whole
+    builtin-type method/ctor surface (str / int / list / dict / ...); a BODIED
+    method on a builtin receiver still counts (a real deferred surface).
+
+    Such a binding has no body sema could have analyzed, so no per-parameter
+    mutation fact exists for it either: what it declares (`@readonly`) and
+    what its signature says are all there is.
+    """
+    if fn.is_export:
+        # An `@export(binding="C")` function carries a `native_name` for the
+        # exported C symbol but has a real body the function driver emits.
+        return False
+    return (fn.native_function or fn.native_name is not None
+            or fn.cpp_template is not None or fn.is_stub)
 
 
 def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:

@@ -35,7 +35,7 @@ Features:
   matrix as an instrument, every silent copy / dangle, the everyday
   rejects, the small policy flips, the mixed-param diagnostics). Bounded
   MIR coverage alone does not satisfy this.
-- THIR migration -- SHIPPED (fallback -> 0, then the AST-codegen
+- [SHIPPED] THIR migration (fallback -> 0, then the AST-codegen
   deletion). Residual track: TODO: "The post-cutover fix queue: shapes
   that are now compile errors"
 - Iterating a tuple (`for b in (b1, b2):`), the aliasing spelling for
@@ -47,8 +47,8 @@ Features:
   `Color.from_str`) -- TODO: "Methods on enums"
 - `collections.defaultdict` -- TODO: "collections: the rest of the
   module"
-- Interop: Optional/None at the `@export` boundary (param + return) --
-  `docs/CPYTHON_INTEROP.md` type table
+- [SHIPPED] Interop: Optional/None at the `@export` boundary (param +
+  return, and value-form fields) -- `docs/CPYTHON_INTEROP.md` type table
 
 ## 0.7.0 (queue to triage at 0.7 planning; not commitments)
 

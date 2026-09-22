@@ -140,6 +140,7 @@ from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr)
 from ...codegen_cpp.forms import (
+    is_borrow_form_tuple_global,
     loop_binding_kind,
     LocalBinding,
     is_plain_nonvalue,
@@ -326,11 +327,12 @@ from .predicates import (
     _f1_is_const,
     _f1_param_lvalue_reseat_ok,
     _f1_record,
+    record_like,
     _union_base_member_match,
     _union_member_match,
     _f1_container_ref,
-    _f1_ref,
-    _method_rvalue_f1_record,
+    record_like,
+    _method_rvalue_record_like,
     _single_member_of_family,
     _f1_tuple,
     _renders_own_borrow_tuple,
@@ -909,7 +911,7 @@ def _container_scalar_tuple_iter(t: TpyType | None, analyzer, *,
                     # record or a container alike (`for n, xs in pairs:`
                     # over `list[tuple[int32, list[int32]]]`), the same ref
                     # alias the target gate's ref family already admits.
-                    or (allow_record and _f1_ref(
+                    or (allow_record and record_like(
                         unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(et))), analyzer))
                     # `allow_storage_opt` (the COMP/genexpr unpack head
@@ -2290,7 +2292,7 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
             # owned_storage_src only (the blanket reject above): the fresh
             # owned F1-record local moved out of the copy-head.
             if not (stmt.is_new[i] and name not in declared
-                    and _f1_record(unwrap_readonly(tt), analyzer)):
+                    and record_like(unwrap_readonly(tt), analyzer)):
                 return None
             types.append(tt)
             continue
@@ -2319,7 +2321,7 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
             # source wraps the element type; the alias bind is
             # const-blind (auto&& deduces), so peel it for the family.
             tt_bare = unwrap_readonly(tt)
-            if not _f1_ref(tt_bare, analyzer):
+            if not record_like(tt_bare, analyzer):
                 return None
             types.append(tt)
             continue
@@ -2357,6 +2359,11 @@ def _standalone_unpack_target_binds(
       "assign" rung's `blocked` check sends away. `fresh_global_slots` carries
       the caller's slot-less pointer-slot globals (an already-slotted one
       REUSES its slot, a different render).
+    - "global_ptr": a BORROWED F1-record element landing in that same
+      pointer-slot global -- `g = std::get<i>(tmp);`, the element pointer
+      the caller's `tuple_to_pointer` capture already yields. The source is
+      a tuple GLOBAL (module scope has no other tuple name), so the slot
+      aims at static storage, as `g: T = other_global` does.
 
     A borrow (`is_ref`) F1-record target aliases the source tuple element,
     lifted through the caller's `tuple_to_pointer` source wrap; other borrow
@@ -2386,8 +2393,18 @@ def _standalone_unpack_target_binds(
             #     plain nullable-pointer local (the opt_ptr arm). The caller
             #     gates the source form (a borrow-form pointer-repr tuple).
             if not (stmt.is_new[i] and name not in declared):
+                if (not stmt.is_new[i] and name in fresh_global_slots
+                        and isinstance(stmt.value, TpyName)
+                        and record_like(tt, analyzer)):
+                    # A module-level pointer-slot global: it points at the
+                    # element of the source tuple GLOBAL, static storage. A
+                    # NAME is the only module-level source with that
+                    # lifetime -- a call result or a container element is
+                    # a module-init temporary the slot would outlive.
+                    out.append((tt, "global_ptr"))
+                    continue
                 return None
-            if _f1_record(tt, analyzer):
+            if record_like(tt, analyzer):
                 out.append((tt, "ref"))
             elif _optional_ptr_borrow(tt, analyzer) is not None:
                 out.append((tt, "opt_ptr"))
@@ -2401,12 +2418,11 @@ def _standalone_unpack_target_binds(
             # decl, the declared entry keeps its type so reads classify
             # unchanged).
             if (not stmt.is_new[i] and name in fresh_global_slots
-                    and stmt.is_owned[i] and _f1_record(tt, analyzer)):
+                    and stmt.is_owned[i] and record_like(tt, analyzer)):
                 # The pointer-slot-global tail: the element materializes in a
-                # `static` slot the pre-declared global then points at. Owned
-                # F1-record elements only -- an Optional / union / container
-                # global's slot line differs, and a BORROWED element would
-                # aim the global at the dying capture.
+                # `static` slot the pre-declared global then points at. F1-
+                # record elements only -- an Optional / union / container
+                # global's slot line differs.
                 out.append((tt, "global_slot"))
                 continue
             if (name not in declared or name in blocked
@@ -2435,7 +2451,7 @@ def _standalone_unpack_target_binds(
                 # tuple_to_pointer wrap.
                 out.append((tt, "ptr_variant"))
                 continue
-            if not (_f1_record(tt, analyzer)
+            if not (record_like(tt, analyzer)
                     or isinstance(unwrap_readonly(tt),
                                   RecursiveAliasInstanceType)
                     # An owned CONTAINER element drains the same way
@@ -2640,7 +2656,7 @@ def _tuple_unpack_source(
                # and aliases the record element into an `is_ref` target. The
                # bind admission gates non-ref record targets out; the lowering
                # gates the source form (must read from storage).
-               or _f1_record(
+               or record_like(
                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e))),
                    analyzer)
                # A pointer-repr `Optional[F1-record]` element: the borrow tuple
@@ -2802,7 +2818,7 @@ def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
     if item.target in declared:
         same_record = (
             not et.is_value_type()
-            and _f1_record(resolved, analyzer)
+            and record_like(resolved, analyzer)
             and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 declared[item.target]))) == resolved)
         if item.target in optional_locals:
@@ -2834,7 +2850,7 @@ def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
                 or _eligible_value_union(resolved) is not None):
             return None
         return WithTargetArm.VALUE, resolved
-    if not _f1_record(resolved, analyzer):
+    if not record_like(resolved, analyzer):
         return None
     if item.target in prescan.reassigned:
         # NB the scan also counts the with-rebind itself in
@@ -2882,7 +2898,7 @@ def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
             # record (`::tpystd::datetime::ZoneInfo z;`), the body assign
             # riding the value-record reassign rows.
             or (isinstance(vtype, NominalType)
-                and _f1_record(vtype, analyzer)
+                and record_like(vtype, analyzer)
                 and _value_record_slot(vtype)))
 
 
@@ -3060,7 +3076,7 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
     # An rvalue F1-record METHOD call (`cur = nxt.clone()` ->
     # `cur = &*(__slot_N = nxt->clone());`): the reseat twin of the decl's
     # method-rvalue REBIND_SLOT admission, same shared disjunct.
-    if _method_rvalue_f1_record(init, analyzer):
+    if _method_rvalue_record_like(init, analyzer):
         return True
     if (isinstance(init, (TpyCall, TpyMethodCall))
             and is_rvalue_source(analyzer, init)):
@@ -3089,7 +3105,7 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
         if isinstance(tt, OptionalType):
             tt = unwrap_readonly(tt.inner)
         return (fam == tt
-                and (_f1_record(fam, analyzer)
+                and (record_like(fam, analyzer)
                      or _wrapper_union_like(fam, analyzer) is not None))
     return False
 
@@ -3363,6 +3379,11 @@ def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx') -> bool:
         for elem, cap in zip(src.elements, src.elem_capture):
             if cap is TupleElemCapture.VALUE:
                 continue
+            if isinstance(elem, TpyNoneLiteral):
+                # A `None` at a pointer-form Optional element is captured
+                # REF so the literal keeps one pointer shape; it renders
+                # `nullptr`, so there is no source to be const.
+                continue
             if not isinstance(elem, TpyName) or name_const(elem.name):
                 return False
             if isinstance(analyzer.get_expr_type(elem), ReadonlyType):
@@ -3458,7 +3479,7 @@ def _borrow_tuple_hoist_entry(name: str, var_type: 'TupleType',
     bt_srcs = _borrow_tuple_binding_sources(name, lc) or ()
     if hoist_slots is not None and any(
             _btuple_owning_call_init(s, analyzer) for s in bt_srcs):
-        hoist_slots.append((name, var_type.to_cpp()))
+        hoist_slots.append((name, lc.render_type(var_type)))
         lc.rebind_slot_locals.add(name)
     if any(isinstance(s, (TpyCall, TpyMethodCall))
            and _renders_own_borrow_tuple(
@@ -3914,7 +3935,7 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
                 _witness("er.alias_first_decl")
                 return THIRErrorReturnBind(
                     name=name, call=call_node,
-                    decl_cpp=f"{bare.to_cpp()}*", alias_bind=True, loc=loc)
+                    decl_cpp=f"{lc.render_type(bare)}*", alias_bind=True, loc=loc)
         note_detail("error_return.alias_bind")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     # A rebind-slot pointer local reseats through its own optional slot --
@@ -3970,7 +3991,7 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
                     and _witness("er.bind_slot_wrapper_union"))):
             note_detail("error_return.bind_slot")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        decl_cpp = unwrap_ref_type(var_type).to_cpp()
+        decl_cpp = lc.render_type(unwrap_ref_type(var_type))
         if (name in lc.prescan.rvalue_reassigned
                 and _f1_record(inner, analyzer)
                 and not (lc.func.is_generator or lc.func.is_async)):
@@ -4020,10 +4041,12 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
             and stmt.name not in prescan.hoisted
             and stmt.name not in prescan.move_through
             and isinstance(vtype, NominalType)
+            # Record slice on purpose: a container rvalue decl has its own
+            # arm, and this one only selects the record route.
             and _f1_record(vtype, analyzer)
             and stmt.init is not None
             and (_record_rvalue_source_shape(stmt.init, analyzer)
-                 or _method_rvalue_f1_record(stmt.init, analyzer)
+                 or _method_rvalue_record_like(stmt.init, analyzer)
                  # A record field off an RVALUE call receiver (`jar =
                  # s.get(url).cookies` -- member of a dying temporary): the
                  # only legal emit is the plain copy decl (C++ moves the
@@ -4058,7 +4081,7 @@ def _own_opt_record_call_slot(stmt: TpyVarDecl, vtype: 'TpyType | None',
         return False
     u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype)))
          if isinstance(vtype, TpyType) else None)
-    if not isinstance(u, OptionalType) or not _f1_ref(
+    if not isinstance(u, OptionalType) or not record_like(
             _unwrap_own(unwrap_readonly(u.inner)), analyzer):
         return False
     it = analyzer.get_expr_type(stmt.init)
@@ -4156,7 +4179,7 @@ def _lower_opt_btuple_decl(stmt: TpyVarDecl, opt_t: TpyType, bt: 'TupleType',
         return THIRVarDecl(
             name=stmt.name, resolved_type=opt_t, init=v,
             cpp_type=opt_cpp, form=Form.STORAGE,
-            btuple_slot_cpp=bt.to_cpp(),
+            btuple_slot_cpp=lc.render_type(bt),
             btuple_opt_borrow_cpp=borrow_cpp, loc=loc)
     return None
 
@@ -4477,7 +4500,7 @@ def _opt_slot_rvalue_shape(init: TpyExpr, inner: TpyType, analyzer) -> bool:
             # `p = &*(__slot_N = <rvalue>);` rebind render, type-blind past
             # the exact-inner equality above.
             or (isinstance(init, TpyMethodCall)
-                and _f1_ref(it_u, analyzer)
+                and record_like(it_u, analyzer)
                 and is_rvalue_source(analyzer, init))
             # A FREE call takes the container half only: a record-returning
             # free call rides `_record_rvalue_source_shape` above, which
@@ -4582,7 +4605,7 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
                     and _union_base_member_match(it_u, ptr_u.members,
                                                  analyzer)):
                 return None
-        elif not _f1_record(it_u, analyzer):
+        elif not record_like(it_u, analyzer):
             # A scalar MEMBER of a mixed union (`a: int32 | Dog | None =
             # int32(42)`): a type-ctor RVALUE takes the same value-variant
             # `__slot_N` + lift (the rvalue branch is member-shape-blind,
@@ -4793,7 +4816,7 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
     record -- a subclass rvalue retypes the slot (the polymorphic arm,
     rejected), mirroring `_opt_slot_rvalue_shape`'s discipline."""
     analyzer = lc.analyzer
-    if not isinstance(vtype, NominalType) or not _f1_ref(vtype, analyzer):
+    if not isinstance(vtype, NominalType) or not record_like(vtype, analyzer):
         return None
     hoisted = stmt.name in lc.prescan.hoisted
     reassigned = stmt.name in lc.prescan.reassigned
@@ -5650,7 +5673,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
                 or _eligible_enum(pt, analyzer) is not None
                 or _resolved_str_value(pt, analyzer) is not None
                 or _resolved_bytes_value(pt, analyzer) is not None
-                or _f1_ref(pt, analyzer)):
+                or record_like(pt, analyzer)):
             note_detail("nesteddef.param_type")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         resolved = lc.render_resolve(ptype)
@@ -9385,6 +9408,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             st_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 declared[stmt.name])))
             st_ft = _f1_tuple(st_bare, analyzer)
+            st_own = _own_record_tuple(st_bare, analyzer)
+            if st_own is not None:
+                if isinstance(stmt.init, TpyTupleLiteral):
+                    # The global OWNS the fresh elements its literal builds
+                    # (sema marked them `Own` on the binding), so the
+                    # storage literal is the slot's own form -- no lift.
+                    _witness("top_level.tuple_global_owned_literal")
+                    return THIRAssign(
+                        target=THIRName(result_type=st_bare, name=stmt.name,
+                                        loc=loc),
+                        value=_lower_tuple_literal(stmt.init, st_own, lc,
+                                                   declared),
+                        loc=loc)
+                if not isinstance(stmt.init, (TpyCall, TpyMethodCall)):
+                    # An LVALUE source (a name, a subscript) would be a
+                    # plain storage assign -- a COPY where CPython aliases
+                    # -- so it rejects here rather than leaking to the value
+                    # reseat. An owning CALL is a fresh rvalue the plain
+                    # assign moves in; it falls through to that arm.
+                    note_detail("top_level.tuple_global_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
             if st_ft is not None:
                 if isinstance(stmt.init, TpyTupleLiteral):
                     _witness("top_level.tuple_storage_global")
@@ -10742,7 +10786,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         return THIRVarDecl(
                             name=stmt.name, resolved_type=bt, init=init,
                             cpp_type=borrow_cpp, form=Form.BORROW,
-                            btuple_slot_cpp=bt.to_cpp(), loc=loc)
+                            btuple_slot_cpp=lc.render_type(bt), loc=loc)
                     if isinstance(stmt.init, TpyTupleLiteral):
                         binit = _lower_borrow_tuple_literal(
                             stmt.init, bt, lc, declared)
@@ -11172,7 +11216,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # spelled copy, exactly a scalar decl's shape; the init
                     # rides its own arms (ctor/dunder-binop/method rvalues).
                     or (isinstance(vtype, NominalType)
-                        and _f1_record(vtype, analyzer)
+                        and record_like(vtype, analyzer)
                         and _value_record_slot(vtype))
                     # An all-rvalue container select / ternary init
                     # (`x = [1,2] or [3,4]`): the plain spelled copy of
@@ -11692,7 +11736,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.user_record")
                 return THIRSetItem(target=target, value=value, loc=loc)
-            if _f1_record(elem_t, analyzer) and isinstance(v, TpyName):
+            if record_like(elem_t, analyzer) and isinstance(v, TpyName):
                 if not _is_move_source(v, lc):
                     if _record_setitem_own_value_slot(
                             analyzer.get_expr_type(stmt.target.obj), analyzer):
@@ -12156,7 +12200,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value = THIRFormConvert(result_type=eu, value=lowered,
                                             form=Form.STORAGE, loc=loc)
                 _witness("setitem.borrow_lift")
-            elif _f1_record(eu, analyzer):
+            elif record_like(eu, analyzer):
                 # F1-record element/value slot, the checked `__setitem__`
                 # forwarding the value bare. Three vetted sources: a record
                 # RVALUE of the slot's own type -- or its covariant-generic
@@ -12543,7 +12587,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 and is_big_int_type(aug_value_key)):
             _witness("narrow.aug_value")
             right_cast = ("({0}).to_fixed_check<"
-                          f"{cast_t.to_cpp()}>()")
+                          f"{lc.render_type(cast_t)}>()")
         # The subscript-write route flushes arg temps before its single
         # setitem line (the pre-statement flush point), so the value
         # position admits the temp rows there -- `d[i] += k.take(b)` hoists
@@ -13500,7 +13544,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                   and lc.prescan.has_self
                   and isinstance(stmt.value, TpyName)
                   and stmt.value.name == "self"
-                  and _f1_record(declared.get("self"), analyzer)):
+                  and record_like(declared.get("self"), analyzer)):
                 record_ok = bool(_witness("ret.record_self"))
             elif (lc.prescan.ret_record_borrow is not None
                   and isinstance(stmt.value, TpyFieldAccess)
@@ -13556,7 +13600,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                   and stmt.value.name in lc.pointers
                   and stmt.value.name not in narrowed
                   and stmt.value.name in declared
-                  and _f1_record(unwrap_readonly(unwrap_ref_type(
+                  and record_like(unwrap_readonly(unwrap_ref_type(
                       unwrap_send_sync(declared[stmt.value.name]))),
                       analyzer)):
                 # `return best;` -- the PLAIN F1 pointer-local sibling
@@ -13569,7 +13613,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                   and stmt.value.name in lc.pointers
                   and stmt.value.name not in narrowed
                   and stmt.value.name in declared
-                  and _f1_ref(_binding_peel(declared[stmt.value.name]),
+                  and record_like(_binding_peel(declared[stmt.value.name]),
                               analyzer)):
                 # The same indirect-name arm for the non-record half of the
                 # axis: a REASSIGNED container local is a rebind-slot pointer,
@@ -13681,7 +13725,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             if lc.prescan.ret_record_borrow is not None
                             else "ret.record_storage")
                     record_ok = bool(
-                        _f1_ref(dt, analyzer) and _witness(face))
+                        record_like(dt, analyzer) and _witness(face))
             elif (lc.prescan.ret_record_storage is not None
                   and isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
                                               TpySetLiteral))):
@@ -13749,7 +13793,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # bare borrow read on its own).
                 _ret_cc = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     analyzer.get_expr_type(stmt.value))))
-                if (_f1_record(_ret_cc, analyzer)
+                if (record_like(_ret_cc, analyzer)
                         or _f1_container_ref(_ret_cc)):
                     _witness("ret.borrowed_copy")
                     return THIRReturn(
@@ -13788,7 +13832,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 declared[stmt.value.name])))
             if isinstance(_cpl_t, OwnType):
                 _cpl_t = unwrap_readonly(_cpl_t.wrapped)
-            _ref_ptr_local = _f1_ref(_cpl_t, analyzer)
+            _ref_ptr_local = record_like(_cpl_t, analyzer)
         if (isinstance(stmt.value, TpyName)
                 and stmt.value.name in lc.pointers
                 and stmt.value.name not in narrowed
@@ -13798,7 +13842,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                          and (_optional_ptr_borrow_name(
                                   stmt.value, declared, analyzer) is not None
                               or (stmt.value.name in declared
-                                  and _f1_record(unwrap_readonly(
+                                  and record_like(unwrap_readonly(
                                       unwrap_ref_type(unwrap_send_sync(
                                           declared[stmt.value.name]))),
                                       analyzer))))
@@ -14158,7 +14202,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             and _union_member_match(
                 unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     declared[stmt.value.name]))), ret_pu.members, analyzer)
-            and _f1_record(declared[stmt.value.name], analyzer))
+            and record_like(declared[stmt.value.name], analyzer))
         if (stmt.value is not None and ret_pu is not None
                 and (member_lvalue_ret
                      or (isinstance(stmt.value, TpyName)
@@ -14221,7 +14265,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 isinstance(stmt.value, TpyTupleLiteral)
                 and _value_tuple(_ou_lit_t, analyzer) is not None)
             if not ((_record_rvalue_source_shape(stmt.value, analyzer)
-                     and _f1_record(analyzer.get_expr_type(stmt.value),
+                     and record_like(analyzer.get_expr_type(stmt.value),
                                     analyzer))
                     or _resolved_scalar(analyzer.get_expr_type(stmt.value),
                                         analyzer)
@@ -14268,7 +14312,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # bare, the wrapper's converting ctor absorbs it -- the same
             # render the plain Own[union] arm gives its ctor sources.
             _ow_ctor = (_record_rvalue_source_shape(ow_src, analyzer)
-                        and _f1_record(analyzer.get_expr_type(ow_src),
+                        and record_like(analyzer.get_expr_type(ow_src),
                                        analyzer))
             # A call whose result IS the slot's wrapper (`return loads(s)`):
             # a prvalue of the return type itself, so it forwards bare with
@@ -15309,6 +15353,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 lc.global_slot_assigned.add(name)
                 _witness("stmt.tuple_unpack.global_slot_target")
                 continue
+            if bind == "global_ptr":
+                # The borrowed twin: no slot, the global points into the
+                # source tuple global's own storage.
+                target_cpps.append(None)
+                bind_tags.append(bind)
+                _witness("stmt.tuple_unpack.global_ptr_target")
+                continue
             if bind == "unwrap_ref":
                 # Wrapper-reference element: `Tree<int32_t>& a =
                 # ::tpy::unwrap_ref(std::get<i>(__tup_N));` -- the alias
@@ -15395,7 +15446,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         _witness("stmt.tuple_unpack")
         source_wrap_cpp = None
         ref_name_source = False
-        if any(b in ("ref", "opt_ptr") for b in bind_tags):
+        if any(b in ("ref", "opt_ptr", "global_ptr") for b in bind_tags):
             # Borrow/opt-ptr targets read `std::get<i>` off the borrow pointer
             # tuple. Two source forms qualify, both name-only:
             #   * a value-tuple STORAGE local -- lifted via tuple_to_pointer to
@@ -15431,6 +15482,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                   and _borrow_form_tuple_param(stmt.value.name, lc)):
                 ref_name_source = True
                 _witness("stmt.tuple_unpack.ref_param_source")
+            elif (isinstance(stmt.value, TpyName)
+                  and stmt.value.name in lc.prescan.global_readonly
+                  and is_borrow_form_tuple_global(declared.get(
+                      stmt.value.name))):
+                # A tuple-of-references GLOBAL is a tuple of pointer slots:
+                # already borrow form, bound by ref like the param, its
+                # elements read bare. Same-module globals only: an imported
+                # one lives in `global_cpp`, disjoint from `global_readonly`.
+                ref_name_source = True
+                _witness("stmt.tuple_unpack.ref_global_source")
             elif isinstance(stmt.value, (TpyCall, TpyMethodCall)):
                 # A borrow-tuple-returning CALL source (`a, b = both(t1,
                 # t2)` / `conn, _ = srv.accept()`): the result is ALREADY
@@ -15511,13 +15572,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             elif ref_name_source:
                 src_bind = TupleSourceBind.NAME_REF
             elif any(b == "move" for b in bind_tags):
-                # An Own-element tuple NAME: the holder moves at the
-                # source's last use, else copies -- the any(is_owned) name
-                # arms (the one-shot frame lift belongs to the resumable
-                # path and never reaches this sync arm).
-                src_bind = (TupleSourceBind.NAME_MOVE
-                            if _is_move_source(stmt.value, lc)
-                            else TupleSourceBind.NAME_COPY)
+                # An Own-element tuple NAME the unpack CONSUMES: sema tags an
+                # element owned only off a source at its last use (a live
+                # source binds its elements as borrows and takes the storage
+                # lift above), so the holder moves. The lowering's own
+                # last-use reading must agree; a disagreement used to become
+                # a silent whole-tuple copy, so it rejects instead. (The
+                # one-shot frame lift belongs to the resumable path and never
+                # reaches this sync arm.)
+                if not _is_move_source(stmt.value, lc):
+                    note_detail("tuple_unpack.owned_source_not_movable")
+                    raise ThirUnsupported("stmt.tuple_unpack")
+                src_bind = TupleSourceBind.NAME_MOVE
             else:
                 src_bind = TupleSourceBind.NAME_CREF
             narrowed_vot_src = None
@@ -16050,7 +16116,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # array), spelled verbatim -- not lowered from `stmt.iterable` (a
             # bare enum TYPE name, which has no value-position lowering).
             members_cpp = (
-                f"::tpy::EnumUtil<{stmt.enum_iterable.to_cpp()}>::members")
+                f"::tpy::EnumUtil<{lc.render_type(stmt.enum_iterable)}>::members")
             return THIRForEach(
                 var=stmt.var,
                 elem_type=et,
@@ -16359,7 +16425,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                               and lc.self_receiver is not None
                               and arg.name == lc.self_receiver
                               and lc.record_name is not None
-                              and _f1_record(
+                              and record_like(
                                   analyzer.get_expr_type(arg), analyzer)
                               and _witness("print.self_arg"))
                           # A POINTER-bound F1-record/range NAME (the RAW
@@ -16497,7 +16563,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             eligible = True
         elif isinstance(stmt.expr, TpyMethodCall):
             eligible = True
-        elif isinstance(stmt.expr, TpyBinOp) and _f1_record(
+        elif isinstance(stmt.expr, TpyBinOp) and record_like(
                 unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     analyzer.get_expr_type(stmt.expr)))), analyzer):
             # A DISCARDED record-result dunder binop (`timedelta(seconds=1)
@@ -16925,13 +16991,13 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # Sema rejects the un-narrowed spelling outright ("cannot be
                 # used as a context manager"), so reaching here IS the
                 # non-null proof.
-                and (_f1_record(declared[ctx.name], lc.analyzer)
+                and (record_like(declared[ctx.name], lc.analyzer)
                      or _optional_ptr_borrow_name(ctx, declared, lc.analyzer)
                      is not None))
             if (not manager_ok and isinstance(ctx, TpyFieldAccess)
                     and isinstance(ctx.obj, TpyName)
                     and ctx.obj.name not in lc.narrow.narrowed
-                    and _f1_record(lc.analyzer.get_expr_type(ctx),
+                    and record_like(lc.analyzer.get_expr_type(ctx),
                                    lc.analyzer)):
                 # A field-access lvalue manager (`with self.mgr:`): the
                 # field read renders the lvalue the `auto&` bind borrows.
@@ -16956,7 +17022,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                                              ctx.resolved_function_info)
                     and not _const_borrow_call_result(ctx, lc.analyzer)
                     and not is_rvalue_source(lc.analyzer, ctx.obj)
-                    and _f1_record(lc.analyzer.get_expr_type(ctx),
+                    and record_like(lc.analyzer.get_expr_type(ctx),
                                    lc.analyzer)):
                 # ... and the plain METHOD spelling of the same convention
                 # (`with b.guard_m() as q:`): a borrow-returning method hands
@@ -16980,7 +17046,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         else:
             manager_ok = (
                 (isinstance(ctx, TpyCall)
-                 and _f1_record(lc.analyzer.get_expr_type(ctx), lc.analyzer)
+                 and record_like(lc.analyzer.get_expr_type(ctx), lc.analyzer)
                  and (_ctor_shape_ok(ctx, lc.analyzer)
                       or _record_rvalue_source_shape(ctx, lc.analyzer)
                       or _native_ctx_manager_ok(ctx, lc.analyzer)))
@@ -16988,7 +17054,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # guard factory): the owned-record decl's method row; the
                 # method lowering validates its receiver/args itself.
                 or (isinstance(ctx, TpyMethodCall)
-                    and _f1_record(lc.analyzer.get_expr_type(ctx),
+                    and record_like(lc.analyzer.get_expr_type(ctx),
                                    lc.analyzer)
                     and is_rvalue_source(lc.analyzer, ctx)))
         if not manager_ok:
@@ -17181,7 +17247,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # same routing fact lowering consumed (`_wrap_print_form`).
     if (isinstance(a, TpyName) and lc.self_receiver is not None
             and a.name == lc.self_receiver and lc.record_name is not None
-            and _f1_record(lc.analyzer.get_expr_type(a), lc.analyzer)):
+            and record_like(lc.analyzer.get_expr_type(a), lc.analyzer)):
         # `print(self)` streams the record raw via its emitted operator<<:
         # a VALUE position, so the receiver read arrives dereferenced.
         return THIRPrintArg(_lower_expr(a, lc, declared), PrintForm.RAW)
@@ -17328,7 +17394,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         at = lc.analyzer.get_expr_type(a)
         atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
                if at is not None else None)
-        if _f1_record(atu, lc.analyzer):
+        if record_like(atu, lc.analyzer):
             # The record-FIELD / record-ELEMENT print arg
             # (print.record_field / print.record_subscript): the bare
             # member or checked-getitem read streams RAW, so it lowers

@@ -1,0 +1,1 @@
+main.py:25: error: @nocopy type 'NBox' cannot be copied into 'x: Own[NBox]'. Only the original owner can be moved at its last use.

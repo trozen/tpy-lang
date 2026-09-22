@@ -1,1 +1,0 @@
-Pins a known-wrong shipping state: a tuple global COPIES where the scalar global aliases, so TPy prints 42 2 2 where CPython prints 42 43 44. The divergence is the thing under test -- it is silent (no diagnostic at either tuple shape), which is exactly why the cell needs a regression target. See the module-global entry in BUGS.md.

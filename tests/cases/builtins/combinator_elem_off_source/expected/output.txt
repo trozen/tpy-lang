@@ -1,0 +1,58 @@
+ro_enumerate 4
+ro_zip 11
+ro_filter 2
+ro_reversed 21
+mut_enumerate 6
+mut_enumerate [2, 4]
+mut_zip [12, 24]
+mut_filter [112, 124]
+mut_reversed [1112, 1124]
+mut_map [1119, 1131]
+ro_map 2250
+nested_param [132, 224]
+collect_copies 2 2 2
+collect_copies 2 2 2
+closure_mut [41, 43]
+gen_ro [1, 3]
+gen_mut [11, 13]
+gen_mut [11, 13]
+gen_zip_mut [12, 15]
+gen_zip_mut [12, 15]
+genexpr_ro 28
+genexpr_mut 30
+genexpr_mut [13, 17]
+comp_zip_literal [11, 22]
+comp_zip_literal [11, 22]
+comp_filter_gen [12, 23]
+comp_filter_gen [12, 23]
+comp_zip_gen [22, 43]
+comp_zip_gen [22, 43]
+comp_map_filter [32, 53]
+comp_map_filter [32, 53]
+comp_reversed [54, 33]
+comp_reversed [33, 54]
+comp_filter_filter [43, 64]
+comp_filter_filter [43, 64]
+comp_zip_reversed [74, 63]
+comp_zip_reversed [63, 74]
+comp_zip_owned [64, 76]
+comp_zip_owned [63, 74]
+comp_enumerate_filter [63, 75]
+comp_enumerate_filter [63, 75]
+comp_zip_filter [73, 95]
+comp_zip_filter [73, 95]
+method_total 4
+method_bump [6, 8]
+comp_total 22
+async_mut 44
+async_mut [21, 23]
+explicit_ro 141
+values 0 a
+values 1 bb
+values 2 a
+values 3 bb
+values [1, 2]
+er_body 4
+er_body [1, 3]
+match_arm 10 10
+match_arm [4, 6]

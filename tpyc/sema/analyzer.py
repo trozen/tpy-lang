@@ -1481,7 +1481,7 @@ class SemanticAnalyzer:
                     continue
                 self.ctx.warning(
                     f"owned tuple param '{pname}' is never consumed "
-                    f"(not unpacked, stored, forwarded, or returned)",
+                    f"(not moved out by an unpack, stored, forwarded, or returned)",
                     func,
                 )
                 continue
@@ -1775,6 +1775,12 @@ class SemanticAnalyzer:
             )
             func_info.direct_structural_mutated_params = direct_struct
             func_info.structural_mutated_params = direct_struct
+            direct_elem = frozenset(
+                i for i, pname in enumerate(param_list)
+                if pname in self.ctx.func.current_elem_mutated_param_names
+            )
+            func_info.direct_elem_mutated_params = direct_elem
+            func_info.elem_mutated_params = direct_elem
             # 8b: Return borrow facts -- which params does the return value borrow from?
             func_info.return_borrows_from = frozenset(
                 i for i, pname in enumerate(param_list)
@@ -3272,6 +3278,14 @@ class SemanticAnalyzer:
                         direct_struct = direct_struct | frozenset({-1})
                     method_fi.direct_structural_mutated_params = direct_struct
                     method_fi.structural_mutated_params = direct_struct
+                    direct_elem = frozenset(
+                        i for i, pname in enumerate(param_list)
+                        if pname in self.ctx.func.current_elem_mutated_param_names
+                    )
+                    if "self" in self.ctx.func.current_elem_mutated_param_names:
+                        direct_elem = direct_elem | frozenset({-1})
+                    method_fi.direct_elem_mutated_params = direct_elem
+                    method_fi.elem_mutated_params = direct_elem
                     # 8b: Return borrow facts
                     returned = frozenset(
                         i for i, pname in enumerate(param_list)

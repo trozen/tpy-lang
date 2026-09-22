@@ -722,7 +722,7 @@ struct __gen_gen_combinator : public ::tpy::next_iter_mixin<__gen_gen_combinator
     int32_t i;
     int32_t v;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate<int32_t>((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*__coro_arg_0))))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {

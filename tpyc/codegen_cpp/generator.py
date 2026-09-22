@@ -27,7 +27,7 @@ from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .records import RecordGenerator
 from .functions import FunctionGenerator
-from .type_resolution import resolve_stmt_type_cascade
+from .type_resolution import resolve_global_binding_type, resolve_stmt_type_cascade
 from .string_dispatch import (
     find_best_discriminator, discriminator_key, case_label,
     STRING_SWITCH_THRESHOLD,
@@ -630,7 +630,8 @@ class CodeGenerator:
                     continue
                 if stmt.name not in seen_globals:
                     # Store the type for this global
-                    var_type = resolve_stmt_type_cascade(stmt, self.analyzer, self.types)
+                    var_type = resolve_global_binding_type(
+                        stmt, self.analyzer, self.types)
                     if isinstance(var_type, OwnType):
                         var_type = var_type.wrapped
                     var_type = resolve_int_literals(var_type, self.analyzer.ctx.default_int_for_literal)

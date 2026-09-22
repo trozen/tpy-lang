@@ -764,7 +764,8 @@ class BorrowTracker:
         return None
 
     def all_storage_through_borrows(self, name: str, *,
-                                    proven_only: bool = False) -> list[str]:
+                                    proven_only: bool = False,
+                                    cross_handles: bool = True) -> list[str]:
         """Every ultimate storage `name` can alias, following ALL borrow chains
         (ALIAS + ELEMENT + FIELD + PTR + OPAQUE), nearest chain first.
 
@@ -795,6 +796,13 @@ class BorrowTracker:
         reachable node is expanded once and an expansion scans the edge set,
         so O(V*E) in the per-function borrow graph, iterative (no recursion
         depth tied to chain length).
+
+        `cross_handles=False` stops at an ITER loan -- a HANDLE into the
+        storage (an iterator object bound off `zip(xs, ys)`, a generator
+        frame): what happens to the handle itself (an advance) is not a
+        write into what it points at, so a consumer attributing a mutation
+        OF a name, rather than one THROUGH it, must not climb past one. The
+        handle is then a dead end, never a root.
         """
         visited: set[str] = {name}
         roots: list[str] = []
@@ -809,17 +817,22 @@ class BorrowTracker:
                 if current != name:
                     roots.append(current)
                 continue
+            if not cross_handles:
+                sources = [src for src in sources
+                           if self.loans[src][current].kind is not BorrowKind.ITER]
             for src in reversed(sources):
                 if src not in visited:
                     visited.add(src)
                     stack.append(src)
         return roots
 
-    def storage_roots_or_self(self, name: str) -> list[str]:
+    def storage_roots_or_self(self, name: str, *,
+                              cross_handles: bool = True) -> list[str]:
         """`all_storage_through_borrows`, falling back to `[name]` when the
         name borrows nothing (or resolves to nothing) -- so a consumer that
         must name SOME storage for every binding gets one answer shape."""
-        return self.all_storage_through_borrows(name) or [name]
+        return (self.all_storage_through_borrows(name, cross_handles=cross_handles)
+                or [name])
 
     def freeze(self) -> frozenset[tuple[str, str, LoanInfo]]:
         """Snapshot loan state as immutable triples for flow analysis."""
@@ -1283,6 +1296,12 @@ class FunctionTrackingState:
     # argument slot holding many operands, so an iterable borrowing the pack
     # borrows every one of them.
     loop_var_iterable: dict[str, list[str]] = field(default_factory=dict)
+    # For a tuple-unpack loop over an iterator whose yield names the source
+    # of each tuple ELEMENT (`zip(xs, ys)`: `Iterable[T1], Iterable[T2] ->
+    # Iterator[tuple[T1, T2]]`), the storage each element lends from -- so a
+    # write through one unpack target climbs to its own source, not to
+    # every argument. Absent when the yield does not say.
+    loop_var_elem_iterable: dict[str, list[list[str]]] = field(default_factory=dict)
     # True while analyzing the argument of an explicit copy(...) call --
     # copy-divergence warnings (e.g. dict.get(k, default)) are suppressed,
     # the wrap being the acknowledgment spelling.
@@ -1440,7 +1459,7 @@ class FunctionTrackingState:
     # Entries are (name, through_field, structural). _analyze_nested_def
     # replays the captured/nonlocal/self subset into the enclosing state so
     # closure mutations reach the method's const/param-mutation facts.
-    nested_mutation_marks: list[tuple[str, bool, bool]] = field(default_factory=list)
+    nested_mutation_marks: list[tuple[str, bool, bool, bool]] = field(default_factory=list)
 
     # --- Per-local escape/ownership provenance (see BindingProvenance) ---
     # One record per local; absent name == default. Mutate only via the
@@ -1522,6 +1541,9 @@ class FunctionTrackingState:
     current_self_mutated: bool = False
     current_self_struct_mutated: bool = False
     current_struct_mutated_param_names: set[str] = field(default_factory=set)
+    # Params (and "self") written THROUGH what they lend: a loop variable
+    # over them, an element or field borrow off them.
+    current_elem_mutated_param_names: set[str] = field(default_factory=set)
     current_returned_param_names: set[str] = field(default_factory=set)
     current_consumed_own_params: set[str] = field(default_factory=set)
     # Params whose address has been observed escaping into a mutable Ptr[T]
@@ -1861,6 +1883,11 @@ class SemanticContext:
 
     # --- Final globals ---
     final_globals: set[str] = field(default_factory=set)
+    # Tuple globals a module-level unpack has borrowed an element out of: a
+    # pointer-slot target now aims into their storage, so a later
+    # module-level rebind would re-point that alias (CPython keeps the old
+    # object). The set is what the rebind refusal keys on.
+    tuple_globals_aliased: set[str] = field(default_factory=set)
     analyzed_finals: set[str] = field(default_factory=set)
 
     # --- Builtins ---
@@ -2799,7 +2826,8 @@ class SemanticContext:
         prior = self.top_level_decls.get(name)
         self.top_level_decls[name] = line if prior is None else min(prior, line)
 
-    def mark_param_mutated(self, name: str, *, through_field: bool = False) -> None:
+    def mark_param_mutated(self, name: str, *, through_field: bool = False,
+                           via_element: bool = False) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
 
         For 'self': sets current_self_mutated (method self-mutation tracking).
@@ -2815,19 +2843,32 @@ class SemanticContext:
         borrow root (`o.items` -> `o`) to the owning param: a method call whose
         callee turns out readonly must NOT demote the receiver, so the
         method-call mark stops at the field-path key as it always has.
+
+        ``via_element``: the mark reached this name by climbing from something
+        it LENDS (a loop variable over it, a borrow off it), so the mutation
+        is of the storage the name hands out, not of the name itself. That
+        is the fact a caller who passed the name through a lending call (a
+        combinator) needs: the callee's own advance of the combinator is not
+        a write into the caller's containers.
         """
         if self.func.in_nested_def:
-            self.func.nested_mutation_marks.append((name, through_field, False))
+            self.func.nested_mutation_marks.append(
+                (name, through_field, False, via_element))
         if name == "self":
             self.func.current_self_mutated = True
+            if via_element:
+                self.func.current_elem_mutated_param_names.add(name)
             return
         if name in self.func.current_param_names and name not in self.func.current_rebound_params:
             self.func.current_mutated_param_names.add(name)
+            if via_element:
+                self.func.current_elem_mutated_param_names.add(name)
         for iterable in self.func.loop_var_iterable.get(name, ()):
             # Field-path iterables ("c.items") need root extraction for param lookup
-            self.mark_param_mutated(_storage_root(iterable), through_field=through_field)
+            self.mark_param_mutated(_storage_root(iterable), through_field=through_field,
+                                    via_element=True)
         for src in self.func.bp_borrow_source_roots(name):
-            self.mark_param_mutated(src, through_field=through_field)
+            self.mark_param_mutated(src, through_field=through_field, via_element=True)
         # 8a.5: trace through element/field/ptr borrows to source param.
         # When v = items[i] (deferred) and v is later written through,
         # mark the ultimate storage root (e.g. items) as mutated.
@@ -2835,8 +2876,9 @@ class SemanticContext:
         # one loan per source and the write reaches whichever is live.
         # The recursive call terminates because a root has no upstream borrow
         # pointing to it, so it yields no further sources.
-        for ultimate in self.func.borrow_tracker.all_storage_through_borrows(name):
-            self.mark_param_mutated(ultimate, through_field=through_field)
+        for ultimate in self.func.borrow_tracker.all_storage_through_borrows(
+                name, cross_handles=via_element):
+            self.mark_param_mutated(ultimate, through_field=through_field, via_element=True)
         # A borrow rooted at a field path (`o.items`, registered for `e = o.items[0]`
         # or for an @auto_readonly accessor result `x = o.b.get()`) reaches the
         # owning param through that field; a genuine write through the borrower
@@ -2845,7 +2887,8 @@ class SemanticContext:
         if through_field:
             field_root = _storage_root(name)
             if field_root != name:
-                self.mark_param_mutated(field_root, through_field=through_field)
+                self.mark_param_mutated(field_root, through_field=through_field,
+                                        via_element=True)
 
     def mark_param_structurally_mutated(self, name: str) -> None:
         """Mark a parameter as structurally mutated (append/insert/clear/del/etc.).
@@ -2855,13 +2898,16 @@ class SemanticContext:
         Traces loop variables back to their source iterables transitively.
         """
         if self.func.in_nested_def:
-            self.func.nested_mutation_marks.append((name, False, True))
+            self.func.nested_mutation_marks.append((name, False, True, False))
         if name == "self":
             self.func.current_self_struct_mutated = True
             return
         if name in self.func.current_param_names and name not in self.func.current_rebound_params:
             self.func.current_struct_mutated_param_names.add(name)
         for iterable in self.func.loop_var_iterable.get(name, ()):
+            # Restructuring an element is a write THROUGH the source; the
+            # element fact is recorded by the plain mark every caller pairs
+            # this one with, whose climb takes the same step.
             self.mark_param_structurally_mutated(_storage_root(iterable))
 
     def mark_param_returned(self, name: str,

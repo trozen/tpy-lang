@@ -1,8 +1,8 @@
 # A lambda returning a tuple LITERAL at a pointer-repr tuple slot: each element
 # needs its own borrow lift, which the closure return has no arm for.
-# Concretely, `lambda p: (str(p.x), p)` inside `map(...)`; TPy rejects that
-# lambda body today.
-from tpy import int32, copy_iter
+# Concretely, `lambda p: (str(p.x), p)` inside `map(...)` iterated by a
+# `for`; TPy rejects that lambda body today.
+from tpy import int32
 
 
 class Point:
@@ -17,9 +17,8 @@ class Point:
 
 def main() -> None:
     pts = [Point(1), Point(2)]
-    d = dict(copy_iter(map(lambda p: (str(p.x), p), pts)))  # tpyc: error(/lambda\.borrow_tuple_body/)
-    for k in d:
-        print(k, d[k])
+    for k, p in map(lambda p: (str(p.x), p), pts):  # tpyc: error(/lambda\.borrow_tuple_body/)
+        print(k, p)
 
 
 main()

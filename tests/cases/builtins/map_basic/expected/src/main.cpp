@@ -42,7 +42,7 @@ std::string to_str(int32_t x) {
 void main() {
     std::array<int32_t, 5> nums = {1, 2, 3, 4, 5};
     {
-        auto __src_0 = ::tpy::builtin_map<int32_t, int32_t>(double_, nums);
+        auto __src_0 = ::tpy::builtin_map<int32_t>(double_, nums);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -52,7 +52,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = ::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 10)); }, nums);
+        auto __src_2 = ::tpy::builtin_map<int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 10)); }, nums);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -62,7 +62,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = ::tpy::builtin_map<int32_t, std::string>(to_str, nums);
+        auto __src_4 = ::tpy::builtin_map<std::string>(to_str, nums);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -73,7 +73,7 @@ void main() {
     }
     std::vector<int32_t> empty = std::vector<int32_t>{};
     {
-        auto __src_6 = ::tpy::builtin_map<int32_t, int32_t>(double_, empty);
+        auto __src_6 = ::tpy::builtin_map<int32_t>(double_, empty);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -82,7 +82,7 @@ void main() {
         std::cout << x << "\n";
         }
     }
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, x)); }, nums));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, x)); }, nums));
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }
 

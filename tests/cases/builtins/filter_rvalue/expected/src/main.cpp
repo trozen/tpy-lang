@@ -26,7 +26,7 @@ bool is_even(int32_t x) {
 //     print(result)
 void main() {
     {
-        auto __src_0 = ::tpy::builtin_filter<int32_t>(is_even, ::tpyapp::main::make_nums());
+        auto __src_0 = ::tpy::builtin_filter(is_even, ::tpyapp::main::make_nums());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -35,7 +35,7 @@ void main() {
         std::cout << x << "\n";
         }
     }
-    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 3); }, ::tpyapp::main::make_nums()));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter([](int32_t x) -> bool { return (x > 3); }, ::tpyapp::main::make_nums()));
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }
 

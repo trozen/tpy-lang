@@ -5,8 +5,8 @@ namespace tpyapp::main {
 
 T* t1{};
 T* t2{};
-std::tuple<std::optional<T>, std::optional<T>> g;
-std::tuple<std::optional<T>, std::optional<T>> g_partial;
+std::tuple<T*, T*> g{};
+std::tuple<T*, T*> g_partial{};
 
 // def consume(p: tuple[T | None, T | None]) -> None:
 //     a, b = p
@@ -38,8 +38,8 @@ void consume(const std::tuple<const T*, const T*>& p) {
 //     consume(g)
 //     consume(g_partial)
 void main() {
-    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(g));
-    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(g_partial));
+    ::tpyapp::main::consume(g);
+    ::tpyapp::main::consume(g_partial);
 }
 
 // t1 = T(10)
@@ -57,8 +57,8 @@ void __tpy_init() {
     t1 = &__global_slot_1;
     static T __global_slot_2 = T(20);
     t2 = &__global_slot_2;
-    g = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{t1, t2});
-    g_partial = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{t1, nullptr});
+    g = std::tuple<T*, T*>{t1, t2};
+    g_partial = std::tuple<T*, T*>{t1, nullptr};
     ::tpyapp::main::main();
 }
 

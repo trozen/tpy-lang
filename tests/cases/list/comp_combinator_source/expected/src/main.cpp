@@ -77,7 +77,7 @@ void main() {
     std::array<std::string, 2> ws = {"a", "bb"};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_0 = ::tpy::builtin_zip<int32_t, int32_t>(xs, ys);
+        auto __obj_0 = ::tpy::builtin_zip(xs, ys);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -90,7 +90,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_1 = ::tpy::builtin_enumerate<int32_t>(xs);
+        auto __obj_1 = ::tpy::builtin_enumerate(xs);
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
@@ -103,7 +103,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_2 = ::tpy::builtin_map<int32_t, int32_t>(dbl, xs);
+        auto __obj_2 = ::tpy::builtin_map<int32_t>(dbl, xs);
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
@@ -114,7 +114,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_3 = ::tpy::builtin_filter<int32_t>(odd, xs);
+        auto __obj_3 = ::tpy::builtin_filter(odd, xs);
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
@@ -125,7 +125,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_4 = ::tpy::builtin_reversed<int32_t>(xs);
+        auto __obj_4 = ::tpy::builtin_reversed(xs);
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
@@ -147,7 +147,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
-        auto __obj_6 = ::tpy::builtin_reversed<std::string>(ws);
+        auto __obj_6 = ::tpy::builtin_reversed(ws);
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
@@ -158,7 +158,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(({
         ::tpy::ordered_set<int32_t> __result;
-        auto __obj_7 = ::tpy::builtin_zip<int32_t, int32_t>(xs, ys);
+        auto __obj_7 = ::tpy::builtin_zip(xs, ys);
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
@@ -171,7 +171,7 @@ void main() {
     }))) << "\n";
     std::cout << ::tpy::DictPrinter(({
         ::tpy::ordered_map<int32_t, int32_t> __result;
-        auto __obj_8 = ::tpy::builtin_zip<int32_t, int32_t>(xs, ys);
+        auto __obj_8 = ::tpy::builtin_zip(xs, ys);
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
@@ -184,7 +184,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_9 = ::tpy::builtin_map<int32_t, int32_t>(dbl, xs);
+        auto __obj_9 = ::tpy::builtin_map<int32_t>(dbl, xs);
         auto __beg_9 = __obj_9.begin();
         auto __end_9 = __obj_9.end();
         for (; __beg_9 != __end_9; ++__beg_9) {
@@ -199,7 +199,7 @@ void main() {
     std::array<Node, 2> qs = {Node(10), Node(20)};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_10 = ::tpy::builtin_zip<Node, Node>(ps, qs);
+        auto __obj_10 = ::tpy::builtin_zip(ps, qs);
         auto __beg_10 = __obj_10.begin();
         auto __end_10 = __obj_10.end();
         for (; __beg_10 != __end_10; ++__beg_10) {
@@ -236,7 +236,7 @@ void main() {
     std::array<Node, 2> rs = {Node(5), Node(6)};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_13 = ::tpy::builtin_enumerate<Node>(rs);
+        auto __obj_13 = ::tpy::builtin_enumerate(rs);
         auto __beg_13 = __obj_13.begin();
         auto __end_13 = __obj_13.end();
         for (; __beg_13 != __end_13; ++__beg_13) {
@@ -262,7 +262,7 @@ void main() {
     std::array<Node, 2> ts = {Node(7), Node(8)};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_15 = ::tpy::builtin_filter<Node>(node_pos, ts);
+        auto __obj_15 = ::tpy::builtin_filter(node_pos, ts);
         auto __beg_15 = __obj_15.begin();
         auto __end_15 = __obj_15.end();
         for (; __beg_15 != __end_15; ++__beg_15) {
@@ -285,7 +285,7 @@ void main() {
     })) << "\n";
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_17 = ::tpy::builtin_enumerate<Node>(::tpyapp::main::make_nodes());
+        auto __obj_17 = ::tpy::builtin_enumerate(::tpyapp::main::make_nodes());
         auto __beg_17 = __obj_17.begin();
         auto __end_17 = __obj_17.end();
         for (; __beg_17 != __end_17; ++__beg_17) {
@@ -300,7 +300,7 @@ void main() {
     std::span<Node> sp = ::tpy::as_mut_span(us);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_18 = ::tpy::builtin_zip<Node, int32_t>(sp, ys);
+        auto __obj_18 = ::tpy::builtin_zip(sp, ys);
         auto __beg_18 = __obj_18.begin();
         auto __end_18 = __obj_18.end();
         for (; __beg_18 != __end_18; ++__beg_18) {

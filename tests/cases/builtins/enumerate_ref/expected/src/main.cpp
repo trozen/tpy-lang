@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void main() {
     std::array<Point, 3> points = {Point(1, 2), Point(3, 4), Point(5, 6)};
     {
-        auto __src_0 = ::tpy::builtin_enumerate<Point>(points);
+        auto __src_0 = ::tpy::builtin_enumerate(points);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

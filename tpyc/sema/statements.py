@@ -18,7 +18,7 @@ from ..typesys import (
     is_void_like_type,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     RecursiveAliasInstanceType,
-    collapse_tuple_own_elements, type_contains_own,
+    collapse_tuple_own_elements, global_binds_by_reference, type_contains_own,
     LiteralType,
     ViewTypeFamily, view_family_for_type, VIEW_TYPE_FAMILIES,
     PendingGenericInstanceType, contains_fn_type,
@@ -33,7 +33,7 @@ from ..typesys import (
     yield_uses_borrow_slot, yield_always_borrows, GenExprType,
     is_dyn_protocol, is_fn_type, coro_struct_owner,
     ConcreteCoroType, make_concrete_coro, make_cancellable,
-    bare_name, recorded_return_borrow_sources)
+    bare_name, recorded_return_borrow_sources, type_param_names)
 from ..parse import (
     collect_name_refs,
     walk_body_stmts,
@@ -71,7 +71,7 @@ from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
 from .overloads import OverloadAmbiguityError, resolve_overload
-from .scope_tracker import ScopeTracker
+from .scope_tracker import ScopeTracker, lend_roots
 from .init_tracker import InitTracker
 from .value_range import ValueRange
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ from .context import BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, ITER_
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, frame_factory_callee,
-    frame_temp_arg_source,
+    frame_temp_arg_source, iterator_source_callee,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by)
@@ -152,6 +152,42 @@ def _needs_provenance_tracking(t: TpyType) -> bool:
             or isinstance(t, PendingViewType))
 
 
+def _yield_elem_sources(fi: FunctionInfo,
+                        srcs_by_idx: dict[int, list[str]]) -> list[list[str]] | None:
+    """Per tuple element of an iterator-returning callee's yield, the storage
+    roots it lends from -- read off the GENERIC signature: an element spelled
+    by a type param comes from the parameter(s) whose type mentions that
+    param (`zip`: `Iterable[T1], Iterable[T2] -> Iterator[tuple[T1, T2]]`);
+    a value element spelled without one (`enumerate`'s index) comes from
+    nothing, and a reference element spelled without one keeps the
+    whole-variable attribution. None when the yield is not a tuple or names
+    no source at all, so the caller keeps the whole-variable attribution."""
+    root = fi.root
+    ret = unwrap_ref_type(unwrap_readonly(root.return_type))
+    args = getattr(ret, "type_args", None)
+    if not args or not isinstance(args[0], TupleType):
+        return None
+    every = [src for srcs in srcs_by_idx.values() for src in srcs]
+    out: list[list[str]] = []
+    named = False
+    for et in args[0].element_types:
+        names = type_param_names(et)
+        srcs: list[str] = []
+        if names:
+            for idx, p in enumerate(root.params):
+                if idx in srcs_by_idx and names & type_param_names(p.type):
+                    srcs.extend(srcs_by_idx[idx])
+        if names and not srcs and not et.is_value_type():
+            # A reference element whose type param names no retained
+            # argument: the whole-variable attribution, as if unnamed.
+            srcs = every
+        elif not names and not et.is_value_type():
+            srcs = every
+        named = named or bool(srcs) and srcs is not every
+        out.append(srcs)
+    return out if named else None
+
+
 def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
     """Check if an expression is a temporary whose storage won't survive.
 
@@ -177,16 +213,21 @@ def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
     return False
 
 
-def _frame_temp_arg_hoisted(fi, idx: int, arg: TpyExpr, ctx) -> bool:
-    """Whether the compiler hoists this argument into a named local, so what
-    the callee's frame keeps outlives the statement and the dangle warnings
-    below must stay silent.
+def _temp_arg_kept_alive(fi, idx: int, arg: TpyExpr, ctx) -> bool:
+    """Whether a temporary argument outlives the statement although the
+    callee's result borrows it, so the dangle warnings below must stay
+    silent: the compiler hoists a frame factory's argument into a named
+    local, and a body-less lazy combinator (`zip`, `enumerate`, ...) OWNS a
+    temporary -- its rvalue flavor moves the argument in.
 
-    Asks the lowering row's own shape predicate rather than a second copy of
-    it: a warning that disagreed with the hoist would either fire on code the
-    compiler already made safe, or go quiet on a shape it never hoisted."""
-    if not frame_factory_callee(fi) or idx < 0 or idx >= len(fi.params):
+    The hoist asks the lowering row's own shape predicate rather than a
+    second copy of it: a warning that disagreed with the hoist would either
+    fire on code the compiler already made safe, or go quiet on a shape it
+    never hoisted."""
+    if idx < 0 or idx >= len(fi.params):
         return False
+    if not frame_factory_callee(fi):
+        return iterator_source_callee(fi)
     return frame_temp_arg_source(arg, fi.params[idx].type, ctx) is not None
 
 
@@ -231,11 +272,16 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                     if root != borrower:
                         bt.add_borrow(root, borrower, BorrowKind.OPAQUE)
         return
+    # An iterator-returning callee hands back a HANDLE into its sources (a
+    # combinator object, a generator frame): advancing it touches nothing it
+    # points at, which is what the ITER kind tells the mutation climb.
+    kind = (BorrowKind.ITER if iterator_source_callee(fi)
+            else BorrowKind.ELEMENT)
     for idx in recorded_return_borrow_sources(fi):
         if idx == -1 and obj is not None:
             root = _borrow_storage_root(obj)
             if root is not None:
-                bt.add_borrow(root, borrower, BorrowKind.ELEMENT)
+                bt.add_borrow(root, borrower, kind)
             elif _is_dangling_temporary_arg(obj):
                 # A borrow-returning callee can hand back storage that
                 # OUTLIVES its receiver (a global, a longer-lived object), so
@@ -250,9 +296,9 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         elif idx >= 0 and idx < len(args):
             roots = _borrow_storage_roots(args[idx])
             for root in roots:
-                bt.add_borrow(root, borrower, BorrowKind.ELEMENT)
+                bt.add_borrow(root, borrower, kind)
             if (not roots and _is_dangling_temporary_arg(args[idx])
-                    and not _frame_temp_arg_hoisted(
+                    and not _temp_arg_kept_alive(
                         fi, idx, args[idx], ctx)):
                 ctx.warning(
                     f"Result borrows from temporary argument '{fi.params[idx].name}'; "
@@ -496,6 +542,17 @@ def _handle_pinned_view_rebind(ctx: SemanticContext, name: str, stmt: TpyStmt) -
             views.discard(name)
             if not views:
                 del aliases[source]
+
+
+def global_rebind_message(name: str, t: TpyType) -> str:
+    """The one message for rebinding a reference-bound global from a
+    function body; a tuple of references is named as such, since the
+    language calls a tuple a value type."""
+    bare = unwrap_readonly(t)
+    what = ("a tuple of reference types" if isinstance(bare, TupleType)
+            else "non-value type")
+    return (f"Cannot reassign global variable '{name}' of {what} "
+            f"'{collapse_tuple_own_elements(bare)}'")
 
 
 class StatementAnalyzer:
@@ -1953,6 +2010,13 @@ class StatementAnalyzer:
                 # `if` arm's else-body.
                 head_exit_assigned=head.if_false)
         elif isinstance(stmt, TpyForEach):
+            if stmt.is_tuple_unpack and stmt.body:
+                # The head unpack is over the loop's per-iteration holder
+                # whoever built the node (parser, genexpr, a macro), so the
+                # ForEach's own fact is what marks it.
+                head = stmt.body[0]
+                if isinstance(head, TpyTupleUnpack):
+                    head.is_loop_head = True
             if stmt.is_async:
                 self._analyze_async_for(stmt)
                 return
@@ -3108,16 +3172,27 @@ class StatementAnalyzer:
                 call_args = stmt.iterable.args
                 call_obj = getattr(stmt.iterable, 'obj', None)
                 iter_srcs = []
+                srcs_by_idx: dict[int, list[str]] = {}
                 for idx in iter_sources:
                     arg = None
                     if idx == -1 and call_obj is not None:
-                        srcs = _borrow_storage_roots(call_obj)
                         arg = call_obj
                     elif idx >= 0 and idx < len(call_args):
-                        srcs = _borrow_storage_roots(call_args[idx])
                         arg = call_args[idx]
-                    else:
-                        srcs = []
+                    srcs = _borrow_storage_roots(arg) if arg is not None else []
+                    # An argument that is itself a lending call (a nested
+                    # combinator, `zip(filter(pos, ns), xs)`) or a
+                    # conditional has no storage key, but it lends: the
+                    # shared walker names every root, so the loop var's
+                    # element climbs to `ns` through the nesting. Only a
+                    # PROVEN root: an assumed one (a callee whose facts are
+                    # pending) would file a hard ITER loan -- and its
+                    # invalidation warning -- on a name the callee may never
+                    # lend, by declaration order.
+                    if not srcs and arg is not None:
+                        srcs = [r.name for r in lend_roots(self.ctx, arg)
+                                if not r.assumed]
+                    srcs_by_idx[idx] = srcs
                     for src in srcs:
                         bt.add_borrow(src, ITER_BORROWER, BorrowKind.ITER)
                         iter_srcs.append(src)
@@ -3129,7 +3204,7 @@ class StatementAnalyzer:
                         # frame-capturing callee is materialized too,
                         # by the view-backing hoist. Only warn for
                         # what neither pins.
-                        is_materialized = _frame_temp_arg_hoisted(
+                        is_materialized = _temp_arg_kept_alive(
                             fi_iter, idx, arg, self.ctx)
                         if isinstance(arg, (TpyCall, TpyMethodCall)):
                             arg_fi = arg.resolved_function_info
@@ -3147,6 +3222,10 @@ class StatementAnalyzer:
                             )
                 if iter_srcs:
                     self.ctx.func.loop_var_iterable[stmt.var] = iter_srcs
+                    if stmt.is_tuple_unpack:
+                        elem_srcs = _yield_elem_sources(fi_iter, srcs_by_idx)
+                        if elem_srcs is not None:
+                            self.ctx.func.loop_var_elem_iterable[stmt.var] = elem_srcs
 
     def _analyze_async_for(self, stmt: TpyForEach) -> None:
         """Analyze `async for x in ait: <body>` (v1.5 M6).
@@ -3860,13 +3939,14 @@ class StatementAnalyzer:
         # takes). Only names reaching outer storage are replayed; the
         # nested def's own params/locals are filtered out.
         replayable = set(captured) | nonlocal_names | {"self"}
-        for mname, through_field, structural in nested_marks:
+        for mname, through_field, structural, via_element in nested_marks:
             if mname not in replayable:
                 continue
             if structural:
                 self.ctx.mark_param_structurally_mutated(mname)
             else:
-                self.ctx.mark_param_mutated(mname, through_field=through_field)
+                self.ctx.mark_param_mutated(mname, through_field=through_field,
+                                            via_element=via_element)
         for callee_fi in nested_self_edges:
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee_fi, param_map={},
@@ -4273,7 +4353,32 @@ class StatementAnalyzer:
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param, loop variable, or global."""
         existing_type = self.ctx.func.current_scope.lookup(name)
-        if existing_type is None or unwrap_readonly(existing_type).is_value_type():
+        if existing_type is None:
+            return
+        if (name in self.ctx.func.global_declarations
+                and global_binds_by_reference(existing_type)):
+            raise self.ctx.error(
+                global_rebind_message(name, existing_type), node)
+        bare = unwrap_readonly(existing_type)
+        if (self.ctx.is_top_level and isinstance(bare, TupleType)
+                and bare.has_own_element()
+                and name in self.ctx.tuple_globals_aliased):
+            # A tuple global that OWNS a reference element is its own storage
+            # (no slot indirection), so once a module-level unpack has aimed
+            # a pointer-slot target into it, a rebind would overwrite the
+            # object that target points at -- the alias would follow the
+            # rebind where CPython keeps the old object. The scalar
+            # reference global re-points at fresh static backing instead;
+            # until the owning tuple global takes that form
+            # (BUGS.md#global-tuple-ref-storage-form) it is bound once
+            # after being borrowed from. With no alias the rebind is a plain
+            # storage assign and stays allowed.
+            raise self.ctx.error(
+                f"Cannot reassign global variable '{name}' of type "
+                f"'{collapse_tuple_own_elements(bare)}': a module-level "
+                f"unpack borrowed an element of it, and the alias would "
+                f"follow the rebind", node)
+        if unwrap_readonly(existing_type).is_value_type():
             return
         # Check function parameters
         func = self.ctx.func.current_function
@@ -4291,12 +4396,6 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"Cannot reassign loop variable '{name}' of type '{existing_type}'; "
                 f"assign to a new local variable instead",
-                node
-            )
-        # Check global-declared non-value-type variables
-        if name in self.ctx.func.global_declarations:
-            raise self.ctx.error(
-                f"Cannot reassign global variable '{name}' of non-value type '{existing_type}'",
                 node
             )
 
@@ -4372,6 +4471,43 @@ class StatementAnalyzer:
         var_map[name] = var_id
         self.ctx.view_pending_resolutions(family).append(var_id)
         return family.pending_type_class(var_id)
+
+    def _tuple_global_binding_type(
+        self, var_type: TpyType, init: TpyExpr, init_type: TpyType | None,
+    ) -> TpyType:
+        """The type a module-slot TUPLE binding records, with the per-element
+        ownership its init decides spelled as `Own` on the element.
+
+        A tuple global takes the form its local twin takes: a literal of
+        NAMES is a borrow (the tuple of the pointer slots those globals are),
+        while a FRESH reference element, or an element an owning call hands
+        back, is owned inline. A function-local records that split in its
+        lowering facts; a global is read from other functions and modules by
+        its binding type alone, so the split is recorded here, once, and
+        `is_borrow_form_tuple_global` reads it off the type everywhere."""
+        bare = unwrap_readonly(var_type)
+        if not (isinstance(bare, TupleType) and bare.has_pointer_repr_element()
+                and not bare.has_own_element()):
+            return var_type
+        if isinstance(init, TpyTupleLiteral):
+            if len(init.elements) != len(bare.element_types):
+                return var_type
+            elems = []
+            for elem, et in zip(init.elements, bare.element_types):
+                fresh = (not et.is_value_type()
+                         and not isinstance(elem, TpyNoneLiteral)
+                         and not self.compat.is_lvalue(elem))
+                elems.append(OwnType(et) if fresh else et)
+            return TupleType(tuple(elems))
+        init_bare = unwrap_readonly(init_type) if init_type is not None else None
+        if (isinstance(init, (TpyCall, TpyMethodCall))
+                and isinstance(init_bare, TupleType)
+                and init_bare.has_own_element()
+                and len(init_bare.element_types) == len(bare.element_types)):
+            return TupleType(tuple(
+                OwnType(et) if isinstance(it, OwnType) else et
+                for et, it in zip(bare.element_types, init_bare.element_types)))
+        return var_type
 
     def _infer_new_local_type(
         self, name: str, var_type: TpyType,
@@ -5362,6 +5498,16 @@ class StatementAnalyzer:
         else:
             self.ctx.func.current_scope.define(stmt.name, var_type)
         if self.ctx.is_module_slot_stmt(stmt):
+            if stmt.init is not None:
+                # The annotation (pre-registered before this statement) does
+                # not spell which tuple elements the global owns; its init
+                # does, and every reader of the binding needs that recorded.
+                bound = self._tuple_global_binding_type(
+                    var_type, stmt.init, init_type)
+                if bound is not var_type:
+                    var_type = bound
+                    self.ctx.var_types[stmt] = var_type
+                    self.ctx.func.current_scope.define(stmt.name, var_type)
             # An INFERRED module-slot binding is a global exactly as an
             # annotated one is; `global_scope` is the table the export
             # collection and the storage-durability checks read, so a binding
@@ -5669,14 +5815,37 @@ class StatementAnalyzer:
         has_owned_elem = any(isinstance(et, OwnType) for et in rhs_type.element_types)
         source_binds_by_ref = isinstance(stmt.value, TpyName) and not has_owned_elem
 
+        # An `Own` element is MOVED out only when the unpack consumes its
+        # source: a fresh rvalue (a call, a literal, the per-iteration holder
+        # of a loop head), or a name at its last use -- the same verdict the
+        # scalar `x = t` decl takes off an owning local. A name read again
+        # afterwards is borrowed, so its `Own` element target is an alias of
+        # the source's element storage (`is_ref`), exactly as the scalar
+        # binds `T& x = t`; deriving ownership from the element's declared
+        # `Own` alone made the lowering copy the whole tuple to have
+        # something to move from, and the write through the target was lost
+        # (PITFALLS `tuple-equals-scalar`). A module-level NAME source is a
+        # global, which a function body may read after module init, so it is
+        # never consumed -- module-level last-use is blind to those reads;
+        # the pointer-slot target aims into the tuple global's static storage
+        # instead, as the scalar global `x = T` is a pointer copy.
+        source_consumed = (
+            stmt.is_loop_head
+            or not isinstance(stmt.value, TpyName)
+            or (not self.ctx.is_top_level
+                and self.compat.is_auto_move_use(stmt.value)))
+        if (self.ctx.is_top_level and isinstance(stmt.value, TpyName)
+                and has_owned_elem):
+            self.ctx.tuple_globals_aliased.add(stmt.value.name)
+
         # Per-element expressions for narrowing (range facts, etc.)
         has_elem_exprs = isinstance(stmt.value, TpyTupleLiteral)
         for i, name in enumerate(stmt.targets):
             elem_type = rhs_type.element_types[i]
             elem_expr = stmt.value.elements[i] if has_elem_exprs and i < len(stmt.value.elements) else None
-            owned = isinstance(elem_type, OwnType)
+            owned = isinstance(elem_type, OwnType) and source_consumed
             stmt.is_owned.append(owned)
-            if owned:
+            if isinstance(elem_type, OwnType):
                 elem_type = elem_type.wrapped
             is_ref = (not owned and not elem_type.is_value_type()
                       and not isinstance(elem_type, TypeParamRef))
@@ -5849,7 +6018,15 @@ class StatementAnalyzer:
                     src_root = name_src_root
                 if src_root is None or src_root == name:
                     continue
-                bt.add_borrow(src_root, name, BorrowKind.ELEMENT)
+                # A loop var over an iterator whose yield names each element's
+                # own source (`zip(xs, ys)`) lends the target that source
+                # directly, so a write through it climbs to `xs` alone.
+                elem_srcs = self.ctx.func.loop_var_elem_iterable.get(src_root)
+                if elem_srcs is not None and i < len(elem_srcs):
+                    for elem_src in elem_srcs[i]:
+                        bt.add_borrow(elem_src, name, BorrowKind.ELEMENT)
+                else:
+                    bt.add_borrow(src_root, name, BorrowKind.ELEMENT)
                 # A MUTABLE element borrow out of a loop var is the same
                 # reason `x = h` (a non-value local off a loop var) marks it:
                 # the element pointers come off the loop var's binding, so a

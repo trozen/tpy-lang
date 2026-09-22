@@ -44,7 +44,7 @@ void main() {
     std::array<std::string, 3> names = {"alice", "bob", "charlie"};
     std::array<int32_t, 3> ages = {30, 25, 35};
     {
-        auto __src_0 = ::tpy::builtin_zip<std::string, int32_t>(names, ages);
+        auto __src_0 = ::tpy::builtin_zip(names, ages);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -59,7 +59,7 @@ void main() {
     std::array<int32_t, 5> long_ = {1, 2, 3, 4, 5};
     std::array<std::string, 2> short_ = {"x", "y"};
     {
-        auto __src_2 = ::tpy::builtin_zip<int32_t, std::string>(long_, short_);
+        auto __src_2 = ::tpy::builtin_zip(long_, short_);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -74,7 +74,7 @@ void main() {
     std::vector<std::string> empty = std::vector<std::string>{};
     std::array<int32_t, 3> nums = {1, 2, 3};
     {
-        auto __src_4 = ::tpy::builtin_zip<std::string, int32_t>(empty, nums);
+        auto __src_4 = ::tpy::builtin_zip(empty, nums);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -90,7 +90,7 @@ void main() {
     std::array<std::string, 3> ys = {"a", "b", "c"};
     std::array<bool, 3> zs = {true, false, true};
     {
-        auto __src_6 = ::tpy::builtin_zip<int32_t, std::string, bool>(xs, ys, zs);
+        auto __src_6 = ::tpy::builtin_zip(xs, ys, zs);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -105,7 +105,7 @@ void main() {
     }
     std::array<double, 2> ws = {0.5, 1.5};
     {
-        auto __src_8 = ::tpy::builtin_zip<int32_t, std::string, bool, double>(xs, ys, zs, ws);
+        auto __src_8 = ::tpy::builtin_zip(xs, ys, zs, ws);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -121,7 +121,7 @@ void main() {
     }
     std::array<std::string, 2> vs = {"p", "q"};
     {
-        auto __src_10 = ::tpy::builtin_zip<int32_t, std::string, bool, double, std::string>(xs, ys, zs, ws, vs);
+        auto __src_10 = ::tpy::builtin_zip(xs, ys, zs, ws, vs);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();

@@ -25,13 +25,13 @@ namespace tpyapp::main {
 //     for x in filter(None, [0, 1, 0, 2]):
 //         print(x)
 void main() {
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 5>{0, 1, 2, 0, 3}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::builtin_filter_truthy<std::string>(std::array<std::string, 4>{"", "hello", "", "world"}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpy::builtin_filter_truthy<bool>(std::array<bool, 4>{true, false, true, false}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 3>{1, 2, 3}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 3>{0, 0, 0}))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 5>{0, 1, 2, 0, 3}))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::builtin_filter_truthy(std::array<std::string, 4>{"", "hello", "", "world"}))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpy::builtin_filter_truthy(std::array<bool, 4>{true, false, true, false}))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 3>{1, 2, 3}))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 3>{0, 0, 0}))) << "\n";
     {
-        auto __src_0 = ::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 4>{0, 1, 0, 2});
+        auto __src_0 = ::tpy::builtin_filter_truthy(std::array<int32_t, 4>{0, 1, 0, 2});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

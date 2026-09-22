@@ -418,3 +418,15 @@ std::ostream& operator<<(std::ostream& os, const dict_items_view<K, V>& v) {
 }
 
 }  // namespace tpy
+
+
+// A dict view points at a map it does not own: its elements outlive the
+// view, which is what the standard's borrowed-range customization point
+// states, and what an owning combinator over a view reads to keep lending
+// (never moving) the map's elements.
+template<typename K, typename V>
+inline constexpr bool std::ranges::enable_borrowed_range<tpy::dict_keys_view<K, V>> = true;
+template<typename K, typename V>
+inline constexpr bool std::ranges::enable_borrowed_range<tpy::dict_values_view<K, V>> = true;
+template<typename K, typename V>
+inline constexpr bool std::ranges::enable_borrowed_range<tpy::dict_items_view<K, V>> = true;

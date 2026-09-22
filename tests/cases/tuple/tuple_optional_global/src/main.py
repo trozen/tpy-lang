@@ -1,7 +1,6 @@
-# tuple[T | None, ...] as a top-level global. Storage form is
-# std::tuple<std::optional<T>, ...>; init from pointer-form literal goes
-# through tuple_to_storage. Reading the global into a pointer-form param
-# goes through tuple_to_pointer.
+# tuple[T | None, ...] as a top-level global: a tuple of references, so the
+# global is a tuple of pointer slots (`std::tuple<T*, T*>`), a `None` element
+# is `nullptr`, and reading it into a pointer-form param binds it bare.
 from tpy import int32
 
 

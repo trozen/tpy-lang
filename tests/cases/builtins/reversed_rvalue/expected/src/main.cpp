@@ -20,7 +20,7 @@ std::vector<::tpy::BigInt> make_nums() {
 //         print(x)
 void main() {
     {
-        auto __src_0 = ::tpy::builtin_reversed<::tpy::BigInt>(::tpyapp::main::make_nums());
+        auto __src_0 = ::tpy::builtin_reversed(::tpyapp::main::make_nums());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -30,7 +30,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = ::tpy::builtin_reversed<::tpy::BigInt>(::tpy::builtin_sorted<::tpy::BigInt>(::tpyapp::main::make_nums()));
+        auto __src_2 = ::tpy::builtin_reversed(::tpy::builtin_sorted<::tpy::BigInt>(::tpyapp::main::make_nums()));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

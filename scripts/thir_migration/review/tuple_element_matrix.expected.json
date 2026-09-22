@@ -152,8 +152,8 @@
  "borrow__global__T": [
   "ok",
   "",
-  "extern std::tuple<Cell, int32_t> probe_g | std::tuple<Cell, int32_t> probe_g | std::get<0>(probe_g).n = 9 | probe_g = ::tpy::tuple_to_storage<std::tuple<Cell, int32_t>>(std::tuple<Cell*, int32_t>{V, 1})",
-  "differs"
+  "extern std::tuple<Cell*, int32_t> probe_g | std::tuple<Cell*, int32_t> probe_g{} | std::get<0>(probe_g)->n = 9 | probe_g = std::tuple<Cell*, int32_t>{V, 1}",
+  "same"
  ],
  "borrow__local__S": [
   "ok",
@@ -331,7 +331,7 @@
  ],
  "mixed__param__T_consume": [
   "stmt.tuple_unpack",
-  "",
+  "copies Cell into owned storage; use copy() to make this explicit",
   "",
   ""
  ],
@@ -920,8 +920,8 @@
  "x__unpack_live_own__T": [
   "ok",
   "",
-  "auto __tup_1 = t | Cell x = std::move(std::get<0>(__tup_1)) | int32_t k = std::get<1>(__tup_1)",
-  "differs"
+  "auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Cell*, int32_t>>(t) | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "same"
  ],
  "x__unpack_local__T": [
   "stmt.tuple_unpack",

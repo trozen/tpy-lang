@@ -49,6 +49,7 @@ from ...parse.nodes import (
     TpyVarDecl,
 )
 from ...typesys import (
+    collapse_tuple_own_elements,
     recorded_return_borrow_sources,
     return_const_projected,
     AnyType,
@@ -221,9 +222,10 @@ from .predicates import (
     _enum_neg_wrap,
     _bytes_family_ref,
     _f1_container_ref,
+    _binding_peel,
     _f1_record,
-    _f1_ref,
-    _method_rvalue_f1_record,
+    record_like,
+    _method_rvalue_record_like,
     _union_member_match,
     _native_iter_value_slot,
     _protocol_auto_slot,
@@ -728,7 +730,7 @@ def _record_source_call(e: TpyExpr, analyzer) -> bool:
     Shared by the record element arm and the record-inner-Optional element
     arm."""
     if isinstance(e, TpyMethodCall):
-        return (_f1_record(analyzer.get_expr_type(e), analyzer)
+        return (record_like(analyzer.get_expr_type(e), analyzer)
                 and is_rvalue_source(analyzer, e))
     if not isinstance(e, TpyCall):
         return False
@@ -1231,14 +1233,14 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             return note_detail("container_lit.elem.container") if note else False
         return True
     if fam == "record":
-        if not (allow_record and _f1_record(su, analyzer)):
+        if not (allow_record and record_like(su, analyzer)):
             return note_detail("container_lit.elem.record") if note else False
         if isinstance(e, TpyName):
             # A bare record name copies (brace-init), derefs for an F2
             # pointer-local, and moves at a movable local's last use -- all
             # decided at lowering off the move and pointer-local facts.
             bt = declared.get(e.name)
-            if (bt is not None and _f1_record(bt, analyzer)):
+            if (bt is not None and record_like(bt, analyzer)):
                 return True
             return note_detail("container_lit.elem.record") if note else False
         # `copy(<source>)` -- the copy-construct rvalue (`P(p)`): the elem
@@ -1252,7 +1254,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # element slot holds the record by value, so the pointer slot's
         # `(*slot)` read copy-initializes it like any other record source.
         if (_module_var_access_pair(e, declared, analyzer) is not None
-                and _f1_record(analyzer.get_expr_type(e), analyzer)):
+                and record_like(analyzer.get_expr_type(e), analyzer)):
             return True
         return (_record_source_call(e, analyzer)
                 or (note_detail("container_lit.elem.record") if note else False))
@@ -1598,14 +1600,14 @@ def _bare_nonvalue_name_alias_ok(init: TpyExpr, target_type: TpyType | None,
             if getattr(init, "needs_optional_runtime_check", False):
                 note_detail("decl.name_alias_ptr_src")
                 return False
-            return bool(_f1_record(target_type, analyzer)
+            return bool(record_like(target_type, analyzer)
                         and _witness("decl.alias_opt_ptr_deref_src"))
-        return bool(_f1_record(target_type, analyzer)
+        return bool(record_like(target_type, analyzer)
                     and _witness("decl.alias_ptr_deref_src"))
     if init.name not in declared and init.name not in prescan.param_names:
         note_detail("decl.name_alias_global_src")
         return False
-    return (_f1_record(target_type, analyzer)
+    return (record_like(target_type, analyzer)
             or _alias_ref_container(target_type))
 
 
@@ -1774,7 +1776,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                   if src_t is not None else None)
             if (isinstance(tt, OptionalType) and tt.uses_pointer_repr()
                     and st == tt
-                    and _f1_record(_unwrap_own(unwrap_readonly(tt.inner)),
+                    and record_like(_unwrap_own(unwrap_readonly(tt.inner)),
                                    analyzer)):
                 return LocalBinding.OPTIONAL_TO_PTR
         # A plain record lvalue NAME into a ptr-repr `Optional[record]` slot
@@ -1806,23 +1808,23 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # literal / ctor / dunder rvalue and a differently-typed result each
         # spell a render this row does not answer. The method-call sibling
         # is held out for want of a witness, not because its render differs
-        # -- the `_f1_record` legs below keep the two source shapes apart
+        # -- the rvalue legs below keep the two source shapes apart
         # for the same reason.
         if (_type_param_value_slot(target_type)
                 and isinstance(stmt.init, TpyCall)
                 and _open_param_call_result(stmt.init, target_type, analyzer)):
             return binding
-        # F2d: the source is an rvalue F1-record ctor / by-value call (not a field
+        # F2d: the source is an rvalue record / container ctor or by-value call (not a field
         # read), so it bypasses the field-receiver check the lvalue bindings need.
-        if (_f1_record(target_type, analyzer)
+        if (record_like(target_type, analyzer)
                 and _record_rvalue_source_shape(stmt.init, analyzer)):
             return binding
         # ... or an rvalue F1-record METHOD call (`cur = a.clone()` -> the
         # same rebind-slot pointer-local, `Rc<Node>* cur = &__slot_1;`): the
         # method-call lowering's own gates validate callee/args, the shared
         # `_owned_record_decl_ok` disjunct.
-        if (_f1_record(target_type, analyzer)
-                and _method_rvalue_f1_record(stmt.init, analyzer)):
+        if (record_like(target_type, analyzer)
+                and _method_rvalue_record_like(stmt.init, analyzer)):
             return binding
         # A rebound container-literal local rides the same pointer-local
         # (`std::vector<T>* xs = &__slot_1; ... (*xs) = {...};`, or an own
@@ -1942,7 +1944,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         if (binding is LocalBinding.REF_ALIAS
                 and is_property_getter_read(stmt.init)
                 and (_alias_ref_container(target_type)
-                     or _f1_record(target_type, analyzer))):
+                     or record_like(target_type, analyzer))):
             return binding
         # A REF_ALIAS field off an admitted METHOD-CALL receiver
         # (`j = h.peek().jar` -> `Jar& j = h.peek().jar;`): the field
@@ -1970,7 +1972,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _indirect_field_receiver_ok(stmt.init, declared,
                                                 analyzer, pointers)
                 and (_alias_ref_container(target_type)
-                     or _f1_record(target_type, analyzer))):
+                     or record_like(target_type, analyzer))):
             return binding
         # An OPTIONAL_TO_PTR lift whose field source hangs off a CONTAINER-
         # ELEMENT subscript (`box = self.slots[i].box` -> `Box<AnyTask>* box
@@ -1999,7 +2001,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # `p = ps[j]`. Optional sources keep the field-receiver pin. The const
         # verdict follows element-borrow propagation (`_f1_is_const`).
         if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
-                and _f1_record(target_type, analyzer)
+                and record_like(target_type, analyzer)
                 and _container_record_elem_subscript(stmt.init, declared,
                                                      analyzer, pointers)):
             return binding
@@ -2012,7 +2014,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # RESULT on `_f1_record` -- so the sibling rungs' container reach
         # stops here (BUGS.md#record-getitem-container-result-alias-rejects).
         if (binding is LocalBinding.REF_ALIAS
-                and _f1_record(target_type, analyzer)
+                and record_like(target_type, analyzer)
                 and _record_getitem_borrow_subscript(stmt.init, declared,
                                                      analyzer, pointers)):
             return binding
@@ -2021,7 +2023,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # deref-flagged std::get render). REF_ALIAS only -- a reassigned
         # sibling's reseat is unwitnessed.
         if (binding is LocalBinding.REF_ALIAS
-                and _f1_record(target_type, analyzer)
+                and record_like(target_type, analyzer)
                 and _borrow_tuple_param_elem_subscript(stmt.init, prescan,
                                                        analyzer)):
             return binding
@@ -2081,7 +2083,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # return binds const.
         if (binding is LocalBinding.REF_ALIAS
                 and (_alias_ref_container(target_type)
-                     or _f1_record(target_type, analyzer))
+                     or record_like(target_type, analyzer))
                 and ((isinstance(stmt.init, TpyBinOp)
                       and stmt.init.op in ("&&", "||"))
                      or isinstance(stmt.init, TpyIfExpr)
@@ -2098,7 +2100,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and stmt.init.name not in pointers
                 and (stmt.init.name in declared
                      or stmt.init.name in prescan.param_names)
-                and (_f1_record(target_type, analyzer)
+                and (record_like(target_type, analyzer)
                      or _alias_ref_container(target_type))):
             return binding
         # `p2: Point = ptr` off a `Ptr[Point]` binding -- the deref
@@ -2116,30 +2118,22 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
             return binding
         return None
     if binding is LocalBinding.REF_ALIAS or binding is LocalBinding.POINTER:
-        # The FIELD-source aliases: an F1-record field (`r = self.inner` ->
+        # The FIELD-source aliases: a record field (`r = self.inner` ->
         # `Inner& r = this->inner;`) and a container field (`xs = self.tags`
         # -> `std::vector<T>& xs = this->tags;`), each in the REF_ALIAS and
         # the reseatable POINTER flavor (`&(this->tags)`).
-        if _f1_record(target_type, analyzer):
-            return binding
-        if _alias_ref_container(target_type):
+        if record_like(target_type, analyzer):
             if _bytearray_alias_target(target_type):
                 _witness("decl.bytearray_alias")
             return binding
         return None
-    # OPTIONAL_TO_PTR: the borrow `T*` points at the optional's inner record.
+    # OPTIONAL_TO_PTR: the borrow `T*` points at the optional's inner object,
+    # record or container alike (`T* x = ::tpy::optional_to_ptr(<storage
+    # opt>)`, the pointee spelled by `render_type`).
     inner = target_type.inner if isinstance(target_type, OptionalType) else None
-    if _f1_record(inner, analyzer):
-        return binding
-    # A CONTAINER inner takes the same `T* x = ::tpy::optional_to_ptr(<storage
-    # opt>)` lift; `_f1_record` is a C++-spelling-equivalence proxy that
-    # excludes formatter-carrying builtins, but the render spells through
-    # `render_type` -- the resolver's `type_to_cpp` -- so the proxy does not
-    # apply here. NOT
-    # `_alias_ref_container`: it peels `OwnType` before testing, which would
-    # admit `Own[list[T]] | None` while the render got the wrapped type.
-    ci = unwrap_readonly(inner) if inner is not None else None
-    if _f1_container_ref(ci) and _witness("decl.opt_ptr_container"):
+    if record_like(inner, analyzer):
+        if _f1_container_ref(_binding_peel(inner)):
+            _witness("decl.opt_ptr_container")
         return binding
     return None
 
@@ -2155,7 +2149,7 @@ def _record_rvalue_source_shape(init: TpyExpr, analyzer) -> bool:
         return False
     if init.kwargs or init.double_star_unpack is not None:
         return False
-    if not (_f1_ref(analyzer.get_expr_type(init), analyzer)
+    if not (record_like(analyzer.get_expr_type(init), analyzer)
             and is_rvalue_source(analyzer, init)):
         return False
     fi = init.resolved_function_info
@@ -2507,7 +2501,7 @@ def _ref_field_write_ok(
         pointers: set[str], narrowed: AbstractSet[str],
         prescan: '_Prescan') -> bool:
     """A plain REFERENCE-axis field write `recv.field = <source>` -- ONE
-    admission for the record and builtin-container halves of `_f1_ref`,
+    admission for the record and builtin-container halves of `record_like`,
     which take the same default field assign with no borrow<->storage lift.
     Source rows (beyond the two below: a borrow-returning call, a field
     read, an element subscript, and a pointer-local -- each copies
@@ -2542,7 +2536,7 @@ def _ref_field_write_ok(
     A USER-Deref receiver (`r.field = p` on `r: Rc[T]` ->
     `r.__deref__().field = p`) joins the same source rows: the deref chain is
     a target-position render decided by the receiver, orthogonal to the value
-    row that decides copy-vs-move. Only the PLAIN `_f1_ref` slot is widened
+    row that decides copy-vs-move. Only the PLAIN `record_like` slot is widened
     -- a pointer-repr `Optional[record]` at a deref target needs the
     `ptr_to_optional` lift and keeps rejecting."""
     target = stmt.target
@@ -2551,7 +2545,7 @@ def _ref_field_write_ok(
                                          analyzer, pointers)):
         return False
     ftype = analyzer.get_expr_type(target)
-    if not _f1_ref(ftype, analyzer):
+    if not record_like(ftype, analyzer):
         return False
     if prescan.is_constructor and _nondef_ctor_field(ftype, analyzer):
         return False
@@ -2590,7 +2584,7 @@ def _ref_field_write_ok(
             and v.resolved_function_info is not None
             and call_returns_cpp_ref(analyzer, v.resolved_function_info)
             and analyzer.get_expr_type(v) == ftype
-            and _f1_ref(ftype, analyzer)):
+            and record_like(ftype, analyzer)):
         return _witness("field_write.borrow_call_copy")
     # A reference-returning METHOD call rvalue copies bare too
     # (`task._waker = handle->make_waker_for_slot(..);`). Shallow like the
@@ -2601,14 +2595,14 @@ def _ref_field_write_ok(
     if (isinstance(v, TpyMethodCall) and v.resolved_function_info is not None
             and is_rvalue_source(analyzer, v)
             and analyzer.get_expr_type(v) == ftype
-            and _f1_ref(ftype, analyzer)):
+            and record_like(ftype, analyzer)):
         return _witness("field_write.method_rvalue_copy")
     # A FIELD or element SUBSCRIPT source copies bare
     # (`h.p = h2.p;` / `h.p = ::tpy::__getitem__(pts, 0);` -- the reads
     # are references, the assign copies; never movable).
     if isinstance(v, TpyFieldAccess):
         return (_field_receiver_ok(v, declared, analyzer)
-                and _f1_ref(analyzer.get_expr_type(v), analyzer)
+                and record_like(analyzer.get_expr_type(v), analyzer)
                 and analyzer.get_expr_type(v) == ftype
                 and _witness("field_write.field_copy"))
     if isinstance(v, TpySubscript):
@@ -2624,7 +2618,7 @@ def _ref_field_write_ok(
             and not (prescan.has_self and v.name == "self")):
         vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             declared[v.name])))
-        return (_f1_ref(vt, analyzer)
+        return (record_like(vt, analyzer)
                 and vt == unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(ftype)))
                 and _witness("field_write.ptr_local_copy"))
@@ -2636,7 +2630,7 @@ def _ref_field_write_ok(
     own = unwrap_optional_own(vt)
     if own is not None:
         vt = own.wrapped
-    return _f1_ref(vt, analyzer)
+    return record_like(vt, analyzer)
 
 def _optional_record_field_inner(t: 'TpyType | None', analyzer) -> 'TpyType | None':
     """The inner record type of a pointer-repr `Optional[F1-record]` field slot
@@ -2901,11 +2895,11 @@ def _container_prvalue_field_write_ok(stmt: TpyAssign,
     `Optional[container]` field stays out too.
 
     The CONTAINER half of the axis on purpose, and the one row of the merged
-    field-write ladder that is not on `_f1_ref`. Its render threads
+    field-write ladder that is not on `record_like`. Its render threads
     `_ExprResultUse.STORAGE` where the reference rvalue row threads the
     copy sink, and the reference rvalue row pins the source type to the slot
     -- the check that keeps a subclass rvalue (a slicing copy) out. Widening
-    this row to `_f1_ref` would claim every record ctor rvalue and move it
+    this row to `record_like` would claim every record ctor rvalue and move it
     onto the STORAGE render; dropping the record row's type pin to let this
     one claim only what that row refuses would reopen the slice. Containers
     have no subclass, which is why the two rules can differ at all."""
@@ -3191,7 +3185,7 @@ def _record_aug_binop_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     tt = analyzer.get_expr_type(stmt.target)
     tt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(tt)))
           if tt is not None else None)
-    return (_f1_record(tt, analyzer)
+    return (record_like(tt, analyzer)
             and not call_returns_cpp_ref(analyzer, rb.method))
 
 
@@ -3444,7 +3438,7 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
                 and _swe_b.has_pointer_repr_element()
                 and (_tuple_elem_slots_ptr_optional(_swe_b)
                      or all(isinstance(_e, TpyType)
-                            and _f1_record(unwrap_readonly(_e), analyzer)
+                            and record_like(unwrap_readonly(_e), analyzer)
                             for _e in _swe_b.element_types)))
             # A NESTED-storage tuple value slot (`d[0] = (9, (8, c))`):
             # the bare spelled literal, per-level lifts inside.
@@ -3478,7 +3472,7 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
             # Box(conn)`, `d["k"] = make_bytes()`): the checked
             # `__setitem__` forwards the RVALUE bare; the value shape
             # (exact / covariant-upcast rvalue) narrows at the lowering arm.
-            or _f1_ref(elem_t, analyzer)
+            or record_like(elem_t, analyzer)
             # A recursive-union WRAPPER value slot (`d["c"] = 3` on
             # `dict[str, JsonValue]`): the wrapper's converting ctor absorbs
             # a scalar/str literal bare; the value shape narrows at the
@@ -3633,7 +3627,7 @@ def _user_record_setitem_ok(
             analyzer.get_expr_type(sub))))
         return (_eligible_scalar(et) or _eligible_char(et)
                 or _eligible_enum(et, analyzer) is not None
-                or (_f1_record(et, analyzer)
+                or (record_like(et, analyzer)
                     and _record_setitem_record_source(stmt.value, et,
                                                       declared, pointers,
                                                       narrowed, analyzer)))
@@ -3644,7 +3638,7 @@ def _user_record_setitem_ok(
             # NAME copies into it and an rvalue binds directly -- both are
             # the bare forward. The `Own[...]` flavor is a `T&&` sink and
             # takes the move split in the write arm.
-            or (_f1_record(vbare, analyzer)
+            or (record_like(vbare, analyzer)
                 and _record_setitem_record_source(stmt.value, vbare, declared,
                                                   pointers, narrowed,
                                                   analyzer))
@@ -4491,7 +4485,7 @@ def _native_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
     ret = analyzer.get_expr_type(e)
     t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
          if ret is not None else None)
-    return (_f1_record(t, analyzer) and is_rvalue_source(analyzer, e)
+    return (record_like(t, analyzer) and is_rvalue_source(analyzer, e)
             and _native_ctx_manager_ok(e, analyzer))
 
 
@@ -4525,7 +4519,7 @@ def _er_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
     fi = e.resolved_function_info
     if fi is None or fi.error_return_type is None:
         return False
-    if not (_f1_record(analyzer.get_expr_type(e), analyzer)
+    if not (record_like(analyzer.get_expr_type(e), analyzer)
             and is_rvalue_source(analyzer, e)):
         return False
     if e.kwargs or e.double_star_unpack is not None:
@@ -4545,7 +4539,7 @@ def _template_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
     renders bare in the STORAGE slot; args gate at their own rows."""
     if not isinstance(e, TpyCall):
         return False
-    if not (_f1_record(analyzer.get_expr_type(e), analyzer)
+    if not (record_like(analyzer.get_expr_type(e), analyzer)
             and is_rvalue_source(analyzer, e)):
         return False
     kind = _free_callee_kind(e, analyzer)
@@ -4573,7 +4567,7 @@ def _rvalue_storage_decl_call(e: TpyExpr, analyzer) -> bool:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
     if isinstance(t, OwnType):
         t = unwrap_readonly(t.wrapped)
-    shape_ok = (_f1_ref(t, analyzer)
+    shape_ok = (record_like(t, analyzer)
                 or _resolved_str_value(t, analyzer) is not None
                 or _resolved_bytes_value(t, analyzer) is not None)
     return shape_ok and is_rvalue_source(analyzer, e)
@@ -4595,7 +4589,7 @@ def _rvalue_storage_decl_op(e: TpyExpr, analyzer) -> bool:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
     if isinstance(t, OwnType):
         t = unwrap_readonly(t.wrapped)
-    return _f1_record(t, analyzer) and is_rvalue_source(analyzer, e)
+    return record_like(t, analyzer) and is_rvalue_source(analyzer, e)
 
 
 def _native_iterable_iterator_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -4861,7 +4855,7 @@ def _native_optptr_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(a))))
     no = _optional_ptr_borrow(at, analyzer)
-    if no is None or not _f1_record(unwrap_readonly(no.inner), analyzer):
+    if no is None or not record_like(unwrap_readonly(no.inner), analyzer):
         return False
     slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
     return slot == at and bool(_witness("arg.native_protocol_optptr"))
@@ -5029,7 +5023,7 @@ def _lambda_reject_reason(a: TpyLambda, analyzer, *,
                 or _eligible_enum(pu, analyzer) is not None
                 or _resolved_str_value(pu, analyzer) is not None
                 or _resolved_bytes_value(pu, analyzer) is not None
-                or _f1_record(pu, analyzer)
+                or record_like(pu, analyzer)
                 # A reference-container param spells its `C&` through the
                 # same to_cpp_param helper (`bytearray`'s const-by-default
                 # form included); the body's own reads gate their renders (an
@@ -5094,7 +5088,7 @@ def _callable_object_arg(a: TpyExpr, ptype: 'TpyType | None',
     at = locals_.get(a.name)
     if at is None:
         at = analyzer.get_expr_type(a)
-    return _f1_record(at, analyzer)
+    return record_like(at, analyzer)
 
 def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        locals_: dict[str, TpyType], analyzer, *,
@@ -5238,7 +5232,13 @@ def _borrow_tuple_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer, *,
     at = arg_type(a)
     atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
            if at is not None else None)
-    return slot if atu == slot else None
+    if atu is None:
+        return None
+    # Equal modulo per-element ownership: a storage name whose binding marks
+    # a fresh element `Own` (a tuple global that owns its literal's record)
+    # holds the slot's borrow element by value, which is what the lift
+    # points at -- the marking is the storage fact, not a different slot.
+    return slot if collapse_tuple_own_elements(atu) == slot else None
 
 
 def _borrow_tuple_field_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5348,7 +5348,7 @@ def _required_protocol_union_arg(a: TpyExpr, ptype: 'TpyType | None',
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
     if _static_protocol_union_binding(at):
         return bool(_witness("arg.required_protocol_union"))
-    return bool((_f1_ref(at, analyzer) or is_span(at))
+    return bool((record_like(at, analyzer) or is_span(at))
                 and _witness("arg.required_protocol_union"))
 
 
@@ -5417,7 +5417,7 @@ def _record_getitem_rvalue_arg(a: TpyExpr, analyzer) -> bool:
     at = analyzer.get_expr_type(a)
     atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
            if at is not None else None)
-    if not _f1_record(atu, analyzer):
+    if not record_like(atu, analyzer):
         return False
     rt_recv = analyzer.get_expr_type(a.obj)
     ru = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt_recv)))
@@ -5445,7 +5445,7 @@ def _record_elem_subscript_arg(a: TpyExpr, ptype: 'TpyType | None',
     slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
             if ptype is not None else None)
     wsl = _eligible_wrapper_union(slot, analyzer)
-    if not (_f1_ref(slot, analyzer)
+    if not (record_like(slot, analyzer)
             # ... or a WRAPPER-union element at a same-wrapper borrow slot
             # (`depth(zs[1])` on `zs: list[Tree]` -- the checked element
             # lvalue binds `const Tree&` bare, like the record flavor).
@@ -6596,7 +6596,7 @@ def _record_rvalue_temp_arg(a: TpyExpr, ptype: TpyType | None,
             # `Rc<Counter> __tmp_N = Rc<Counter>::new_<Counter>(...);` + the
             # bare temp name): the same create-lend-drop temp; the
             # method-call lowering validates callee/args recursively.
-            or _method_rvalue_f1_record(a, analyzer))
+            or _method_rvalue_record_like(a, analyzer))
 
 
 def _coro_factory_structural_arg(a: TpyExpr, proto, analyzer) -> bool:
@@ -6707,7 +6707,7 @@ def _record_rvalue_structural_arg(a: TpyExpr, proto, analyzer) -> bool:
            if at is not None else None)
     if isinstance(atu, OwnType):
         atu = unwrap_readonly(atu.wrapped)
-    return _f1_record(atu, analyzer)
+    return record_like(atu, analyzer)
 
 
 def _module_qual_ctor_shape(a: TpyExpr, analyzer) -> bool:
@@ -6826,7 +6826,7 @@ def _value_record_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
           if isinstance(ptype, TpyType) else None)
     if not (isinstance(pt, NominalType) and not pt.is_ref_param()
-            and _f1_record(pt, analyzer)):
+            and record_like(pt, analyzer)):
         return False
     if not isinstance(a, TpyCall):
         return False
@@ -6936,7 +6936,7 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     w_container = _storage_call_ret(
         unwrap_readonly(unwrap_send_sync(w)), analyzer) is not None
     w_dyn = is_dyn_protocol(unwrap_readonly(unwrap_send_sync(w)))
-    if not w_container and not w_dyn and not _f1_record(w, analyzer):
+    if not w_container and not w_dyn and not record_like(w, analyzer):
         return False
     if w_container:
         # Both CALL faces of the container leg (`table.append(make_row(1.0))`
@@ -7009,7 +7009,7 @@ def _own_opt_record_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | Non
     w = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(w)))
     if not (isinstance(w, OptionalType) and w.uses_pointer_repr()):
         return None
-    return w if _f1_record(unwrap_readonly(w.inner), analyzer) else None
+    return w if record_like(unwrap_readonly(w.inner), analyzer) else None
 
 
 def _own_opt_ptr_name_arg(a: TpyExpr, ptype: TpyType | None,
@@ -7148,7 +7148,7 @@ def _own_optional_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(inner, OptionalType):
         return False
     rec = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(inner.inner)))
-    if not (isinstance(rec, NominalType) and _f1_record(rec, analyzer)):
+    if not (isinstance(rec, NominalType) and record_like(rec, analyzer)):
         return False
     if not isinstance(a, TpyCall):
         return False
@@ -7180,7 +7180,7 @@ def _opt_own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(ow, OwnType):
         return False
     rec = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ow.wrapped)))
-    if not (isinstance(rec, NominalType) and _f1_record(rec, analyzer)):
+    if not (isinstance(rec, NominalType) and record_like(rec, analyzer)):
         return False
     if not isinstance(a, TpyCall):
         return False
@@ -7298,7 +7298,7 @@ def _opt_own_record_name_arg(a: TpyExpr, ptype: TpyType | None,
     if ow is None:
         return None
     w = unwrap_readonly(ow.wrapped)
-    if not _f1_record(w, analyzer):
+    if not record_like(w, analyzer):
         return None
     # The Own-lift coerce sema wraps an INFERRED-targ generic call's arg
     # peels. TWO independent guards keep this sound against any future
@@ -7362,7 +7362,7 @@ def _opt_own_ptr_opt_name_arg(a: TpyExpr, ptype: TpyType | None,
     if ow is None:
         return None
     w = unwrap_readonly(ow.wrapped)
-    if not _f1_record(w, analyzer):
+    if not record_like(w, analyzer):
         return None
     if not (isinstance(a, TpyName) and a.name in locals_):
         return None
@@ -7386,7 +7386,7 @@ def _readonly_record_ctor_arg(a: TpyExpr, ptype: TpyType | None,
     if pt is None or not isinstance(pt, ReadonlyType):
         return False
     inner = unwrap_readonly(pt)
-    if not (isinstance(inner, NominalType) and _f1_record(inner, analyzer)):
+    if not (isinstance(inner, NominalType) and record_like(inner, analyzer)):
         return False
     if not isinstance(a, TpyCall):
         return False
@@ -8642,7 +8642,7 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
                  or (_record_getitem_key(
                          analyzer.get_expr_type(recv.obj), analyzer)
                      is not None
-                     and _f1_record(analyzer.get_expr_type(recv), analyzer)
+                     and record_like(analyzer.get_expr_type(recv), analyzer)
                      # The CALLER'S pointer set is load-bearing here: the
                      # method receiver lowers PRECHECKED, so the getitem
                      # arm's own idx/recv recheck never runs -- a
@@ -8828,7 +8828,7 @@ def _method_call_receiver_ok(recv: TpyMethodCall, locals_: dict[str, TpyType],
         analyzer.get_expr_type(recv))))
     if isinstance(rt, OwnType):
         rt = unwrap_readonly(rt.wrapped)
-    if isinstance(rt, NominalType) and _f1_record(rt, analyzer):
+    if isinstance(rt, NominalType) and record_like(rt, analyzer):
         return _witness("method.recv.method")
     # A CONTAINER-returning inner call (`b1.take().append(4)`,
     # `groups.setdefault("a", []).append(1)`): the inner render is the bare
@@ -9313,7 +9313,7 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                 and _witness("method.qualcall.ret_tparam"))
             # The field-receiver position (`p.Box(10).n`): an F1-record
             # result renders bare under the postfix member.
-            or (record_ret_ok and _f1_record(ret, analyzer))
+            or (record_ret_ok and record_like(ret, analyzer))
             # The SUSPEND position (an ERASED await operand): the skeleton
             # immediately moves the result into the sub-future slot, so any
             # record-family result (incl. generic-concrete, e.g.
@@ -10104,7 +10104,7 @@ def _ptr_template_method_supported(
                                  # A POINTER-bound record receiver stays out
                                  # -- its `{self}` render is the deref, which
                                  # this arm does not spell.
-                                 or _f1_record(recv_type, analyzer)):
+                                 or record_like(recv_type, analyzer)):
         return note_detail("method.ptr_template.recv_shape")
     if fi.cpp_template is not None:
         if "{cpp}" in fi.cpp_template or fi.type_params:
@@ -10155,7 +10155,7 @@ def _ptr_template_method_supported(
             # lands as the plain spelled copy -- the protocol ladder's row.
             or (_open_t_tuple_slot(ret, analyzer) is not None
                 and _witness("method.ptr_template_open_t_tuple_ret"))
-            or (record_ret_ok and _f1_record(ret, analyzer))
+            or (record_ret_ok and record_like(ret, analyzer))
             or (stmt_position and (ret is None or is_void_like_type(ret)))
             or note_detail("method.ptr_template.ret_type"))
 
@@ -10198,7 +10198,7 @@ def _ptr_template_arg_ok(a: TpyExpr, analyzer,
                 # interpolation does not spell.
                 or (record_template and isinstance(a, TpyName)
                     and a.name in locals_ and a.name not in pointers
-                    and _f1_record(at, analyzer)
+                    and record_like(at, analyzer)
                     and _witness("method.ptr_template_record_arg")))
 
 
@@ -10423,7 +10423,7 @@ def _ptr_addr_of_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
     if not isinstance(slot, PtrType):
         return False
     pointee = unwrap_readonly(slot.pointee)
-    if not _f1_record(pointee, analyzer):
+    if not record_like(pointee, analyzer):
         return False
     # Sema wraps the source in the address-of coercion; the lvalue under it
     # is what the render addresses.
@@ -10648,7 +10648,7 @@ def _container_method_call_supported(
             # keeps rejecting (it binds an alias, not a copy).
             or ((storage_ret_ok or borrow_ret_ok)
                 and is_rvalue_source(analyzer, e)
-                and (_f1_record(ret, analyzer)
+                and (record_like(ret, analyzer)
                      or _container_method_recv(ret, analyzer, None)))
             # A BORROW-returning ptr-repr Optional result (`d.get("a")` ->
             # the bare `T*` from dict_get; WIDE pointee class): the render
@@ -10752,7 +10752,7 @@ def _method_call_arg_ok(
         if (_anu_b is not None
                 and any(_anu_b == m for m in recv.members
                         if not is_void_like_type(m))
-                and _f1_record(_anu_b, analyzer)):
+                and record_like(_anu_b, analyzer)):
             recv = _anu_b
     ri = analyzer.registry.get_record_for_type(recv)
     if ri is None:
@@ -10882,7 +10882,7 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
             # receiver): the prvalue lands bare in the return/decl slot,
             # exactly like the record ladder's storage admission.
             or (storage_ret_ok and is_rvalue_source(analyzer, e)
-                and _f1_record(
+                and record_like(
                     _unwrap_own(unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(ret)))) if ret is not None else None,
                     analyzer)
@@ -12410,7 +12410,7 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
     note=lambda req: _native_arg_reject(req.a, req.ptype, req.analyzer),
     rows=(
         _ArgRow("shared_pass_through", _r_shared_pass_through),
-        # Callable args at a template callee (`builtin_filter<T>(
+        # Callable args at a template callee (`builtin_filter(
         # is_even, nums)`): a func-ref renders its bare C++ name and a
         # lambda its inline closure -- both loops emit them identically,
         # so the plain ladder's rows serve here too.
@@ -13671,7 +13671,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
         if (_anu_b is not None
                 and any(_anu_b == m for m in recv_t.members
                         if not is_void_like_type(m))
-                and _f1_record(_anu_b, analyzer)):
+                and record_like(_anu_b, analyzer)):
             recv_t = _anu_b
     # A BUILTIN value-record receiver (`w.wake()` on tpy.coro.Waker): its
     # TPy-defined methods render the same plain member call as an F1
@@ -13800,7 +13800,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # checked at the decl gate, keeps a `T&` borrow return out there)
             # and at the field-receiver position (`h.boxed.get().x`, where
             # rvalue and borrow returns render the same bare postfix member).
-            or (record_ret_ok and _f1_record(ret, analyzer))
+            or (record_ret_ok and record_like(ret, analyzer))
             # A protocol borrow return used as a `.`-access receiver
             # (`box.get() -> Pet&`, then `.name()`): renders the bare postfix
             # member like an F1-record borrow return.
@@ -13926,7 +13926,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # dropped at statement position): the render is the same bare
             # call whatever the ignored result, the record sibling of the
             # container family's stmt_storage_ok row.
-            or (stmt_position and _f1_record(ret, analyzer)
+            or (stmt_position and record_like(ret, analyzer)
                 and _witness("method.record_discard"))
             # A DISCARDED container result (`g.get();` -- the guard payload
             # dropped): same bare call, the container sibling.
@@ -14074,7 +14074,7 @@ def _struct_proto_union_arg(a: TpyExpr, ptype: 'TpyType | None',
     # there is nothing to convert and the name forwards through whatever the
     # binding renders. Exact identity only -- a DIFFERENT union would have to
     # re-select a branch.
-    if not (is_container or _f1_record(at, analyzer) or at == pt):
+    if not (is_container or record_like(at, analyzer) or at == pt):
         return False
     for m in pt.members:
         mu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(m)))
@@ -14993,7 +14993,7 @@ def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
     # a record-returning method call each render bare, so the const ref
     # binds the returned prvalue exactly as it binds the ctor expansion.
     if isinstance(a, TpyMethodCall):
-        return bool(_method_rvalue_f1_record(a, analyzer)
+        return bool(_method_rvalue_record_like(a, analyzer)
                     and _witness("method.record_method_rvalue_arg"))
     return bool(_ctor_shape_ok(a, analyzer)
                 or _typed_dict_ctor_call(a, analyzer) is not None
@@ -15540,7 +15540,7 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
         # deref'd lvalue -- the TupleType print arm; `_lower_expr` derefs a
         # pointer-repr tuple local, so the render matches for both forms.
         return PrintForm.TUPLE
-    if isinstance(u, NominalType) and _f1_record(u, analyzer):
+    if isinstance(u, NominalType) and record_like(u, analyzer):
         return PrintForm.RAW
     if _range_object_value(u):
         # A range() object streams raw via its own operator<< (no ListPrinter).
@@ -15640,6 +15640,10 @@ def _print_tuple_record_elem(a: TpyExpr, locals_: dict[str, TpyType],
         return None
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(a))))
+    # A print-FORM selector, not an axis gate: the element streams through
+    # the record's own `operator<<`, which a container does not have (it
+    # prints through the ListPrinter / DictPrinter wrap that no tuple-element
+    # print row threads yet), so only a record takes the bare / deref form.
     if not _f1_record(at, analyzer):
         return None
     _witness("print.tuple_record_elem")
@@ -15698,6 +15702,12 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # A protocol-typed local/param (`print(result)` off an `auto`
         # select result): streams RAW via the concrete type's operator<<.
         return _witness("print.protocol_name")
+    # The four rows below choose the RAW print form: the value streams through
+    # the record's own emitted `operator<<`. That is a form selection, not a
+    # reference-axis question -- a container has no `operator<<` and prints
+    # through the ListPrinter / DictPrinter wrap -- so they stay on the record
+    # predicate until the print form comes off the TypeDef (the RULE's first
+    # mechanism, TODO.md).
     if isinstance(a, (TpyCall, TpyMethodCall)):
         # An F1-record-returning call rvalue streams RAW via the record's
         # emitted operator<< (`print(datetime.fromtimestamp(x))` --

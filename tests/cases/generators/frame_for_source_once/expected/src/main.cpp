@@ -563,7 +563,7 @@ __gen_own_param_iter_src own_param_iter_src(Holder h) {
     case S_INITIAL: {  // entry
         total = 0;
         __coro_arg_0.emplace(Deleg(3));
-        __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>((*__coro_arg_0)));
+        __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
         __state = S_JOIN_0;
         continue;
     }
@@ -613,7 +613,7 @@ __coro_async_combinator_temp async_combinator_temp() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         total = 0;
-        __for_src_0.emplace(::tpy::builtin_zip<int32_t, int32_t>(xs, ys));
+        __for_src_0.emplace(::tpy::builtin_zip(xs, ys));
         __state = S_JOIN_0;
         continue;
     }

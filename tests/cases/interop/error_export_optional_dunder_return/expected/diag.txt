@@ -1,0 +1,1 @@
+main.py:18: error: exposed class 'Bag': '__getitem__' return type is 'int32 | None', and an Optional does not cross a dunder slot yet (a slot pins its operand and return shapes -- use a plain method for the None case)

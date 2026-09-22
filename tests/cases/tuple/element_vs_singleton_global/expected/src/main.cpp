@@ -4,45 +4,47 @@
 namespace tpyapp::main {
 
 Box* V{};
+Box* W{};
 Box* singleton{};
-std::tuple<Box, Box> pair;
-std::tuple<Box, Box> mixed;
-
-// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
-//     return (Box(1), b)
-std::tuple<Box, Box*> make_mixed(Box& b) {
-    return std::tuple<Box, Box*>{Box(1), &(b)};
-}
+std::tuple<Box*, Box*> pair{};
+std::tuple<int32_t, Box> owned;
+std::tuple<Box*, int32_t> pair2{};
 
 // def main() -> None:
-//     # Correct: the scalar global is a borrow slot, so this reaches V.
 //     singleton.n = 42
-//     print(V.n)
+//     print("scalar", V.n)
 //
 //     V.n = 2
-//     # WRONG (silent): the tuple global copied, so this write is lost.
 //     pair[0].n = 43
-//     print(V.n)
+//     print("tuple", V.n)
 //
-//     V.n = 2
-//     # WRONG (silent), and only reachable at all since the storage-form wave.
-//     mixed[1].n = 44
-//     print(V.n)
+//     owned[1].n = 9
+//     print("owned", owned[1].n)
+//
+//     pair2[0].n = 7
+//     print("rebound", W.n, V.n)
 void main() {
     singleton->n = 42;
-    std::cout << V->n << "\n";
+    std::cout << "scalar" << " " << V->n << "\n";
     V->n = 2;
-    std::get<0>(pair).n = 43;
-    std::cout << V->n << "\n";
-    V->n = 2;
-    std::get<1>(mixed).n = 44;
-    std::cout << V->n << "\n";
+    std::get<0>(pair)->n = 43;
+    std::cout << "tuple" << " " << V->n << "\n";
+    std::get<1>(owned).n = 9;
+    std::cout << "owned" << " " << std::get<1>(owned).n << "\n";
+    std::get<0>(pair2)->n = 7;
+    std::cout << "rebound" << " " << W->n << " " << V->n << "\n";
 }
 
 // V = Box(2)
+// W = Box(3)
 // singleton: Box = V  # tpyc: warning(/will not keep the object/)
-// pair: tuple[Box, Box] = (V, V)
-// mixed: tuple[Box, Box] = make_mixed(V)
+// # all-borrow tuple global: the tuple of the pointer slots, aliasing V.
+// pair: tuple[Box, Box] = (V, V)  # tpyc: ok
+// # a fresh element makes the global OWN it: storage, nothing to alias.
+// owned: tuple[int32, Box] = (1, Box(5))  # tpyc: ok
+// # top-level rebind of a borrow tuple global re-points the slots, as `singleton = W` would.
+// pair2: tuple[Box, int32] = (V, 1)  # tpyc: ok
+// pair2 = (W, 2)  # tpyc: ok
 //
 // main()
 void __tpy_init() {
@@ -52,9 +54,13 @@ void __tpy_init() {
 
     static std::optional<Box> __global_slot_1;
     V = &*(__global_slot_1 = Box(2));
+    static Box __global_slot_2 = Box(3);
+    W = &__global_slot_2;
     singleton = V;
-    pair = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box*, Box*>{V, V});
-    mixed = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed((*V)));
+    pair = std::tuple<Box*, Box*>{V, V};
+    owned = std::tuple<int32_t, Box>{1, Box(5)};
+    pair2 = std::tuple<Box*, int32_t>{V, 1};
+    pair2 = std::tuple<Box*, int32_t>{W, 2};
     ::tpyapp::main::main();
 }
 

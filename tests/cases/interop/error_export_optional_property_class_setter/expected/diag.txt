@@ -1,0 +1,2 @@
+main.py:32: warning: copies Inner | None into field; use copy() to make this explicit
+main.py:31: error: @export class 'Holder': property 'inner' setter takes exposed class 'Inner': the value arrives as a borrow of the live argument, which the setter's ownership-transfer parameter cannot move from -- use a plain method

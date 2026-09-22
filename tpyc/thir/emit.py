@@ -4171,6 +4171,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}{state.slot_static}{cpp} {slot} = "
                           f"std::move({get});\n")
                 out.write(f"{indent}{escape_cpp_name(name)} = &{slot};\n")
+            elif bind == "global_ptr":
+                # The borrowed element's pointer, off the pointer-lifted
+                # capture: the source is a tuple global, static storage.
+                out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
             elif bind == "unwrap_ref":
                 # Wrapper-reference element: the capture's slot is a live
                 # `X&`; unwrap_ref hands back that reference to alias.

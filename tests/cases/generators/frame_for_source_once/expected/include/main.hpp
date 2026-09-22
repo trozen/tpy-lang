@@ -405,7 +405,7 @@ struct __coro_async_combinator_temp {
     int32_t v;
     ::tpy::frame_slot<Deleg> __coro_arg_0;
     std::tuple<int32_t, int32_t> __for_tup_6;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate<int32_t>((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*__coro_arg_0))))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -438,7 +438,7 @@ struct __coro_async_zip {
     int32_t a;
     int32_t b;
     std::tuple<int32_t, int32_t> __for_tup_7;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_zip<int32_t, int32_t>(xs, ys)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_zip(xs, ys)))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -914,7 +914,7 @@ struct __gen_zip_names_src : public ::tpy::next_iter_mixin<__gen_zip_names_src, 
     std::tuple<int32_t, int32_t> __for_tup_1;
     int32_t a;
     int32_t b;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_zip<int32_t, int32_t>(xs, ys)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_zip(xs, ys)))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -940,7 +940,7 @@ struct __gen_zip_names_src : public ::tpy::next_iter_mixin<__gen_zip_names_src, 
 struct __gen_enumerate_cells_src : public ::tpy::next_iter_mixin<__gen_enumerate_cells_src, std::string> {
     int32_t __state;
     ::tpy::frame_slot<std::array<Cell, 2>> cells;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate<Cell>((*cells))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*cells))))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* __for_tup_2 = nullptr;
     int32_t i;
     ::tpy::step_elem_member_t<1, ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>>* c = nullptr;
@@ -970,7 +970,7 @@ struct __gen_enumerate_cells_src : public ::tpy::next_iter_mixin<__gen_enumerate
 struct __gen_reversed_temp_src : public ::tpy::next_iter_mixin<__gen_reversed_temp_src, std::string> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<Cell>> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_reversed<Cell>((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_reversed((*__coro_arg_0))))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* c = nullptr;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
@@ -1267,7 +1267,7 @@ struct __gen_nested_combinator_src : public ::tpy::next_iter_mixin<__gen_nested_
     std::tuple<int32_t, int32_t> __for_tup_3;
     int32_t i;
     int32_t v;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate<int32_t>(::tpy::builtin_reversed<int32_t>(xs))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(::tpy::builtin_reversed(xs))))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -1296,7 +1296,7 @@ struct __gen_combinator_temp_src : public ::tpy::next_iter_mixin<__gen_combinato
     int32_t i;
     int32_t v;
     ::tpy::frame_slot<Deleg> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate<int32_t>((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*__coro_arg_0))))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -1689,7 +1689,7 @@ struct __gen_Bag_pairs : public ::tpy::next_iter_mixin<__gen_Bag_pairs, std::str
     int32_t __state;
     Bag& __self;
     const std::vector<int32_t>& ys;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_zip<Cell, int32_t>(__self.cells, ys)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_zip(__self.cells, ys)))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* __for_tup_0 = nullptr;
     ::tpy::step_elem_member_t<0, ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>>* c = nullptr;
     int32_t y;

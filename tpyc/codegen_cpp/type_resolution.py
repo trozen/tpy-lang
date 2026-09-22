@@ -35,6 +35,22 @@ def resolve_stmt_binding_type(
     return var_type
 
 
+def resolve_global_binding_type(
+    stmt: TpyVarDecl,
+    analyzer: SemanticAnalyzer,
+    types: TypeResolver,
+) -> TpyType | None:
+    """A module GLOBAL's type: the module binding sema defined, else the
+    cascade. The binding is what sema records after analysing the init --
+    a tuple global's per-element ownership lives there and nowhere in the
+    annotation -- and it is what every other module reads."""
+    binding = analyzer.global_ns.lookup_local(stmt.name)
+    if binding is not None and binding.type is not None \
+            and not isinstance(binding.type, _PENDING_TYPES):
+        return binding.type
+    return resolve_stmt_type_cascade(stmt, analyzer, types)
+
+
 def resolve_stmt_type_cascade(
     stmt: TpyVarDecl,
     analyzer: SemanticAnalyzer,

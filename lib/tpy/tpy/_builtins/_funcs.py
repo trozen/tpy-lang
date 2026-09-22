@@ -571,13 +571,13 @@ def oct(x: int) -> str: ...
 @dispatch
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_enumerate<{T}>({0})")
+@cpp_template("::tpy::builtin_enumerate({0})")
 def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]: ...
 
 @dispatch
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_enumerate_start<{T}>({0}, {1})")
+@cpp_template("::tpy::builtin_enumerate({0}, {1})")
 def enumerate[T](iterable: Iterable[T], start: int32) -> Iterator[tuple[int32, T]]: ...
 
 
@@ -585,7 +585,7 @@ def enumerate[T](iterable: Iterable[T], start: int32) -> Iterator[tuple[int32, T
 
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_reversed<{T}>({0})")
+@cpp_template("::tpy::builtin_reversed({0})")
 def reversed[T](seq: Sequence[T]) -> Iterator[T]: ...
 
 
@@ -593,22 +593,22 @@ def reversed[T](seq: Sequence[T]) -> Iterator[T]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip<{T1}, {T2}>({0}, {1})")
+@cpp_template("::tpy::builtin_zip({0}, {1})")
 def zip[T1, T2](iter1: Iterable[T1], iter2: Iterable[T2]) -> Iterator[tuple[T1, T2]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip<{T1}, {T2}, {T3}>({0}, {1}, {2})")
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2})")
 def zip[T1, T2, T3](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3]) -> Iterator[tuple[T1, T2, T3]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip<{T1}, {T2}, {T3}, {T4}>({0}, {1}, {2}, {3})")
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3})")
 def zip[T1, T2, T3, T4](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4]) -> Iterator[tuple[T1, T2, T3, T4]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip<{T1}, {T2}, {T3}, {T4}, {T5}>({0}, {1}, {2}, {3}, {4})")
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3}, {4})")
 def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5]) -> Iterator[tuple[T1, T2, T3, T4, T5]]: ...
 
 
@@ -616,7 +616,7 @@ def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Ite
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map<{T}, {U}>({0}, {1})")
+@cpp_template("::tpy::builtin_map<{U}>({0}, {1})")
 def map[T, U](fn: Fn[[T], U], iterable: Iterable[T]) -> Iterator[U]: ...
 
 @dispatch
@@ -644,12 +644,12 @@ def map[T1, T2, T3, T4, T5, U](fn: Fn[[T1, T2, T3, T4, T5], U], iter1: Iterable[
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_filter<{T}>({0}, {1})")
+@cpp_template("::tpy::builtin_filter({0}, {1})")
 def filter[T](fn: Fn[[T], bool], iterable: Iterable[T]) -> Iterator[T]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_filter_truthy<{T}>({1})")
+@cpp_template("::tpy::builtin_filter_truthy({1})")
 def filter[T](fn: None, iterable: Iterable[T]) -> Iterator[T]: ...
 
 

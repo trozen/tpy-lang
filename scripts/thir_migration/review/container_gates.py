@@ -28,7 +28,7 @@ LOWER = os.path.join(REPO, "tpyc", "thir", "lower")
 
 CONTAINER_PREDS = ("is_list", "is_dict", "is_set", "is_array", "is_span",
                    "is_varargs", "is_dict_view", "is_bytearray_type")
-AXIS_PREDS = ("_f1_record", "_f1_ref", "_f1_container_ref",
+AXIS_PREDS = ("_f1_record", "record_like", "_f1_container_ref",
               "_bytes_family_ref", "is_value_type")
 OTHER = ("resolve_pending_container",)
 CORE = {"is_list", "is_dict", "is_set"}
