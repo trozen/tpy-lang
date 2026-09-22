@@ -60,7 +60,7 @@ from ..typesys import (
 )
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
-    THIRCoerce, THIRConstructor,
+    THIRCoerce, THIRConstructor, THIRCopy, THIRMove,
     THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
@@ -340,12 +340,18 @@ def _check_node(owner: str, node: THIRNode) -> None:
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
         if isinstance(node, THIRAssign) and node.optional_record_assignment is not None:
             fact = node.optional_record_assignment
+            match node.value:
+                case THIRCtorCall() | THIRCopy():
+                    valid_form = node.value.form is Form.STORAGE
+                case THIRMove(value=source):
+                    valid_form = node.value.form is source.form
+                case _:
+                    valid_form = False
             if (not isinstance(fact, THIRBorrowedRecord) or fact.readonly is not False
                     or not isinstance(node.target, THIRName)
                     or node.target.result_type != fact.type
-                    or not isinstance(node.value, THIRCtorCall)
                     or unwrap_readonly(unwrap_ref_type(node.value.result_type)) != fact.type
-                    or node.value.form is not Form.STORAGE
+                    or not valid_form
                     or any(f is not None for f in (node.optional_layout, node.union_layout,
                                                    node.alias_binding, node.storage_borrow, node.rebind_storage))):
                 _fail(owner, node, "invalid optional record assignment fact")

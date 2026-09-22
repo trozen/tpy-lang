@@ -8743,6 +8743,14 @@ region-local record moves now reach MIR through production THIR; hoisted and
 reused-slot moves remain explicit MIR coverage boundaries. Existing C++
 storage conventions and checker authority stay unchanged.
 
+[M3.26](MIR_M3_REUSED_RECORD_STORAGE_PLAN.md) extends the existing reusable
+record storage modes to copy/move operations at the internal THIR/MIR boundary.
+Existing source copy replacements with complete storage facts also reach MIR,
+including separate backing for a retained old alias, in-place writes through
+plain/present Optional holders and escape-hoisted body backing. Hoisted
+copy/move producer metadata remains M3.27 work. Source behavior, C++ emission
+and checker authority are unchanged.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

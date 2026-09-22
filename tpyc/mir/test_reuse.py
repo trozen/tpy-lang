@@ -180,14 +180,15 @@ def test_reuse_requires_body_storage(duration: MIRStorageDuration | None) -> Non
         validate_function(replace(fn, slots=(fn.slots[0], replace(fn.slots[1], storage_duration=duration), *fn.slots[2:])))
 
 
-def test_site_has_one_static_writer_and_no_copy_move_or_scalar_fact() -> None:
+def test_site_has_one_static_writer_and_valid_initialized_source() -> None:
     fn = backing_function()
     stmt = fn.blocks[1].statements[0]
     with pytest.raises(MIRValidationError, match="repeated storage initialization"):
         validate_function(replace(fn, blocks=(fn.blocks[0], replace(fn.blocks[1], statements=(stmt, stmt)), fn.blocks[2])))
-    for value in (MIRCopy(stmt.target), MIRMove(stmt.target.root)):
-        with pytest.raises(MIRValidationError, match="reusable backing needs constructor"):
-            validate_function(rewrite_site(fn, value=value))
+    with pytest.raises(MIRValidationError, match="read before definite assignment"):
+        validate_function(rewrite_site(fn, value=MIRCopy(stmt.target)))
+    with pytest.raises(MIRValidationError, match="record move source or eligibility"):
+        validate_function(rewrite_site(fn, value=MIRMove(stmt.target.root)))
     with pytest.raises(MIRValidationError, match="record write on non-record"):
         validate_function(rewrite_site(fn, target=MIRPlace(fn.slots[3].id), value=MIRConstant(1)))
     with pytest.raises(MIRValidationError, match="reusable backing needs movable record"):

@@ -133,8 +133,11 @@ class _Coverage:
                              "hoisted initial backing")
                 if stmt.owned_storage is not None and loops:
                     _require(stmt, isinstance(stmt.init, th.THIRCtorCall)
-                             or stmt.storage_placement is th.THIRStoragePlacement.SCOPE,
-                             "loop copy or move needs scoped storage")
+                             or stmt.storage_placement is th.THIRStoragePlacement.SCOPE
+                             or (isinstance(stmt, th.THIRPtrLocalDecl)
+                                 and stmt.kind is th.PtrSlotKind.RECORD_HOISTED
+                                 and stmt.storage_placement is th.THIRStoragePlacement.BODY),
+                             "loop copy or move needs scoped or hoisted storage")
                 if isinstance(stmt, th.THIRVarDecl) and stmt.native_container is not None:
                     _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const",
                                   "cpp_local_representation", "native_container"})
@@ -288,14 +291,14 @@ class _Coverage:
             _require(stmt, stmt.kind in (th.PtrSlotKind.RECORD_RVALUE, th.PtrSlotKind.RECORD_HOISTED),
                      "owned declaration kind")
             if stmt.kind is th.PtrSlotKind.RECORD_HOISTED:
-                _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.BODY
-                         and isinstance(stmt.init, th.THIRCtorCall), "hoisted backing needs body constructor site")
+                _require(stmt, stmt.storage_placement is th.THIRStoragePlacement.BODY,
+                         "hoisted backing needs body storage site")
         _plain(stmt, allowed)
         _require(stmt, stmt.init is not None and stmt.is_const == fact.readonly,
                  "owned declaration initializer or access")
         self.record_value(stmt.init, fact.type)
         if isinstance(stmt, th.THIRPtrLocalDecl) and stmt.kind is th.PtrSlotKind.RECORD_HOISTED:
-            _require(stmt, self.records[fact.type].layout.movable, "hoisted constructor needs movable record")
+            _require(stmt, self.records[fact.type].layout.movable, "hoisted backing needs movable record")
         self.bindings[stmt.name] = fact.type
         self.references[stmt.name] = fact
         if (isinstance(stmt, th.THIRVarDecl) and stmt.form is th.Form.STORAGE
@@ -310,7 +313,6 @@ class _Coverage:
                  "unsupported replacement storage")
         _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE
                  or not self.references[name].readonly, "readonly in-place replacement")
-        _require(stmt, isinstance(stmt.value, th.THIRCtorCall), "replacement needs constructor")
         self.record_value(stmt.value, self.references[name].type)
         _require(stmt, self.records[self.references[name].type].layout.movable,
                  "replacement needs movable record")
@@ -906,7 +908,6 @@ class _Coverage:
                 _require(stmt, self.optional_record_storage.get(name) == fact
                          and self.bindings.get(name) == stmt.target.result_type == fact.type,
                          "optional record backing mismatch")
-                _require(stmt, isinstance(stmt.value, th.THIRCtorCall), "optional record assignment needs constructor")
                 self.record_value(stmt.value, fact.type)
                 _require(stmt, self.records[fact.type].layout.movable, "optional backing needs movable record")
             case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.union_layout is not None:
@@ -943,7 +944,6 @@ class _Coverage:
                              "unsupported optional replacement storage")
                     _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE or not member.readonly,
                              "readonly in-place replacement")
-                    _require(stmt, isinstance(stmt.value, th.THIRCtorCall), "replacement needs constructor")
                     self.record_value(stmt.value, member.type)
                     _require(stmt, self.records[member.type].layout.movable, "replacement needs movable record")
                 else:
@@ -1459,7 +1459,7 @@ class _Builder:
                  "missing direct storage placement")
         return self.region if self.region.index else MIRStorageDuration.BODY
 
-    def optional_record(self, expr: th.THIRCtorCall, fact: th.THIRBorrowedRecord,
+    def optional_record(self, expr: th.THIRExpr, fact: th.THIRBorrowedRecord,
                         mode: MIRRecordWriteMode) -> MIRRvalue:
         storage = self.slot(fact.type, storage=True, storage_duration=(self.region
                             if mode is MIRRecordWriteMode.INITIALIZE_REGION else MIRStorageDuration.BODY))

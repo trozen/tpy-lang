@@ -1,7 +1,7 @@
 # M3 completion checklist
 
 Current planning index, updated 2026-09-21. Implementation exists through
-M3.25; review/merge status is separate. The numbered increment plans below record
+M3.26; review/merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -93,6 +93,11 @@ the others visible.
   the box.
   M3.24's internal activation/retention contract and M3.25's bounded source-copy
   integration are implemented.
+  The approved [M3.26/M3.27 batch](MIR_M3_REUSED_RECORD_STORAGE_PLAN.md)
+  extends existing hoisted/reused record write modes to copy/move. M3.26
+  implements the internal contract and admits source replacements with complete
+  existing facts; M3.27 will supply the remaining hoisted THIR facts. The box
+  remains open.
 
 Exit evidence: source binding availability, physical construction, payload
 engagement, replacement and end events remain distinct on every admitted path.

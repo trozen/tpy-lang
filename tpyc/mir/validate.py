@@ -574,8 +574,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                     case MIRRecordWriteMode.OPTIONAL_ASSIGN:
                         _require(not stmt.target.projections
                                  and target.record_storage is MIRRecordStorageKind.OPTIONAL
-                                 and isinstance(value, MIRConstruct) and fact.rebind_owner is None,
-                                 "optional backing assignment needs constructor")
+                                 and fact.rebind_owner is None,
+                                 "invalid optional backing assignment")
                     case MIRRecordWriteMode.INITIALIZE_REGION:
                         _require(not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE
                                  and isinstance(target.storage_duration, MIRRegionId)
@@ -586,10 +586,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                         _require(not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE
                                  and target.storage_duration is MIRStorageDuration.BODY and fact.rebind_owner is None,
                                  "backing write needs private body storage")
-                        if fact.mode is MIRRecordWriteMode.OWN_SITE:
-                            _require(isinstance(value, MIRConstruct), "reusable backing needs constructor")
                     case MIRRecordWriteMode.IN_PLACE:
-                        _require(isinstance(value, MIRConstruct) and fact.rebind_owner == stmt.target.root
+                        _require(fact.rebind_owner == stmt.target.root
                                  and ((target.value_kind is MIRValueKind.BORROWED_RECORD
                                        and stmt.target.projections == (MIRDeref(),))
                                       or (target.value_kind is MIRValueKind.OPTIONAL
@@ -744,7 +742,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  or stmt.target.root not in initialized_storage, "repeated storage initialization")
                         initialized_storage.add(stmt.target.root)
                     else:
-                        _require(isinstance(value, MIRConstruct) and records[target_type].movable,
+                        _require(records[target_type].movable
+                                 and (isinstance(value, MIRConstruct)
+                                      or fact is not None and fact.mode is MIRRecordWriteMode.IN_PLACE),
                                  "unsupported record replacement")
                     match value:
                         case MIRConstruct():

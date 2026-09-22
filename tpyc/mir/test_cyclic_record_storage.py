@@ -104,7 +104,7 @@ def test_lowering_requires_positive_scoped_copy_fact(source: tuple[th.THIRFuncti
     fn = replace(fn, body=(*fn.body[:3], replace(loop, body=(local, *loop.body[1:])), fn.body[-1]))
     result = lower_function(fn, MIRBodyId("cyclic", "missing"), kind=MIRBodyKind.FREE_FUNCTION,
                             definitions=source[1])
-    assert isinstance(result, MIRNotCovered) and result.reason == "loop copy or move needs scoped storage"
+    assert isinstance(result, MIRNotCovered) and result.reason == "loop copy or move needs scoped or hoisted storage"
 
 
 def test_readonly_move_stays_uncovered(source: tuple[th.THIRFunction, MIRDefinitions]) -> None:
@@ -152,12 +152,15 @@ def test_transfer_does_not_bypass_activation_rules(move: bool, fault: str, reaso
 
 @pytest.mark.parametrize("shape", ["record", "singleton", "mixed", "optional", "union"])
 @pytest.mark.parametrize("safe", [False, True])
-def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool) -> None:
+@pytest.mark.parametrize("operation", ["construct", "copy", "move"])
+def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool, operation: str) -> None:
     fn, point, holder = loop_function(shape, safe=safe)
     block = fn.blocks[1]
     # Replace through current without the OWN-site reseat: prior aliases now overlap the write.
     write = replace(block.statements[point.index], target=MIRPlace(CURRENT, (MIRDeref(),)),
                     storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, CURRENT))
+    if operation != "construct":
+        write = replace(write, value=MIRCopy(MIRPlace(INITIAL)) if operation == "copy" else MIRMove(INITIAL))
     stmts = (*block.statements[:point.index], write, *block.statements[point.index + 3:])
     capture = stmts[-1]
     value = (replace(capture.value, elements=(CURRENT, *capture.value.elements[1:]))
