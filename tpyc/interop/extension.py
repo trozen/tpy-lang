@@ -13,10 +13,11 @@ gains types/forms, kept apart from the load-bearing generator.
 """
 from __future__ import annotations
 import io
-from typing import TYPE_CHECKING, TextIO
+from typing import TYPE_CHECKING, NamedTuple, TextIO
 
 from ..parse import TpyModule, TpyVarDecl
-from ..parse.nodes import TpyBytesLiteral, TpyFieldAccess, TpyName
+from ..parse.nodes import (
+    TpyBytesLiteral, TpyFieldAccess, TpyName, TpyNoneLiteral)
 from ..typesys import (
     TpyType, ParamInfo, is_void_like_type, FinalType, OwnType, ReadonlyType,
     error_return_uses_borrow_slot)
@@ -26,6 +27,7 @@ from ..type_def_registry import (
     is_str_view_type, boundary_cpp_type, boundary_type_name,
     boundary_unmarshallable_msg, is_internal_boundary_field,
     _container_element_types, is_list, is_dict, is_set,
+    boundary_optional_inner, boundary_optional_is_pointer,
 )
 from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD
 # The ONE classifier both ends of the identity/view contract consult: sema's
@@ -81,6 +83,33 @@ _NB_UNARY_OPS = {
 _NB_INPLACE_OPS = {
     AUGOP_TO_IMETHOD[sym]: slot for sym, slot in _NB_INPLACE_SYMBOL_SLOT.items()
 }
+
+
+class AliasCandidate(NamedTuple):
+    """A boundary-crossed object a borrow return may hand back by identity
+    (address match -> the original PyObject) or as a borrow view (the
+    returned reference lies inside its payload). `payload` names the live
+    payload: the lvalue itself for a plain class param / the receiver, or
+    the POINTER to it for an `Optional[Cls]` param (`nullable`), which is
+    null when None crossed -- so the address, size and null guard are
+    decided here, once, not at each consumer."""
+    payload: str
+    pyobj: str
+    info: 'RecordInfo'
+    nullable: bool = False
+
+    @property
+    def addr(self) -> str:
+        return self.payload if self.nullable else f"&{self.payload}"
+
+    @property
+    def size(self) -> str:
+        return (f"sizeof(*{self.payload})" if self.nullable
+                else f"sizeof({self.payload})")
+
+    @property
+    def guard(self) -> str:
+        return f"{self.payload} != nullptr && " if self.nullable else ""
 
 
 def doc_literal(text: str) -> str:
@@ -434,6 +463,17 @@ class ExtensionGenerator:
         (list[bytes] and list[list[uint8]] share a C++ type) -- and bottoms out
         at from_py<leaf>."""
         inner = _boundary_inner(typ)
+        opt = boundary_optional_inner(inner)
+        if opt is not None:
+            # The `std::optional<T>` expression: None is the gate, a present
+            # value is T's own leaf. It is the value form's local and the
+            # owned copy behind a pointer-form CONTAINER; a pointer-form
+            # CLASS is a payload borrow that _emit_marshal_in spells inline.
+            if boundary_optional_is_pointer(typ) and is_exposed_class(opt):
+                raise CodeGenError(
+                    "class-pointer Optional reached the expression marshaller")
+            return (f"::tpy::interop::optional_from_py("
+                    f"{src}, {self._in_lambda(opt, depth)})")
         elems = _container_element_types(inner)
         if elems is None:
             # A locally-exposed enum/class element marshals through its module
@@ -473,6 +513,10 @@ class ExtensionGenerator:
         the TPy value `src`. Mirror of _marshal_in_expr; container leaves are
         scalar/str/bytes or a locally-exposed enum/class element."""
         inner = _boundary_inner(typ)
+        opt = boundary_optional_inner(inner)
+        if opt is not None:
+            return (f"::tpy::interop::optional_to_py({src}, "
+                    f"{self._out_lambda(opt, depth, forwarding=True)})")
         elems = _container_element_types(inner)
         if elems is None:
             if is_exposed_class(inner):
@@ -497,8 +541,19 @@ class ExtensionGenerator:
         tfns = ", ".join(self._out_lambda(e, depth) for e in elems)
         return f"::tpy::interop::tuple_to_py({src}, {tfns})"
 
-    def _out_lambda(self, et: TpyType, depth: int) -> str:
+    def _out_lambda(self, et: TpyType, depth: int, *,
+                    forwarding: bool = False) -> str:
+        """The per-value out-conversion lambda. A container element leaf
+        takes `const T&` (an element is borrowed from its container); the
+        Optional leaf FORWARDS, because the optional is the callee's own
+        prvalue, so an `Own[Optional[Cls]]` moves its instance out exactly
+        as `Own[Cls]` does (a const-ref leaf would copy, which a @nocopy
+        class deletes)."""
         var = f"__o{depth}"
+        if forwarding:
+            src = f"std::forward<decltype({var})>({var})"
+            return (f"[](auto &&{var}) {{ return "
+                    f"{self._marshal_out_expr(et, src, depth + 1)}; }}")
         return (f"[](const {self._elem_cpp(et)} &{var}) {{ return "
                 f"{self._marshal_out_expr(et, var, depth + 1)}; }}")
 
@@ -616,6 +671,10 @@ class ExtensionGenerator:
         Span[T] / container type can be spelled -- which is what keeps the
         reference-binding arms below slot-unconditional.
         """
+        opt = boundary_optional_inner(typ)
+        if opt is not None:
+            return self._emit_optional_marshal_in(out, idx, typ, opt, sym,
+                                                  default_expr)
         if default_expr is not None:
             # One dispatcher for the supplied-argument half (`_marshal_in_expr`
             # already picks enum / container / scalar), so a defaulted param
@@ -659,28 +718,95 @@ class ExtensionGenerator:
                       f"::tpy::interop::from_py<{cpp}>(a{idx});\n")
         return f"__p{idx}"
 
+    def _emit_optional_marshal_in(self, out: TextIO, idx: int, typ: TpyType,
+                                  opt: TpyType, sym: str,
+                                  default_expr: 'TpyExpr | None') -> str:
+        """The Optional[T] param: None (or an omitted slot whose default is
+        None) is the gate, a present value marshals exactly as a T param
+        does. The pointer form (`T*`, a reference T) borrows the live
+        payload of an exposed class -- the same write-through alias a plain
+        class param is -- or points into an owned copy of a container (the
+        same copy-in a plain container param is). The value form is a
+        `std::optional` of T's owned local, which converts to the callee's
+        view-form param for str/bytes the way the plain owned local does.
+        Only a value form can carry a non-None default: no constant of a
+        reference type can be spelled."""
+        a = f"a{idx}"
+        pointer = boundary_optional_is_pointer(typ)
+        if pointer and default_expr is not None and not isinstance(
+                default_expr, TpyNoneLiteral):
+            raise CodeGenError(
+                f"parameter {idx}: a reference-typed Optional can only "
+                f"default to None")
+        if pointer and is_exposed_class(opt):
+            none = f"::tpy::interop::is_none({a})"
+            if default_expr is not None:
+                none = f"({a} == nullptr || {none})"  # an omitted slot is None
+            cpp, tv = self._class_cpp_var(opt, sym)
+            out.write(f"        {cpp} *__p{idx} = {none} ? nullptr : "
+                      f"::tpy::interop::instance_payload<{cpp}>("
+                      f"{a}, (::tpy::cpy::PyTypeObject *){tv});\n")
+            return f"__p{idx}"
+        # The `std::optional<T>` local: the value form's own, or the owned
+        # copy a pointer-form CONTAINER points into.
+        local = f"__p{idx}_own" if pointer else f"__p{idx}"
+        got = self._marshal_in_expr(typ, a, 0)
+        if self._container_has_exposed_element(opt):
+            # Same reason as the plain container arm: the element's bare
+            # C++ name is not visible in the glue, so the marshaller's
+            # qualified return type drives the local (and spells the
+            # default's slot, since `auto{...}` is not a type).
+            cpp, slot = "auto", f"decltype({got})"
+        else:
+            cpp = slot = f"std::optional<{self._elem_cpp(opt)}>"
+        if default_expr is None:
+            out.write(f"        {cpp} {local} = {got};\n")
+        else:
+            if isinstance(default_expr, TpyNoneLiteral):
+                dflt = "std::nullopt"
+            else:
+                dflt = self._boundary_default_expr(opt, default_expr,
+                                                   self._elem_cpp(opt))
+            out.write(f"        {cpp} {local} = {a} ? {got} : "
+                      f"{slot}{{{dflt}}};\n")
+        if pointer:
+            out.write(f"        auto *__p{idx} = {local} ? "
+                      f"&*{local} : nullptr;\n")
+        return f"__p{idx}"
+
     def _param_alias_candidates(
             self, params: list[tuple[str, TpyType]]
-    ) -> list[tuple[str, str, 'RecordInfo']]:
-        """(payload_expr, pyobj_expr, RecordInfo) for each exposed-class
-        param -- the boundary-crossed objects a borrow return could hand
-        back by identity (`__p{i}` is the payload reference
-        `_emit_marshal_in` binds for the class param `a{i}`)."""
+    ) -> list[AliasCandidate]:
+        """The AliasCandidate for each exposed-class param. `__p{i}` is what
+        `_emit_marshal_in` binds for the class param `a{i}`: the payload
+        REFERENCE for a plain class param, the payload POINTER for an
+        `Optional[Cls]` one (nullable)."""
         reg = self.ctx.analyzer.registry
-        out: list[tuple[str, str, 'RecordInfo']] = []
+        out: list[AliasCandidate] = []
         for i, (_pn, t) in enumerate(params):
+            opt = boundary_optional_inner(t)
+            if opt is not None:
+                # The value form (a value class, or under Own) is a copy with
+                # no live object behind it -- never a candidate.
+                if not boundary_optional_is_pointer(t) or not is_exposed_class(opt):
+                    continue
+                cinfo = reg.get_record_for_type(opt)
+                if cinfo is not None:
+                    out.append(AliasCandidate(f"__p{i}", f"a{i}", cinfo,
+                                              nullable=True))
+                continue
             if not is_exposed_class(t):
                 continue
             cinfo = reg.get_record_for_type(_boundary_inner(t))
             if cinfo is not None:
-                out.append((f"__p{i}", f"a{i}", cinfo))
+                out.append(AliasCandidate(f"__p{i}", f"a{i}", cinfo))
         return out
 
     def _scoped_alias_candidates(
             self, ret_typ: TpyType,
-            alias_candidates: list[tuple[str, str, 'RecordInfo']]
-    ) -> list[tuple[str, str]]:
-        """Filter (payload_expr, pyobj_expr, RecordInfo) alias candidates down
+            alias_candidates: 'list[AliasCandidate] | tuple[AliasCandidate, ...]'
+    ) -> list[AliasCandidate]:
+        """Filter the alias candidates down
         to those whose declared class is inheritance-related to the return
         class. Only for related classes does address equality imply "same
         object": an UNRELATED exposed class can share the returned reference's
@@ -692,10 +818,10 @@ class ExtensionGenerator:
             # A value-type class returns by value (a prvalue -- nothing to
             # address-match, and copying is its honest semantics anyway).
             return []
-        return [(payload, pyobj) for payload, pyobj, cinfo in alias_candidates
-                if cinfo is rinfo
-                or reg.is_subclass_of_record(cinfo, rinfo)
-                or reg.is_subclass_of_record(rinfo, cinfo)]
+        return [c for c in alias_candidates
+                if c.info is rinfo
+                or reg.is_subclass_of_record(c.info, rinfo)
+                or reg.is_subclass_of_record(rinfo, c.info)]
 
     def _view_fallback_ok(self, ast_fn, ret_typ: TpyType | None,
                           params, rec_info=None) -> bool:
@@ -709,6 +835,13 @@ class ExtensionGenerator:
         warning)."""
         if ast_fn is None or ret_typ is None:
             return False
+        opt = boundary_optional_inner(ret_typ)
+        if opt is not None:
+            # `-> Optional[Cls]` in its `T*` form is the same borrow return
+            # behind a None gate; the value form copies and has no view path.
+            if not boundary_optional_is_pointer(ret_typ):
+                return False
+            ret_typ = opt
         if not is_exposed_class(ret_typ):
             return False
         reg = self.ctx.analyzer.registry
@@ -792,8 +925,7 @@ class ExtensionGenerator:
 
     def _emit_call_return(self, out: TextIO, ret_typ: TpyType | None,
                           call_expr: str, sym: str,
-                          alias_candidates: tuple[tuple[str, str, 'RecordInfo'], ...] |
-                          list[tuple[str, str, 'RecordInfo']] = (),
+                          alias_candidates: 'tuple[AliasCandidate, ...] | list[AliasCandidate]' = (),
                           view_fallback: bool = False,
                           indent: str = "        ") -> None:
         """Emit the return of a boundary call: void -> None; an exposed class
@@ -806,11 +938,25 @@ class ExtensionGenerator:
         CONTAINS the reference (a never-reassigned field; owner keepalive,
         registry-deduped identity), else a fresh wrapping instance
         (instance_to_py); an Own[...] class return is always a fresh
-        instance; else to_py."""
+        instance; else to_py. An Optional[T] return is None when absent and
+        otherwise T's own return: the `T*` form is dereferenced into the
+        ladder above (identity/view/copy exactly as `-> T`), the value form
+        (`std::optional<T>`) goes through optional_to_py with T's leaf."""
         ind = indent
+        opt = (boundary_optional_inner(ret_typ) if ret_typ is not None
+               else None)
         if ret_typ is None or is_void_like_type(ret_typ):
             out.write(f"{ind}{call_expr};\n")
             out.write(f"{ind}return ::tpy::interop::none_to_py();\n")
+        elif opt is not None and boundary_optional_is_pointer(ret_typ):
+            out.write(f"{ind}auto *__ro = {call_expr};\n")
+            out.write(f"{ind}if (__ro == nullptr) "
+                      f"return ::tpy::interop::none_to_py();\n")
+            self._emit_call_return(out, opt, "(*__ro)", sym,
+                                   alias_candidates, view_fallback, indent)
+        elif opt is not None:
+            out.write(f"{ind}return "
+                      f"{self._marshal_out_expr(ret_typ, call_expr, 0)};\n")
         elif is_exposed_class(ret_typ):
             _cpp, tv = self._class_cpp_var(ret_typ, sym)
             # Borrow-form returns only: an Own[...] return is a fresh value
@@ -834,15 +980,15 @@ class ExtensionGenerator:
                      if view_fallback and not isinstance(t, OwnType) else [])
             if scoped or views:
                 out.write(f"{ind}auto &__r = {call_expr};\n")
-                for payload, pyobj in scoped:
-                    out.write(f"{ind}if (&__r == &{payload}) {{ "
-                              f"Py_IncRef({pyobj}); return {pyobj}; }}\n")
-                for payload, pyobj, _cinfo in views:
-                    out.write(f"{ind}if (::tpy::interop::within_payload("
-                              f"&__r, &{payload}, sizeof({payload})))\n")
+                for c in scoped:
+                    out.write(f"{ind}if (&__r == {c.addr}) {{ "
+                              f"Py_IncRef({c.pyobj}); return {c.pyobj}; }}\n")
+                for c in views:
+                    out.write(f"{ind}if ({c.guard}::tpy::interop::"
+                              f"within_payload(&__r, {c.addr}, {c.size}))\n")
                     out.write(f"{ind}    return ::tpy::interop::"
                               f"borrow_to_py((::tpy::cpy::PyTypeObject *)"
-                              f"{tv}, __r, {pyobj}, {sym}__view_registry);\n")
+                              f"{tv}, __r, {c.pyobj}, {sym}__view_registry);\n")
                 out.write(f"{ind}return ::tpy::interop::instance_to_py("
                           f"(::tpy::cpy::PyTypeObject *){tv}, __r);\n")
             else:
@@ -1057,6 +1203,13 @@ class ExtensionGenerator:
         @export function param. (For a getset field setter the exposed-class arm
         is reached only by an immutable value-type field, where the copy-in is
         sound; a mutable reference-class field is sema-rejected.)"""
+        opt = boundary_optional_inner(typ)
+        if opt is not None:
+            # A value-form Optional field: `std::optional<T>` storage, the
+            # None gate in front of T's leaf. (The pointer form never
+            # reaches here: a slot refuses it, a field is sema-rejected.)
+            return (f"std::optional<{self._elem_cpp(opt)}> ",
+                    self._marshal_in_expr(typ, src, 0))
         if is_exposed_class(typ):
             cpp, tv = self._class_cpp_var(typ, sym)
             return (f"const {cpp} &",
@@ -1076,6 +1229,10 @@ class ExtensionGenerator:
         exposed-class arm is reached only by an immutable value-type field,
         which copies out; a mutable reference-class field crosses as a
         borrow-view getset or is sema-rejected.)"""
+        if boundary_optional_inner(ret_typ) is not None:
+            # A value-form Optional field read: the field is an lvalue, so
+            # the forwarding leaf binds a reference and T copies out.
+            return self._marshal_out_expr(ret_typ, call_expr, 0)
         if ret_typ is not None and is_exposed_class(ret_typ):
             _cpp, tv = self._class_cpp_var(ret_typ, sym)
             return (f"::tpy::interop::instance_to_py("
@@ -1150,12 +1307,12 @@ class ExtensionGenerator:
             # Per-branch candidates: the branch's receiver + its class-typed
             # operand (both live boundary-crossed PyObjects; the classifier's
             # alias_records is the same receiver+params set).
-            candidates = [(recv, self_var, info)]
+            candidates = [AliasCandidate(recv, self_var, info)]
             if is_exposed_class(operand_type):
                 oinfo = self.ctx.analyzer.registry.get_record_for_type(
                     _boundary_inner(operand_type))
                 if oinfo is not None:
-                    candidates.append(("__other", operand_var, oinfo))
+                    candidates.append(AliasCandidate("__other", operand_var, oinfo))
             self._emit_call_return(
                 out, ret_typ, call, sym, candidates,
                 view_fallback=self._view_fallback_method(
@@ -1195,7 +1352,7 @@ class ExtensionGenerator:
         call = f"{cppvar}->p->{dunder}()"
         self._emit_call_return(
             out, m.return_type, call, sym,
-            [(f"(*{cppvar}->p)", "self", info)],
+            [AliasCandidate(f"(*{cppvar}->p)", "self", info)],
             view_fallback=self._view_fallback_method(
                 cls, dunder, m.return_type, []))
         self._emit_boundary_catch(out, reg_arg)
@@ -1305,12 +1462,12 @@ class ExtensionGenerator:
         decl, expr = self._value_in_decl_expr(key_type, "key", sym)
         out.write(f"        {decl}__key = {expr};\n")
         call = f"{cppvar}->p->__getitem__(__key)"
-        candidates = [(f"(*{cppvar}->p)", "self", cls["info"])]
+        candidates = [AliasCandidate(f"(*{cppvar}->p)", "self", cls["info"])]
         if is_exposed_class(key_type):
             kinfo = self.ctx.analyzer.registry.get_record_for_type(
                 _boundary_inner(key_type))
             if kinfo is not None:
-                candidates.append(("__key", "key", kinfo))
+                candidates.append(AliasCandidate("__key", "key", kinfo))
         params = [(p.name, p.type) for p in m.params]
         self._emit_call_return(
             out, m.return_type, call, sym, candidates,
@@ -1441,7 +1598,7 @@ class ExtensionGenerator:
                 else "std::move(__e).value()")
         self._emit_call_return(
             out, ret_typ, call, sym,
-            [(f"(*{cppvar}->p)", "self", info)],
+            [AliasCandidate(f"(*{cppvar}->p)", "self", info)],
             view_fallback=self._view_fallback_method(
                 cls, "__next__", ret_typ, []))
         self._emit_boundary_catch(out, reg_arg)
@@ -1467,7 +1624,7 @@ class ExtensionGenerator:
         out.write(f"        auto &__self = *{cppvar}->p;\n")
         self._emit_call_return(out, info.methods["__iter__"][0].return_type,
                                "__self.__iter__()", sym,
-                               [("__self", "self", info)],
+                               [AliasCandidate("__self", "self", info)],
                                view_fallback=self._view_fallback_method(
                                    cls, "__iter__",
                                    info.methods["__iter__"][0].return_type,
@@ -1642,7 +1799,7 @@ class ExtensionGenerator:
             call = f"__self.{escape_cpp_name(mname)}({', '.join(argtoks)})"
             self._emit_call_return(
                 out, m.return_type, call, sym,
-                [("__self", "self", info)]
+                [AliasCandidate("__self", "self", info)]
                 + self._param_alias_candidates(params),
                 view_fallback=self._view_fallback_method(
                     cls, mname, m.return_type, params))
@@ -1756,7 +1913,7 @@ class ExtensionGenerator:
             out.write(f"        auto &__self = *{cppvar}->p;\n")
             self._emit_call_return(out, prop.getter.return_type,
                                    f"__self.{pcpp}()", sym,
-                                   [("__self", "self", info)],
+                                   [AliasCandidate("__self", "self", info)],
                                    view_fallback=self._view_fallback_method(
                                        cls, pname, prop.getter.return_type,
                                        [], property_getter=True))

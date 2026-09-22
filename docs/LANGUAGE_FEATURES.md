@@ -6841,6 +6841,34 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   and a **cross-module** exposed element. Verified in `tests/interop/containers/`,
   `tests/interop/class_method_containers/`, and
   `tests/interop/container_exposed_elements/`.
+- **Working (`Optional[T]`)**: an `@export` function, exposed-class method,
+  `__init__` or property taking or returning `Optional[T]` for any `T` the
+  boundary already admits. `None` is the gate and a present value is `T`'s
+  own crossing: IN, `None` (or an omitted slot defaulting to `None`) binds
+  the null of `T`'s form and anything else takes `T`'s strict conversion
+  (a wrong type is still a `TypeError`); OUT, the null crosses as `None`.
+  The form is the Optional's own: a reference `T` (an exposed reference
+  class, a list/dict/set) is `T*` -- a class param borrows the live payload
+  and mutation writes through, an `-> Optional[Cls]` return takes the same
+  identity / borrow-view / copy ladder as `-> Cls` (`return self` or a param
+  is the original object; a body whose every return is `None` copies
+  nothing and is not warned), and a container is the container cliff behind
+  the gate (a mutated `Optional[list[T]]` param warns like `list[T]`); a
+  value `T` (scalars, `str`, `bytes`, an enum, a value class, a tuple) --
+  or any `T` under `Own[...]` -- is `std::optional<T>`, marshalled through
+  `optional_from_py` / `optional_to_py` with `T`'s leaf, glue-driven like
+  the containers. A non-`None` default (`by: Optional[int32] = 3`) crosses
+  too, and a value-form Optional *field* (`note: Optional[str]`,
+  `tint: Optional[Color]`) is a read/write getset that passes `None`
+  both ways. **Not admitted** (located error): an Optional
+  *reference-class field* (a view through the gate is not supported yet:
+  it would alias the storage slot across a `None`/value rebind), an
+  Optional in a *dunder slot* signature, an Optional as a *container
+  element* (`list[Optional[int]]`) -- see TODO "Optional boundary --
+  deferred slices". A `@property -> Optional[Cls]` getter over a
+  reference class passes the boundary and fails in the module half
+  (`BUGS.md#property-getter-pointer-optional-return`, plain-TPy). Verified
+  end to end in `tests/interop/optionals/`.
 - **Working (`Span[T]` numeric, buffer protocol)**: a `Span[readonly[T]]` or
   `Span[T]` param (`T` a fixed-width int or `float`) binds to any
   buffer-protocol object -- `array.array`, `memoryview`, `bytes`/`bytearray`,

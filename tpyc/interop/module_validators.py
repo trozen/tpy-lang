@@ -197,7 +197,8 @@ def _warn_copy_boundary_mutation(
     (index, (name, type)) with indices aligned to `fi.mutated_params`
     (so a method's entries keep their self-inclusive positions)."""
     from ..type_def_registry import (
-        is_list, is_dict, is_set, is_span, _boundary_inner)
+        is_list, is_dict, is_set, is_span, _boundary_inner,
+        boundary_optional_inner)
     # `mutated_params` (not `structural_mutated_params`) is the caller-visible
     # write-back fact: it covers element assignment (d[k] = v) that the
     # narrower structural set omits. A reference-type container param is
@@ -207,6 +208,9 @@ def _warn_copy_boundary_mutation(
         if i not in mut:
             continue
         inner = _boundary_inner(ptype)  # strip the auto-inserted Ref/borrow
+        opt = boundary_optional_inner(inner)
+        if opt is not None:
+            inner = opt  # Optional[list[T]] copies in exactly as list[T] does
         kind = ("list" if is_list(inner) else
                 "dict" if is_dict(inner) else
                 "set" if is_set(inner) else
@@ -305,6 +309,7 @@ def _validate_exposed_class(compiled: 'CompiledModule',
     to marshal.
     """
     from ..type_def_registry import (
+        boundary_optional_inner, boundary_optional_is_pointer,
         is_boundary_marshallable, is_function_boundary_marshallable,
         is_span_boundary_param, is_internal_boundary_field,
         is_exposed_class, _boundary_inner,
@@ -379,6 +384,13 @@ def _validate_exposed_class(compiled: 'CompiledModule',
         # getter/setter path has no container emit.
         if role == "field":
             if is_boundary_marshallable(typ, False):
+                return
+            opt = boundary_optional_inner(typ)
+            if (opt is not None and not boundary_optional_is_pointer(typ)
+                    and is_boundary_marshallable(opt, False)):
+                # The value form (`std::optional<T>` storage) crosses as a
+                # getset through the same gate the params use; the
+                # pointer form was rejected by the form check above.
                 return
             if field_ctx is not None and exposed_view_field(
                     field_ctx[0], field_ctx[1], reg) is not None:
@@ -479,14 +491,16 @@ def _validate_exposed_class(compiled: 'CompiledModule',
                      p_loc)
         # The parser guarantees a setter takes exactly one value param.
         sp = next(p for p in prop.setter.params if p.name != "self")
-        if is_exposed_class(sp.type):
+        sp_inner = boundary_optional_inner(sp.type)
+        if is_exposed_class(sp_inner if sp_inner is not None else sp.type):
             # Every class-typed setter param is an ownership transfer (the
             # property Own auto-wrap runs before a user record's ValueType
             # flag is known, so value classes are wrapped too), but a class
             # value arrives as a borrow of the live argument payload --
             # nothing to move from. The generic Own[Cls] message would
             # advise "use the borrow form", which a setter cannot spell.
-            cls_name = _boundary_inner(sp.type).name
+            cls_name = (sp_inner if sp_inner is not None
+                        else _boundary_inner(sp.type)).name
             reject(f"property '{pname}' setter takes exposed class "
                    f"'{cls_name}': the value arrives as a borrow of the "
                    f"live argument, which the setter's ownership-transfer "
@@ -504,7 +518,9 @@ def _validate_exposed_class(compiled: 'CompiledModule',
 
 def _exposed_form_error(typ, role: str, registry,
                         compiled: 'CompiledModule',
-                        field_ctx=None) -> 'str | None':
+                        field_ctx=None, *,
+                        as_written: 'str | None' = None,
+                        borrow_advice: 'str | None' = None) -> 'str | None':
     """Diagnose an exposed-class or exposed-enum boundary type the glue
     cannot emit, so a located error replaces an opaque C++ failure. role in
     {field,param,return}. Returns the message tail or None.
@@ -529,8 +545,48 @@ def _exposed_form_error(typ, role: str, registry,
     from ..typesys import OwnType, TupleType
     from ..type_def_registry import (
         is_exposed_class, is_exposed_enum, _boundary_inner, enum_info_of,
-        _container_element_types)
+        _container_element_types, boundary_optional_inner,
+        boundary_optional_owns, boundary_optional_is_pointer)
     module_name = compiled.analyzer.ctx.module_name
+
+    if role == "field":
+        opt = boundary_optional_inner(typ)
+        if opt is not None:
+            if (boundary_optional_is_pointer(typ)
+                    and is_exposed_class(opt)):
+                # No aliasing view through the gate yet: it would alias
+                # the storage slot across a None/value rebind, where CPython
+                # keeps the old object. (The never-reassigned case a bare
+                # class field crosses on is not tracked through the gate.)
+                cls = registry.get_record_for_type(opt)
+                cls = cls.name if cls is not None else "the class"
+                return (f"of type '{_boundary_inner(typ)}' cannot be exposed "
+                        f"as a getset field: a view of an Optional "
+                        f"reference-class field is not supported yet -- it "
+                        f"would alias the storage slot across a None / "
+                        f"'{cls}' rebind, where CPython keeps the old object. "
+                        f"Make the field internal by prefixing its name with "
+                        f"'_' (kept as payload state, never a Python "
+                        f"attribute) and expose a method that reads or "
+                        f"replaces it through 'self'")
+            # The value form copies like any value field, so T answers the
+            # remaining form questions (the cross-module handle checks).
+            return _exposed_form_error(opt, role, registry, compiled,
+                                       field_ctx)
+    else:
+        # Optional[T] at a param/return is T's crossing behind a None gate,
+        # so T answers the form questions. A FIELD never peels: the getset
+        # path has no gate emit, so it stays rejected.
+        opt = boundary_optional_inner(typ)
+        if opt is not None:
+            # An Own on either side of the gate stays on T: at a return it
+            # moves a fresh instance out (the @nocopy borrow rule must see
+            # it), at a param the Own[Cls] rule rejects it -- in the spelling
+            # the user wrote, with the gate kept in the advice.
+            sub = OwnType(opt) if boundary_optional_owns(typ) else opt
+            return _exposed_form_error(
+                sub, role, registry, compiled, field_ctx,
+                as_written=str(typ), borrow_advice="Optional[{cls}]")
 
     def _unsupported_exposed_element(t, depth: int = 0) -> 'str | None':
         # Element shapes the per-element marshaller can't emit yet -- reject
@@ -684,9 +740,11 @@ def _exposed_form_error(typ, role: str, registry,
                 f"Python attribute) and expose a method that mutates it "
                 f"through 'self' or returns an explicit copy()")
     if role == "param" and isinstance(typ, OwnType):
-        return (f"is Own[{cls}], which is not a valid boundary type: the host "
+        spelled = as_written or f"Own[{cls}]"
+        advice = (borrow_advice or "{cls}").format(cls=cls)
+        return (f"is {spelled}, which is not a valid boundary type: the host "
                 f"keeps its reference, so ownership cannot transfer -- use "
-                f"the borrow form '{cls}'")
+                f"the borrow form '{advice}'")
     if role == "return":
         # Shared with the dunder validator; peels every borrow spelling
         # (RefType, readonly-topped, the property getter's un-normalized

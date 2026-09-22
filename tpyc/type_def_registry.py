@@ -575,10 +575,16 @@ def is_function_boundary_marshallable(t: "TpyType | None",
     `is_boundary_marshallable`."""
     inner = _boundary_inner(t) if t is not None else t
     if inner is not None:
+        # Optional[T] is T's own crossing behind a None gate, at this
+        # boundary only: the getset FIELD path (base rule) and a container
+        # ELEMENT position have no gate emit, so neither peels it.
+        opt = boundary_optional_inner(inner)
+        if opt is not None:
+            inner = opt
         elems = _container_element_types(inner)
         if elems is not None:
             return all(_is_marshallable_element(e) for e in elems)
-    return is_boundary_marshallable(t, allow_void)
+    return is_boundary_marshallable(inner, allow_void)
 
 
 def _container_element_types(t: "TpyType") -> "list[TpyType] | None":
@@ -613,19 +619,73 @@ def _is_marshallable_element(t: "TpyType") -> bool:
     return td is not None and td.boundary_marshal
 
 
-def _boundary_inner(t: "TpyType") -> "TpyType":
-    """Strip the Own (ownership transfer), Ref (auto-inserted borrow form at
-    param/return boundaries), and Readonly (immutable-borrow) wrappers so the
-    boundary predicates see the bare marshalled type. A class param arrives as
-    Ref[Counter] (or readonly[Counter] for a comparison-dunder-style
+def _boundary_peel(t: "TpyType") -> "tuple[TpyType, bool]":
+    """(bare type, owned): strip the Own (ownership transfer), Ref
+    (auto-inserted borrow form at param/return boundaries), and Readonly
+    (immutable-borrow) wrappers so the boundary predicates see the bare
+    marshalled type, and say whether an Own was among them. A class param
+    arrives as Ref[Counter] (or readonly[Counter] for a comparison-dunder-style
     non-mutating param), an owning return as Own[Counter]; all marshal iff the
     inner type does. Constness itself is a separate codegen concern (the C++
-    reference's const-ness), not something these type-identity predicates need."""
+    reference's const-ness), not something these type-identity predicates
+    need; ownership is the one wrapper fact they do read."""
     from tpyc.typesys import OwnType, RefType, ReadonlyType
     inner = t
+    owned = False
     while isinstance(inner, (OwnType, RefType, ReadonlyType)):
+        owned = owned or isinstance(inner, OwnType)
         inner = inner.wrapped
-    return inner
+    return inner, owned
+
+
+def _boundary_inner(t: "TpyType") -> "TpyType":
+    """The bare marshalled type behind Own/Ref/Readonly (see _boundary_peel)."""
+    return _boundary_peel(t)[0]
+
+
+def boundary_optional_inner(t: "TpyType | None") -> "TpyType | None":
+    """The bare `T` of an `Optional[T]` boundary type (Own/Ref/Readonly
+    peeled on both sides of the Optional), else None. ONE peel for every
+    site that gates on None and then asks T -- admission, the form checks,
+    the copy warnings, the glue's marshal-in / call-return arms and its
+    alias candidates -- so no site re-derives the shape. Which form the
+    gate takes is the Optional's own `uses_pointer_repr()` (`T*` over a
+    reference inner, `std::optional<T>` over a value one), never re-decided
+    here; an `Own` spelled INSIDE the Optional is `boundary_optional_owns`."""
+    from tpyc.typesys import OptionalType
+    if t is None:
+        return None
+    inner = _boundary_inner(t)
+    return (_boundary_inner(inner.inner) if isinstance(inner, OptionalType)
+            else None)
+
+
+def boundary_optional_owns(t: "TpyType | None") -> bool:
+    """Whether an Optional boundary type spells ownership transfer of its
+    inner -- `Own[Optional[T]]` or `Optional[Own[T]]` -- which the param
+    validator rejects for a class exactly as it rejects `Own[Cls]`."""
+    from tpyc.typesys import OptionalType
+    if t is None:
+        return False
+    inner, owned_outside = _boundary_peel(t)
+    if not isinstance(inner, OptionalType):
+        return False
+    return owned_outside or _boundary_peel(inner.inner)[1]
+
+
+def boundary_optional_is_pointer(t: "TpyType | None") -> bool:
+    """Whether an Optional boundary type crosses in its `T*` form: a
+    reference inner (an exposed reference class, a list/dict/set) and not
+    under `Own[...]`, which forces the value form (`std::optional<T>`) on
+    any inner. The pointer form is a live borrow -- an alias candidate at a
+    param, the identity/view ladder at a return; the value form is a copy
+    either way. False for a non-Optional."""
+    from tpyc.typesys import OptionalType
+    if t is None:
+        return False
+    inner, owned = _boundary_peel(t)
+    return (isinstance(inner, OptionalType) and not owned
+            and inner.uses_pointer_repr())
 
 
 def is_span_boundary_param(t: "TpyType | None") -> bool:
@@ -711,8 +771,10 @@ def boundary_unmarshallable_msg(name: str, what: str, type_name: str,
             f"  supported types: the fixed-width ints, int, float, bool, str, "
             f"bytes, @export classes/enums defined in this module; "
             f"list/dict/set/tuple of those as function/method params/returns "
-            f"(not fields); a numeric Span as a param only (return numeric "
-            f"data as list[T])")
+            f"(not fields); Optional[T] over any of those as a function/method "
+            f"param/return, and over a scalar/str/bytes/@export enum/value "
+            f"class as a field (not a container element); a "
+            f"numeric Span as a param only (return numeric data as list[T])")
 
 
 # Single-qname primitive predicates.

@@ -14,7 +14,8 @@ from ..parse.nodes import (
     RecordLinkage, TpyReturn, is_none_return, walk_body_stmts,
 )
 from ..type_def_registry import (
-    _boundary_inner, is_bool_type, is_dict, is_exposed_class,
+    _boundary_inner, boundary_optional_inner, boundary_optional_is_pointer,
+    is_bool_type, is_dict, is_exposed_class,
     is_fixed_int_type, is_function_boundary_marshallable,
     is_internal_boundary_field, is_list, is_set, is_str_type,
     is_str_view_type, type_def_of,
@@ -36,8 +37,8 @@ from .export_shape import (
     EXPORT_CLASS_NEXT_DUNDERS as _EXPORT_CLASS_NEXT_DUNDERS,
     EXPORT_CLASS_SUPPORTED_DUNDERS as _EXPORT_CLASS_SUPPORTED_DUNDERS,
     boundary_alias_records, export_method_shape_error,
-    nocopy_borrow_return_error, unsupported_slot_param_form,
-    view_safe_borrow_returns,
+    nocopy_borrow_return_error, slot_unmarshallable_reason,
+    unsupported_slot_param_form, view_safe_borrow_returns,
 )
 
 if TYPE_CHECKING:
@@ -102,11 +103,24 @@ def warn_export_class_return_alias(ctx: 'SemanticContext',
         `-> readonly[Cls]` stays ReadonlyType-topped (make_ref no-ops
         on it) -- both cross identically (identity/view when provable,
         copy otherwise), so both must enter the classification."""
-        if not isinstance(fn.return_type, (RefType, ReadonlyType)):
+        rt = fn.return_type
+        if boundary_optional_inner(rt) is not None:
+            # `-> Optional[T]` over a reference T is the same borrow behind
+            # a None gate (`T*`): the present arm crosses exactly as `-> T`.
+            # Over a value T, or under Own[...], it is a value and crosses
+            # by copy -- nothing to flag; and a body whose every return is
+            # `None` copies nothing either.
+            if not boundary_optional_is_pointer(rt):
+                return
+            if first_return(fn.body) is None:
+                return
+            borrow_inner = boundary_optional_inner(rt)
+        elif not isinstance(rt, (RefType, ReadonlyType)):
             return
-        if is_exposed_class(fn.return_type):
-            info = ctx.registry.get_record_for_type(
-                _boundary_inner(fn.return_type))
+        else:
+            borrow_inner = _boundary_inner(rt)
+        if is_exposed_class(borrow_inner):
+            info = ctx.registry.get_record_for_type(borrow_inner)
             # A @nocopy class returned by reference is a hard error (the
             # copy is deleted), reported by the validator -- don't also warn.
             if info is not None and info.is_nocopy:
@@ -120,7 +134,7 @@ def warn_export_class_return_alias(ctx: 'SemanticContext',
                     and view_safe_borrow_returns(
                         fn, alias_records, info, ctx.registry)):
                 return
-            cls_name = getattr(fn.return_type.wrapped, 'name', '?')
+            cls_name = getattr(borrow_inner, 'name', '?')
             if info is not None and info.is_value_type:
                 # A value class has no identity/view path at all (it
                 # crosses by copy from every source), so the residual
@@ -149,7 +163,7 @@ def warn_export_class_return_alias(ctx: 'SemanticContext',
                 f"explicit",
                 first_return(fn.body))
             return
-        inner = _boundary_inner(fn.return_type)
+        inner = borrow_inner
         kind = ("list" if is_list(inner) else
                 "dict" if is_dict(inner) else
                 "set" if is_set(inner) else None)
@@ -284,11 +298,11 @@ def validate_export_class_dunders(ctx: 'SemanticContext',
                         f"crossing the CPython boundary must take "
                         f"exactly two parameters beyond self", loc)
                 for pname, ptype in params:
-                    if not is_function_boundary_marshallable(ptype, False):
+                    why = slot_unmarshallable_reason(ptype)
+                    if why is not None:
                         raise SemanticError(
                             f"exposed class '{record.name}': '{m.name}' "
-                            f"parameter '{pname}' cannot cross the "
-                            f"CPython boundary", loc)
+                            f"parameter '{pname}' {why}", loc)
             elif m.name in takes_one:
                 if len(params) != 1:
                     raise SemanticError(
@@ -296,11 +310,11 @@ def validate_export_class_dunders(ctx: 'SemanticContext',
                         f"crossing the CPython boundary must take exactly "
                         f"one parameter beyond self", loc)
                 other_name, other_type = params[0]
-                if not is_function_boundary_marshallable(other_type, False):
+                why = slot_unmarshallable_reason(other_type)
+                if why is not None:
                     raise SemanticError(
                         f"exposed class '{record.name}': '{m.name}' "
-                        f"parameter '{other_name}' cannot cross the "
-                        f"CPython boundary", loc)
+                        f"parameter '{other_name}' {why}", loc)
                 # Comparison dunders share ONE richcompare wrapper with a
                 # single type-guard-then-switch shape (unlike arithmetic
                 # operators, which marshal each op's operand per its own
@@ -356,11 +370,11 @@ def validate_export_class_dunders(ctx: 'SemanticContext',
                             | _EXPORT_CLASS_GETITEM_DUNDERS
                             | _EXPORT_CLASS_ITER_DUNDERS
                             | _EXPORT_CLASS_NEXT_DUNDERS):
-                if not is_function_boundary_marshallable(m.return_type, False):
+                why = slot_unmarshallable_reason(m.return_type)
+                if why is not None:
                     raise SemanticError(
                         f"exposed class '{record.name}': '{m.name}' "
-                        f"return type cannot cross the CPython boundary",
-                        loc)
+                        f"return type {why}", loc)
                 # Same @nocopy borrow-return reject the plain-method
                 # validator applies -- these are the marshalled-return
                 # slots whose fallback copies the instance out. In-place

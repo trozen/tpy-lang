@@ -50,8 +50,8 @@ progress -> ✅ done.
 
 | Phase | Deliverable | Scope | Status |
 |---|---|---|---|
-| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) + list/dict/set/tuple (copy-in, recursive) done |
-| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args, defaults, keyword-only + positional-only params (PyArg_ParseTupleAndKeywords) |
+| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) + list/dict/set/tuple (copy-in, recursive) + `Optional[T]` over every admitted type (the None gate) done |
+| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return + `Optional[T]` arg/return (fn, method, `__init__`, property; `= None` defaults) done; positional + keyword args, defaults, keyword-only + positional-only params (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *never-reassigned* reference class-typed field crosses as a READ-ONLY aliasing borrow-view getset, a *reassignable* one is rejected -- its view would read the storage slot through the rebind -- and a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (identity-preserving when the returned reference is `self`/a param -- the original PyObject crosses back; an aliasing registry-deduped borrow VIEW when it is a never-reassigned field of one; copy otherwise); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance DONE (single exposed same-module base -> real `tp_base`) |
@@ -322,7 +322,7 @@ cost embedding nothing later. It is *the* hook to reserve.
 | `Span[T]` numeric | buffer / `memoryview` / ndarray | O(n) copy-in (v1.0); zero-copy later | see "buffer protocol" |
 | `list`/`dict`/`set`/`tuple` | PyList / PyDict / ... | **O(n)*elem, by-copy** | see "container cliff" |
 | record / class | extension-type wrapper | O(1) pointer | see "classes" |
-| `Optional[T]` / None | None | O(1) | |
+| `Optional[T]` / None | None <-> None; a present value crosses as `T` | O(1) gate + `T`'s cost | **done** at fn/method params/returns and value-form fields (not a reference-class field, a dunder slot or a container element); see "The None gate" |
 | `A \| B` union | tag dispatch | varies | |
 
 > `str` / `PyUnicode` round-trip fidelity depends on the build's string width
@@ -489,6 +489,49 @@ as a container element (each element is copied at the boundary), a
 **cross-module** exposed element (its handle lives in the defining module's
 glue), exposed-class set/dict-key elements (need a copy-stable structural-hash
 story), and `frozenset` (not a boundary type).
+
+### The None gate (`Optional[T]`)
+
+`Optional[T]` is not a type of its own at the boundary: it is `T`'s crossing
+behind a None gate. IN, `None` (or an omitted slot whose default is `None`)
+binds the null of `T`'s boundary form and anything else takes `T`'s own
+strict conversion (so a wrong type is still a `TypeError`); OUT, the null
+crosses as `None` and a present value as `T` does. Which null depends on the
+Optional's own C++ form, decided by the language and only read here:
+
+- a reference `T` (an exposed reference class, a `list`/`dict`/`set`) is the
+  **`T*` form**: an exposed-class param borrows the live payload (mutation
+  writes through, exactly as a plain class param), and an `-> Optional[Cls]`
+  return goes through the same identity / borrow-view / copy ladder as
+  `-> Cls` -- `return self` / a param hands back the original PyObject, a
+  never-reassigned field an aliasing view, anything else a warned copy. A
+  container behind the gate is the container cliff behind the gate: the
+  param points into an owned copy (a mutated one warns), the return copies.
+- a value `T` (scalars, `str`, `bytes`, an enum, a value class, a tuple) --
+  or ANY `T` under `Own[...]`, which forces the value form -- is
+  **`std::optional<T>`**, marshalled by `optional_from_py` / `optional_to_py`
+  with `T`'s leaf callable, glue-driven like the containers.
+
+Admitted at `@export` function and exposed-class method / `__init__` /
+property params and returns, and as a getset **field** in the value form
+(`limit: Optional[int32]`, `note: Optional[str]`, an enum, a value class:
+`std::optional<T>` storage, the gate in front of the field's own leaf, so
+`None` reads and writes as `None`). Not admitted (located error, the
+"supported types" line names the rule): an Optional **reference-class
+field** (`root: Optional[Node]`: a view through the gate is not supported
+yet -- it would alias the storage slot across a `None`/value rebind, and
+the never-reassigned case a bare class field crosses on is not tracked
+through the gate -- keep it `_`-internal and reach it through methods), an Optional
+inside a **dunder slot** signature (slots pin their operand shapes), and
+an Optional as a **container element** (`list[Optional[int]]`). Two shipped limitations behind those rules: a
+`__getitem__` / `__next__` RETURN of `Optional[T]` would already route
+through the shared return ladder and is refused only by the slot rule
+(the first slice to admit, slot by slot); and an exposed-class
+`@property -> Optional[Cls]` over a reference class is admitted by the
+boundary but fails in the module half --
+`BUGS.md#property-getter-pointer-optional-return`, a plain-TPy bug the
+boundary merely reaches. Tests: `tests/interop/optionals/`,
+`tests/cases/interop/error_export_optional_*`.
 
 ## abi3 / limited API commitment
 

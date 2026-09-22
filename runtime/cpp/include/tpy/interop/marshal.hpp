@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -703,6 +704,38 @@ template <class... Ts, class... Fns>
 cpy::PyObject *tuple_to_py(const std::tuple<Ts...> &t, Fns... fns) {
     auto fn_tuple = std::forward_as_tuple(fns...);
     return detail::tuple_to_py_impl(t, fn_tuple, std::index_sequence_for<Ts...>{});
+}
+
+// Optional[T]: None is the gate, a present value is T's own crossing. The
+// pointer-repr form (an exposed reference class, `T*`) has no wrapper here --
+// the glue spells `is_none(o) ? nullptr : instance_payload<T>(...)` inline,
+// since the payload borrow is already an expression; these two serve the
+// std::optional<T> form, with the leaf callable chosen by the glue exactly as
+// for the containers above.
+inline bool is_none(cpy::PyObject *o) {
+    return o == &cpy::_Py_NoneStruct;
+}
+
+// T is the leaf's own result, never spelled by the glue: an exposed
+// enum/class element inside the inner container has no name the glue's
+// namespace can resolve, and the leaf already produces the right type.
+template <class Fn>
+auto optional_from_py(cpy::PyObject *o, Fn leaf)
+    -> std::optional<decltype(leaf(o))> {
+    if (is_none(o)) {
+        return std::nullopt;
+    }
+    return std::optional<decltype(leaf(o))>(leaf(o));
+}
+
+// Forwarding: an rvalue optional (the callee's return) hands the leaf a
+// `T&&`, so an owned instance moves out instead of copying.
+template <class Opt, class Fn>
+cpy::PyObject *optional_to_py(Opt &&v, Fn leaf) {
+    if (!v.has_value()) {
+        return none_to_py();
+    }
+    return leaf(*std::forward<Opt>(v));
 }
 
 }  // namespace tpy::interop
