@@ -859,8 +859,9 @@ def _run_cli(is_runner: bool) -> int:
 
         t_codegen_start = time.monotonic()
         if args.dump_mir:
-            from .mir.collect import dump_codegen_mir
+            from .mir.collect import call_definitions, dump_codegen_mir
             from .mir.definitions import MIRDefinitions
+            from .mir_workspace import analyze_call_workspace
 
             collected = []
             for compiled in compiled_modules:
@@ -872,12 +873,14 @@ def _run_cli(is_runner: bool) -> int:
                 collected.append((compiled, ctx))
             definitions = MIRDefinitions(tuple(
                 ctor for _compiled, ctx in collected for ctor in ctx.thir_constructors.values()))
+            workspace = analyze_call_workspace(tuple(
+                item for compiled, ctx in collected for item in call_definitions(ctx, compiled.name)), definitions)
             for compiled, ctx in collected:
                 assert compiled.analyzer is not None
                 print(f"// === mir/{compiled.name} ===")
                 print(dump_codegen_mir(compiled.ast, compiled.analyzer, ctx,
                                        compiled.name, definitions,
-                                       compiler.thir_reject_by_node), end="")
+                                       compiler.thir_reject_by_node, workspace), end="")
             return 0
 
         for i, compiled in enumerate(compiled_modules, 1):

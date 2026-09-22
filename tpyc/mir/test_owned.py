@@ -266,7 +266,7 @@ def test_incomplete_or_effectful_constructor_is_not_summarized(
 @pytest.mark.parametrize("change,reason", [
     (lambda init: replace(init, args=()), "incomplete constructor arguments"),
     (lambda init: replace(init, args=(th.THIRLiteral(BOOL, True),)), "argument type"),
-    (lambda init: replace(init, args=(th.THIRCall(INT32, "effect", ()),)), "unsupported expression"),
+    (lambda init: replace(init, args=(th.THIRCall(INT32, "effect", ()),)), "call needs resolved ordinary callee"),
     (lambda init: replace(init, args=(th.THIRWalrus(INT32, "n", "n", th.THIRLiteral(INT32, 2)),)),
      "effectful constructor argument"),
 ])

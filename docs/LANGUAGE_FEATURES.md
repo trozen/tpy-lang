@@ -8783,13 +8783,17 @@ independence; repeated writes retain the selected backing's identity. Broader
 move sources and owning aggregate operations remain outside this coverage.
 Source behavior, C++ emission and checker authority are unchanged.
 
-The [approved M4.1/M4.2 interface](MIR_CALL_SUMMARY_INTERFACE_PLAN.md) targets
+The [M4.1/M4.2 interface](MIR_CALL_SUMMARY_INTERFACE_PLAN.md) supplies
 analysis-only MIR for direct ordinary calls with scalar results and
 proven absence of external mutation, retention and exceptional exits. It
 separates local evidence extracted from validated MIR from workspace-owned
 summary scheduling. M4.1 implements the immutable states and bounded local
-extractor; ordinary calls remain uncovered until M4.2. Named argument
-temporary storage follows separately.
+extractor; M4.2 admits direct ordinary calls to known reader-only scalar-result
+callees through `--dump-mir`, including forward definitions and imported aliases.
+Arguments are stable scalar/record names or scalar literals. Calls retain their
+argument uses and produce unknown scalar values. Recursive, effectful, throwing
+or incompletely summarized callees remain uncovered. Named argument temporary
+storage follows separately; normal compilation and checker authority are unchanged.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

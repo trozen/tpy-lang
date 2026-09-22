@@ -3,6 +3,7 @@
 from collections import deque
 from dataclasses import dataclass
 
+from ..identity_map import IdentitySet
 from ..thir.nodes import Form
 from ..type_def_registry import is_list, is_array, is_set, is_dict
 from ..typesys import (
@@ -10,7 +11,7 @@ from ..typesys import (
     UnionType, is_void_like_type, unwrap_readonly,
 )
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCompare, MIRConstant, MIRDeref,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
@@ -26,6 +27,7 @@ from .nodes import (
 from .presence import MIRPresence, _analyze_presence
 from .coverage import owned_tuple, scalar_wrapper
 from .region_flow import MIRRegionFlow, outgoing_edges
+from .call_contract import summary_problem
 
 
 class MIRValidationError(ValueError):
@@ -108,6 +110,8 @@ def _region_structure(fn: MIRFunction) -> MIRRegionFlow:
 
 def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
     match value:
+        case MIRCall(arguments=arguments):
+            return arguments
         case (MIRRead(source=source) | MIRCopy(source=source)
               | MIRUnionExtract(source=source) | MIRBorrow(source=source)):
             _require(isinstance(source, MIRPlace), "invalid read place")
@@ -202,6 +206,12 @@ def _cyclic_blocks(blocks: dict[MIRBlockId, MIRBlock],
 
 
 def _validate_structure(fn: MIRFunction) -> None:
+    for summary in fn.call_summaries:
+        problem = summary_problem(summary)
+        _require(problem is None, problem or "invalid call summary")
+    _require(len({s.callee.identity for s in fn.call_summaries}) == len(fn.call_summaries),
+             "duplicate call summary identity")
+    call_summaries = IdentitySet(fn.call_summaries)
     _require(fn.kind in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD, MIRBodyKind.CONSTRUCTOR),
              "unsupported body kind")
     _require((fn.kind is MIRBodyKind.CONSTRUCTOR) == (fn.receiver_init is not None),
@@ -773,6 +783,23 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and source_kind is MIRValueKind.RECORD_STORAGE
                              and target_type == source_type, "storage borrow type mismatch")
                     _require(not readonly or target.readonly, "borrow increases access")
+                case MIRCall():
+                    _require(value.summary in call_summaries,
+                             "call summary does not belong to this body")
+                    summary = value.summary
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.SCALAR
+                             and target_type == summary.callee.signature.return_type,
+                             "call result type or target mismatch")
+                    _require(len(value.arguments) == len(summary.parameters), "call arity mismatch")
+                    for sid, typ, ref in zip(value.arguments, summary.callee.signature.param_types,
+                                             summary.parameters):
+                        source = slots[sid]
+                        if ref is None:
+                            _require(source.type == typ and source.value_kind is MIRValueKind.SCALAR,
+                                     "call scalar argument mismatch")
+                        else:
+                            _require(source.type == ref.type and source.value_kind is MIRValueKind.BORROWED_RECORD
+                                     and (not source.readonly or ref.readonly), "call record argument mismatch")
                 case MIRConstant():
                     _require((target_type == BOOL and type(value.value) is bool)
                              or (target_type == INT32 and type(value.value) is int

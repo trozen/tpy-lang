@@ -2,7 +2,7 @@
 
 from ..parse import SourceLocation
 from .nodes import (
-    MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRDeref, MIRField,
+    MIRAlias, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
@@ -152,6 +152,10 @@ def dump_function(fn: MIRFunction) -> str:
                     rhs = f"copy {_place(source)}"
                 case MIRMove(source=source):
                     rhs = f"move %{source.index}"
+                case MIRCall(summary=summary, arguments=arguments):
+                    callee = summary.callee.identity
+                    args = ", ".join(f"%{sid.index}" for sid in arguments)
+                    rhs = f"call {callee.module}::{callee.name}({args}) [reader, normal-return]"
                 case MIRCompare(op=op, left=left, right=right):
                     rhs = f"%{left.index} {op} %{right.index}"
                 case MIRNot(operand=operand):

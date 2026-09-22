@@ -139,6 +139,18 @@ compilation or affect emission. Unsupported bodies return `MIRNotCovered`, which
 is distinct from malformed MIR and never constitutes a safety proof. Broader
 place/loan analysis remains planned in `docs/MIR_ANALYSIS_PLAN.md`.
 
+M4.1/M4.2 add a bounded call-summary consumer to this debug path
+(`MIR_CALL_SUMMARY_INTERFACE_PLAN.md`). Local evidence comes from validated
+acyclic MIR with explicitly audited operations. The post-THIR workspace adapter
+inventories all call dependencies and schedules leaves before callers; it does
+not reuse the parameter-flow-filtered mutation graph. Pending, opaque and
+known-empty remain distinct. Known reader-only, normal-returning scalar-result
+calls become `MIRCall` operations, with argument liveness and unknown result
+values. Each body retains its immutable summary entries for standalone
+validation and analysis. Recursion, general effects/exits and named argument
+temporaries remain outside this slice. No summary feeds back into production
+sema, and no new checker authority is introduced.
+
 `mir/liveness.py` computes backward may-liveness over validated MIR with a
 predecessor worklist. Its immutable result includes block entry/exit sets,
 statement boundaries (index equal to statement count denotes the terminator),

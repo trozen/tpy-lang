@@ -1,7 +1,7 @@
 # Named argument temporaries: dependency investigation
 
-Status: investigated after M3.26/M3.27 on base `b528fbf2c0`.
-Implementation scope is not approved. This records a W1 dependency in
+Status: dependency investigation; named argument storage remains uncovered.
+Named-temp implementation scope is not approved. This records a W1 dependency in
 [the M3 completion plan](MIR_M3_COMPLETION_PLAN.md), not another completed
 increment. Tuple completeness remains separate.
 
@@ -35,8 +35,10 @@ return flag ? (__tmp_2.emplace(Cell(value)), read(*__tmp_2)) : 0;
 ```
 
 THIR represents the arguments as `THIRArgTemp(THIRCtorCall(...))`.
-`--dump-mir` covers `read` but reports both callers as not covered. Ordinary
-calls are unsupported before MIR reaches their argument storage.
+`--dump-mir` covers `read` but reports both temporary-bearing callers as not
+covered. The initial blocker was ordinary calls; M4.1/M4.2 now supply that
+interface for stable arguments, while these argument materializations remain
+outside call coverage.
 
 These are block-lived locals, unlike the full-expression temporaries in
 [M3.22/M3.23](MIR_M3_EXPRESSION_TEMPORARIES_PLAN.md). The optional wrapper
@@ -74,12 +76,13 @@ fix them or assume every possible source position already lowers.
 ## Recommended order
 
 Do not add isolated temp machinery and describe it as source coverage.
-First design the M3/M4 call interface, as allowed by the existing
-[analysis plan](MIR_ANALYSIS_PLAN.md). This is architectural work requiring
-approval before implementation.
+The M3/M4 call interface is the prerequisite, as allowed by the existing
+[analysis plan](MIR_ANALYSIS_PLAN.md). Named-temp integration needs its own
+bounded design approval before implementation.
 
-The [proposed first call-summary batch](MIR_CALL_SUMMARY_INTERFACE_PLAN.md)
-specifies the local evidence, workspace orchestration and bounded consumer.
+The [first call-summary batch](MIR_CALL_SUMMARY_INTERFACE_PLAN.md) implements
+local evidence, workspace orchestration and the bounded consumer
+for stable arguments. The temporary-bearing callers above remain uncovered.
 
 1. Define how MIR receives finalized callee effects, returned/retained
    dependencies and exit behavior. Reuse semantic identities and existing
@@ -121,8 +124,7 @@ Probe evaluation order, including reordered keyword arguments and receiver
 effects, rather than assuming parameter order or temp numbering proves it.
 Use observable selected-branch work to test laziness. Hook-free scalar-result
 calls can match CPython despite longer C++ lifetime; finalizers, escapes and
-exceptional cleanup need separate proofs. Independent parity assessment agrees
-with this bounded contract; runtime parity was not executed in this investigation.
+exceptional cleanup need separate proofs.
 
 No view copies, allocations, runtime-template or loop-const changes are
 proposed. No new source diagnostics or warnings are proposed; missing MIR

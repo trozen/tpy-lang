@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from contextlib import contextmanager
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..codegen_cpp.forms import LoopBinding, loop_binding_kind
@@ -15,7 +15,7 @@ from ..typesys import (
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRStorageInit, MIRStatement,
-    MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
+    MIRCall, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRRecordStorageInit, MIRRecordStorageKind,
@@ -29,6 +29,7 @@ from .nodes import (
 )
 from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
+from .call_contract import MIRCallSummary, MIRSummaryResult, MIRSummaryState, summary_problem
 from .validate import MIRDefiniteAssignmentError, MIRPresenceError, statement_reads, successors, validate_function
 
 
@@ -38,7 +39,8 @@ def _literal(expr: th.THIRExpr) -> bool:
 
 
 class _Coverage:
-    def __init__(self, fn: th.THIRFunction, definitions: MIRDefinitions) -> None:
+    def __init__(self, fn: th.THIRFunction, definitions: MIRDefinitions,
+                 summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None) -> None:
         self.fn = fn
         self.bindings: dict[str, TpyType] = {}
         self.references: dict[str, th.THIRBorrowedRecord] = {}
@@ -61,6 +63,41 @@ class _Coverage:
         self.iteration_references: set[str] = set()
         self.full_expressions: IdentitySet[th.THIRExpr] = IdentitySet()
         self.active_temporaries: list[th.THIRCtorCall] | None = None
+        self.summaries = summaries if summaries is not None else {}
+        self.calls: IdentityMap[th.THIRCall, MIRCallSummary] = IdentityMap()
+
+    def call(self, expr: th.THIRCall) -> None:
+        _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
+        callee = expr.resolved_callee
+        _require(expr, isinstance(callee, th.THIRResolvedCallee), "call needs resolved ordinary callee")
+        entry = self.summaries.get(callee.identity)
+        _require(expr, entry is not None and entry.state is MIRSummaryState.KNOWN,
+                 "call needs finalized known summary")
+        summary = entry.summary
+        _require(expr, summary_problem(summary) is None and summary.callee == callee,
+                 "call summary signature or contract mismatch")
+        _require(expr, expr.result_type == callee.signature.return_type
+                 and len(expr.args) == len(summary.parameters), "call signature mismatch")
+        for arg, typ, ref in zip(expr.args, callee.signature.param_types, summary.parameters):
+            if ref is None:
+                _require(arg, isinstance(arg, th.THIRName) or _literal(arg), "call needs stable scalar argument")
+                _require(arg, not isinstance(arg, th.THIRName) or arg.global_binding is None,
+                         "call global argument")
+                _require(arg, not isinstance(arg, th.THIRName)
+                         or (arg.name not in self.optionals and arg.name not in self.unions),
+                         "call needs unwrapped scalar binding")
+                _require(arg, self.expr(arg) == typ, "call scalar argument mismatch")
+            else:
+                _require(arg, isinstance(arg, (th.THIRName, th.THIRSelf))
+                         and arg.form is th.Form.BORROW, "call needs borrowed record name")
+                source_name = arg.name if isinstance(arg, th.THIRName) else "self"
+                _require(arg, source_name not in self.payload_aliases and source_name not in self.optionals,
+                         "call needs unwrapped record binding")
+                name = self.reference_name(arg)
+                actual = self.references[name]
+                _require(arg, actual.type == ref.type and (not actual.readonly or ref.readonly),
+                         "call record argument mismatch")
+        self.calls[expr] = summary
 
     def global_binding(self, expr: th.THIRName | th.THIRModuleVar | th.THIRWalrus,
                        *, write: bool = False) -> TpyType:
@@ -764,6 +801,8 @@ class _Coverage:
                          or (typ == INT32 and type(expr.value) is int
                              and INT32_MIN <= expr.value <= INT32_MAX),
                          "unsupported literal value")
+            case th.THIRCall():
+                self.call(expr)
             case th.THIRNarrowedRead():
                 _require(expr, self.inline_union(expr) == typ, "union scalar extraction required")
             case th.THIRIsinstance():
@@ -1165,6 +1204,7 @@ class _Builder:
         self.global_facts = coverage.globals
         self.globals: dict[MIRGlobalId, MIRSlotId] = {}
         self.full_expressions = coverage.full_expressions
+        self.calls = coverage.calls
 
     def block(self) -> _Block:
         block = _Block(MIRBlockId(self.body, len(self.blocks)), self.region)
@@ -1367,6 +1407,12 @@ class _Builder:
         typ = INT32 if isinstance(expr.result_type, IntLiteralType) else expr.result_type
         loc = expr.loc
         match expr:
+            case th.THIRCall():
+                summary = self.calls[expr]
+                arguments = tuple(self.expr(arg) if ref is None else
+                                  self.bindings[arg.name if isinstance(arg, th.THIRName) else "self"]
+                                  for arg, ref in zip(expr.args, summary.parameters))
+                return self.result(typ, MIRCall(summary, arguments), loc)
             case th.THIRLiteral():
                 return self.result(typ, MIRConstant(expr.value), loc)
             case th.THIRCoerce():
@@ -1807,7 +1853,8 @@ class _Builder:
                 MIRBodyKind.METHOD if self.fn.receiver is not None else MIRBodyKind.FREE_FUNCTION)
         fn = MIRFunction(self.body, self.fn.return_type, self.reachable_slots(blocks, receiver_init), tuple(blocks),
                          self.blocks[0].id, tuple(d.layout for d in self.records.values()), receiver_init, kind,
-                         tuple(r for r in self.regions if r.entry in reachable))
+                         tuple(r for r in self.regions if r.entry in reachable),
+                         tuple({s.callee.identity: s for s in self.calls.values()}.values()))
         validate_function(fn)
         return fn
 
@@ -1839,13 +1886,17 @@ class _Builder:
 
 
 def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
-                   kind: MIRBodyKind, definitions: MIRDefinitions | None = None) -> MIRFunction | MIRNotCovered:
-    """The caller supplies declaration kind; eligible methods also carry a receiver."""
+                   kind: MIRBodyKind, definitions: MIRDefinitions | None = None,
+                   summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None) -> MIRFunction | MIRNotCovered:
+    """The caller supplies kind and trusted summaries from workspace analysis.
+
+    Structural validation checks their contracts, not another body's semantics.
+    """
     try:
         _require(fn, kind in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD), "unsupported body kind")
         _require(fn, (kind is MIRBodyKind.METHOD) == (fn.receiver is not None),
                  "body kind and receiver mismatch")
-        coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions())
+        coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions(), summaries)
         coverage.check()
         try:
             return _Builder(body, fn, coverage).build()
@@ -1857,14 +1908,15 @@ def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
 
 
 def lower_constructor(ctor: th.THIRConstructor, body: MIRBodyId, *,
-                      definitions: MIRDefinitions | None = None) -> MIRFunction | MIRNotCovered:
+                      definitions: MIRDefinitions | None = None,
+                      summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None) -> MIRFunction | MIRNotCovered:
     """Lower complete pure initialization before a supported constructor tail."""
     try:
         initialization = constructor_initialization(ctor)
         fn = th.THIRFunction(
             f"{ctor.record_name}.__init__", ctor.params, VoidType(), ctor.body, th.THIRFunctionLayout(),
             receiver=th.THIRBorrowedRecord(initialization.layout.type, False))
-        coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions())
+        coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions(), summaries)
         coverage.check()
         coverage.records[initialization.layout.type] = initialization
         try:

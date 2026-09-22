@@ -1696,6 +1696,10 @@ alongside related feature work; only the big-rock deferrals live here.
   facts. Broader move sources, owning aggregate operations and excluded
   position/shape/slot cells remain open, alongside the other W1-W5/M2/M4
   matrix cells; tuple completeness stays separate.
+  `docs/MIR_CALL_SUMMARY_INTERFACE_PLAN.md` records implemented M4.1/M4.2:
+  local MIR evidence and workspace-scheduled reader-only scalar calls. Named
+  argument storage follows separately; effects, escapes, recursion, richer
+  value shapes and generic obligations keep the general M4 work open.
   `docs/MIR_M3_WRAPPER_STORAGE_PLAN.md` records implemented M3.12/M3.13:
   separate physical-initialization/source-assignment facts and bool/int32
   Optional/union if/while hoists, for analysis only. Record

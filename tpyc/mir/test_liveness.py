@@ -24,6 +24,8 @@ from .nodes import (
 )
 from .validate import MIRValidationError, operands
 from .test_iteration import fixture as iteration_fixture
+from ..mir_workspace import analyze_call_workspace
+from .collect import call_definitions
 
 B = MIRBodyId("liveness", "test")
 P, X, Y, Z = (MIRSlotId(B, i) for i in range(4))
@@ -282,6 +284,10 @@ def range_target(stop: int32) -> int32:
     for index in range(stop):
         result = index
     return result
+def leaf(value: int32) -> int32:
+    return value
+def call(value: int32) -> int32:
+    return leaf(value)
 """
 
 
@@ -290,10 +296,11 @@ def test_emitted_operations_and_reference_copy_last_use() -> None:
     entry = _entry(modules)
     ctx = compiler.collect_thir(entry)
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+    workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
     operations: set[type] = set()
     for node, thir in ctx.thir_functions.items():
         fn = lower_function(thir, MIRBodyId("liveness", node.name),
-                            kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+                            kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions, summaries=workspace.summaries)
         assert isinstance(fn, MIRFunction), fn
         result = analyze_liveness(fn)
         for block in fn.blocks:

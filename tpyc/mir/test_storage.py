@@ -294,7 +294,7 @@ class Child(Cell):
 
 @pytest.mark.parametrize("body,reason", [
     ("    created = Cell(1)\n    return created.value\n", "missing constructor definition"),
-    ("    return touch(cell)\n", "unsupported expression"),
+    ("    return touch(cell)\n", "call needs finalized known summary"),
     ("    return cell\n", "unsupported return type"),
 ])
 def test_excluded_storage_operations(body: str, reason: str) -> None:

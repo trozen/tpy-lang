@@ -80,11 +80,12 @@ the others visible.
   reads/discards in ordinary expressions and conditions. Named argument
   temporaries and aggregate materialization remain open.
   The [named argument temporary investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md)
-  confirms that meaningful source coverage first needs the M3/M4 call-summary
-  interface: current MIR excludes the consuming calls. Eager and deferred
+  identified the need for the M3/M4 call-summary interface. M4.1/M4.2 now
+  cover bounded calls with stable arguments; named temporary arguments remain
+  excluded. Eager and deferred
   argument backing must follow actual emitted block scopes, not the existing
-  full-expression lifetime. No new implementation batch is approved by that
-  investigation.
+  full-expression lifetime. The named-temp integration batch remains to be
+  designed; the call interface alone does not close it.
   [M3.18](MIR_M3_TUPLE_ALIAS_PLAN.md) additionally covers fixed whole aliases
   of body-local constructor tuples; alias reseating, owning tuple rebinding
   and hoists remain open, including the source defects listed in that plan.
@@ -177,11 +178,11 @@ M4 interfaces; W4 needs frame facts and W3 cleanup semantics. M2 representation
 gaps remain prerequisites for their corresponding shapes, not work made
 complete by starting M3.
 
-The [proposed M4.1/M4.2 call-summary batch](MIR_CALL_SUMMARY_INTERFACE_PLAN.md)
+The [M4.1/M4.2 call-summary batch](MIR_CALL_SUMMARY_INTERFACE_PLAN.md)
 defines the interface needed before named argument storage can gain useful
 source coverage. It keeps interprocedural orchestration in workspace analysis
-and extracts local evidence from validated MIR. This is proposed work, not an
-approved or completed M3/M4 milestone.
+and extracts local evidence from validated MIR. Both increments are implemented;
+named-temp integration and the general M4 summary obligations remain open.
 
 Batch work around shared invariants. Specify commit boundaries before coding,
 review the cumulative batch, and run the full forced suite after its final

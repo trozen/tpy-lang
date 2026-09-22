@@ -1,10 +1,9 @@
 # M3/M4 call-summary interface: first consumer
 
-Status: approved design; M4.1 implemented, M4.2 in progress. Follows the
+Status: M4.1 and M4.2 implemented. See also the
 [named argument temporary investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md).
 This is architectural analysis work, not a language-rule change. The
-first delivery is two commits on the current `mir-m3-argument-temp-plan` branch.
-Neither M3 nor M4 becomes complete after this batch.
+bounded interface does not complete M3 or M4.
 
 ## Contract and useful first delivery
 
@@ -18,8 +17,7 @@ def forward(cell: Cell) -> int32:
     return read(cell)
 ```
 
-Today the leaf has MIR but the forwarding call does not. The proposal makes
-the caller analyzable without changing its C++ reference parameter or
+M4.2 makes the forwarding caller analyzable without changing its C++ reference parameter or
 `return read(cell);`. Imported aliases and forward declarations use the same
 semantic identity. `read(Cell(value))` is the next storage integration, not
 silently part of this first call batch.
@@ -61,7 +59,7 @@ recursively asks another body to resolve itself. This preserves the
 [callable requirements](CALLABLE_PROVENANCE_REQUIREMENTS.md)' separation of
 intraprocedural analysis from the interprocedural fixed point.
 
-Placement is an explicit part of this proposal: run this analysis over the
+Placement is explicit: run this analysis over the
 captured THIR workspace used by the MIR debug adapter, **after THIR emission**.
 The existing `Compiler._finalize_workspace` runs before those bodies exist, so
 it is not the insertion point. Do not move THIR production or feed these facts
@@ -189,7 +187,6 @@ admission yet. Include unsupported and malformed boundary tests.
 **M4.2: workspace scheduling and first call consumer.** Forward/imported and
 aliased calls, unconditional dependency inventory, recursive/missing/opaque
 cases, real MIRCall and all affected analyses, debug integration and docs.
-Deliver both steps as one reviewed batch, one commit per step. The user merges.
 
 Named-temp placement facts and storage integration follow as a separate M3
 batch after this interface works. They must model both eager and lazy backing
@@ -225,12 +222,21 @@ existing snapshots and test excluded siblings' source behavior. Update
 `LANGUAGE_FEATURES.md` and architecture docs when implementing. Review the
 cumulative batch and run the full forced suite after final code changes.
 
-Confidence: high in the phase split and bounded leaf proof after independent
-producer/consumer surveys. Implementation must still audit every affected MIR
-transfer and verify exact source argument forms. This is a bounded interface, not a
-claim that a sound general summary producer already exists.
+Every affected MIR transfer must account for calls and their exact source
+argument forms. This bounded interface does not supply general call summaries.
 
-Independent CPython-parity design assessment: match for the bounded slice,
-subject to call-point lifetime/engagement checks, actual reference forms,
-unknown scalar results and complete exit evidence. No runtime parity run was
-performed for this documentation-only proposal.
+Implementation: `mir/call_contract.py` holds the immutable bounded contract;
+`mir/summaries.py` extracts local evidence; `mir_workspace.py` schedules the
+captured definitions; `mir/collect.py` reuses the analyzed bodies for the CLI
+dump. The first read set conservatively includes all parameters. MIR bodies
+retain the published summary objects, and validation requires call operations
+to reference those same objects. Their scalar results carry no borrowed roots.
+The bounded summary size depends on the signature, not forwarding depth.
+
+Embedded source tests pin direct/forward/imported calls, ordinary method and
+constructor-tail callers, loop callers, recursive/opaque dependencies and
+named-temp exclusion. Internal checks pin missing/foreign/effectful summaries,
+argument liveness, expired backing retention and unknown boolean results.
+The `@nocopy` source witness and generated reference-parameter assertion pin
+the call's no-copy boundary. Existing snippet snapshots are unchanged; no new
+snippet case is needed for this analysis-only extension.

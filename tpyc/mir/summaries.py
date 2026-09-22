@@ -6,7 +6,7 @@ from .call_contract import MIRCallSummary, MIRSummaryResult, MIRSummaryState, su
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyKind, MIRCompare, MIRConstant, MIRDeref,
+    MIRAlias, MIRAssign, MIRBodyKind, MIRCall, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFunction, MIRNot, MIRRead, MIRSlotKind, MIRValueKind,
 )
 from .validate import _cyclic_blocks, successors, validate_function
@@ -61,6 +61,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                 return MIRSummaryResult.opaque("summary external write or storage operation")
             target = slots[stmt.target.root]
             match stmt.value:
+                case MIRCall():
+                    # The workspace supplies semantic evidence; validation
+                    # checks its contract and membership in this body's table.
+                    pass
                 case MIRConstant() | MIRCompare() | MIRNot():
                     pass
                 case MIRRead(source=source):

@@ -156,7 +156,7 @@ def test_source_facts_and_verified_constructor_are_required(artifacts: Artifacts
 
 
 @pytest.mark.parametrize("body,reason", [
-    ("return consume(Cell(1))", "unsupported expression"),
+    ("return consume(Cell(1))", "call needs finalized known summary"),
     ("return Cell((n := 1)).value", "effectful constructor argument"),
     ("result = Cell(1).value < (n := 2)\n    return n", "order-sensitive eager operands"),
     ("for i in range(Cell(1).value):\n        n = i\n    return n", "temporary needs full-expression boundary"),

@@ -6,6 +6,7 @@ from enum import Enum, auto
 from ..parse import SourceLocation
 from ..thir.nodes import Form
 from ..typesys import NominalType, TpyType
+from .call_contract import MIRCallSummary
 
 
 @dataclass(frozen=True)
@@ -211,6 +212,12 @@ class MIRConstant:
 
 
 @dataclass(frozen=True)
+class MIRCall:
+    summary: MIRCallSummary
+    arguments: tuple[MIRSlotId, ...]
+
+
+@dataclass(frozen=True)
 class MIRRead:
     source: MIRPlace
 
@@ -326,7 +333,7 @@ class MIRRangeAdvance:
     step: int
 
 
-MIRRvalue = (MIRConstant | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
+MIRRvalue = (MIRConstant | MIRCall | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
              | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy
              | MIROptionalConstruct | MIROptionalCopy | MIRIsPresent
              | MIRUnionConstruct | MIRUnionCopy | MIRIsAlternative | MIRUnionExtract
@@ -439,6 +446,7 @@ class MIRFunction:
     receiver_init: MIRReceiverInit | None = None
     kind: MIRBodyKind = MIRBodyKind.FREE_FUNCTION
     regions: tuple[MIRRegion, ...] = ()
+    call_summaries: tuple[MIRCallSummary, ...] = ()
 
 
 @dataclass(frozen=True)

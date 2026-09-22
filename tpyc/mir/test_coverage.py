@@ -32,7 +32,7 @@ def reject(fn: th.THIRFunction, reason: str, node_kind: str | None = None) -> MI
 
 
 @pytest.mark.parametrize("expr,reason", [
-    (th.THIRCall(INT32, "g", (), loc=LOC), "unsupported expression"),
+    (th.THIRCall(INT32, "g", (), loc=LOC), "call needs resolved ordinary callee"),
     (th.THIRBinOp(INT32, X, "+", ONE, None, loc=LOC), "unsupported binary operation"),
     (th.THIRName(INT32, "global", loc=LOC), "non-local name"),
     (replace(X, cpp="::other::x"), "unsupported metadata: cpp"),
@@ -77,7 +77,7 @@ def test_unreachable_unsupported_nodes_still_fail_whole_body(
     wrapper: Callable[[th.THIRStmt], tuple[th.THIRStmt, ...]],
 ) -> None:
     bad = th.THIRExprStmt(th.THIRCall(INT32, "unknown", (), loc=LOC))
-    reject(function(wrapper(bad)), "unsupported expression", "THIRCall")
+    reject(function(wrapper(bad)), "call needs resolved ordinary callee", "THIRCall")
 
 
 @pytest.mark.parametrize("stmt,reason", [

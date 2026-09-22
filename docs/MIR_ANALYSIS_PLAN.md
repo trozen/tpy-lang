@@ -1879,6 +1879,13 @@ dump and optional comparison hook can land when body coverage warrants them.
 MIR-backed C++ emission, SSA, exact-index disjointness and move optimization are
 not prerequisites for M5. Existing checkers remain authoritative until then.
 
+[M4.1/M4.2](MIR_CALL_SUMMARY_INTERFACE_PLAN.md) implement the first bounded
+summary consumer. Local MIR evidence proves reader-only normal-returning
+scalar callees; the workspace adapter schedules definitions after emitted THIR
+collection and supplies finalized entries to MIR lowering. Direct forward and
+imported calls with stable arguments are covered. This does not complete M4,
+fix existing production summary gaps or admit named argument temporaries.
+
 ## Pitfalls and risks
 
 | Pitfall | M1 check / later obligation |

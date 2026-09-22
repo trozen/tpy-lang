@@ -16,19 +16,31 @@ from .storage import analyze_storage, dump_storage
 from .retention import analyze_retention, dump_retention
 from .payload_lifetime import dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes
 from .scope_lifetime import dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
+from ..mir_workspace import MIRCallWorkspace
+from ..thir.nodes import THIRFunction
+
+
+def _declaration_name(name: str, func: TpyFunction | None) -> str:
+    if func is not None and func.loc is not None:
+        return f"{name}@{func.loc.line}:{func.loc.column}"
+    return name
+
+
+def call_definitions(ctx: CodeGenContext, module_name: str) -> tuple[tuple[MIRBodyId, THIRFunction], ...]:
+    return tuple((MIRBodyId(module_name, _declaration_name(node.name, node)), fn)
+                 for node, fn in ctx.thir_functions.items() if fn.resolved_callee is not None)
 
 
 def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
                      ctx: CodeGenContext, module_name: str,
                      definitions: MIRDefinitions,
-                     reasons: IdentityMap) -> str:
+                     reasons: IdentityMap, workspace: MIRCallWorkspace | None = None) -> str:
     """Inspect emitted bodies without making MIR an emission prerequisite."""
     lines: list[str] = []
     identities: dict[str, int] = {}
 
     def identity(name: str, func: TpyFunction | None = None) -> MIRBodyId:
-        if func is not None and func.loc is not None:
-            name += f"@{func.loc.line}:{func.loc.column}"
+        name = _declaration_name(name, func)
         count = identities.get(name, 0) + 1
         identities[name] = count
         return MIRBodyId(module_name, name if count == 1 else f"{name}#{count}")
@@ -91,7 +103,10 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
                     missing(body, func)
                 else:
                     kind = MIRBodyKind.METHOD if owner is not None else MIRBodyKind.FREE_FUNCTION
-                    rendered(lower_function(fn, body, kind=kind, definitions=definitions))
+                    cached = workspace.bodies.get(body) if workspace is not None else None
+                    rendered(cached if cached is not None else lower_function(
+                        fn, body, kind=kind, definitions=definitions,
+                        summaries=workspace.summaries if workspace is not None else None))
         else:
             missing(body, func)
 
@@ -103,5 +118,6 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
             unavailable(body, "MIR not covered: generic constructor")
         else:
             rendered(lower_constructor(ctx.thir_constructors[ctor], body,
-                                       definitions=definitions))
+                                       definitions=definitions,
+                                       summaries=workspace.summaries if workspace is not None else None))
     return "\n".join(lines) if lines else "(no emitted bodies in this module)\n"

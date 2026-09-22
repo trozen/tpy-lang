@@ -9,7 +9,7 @@ from ..typesys import BOOL, INT32, NominalType, unwrap_readonly
 from .dump import _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
-    MIRAlias, MIRStatement, MIRStorageInit, MIRRecordStorageInit, MIRBlockId, MIRBorrow, MIRCompare, MIRConstant,
+    MIRAlias, MIRStatement, MIRStorageInit, MIRRecordStorageInit, MIRBlockId, MIRBorrow, MIRCall, MIRCompare, MIRConstant,
     MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFunction, MIRIsAlternative,
     MIRIsPresent, MIRMove, MIRNot, MIRNotCovered, MIROptionalConstruct,
     MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId,
@@ -183,7 +183,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 leaf = MIRPlace(target.root, (MIRUnionPayload(alternative),))
                 if source is not None and leaf in leaves[target.root]:
                     result[leaf] = state.get(MIRPlace(source), empty)
-            case (MIRConstant() | MIRRead() | MIRCompare() | MIRNot() | MIRIsPresent()
+            case (MIRConstant() | MIRCall() | MIRRead() | MIRCompare() | MIRNot() | MIRIsPresent()
                   | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove() | MIRIteratorHasNext()
                   | MIRRangeAdvance()):
                 pass
