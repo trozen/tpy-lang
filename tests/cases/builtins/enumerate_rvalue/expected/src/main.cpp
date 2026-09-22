@@ -33,7 +33,7 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_main_1_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_1_frame&) {
         return os << "<generator __genexpr_main_1>";
     }
 };

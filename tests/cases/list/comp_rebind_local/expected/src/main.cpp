@@ -541,7 +541,7 @@ struct __genexpr_call_rebinds_1_frame : public ::tpy::next_iter_mixin<__genexpr_
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_call_rebinds_1_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_call_rebinds_1_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_call_rebinds_1_frame&) {
         return os << "<generator __genexpr_call_rebinds_1>";
     }
 };

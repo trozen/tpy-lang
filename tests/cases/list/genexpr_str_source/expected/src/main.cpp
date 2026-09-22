@@ -28,7 +28,7 @@ struct __genexpr_from_global_1_frame : public ::tpy::next_iter_mixin<__genexpr_f
     std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __next__();
     __genexpr_from_global_1_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_from_global_1_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_from_global_1_frame&) {
         return os << "<generator __genexpr_from_global_1>";
     }
 };
@@ -84,7 +84,7 @@ struct __genexpr_from_local_2_frame : public ::tpy::next_iter_mixin<__genexpr_fr
     std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __next__();
     __genexpr_from_local_2_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_from_local_2_frame<F_scale>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_from_local_2_frame<F_scale>&) {
         return os << "<generator __genexpr_from_local_2>";
     }
 };

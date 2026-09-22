@@ -32,7 +32,7 @@ struct __genexpr_bump_1_frame : public ::tpy::next_iter_mixin<__genexpr_bump_1_f
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_bump_1_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_bump_1_frame<F_limit>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_bump_1_frame<F_limit>&) {
         return os << "<generator __genexpr_bump_1>";
     }
 };

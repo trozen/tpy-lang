@@ -2031,11 +2031,13 @@ class AsyncCoroCodegen:
     # -- Struct definition ----------------------------------------------------
 
     def gen_coro_struct(self, out: "TextIO", func: TpyFunction,
-                         record_name: str | None = None) -> None:
+                         record_name: str | None = None,
+                         internal_linkage: bool = False) -> None:
         """Emit the full `__FCoro` struct definition. When `record_name`
         is given, the struct captures `__self: <Record>&` and the struct
         name is `__coro_<Record>_<func>` (mirrors generator-method
-        codegen).
+        codegen). `internal_linkage` says the caller places the struct in
+        an anonymous namespace.
         """
         struct_name = self.gen_struct_name(func, record_name)
         ctor_params = self._classify_params(func, record_name)
@@ -2253,7 +2255,11 @@ class AsyncCoroCodegen:
                       else func.name)
         repr_kind = "generator" if self._is_generator_shape() else "coroutine"
         param_struct_name = self._struct_name_templated(func, record_name)
-        out.write(f"\n{INDENT}friend std::ostream& operator<<("
+        # An in-class friend of an anonymous-namespace struct has internal
+        # linkage, and clang's -Wunused-function (-Werror) fires when no
+        # body prints the frame; gcc stays quiet.
+        unused_ok = "[[maybe_unused]] " if internal_linkage else ""
+        out.write(f"\n{INDENT}{unused_ok}friend std::ostream& operator<<("
                   f"std::ostream& os, const {param_struct_name}&) {{\n")
         out.write(f"{INDENT}{INDENT}return os << "
                   f"\"<{repr_kind} {repr_label}>\";\n")

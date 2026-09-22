@@ -879,7 +879,8 @@ class CodeGenerator:
         cpp.write("namespace {\n\n")
         with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
             for func in units:
-                self.gen_async.gen_coro_struct(cpp, func)
+                self.gen_async.gen_coro_struct(
+                    cpp, func, internal_linkage=True)
                 cpp.write("\n")
                 self.gen_async.gen_coro_poll_def(cpp, func)
                 cpp.write("\n")

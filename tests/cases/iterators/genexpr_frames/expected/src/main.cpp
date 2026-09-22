@@ -72,7 +72,7 @@ struct __genexpr_bump_all_9_frame : public ::tpy::next_iter_mixin<__genexpr_bump
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_bump_all_9_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_bump_all_9_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_bump_all_9_frame&) {
         return os << "<generator __genexpr_bump_all_9>";
     }
 };
@@ -128,7 +128,7 @@ struct __genexpr_note_all_10_frame : public ::tpy::next_iter_mixin<__genexpr_not
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_note_all_10_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_note_all_10_frame<F_acc>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_note_all_10_frame<F_acc>&) {
         return os << "<generator __genexpr_note_all_10>";
     }
 };
@@ -182,7 +182,7 @@ struct __genexpr_bump_yielded_11_frame : public ::tpy::next_iter_mixin<__genexpr
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __genexpr_bump_yielded_11_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_bump_yielded_11_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_bump_yielded_11_frame&) {
         return os << "<generator __genexpr_bump_yielded_11>";
     }
 };
@@ -246,7 +246,7 @@ struct __genexpr_narrowed_13_frame : public ::tpy::next_iter_mixin<__genexpr_nar
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_narrowed_13_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_13_frame<F_k>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_13_frame<F_k>&) {
         return os << "<generator __genexpr_narrowed_13>";
     }
 };
@@ -309,7 +309,7 @@ struct __genexpr_narrowed_for_head_14_frame : public ::tpy::next_iter_mixin<__ge
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_narrowed_for_head_14_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_for_head_14_frame<F_k>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_for_head_14_frame<F_k>&) {
         return os << "<generator __genexpr_narrowed_for_head_14>";
     }
 };
@@ -380,7 +380,7 @@ struct __genexpr_narrowed_closure_written_15_frame : public ::tpy::next_iter_mix
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_narrowed_closure_written_15_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_closure_written_15_frame<F_k>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_closure_written_15_frame<F_k>&) {
         return os << "<generator __genexpr_narrowed_closure_written_15>";
     }
 };
@@ -425,7 +425,7 @@ struct __genexpr_narrowed_closure_written_16_frame : public ::tpy::next_iter_mix
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_narrowed_closure_written_16_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_closure_written_16_frame<F_k>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_closure_written_16_frame<F_k>&) {
         return os << "<generator __genexpr_narrowed_closure_written_16>";
     }
 };
@@ -497,7 +497,7 @@ struct __genexpr_narrowed_loop_closure_17_frame : public ::tpy::next_iter_mixin<
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_narrowed_loop_closure_17_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_loop_closure_17_frame<F_k>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_loop_closure_17_frame<F_k>&) {
         return os << "<generator __genexpr_narrowed_loop_closure_17>";
     }
 };
@@ -580,7 +580,7 @@ struct __genexpr_narrowed_kept_18_frame : public ::tpy::next_iter_mixin<__genexp
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_narrowed_kept_18_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_kept_18_frame<F_k>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_kept_18_frame<F_k>&) {
         return os << "<generator __genexpr_narrowed_kept_18>";
     }
 };
@@ -657,7 +657,7 @@ struct __genexpr_count_set_19_frame : public ::tpy::next_iter_mixin<__genexpr_co
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_count_set_19_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_count_set_19_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_count_set_19_frame&) {
         return os << "<generator __genexpr_count_set_19>";
     }
 };
@@ -714,7 +714,7 @@ struct __genexpr_count_readonly_20_frame : public ::tpy::next_iter_mixin<__genex
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_count_readonly_20_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_count_readonly_20_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_count_readonly_20_frame&) {
         return os << "<generator __genexpr_count_readonly_20>";
     }
 };
@@ -776,7 +776,7 @@ struct __genexpr_narrowed_rebound_21_frame : public ::tpy::next_iter_mixin<__gen
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_narrowed_rebound_21_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_rebound_21_frame<F_k>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_narrowed_rebound_21_frame<F_k>&) {
         return os << "<generator __genexpr_narrowed_rebound_21>";
     }
 };
@@ -905,7 +905,7 @@ struct __genexpr_by_match_25_frame : public ::tpy::next_iter_mixin<__genexpr_by_
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_by_match_25_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_by_match_25_frame<F_n>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_by_match_25_frame<F_n>&) {
         return os << "<generator __genexpr_by_match_25>";
     }
 };
@@ -951,7 +951,7 @@ struct __genexpr_by_match_26_frame : public ::tpy::next_iter_mixin<__genexpr_by_
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_by_match_26_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_by_match_26_frame<F_n>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_by_match_26_frame<F_n>&) {
         return os << "<generator __genexpr_by_match_26>";
     }
 };
@@ -1044,7 +1044,7 @@ struct __genexpr_main_27_frame : public ::tpy::next_iter_mixin<__genexpr_main_27
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_27_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_27_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_27_frame<T___src>&) {
         return os << "<generator __genexpr_main_27>";
     }
 };
@@ -1111,7 +1111,7 @@ struct __genexpr_main_28_frame : public ::tpy::next_iter_mixin<__genexpr_main_28
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_28_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_28_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_28_frame<T___src>&) {
         return os << "<generator __genexpr_main_28>";
     }
 };
@@ -1177,7 +1177,7 @@ struct __genexpr_main_29_frame : public ::tpy::next_iter_mixin<__genexpr_main_29
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_29_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_29_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_29_frame<T___src>&) {
         return os << "<generator __genexpr_main_29>";
     }
 };
@@ -1236,7 +1236,7 @@ struct __genexpr_main_30_frame : public ::tpy::next_iter_mixin<__genexpr_main_30
     std::expected<bool, ::tpy::StopIteration> __next__();
     __genexpr_main_30_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_30_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_30_frame&) {
         return os << "<generator __genexpr_main_30>";
     }
 };
@@ -1278,7 +1278,7 @@ struct __genexpr_main_31_frame : public ::tpy::next_iter_mixin<__genexpr_main_31
     std::expected<bool, ::tpy::StopIteration> __next__();
     __genexpr_main_31_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_31_frame<F_n>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_31_frame<F_n>&) {
         return os << "<generator __genexpr_main_31>";
     }
 };
@@ -1320,7 +1320,7 @@ struct __genexpr_main_32_frame : public ::tpy::next_iter_mixin<__genexpr_main_32
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_32_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_32_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_32_frame&) {
         return os << "<generator __genexpr_main_32>";
     }
 };
@@ -1363,7 +1363,7 @@ struct __genexpr_main_33_frame : public ::tpy::next_iter_mixin<__genexpr_main_33
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_33_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_33_frame<F_k, F_q>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_33_frame<F_k, F_q>&) {
         return os << "<generator __genexpr_main_33>";
     }
 };
@@ -1412,7 +1412,7 @@ struct __genexpr_inner_34_frame : public ::tpy::next_iter_mixin<__genexpr_inner_
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_inner_34_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_inner_34_frame<T___src, F_k, F_q>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_inner_34_frame<T___src, F_k, F_q>&) {
         return os << "<generator __genexpr_inner_34>";
     }
 };
@@ -1473,7 +1473,7 @@ struct __genexpr_own_grid_35_frame : public ::tpy::next_iter_mixin<__genexpr_own
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_own_grid_35_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_own_grid_35_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_own_grid_35_frame<T___src>&) {
         return os << "<generator __genexpr_own_grid_35>";
     }
 };
@@ -1530,7 +1530,7 @@ struct __genexpr_main_36_frame : public ::tpy::next_iter_mixin<__genexpr_main_36
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_36_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_36_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_36_frame&) {
         return os << "<generator __genexpr_main_36>";
     }
 };
@@ -1573,7 +1573,7 @@ struct __genexpr_main_37_frame : public ::tpy::next_iter_mixin<__genexpr_main_37
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_37_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_37_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_37_frame&) {
         return os << "<generator __genexpr_main_37>";
     }
 };
@@ -1613,7 +1613,7 @@ struct __genexpr_main_38_frame : public ::tpy::next_iter_mixin<__genexpr_main_38
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_38_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_38_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_38_frame&) {
         return os << "<generator __genexpr_main_38>";
     }
 };
@@ -1653,7 +1653,7 @@ struct __genexpr_main_39_frame : public ::tpy::next_iter_mixin<__genexpr_main_39
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_39_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_39_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_39_frame&) {
         return os << "<generator __genexpr_main_39>";
     }
 };
@@ -1693,7 +1693,7 @@ struct __genexpr_main_40_frame : public ::tpy::next_iter_mixin<__genexpr_main_40
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_40_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_40_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_40_frame&) {
         return os << "<generator __genexpr_main_40>";
     }
 };
@@ -1733,7 +1733,7 @@ struct __genexpr_main_41_frame : public ::tpy::next_iter_mixin<__genexpr_main_41
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_41_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_41_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_41_frame&) {
         return os << "<generator __genexpr_main_41>";
     }
 };
@@ -1773,7 +1773,7 @@ struct __genexpr_main_42_frame : public ::tpy::next_iter_mixin<__genexpr_main_42
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_42_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_42_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_42_frame&) {
         return os << "<generator __genexpr_main_42>";
     }
 };
@@ -1813,7 +1813,7 @@ struct __genexpr_main_43_frame : public ::tpy::next_iter_mixin<__genexpr_main_43
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_main_43_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_43_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_43_frame&) {
         return os << "<generator __genexpr_main_43>";
     }
 };
@@ -1858,7 +1858,7 @@ struct __genexpr_main_44_frame : public ::tpy::next_iter_mixin<__genexpr_main_44
     std::expected<bool, ::tpy::StopIteration> __next__();
     __genexpr_main_44_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_44_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_44_frame<T___src>&) {
         return os << "<generator __genexpr_main_44>";
     }
 };
@@ -1916,7 +1916,7 @@ struct __genexpr_main_45_frame : public ::tpy::next_iter_mixin<__genexpr_main_45
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_45_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_45_frame<F_m>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_45_frame<F_m>&) {
         return os << "<generator __genexpr_main_45>";
     }
 };
@@ -1960,7 +1960,7 @@ struct __genexpr_main_46_frame : public ::tpy::next_iter_mixin<__genexpr_main_46
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_46_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_46_frame<F_seen>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_46_frame<F_seen>&) {
         return os << "<generator __genexpr_main_46>";
     }
 };
@@ -2004,7 +2004,7 @@ struct __genexpr_main_47_frame : public ::tpy::next_iter_mixin<__genexpr_main_47
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_47_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_47_frame<F_i>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_47_frame<F_i>&) {
         return os << "<generator __genexpr_main_47>";
     }
 };
@@ -2048,7 +2048,7 @@ struct __genexpr_main_48_frame : public ::tpy::next_iter_mixin<__genexpr_main_48
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_48_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_48_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_48_frame&) {
         return os << "<generator __genexpr_main_48>";
     }
 };
@@ -2092,7 +2092,7 @@ struct __genexpr_main_49_frame : public ::tpy::next_iter_mixin<__genexpr_main_49
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_49_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_49_frame<F_m2>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_49_frame<F_m2>&) {
         return os << "<generator __genexpr_main_49>";
     }
 };
@@ -2139,7 +2139,7 @@ struct __genexpr_main_50_frame : public ::tpy::next_iter_mixin<__genexpr_main_50
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_50_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_50_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_50_frame<T___src>&) {
         return os << "<generator __genexpr_main_50>";
     }
 };
@@ -2195,7 +2195,7 @@ struct __genexpr_main_51_frame : public ::tpy::next_iter_mixin<__genexpr_main_51
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_51_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_51_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_51_frame&) {
         return os << "<generator __genexpr_main_51>";
     }
 };
@@ -2235,7 +2235,7 @@ struct __genexpr_main_52_frame : public ::tpy::next_iter_mixin<__genexpr_main_52
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_52_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_52_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_52_frame&) {
         return os << "<generator __genexpr_main_52>";
     }
 };
@@ -2282,7 +2282,7 @@ struct __genexpr_main_53_frame : public ::tpy::next_iter_mixin<__genexpr_main_53
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_53_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_53_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_53_frame<T___src>&) {
         return os << "<generator __genexpr_main_53>";
     }
 };
@@ -2341,7 +2341,7 @@ struct __genexpr_main_54_frame : public ::tpy::next_iter_mixin<__genexpr_main_54
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_54_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_54_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_54_frame&) {
         return os << "<generator __genexpr_main_54>";
     }
 };
@@ -2389,7 +2389,7 @@ struct __genexpr_main_55_frame : public ::tpy::next_iter_mixin<__genexpr_main_55
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_55_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_55_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_55_frame&) {
         return os << "<generator __genexpr_main_55>";
     }
 };
@@ -2438,7 +2438,7 @@ struct __genexpr_main_56_frame : public ::tpy::next_iter_mixin<__genexpr_main_56
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_56_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_56_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_56_frame&) {
         return os << "<generator __genexpr_main_56>";
     }
 };
@@ -2478,7 +2478,7 @@ struct __genexpr___genexpr_main_57_58_frame : public ::tpy::next_iter_mixin<__ge
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr___genexpr_main_57_58_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr___genexpr_main_57_58_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr___genexpr_main_57_58_frame&) {
         return os << "<generator __genexpr___genexpr_main_57_58>";
     }
 };
@@ -2518,7 +2518,7 @@ struct __genexpr_main_57_frame : public ::tpy::next_iter_mixin<__genexpr_main_57
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_57_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_57_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_57_frame&) {
         return os << "<generator __genexpr_main_57>";
     }
 };
@@ -2559,7 +2559,7 @@ struct __genexpr_main_59_frame : public ::tpy::next_iter_mixin<__genexpr_main_59
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __genexpr_main_59_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_59_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_59_frame&) {
         return os << "<generator __genexpr_main_59>";
     }
 };
@@ -2608,7 +2608,7 @@ struct __genexpr_main_60_frame : public ::tpy::next_iter_mixin<__genexpr_main_60
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_60_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_60_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_60_frame<T___src>&) {
         return os << "<generator __genexpr_main_60>";
     }
 };
@@ -2669,7 +2669,7 @@ struct __genexpr_main_61_frame : public ::tpy::next_iter_mixin<__genexpr_main_61
     std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __next__();
     __genexpr_main_61_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_61_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_61_frame&) {
         return os << "<generator __genexpr_main_61>";
     }
 };
@@ -2709,7 +2709,7 @@ struct __genexpr_main_62_frame : public ::tpy::next_iter_mixin<__genexpr_main_62
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_62_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_62_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_62_frame&) {
         return os << "<generator __genexpr_main_62>";
     }
 };
@@ -2750,7 +2750,7 @@ struct __genexpr_main_63_frame : public ::tpy::next_iter_mixin<__genexpr_main_63
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_63_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_63_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_63_frame&) {
         return os << "<generator __genexpr_main_63>";
     }
 };
@@ -2801,7 +2801,7 @@ struct __genexpr_main_64_frame : public ::tpy::next_iter_mixin<__genexpr_main_64
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __genexpr_main_64_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_64_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_64_frame&) {
         return os << "<generator __genexpr_main_64>";
     }
 };
@@ -2845,7 +2845,7 @@ struct __genexpr_main_65_frame : public ::tpy::next_iter_mixin<__genexpr_main_65
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_65_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_65_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_65_frame&) {
         return os << "<generator __genexpr_main_65>";
     }
 };
@@ -2895,7 +2895,7 @@ struct __genexpr_main_66_frame : public ::tpy::next_iter_mixin<__genexpr_main_66
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_66_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_66_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_66_frame<T___src>&) {
         return os << "<generator __genexpr_main_66>";
     }
 };
@@ -2961,7 +2961,7 @@ struct __genexpr_main_67_frame : public ::tpy::next_iter_mixin<__genexpr_main_67
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_67_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_67_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_67_frame<T___src>&) {
         return os << "<generator __genexpr_main_67>";
     }
 };
@@ -3027,7 +3027,7 @@ struct __genexpr_main_68_frame : public ::tpy::next_iter_mixin<__genexpr_main_68
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_68_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_68_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_68_frame<T___src>&) {
         return os << "<generator __genexpr_main_68>";
     }
 };
@@ -3093,7 +3093,7 @@ struct __genexpr_main_69_frame : public ::tpy::next_iter_mixin<__genexpr_main_69
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_69_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_69_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_69_frame<T___src>&) {
         return os << "<generator __genexpr_main_69>";
     }
 };
@@ -3159,7 +3159,7 @@ struct __genexpr_main_70_frame : public ::tpy::next_iter_mixin<__genexpr_main_70
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_70_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_70_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_70_frame<T___src>&) {
         return os << "<generator __genexpr_main_70>";
     }
 };
@@ -3219,7 +3219,7 @@ struct __genexpr_main_71_frame : public ::tpy::next_iter_mixin<__genexpr_main_71
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __genexpr_main_71_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_71_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_71_frame&) {
         return os << "<generator __genexpr_main_71>";
     }
 };
@@ -3267,7 +3267,7 @@ struct __genexpr_main_72_frame : public ::tpy::next_iter_mixin<__genexpr_main_72
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __genexpr_main_72_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_72_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_72_frame<T___src>&) {
         return os << "<generator __genexpr_main_72>";
     }
 };
@@ -3331,7 +3331,7 @@ struct __genexpr_main_73_frame : public ::tpy::next_iter_mixin<__genexpr_main_73
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_73_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_73_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_73_frame<T___src>&) {
         return os << "<generator __genexpr_main_73>";
     }
 };
@@ -3396,7 +3396,7 @@ struct __genexpr_main_74_frame : public ::tpy::next_iter_mixin<__genexpr_main_74
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_74_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_74_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_74_frame<T___src>&) {
         return os << "<generator __genexpr_main_74>";
     }
 };
@@ -3463,7 +3463,7 @@ struct __genexpr_main_75_frame : public ::tpy::next_iter_mixin<__genexpr_main_75
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_75_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_75_frame<T___src, F_make>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_75_frame<T___src, F_make>&) {
         return os << "<generator __genexpr_main_75>";
     }
 };
@@ -3523,7 +3523,7 @@ struct __genexpr_main_76_frame : public ::tpy::next_iter_mixin<__genexpr_main_76
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_76_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_76_frame<F___r0>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_76_frame<F___r0>&) {
         return os << "<generator __genexpr_main_76>";
     }
 };
@@ -3576,7 +3576,7 @@ struct __genexpr_main_77_frame : public ::tpy::next_iter_mixin<__genexpr_main_77
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_77_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_77_frame<T___src1, F___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_77_frame<T___src1, F___src>&) {
         return os << "<generator __genexpr_main_77>";
     }
 };
@@ -3639,7 +3639,7 @@ struct __genexpr_main_78_frame : public ::tpy::next_iter_mixin<__genexpr_main_78
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_78_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_78_frame<T___src1>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_78_frame<T___src1>&) {
         return os << "<generator __genexpr_main_78>";
     }
 };
@@ -3700,7 +3700,7 @@ struct __genexpr_main_79_frame : public ::tpy::next_iter_mixin<__genexpr_main_79
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_79_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_79_frame<F_cur>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_79_frame<F_cur>&) {
         return os << "<generator __genexpr_main_79>";
     }
 };
@@ -3744,7 +3744,7 @@ struct __genexpr_main_80_frame : public ::tpy::next_iter_mixin<__genexpr_main_80
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_80_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_80_frame<F_cur>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_80_frame<F_cur>&) {
         return os << "<generator __genexpr_main_80>";
     }
 };
@@ -3786,7 +3786,7 @@ struct __genexpr_main_81_frame : public ::tpy::next_iter_mixin<__genexpr_main_81
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_81_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_81_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_81_frame&) {
         return os << "<generator __genexpr_main_81>";
     }
 };
@@ -4303,7 +4303,7 @@ struct __genexpr___init___6_frame : public ::tpy::next_iter_mixin<__genexpr___in
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr___init___6_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr___init___6_frame<F_rate>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr___init___6_frame<F_rate>&) {
         return os << "<generator __genexpr___init___6>";
     }
 };
@@ -4349,7 +4349,7 @@ struct __genexpr_audit_7_frame : public ::tpy::next_iter_mixin<__genexpr_audit_7
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_audit_7_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_audit_7_frame<F_floor, F_self>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_audit_7_frame<F_floor, F_self>&) {
         return os << "<generator __genexpr_audit_7>";
     }
 };
@@ -4471,7 +4471,7 @@ struct __genexpr_weigh_8_frame : public ::tpy::next_iter_mixin<__genexpr_weigh_8
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_weigh_8_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_weigh_8_frame<F_floor, F_self>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_weigh_8_frame<F_floor, F_self>&) {
         return os << "<generator __genexpr_weigh_8>";
     }
 };
@@ -4556,7 +4556,7 @@ struct __genexpr_module_1_frame : public ::tpy::next_iter_mixin<__genexpr_module
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_module_1_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_module_1_frame<T___src>&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_module_1_frame<T___src>&) {
         return os << "<generator __genexpr_module_1>";
     }
 };
@@ -4615,7 +4615,7 @@ struct __genexpr_module_2_frame : public ::tpy::next_iter_mixin<__genexpr_module
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_module_2_frame& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __genexpr_module_2_frame&) {
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_module_2_frame&) {
         return os << "<generator __genexpr_module_2>";
     }
 };
