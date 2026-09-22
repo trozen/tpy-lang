@@ -17,8 +17,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         d = &*(__ptr_slot_f0 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}}));
         if ((d != nullptr)) {
             ::tpy::__getitem__((*d), "o").push_back(3);
-            __for_it_0.emplace((::tpy::__getitem__((*d), "o")).begin());
-            __for_end_0.emplace((::tpy::__getitem__((*d), "o")).end());
+            auto& __for_obj_0 = ::tpy::__getitem__((*d), "o");
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_1;
             continue;
         } else {

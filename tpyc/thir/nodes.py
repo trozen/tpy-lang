@@ -2835,6 +2835,15 @@ class THIRForEach(THIRStmt):
     hoist_ptr_inits: tuple[str, ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
     iteration: THIRNativeIteration | None = None
+    # The frame field that OWNS this loop's source, and the field's own C++
+    # type. Set for a loop inside a resumable body whose source is a fresh
+    # value AND whose body can bind an element into borrowing frame storage:
+    # the capture is `__for_src_N.emplace(<src>)` and the iterators range over
+    # `(*__for_src_N)`, because such a binding outlives the state block an
+    # `auto __obj_N` would die with. Decided by the resumable frame prescan,
+    # which is the pass that places the field.
+    frame_src_field: 'str | None' = None
+    frame_src_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -2868,6 +2877,9 @@ class THIRForIterProto(THIRStmt):
     const_loop_var: bool = False
     iterable_lvalue: bool = True
     orelse: tuple[THIRStmt, ...] = ()
+    # The frame field owning this loop's source -- see THIRForEach.
+    frame_src_field: 'str | None' = None
+    frame_src_cpp: 'str | None' = None
 
 
 class WithTargetArm(Enum):

@@ -16,8 +16,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_tail::__next__() {
         return -1;
     }
     case S_RESUME_0: {  // after: yield -1
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

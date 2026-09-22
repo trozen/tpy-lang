@@ -112,7 +112,6 @@ from ...typesys import (
     is_dyn_protocol,
     is_protocol_type,
     is_return_exception,
-    is_union_or_optional_type,
     qualify_exception_name,
     resolve_int_literals,
     unwrap_readonly,
@@ -154,7 +153,8 @@ from ...codegen_cpp.protocols import (
     record_inherits_dynamic,
     protocol_param_template_name,
 )
-from ...codegen_cpp.context import escape_cpp_name, is_constructor_call
+from ...codegen_cpp.context import (escape_cpp_name,
+                                    ternary_iterable_lends_storage)
 from ...codegen_cpp.protocols import narrow_cast_rhs
 from ...prescan import (
     chain_root_name,
@@ -172,7 +172,7 @@ from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp import emit_prims, resumable_cfg as rcfg
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
 from ...value_category import (
-    call_returns_cpp_ref, is_rvalue_source, wants_move,
+    call_returns_cpp_ref, for_source_is_rvalue, is_rvalue_source, wants_move,
     property_access_returns_cpp_ref,
     async_return_form, AsyncReturnForm,
 )
@@ -284,7 +284,6 @@ from .predicates import (
     _slot_free_ptr_reseat_ok,
     _module_var_recv,
     _bigint_index_disposition,
-    _call_iterable_lvalue,
     _post_if_narrow_plan,
     _const_exact_field_receiver_ok,
     _container_elem_lvalue_subscript,
@@ -1061,6 +1060,12 @@ def _for_loop_shape_ok(stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
 class _ForEachRoute:
     route: str
     elem_type: TpyType
+    # How the source is CAPTURED (`auto&` vs `auto`). Filled by
+    # `_select_for_each_route` from the shared value-category verdict: an arm
+    # classifies the loop SHAPE and says nothing about the capture. Two
+    # spellings stay: the consuming arm, which does not classify the source at
+    # all (it builds a new rvalue out of it), and the one arm that returns
+    # before the selector reaches the shared verdict.
     iterable_lvalue: bool = False
     step_kind: str = "plus_one"
     unpack_target_types: tuple['TpyType | None', ...] = ()
@@ -1188,12 +1193,10 @@ def _for_each_container_route(
     # F1-record receiver (`for c in h.name:`) -- both C++ lvalues
     # (is_lvalue_iterable: a name, or a field access over one), taking the
     # `auto& __obj_N =` capture -- or an eligible str- or container-returning
-    # call (`for c in full(s):` / `for x in make_list():`). The call's capture
-    # verdict rides `iterable_lvalue` (`_call_iterable_lvalue`: a str return
-    # and an `Own[...]` container return are rvalues, the owning `auto
-    # __obj_N =` capture; a borrow container return is an lvalue). A
-    # slice-subscript iterable is the owning-capture rvalue arm below;
-    # bytes-returning calls stay deferred.
+    # call (`for c in full(s):` / `for x in make_list():`). Which capture the
+    # source takes is the selector's one verdict, not this arm's. A
+    # slice-subscript iterable is admitted below; bytes-returning calls stay
+    # deferred.
     if _is_range_call(it):
         # A ZERO-literal-step range (`range(1, 10, 0)`): the counter loop
         # declines (zero step panics at runtime), so the
@@ -1209,9 +1212,7 @@ def _for_each_container_route(
         if not _for_each_elem_binding_ok(et):
             return None
         _witness("foreach.range_object")
-        return _ForEachRoute(route="container", elem_type=et,
-                             iterable_lvalue=False)
-    iterable_lvalue = True
+        return _ForEachRoute(route="container", elem_type=et)
     str_list_method = False
     container_field = False
     str_literal_iterable = False
@@ -1222,7 +1223,6 @@ def _for_each_container_route(
         it_type = _resolved_str_value(analyzer.get_expr_type(it), analyzer)
         if it_type is None:
             return None
-        iterable_lvalue = False
         str_literal_iterable = True
     elif isinstance(it, TpyCall):
         ret = analyzer.get_expr_type(it)
@@ -1249,8 +1249,7 @@ def _for_each_container_route(
                                 + _type_family_tag(et, analyzer))
                     return None
                 _witness("foreach.copy_iter_call")
-                return _ForEachRoute(route="container", elem_type=et,
-                                     iterable_lvalue=False)
+                return _ForEachRoute(route="container", elem_type=et)
             # container_ret_ok widens TpyCall lowering past str returns; the
             # bytes returns it admits in value position are filtered here.
             ret_span = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret))) \
@@ -1266,13 +1265,11 @@ def _for_each_container_route(
                 return None
             else:
                 it_type = unwrap_readonly(unwrap_send_sync(ret))
-        iterable_lvalue = _call_iterable_lvalue(it, analyzer)
     elif isinstance(it, TpyMethodCall):
         # `for v in d.values():` / `for k in d.keys():` / `for kv in d.items():`
         # (dict view -- items yields a value tuple, admitted by the elem gate
         # below) or `for w in s.split():` (a str method returning
-        # `Own[list[str]]`) -- all rvalues (owning `auto __obj_N =` capture,
-        # iterable_lvalue=False).
+        # `Own[list[str]]`).
         dict_view = _dict_view_iterable_ok(
             it, declared, analyzer, methods=("values", "keys", "items"),
             field_recv_ok=True)
@@ -1280,7 +1277,6 @@ def _for_each_container_route(
             it, declared, analyzer)
         if dict_view or str_list_method:
             it_type = analyzer.get_expr_type(it)
-            iterable_lvalue = False
         else:
             # A container-returning user METHOD call (`for v in g.get():`):
             # the TpyCall arm's twin -- a borrow return is a C++ lvalue
@@ -1295,7 +1291,6 @@ def _for_each_container_route(
             # annotation's: `Own[...]` is only the spelling sema forces on a
             # by-value container return, and a getter spells the same fact
             # through the field's storage reference instead.
-            iterable_lvalue = not is_rvalue_source(analyzer, it)
     elif isinstance(it, TpyName):
         if it.name not in declared:
             note_detail("foreach.name_global")
@@ -1360,7 +1355,6 @@ def _for_each_container_route(
             note_detail("foreach.iter_literal_type")
             return None
         it_type = unwrap_readonly(unwrap_send_sync(it_type))
-        iterable_lvalue = False
     elif isinstance(it, TpyFieldAccess):
         if not (_field_receiver_ok(it, declared, analyzer)
                 # A container member reached THROUGH a Ptr binding
@@ -1431,7 +1425,7 @@ def _for_each_container_route(
                     return None
                 _witness("foreach.native_bound_field")
                 return _ForEachRoute(
-                    route="container", elem_type=et, iterable_lvalue=True,
+                    route="container", elem_type=et,
                     container_field=True,
                     value_tuple_elem=_value_tuple(et, analyzer) is not None)
     elif (isinstance(it, TpySubscript)
@@ -1446,7 +1440,6 @@ def _for_each_container_route(
                    if rt is not None else None)
         if it_type is None:
             return None
-        iterable_lvalue = False
     else:
         # Unhandled node kinds and non-native iterable families are
         # sub-classified at the reject boundary (_for_each_reject_detail).
@@ -1471,7 +1464,6 @@ def _for_each_container_route(
         return None
     return _ForEachRoute(
         route="container", elem_type=et,
-        iterable_lvalue=iterable_lvalue,
         str_list_method=str_list_method,
         container_field=container_field,
         str_literal_iterable=str_literal_iterable,
@@ -1563,7 +1555,7 @@ def _for_enum_route(stmt: TpyForEach, analyzer,
     et = stmt.enum_iterable
     if not _for_each_elem_binding_ok(et):
         return None
-    return _ForEachRoute(route="enum", elem_type=et, iterable_lvalue=True)
+    return _ForEachRoute(route="enum", elem_type=et)
 
 def _for_tuple_unpack_route(
         stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
@@ -1640,7 +1632,6 @@ def _for_tuple_unpack_route(
             return None
         return _ForEachRoute(
             route="tuple_unpack", elem_type=et,
-            iterable_lvalue=_iter_call_lvalue(it, analyzer),
             unpack_target_types=tuple(target_types),
             value_tuple_elem=_value_tuple(et, analyzer) is not None,
             iter_proto=True)
@@ -1653,7 +1644,6 @@ def _for_tuple_unpack_route(
                                            methods=("items",),
                                            field_recv_ok=True)):
             it_type = analyzer.get_expr_type(it)
-            iterable_lvalue = False
         else:
             # A container-returning METHOD or FREE call (`for k, n in
             # c.most_common(3):` / `for p, s in sorted(pairs):`): the
@@ -1665,8 +1655,6 @@ def _for_tuple_unpack_route(
                 return None
             mfi = it.resolved_function_info
             it_type = unwrap_readonly(unwrap_send_sync(ret))
-            iterable_lvalue = not (mfi is not None
-                                   and isinstance(mfi.return_type, OwnType))
     elif isinstance(it, (TpyName, TpyFieldAccess)):
         if isinstance(it, TpyName):
             if it.name not in declared:
@@ -1692,7 +1680,6 @@ def _for_tuple_unpack_route(
         elem = unwrap_readonly(it_type.type_args[0])
         if len(elem.element_types) != len(up.targets):
             return None  # defensive: sema errors on arity mismatch
-        iterable_lvalue = True
     elif isinstance(it, TpyArrayLiteral):
         # A list-LITERAL iterable (`for name, n in [("a", 1), ("b", 2)]:`):
         # the same target-less rvalue capture (`auto __obj_N = {..};`) the
@@ -1712,7 +1699,6 @@ def _for_tuple_unpack_route(
         elem = unwrap_readonly(it_type.type_args[0])
         if len(elem.element_types) != len(up.targets):
             return None  # defensive: sema errors on arity mismatch
-        iterable_lvalue = False
     else:
         return None
     if not is_native_iterable(it_type, analyzer.registry):
@@ -1722,32 +1708,8 @@ def _for_tuple_unpack_route(
         return None
     return _ForEachRoute(
         route="tuple_unpack", elem_type=et,
-        iterable_lvalue=iterable_lvalue,
         unpack_target_types=tuple(target_types),
         value_tuple_elem=_value_tuple(et, analyzer) is not None)
-
-
-def _iter_call_lvalue(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
-    """`is_lvalue_iterable`'s call arm for the iter_proto route's admitted
-    calls (generator or iterator-returning): a builtin-typed call
-    (`call_type`), a record CTOR, an `Own[...]` return, a protocol return
-    (generators' `Iterator[T]`), and a value-type return are all rvalues
-    (the owning `auto __src_N =` capture in the brace scope); the remaining
-    shape -- a borrow record return -- is a C++ lvalue (`auto& __src_N =`).
-    The type read is the readonly-unwrapped `get_expr_type`: the call node
-    hits none of the special arms."""
-    if is_constructor_call(it, analyzer.registry.get_record):
-        return False
-    rfi = it.resolved_function_info
-    if rfi is not None and isinstance(rfi.return_type, OwnType):
-        return False
-    ret = analyzer.get_expr_type(it)
-    if ret is None:
-        return False
-    ret = unwrap_readonly(ret)
-    if is_protocol_type(ret):
-        return False
-    return not ret.is_value_type() and not is_union_or_optional_type(ret)
 
 
 def _open_t_iterable_bound(u: 'TypeParamRef', tparam_bounds: 'dict | None',
@@ -1781,9 +1743,9 @@ def _for_iter_proto_route(
     """The universal `::tpy::__iter__` + `__next__` protocol loop, for the
     iterables the container route's NativeIterable gate excludes. Slice: a
     free GENERATOR or iterator-returning call (`for x in gen(n):` /
-    `for x in reversed(xs):` / `for x in SimpleIter(4):` -- the capture
-    verdict is `_iter_call_lvalue`; the callee admission itself is the call
-    classifier's `generator_ok` / the ITERABLE-use result widening) or a
+    `for x in reversed(xs):` / `for x in SimpleIter(4):` -- the callee
+    admission is the call classifier's `generator_ok` / the ITERABLE-use
+    result widening) or a
     USER-ITERATOR local name (a concrete non-generic record with
     `__iter__`/`__next__` -- a C++ lvalue, `auto& __src_N`). Protocol-typed
     params (the template-param spelling), fields, and gen-valued locals are
@@ -1802,7 +1764,6 @@ def _for_iter_proto_route(
             return None
         if not fi.is_generator and not _iter_proto_call_ret(it, analyzer):
             return None
-        iterable_lvalue = _iter_call_lvalue(it, analyzer)
     elif isinstance(it, TpyMethodCall):
         # A member (`obj.gen(n)`) or module-qualified (`m.gen(n)`) generator
         # or iterator factory call. The expr lowering gates which spellings
@@ -1813,7 +1774,6 @@ def _for_iter_proto_route(
             return None
         if not fi.is_generator and not _iter_proto_call_ret(it, analyzer):
             return None
-        iterable_lvalue = _iter_call_lvalue(it, analyzer)
     elif isinstance(it, TpyIfExpr):
         # A TERNARY of iterator-returning calls (`for v in (gen([1, 2, 3])
         # if flag else gen([9])):`): the rvalue capture binds the chosen
@@ -1830,16 +1790,16 @@ def _for_iter_proto_route(
             if not afi.is_generator and not _iter_proto_call_ret(arm,
                                                                  analyzer):
                 return None
-            if _iter_call_lvalue(arm, analyzer):
-                return None
+        if ternary_iterable_lends_storage(it, analyzer.registry.get_record,
+                                          analyzer.get_expr_type):
+            return None
         et = _resolved_loop_elem_type(stmt, analyzer)
         if not _for_each_elem_binding_ok(et):
             note_detail("foreach.elem_family."
                         + _type_family_tag(et, analyzer))
             return None
         _witness("foreach.ifexpr_iterable")
-        return _ForEachRoute(route="iter_proto", elem_type=et,
-                             iterable_lvalue=False)
+        return _ForEachRoute(route="iter_proto", elem_type=et)
     elif isinstance(it, TpyFieldAccess):
         # A user-iterator FIELD read (`for k in r.headers:`) captures the
         # member lvalue (`auto& __src_N = r.headers;`) exactly like a local
@@ -1864,7 +1824,6 @@ def _for_iter_proto_route(
         elif (not isinstance(u, NominalType) or u.is_protocol
                 or not _user_iterator_iterable(u, analyzer)):
             return None
-        iterable_lvalue = True
     elif isinstance(it, TpyGeneratorExpression):
         # A GENEXPR iterable (`for b in (n for n in data):`): the frame is
         # an rvalue the loop owns (`auto __src_N = <frame creation>;`); the
@@ -1875,8 +1834,7 @@ def _for_iter_proto_route(
                         + _type_family_tag(et, analyzer))
             return None
         _witness("foreach.genexpr_iterable")
-        return _ForEachRoute(route="iter_proto", elem_type=et,
-                             iterable_lvalue=False)
+        return _ForEachRoute(route="iter_proto", elem_type=et)
     elif isinstance(it, TpySubscript):
         # A user-iterator container-ELEMENT read (`for x in items[0]:`)
         # captures the element lvalue (`auto& __src_N =
@@ -1890,7 +1848,6 @@ def _for_iter_proto_route(
                 and not is_native_iterable(su, analyzer.registry)
                 and _user_iterator_iterable(su, analyzer)):
             return None
-        iterable_lvalue = True
     elif isinstance(it, TpyName):
         if it.name == "self":
             # `for x in self:` captures the receiver DEREFERENCED
@@ -1908,8 +1865,7 @@ def _for_iter_proto_route(
                             + _type_family_tag(et, analyzer))
                 return None
             _witness("foreach.self_iterable")
-            return _ForEachRoute(route="iter_proto", elem_type=et,
-                                 iterable_lvalue=True)
+            return _ForEachRoute(route="iter_proto", elem_type=et)
         if it.name not in declared:
             return None
         u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -1937,8 +1893,7 @@ def _for_iter_proto_route(
                             + _type_family_tag(et, analyzer))
                 return None
             _witness(fam_face)
-            return _ForEachRoute(route="iter_proto", elem_type=et,
-                                 iterable_lvalue=True)
+            return _ForEachRoute(route="iter_proto", elem_type=et)
         # User-iterator records (monomorphized generic ones included -- their
         # `::tpy::__iter__` universal loop renders identically): a
         # protocol-typed binding (Iterator[T] param) spells through the deduced
@@ -2008,7 +1963,7 @@ def _for_iter_proto_route(
                     return None
                 _witness("foreach.native_proto_param")
                 return _ForEachRoute(
-                    route="container", elem_type=et, iterable_lvalue=True,
+                    route="container", elem_type=et,
                     value_tuple_elem=_value_tuple(et, analyzer) is not None)
             if is_native_iterable(u, analyzer.registry):
                 return None
@@ -2030,15 +1985,13 @@ def _for_iter_proto_route(
         elif (not isinstance(u, NominalType) or u.is_protocol
                 or not _user_iterator_iterable(u, analyzer)):
             return None
-        iterable_lvalue = True
     else:
         return None
     et = _resolved_loop_elem_type(stmt, analyzer)
     if not _for_each_elem_binding_ok(et):
         note_detail("foreach.elem_family." + _type_family_tag(et, analyzer))
         return None
-    return _ForEachRoute(route="iter_proto", elem_type=et,
-                         iterable_lvalue=iterable_lvalue)
+    return _ForEachRoute(route="iter_proto", elem_type=et)
 
 
 def _tuple_unpack_reject_tag(stmt: TpyForEach, analyzer,
@@ -2155,9 +2108,8 @@ def _select_for_each_route(
                         + _type_family_tag(net, analyzer))
             raise ThirUnsupported(stmt_reject_reason(stmt))
         _witness("foreach.narrowed_proto_src")
-        return _ForEachRoute(route="iter_proto", elem_type=net,
-                             iterable_lvalue=True)
-    if _is_range_call(stmt.iterable):
+        route = _ForEachRoute(route="iter_proto", elem_type=net)
+    elif _is_range_call(stmt.iterable):
         route = _for_range_route(stmt, analyzer, declared,
                                  shadowable_globals)
         if route is None:
@@ -2186,7 +2138,39 @@ def _select_for_each_route(
     if route is None:
         note_detail(_for_each_reject_detail(stmt, analyzer, declared, narrowed))
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    return route
+    if route.consuming_native_name is not None:
+        # The one arm whose capture is NOT about the source as written: it
+        # WRAPS the source (`::tpy::own_iter(std::move(xs))`), and the
+        # `iterable_lvalue=False` it set describes that wrapper -- a fresh
+        # value -- not the name it was built from. Everything else takes the
+        # shared verdict, so the capture spelling and the resumable frame's
+        # ownership decision cannot disagree about a slice or a ternary.
+        return route
+    return replace(route,
+                   iterable_lvalue=not for_source_is_rvalue(stmt, analyzer))
+
+
+def _frame_src_slot(stmt: TpyForEach,
+                    lc: '_LowerCtx') -> 'tuple[str | None, str | None]':
+    """The frame field owning this loop's source, and its C++ type.
+
+    Inside a resumable body a name bound out of a loop ELEMENT can be a frame
+    field, and then the fresh source it points into has to outlive the state
+    block the loop sits in -- so the frame holds it. Which loops those are is
+    the frame prescan's call, the pass that owns the frame's layout and
+    places the field; this reads the verdict rather than re-deriving it. A
+    loop NO pass looked at is refused here rather than silently taking the
+    block-local capture, which is the dangling read the holder prevents.
+    """
+    if not lc.resumable_leaf_mode or not for_source_is_rvalue(stmt,
+                                                              lc.analyzer):
+        return (None, None)
+    verdicts = rcfg.resumable_state(lc.func).for_src_fields
+    if stmt not in verdicts:
+        note_detail("foreach.frame_src_unplaced")
+        raise ThirUnsupported("res.for_src_unplaced")
+    return verdicts.get(stmt) or (None, None)
+
 
 def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
                           declared: dict[str, TpyType],
@@ -15962,6 +15946,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # (`auto& __src_N = (*d);`) -- the ptr-opt name carve-out
                 # keeps the bare pointer elsewhere, so retag here.
                 proto_iterable = replace(proto_iterable, deref=True)
+            proto_src_field, proto_src_cpp = _frame_src_slot(stmt, lc)
             return THIRForIterProto(
                 var=stmt.var,
                 elem_type=et,
@@ -15969,6 +15954,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 body=body,
                 const_loop_var=stmt.const_loop_var,
                 iterable_lvalue=route.iterable_lvalue,
+                frame_src_field=proto_src_field,
+                frame_src_cpp=proto_src_cpp,
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                           "loop.for_else"),
                 loc=loc,
@@ -16028,6 +16015,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         hoisted_bt = (_borrow_tuple_local_type(stmt.var, declared,
                                              lc.storage_tuple_locals)
                       if stmt.hoist_loop_var else None)
+        # The consuming arm wraps the source into a fresh value of its own
+        # (`own_iter(std::move(xs))`); what it iterates is that wrapper, which
+        # the frame does not place -- so it asks nothing here, exactly as it
+        # sets its own `iterable_lvalue`.
+        src_field, src_cpp = ((None, None)
+                              if route.consuming_native_name is not None
+                              else _frame_src_slot(stmt, lc))
         source_fact = (native_container(iterable.result_type,
                        _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
                        if route.iterable_lvalue and isinstance(iterable, THIRName)
@@ -16051,6 +16045,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             hoisted_bindings=tuple(foreach_bindings),
             iteration=iteration,
             hoist_ptr_inits=tuple(sorted(ptr_null_hoists)),
+            frame_src_field=src_field,
+            frame_src_cpp=src_cpp,
             orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                       "loop.for_else"),
             loc=loc,

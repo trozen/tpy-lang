@@ -24,8 +24,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_deep_gen::__next__() {
     }
     case S_RESUME_0: {  // after: yield len(row)
         row->push_back(11);
-        __for_it_0.emplace(((*row)).begin());
-        __for_end_0.emplace(((*row)).end());
+        auto& __for_obj_0 = (*row);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

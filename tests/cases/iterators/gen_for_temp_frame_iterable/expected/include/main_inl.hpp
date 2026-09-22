@@ -46,8 +46,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((__self.items).begin());
-        __for_end_0.emplace((__self.items).end());
+        auto& __for_obj_0 = __self.items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

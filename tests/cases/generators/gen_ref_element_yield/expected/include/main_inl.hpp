@@ -14,8 +14,9 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -47,8 +48,9 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_rec::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -79,8 +81,9 @@ inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_re
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_pack::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -116,8 +119,9 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         own.emplace(std::vector<std::vector<int32_t>>{{1}, {2}});
-        __for_it_0.emplace(((*own)).begin());
-        __for_end_0.emplace(((*own)).end());
+        auto& __for_obj_0 = (*own);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -205,8 +209,9 @@ inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_te
 inline std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::tpy::StopIteration> __gen_each_dict::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -236,8 +241,9 @@ inline std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::
 inline std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIteration> __gen_each_set::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -271,8 +277,9 @@ inline std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::Stop
 inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -303,8 +310,9 @@ inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Rows_each::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

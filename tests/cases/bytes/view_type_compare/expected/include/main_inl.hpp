@@ -13,8 +13,9 @@ namespace tpyapp::main {
 inline std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_matching::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((names).begin());
-        __for_end_0.emplace((names).end());
+        auto& __for_obj_0 = names;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

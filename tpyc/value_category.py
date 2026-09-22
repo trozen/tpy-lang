@@ -23,7 +23,8 @@ from .typesys import (
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .parse import (
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyExpr, TpyForEach,
+    TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression, TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall,
@@ -295,6 +296,11 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     # Names are lvalues (either pointer-locals, params, or globals)
     if isinstance(expr, TpyName):
         return False
+    # A walrus DENOTES its target: the expression is that binding, whatever
+    # the value it was given. Reading it as a fresh value would take a copy
+    # away from the name the same statement just bound.
+    if isinstance(expr, TpyNamedExpr):
+        return False
     # Field access: rvalue iff the object is rvalue (member of temporary).
     # A `__getattr__` access keeps the field-access node kind but RENDERS as
     # a method call, so the accessor's return CONVENTION is a SECOND way for
@@ -396,6 +402,26 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
             return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
         return True  # Default: treat unknown calls as rvalue
     return True  # Default: rvalue
+
+
+def for_source_is_rvalue(stmt: TpyForEach,
+                         analyzer: ValueCategoryAnalyzer) -> bool:
+    """What a `for` head ITERATES is a fresh value rather than existing
+    storage.
+
+    One question, one answer, for every layer that has to place the loop's
+    source: the THIR for-each route (which spells the capture `auto` or
+    `auto&`) and the resumable-frame prescan (for which it is half of
+    "does the frame have to own this source"). A layer that re-derives it
+    from node kinds disagrees with the other about a slice or a ternary, and
+    the frame then lends out elements of storage it does not hold.
+
+    The question is about the source AS WRITTEN. A route that WRAPS the
+    source (`own_iter(std::move(xs))` at a container's last use) builds a
+    fresh value out of an lvalue; that is a transformation downstream of this
+    verdict, and the arm that performs it says so about its own product.
+    """
+    return is_rvalue_source(analyzer, stmt.iterable)
 
 
 def peel_coerce(e: TpyExpr) -> TpyExpr:

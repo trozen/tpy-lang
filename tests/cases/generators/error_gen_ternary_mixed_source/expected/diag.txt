@@ -1,0 +1,1 @@
+main.py:21: error: iterating a conditional whose arms are an existing object and a fresh one is not supported: the loop would have to borrow and own the same source. Bind the iterable to a name before the loop and iterate that name instead

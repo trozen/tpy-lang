@@ -17,8 +17,9 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         total = 0;
-        __for_it_0.emplace((rows).begin());
-        __for_end_0.emplace((rows).end());
+        auto& __for_obj_0 = rows;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

@@ -37,8 +37,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
         m = ::tpy::optional_to_ptr(__self.d);
         if ((m != nullptr)) {
             ::tpy::__setitem__((*m), 3, 30);
-            __for_it_0.emplace(((*m)).begin());
-            __for_end_0.emplace(((*m)).end());
+            auto& __for_obj_0 = (*m);
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_1;
             continue;
         } else {

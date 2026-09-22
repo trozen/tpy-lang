@@ -29,8 +29,9 @@ __gen_fieldhop fieldhop(const std::vector<P>& ps) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((ds).begin());
-        __for_end_0.emplace((ds).end());
+        auto& __for_obj_0 = ds;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -200,8 +201,9 @@ __gen_alias_in_loop alias_in_loop(const std::vector<std::vector<Box>>& ds) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         t = 0;
-        __for_it_0.emplace((ds).begin());
-        __for_end_0.emplace((ds).end());
+        auto& __for_obj_0 = ds;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -221,8 +223,9 @@ __gen_alias_in_loop alias_in_loop(const std::vector<std::vector<Box>>& ds) {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         d = &(*((*__for_it_0))++);
-        __for_it_1.emplace(((*d)).begin());
-        __for_end_1.emplace(((*d)).end());
+        auto& __for_obj_1 = (*d);
+        __for_it_1.emplace((__for_obj_1).begin());
+        __for_end_1.emplace((__for_obj_1).end());
         __state = S_JOIN_1;
         continue;
     }

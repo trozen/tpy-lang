@@ -40,8 +40,9 @@ inline std::expected<Node, ::tpy::StopIteration> __gen_boxes::__next__() {
 inline std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((src).begin());
-        __for_end_0.emplace((src).end());
+        auto& __for_obj_0 = src;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -73,8 +74,9 @@ inline std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__()
 inline std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((src).begin());
-        __for_end_0.emplace((src).end());
+        auto& __for_obj_0 = src;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -105,8 +107,9 @@ inline std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_row
 inline std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((__self.items).begin());
-        __for_end_0.emplace((__self.items).end());
+        auto& __for_obj_0 = __self.items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

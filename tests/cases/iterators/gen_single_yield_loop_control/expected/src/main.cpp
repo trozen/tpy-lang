@@ -171,8 +171,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Limiter_first_positives::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         c = 0;
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

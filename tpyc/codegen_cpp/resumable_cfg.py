@@ -47,8 +47,8 @@ from ..parse.nodes import (
     stmts_have_any_return as _stmts_have_any_return,
 )
 from ..typesys import TypeParamRef
-from .context import (CodeGenError, escape_cpp_name, module_to_cpp_namespace,
-                      resumable_struct_name)
+from .context import (CodeGenError, FrameSourceUnnameable, escape_cpp_name,
+                      module_to_cpp_namespace, resumable_struct_name)
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyFunction
@@ -104,6 +104,17 @@ class ResumableFuncState:
     for_fields: 'list[tuple[str, str]]' = field(default_factory=list)
     for_loop_info: 'IdentityMap' = field(default_factory=IdentityMap)
     for_info_by_uid: 'dict[int, GeneratorForInfo]' = field(default_factory=dict)
+    # The source-holder verdict for every loop the CFG does NOT decompose:
+    # {TpyForEach -> (`__for_src_<uid>` field, its C++ type)} where the frame
+    # owns the source, `None` where the holder stays in the loop's own block.
+    # Their bodies cannot suspend, so the iterators stay block-local either
+    # way; what the frame takes is a FRESH source whose elements the body can
+    # bind into borrowing frame storage. An ABSENT entry means no pass ever
+    # looked at that loop, which the lowering refuses rather than guesses at.
+    # Kept apart from `for_uid_map`, which the CFG builder reads as "decompose
+    # this loop"; the THIR for-each lowering carries the field name onto the
+    # node so the emitter never re-decides.
+    for_src_fields: 'IdentityMap' = field(default_factory=IdentityMap)
     # The loop-seeding statements the frame's CONSTRUCTOR was emitted with
     # (None = it seeds at the first pull). Recorded at struct emission and read
     # by the body emission, which must not drop a seed the constructor lacks.
@@ -486,8 +497,11 @@ def recursive_delegation_error(name: str, loc=None) -> CodeGenError:
     within-module emit-order sort (which detects the cycle by failing to
     order the units) and by the field-type decision for a callee in a
     module that is a cycle peer of this one -- neither module's header is
-    complete for the other, and the frames are mutually infinite-size."""
-    return CodeGenError(
+    complete for the other, and the frames are mutually infinite-size.
+
+    Its type says the frame can name no slot for that source, so a loop that
+    does not need one can decline it instead of failing."""
+    return FrameSourceUnnameable(
         f"recursive generator delegation involving '{name}' is not "
         "supported: the delegated generator source is stored by value in "
         "the consumer's frame, so the cycle would be infinite-size. Break "

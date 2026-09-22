@@ -38,8 +38,9 @@ __coro_step step(int32_t n) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         n = 0;
-        __for_it_0.emplace((ps).begin());
-        __for_end_0.emplace((ps).end());
+        auto& __for_obj_0 = ps;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

@@ -44,8 +44,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((d).begin());
-        __for_end_0.emplace((d).end());
+        auto& __for_obj_0 = d;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -78,8 +79,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((blobs).begin());
-        __for_end_0.emplace((blobs).end());
+        auto& __for_obj_0 = blobs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

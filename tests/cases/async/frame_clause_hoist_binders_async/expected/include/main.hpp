@@ -395,6 +395,7 @@ struct __coro_a_record {
     int32_t i;
     Cell* r = nullptr;
     ::tpy::BigInt k;
+    ::tpy::frame_loop_slot<std::array<int32_t, 2>> __for_src_0;
     std::optional<__coro_value> __sub_0;
 
     enum : int32_t {

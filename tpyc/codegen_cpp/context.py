@@ -774,6 +774,40 @@ def is_lvalue_iterable(
     return False
 
 
+def ternary_iterable_lends_storage(
+    expr: TpyExpr,
+    get_record: Callable[[str], object | None],
+    get_type: Callable[[TpyExpr], TpyType],
+) -> bool:
+    """Whether a ternary `for` head has an arm that LENDS existing storage.
+
+    One capture names one object, so a head that can hand back either an
+    existing object or a fresh one is refused instead of resolved to one of
+    them: owning the fresh arm would copy the other arm's object away from
+    its owner, and binding a reference to the existing arm would leave the
+    fresh one's value unowned.
+    """
+    if not isinstance(expr, TpyIfExpr):
+        return False
+
+    def peeled(e: TpyExpr) -> TpyType:
+        # `readonly[T]` lends exactly what `T` does, so the arm's family is
+        # read off the peeled type.
+        return unwrap_readonly(get_type(e))
+
+    for arm in (expr.then_expr, expr.else_expr):
+        bare = arm
+        while isinstance(bare, TpyCoerce):
+            bare = bare.expr
+        if (isinstance(bare, (TpyCall, TpyMethodCall))
+                and get_type(bare) is None):
+            # A call with no resolved return type names no storage to lend.
+            continue
+        if is_lvalue_iterable(arm, get_record, peeled):
+            return True
+    return False
+
+
 DUNDER_TO_BINARY_OP: dict[str, str] = {
     "__add__": "+", "__sub__": "-", "__mul__": "*",
     "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
@@ -1099,6 +1133,16 @@ class CodeGenError(Exception):
         if self.loc:
             return f"{name}:{self.loc.line}: error: {self.message}"
         return f"{name}: error: {self.message}"
+
+
+class FrameSourceUnnameable(CodeGenError):
+    """No C++ type can be named for the frame slot that would hold a
+    `for`-loop's source.
+
+    Its own class so the resumable prescan can recognize exactly this
+    outcome -- a loop whose source the frame cannot own -- and decide what
+    to do about it, without a blanket catch that would also swallow the
+    unrelated diagnostics the same analysis raises."""
 
 
 @contextmanager

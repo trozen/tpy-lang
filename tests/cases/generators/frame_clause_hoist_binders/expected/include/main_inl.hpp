@@ -515,9 +515,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_int32::__next_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_optional::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __obj_0 = {1, 2};
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
+        auto __beg_0 = (*__for_src_0).begin();
+        auto __end_0 = (*__for_src_0).end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::opt_pair();
@@ -597,9 +597,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_two_str::__nex
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __obj_0 = {1, 2};
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
+        auto __beg_0 = (*__for_src_0).begin();
+        auto __end_0 = (*__for_src_0).end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::with_cell(c);
@@ -634,9 +634,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record::__next
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __obj_0 = {1, 2};
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
+        auto __beg_0 = (*__for_src_0).begin();
+        auto __end_0 = (*__for_src_0).end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::own_list_pair();
@@ -917,9 +917,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_if:
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __obj_0 = {1, 2};
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
+        auto __beg_0 = (*__for_src_0).begin();
+        auto __end_0 = (*__for_src_0).end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::own_cell(i);
@@ -957,9 +957,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_loo
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_box::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __obj_0 = {1, 2};
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
+        auto __beg_0 = (*__for_src_0).begin();
+        auto __end_0 = (*__for_src_0).end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::box_pair(i);
@@ -1029,9 +1029,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_plain_assign::
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_literal_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        auto __obj_0 = {1, 2};
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
+        auto __beg_0 = (*__for_src_0).begin();
+        auto __end_0 = (*__for_src_0).end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             s = "a";

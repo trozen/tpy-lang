@@ -100,8 +100,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_finally::__next__() {
     case S_INITIAL:  // entry
     case S_JOIN_2: {
         try {
-            __for_it_0.emplace((xs).begin());
-            __for_end_0.emplace((xs).end());
+            auto& __for_obj_0 = xs;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -176,8 +177,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
     }
     case S_JOIN_2: {
         try {
-            __for_it_0.emplace((xs).begin());
-            __for_end_0.emplace((xs).end());
+            auto& __for_obj_0 = xs;
+            __for_it_0.emplace((__for_obj_0).begin());
+            __for_end_0.emplace((__for_obj_0).end());
             __state = S_JOIN_0;
             continue;
         } catch (::tpy::BaseException& __exc_0) {

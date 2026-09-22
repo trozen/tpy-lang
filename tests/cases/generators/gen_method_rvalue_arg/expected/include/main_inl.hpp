@@ -16,8 +16,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() 
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         n = 0;
-        __for_it_0.emplace((items).begin());
-        __for_end_0.emplace((items).end());
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -60,8 +61,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__(
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        __for_it_0.emplace((xs).begin());
-        __for_end_0.emplace((xs).end());
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -113,8 +115,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() 
         return ::tpy::__len__(d);
     }
     case S_RESUME_0: {  // after: yield len(d)
-        __for_it_0.emplace((d).begin());
-        __for_end_0.emplace((d).end());
+        auto& __for_obj_0 = d;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

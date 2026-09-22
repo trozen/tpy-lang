@@ -89,8 +89,9 @@ void main() {
             (*tasks).push_back(::tpystd::asyncio::create_task<std::monostate>(__self._cb(Conn(i))));
             i = ::tpy::add_check<int32_t>(i, 1);
         }
-        __for_it_0.emplace(((*tasks)).begin());
-        __for_end_0.emplace(((*tasks)).end());
+        auto& __for_obj_0 = (*tasks);
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }

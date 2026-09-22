@@ -16,8 +16,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
         return -1;
     }
     case S_RESUME_0: {  // after: yield -1
-        __for_it_0.emplace((pairs).begin());
-        __for_end_0.emplace((pairs).end());
+        auto& __for_obj_0 = pairs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -45,8 +46,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_it_0.emplace((pairs).begin());
-        __for_end_0.emplace((pairs).end());
+        auto& __for_obj_0 = pairs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -61,52 +63,6 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
         x = std::get<0>(__tup_1);
         __state = S_RESUME_0;
         return x;
-    }
-    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    __builtin_unreachable();
-}
-
-// def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
-//     for a, b in p1:
-//         yield a + b                                                                          # -> S_RESUME_0
-//     for c, d in p2:
-//         yield c * d                                                                          # -> S_RESUME_1
-inline std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
-    while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __for_it_0.emplace((p1).begin());
-        __for_end_0.emplace((p1).end());
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0:  // after: yield a + b
-    case S_JOIN_0: {
-        if ((*__for_it_0) == (*__for_end_0)) {
-            __for_it_1.emplace((p2).begin());
-            __for_end_1.emplace((p2).end());
-            __state = S_JOIN_1;
-            continue;
-        }
-        __for_tup_2 = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_2;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
-        __state = S_RESUME_0;
-        return (::tpy::add_check<int32_t>(a, b));
-    }
-    case S_RESUME_1:  // after: yield c * d
-    case S_JOIN_1: {
-        if ((*__for_it_1) == (*__for_end_1)) {
-            __state = S_DONE;
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        __for_tup_3 = *((*__for_it_1))++;
-        const auto& __tup_2 = __for_tup_3;
-        c = std::get<0>(__tup_2);
-        d = std::get<1>(__tup_2);
-        __state = S_RESUME_1;
-        return (::tpy::mul_check<int32_t>(c, d));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

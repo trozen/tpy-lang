@@ -5,6 +5,57 @@
 namespace tpyapp::main {
 
 
+// def gen(items: list[int32], limit: int32) -> Iterator[int32]:
+//     yield 999                                                  # -> S_RESUME_0
+//     for x in items:
+//         if x >= limit:
+//             break
+//         yield x                                                # -> S_RESUME_1
+//     else:
+//         yield -1                                               # -> S_RESUME_2
+//     yield -2                                                   # -> S_RESUME_3
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_RESUME_0;
+        return 999;
+    }
+    case S_RESUME_0: {  // after: yield 999
+        auto& __for_obj_0 = items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_3: {  // after: yield -2
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_RESUME_1:  // after: yield x
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_RESUME_2;
+            return -1;
+        }
+        x = *((*__for_it_0))++;
+        if ((x >= limit)) {
+            __state = S_JOIN_1;
+            continue;
+        } else {
+            __state = S_RESUME_1;
+            return x;
+        }
+    }
+    case S_RESUME_2:  // after: yield -1
+    case S_JOIN_1: {
+        __state = S_RESUME_3;
+        return -2;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 // def gen(items: list[int32], limit: int32) -> Iterator[int32]:
 __gen_gen gen(const std::vector<int32_t>& items, int32_t limit) {
