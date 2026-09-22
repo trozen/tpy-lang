@@ -1,0 +1,980 @@
+{
+ "bigint__collection__S": [
+  "ok",
+  "",
+  "std::vector<::tpy::BigInt> probe_xs = std::vector<::tpy::BigInt>{} | probe_xs.push_back(v)",
+  "same"
+ ],
+ "bigint__collection__T_sub": [
+  "ok",
+  "",
+  "std::vector<std::tuple<::tpy::BigInt, int32_t>> probe_xs = std::vector<std::tuple<::tpy::BigInt, int32_t>>{} | probe_xs.push_back(std::tuple<::tpy::BigInt, int32_t>{v, 1}) | ::tpy::BigInt probe_x = std::get<0>(::tpy::__getitem__(probe_xs, 0))",
+  "same"
+ ],
+ "bigint__collection__T_unpack": [
+  "ok",
+  "",
+  "std::vector<std::tuple<::tpy::BigInt, int32_t>> probe_xs = std::vector<std::tuple<::tpy::BigInt, int32_t>>{} | probe_xs.push_back(std::tuple<::tpy::BigInt, int32_t>{v, 1}) | auto __tup_1 = ::tpy::__getitem__(probe_xs, 0) | const ::tpy::BigInt& probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "bigint__field__S": [
+  "ok",
+  "",
+  "::tpy::BigInt probe_f | inline H::H(const ::tpy::BigInt& v) : probe_f(v) {}",
+  "same"
+ ],
+ "bigint__field__T_sub": [
+  "ok",
+  "",
+  "std::tuple<::tpy::BigInt, int32_t> probe_f | inline H::H(const ::tpy::BigInt& v) : probe_f(std::tuple<::tpy::BigInt, int32_t>{v, 1}) {} | ::tpy::BigInt probe_x = std::get<0>(h.probe_f)",
+  "same"
+ ],
+ "bigint__field__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<::tpy::BigInt, int32_t> probe_f | inline H::H(const ::tpy::BigInt& v) : probe_f(std::tuple<::tpy::BigInt, int32_t>{v, 1}) {} | auto __tup_1 = h.probe_f | const ::tpy::BigInt& probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "bigint__global__S": [
+  "ok",
+  "",
+  "extern ::tpy::BigInt probe_g | ::tpy::BigInt probe_g | probe_g = ((::tpy::BigInt(2)).pow(::tpy::BigInt(70)))",
+  "same"
+ ],
+ "bigint__global__T_sub": [
+  "ok",
+  "",
+  "extern std::tuple<::tpy::BigInt, int32_t> probe_g | std::tuple<::tpy::BigInt, int32_t> probe_g | ::tpy::BigInt probe_x = std::get<0>(probe_g) | probe_g = std::tuple<::tpy::BigInt, int32_t>{((::tpy::BigInt(2)).pow(::tpy::BigInt(70))), 1}",
+  "same"
+ ],
+ "bigint__global__T_unpack": [
+  "ok",
+  "",
+  "extern std::tuple<::tpy::BigInt, int32_t> probe_g | std::tuple<::tpy::BigInt, int32_t> probe_g | const auto& __tup_1 = probe_g | const ::tpy::BigInt& probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1) | probe_g = std::tuple<::tpy::BigInt, int32_t>{((::tpy::BigInt(2)).pow(::tpy::BigInt(70))), 1}",
+  "same"
+ ],
+ "bigint__local__S": [
+  "ok",
+  "",
+  "::tpy::BigInt probe_loc = v",
+  "same"
+ ],
+ "bigint__local__T_sub": [
+  "ok",
+  "",
+  "std::tuple<::tpy::BigInt, int32_t> probe_loc = std::tuple<::tpy::BigInt, int32_t>{v, 1} | ::tpy::BigInt probe_x = std::get<0>(probe_loc)",
+  "same"
+ ],
+ "bigint__local__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<::tpy::BigInt, int32_t> probe_loc = std::tuple<::tpy::BigInt, int32_t>{v, 1} | const auto& __tup_1 = probe_loc | const ::tpy::BigInt& probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "bigint__param__S": [
+  "ok",
+  "",
+  "void probe_fn(const ::tpy::BigInt& p) | probe_fn(v)",
+  "same"
+ ],
+ "bigint__param__T_sub": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<::tpy::BigInt, int32_t>& p) | ::tpy::BigInt probe_x = std::get<0>(p) | probe_fn(std::tuple<::tpy::BigInt, int32_t>{v, 1})",
+  "same"
+ ],
+ "bigint__param__T_unpack": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<::tpy::BigInt, int32_t>& p) | const auto& __tup_1 = p | const ::tpy::BigInt& probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1) | probe_fn(std::tuple<::tpy::BigInt, int32_t>{v, 1})",
+  "same"
+ ],
+ "bigint__return__S": [
+  "ok",
+  "",
+  "::tpy::BigInt probe_fn(const ::tpy::BigInt& v)",
+  "same"
+ ],
+ "bigint__return__T_sub": [
+  "ok",
+  "",
+  "std::tuple<::tpy::BigInt, int32_t> probe_fn(const ::tpy::BigInt& v) | std::tuple<::tpy::BigInt, int32_t> r = probe_fn(((::tpy::BigInt(2)).pow(::tpy::BigInt(70)))) | ::tpy::BigInt probe_x = std::get<0>(r)",
+  "same"
+ ],
+ "bigint__return__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<::tpy::BigInt, int32_t> probe_fn(const ::tpy::BigInt& v) | std::tuple<::tpy::BigInt, int32_t> r = probe_fn(((::tpy::BigInt(2)).pow(::tpy::BigInt(70)))) | const auto& __tup_1 = r | const ::tpy::BigInt& probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "borrow__collection__S": [
+  "ok",
+  "copies Cell into owned storage; use copy() to make this explicit",
+  "std::vector<Cell> probe_xs = std::vector<Cell>{} | probe_xs.push_back(b) | ::tpy::__getitem__(probe_xs, 0).n = 9",
+  "differs"
+ ],
+ "borrow__collection__T_call": [
+  "ok",
+  "copies Cell into owned storage (tuple element 0); use copy() to make this explic",
+  "std::vector<std::tuple<Cell, int32_t>> probe_xs = std::vector<std::tuple<Cell, int32_t>>{} | probe_xs.push_back(::tpy::tuple_to_storage<std::tuple<Cell, int32_t>>(mk(b))) | std::get<0>(::tpy::__getitem__(probe_xs, 0)).n = 9",
+  "differs"
+ ],
+ "borrow__collection__T_lit": [
+  "Cannot pass borrowed value as argument 'value' tuple element 0 Own[Cell] without",
+  "",
+  "",
+  ""
+ ],
+ "borrow__collection__T_local": [
+  "expr.method_call:method.arg_shape",
+  "copies Cell into owned storage (tuple element 0); use copy() to make this explic",
+  "",
+  ""
+ ],
+ "borrow__field__S": [
+  "ok",
+  "copies Cell into field; use copy() to make this explicit",
+  "Cell probe_f | inline H::H(const Cell& v) : probe_f(v) {} | h.probe_f.n = 9",
+  "differs"
+ ],
+ "borrow__field__T": [
+  "ok",
+  "copies Cell into field (tuple element 0); use copy() to make this explicit",
+  "std::tuple<Cell, int32_t> probe_f | inline H::H(const std::tuple<const Cell*, int32_t>& v) : probe_f(::tpy::tuple_to_storage<std::tuple<Cell, int32_t>>(v)) {} | std::get<0>(h.probe_f).n = 9",
+  "differs"
+ ],
+ "borrow__global__S": [
+  "ok",
+  "'probe_g' will not keep the object it was given -- 'V' is rebound on each iterat",
+  "extern Cell* probe_g | Cell* probe_g{} | probe_g->n = 9 | probe_g = V",
+  "same"
+ ],
+ "borrow__global__T": [
+  "ok",
+  "",
+  "extern std::tuple<Cell, int32_t> probe_g | std::tuple<Cell, int32_t> probe_g | std::get<0>(probe_g).n = 9 | probe_g = ::tpy::tuple_to_storage<std::tuple<Cell, int32_t>>(std::tuple<Cell*, int32_t>{V, 1})",
+  "differs"
+ ],
+ "borrow__local__S": [
+  "ok",
+  "",
+  "Cell& probe_loc = b | probe_loc.n = 9",
+  "same"
+ ],
+ "borrow__local__T": [
+  "ok",
+  "",
+  "auto probe_loc = std::tuple<Cell*, int32_t>{&(b), 1} | std::get<0>(probe_loc)->n = 9",
+  "same"
+ ],
+ "borrow__param__S": [
+  "ok",
+  "",
+  "void probe_fn(Cell& p) | probe_fn(b)",
+  "same"
+ ],
+ "borrow__param__T": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<Cell*, int32_t>& p) | probe_fn(std::tuple<Cell*, int32_t>{&(b), 1})",
+  "same"
+ ],
+ "borrow__return__S": [
+  "ok",
+  "",
+  "Cell& probe_fn(Cell& b) | Cell& r = probe_fn(b)",
+  "same"
+ ],
+ "borrow__return__T": [
+  "ok",
+  "",
+  "std::tuple<Cell*, int32_t> probe_fn(Cell& b) | auto r = probe_fn(b)",
+  "same"
+ ],
+ "bytes__collection__S": [
+  "ok",
+  "",
+  "std::vector<::tpy::Bytes> probe_xs = std::vector<::tpy::Bytes>{} | probe_xs.push_back(::tpy::Bytes(v))",
+  "same"
+ ],
+ "bytes__collection__T_sub": [
+  "stmt.var_decl:subscript.tuple_shape",
+  "",
+  "",
+  ""
+ ],
+ "bytes__collection__T_unpack": [
+  "ok",
+  "",
+  "std::vector<std::tuple<::tpy::Bytes, int32_t>> probe_xs = std::vector<std::tuple<::tpy::Bytes, int32_t>>{} | probe_xs.push_back(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1}) | auto __tup_1 = ::tpy::__getitem__(probe_xs, 0) | ::tpy::BytesView probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "bytes__field__S": [
+  "ok",
+  "",
+  "::tpy::Bytes probe_f | inline H::H(::tpy::BytesView v) : probe_f(::tpy::Bytes(v)) {}",
+  "same"
+ ],
+ "bytes__field__T_sub": [
+  "stmt.var_decl:subscript.tuple_shape",
+  "",
+  "",
+  ""
+ ],
+ "bytes__field__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<::tpy::Bytes, int32_t> probe_f | inline H::H(::tpy::BytesView v) : probe_f(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1}) {} | auto __tup_1 = h.probe_f | ::tpy::BytesView probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "bytes__global__S": [
+  "ok",
+  "",
+  "extern ::tpy::Bytes probe_g | ::tpy::Bytes probe_g | probe_g = ::tpy::bytes_literal_owned(\"hello\", 5)",
+  "same"
+ ],
+ "bytes__global__T_sub": [
+  "stmt.var_decl:subscript.tuple_shape",
+  "",
+  "",
+  ""
+ ],
+ "bytes__global__T_unpack": [
+  "stmt.tuple_unpack",
+  "",
+  "",
+  ""
+ ],
+ "bytes__local__S": [
+  "ok",
+  "",
+  "::tpy::BytesView probe_loc = v",
+  "same"
+ ],
+ "bytes__local__T_sub": [
+  "stmt.var_decl:subscript.tuple_shape",
+  "",
+  "",
+  ""
+ ],
+ "bytes__local__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<::tpy::Bytes, int32_t> probe_loc = std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1} | const auto& __tup_1 = probe_loc | ::tpy::BytesView probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "bytes__param__S": [
+  "ok",
+  "",
+  "void probe_fn(::tpy::BytesView p) | probe_fn(v)",
+  "same"
+ ],
+ "bytes__param__T_sub": [
+  "stmt.var_decl:subscript.tuple_shape",
+  "",
+  "",
+  ""
+ ],
+ "bytes__param__T_unpack": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<::tpy::Bytes, int32_t>& p) | const auto& __tup_1 = p | ::tpy::BytesView probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1) | probe_fn(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1})",
+  "same"
+ ],
+ "bytes__return__S": [
+  "ok",
+  "",
+  "::tpy::Bytes probe_fn(::tpy::BytesView v)",
+  "same"
+ ],
+ "bytes__return__T_sub": [
+  "stmt.var_decl:subscript.tuple_shape",
+  "",
+  "",
+  ""
+ ],
+ "bytes__return__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<::tpy::Bytes, int32_t> probe_fn(::tpy::BytesView v) | std::tuple<::tpy::Bytes, int32_t> r = probe_fn(::tpy::bytes_literal(\"hello\", 5)) | const auto& __tup_1 = r | ::tpy::BytesView probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "mixed__collection__T_call": [
+  "ok",
+  "copies Cell into owned storage (tuple element 1); use copy() to make this explic",
+  "std::vector<std::tuple<Cell, Cell>> probe_xs = std::vector<std::tuple<Cell, Cell>>{} | probe_xs.push_back(::tpy::tuple_to_storage<std::tuple<Cell, Cell>>(mk(b))) | std::get<1>(::tpy::__getitem__(probe_xs, 0)).n = 9",
+  "differs"
+ ],
+ "mixed__collection__T_local": [
+  "expr.method_call:method.arg_shape",
+  "",
+  "",
+  ""
+ ],
+ "mixed__field__T": [
+  "ok",
+  "copies Cell into field (tuple element 1); use copy() to make this explicit",
+  "std::tuple<Cell, Cell> probe_f | inline H::H(Cell& b) : probe_f(::tpy::tuple_to_storage<std::tuple<Cell, Cell>>(mk(b))) {} | std::get<1>(h.probe_f).n = 9",
+  "differs"
+ ],
+ "mixed__global__T": [
+  "ok",
+  "",
+  "extern std::tuple<Cell, Cell> probe_g | std::tuple<Cell, Cell> probe_g | std::get<1>(probe_g).n = 9 | probe_g = ::tpy::tuple_to_storage<std::tuple<Cell, Cell>>(mk((*V)))",
+  "differs"
+ ],
+ "mixed__local__T": [
+  "ok",
+  "",
+  "auto probe_loc = mk(b) | std::get<1>(probe_loc)->n = 9 | std::get<0>(probe_loc).n = 5",
+  "same"
+ ],
+ "mixed__param__T_consume": [
+  "stmt.tuple_unpack",
+  "",
+  "",
+  ""
+ ],
+ "mixed__param__T_read": [
+  "ok",
+  "",
+  "int32_t probe_fn(const std::tuple<Cell, Cell*>& p)",
+  "same"
+ ],
+ "mixed__param__T_write_own": [
+  "ok",
+  "",
+  "int32_t probe_fn(const std::tuple<Cell, Cell*>& p)",
+  "build-fail"
+ ],
+ "mixed__return__T": [
+  "ok",
+  "",
+  "auto __tup_1 = mk(b) | Cell o = std::move(std::get<0>(__tup_1)) | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)))",
+  "same"
+ ],
+ "nocopy__collection__S": [
+  "@nocopy type 'NCell' is used after this point and cannot be moved into 'value: O",
+  "",
+  "",
+  ""
+ ],
+ "nocopy__collection__T_call": [
+  "cannot copy non-copyable type 'NCell' into owned storage (tuple element 0) (use ",
+  "",
+  "",
+  ""
+ ],
+ "nocopy__collection__T_lit": [
+  "@nocopy type 'NCell' is used after this point and cannot be moved into argument ",
+  "",
+  "",
+  ""
+ ],
+ "nocopy__collection__T_local": [
+  "cannot bind tuple element 0 of non-copyable type 'NCell' by reference. Annotate ",
+  "",
+  "",
+  ""
+ ],
+ "nocopy__field__S": [
+  "cannot copy non-copyable type 'NCell' into field (use Own[...] to transfer owner",
+  "",
+  "",
+  ""
+ ],
+ "nocopy__field__T": [
+  "cannot copy non-copyable type 'NCell' into field (tuple element 0) (use Own[...]",
+  "",
+  "",
+  ""
+ ],
+ "nocopy__global__S": [
+  "ok",
+  "'probe_g' will not keep the object it was given -- 'V' is rebound on each iterat",
+  "extern NCell* probe_g | NCell* probe_g{} | probe_g->n = 9 | probe_g = V",
+  "same"
+ ],
+ "nocopy__global__T": [
+  "cannot bind tuple element 0 of non-copyable type 'NCell' by reference. Annotate ",
+  "",
+  "",
+  ""
+ ],
+ "nocopy__local__S": [
+  "ok",
+  "",
+  "NCell& probe_loc = b | probe_loc.n = 9",
+  "same"
+ ],
+ "nocopy__local__T": [
+  "cannot bind tuple element 0 of non-copyable type 'NCell' by reference. Annotate ",
+  "",
+  "",
+  ""
+ ],
+ "nocopy__param__S": [
+  "ok",
+  "",
+  "void probe_fn(NCell& p) | probe_fn(b)",
+  "same"
+ ],
+ "nocopy__param__T": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<NCell*, int32_t>& p) | probe_fn(std::tuple<NCell*, int32_t>{&(b), 1})",
+  "same"
+ ],
+ "nocopy__return__S": [
+  "ok",
+  "",
+  "NCell& probe_fn(NCell& b) | NCell& r = probe_fn(b)",
+  "same"
+ ],
+ "nocopy__return__T": [
+  "ok",
+  "",
+  "std::tuple<NCell*, int32_t> probe_fn(NCell& b) | auto r = probe_fn(b)",
+  "same"
+ ],
+ "own__collection__S": [
+  "Own[T] is redundant in this variable type ('list[Own[Cell]]'): a local owns its ",
+  "",
+  "",
+  ""
+ ],
+ "own__collection__T": [
+  "Own[T] is redundant in this variable type ('list[tuple[Own[Cell], int32]]'): a l",
+  "",
+  "",
+  ""
+ ],
+ "own__field__S": [
+  "Own[T] is redundant in this field type ('Own[Cell]'): a field owns its value inl",
+  "",
+  "",
+  ""
+ ],
+ "own__field__T": [
+  "Own[T] is redundant in this field type ('tuple[Own[Cell], int32]'): a field owns",
+  "",
+  "",
+  ""
+ ],
+ "own__global__S": [
+  "Own[T] is redundant in this variable type ('Own[Cell]'): a local owns its value ",
+  "",
+  "",
+  ""
+ ],
+ "own__global__T": [
+  "Own[T] is redundant in this variable type ('tuple[Own[Cell], int32]'): a local o",
+  "",
+  "",
+  ""
+ ],
+ "own__local__S": [
+  "Own[T] is redundant in this variable type ('Own[Cell]'): a local owns its value ",
+  "",
+  "",
+  ""
+ ],
+ "own__local__T": [
+  "Own[T] is redundant in this variable type ('tuple[Own[Cell], int32]'): a local o",
+  "",
+  "",
+  ""
+ ],
+ "own__param__S": [
+  "ok",
+  "",
+  "int32_t probe_fn(Cell&& x)",
+  "same"
+ ],
+ "own__param__T": [
+  "ok",
+  "",
+  "int32_t probe_fn(std::tuple<Cell, int32_t>&& p) | auto&& __tup_1 = std::move(p) | Cell x = std::move(std::get<0>(__tup_1)) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "own__return__S": [
+  "ok",
+  "",
+  "Cell probe_fn() | Cell r = probe_fn()",
+  "same"
+ ],
+ "own__return__T": [
+  "ok",
+  "",
+  "std::tuple<Cell, int32_t> probe_fn() | auto __tup_1 = probe_fn() | Cell x = std::move(std::get<0>(__tup_1)) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "str__collection__S": [
+  "ok",
+  "",
+  "std::vector<std::string> probe_xs = std::vector<std::string>{} | probe_xs.push_back(std::string(v))",
+  "same"
+ ],
+ "str__collection__T_sub": [
+  "ok",
+  "",
+  "std::vector<std::tuple<std::string, int32_t>> probe_xs = std::vector<std::tuple<std::string, int32_t>>{} | probe_xs.push_back(std::tuple<std::string, int32_t>{std::string(v), 1}) | std::string_view probe_x = std::get<0>(::tpy::__getitem__(probe_xs, 0))",
+  "same"
+ ],
+ "str__collection__T_unpack": [
+  "ok",
+  "",
+  "std::vector<std::tuple<std::string, int32_t>> probe_xs = std::vector<std::tuple<std::string, int32_t>>{} | probe_xs.push_back(std::tuple<std::string, int32_t>{std::string(v), 1}) | auto __tup_1 = ::tpy::__getitem__(probe_xs, 0) | std::string_view probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "str__field__S": [
+  "ok",
+  "",
+  "std::string probe_f | inline H::H(std::string_view v) : probe_f(v) {}",
+  "same"
+ ],
+ "str__field__T_sub": [
+  "ok",
+  "",
+  "std::tuple<std::string, int32_t> probe_f | inline H::H(std::string_view v) : probe_f(std::tuple<std::string, int32_t>{std::string(v), 1}) {} | std::string_view probe_x = std::get<0>(h.probe_f)",
+  "same"
+ ],
+ "str__field__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<std::string, int32_t> probe_f | inline H::H(std::string_view v) : probe_f(std::tuple<std::string, int32_t>{std::string(v), 1}) {} | auto __tup_1 = h.probe_f | std::string_view probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "str__global__S": [
+  "ok",
+  "",
+  "extern std::string probe_g | std::string probe_g | probe_g = \"hello\"",
+  "same"
+ ],
+ "str__global__T_sub": [
+  "ok",
+  "",
+  "extern std::tuple<std::string, int32_t> probe_g | std::tuple<std::string, int32_t> probe_g | std::string_view probe_x = std::get<0>(probe_g) | probe_g = std::tuple<std::string, int32_t>{\"hello\", 1}",
+  "same"
+ ],
+ "str__global__T_unpack": [
+  "ok",
+  "",
+  "extern std::tuple<std::string, int32_t> probe_g | std::tuple<std::string, int32_t> probe_g | const auto& __tup_1 = probe_g | std::string_view probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1) | probe_g = std::tuple<std::string, int32_t>{\"hello\", 1}",
+  "same"
+ ],
+ "str__local__S": [
+  "ok",
+  "",
+  "std::string_view probe_loc = v",
+  "same"
+ ],
+ "str__local__T_sub": [
+  "ok",
+  "",
+  "std::tuple<std::string, int32_t> probe_loc = std::tuple<std::string, int32_t>{std::string(v), 1} | std::string_view probe_x = std::get<0>(probe_loc)",
+  "same"
+ ],
+ "str__local__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<std::string, int32_t> probe_loc = std::tuple<std::string, int32_t>{std::string(v), 1} | const auto& __tup_1 = probe_loc | std::string_view probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "str__param__S": [
+  "ok",
+  "",
+  "void probe_fn(std::string_view p) | probe_fn(v)",
+  "same"
+ ],
+ "str__param__T_sub": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<std::string, int32_t>& p) | std::string_view probe_x = std::get<0>(p) | probe_fn(std::tuple<std::string, int32_t>{std::string(v), 1})",
+  "same"
+ ],
+ "str__param__T_unpack": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<std::string, int32_t>& p) | const auto& __tup_1 = p | std::string_view probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1) | probe_fn(std::tuple<std::string, int32_t>{std::string(v), 1})",
+  "same"
+ ],
+ "str__return__S": [
+  "ok",
+  "",
+  "std::string probe_fn(std::string_view v)",
+  "same"
+ ],
+ "str__return__T_sub": [
+  "ok",
+  "",
+  "std::tuple<std::string, int32_t> probe_fn(std::string_view v) | std::tuple<std::string, int32_t> r = probe_fn(\"hello\") | std::string_view probe_x = std::get<0>(r)",
+  "same"
+ ],
+ "str__return__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<std::string, int32_t> probe_fn(std::string_view v) | std::tuple<std::string, int32_t> r = probe_fn(\"hello\") | const auto& __tup_1 = r | std::string_view probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "value__collection__S": [
+  "ok",
+  "",
+  "std::vector<int32_t> probe_xs = std::vector<int32_t>{} | probe_xs.push_back(v)",
+  "same"
+ ],
+ "value__collection__T_sub": [
+  "ok",
+  "",
+  "std::vector<std::tuple<int32_t, int32_t>> probe_xs = std::vector<std::tuple<int32_t, int32_t>>{} | probe_xs.push_back(std::tuple<int32_t, int32_t>{v, 1}) | int32_t probe_x = std::get<0>(::tpy::__getitem__(probe_xs, 0))",
+  "same"
+ ],
+ "value__collection__T_unpack": [
+  "ok",
+  "",
+  "std::vector<std::tuple<int32_t, int32_t>> probe_xs = std::vector<std::tuple<int32_t, int32_t>>{} | probe_xs.push_back(std::tuple<int32_t, int32_t>{v, 1}) | auto __tup_1 = ::tpy::__getitem__(probe_xs, 0) | int32_t probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "value__field__S": [
+  "ok",
+  "",
+  "int32_t probe_f | inline H::H(int32_t v) : probe_f(v) {}",
+  "same"
+ ],
+ "value__field__T_sub": [
+  "ok",
+  "",
+  "std::tuple<int32_t, int32_t> probe_f | inline H::H(int32_t v) : probe_f(std::tuple<int32_t, int32_t>{v, 1}) {} | int32_t probe_x = std::get<0>(h.probe_f)",
+  "same"
+ ],
+ "value__field__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<int32_t, int32_t> probe_f | inline H::H(int32_t v) : probe_f(std::tuple<int32_t, int32_t>{v, 1}) {} | auto __tup_1 = h.probe_f | int32_t probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "value__global__S": [
+  "ok",
+  "",
+  "extern int32_t probe_g | int32_t probe_g{} | probe_g = 7",
+  "same"
+ ],
+ "value__global__T_sub": [
+  "ok",
+  "",
+  "extern std::tuple<int32_t, int32_t> probe_g | std::tuple<int32_t, int32_t> probe_g | int32_t probe_x = std::get<0>(probe_g) | probe_g = std::tuple<int32_t, int32_t>{7, 1}",
+  "same"
+ ],
+ "value__global__T_unpack": [
+  "ok",
+  "",
+  "extern std::tuple<int32_t, int32_t> probe_g | std::tuple<int32_t, int32_t> probe_g | const auto& __tup_1 = probe_g | int32_t probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1) | probe_g = std::tuple<int32_t, int32_t>{7, 1}",
+  "same"
+ ],
+ "value__local__S": [
+  "ok",
+  "",
+  "int32_t probe_loc = v",
+  "same"
+ ],
+ "value__local__T_sub": [
+  "ok",
+  "",
+  "std::tuple<int32_t, int32_t> probe_loc = std::tuple<int32_t, int32_t>{v, 1} | int32_t probe_x = std::get<0>(probe_loc)",
+  "same"
+ ],
+ "value__local__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<int32_t, int32_t> probe_loc = std::tuple<int32_t, int32_t>{v, 1} | const auto& __tup_1 = probe_loc | int32_t probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "value__param__S": [
+  "ok",
+  "",
+  "void probe_fn(int32_t p) | probe_fn(v)",
+  "same"
+ ],
+ "value__param__T_sub": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<int32_t, int32_t>& p) | int32_t probe_x = std::get<0>(p) | probe_fn(std::tuple<int32_t, int32_t>{v, 1})",
+  "same"
+ ],
+ "value__param__T_unpack": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<int32_t, int32_t>& p) | const auto& __tup_1 = p | int32_t probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1) | probe_fn(std::tuple<int32_t, int32_t>{v, 1})",
+  "same"
+ ],
+ "value__return__S": [
+  "ok",
+  "",
+  "int32_t probe_fn(int32_t v)",
+  "same"
+ ],
+ "value__return__T_sub": [
+  "ok",
+  "",
+  "std::tuple<int32_t, int32_t> probe_fn(int32_t v) | std::tuple<int32_t, int32_t> r = probe_fn(7) | int32_t probe_x = std::get<0>(r)",
+  "same"
+ ],
+ "value__return__T_unpack": [
+  "ok",
+  "",
+  "std::tuple<int32_t, int32_t> probe_fn(int32_t v) | std::tuple<int32_t, int32_t> r = probe_fn(7) | const auto& __tup_1 = r | int32_t probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "x__closure__S": [
+  "ok",
+  "",
+  "Cell& probe_loc = b | auto inner = [&probe_loc]() | probe_loc.n = 9",
+  "same"
+ ],
+ "x__closure__T": [
+  "ok",
+  "",
+  "auto probe_loc = std::tuple<Cell*, int32_t>{&(b), 1} | auto inner = [&probe_loc]() | std::get<0>(probe_loc)->n = 9",
+  "same"
+ ],
+ "x__comprehension__T": [
+  "ok",
+  "",
+  "std::vector<int32_t> probe_xs = ({ | auto& __tup_1 = *__beg_0 | auto& bx = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "x__dict_items__T": [
+  "ok",
+  "",
+  "auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, Cell*>>(__for_tup_0) | std::string_view k = std::get<0>(__tup_1) | auto&& v = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)))",
+  "same"
+ ],
+ "x__dict_value__S": [
+  "ok",
+  "copies Cell into container; use copy() to make this explicit",
+  "",
+  "differs"
+ ],
+ "x__dict_value__T": [
+  "stmt.assign:setitem.family",
+  "",
+  "",
+  ""
+ ],
+ "x__enumerate__T": [
+  "ok",
+  "",
+  "auto& __tup_1 = __for_tup_0 | int32_t i = std::get<0>(__tup_1) | auto&& bx = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)))",
+  "same"
+ ],
+ "x__finally_return__S": [
+  "ok",
+  "",
+  "Cell& probe_loc = g1(b) | probe_loc.n = 9",
+  "same"
+ ],
+ "x__finally_return__T": [
+  "ok",
+  "",
+  "auto probe_loc = g2(b) | std::get<0>(probe_loc)->n = 9",
+  "same"
+ ],
+ "x__for__S": [
+  "ok",
+  "",
+  "",
+  "same"
+ ],
+ "x__for_unpack__T": [
+  "ok",
+  "",
+  "auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Cell*, int32_t>>(__for_tup_0) | auto&& bx = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "x__method_param__S": [
+  "ok",
+  "",
+  "void probe_fn(Cell& p) const | inline void H::probe_fn(Cell& p) const | H().probe_fn(b)",
+  "same"
+ ],
+ "x__method_param__T": [
+  "ok",
+  "",
+  "void probe_fn(const std::tuple<Cell*, int32_t>& p) const | inline void H::probe_fn(const std::tuple<Cell*, int32_t>& p) const | H().probe_fn(std::tuple<Cell*, int32_t>{&(b), 1})",
+  "same"
+ ],
+ "x__method_return__S": [
+  "ok",
+  "",
+  "Cell& probe_loc = h.get() | probe_loc.n = 9",
+  "same"
+ ],
+ "x__method_return__T": [
+  "ok",
+  "",
+  "auto probe_loc = h.get() | std::get<0>(probe_loc)->n = 9",
+  "same"
+ ],
+ "x__nested__T": [
+  "ok",
+  "copies Cell into owned storage (tuple element 1.0); use copy() to make this expl",
+  "std::tuple<int32_t, std::tuple<Cell, int32_t>> probe_loc = std::tuple<int32_t, std::tuple<Cell, int32_t>>{1, ::tpy::tuple_to_storage<std::tuple<Cell, int32_t>>(std::tuple<const Cell*, int32_t>{&(b), 2})} | std::get<0>(std::get<1>(probe_loc)).n = 9",
+  "differs"
+ ],
+ "x__optional_elem__S": [
+  "ok",
+  "",
+  "",
+  "same"
+ ],
+ "x__optional_elem__T": [
+  "stmt.var_decl:decl.slot_type",
+  "",
+  "",
+  ""
+ ],
+ "x__own_arg__S": [
+  "ok",
+  "Own[Cell] param 'x' is never consumed (not stored in a field, forwarded to anoth | copies Cell into owned storage; use copy() to make this explicit",
+  "",
+  "same"
+ ],
+ "x__own_arg__T": [
+  "stmt.expr_stmt:call.arg_shape.own_tuple",
+  "copies Cell into owned storage (tuple element 0); use copy() to make this explic",
+  "",
+  ""
+ ],
+ "x__read_elem__S": [
+  "ok",
+  "",
+  "Cell& probe_loc = ::tpy::__getitem__(ys, 0) | probe_loc.n = 9",
+  "same"
+ ],
+ "x__read_elem__T": [
+  "stmt.var_decl:decl.slot_type",
+  "",
+  "",
+  ""
+ ],
+ "x__rebind_unpack__S": [
+  "ok",
+  "",
+  "",
+  "same"
+ ],
+ "x__rebind_unpack__T": [
+  "ok",
+  "",
+  "auto __tup_1 = g(b) | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "differs"
+ ],
+ "x__return_two__T": [
+  "ok",
+  "",
+  "auto __tup_1 = pick(a, b) | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)))",
+  "same"
+ ],
+ "x__swap__T": [
+  "ok",
+  "",
+  "Cell* probe_a = &(first) | Cell* probe_b = &(second) | Cell& __unpack_0_0 = (*probe_b) | Cell& __unpack_0_1 = (*probe_a) | probe_a = &(__unpack_0_0) | probe_b = &(__unpack_0_1) |  ...",
+  "same"
+ ],
+ "x__union_elem__S": [
+  "ok",
+  "",
+  "void probe_fn(::tpy::Union<Cell*, Other*> p) | probe_fn(::tpy::Union<Cell*, Other*>{&(b)})",
+  "same"
+ ],
+ "x__union_elem__T": [
+  "stmt.var_decl:subscript.tuple_shape",
+  "",
+  "",
+  ""
+ ],
+ "x__unpack_call__T": [
+  "ok",
+  "",
+  "auto __tup_1 = g(b) | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "x__unpack_field__T": [
+  "ok",
+  "",
+  "auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Cell*, int32_t>>(h.f) | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "x__unpack_live_literal__T": [
+  "ok",
+  "",
+  "auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Cell*, int32_t>>(t) | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "x__unpack_live_own__S": [
+  "ok",
+  "",
+  "",
+  "same"
+ ],
+ "x__unpack_live_own__T": [
+  "ok",
+  "",
+  "auto __tup_1 = t | Cell x = std::move(std::get<0>(__tup_1)) | int32_t k = std::get<1>(__tup_1)",
+  "differs"
+ ],
+ "x__unpack_local__T": [
+  "stmt.tuple_unpack",
+  "",
+  "",
+  ""
+ ],
+ "x__unpack_relay__T": [
+  "ok",
+  "",
+  "auto __tup_1 = relay(b) | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "x__walrus__S": [
+  "ok",
+  "",
+  "",
+  "same"
+ ],
+ "x__walrus__T": [
+  "expr.walrus",
+  "",
+  "",
+  ""
+ ],
+ "x__yield__S": [
+  "ok",
+  "",
+  "auto&& probe_loc = ::tpy::unwrap_ref(*__r_1) | probe_loc.n = 9",
+  "same"
+ ],
+ "x__yield_repack__T": [
+  "Cannot yield local or temporary as tuple element 0. Type 'Cell' is yielded by re",
+  "",
+  "",
+  ""
+ ],
+ "x__yield_unpack__T": [
+  "ok",
+  "",
+  "auto& __tup_1 = __for_tup_0 | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "same"
+ ],
+ "x__yield_whole__T": [
+  "ok",
+  "",
+  "auto&& probe_loc = ::tpy::unwrap_ref(*__r_1) | std::get<0>(probe_loc)->n = 9",
+  "same"
+ ],
+ "x__zip__T": [
+  "ok",
+  "",
+  "auto& __tup_1 = __for_tup_0 | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)))",
+  "same"
+ ]
+}

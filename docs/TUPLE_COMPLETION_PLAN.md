@@ -1,7 +1,7 @@
 # Tuple completion plan
 
-Status: OPEN. Scope decided 2026-09-21; nothing below is started.
-Measured on `e43c7a5398` (2026-09-21). Every figure here is valid for that
+Status: OPEN. Scope decided 2026-09-21; U0 done, U1 is next.
+Measured on `04a797ddf2` (2026-09-21). Every figure here is valid for that
 tree only -- re-run the matrix before acting on a cell.
 
 The tracked plan for making a tuple element behave as designed. `RELEASE_PLAN.md`
@@ -24,7 +24,12 @@ position".
 Element form x position, a singleton program and a tuple program per cell, run
 under TPy and CPython (mutate-and-observe for the reference rows, the emitted
 C++ form for `str` / `bytes`). `ok` = the tuple element behaves as the
-singleton does.
+singleton does. The table below is a READING of the committed instrument, not
+the instrument: the cells, their verdicts, warnings, emitted forms and
+CPython parity live in
+`scripts/thir_migration/review/tuple_element_matrix.expected.json`, and
+`python scripts/thir_migration/review/tuple_element_matrix.py --report` prints
+the raw grid.
 
 | element form | param | return | field | collection | local | global |
 |---|---|---|---|---|---|---|
@@ -65,16 +70,25 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
 
 ### 0.6.0
 
-- [ ] **U0 -- the matrix as an instrument.** Promote the probe into the repo so
-  every later unit is gated on its diff, and so a cell cannot drift unseen (D1
-  and D5 both changed character between two censuses with no work aimed at
-  them). `tuple/element_vs_singleton_global` and
-  `tuple/element_vs_singleton_collection` already pin two cells; missing are
-  the `bytes` row, the mixed row, and the unpack / yield / closure positions.
-  Shape to decide at the unit: condensed cases (one per position, a section
-  per element form) against a script under `scripts/`. Seed:
-  `/tmp/agents/tupmatrix/gen.py` and `/tmp/agents/tupprobe/gen.py` -- NOT
-  committed, and gone at the next reboot. Size: 1-2 days.
+- [x] **U0 -- the matrix as an instrument.** DONE 2026-09-21:
+  `scripts/thir_migration/review/tuple_element_matrix.py` (163 cells) with its
+  committed table, gated by `tests/test_tuple_element_matrix.py`. It follows
+  the property-position sweep rather than adding cases: a reject cell would
+  need an `error_` case each, and a cell that diverges from CPython cannot
+  share a cpy-parity case with the cells that do not. The pytest gate is
+  toolchain-free (~7 s) and reads VERDICT and WARNINGS only, so no branch
+  outside this plan pays more than that; the `nocopy` row (the `borrow` row
+  over a `@nocopy` record) puts part of the silent-copy class into that
+  verdict column. The emitted C++ FORM of the probe slot and the CPython
+  parity are recorded but not gated -- the form is what makes a silent copy
+  visible without a build (`extern std::tuple<Cell, int32_t>` beside the
+  scalar's `Cell*`), the parity is the `--exec` half (about ten minutes for
+  all cells, `--exec-moved` for the moved ones).
+  **How a later unit uses it:** re-probe at the start (`--update
+  --exec-moved`, so the table matches the tree), fix, rerun the same at the
+  end, and the commit's diff of the table IS the unit's claim -- every moved
+  cell is either the fix or a regression, and the commit body says which. A
+  cell whose parity reads "?" in `--report` is stale and owed a build.
 - [ ] **U1 -- no silent tuple divergence.** Size: 2-3 weeks; the frame entries
   are the risk. Order: the three HIGH first.
   - [ ] `BUGS.md#owned-call-tuple-unpack-copies-live-source` (HIGH) -- the
@@ -83,7 +97,8 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
   - [ ] `BUGS.md#global-tuple-ref-storage-form` (HIGH, D2) -- the large one: a
     borrow-form global slot mirroring the local's. The stopgap warning is a U3
     decision.
-  - [ ] `BUGS.md#borrow-unpack-target-rebind-writes-through`
+  - [ ] `BUGS.md#borrow-unpack-target-rebind-writes-through` -- confirmed live
+    2026-09-21, cell `x__rebind_unpack__T` (prints 6 where CPython prints 1)
   - [ ] `BUGS.md#tuple-literal-subscript-store-skips-copy-check`
   - [ ] `BUGS.md#own-tuple-arg-nested-member-silent-copy`
   - [ ] `BUGS.md#walrus-tuple-binding-not-copy-checked`
@@ -93,9 +108,12 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
   - [ ] `BUGS.md#frame-tuple-param-elem-alias-slot-address` (frame)
   - [ ] `BUGS.md#tuple-unpack-view-outlives-reseat` (dangling view)
   - [ ] `BUGS.md#loop-body-view-unpack-target-dangles` (dangling view)
-  - Also observed, not yet probed with a reference element: `x, k = h.f` on a
-    field tuple emits `auto __tup_1 = h.f;`, a whole-tuple copy. Probe it in
-    this unit; file or fold as the result says.
+  - Settled by the instrument: `x, k = h.f` on a field tuple with a REFERENCE
+    element takes the `tuple_to_pointer` lift and aliases (cell
+    `x__unpack_field__T`), so it is not a U1 item. The whole-tuple copy seen
+    earlier is the value-element render -- no divergence, but a hidden
+    allocation for an owning `str` / `bytes` element, filed as
+    `BUGS.md#field-tuple-unpack-copies-whole-tuple` (perf, U7).
 - [ ] **U2 -- everyday shapes compile.** Loud rejects of ordinary Python,
   measured 2026-09-21 (reject tag in brackets). Size: 1-2 weeks, batch-style;
   each row is a lowering arm with a snapshot case and keeps the adjacent
@@ -153,7 +171,10 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
   copy. Size: 1-2 weeks.
 - [ ] **U7 -- the loud tail.** The remaining loud tuple entries in `BUGS.md`
   (about 85 on 2026-09-21, most LOW or exotic), taken as ordinary batch work
-  by user-facing frequency. Size: 2-4 weeks.
+  by user-facing frequency. Size: 2-4 weeks. Two the matrix pins:
+  `BUGS.md#nocopy-ref-tuple-local-rejected` (`t = (b, 1)` with a `@nocopy`
+  `b` is refused where the copyable twin binds `&b` and the scalar aliases;
+  cell `nocopy__local__T`) and `BUGS.md#field-tuple-unpack-copies-whole-tuple`.
 
 ### Gated on MIR
 
