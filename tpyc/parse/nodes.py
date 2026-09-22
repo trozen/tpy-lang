@@ -646,6 +646,9 @@ class TpyGeneratorExpression(TpyExpr):
     # A `range(...)` source's bounds: the function takes them by value as its
     # leading params and loops over a range of them, in place of a source.
     frame_range_args: 'tuple[TpyExpr, ...]' = ()
+    # The call the expression IS, as borrow provenance asks it: the frame
+    # function over the source (or range bounds) and the captures.
+    frame_creation: 'TpyCall | None' = None
 
     def children(self) -> list[TpyExpr]:
         return [self.element_expr, self.generator.iterable] + self.generator.conditions

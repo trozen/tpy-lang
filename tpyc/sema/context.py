@@ -41,6 +41,7 @@ from ..parse import (
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
     TpyUnaryOp, TpyIfExpr, TpyTupleLiteral, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
+    TpyGeneratorExpression,
     is_parse_node,
     is_property_getter_read,
 )
@@ -368,6 +369,9 @@ def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
         args = [expr.left if rb.is_reverse else expr.right]
     elif isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
         fi, obj, args = expr.resolved_unaryop.method.root, expr.operand, []
+    elif (isinstance(expr, TpyGeneratorExpression)
+          and expr.frame_creation is not None):
+        return call_borrow_operands(expr.frame_creation)
     else:
         return None
     return None if fi is None else CallOperands(fi, obj, args)
@@ -552,7 +556,8 @@ class BorrowTracker:
 
     def add_borrow(self, storage: str, borrower: str, kind: BorrowKind = BorrowKind.ALIAS,
                    *, on_element: bool = False,
-                   elem_index: 'tuple[str, int | str] | None' = None) -> None:
+                   elem_index: 'tuple[str, int | str] | None' = None,
+                   merge: bool = False) -> None:
         """Record that ``borrower`` borrows from ``storage`` (or, with
         ``on_element``, from the element ``elem_index`` of it).
 
@@ -561,12 +566,19 @@ class BorrowTracker:
         the hop: `combine_loan_info` carries it onto whichever kind wins a
         merge, so an ELEMENT or PTR loan can be on an element too, and with
         no index when the merged legs named different ones.
+
+        With ``merge``, a loan the borrower already holds on the storage is
+        combined with the new one (`combine_loan_info`) rather than replaced,
+        so a weaker loan never downgrades a stronger one.
         """
-        self.loans.setdefault(storage, {})[borrower] = LoanInfo(
-            kind, on_element, elem_index)
+        loan = LoanInfo(kind, on_element, elem_index)
+        holders = self.loans.setdefault(storage, {})
+        if merge and borrower in holders:
+            loan = combine_loan_info(holders[borrower], loan)
+        holders[borrower] = loan
         if self.current_stmt is not None:
             self.stmt_loans.setdefault(self.current_stmt, []).append(
-                (storage, borrower, kind))
+                (storage, borrower, loan.kind))
 
     def remove_borrower(self, borrower: str) -> None:
         """Remove all borrows held by ``borrower`` (e.g. on reassignment)."""

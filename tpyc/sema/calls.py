@@ -3463,7 +3463,8 @@ class CallAnalyzer:
                 arg_roots = [arg_root]
                 through_handle = False
             else:
-                roots = lend_roots(self.ctx, arg)
+                roots = [r for r in lend_roots(self.ctx, arg)
+                         if not r.held_whole]
                 arg_roots = [r.name for r in roots]
                 through_handle = any(r.through_call for r in roots)
             # Resolve alias and element borrow chains to find the original param.

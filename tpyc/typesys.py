@@ -5997,6 +5997,11 @@ class FunctionInfo:
     # Param indices whose storage the return value borrows from (8b).
     # -1 = self (methods only); 0, 1, ... = regular params.
     # None = not yet analyzed; frozenset() = no borrow (value/local return).
+    held_whole_params: frozenset[int] = frozenset()
+    # The part of return_borrows_from the result holds only as a reference to
+    # the whole object: it neither iterates that storage nor hands out a
+    # reference into it, so growing it leaves the result valid (a genexpr's
+    # captures, read afresh at each pull).
     # Phase 1 local facts (set during sema, consumed by Phase 2 propagation)
     direct_mutated_params: Optional[frozenset[int]] = None
     direct_structural_mutated_params: Optional[frozenset[int]] = None
@@ -6227,6 +6232,13 @@ def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
     (BUGS.md#pending-generic-receiver-call-borrow-unregistered).
     """
     return fi.root.return_borrows_from or frozenset()
+
+
+def held_whole_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
+    """The recorded sources the result keeps a whole-object reference to
+    and nothing more (see `FunctionInfo.held_whole_params`); root-read like
+    `recorded_return_borrow_sources`."""
+    return fi.root.held_whole_params
 
 
 def return_const_projected(fi: FunctionInfo) -> bool:

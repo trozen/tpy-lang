@@ -74,6 +74,8 @@ from .local_deduction import collect_pending_source_types, mark_pending_list_mut
 from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import resolve_overload
+from .type_ops import frame_yield_may_borrow
+from .scope_tracker import lend_roots
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -3659,8 +3661,19 @@ class ExpressionAnalyzer:
             creation = TpyCall(TpyName(func.name, loc=loc),
                                (range_args or [gen.iterable]) + list(reads), loc=loc)
             creation.resolved_function_info = fis[-1]
+            # The frame iterates only its source and reads a capture afresh at
+            # each pull, so a capture is held whole -- unless the yield may
+            # point into it (`ys[i][1:]` views an element of `ys`).
+            lent = ({r.name for r in lend_roots(self.ctx, expr.element_expr)}
+                    if frame_yield_may_borrow(func.generator_yield_type)
+                    else set())
+            n_source = len(range_args) or 1
+            fis[-1].root.held_whole_params = frozenset(
+                n_source + k for k, name in enumerate(captures)
+                if name not in lent)
             self.calls._check_loop_var_arg_mutation(creation)
             self.calls._record_mutation_call_edges(creation)
+            expr.frame_creation = creation
         expr.frame_func = func
         expr.frame_captures = reads
         expr.frame_rebindable = tuple(rebindable)

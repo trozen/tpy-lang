@@ -9,7 +9,8 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, NamedTuple
 
-from ..typesys import TpyType, OwnType, recorded_return_borrow_sources
+from ..typesys import (
+    TpyType, OwnType, held_whole_borrow_sources, recorded_return_borrow_sources)
 from ..parse import (
     TpyAwait, TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyIfExpr,
     TpyVarargPack,
@@ -34,6 +35,11 @@ class LendRoot(NamedTuple):
     # Reached through a callee whose body is not analyzed yet, so whether it
     # lends this name at all is an assumption.
     assumed: bool = False
+    # Held only as a reference to the whole object: nothing iterates it or
+    # points into it, so growing it invalidates nothing (a genexpr capture).
+    # It relaxes invalidation only -- the hold still dangles if the root
+    # dies, so escape checks keep it.
+    held_whole: bool = False
 
 
 class DeferredEscape(NamedTuple):
@@ -47,7 +53,7 @@ class DeferredEscape(NamedTuple):
 
 
 def lend_roots(ctx: SemanticContext, expr: TpyExpr, through_call: bool = False,
-               assumed: bool = False) -> list[LendRoot]:
+               assumed: bool = False, held_whole: bool = False) -> list[LendRoot]:
     """The named storage `expr` hands out a reference INTO, in source
     order; empty when it builds what it yields.
 
@@ -59,25 +65,25 @@ def lend_roots(ctx: SemanticContext, expr: TpyExpr, through_call: bool = False,
     that hand back a reference into `b` all point the binding at `b`.
     """
     if isinstance(expr, TpyCoerce):
-        return lend_roots(ctx, expr.expr, through_call, assumed)
+        return lend_roots(ctx, expr.expr, through_call, assumed, held_whole)
     if isinstance(expr, TpyName):
-        return [LendRoot(expr.name, through_call, assumed)]
+        return [LendRoot(expr.name, through_call, assumed, held_whole)]
     if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-        return lend_roots(ctx, expr.obj, through_call, assumed)
+        return lend_roots(ctx, expr.obj, through_call, assumed, held_whole)
     if isinstance(expr, TpyIfExpr):
         # A mixed arm pair is a prvalue: the binding owns a copy of the
         # chosen arm and points at neither.
-        arms = [lend_roots(ctx, expr.then_expr, through_call, assumed),
-                lend_roots(ctx, expr.else_expr, through_call, assumed)]
+        arms = [lend_roots(ctx, expr.then_expr, through_call, assumed, held_whole),
+                lend_roots(ctx, expr.else_expr, through_call, assumed, held_whole)]
         return arms[0] + arms[1] if all(arms) else []
     if isinstance(expr, TpyAwait):
         # A borrow-returning await aliases what the awaited call borrows.
-        return (lend_roots(ctx, expr.value, through_call, assumed)
+        return (lend_roots(ctx, expr.value, through_call, assumed, held_whole)
                 if expr.await_result_is_borrow else [])
     if isinstance(expr, TpyVarargPack):
         return [root for arg in expr.args for root in lend_roots(
             ctx, arg.expr if isinstance(arg, TpyStarUnpack) else arg,
-            through_call, assumed)]
+            through_call, assumed, held_whole)]
     operands = call_borrow_operands(expr)
     if operands is None:
         # Literals, comprehensions etc. -- fresh storage.
@@ -86,23 +92,25 @@ def lend_roots(ctx: SemanticContext, expr: TpyExpr, through_call: bool = False,
     through_call = through_call or not is_property_getter_read(expr)
     sources, facts_pending = _call_lend_sources(ctx, expr, operands)
     roots: list[LendRoot] = []
-    for source in sources:
+    for source, held in sources:
         roots.extend(lend_roots(ctx, source, through_call,
-                                assumed or facts_pending))
+                                assumed or facts_pending, held_whole or held))
     return roots
 
 
 def _call_lend_sources(ctx: SemanticContext, expr: TpyExpr,
-                       operands: CallOperands) -> tuple[list[TpyExpr], bool]:
+                       operands: CallOperands
+                       ) -> tuple[list[tuple[TpyExpr, bool]], bool]:
     """The operands of one call whose storage its result may point into,
-    and whether that answer is an assumption about a pending callee."""
+    each with whether the result only holds it whole, and whether that
+    answer is an assumption about a pending callee."""
     fi, obj, args = operands
     everything = ([obj] if obj is not None else []) + list(args)
     if is_property_getter_read(expr):
         # The read's own convention is decided per INSTANTIATION (a bare
         # type-param return) and per storage-ref shape, which the body
         # fact cannot see.
-        return ([obj] if property_access_returns_cpp_ref(ctx, expr)
+        return ([(obj, False)] if property_access_returns_cpp_ref(ctx, expr)
                 else []), False
     if not signature_may_return_borrow(fi):
         return [], False
@@ -113,17 +121,18 @@ def _call_lend_sources(ctx: SemanticContext, expr: TpyExpr,
         if fi in pending or fi.root in pending:
             # Body not analyzed yet (a forward reference): assume every
             # operand, as the borrow registration does.
-            return everything, True
+            return [(op, False) for op in everything], True
         # A body-less stub records no fact; its declared convention is
         # the answer, and a reference it returns is into its receiver.
-        return ([obj] if obj is not None
+        return ([(obj, False)] if obj is not None
                 and call_returns_cpp_ref(ctx, fi) else []), False
+    held = held_whole_borrow_sources(fi)
     sources = []
     for idx in sorted(recorded_return_borrow_sources(fi)):
         if idx == -1 and obj is not None:
-            sources.append(obj)
+            sources.append((obj, idx in held))
         elif 0 <= idx < len(args):
-            sources.append(args[idx])
+            sources.append((args[idx], idx in held))
     return sources, False
 
 

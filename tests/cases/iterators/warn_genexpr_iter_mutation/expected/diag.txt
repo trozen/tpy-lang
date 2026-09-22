@@ -1,0 +1,13 @@
+main.py:264: warning: Mutation of 'gl' while iterating over it ('append' invalidates the iterator)
+main.py:41: warning: Mutation of 'self.items' while iterating over it ('append' invalidates the iterator)
+main.py:51: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:61: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+main.py:71: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:81: warning: Mutation of 'ps' while iterating over it ('append' invalidates the iterator)
+main.py:91: warning: Mutation of 'd' while iterating over it ('pop' invalidates the iterator)
+main.py:100: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:109: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:119: warning: Mutation of 'ys' while iterating over it ('append' invalidates the iterator)
+main.py:130: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:141: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:152: warning: copies list[int32] into owned storage; use copy() to make this explicit

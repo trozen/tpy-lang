@@ -6,7 +6,7 @@ Statement analysis including variable declarations, assignments, and control flo
 
 from __future__ import annotations
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Iterator, NamedTuple
+from typing import TYPE_CHECKING, Iterable, Iterator, NamedTuple
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType,
@@ -33,7 +33,8 @@ from ..typesys import (
     yield_uses_borrow_slot, yield_always_borrows, GenExprType,
     is_dyn_protocol, is_fn_type, coro_struct_owner,
     ConcreteCoroType, make_concrete_coro, make_cancellable,
-    bare_name, recorded_return_borrow_sources, type_param_names)
+    bare_name, held_whole_borrow_sources, recorded_return_borrow_sources,
+    type_param_names)
 from ..parse import (
     collect_name_refs,
     walk_body_stmts,
@@ -43,6 +44,7 @@ from ..parse import (
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith, TryTier,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
+    TpyGeneratorExpression,
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyNoneLiteral,
@@ -277,7 +279,11 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
     # points at, which is what the ITER kind tells the mutation climb.
     kind = (BorrowKind.ITER if iterator_source_callee(fi)
             else BorrowKind.ELEMENT)
+    held = held_whole_borrow_sources(fi)
     for idx in recorded_return_borrow_sources(fi):
+        if idx in held and 0 <= idx < len(args):
+            _hold_whole(bt, borrower, _borrow_storage_roots(args[idx]))
+            continue
         if idx == -1 and obj is not None:
             root = _borrow_storage_root(obj)
             if root is not None:
@@ -306,6 +312,14 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                     expr,
                 )
 
+
+
+def _hold_whole(bt: 'BorrowTracker', borrower: str, roots: Iterable[str]) -> None:
+    """File the loan of a result that keeps these roots only as whole
+    objects: growing them leaves it valid, moving them away does not. It
+    merges, so a capture that is also the source stays iterated."""
+    for root in roots:
+        bt.add_borrow(root, borrower, BorrowKind.ALIAS, merge=True)
 
 
 def _register_tuple_binding_borrows(
@@ -3161,19 +3175,25 @@ class StatementAnalyzer:
         # from sema on, so the getter's own `return_borrows_from` (index -1 =
         # the receiver) registers the ITER borrow here rather than through a
         # field-access arm of its own.
-        if isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
+        # A generator expression is the call creating its frame.
+        operands = (call_borrow_operands(stmt.iterable) if isinstance(
+            stmt.iterable, (TpyCall, TpyMethodCall, TpyGeneratorExpression))
+            else None)
+        if operands is not None:
             # 8b: iterable is a call whose return borrows from source arg(s).
             # Register ITER borrow directly on those source containers so that
             # structural mutations during the loop generate conflict warnings.
-            fi_iter = stmt.iterable.resolved_function_info
-            iter_sources = (recorded_return_borrow_sources(fi_iter)
-                            if fi_iter is not None else frozenset())
+            fi_iter, call_obj, call_args = operands
+            iter_sources = recorded_return_borrow_sources(fi_iter)
+            held = held_whole_borrow_sources(fi_iter)
             if iter_sources:
-                call_args = stmt.iterable.args
-                call_obj = getattr(stmt.iterable, 'obj', None)
                 iter_srcs = []
                 srcs_by_idx: dict[int, list[str]] = {}
                 for idx in iter_sources:
+                    if idx in held and 0 <= idx < len(call_args):
+                        _hold_whole(bt, ITER_BORROWER,
+                                    _borrow_storage_roots(call_args[idx]))
+                        continue
                     arg = None
                     if idx == -1 and call_obj is not None:
                         arg = call_obj
@@ -3190,8 +3210,11 @@ class StatementAnalyzer:
                     # invalidation warning -- on a name the callee may never
                     # lend, by declaration order.
                     if not srcs and arg is not None:
-                        srcs = [r.name for r in lend_roots(self.ctx, arg)
+                        lent = [r for r in lend_roots(self.ctx, arg)
                                 if not r.assumed]
+                        srcs = [r.name for r in lent if not r.held_whole]
+                        _hold_whole(bt, ITER_BORROWER,
+                                    [r.name for r in lent if r.held_whole])
                     srcs_by_idx[idx] = srcs
                     for src in srcs:
                         bt.add_borrow(src, ITER_BORROWER, BorrowKind.ITER)
