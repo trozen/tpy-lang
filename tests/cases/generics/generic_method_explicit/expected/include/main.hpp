@@ -28,7 +28,7 @@ struct Box {
     // def transform[U](self, other: U) -> U:
     //     return other
     template<typename U>
-    ::tpy::val_or_cref_t<U> transform(::tpy::readonly_form_t<U> other) const {
+    ::tpy::val_or_ref_t<U> transform(::tpy::param_val_or_ref_t<U> other) const {
         return ::tpy::param_to_return<U>(other);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

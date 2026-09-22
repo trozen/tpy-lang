@@ -1464,7 +1464,7 @@
   ""
  ],
  "loop_with_mgr__guard__meth__local": [
-  "stmt.with",
+  "ok",
   ""
  ],
  "loop_with_mgr__guard__prop__local": [
@@ -1536,19 +1536,19 @@
   ""
  ],
  "membership__items__meth__named": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "membership__items__meth__temp": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "membership__items__prop__named": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "membership__items__prop__temp": [
-  "stmt.expr_stmt:method.ret_type",
+  "ok",
   ""
  ],
  "membership__own__meth__named": [
@@ -1984,7 +1984,7 @@
   ""
  ],
  "ret__opt__meth__named": [
-  "stmt.return",
+  "ok",
   ""
  ],
  "ret__opt__meth__temp": [
@@ -2296,7 +2296,7 @@
   ""
  ],
  "self_ret__opt__meth__self": [
-  "stmt.return",
+  "ok",
   ""
  ],
  "self_ret__opt__prop__self": [
@@ -2328,11 +2328,11 @@
   ""
  ],
  "self_truthy__items__meth__self": [
-  "stmt.if:method.ret_type",
+  "ok",
   ""
  ],
  "self_truthy__items__prop__self": [
-  "stmt.if:method.ret_type",
+  "ok",
   ""
  ],
  "self_truthy__n__meth__self": [
@@ -2704,19 +2704,19 @@
   ""
  ],
  "truthy__items__meth__named": [
-  "stmt.if:method.ret_type",
+  "ok",
   ""
  ],
  "truthy__items__meth__temp": [
-  "stmt.if:method.ret_type",
+  "ok",
   ""
  ],
  "truthy__items__prop__named": [
-  "stmt.if:method.ret_type",
+  "ok",
   ""
  ],
  "truthy__items__prop__temp": [
-  "stmt.if:method.ret_type",
+  "ok",
   ""
  ],
  "truthy__n__meth__named": [
@@ -2992,7 +2992,7 @@
   ""
  ],
  "with_mgr__guard__meth__named": [
-  "stmt.with",
+  "ok",
   ""
  ],
  "with_mgr__guard__meth__temp": [

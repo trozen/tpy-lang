@@ -3312,15 +3312,20 @@ class StatementAnalyzer:
         for item in stmt.items:
             ctx_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(item.context_expr)))
 
-            # A reference-type lvalue manager must be borrowed by the
-            # with-region, not copied into the ctx slot -- otherwise
-            # __enter__/__exit__ mutate a throwaway copy (and @nocopy managers
-            # can't be copied at all). A value-type manager stays bound by
-            # value: a `with` block is a value boundary, so it's copied like
-            # any value type crossing one (see the ValueType-immutability TODO).
-            # Rvalue managers are also bound by value (the block owns them).
+            # A reference-type manager that names EXISTING storage must be
+            # borrowed by the with-region, not copied into the ctx slot --
+            # otherwise __enter__/__exit__ mutate a throwaway copy (and
+            # @nocopy managers can't be copied at all). Whether it does is the
+            # expression's value CATEGORY, which the callee's return
+            # convention decides: a borrow-returning method or free call
+            # hands back a reference into live storage exactly as the
+            # @property spelling of the same accessor does, while an
+            # `Own[...]` / by-value call mints a temporary the block owns.
+            # A value-type manager stays bound by value: a `with` block is a
+            # value boundary, so it's copied like any value type crossing one
+            # (see the ValueType-immutability TODO).
             item.manager_borrowed = (
-                self.compat.is_lvalue(item.context_expr)
+                not is_rvalue_source(self.ctx, item.context_expr)
                 and not ctx_type.is_value_type())
 
             # Look up __[a]enter__ / __[a]exit__ on the context manager type.
@@ -3845,6 +3850,9 @@ class StatementAnalyzer:
             if name not in captured:
                 captured.append(name)
         stmt.captured_names = captured
+        for cap in captured:
+            self.ctx.func.closure_captured_names.setdefault(
+                cap, set()).add(func.name)
 
         # Replay the closure's mutation facts into the enclosing state:
         # defining the closure conservatively counts as performing its
@@ -3953,6 +3961,25 @@ class StatementAnalyzer:
         self.ctx.declared_var_types[(stmt.loc.line, stmt.var)] = (
             resolve_int_literals(elem_type, self.ctx.default_int_for_literal))
 
+    def _captured_by_live_closure(self, stmt: TpyVarDecl, name: str) -> bool:
+        """Whether a nested def that captured `name` is still live after this
+        declaration -- read off the liveness the last-use pass stamped on it,
+        so a closure only called BEFORE the bind does not pin the name."""
+        closures = self.ctx.func.closure_captured_names.get(name)
+        if not closures:
+            return False
+        live_after = stmt.live_names_after
+        return live_after is None or not closures.isdisjoint(live_after)
+
+    def _pending_local_is_declared(self, name: str) -> bool:
+        """Whether a loop-body-first local already has its one declaration
+        recorded at its anchor (an earlier read or binding promoted it)."""
+        pending = self.ctx.func.pending_loop_vars.get(name)
+        if pending is None or pending[2] is not None:
+            return False
+        anchor = self.expr._pending_decl_anchor(pending[1])
+        return name in self.ctx.if_branch_decls.get(anchor, {})
+
     def _check_loop_var_rebind(self, stmt: TpyForEach, elem_type: TpyType) -> None:
         """A for-loop over an existing assigned local REBINDS it in CPython
         (the var holds the last element after the loop). Value types route
@@ -3964,9 +3991,17 @@ class StatementAnalyzer:
         borrow-tracked pointer binding design.
         """
         if (stmt.is_tuple_unpack
-                or stmt.var in self.ctx.func.global_declarations
-                or stmt.var not in self.ctx.func.definitely_assigned):
+                or stmt.var in self.ctx.func.global_declarations):
             return
+        if stmt.var not in self.ctx.func.definitely_assigned:
+            # The question is which STORAGE the head binds, not whether the
+            # name holds a value yet: a loop-body-first local whose one
+            # declaration already stands at its anchor is the same Python
+            # local, so this head is one more binding of it, promoted the way
+            # a plain assignment after the loop is.
+            if not self._pending_local_is_declared(stmt.var):
+                return
+            self.expr._promote_pending_loop_var(stmt.var)
         existing = self.ctx.func.current_scope.lookup(stmt.var)
         if existing is None:
             return
@@ -5518,6 +5553,12 @@ class StatementAnalyzer:
                 # Move-through: lvalue alias at last use of source promotes to rvalue.
                 # Both target and source must be non-reassigned Tier 1 locals
                 # (reassigned vars become T* pointer-locals in codegen).
+                if (isinstance(stmt.init, TpyName)
+                        and self._captured_by_live_closure(stmt, stmt.init.name)):
+                    # A closure that may still be called reads the source by
+                    # reference: the bind aliases it, whatever the last-use
+                    # walk says.
+                    self.ctx.all_last_uses.discard(stmt.init)
                 if (isinstance(stmt.init, TpyName)
                         and existing_type is None
                         and stmt.name not in self.ctx.func.current_reassigned_vars

@@ -38,6 +38,9 @@ Features:
 - THIR migration -- SHIPPED (fallback -> 0, then the AST-codegen
   deletion). Residual track: TODO: "The post-cutover fix queue: shapes
   that are now compile errors"
+- Iterating a tuple (`for b in (b1, b2):`), the aliasing spelling for
+  reference elements; ranks above nested comprehensions -- TODO:
+  "Iterating a tuple"
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
   TODO: "Nested comprehensions"
 - Methods on enums (instance, `@staticmethod`, `@classmethod`; covers

@@ -1,0 +1,12 @@
+free_fn 101 101
+field_cond 102 102
+as_bind 103 103
+same_index 107 107
+with_none 102 102
+with_none_none -1
+ctor 104 104
+method 105 105
+in_blocks 1213 1106
+in_closure 108 108
+in_match_arm 109 109
+other 0

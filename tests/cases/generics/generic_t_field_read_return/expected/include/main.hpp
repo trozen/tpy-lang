@@ -42,7 +42,7 @@ struct Cell {
 
     // def echo(self, v: T) -> T:
     //     return v
-    ::tpy::val_or_cref_t<T> echo(::tpy::readonly_form_t<T> v) const {
+    ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v) const {
         return ::tpy::param_to_return<T>(v);
     }
 

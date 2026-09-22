@@ -57,10 +57,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import NamedTuple
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO))
@@ -550,6 +552,362 @@ def generate_self(out_dir: Path) -> dict[str, Path]:
     return cells
 
 
+# ---------------------------------------------------------------------------
+# The BATCHED survey.
+#
+# One program per cell meant one front-end run per cell, and the cells had to
+# be separate programs only because codegen stopped at the first rejecting
+# body. `collect_thir(tolerate_reject=True)` is a survey now -- every
+# function, method and constructor body is attempted and its reject recorded
+# -- so a whole POSITION fits in one program and one compilation.
+#
+# Three kinds of cell cannot join it. A generator, an `async def` and the
+# module-init body lower WHILE the C++ around them is written, so a reject
+# there still ends the pass and would take every other cell in the program
+# with it. Those keep one program each.
+# ---------------------------------------------------------------------------
+
+# (axis, position) pairs whose cell lowers during emission.
+EMISSION_TIME: frozenset = frozenset({
+    ("pos", "module_level"), ("pos", "yield_val"), ("pos", "async_body"),
+    ("self", "yield"),
+    # A generator EXPRESSION is a frame too, which is not obvious from the
+    # position's source line (`sum(e for e in ...)` reads like a call): with
+    # these batched, the first cell's frame ended the pass and the other
+    # seven reported nothing at all.
+    ("pos", "genexp_iter"),
+})
+
+_TOP_DEF = re.compile(r"^(?:def|class)\s+(\w+)|^(\w+)\s*:")
+
+
+def _renames(lines: list[str], suffix: str) -> dict[str, str]:
+    """The top-level names a cell's own defs introduce, mapped to a suffixed
+    spelling. Every cell of a position declares the same names, so sharing one
+    program means giving each its own."""
+    out: dict[str, str] = {}
+    for line in lines:
+        m = _TOP_DEF.match(line)
+        if m:
+            name = m.group(1) or m.group(2)
+            out[name] = name + "_" + suffix
+    return out
+
+
+def _apply(lines: list[str], renames: dict[str, str]) -> list[str]:
+    out = []
+    for line in lines:
+        for old, new in renames.items():
+            line = re.sub(r"(?<![A-Za-z0-9_])" + old + r"(?![A-Za-z0-9_])",
+                          new, line)
+        out.append(line)
+    return out
+
+
+class _Built(NamedTuple):
+    """A program's text plus, per cell, the line ranges its own bodies live
+    in. A SELF cell owns two: its probe METHOD, spliced into the shared
+    receiver record, and the caller that invokes it."""
+    text: str
+    spans: dict[str, list[tuple[int, int]]]
+
+
+def _cell_axes():
+    """Every (axis, position, cell name, defs, body, probe) the matrix holds,
+    as the batched builder needs them."""
+    for pos, kinds, defs, body in POS:
+        for kind in kinds:
+            for spelling, suffix in (("prop", ""), ("meth", "_m()")):
+                for recv_kind, recv in (("named", "b"), ("temp", "mk()")):
+                    expr = recv + "." + kind + suffix
+                    name = f"{pos}__{kind}__{spelling}__{recv_kind}"
+                    yield ("pos", pos, name, kind, expr, "", defs, body, None)
+    for pos, kinds, body in SELF_POS:
+        for kind in kinds:
+            for spelling, suffix in (("prop", ""), ("meth", "_m()")):
+                expr = "self." + kind + suffix
+                name = f"self_{pos}__{kind}__{spelling}__self"
+                yield ("self", pos, name, kind, expr, "", (), body, True)
+    for pos, kinds, defs, body, after in LOOP_POS:
+        for kind in kinds:
+            for spelling, suffix in (("prop", ""), ("meth", "_m()")):
+                name = f"loop_{pos}__{kind}__{spelling}__local"
+                yield ("loop", pos, name, kind, "b." + kind + suffix,
+                       "b0." + kind + suffix, defs, (body, after), None)
+
+
+_CELLS = None
+
+
+def _cells_index():
+    global _CELLS
+    if _CELLS is None:
+        _CELLS = list(_cell_axes())
+    return _CELLS
+
+
+def program_of(cell: str) -> str:
+    """The program a cell belongs to: its own when it lowers during emission,
+    otherwise the one its whole position shares."""
+    for axis, pos, name, *_rest in _cells_index():
+        if name == cell:
+            return cell if (axis, pos) in EMISSION_TIME else f"{axis}@{pos}"
+    raise KeyError(cell)
+
+
+def programs() -> list[str]:
+    seen: list[str] = []
+    for axis, pos, name, *_rest in _cells_index():
+        p = name if (axis, pos) in EMISSION_TIME else f"{axis}@{pos}"
+        if p not in seen:
+            seen.append(p)
+    return seen
+
+
+def _members(program: str) -> list:
+    return [c for c in _cells_index()
+            if (c[2] if (c[0], c[1]) in EMISSION_TIME
+                else f"{c[0]}@{c[1]}") == program]
+
+
+def _build(program: str, drop: 'set[str] | None' = None,
+           keep: 'set[str] | None' = None) -> _Built:
+    """One program: the shared prelude plus every cell of a position, each
+    cell's own top-level names suffixed so they cannot collide.
+
+    `drop` leaves cells out. Sema stops the module at its first error, so a
+    cell that refuses there is recorded and removed before the rest are
+    surveyed again.
+    """
+    members = [c for c in _members(program) if not drop or c[2] not in drop]
+    if keep is not None:
+        members = [c for c in members if c[2] in keep]
+    axis, pos = members[0][0], members[0][1]
+    single = (axis, pos) in EMISSION_TIME
+    probes: list[str] = []
+    tails: list[tuple[str, list[str]]] = []
+    for i, (_ax, _pos, name, kind, expr, expr0, defs, body,
+            is_self) in enumerate(members):
+        tag = "c%d" % i
+        if is_self:
+            if pos == "ret":
+                sig = "    def probe(self) -> " + RT[kind] + ":"
+            elif pos == "yield":
+                sig = "    def probe(self) -> Iterator[" + RT[kind] + "]:"
+            else:
+                sig = "    def probe(self) -> None:"
+            probe = ["", sig] + _subst(list(body), expr, kind)
+            probe = [ln.replace("def probe(", "def probe_%s(" % tag)
+                     for ln in probe]
+            probes += probe
+            cell = ["def main() -> None:", "    b = B()"]
+            if pos == "ret":
+                cell += ["    v = b.probe_%s()" % tag, "    " + USE[kind]]
+            elif pos == "yield":
+                cell += ["    for v in b.probe_%s():" % tag,
+                         "        " + USE[kind]]
+            else:
+                cell += ["    b.probe_%s()" % tag]
+            tails.append((name, _apply(cell, {"main": "cell_" + tag})))
+            continue
+        if axis == "loop":
+            loop_body, after = body
+            block = _subst(list(defs), expr, kind, expr0)
+            ren = _renames(block, tag)
+            block = _apply(block, ren)
+            cell = ["def main() -> None:", "    v = " + expr0]
+            if loop_body:
+                cell += ["    for _i in range(2):", "        b = B()"]
+                cell += _subst(list(loop_body), expr, kind, expr0)
+            cell += _subst(list(after), expr, kind, expr0)
+            ren["main"] = "cell_" + tag
+            tails.append((name, block + _apply(cell, ren)))
+            continue
+        block = _subst(list(defs), expr, kind)
+        ren = _renames(block, tag)
+        block = _apply(block, ren)
+        if body is None:
+            # The module-level position IS top-level code, so it keeps a
+            # program of its own and stays at module level.
+            cell = ["b = B()", "v = " + expr, USE[kind]]
+            tails.append((name, block + cell))
+            continue
+        cell = ["def main() -> None:", "    b = B()"]
+        cell += _subst(list(body), expr, kind)
+        ren["main"] = "cell_" + tag
+        tails.append((name, block + _apply(cell, ren)))
+
+    lines = _prelude(pos, probes or None)
+    if axis == "loop":
+        # The loop axis reads its initial value off a MODULE-LEVEL receiver,
+        # which every cell of the position shares.
+        lines += ["b0 = B()", ""]
+    # The spliced probes sit inside the receiver record, well above the
+    # callers, so each SELF cell's probe range is found back by its name.
+    probe_at: dict[str, list[tuple[int, int]]] = {}
+    marks = [(i, m.group(1)) for i, ln in enumerate(lines, start=1)
+             if (m := re.match(r"\s+def (probe_c\d+)\(", ln))]
+    for k, (ln_no, pname) in enumerate(marks):
+        end = marks[k + 1][0] - 1 if k + 1 < len(marks) else ln_no
+        if k + 1 == len(marks):
+            for j in range(ln_no, len(lines) + 1):
+                if lines[j - 1] and not lines[j - 1][0].isspace():
+                    break
+                end = j
+        probe_at[pname] = [(ln_no, end)]
+    spans: dict[str, list[tuple[int, int]]] = {}
+    for i, (name, block) in enumerate(tails):
+        start = len(lines) + 1
+        lines += block + ["", ""]
+        spans[name] = probe_at.get("probe_c%d" % i, []) + [(start,
+                                                            len(lines))]
+    return _Built("\n".join(lines) + "\n", spans)
+
+
+def survey_sema(program: str, work_dir: Path,
+                cells: 'list[str]') -> dict[str, list[str]]:
+    """Check cells the caller expects to refuse in SEMA, one MINIMAL program
+    each -- the shared prelude and that cell alone.
+
+    Sema stops the module at its first error, so verifying them inside the
+    position's program costs one recompilation of the whole program per cell.
+    A cell whose sema error is gone answers with whatever it does now, so the
+    gate still fails naming it."""
+    out: dict[str, list[str]] = {}
+    for cell in cells:
+        out.update(survey(program, work_dir, keep={cell},
+                          stem=program + "__" + cell))
+    return out
+
+
+def survey(program: str, work_dir: Path,
+           expect_sema: 'set[str] | None' = None,
+           keep: 'set[str] | None' = None,
+           stem: str = "") -> dict[str, list[str]]:
+    """Every cell of `program`, as {cell name: [verdict, warning]}.
+
+    A cell's verdict is the FIRST reject among the bodies its own lines
+    declare, in source order -- the same thing the one-cell-per-program run
+    recorded, now read per cell instead of per process.
+
+    `expect_sema` leaves out the cells the caller already knows refuse in
+    sema, so the rest are answered by one compilation; `keep` restricts the
+    program to a named set, which is how a single sema cell is checked on its
+    own. If sema refuses anyway the retry loop still runs, so the failure
+    names the cell that was not expected to refuse.
+    """
+    Compiler, CodeGenOptions, DiagnosticLevel, SemErr, iter_callables, \
+        iter_ctors = _survey_imports()
+    work_dir.mkdir(parents=True, exist_ok=True)
+    path = work_dir / (re.sub(r"[^A-Za-z0-9_]", "_", stem or program) + ".py")
+    lib = REPO / "lib" / "tpy"
+    out: dict[str, list[str]] = {}
+    drop: set[str] = set(expect_sema or ())
+    while True:
+        left = [c for c in _members(program) if c[2] not in drop
+                and (keep is None or c[2] in keep)]
+        if not left:
+            return out
+        built = _build(program, drop, keep)
+        path.write_text(built.text)
+        try:
+            compiler = Compiler(path, default_int="int32", lib_dirs=[lib])
+            modules = compiler.compile()
+            diags = list(compiler.diagnostics)
+            for mod in modules:
+                an = getattr(mod, "analyzer", None)
+                if an is not None:
+                    diags += list(getattr(an, "diagnostics", []))
+            errors = [d for d in diags if d.level == DiagnosticLevel.ERROR]
+            if errors:
+                raise SemErr(str(errors[0].message),
+                             getattr(errors[0], "loc", None))
+        except SemErr as exc:
+            msg = _tag(str(exc))
+            line = getattr(getattr(exc, "loc", None), "line", 0) or 0
+            owner = next((n for n, rs in built.spans.items()
+                          if any(lo <= line <= hi for lo, hi in rs)), None)
+            if owner is None or len(built.spans) == 1:
+                for name in built.spans:
+                    out[name] = [msg, ""]
+                return out
+            out[owner] = [msg, ""]
+            drop.add(owner)
+            continue
+        except Exception as exc:  # noqa: BLE001 -- every failure IS a verdict
+            msg = _tag(str(exc))
+            for name in built.spans:
+                out[name] = [msg, ""]
+            return out
+        break
+    entry = next(m for m in modules if m.is_entry_point)
+    try:
+        ctx = compiler.collect_thir(entry, CodeGenOptions(),
+                                    tolerate_reject=True)
+    except Exception as exc:  # noqa: BLE001
+        msg = _tag(str(exc))
+        for name in built.spans:
+            out[name] = [msg, ""]
+        return out
+    bodies: list[tuple[int, object]] = []
+    for fn, _st in iter_callables(entry.ast, entry.analyzer):
+        bodies.append((_node_line(fn), fn))
+    for _rec, init, _self in iter_ctors(entry.ast, entry.analyzer):
+        bodies.append((_node_line(init), init))
+    lowered = set()
+    for fn, _st in iter_callables(entry.ast, entry.analyzer):
+        if fn in ctx.thir_functions or ctx.thir_resumables.get(fn) is not None:
+            lowered.add(id(fn))
+    for _rec, init, _self in iter_ctors(entry.ast, entry.analyzer):
+        if init in ctx.thir_constructors:
+            lowered.add(id(init))
+    top_reject = compiler.thir_reject_by_node.get(entry.ast)
+    warnings = [d for d in diags if d.level == DiagnosticLevel.WARNING]
+    for name, ranges in built.spans.items():
+        mine = sorted((ln, fn) for ln, fn in bodies
+                      if any(lo <= ln <= hi for lo, hi in ranges))
+        verdict = "ok"
+        unattempted = False
+        for _ln, fn in mine:
+            why = compiler.thir_reject_by_node.get(fn)
+            if why is not None:
+                verdict = str(why)
+                break
+            # No THIR and no reason of its own: emission ended at some other
+            # body before this one's turn. A later body of the SAME cell may
+            # still carry the real reason, so keep looking -- but if none
+            # does, the cell was never answered and must not read as admitted.
+            if id(fn) not in lowered:
+                unattempted = True
+        else:
+            if unattempted:
+                verdict = "crash:not attempted"
+        if verdict == "ok" and top_reject is not None:
+            verdict = str(top_reject)
+        warn = [w for w in warnings
+                if any(lo <= (getattr(getattr(w, "loc", None), "line", 0) or 0)
+                       <= hi for lo, hi in ranges)]
+        warn.sort(key=lambda w: getattr(getattr(w, "loc", None), "line", 0)
+                  or 0)
+        out[name] = [verdict, _tag(warn[0].message) if warn else ""]
+    return out
+
+
+def _node_line(node) -> int:
+    loc = getattr(node, "loc", None)
+    return getattr(loc, "line", 0) or 0
+
+
+def _survey_imports():
+    from tpyc.codegen_cpp.context import CodeGenOptions
+    from tpyc.compiler import Compiler
+    from tpyc.diagnostics import DiagnosticLevel, SemanticError
+    from tpyc.thir.lower import (iter_module_callables,
+                                 iter_module_constructors)
+    return (Compiler, CodeGenOptions, DiagnosticLevel, SemanticError,
+            iter_module_callables, iter_module_constructors)
+
+
 def _verdict(src: Path, build_dir: Path) -> list[str]:
     """`[verdict, warning]`: "ok" or the reject/error tag the compiler stopped
     at, beside the FIRST warning it emitted ("" for none).
@@ -615,13 +973,14 @@ def _tag(message: str) -> str:
 
 
 def run(out_dir: Path, cells: dict[str, Path]) -> dict[str, list[str]]:
-    build = out_dir / "build"
-    build.mkdir(exist_ok=True)
+    """The whole table, one compilation per PROGRAM rather than per cell."""
+    work = out_dir / "batch"
     table: dict[str, list[str]] = {}
-    for i, (name, path) in enumerate(sorted(cells.items())):
-        table[name] = _verdict(path, build / name)
+    names = programs()
+    for i, program in enumerate(names):
+        table.update(survey(program, work))
         if os.environ.get("SWEEP_PROGRESS") and i % 25 == 0:
-            print(f"  {i}/{len(cells)}", file=sys.stderr)
+            print(f"  {i}/{len(names)}", file=sys.stderr)
     return table
 
 

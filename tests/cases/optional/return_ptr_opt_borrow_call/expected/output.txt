@@ -1,0 +1,9 @@
+method 5
+free 15
+container 2
+self 115
+host_method 1115
+host_container 3
+generator 1115
+async 1115
+readonly_opt 1122

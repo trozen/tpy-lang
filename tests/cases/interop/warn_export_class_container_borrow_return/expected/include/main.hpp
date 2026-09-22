@@ -26,7 +26,7 @@ struct Holder {
     explicit Holder(int64_t n);
 
     // def same(self, xs: list[int64]) -> list[int64]:  # tpyc: warning(/list parameter 'xs' is copied in/)
-    const std::vector<int64_t>& same(const std::vector<int64_t>& xs) const;
+    std::vector<int64_t>& same(std::vector<int64_t>& xs) const;
 
     // def fresh(self, xs: list[int64]) -> Own[list[int64]]:  # tpyc: ok
     std::vector<int64_t> fresh(const std::vector<int64_t>& xs) const;
@@ -45,7 +45,7 @@ inline Holder::Holder(int64_t n) : n(n) {}
 
 // def same(self, xs: list[int64]) -> list[int64]:  # tpyc: warning(/list parameter 'xs' is copied in/)
 //     return xs  # tpyc: warning(/method 'same': returns a list by reference.*copied across the CPython boundary.*return Own/)
-inline const std::vector<int64_t>& Holder::same(const std::vector<int64_t>& xs) const {
+inline std::vector<int64_t>& Holder::same(std::vector<int64_t>& xs) const {
     return xs;
 }
 

@@ -79,6 +79,7 @@ from ...parse.nodes import (
     is_super_del_call,
 )
 from ...typesys import (
+    return_const_projected,
     AnyType,
     BIGINT,
     BOOL,
@@ -272,6 +273,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    _own_return_const_projected,
     copy_call_arg,
     _binding_peel,
     _narrow_alias_name,
@@ -464,6 +466,7 @@ from .context import (
     _ONLY_CORO_FACTORY,
     _ONLY_INDIRECT_READ,
     _ONLY_LITERAL_FOLD,
+    _ONLY_PTR_OPT_PASSTHROUGH,
     _ONLY_RECORD_COPY,
     _ExprUse,
     _LowerCtx,
@@ -474,6 +477,7 @@ from .context import (
 )
 from .checks import (
     _chained_subscript_recv_type,
+    _const_borrow_call_result,
     _container_comp_arg,
     _open_tparam_return_slot,
     _value_opt_scalar_elem_arg,
@@ -1089,6 +1093,12 @@ class _ForEachRoute:
     # A 3-arg range whose `variable` step is a computed expression rather than
     # a bare name -- witnessed apart so the name leg cannot stand in for it.
     step_expr_computed: bool = False
+    # The literal iterable's RESOLVED container type, carried only when the
+    # element binds by reference: a bare brace-init deduces
+    # std::initializer_list, whose elements are const, so every mutating use of
+    # the loop var would be ill-formed C++. A value element copies out of the
+    # deref and keeps the bare brace.
+    literal_src_type: 'TpyType | None' = None
 
 
 def _for_range_route(stmt: TpyForEach, analyzer,
@@ -1467,7 +1477,32 @@ def _for_each_container_route(
         str_list_method=str_list_method,
         container_field=container_field,
         str_literal_iterable=str_literal_iterable,
+        literal_src_type=(_owned_literal_type(it_type)
+                          if isinstance(it, TpyArrayLiteral)
+                          and _aliasing_loop_elem(et) else None),
         value_tuple_elem=_value_tuple(et, analyzer) is not None)
+
+
+def _owned_literal_type(it_type: 'TpyType | None') -> 'TpyType | None':
+    """A for-source literal OWNS its elements, so a reference-typed element
+    source (a record PARAMETER) must not leak its `T&` into the container the
+    capture spells: `std::array<T&, N>` is ill-formed."""
+    args = getattr(it_type, "type_args", None)
+    if not args:
+        return it_type
+    return replace(it_type, type_args=tuple(
+        unwrap_ref_type(a) if isinstance(a, TpyType) else a for a in args))
+
+
+def _aliasing_loop_elem(et: 'TpyType | None') -> bool:
+    """Whether the loop var ALIASES the element rather than copying it -- the
+    same value-ness `loop_var_binding` asks before choosing `auto&&`."""
+    if et is None:
+        return False
+    eu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+    if isinstance(eu, OwnType):
+        eu = eu.wrapped
+    return not eu.is_value_type()
 
 def _for_consuming_route(stmt: TpyForEach, analyzer,
                          declared: dict[str, TpyType]) -> '_ForEachRoute | None':
@@ -3814,7 +3849,7 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
                               ReadonlyType)
                 or (isinstance(_svt, OptionalType)
                     and isinstance(_svt.inner, ReadonlyType))
-                or getattr(er_fi, "is_readonly", False))
+                or return_const_projected(er_fi))
             if not const_like and isinstance(init, TpyMethodCall):
                 recv = init.obj
                 const_like = not (
@@ -9095,7 +9130,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if (t_fi is not None and t_fi.cpp_template is None
                         and isinstance(unwrap_ref_type(t_fi.return_type),
                                        TypeParamRef)):
-                    trait = ("::tpy::val_or_cref_t" if t_fi.is_readonly
+                    trait = ("::tpy::val_or_cref_t"
+                             if return_const_projected(t_fi)
                              else "::tpy::val_or_ref_t")
                     init = _lower_expr(
                         stmt.init, lc, declared,
@@ -9162,17 +9198,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # source at last use of a non-value local; the init's std::move
             # wrap keys on the target (not a fresh last-use test), so the
             # membership drives the move directly.
+            _mt_u = unwrap_readonly(unwrap_send_sync(vtype))
             if (fn_top and stmt.name in lc.prescan.move_through
                     and ((isinstance(vtype, NominalType)
                           and _f1_record(vtype, analyzer))
-                         # An ARRAY value container moves the same way at its
-                         # last-use alias (`std::array<T, N> b = std::move(a);`
-                         # -- sema marks expensive-copy value containers
-                         # move-through too, not only non-value locals).
-                         or is_array(unwrap_readonly(unwrap_send_sync(vtype))))
+                         # ... or a reference-form builtin container beside it
+                         # (`std::vector<int32_t> xs = std::move(ys);`). The
+                         # ARRAY value container is in the same family -- sema
+                         # marks expensive-copy value containers move-through
+                         # too, not only non-value locals -- and the owning
+                         # slot spells one decl for all of them, so the
+                         # admission is the TypeDef's reference form rather
+                         # than a list of container kinds.
+                         or _f1_container_ref(_mt_u))
                     and isinstance(stmt.init, TpyName)):
-                _witness("decl.move_through_array"
-                         if is_array(unwrap_readonly(unwrap_send_sync(vtype)))
+                _witness("decl.move_through_array" if is_array(_mt_u)
+                         else "decl.move_through_container"
+                         if _f1_container_ref(_mt_u)
                          else "decl.move_through_record")
                 src = _lower_expr(
                     stmt.init, lc, declared,
@@ -10493,17 +10535,30 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # note), and the container guards below exclude every
                 # escaping/rebinding shape -- same plain decl at branch
                 # indent (like the native-record arm below).
-                # A recursive-union WRAPPER is a reference type despite the
-                # value-variant fam tag: its reassigned locals take the
-                # pointer-rebind machinery too (`(*v)` reads), so it shares
-                # the container guards.
+                # A recursive-union WRAPPER shares the container guards for
+                # every BORROWED source: the wrapper struct is a value type,
+                # but a `T&` alias of one cannot be reseated any more than a
+                # container alias can.
                 wrapper_fam = (isinstance(fam, UnionType)
                                and fam.needs_wrapper())
                 if _storage_call_container(fam) or wrapper_fam:
-                    if (is_reassign
-                            or stmt.name in lc.prescan.reassigned
-                            or stmt.name in lc.prescan.hoisted
-                            or stmt.name in lc.prescan.move_through):
+                    # ... an OWNED wrapper result, though, fills a plain value
+                    # slot (`JsonValue v = json::loads(s);`), so a second
+                    # assignment to the same name is an ordinary value assign
+                    # with no slot or pointer to rebind. Only the CONTAINER
+                    # family needs the pointer-local machinery a reassigned
+                    # name would ask for, and the hoisted / move-through
+                    # shapes need their own predecl either way.
+                    wrapper_value_slot = (
+                        wrapper_fam and not _storage_call_container(fam)
+                        and is_rvalue_source(analyzer, stmt.init)
+                        and stmt.name not in lc.prescan.hoisted
+                        and stmt.name not in lc.prescan.move_through)
+                    if (not wrapper_value_slot
+                            and (is_reassign
+                                 or stmt.name in lc.prescan.reassigned
+                                 or stmt.name in lc.prescan.hoisted
+                                 or stmt.name in lc.prescan.move_through)):
                         note_detail("decl.container_call_reassigned")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
                     # A BORROW container return binds a `T&` alias
@@ -10523,7 +10578,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         if (isinstance(unwrap_ref_type(_cbc_rt)
                                        if isinstance(_cbc_rt, TpyType)
                                        else None, ReadonlyType)
-                                or getattr(_cbc_fi, "is_readonly", False)):
+                                or (_cbc_fi is not None
+                                    and return_const_projected(_cbc_fi))):
                             note_detail("decl.container_call_borrow")
                             raise ThirUnsupported(stmt_reject_reason(stmt))
                         lc.ref_alias_locals.add(stmt.name)
@@ -12822,7 +12878,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         isinstance(
                             unwrap_ref_type(unwrap_send_sync(
                                 _fn_return_type(lc))), ReadonlyType)
-                        or bool(getattr(lc.func, 'is_readonly', False))))
+                        or _own_return_const_projected(lc)))
                 _witness("ret.btuple_literal")
                 return THIRReturn(value=lit, loc=loc)
             elif _borrow_form_tuple_call(stmt.value, analyzer):
@@ -13077,6 +13133,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # (`return ((flag) ? (&(p)) : (nullptr));`).
                 pvalue = _lower_expr(stmt.value, lc, declared)
                 _witness("ret.ptr_opt_ternary")
+            elif (isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                    and not is_property_getter_read(stmt.value)
+                    and _ptr_opt_borrow_call_ret(
+                        stmt.value, analyzer.get_expr_type(stmt.value))):
+                # A BORROW-returning call already hands back the `T*` this
+                # return spells, so it passes through bare
+                # (`return b.opt_m();`) -- the PTR_OPT_PASSTHROUGH sink form,
+                # named here rather than re-derived from the callee. An
+                # `Own[...]`-declared return is excluded by the predicate (it
+                # owns a temporary the caller would leave dangling) and sema
+                # rejects the dying-receiver spelling before this. A
+                # `@property` read is held out: its convention hands back the
+                # field's whole `std::optional<T>` BY REFERENCE, which this
+                # bare pass would mis-spell.
+                _witness("ret.ptr_opt_borrow_call")
+                pvalue = _lower_expr(
+                    stmt.value, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                 pos=SinkPos.RETURN,
+                                 forms=_ONLY_PTR_OPT_PASSTHROUGH,
+                                 allow_temps=True))
             elif (isinstance(stmt.value, TpyName)
                     and stmt.value.name == "self"
                     and stmt.value.name == lc.self_receiver
@@ -16006,6 +16083,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # threaded here).
             container_threaded=not isinstance(
                 it, (TpyArrayLiteral, TpyStrLiteral)))
+        if (route.literal_src_type is not None
+                and isinstance(iterable, THIRContainerLiteral)):
+            # Self-describe the brace-init with the route's resolved container
+            # type. The elements still render target-less; only the SOURCE's
+            # own type is spelled, so the capture owns a real container whose
+            # elements the aliasing loop var can mutate.
+            iterable = replace(
+                iterable, typed_brace_cpp=lc.render_type(route.literal_src_type))
         if route.consuming_native_name is not None:
             _witness("foreach.consuming_iter")
             iterable = THIRConsumingIter(
@@ -16858,6 +16943,33 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # manager lowers, not this gate's.
                 manager_ok = True
                 _witness("with.manager_borrowed_getter")
+            if (not manager_ok
+                    and isinstance(ctx, TpyMethodCall)
+                    and call_returns_cpp_ref(lc.analyzer,
+                                             ctx.resolved_function_info)
+                    and not _const_borrow_call_result(ctx, lc.analyzer)
+                    and not is_rvalue_source(lc.analyzer, ctx.obj)
+                    and _f1_record(lc.analyzer.get_expr_type(ctx),
+                                   lc.analyzer)):
+                # ... and the plain METHOD spelling of the same convention
+                # (`with b.guard_m() as q:`): a borrow-returning method hands
+                # back the accessor's reference, so the `auto&` binds live
+                # storage rather than a copy of it -- the getter row one
+                # spelling over, keyed on the return convention the two
+                # share. Two terms the getter row gets from elsewhere are
+                # spelled here. A CONST-projected result (a `@readonly`
+                # callee, a `readonly[...]` return) stays out: the bind would
+                # deduce `const CM&` and the non-readonly
+                # `__enter__`/`__exit__` would not compile through it. And
+                # the RECEIVER must not be a temporary -- the term
+                # `is_rvalue_source` applies to a getter read but concedes
+                # for a plain method call
+                # (BUGS.md#readonly-borrow-of-temporary-receiver), which
+                # would leave `auto& __ctx_N = mk().guard_m();` naming a
+                # destroyed object. A borrow-returning FREE call has no
+                # receiver to ask that of and keeps rejecting.
+                manager_ok = True
+                _witness("with.manager_borrowed")
         else:
             manager_ok = (
                 (isinstance(ctx, TpyCall)

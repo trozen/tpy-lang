@@ -215,8 +215,8 @@ def test_bodyless_binding_says_it_has_no_body():
     assert "rejected" not in out, out
 
 
-# One body lowers, the next rejects, the rest never get their turn -- the
-# three no-THIR states the dump must keep apart. The rejecting shape is a
+# One body lowers, the next rejects, a later one lowers and the module init
+# never gets its turn -- the no-THIR states the dump must keep apart. The rejecting shape is a
 # dict of Box rebound to another dict; if lowering ever admits it this test
 # goes vacuous, which the first assertion catches.
 _REJECTING_MODULE = (
@@ -246,10 +246,19 @@ def test_rejected_body_names_its_reason():
     assert "fn lowers(n: int32) -> int32:" in out, out
 
 
-def test_bodies_after_a_reject_are_not_called_rejected():
-    # Emission stops at the first reject, so a later body was never lowered
-    # AND never attempted -- calling it rejected would invent a gap.
+def test_a_reject_does_not_end_the_survey_of_function_bodies():
+    # Function, method and constructor bodies lower ahead of emission, so the
+    # dump attempts every one: a body after the rejecting one shows its THIR.
     out = _dump(_REJECTING_MODULE)
-    assert "fn after: <not attempted:" in out, out
+    assert "fn after() -> int32:" in out, out
+    assert out.count("<rejected: ") == 1, out
+
+
+def test_units_lowered_during_emission_are_not_called_rejected():
+    # The module-init body lowers while the C++ around it is written, which
+    # the function reject above never reaches -- never lowered AND never
+    # attempted, so calling it rejected would invent a gap.
+    out = _dump(_REJECTING_MODULE)
+    assert "top-level __tpy_init: <not attempted:" in out, out
 
 

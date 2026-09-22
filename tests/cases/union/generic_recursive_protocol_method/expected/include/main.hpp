@@ -12,7 +12,7 @@ template<typename T> struct Tree;
 // class TreeSink(Protocol):
 template<typename T>
 concept TreeSink = requires(T& t) {
-    { t.absorb(std::declval<Tree<int32_t>>()) } -> std::convertible_to<int32_t>;
+    { t.absorb(std::declval<Tree<int32_t>&>()) } -> std::convertible_to<int32_t>;
     { t.sprout() } -> std::convertible_to<Tree<int32_t>>;
 };
 

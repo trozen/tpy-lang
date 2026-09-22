@@ -538,11 +538,13 @@ iterables (`self.items`) and aliased mutation are Phase 2 (cross-function infere
   iteration (the kind is no longer ITER) nor certain (no index to compare),
   so it is reported as "may hit a borrowed element (... may invalidate
   references)" -- the wording that must exist because a merge can drop both
-  facts at once. Pinned by
-  `tests/cases/list/warn_iter_mutation::test_merged_element_loan_unknown_index`,
-  which compiles and runs at CPython parity, and by
-  `tests/cases/list/error_elem_loan_merge_rebind`, whose own decl rejects
-  (BUGS.md#rebound-element-borrow-local-rejects).
+  facts at once. Pinned by `tests/cases/list/warn_iter_mutation`, which
+  compiles and runs at CPython parity, and by
+  `tests/cases/list/elem_loan_merge_rebind`, where the rebound element alias
+  the warning is read off now binds and runs too (the decl reject that case
+  was opened for is fixed; what is left of
+  BUGS.md#rebound-element-borrow-local-rejects is the
+  container-of-container SLICE).
 - Passing a borrowed iterable to a non-`@pure` function is not yet detected.
 - An iterable one hop from a spellable storage key is tracked (`self.items`,
   `rows[i]`, `row.cells[i]`, `table[k]`); a deeper chain has no key a mutating

@@ -228,7 +228,10 @@ def after() -> int32:
     assert re.search(r"external@[^\n]+<no body to lower>", out), out
     assert re.search(r"before@[^\n]+ -> int32", out), out
     assert re.search(r"rejects@[^\n]+<THIR rejected:", out), out
-    assert re.search(r"after@[^\n]+<THIR not attempted:", out), out
+    # A function body after the rejecting one is still attempted; only a unit
+    # that lowers during emission is cut off by the reject.
+    assert re.search(r"after@[^\n]+ -> int32", out), out
+    assert re.search(r"__tpy_init: <THIR not attempted:", out), out
 
 
 @pytest.mark.parametrize("runner", [False, True])

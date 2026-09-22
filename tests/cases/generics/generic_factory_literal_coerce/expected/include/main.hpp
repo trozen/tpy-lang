@@ -30,7 +30,7 @@ struct Converter {
     // def identity[U](self, val: U) -> U:
     //     return val
     template<typename U>
-    ::tpy::val_or_cref_t<U> identity(::tpy::readonly_form_t<U> val) const {
+    ::tpy::val_or_ref_t<U> identity(::tpy::param_val_or_ref_t<U> val) const {
         return ::tpy::param_to_return<U>(val);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Converter";

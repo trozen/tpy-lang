@@ -1,1 +1,0 @@
-main.py:36: error: in function 'use_prop': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.slot_type)

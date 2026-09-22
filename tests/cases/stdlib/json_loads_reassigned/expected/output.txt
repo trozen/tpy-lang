@@ -1,0 +1,7 @@
+function [1]
+function [2, 3]
+constructor {"a": 1}
+method [4]
+generator [5, 6]
+async [7]
+closure [8]

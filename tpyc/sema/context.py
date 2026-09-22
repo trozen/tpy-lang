@@ -1407,6 +1407,11 @@ class FunctionTrackingState:
     # this function: any later call may invoke such a closure and rebind
     # these names, so check-elision facts for them die at every call site.
     closure_written_names: set[str] = field(default_factory=set)
+    # Captured name -> the nested defs defined SO FAR that capture it. Such a
+    # closure reads the enclosing storage at every later call, which the
+    # last-use walk loses at a `return` (it clears the live set), so an alias
+    # bind of the name must not move it while one of them is still live.
+    closure_captured_names: dict[str, set[str]] = field(default_factory=dict)
     nested_def_names: set[str] = field(default_factory=set)
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)

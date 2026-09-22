@@ -3044,12 +3044,6 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
         # Unaudited -- refuse rather than pick a spelling.
         note_detail("nesteddef.name_collision")
         raise ThirUnsupported("res.nested_def_member")
-    if analyzer.function_hoisted_vars.get(func):
-        # A scope-escape hoist needs a slot at the top of the member's body,
-        # and the member's leaf emitter has no drain for one. Without the
-        # slot the local stays block-scoped and the escaping name dangles.
-        note_detail("nesteddef.hoisted_vars")
-        raise ThirUnsupported("res.nested_def_member")
     body_declared = dict(declared)
     for pname, ptype in func.params:
         if not isinstance(ptype, TpyType):

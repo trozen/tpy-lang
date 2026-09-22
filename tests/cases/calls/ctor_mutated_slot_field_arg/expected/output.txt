@@ -1,0 +1,6 @@
+fn [1, 9]
+ctor_list [1, 9, 9] 3
+ctor_dict {'a': 1, 'b': 2} 2
+ctor_set 2 2
+ctor_reclist 2 2
+ctor_bytearray 2 2

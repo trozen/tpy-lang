@@ -21,7 +21,8 @@ from .testutil import (_assert_rejects_at, _compile, _entry,
                        _strict_reject)
 from ..codegen_cpp.context import CodeGenError, CodeGenOptions
 
-# A guarded class pattern over a union subject: the plain-function fold.
+# A guarded WILDCARD arm over a union subject whose guard reads the subject:
+# the arm draws no extraction alias to rename the read to.
 BODY_SRC = '''from tpy import int32
 
 
@@ -39,10 +40,12 @@ class Other:
         self.m = m
 
 
-def pick(v: Rec | Other) -> int32:
+def pick(v: Rec | None | Other) -> int32:
     match v:
         case Rec(n=1) if v.n > 0:
             return 1
+        case _ if v is None:
+            return -1
         case _:
             return 0
 
@@ -147,7 +150,7 @@ def main() -> None:
 main()
 '''
 
-# BODY_SRC's guarded class pattern as an IMPORTED module, so the rejecting
+# BODY_SRC's guarded wildcard arm as an IMPORTED module, so the rejecting
 # body sits in a file the caller does not name.
 IMPORTED_SRC = '''from tpy import int32
 
@@ -166,10 +169,12 @@ class Other:
         self.m = m
 
 
-def pick(v: Rec | Other) -> int32:
+def pick(v: Rec | None | Other) -> int32:
     match v:
         case Rec(n=1) if v.n > 0:
             return 1
+        case _ if v is None:
+            return -1
         case _:
             return 0
 '''

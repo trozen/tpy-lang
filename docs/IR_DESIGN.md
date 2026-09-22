@@ -621,7 +621,18 @@ and reads its per-module THIR caches, then discards the generated C++. That is w
 lets it show resumable (async / generator) bodies -- which only lower at frame
 emission, since their CFG needs live codegen state -- and constructors, neither of
 which the sync per-body entry reaches. Bodies that did NOT lower are named rather
-than omitted, since "what did not route" is usually the question. Every concrete
+than omitted, since "what did not route" is usually the question. The dump is a
+SURVEY of the bodies that lower ahead of emission: every function, method and
+constructor body is attempted and reports its own reject reason, so one run lists
+every unsupported FUNCTION, METHOD and CONSTRUCTOR body of a file (and a verdict
+matrix can hold one cell per function instead of one per program). It does NOT
+list every unsupported body: the units that lower DURING emission -- a generator
+/ async frame, the module-init body, a class constant, a `Final` global -- are
+attempted only when no pre-emission body rejected. Once one has, the deferred
+reject ends the pass before emission starts and every one of those units reads
+`<not attempted: an earlier reject ended emission>`; a reject inside one of them
+ends the pass in the same way, so what follows it reads `not attempted` too.
+An ordinary compile is unchanged: it reports the first reject. Every concrete
 `THIRExpr` / `THIRStmt` subclass must have a render arm: the dispatch raises on an
 unregistered node instead of degrading to a `<ClassName>` placeholder, and
 `test_dump.py` fails the moment a new node class lands without one.

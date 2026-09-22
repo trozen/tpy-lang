@@ -449,6 +449,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.qualcall.storage_opt_ret",  # Own[record]|None qualcall result at a
                                        # storage sink: bare into optional<T>
     "method.container_iterable",    # container method result as a for-head iterable
+    # borrow-returning container method result read transiently (if/in): bare
+    "method.borrow_ret_passthrough",
     "method.qualcall.container_iterable",  # marker-call container as a for-head iterable
     # marker-call owned-tuple result at an owning Own[tuple] arg slot
     "method.qualcall.own_tuple_slot",
@@ -1921,6 +1923,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # source consumed at its last use, target flagged in `move_through`.
     "decl.move_through_record",
     "decl.move_through_array",      # Array last-use alias: spelled decl + std::move
+    # ... and the reference-form builtin container beside it
+    # (`std::vector<int32_t> xs = std::move(ys);`).
+    "decl.move_through_container",
     # `copy(a)` of a plain F1-record source into an owned record local
     # (`T b = T(a);`, the copy-construct rvalue).
     "decl.copy_record",
@@ -2307,6 +2312,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "optptr.storage_name_lift",     # that name at a T* slot:
                                     # ::tpy::optional_to_ptr(p)
     "ret.ptr_opt_ternary",          # ptr-Optional return of a ternary
+    # A BORROW-returning CALL at a ptr-repr Optional return: the result
+    # already IS the `T*`, so it passes through bare (`return b.opt_m();`).
+    "ret.ptr_opt_borrow_call",
     # Enum value-binding renders (lowering).
     "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
     "enum.truthy_int",              # IntEnum truthiness `(static_cast<U>(x) != 0)`

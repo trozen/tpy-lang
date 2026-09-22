@@ -1,0 +1,2 @@
+main.py:110: warning: copies Cat | None into field; use copy() to make this explicit
+main.py:36: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.

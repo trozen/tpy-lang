@@ -537,7 +537,7 @@ from .predicates import (
     _value_opt_view_name,
 )
 from .context import (_call_arg_forms, _ExprResultUse, _ExprUse, _LowerCtx,
-                      _recv_forms, _NO_FORMS, _LEND_OK,
+                      _recv_forms, _NO_FORMS, _LEND_OK, _TRANSIENT_OK,
                       _ONLY_BTUPLE_SLOT,
                       _ONLY_FIELD_RECV_BORROW, _ONLY_INDIRECT_READ,
                       _ONLY_PTR_OPT_PASSTHROUGH, _ONLY_TUPLE_SOURCE,
@@ -560,7 +560,8 @@ _RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
 # the test expression. `forms=` rather than the RECEIVER row because the
 # haystack is not a member-read receiver -- the row's indirect-name deref is
 # not its verdict, while the dying-source lend is.
-_MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER, forms=_LEND_OK)
+_MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
+                            forms=_TRANSIENT_OK)
 
 
 from .checks import (
@@ -576,7 +577,9 @@ from .checks import (
     _container_module_var_arg,
     _x_temps_ok,
     _r_callable_value_pass,
+    _r_container_field_pass,
     _r_container_literal,
+    _r_container_literal_method,
     _r_copy_own,
     _r_dyn_own_conformer,
     _r_func_ref,
@@ -593,7 +596,9 @@ from .checks import (
     _r_own_tparam_call_rvalue,
     _r_own_union_ctor,
     _r_bytes_literal_value_opt,
+    _r_protocol_slot,
     _r_ptr_pass_through,
+    _r_record_field_marker,
     _r_shared_pass_through,
     _r_str_literal_value_opt,
     _r_str_owned_slot,
@@ -609,6 +614,7 @@ from .checks import (
     _r_value_record_rvalue,
     _r_value_union_temp,
     _r_value_union_narrowed_pass,
+    _r_wide_opt_deref_name,
     _builtin_value_record,
     _wrapper_union_elem_name_arg,
     _alias_ref_container,
@@ -1040,15 +1046,19 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and (_storage_call_ret(ret, analyzer) is not None
                        or _alias_ref_container(ret))
                   and _witness("call.container_recv_ret"))
-              # The BORROW-record RETURN passthrough only (the dedicated
-              # flag -- never a general record-at-RECEIVER admission,
-              # which was reverted for shadowing / opening the REF_ALIAS
-              # design stop): `return get_first(items);` renders the
-              # T&-returning call bare.
+              # The BORROW RETURN passthrough (the dedicated flag -- never a
+              # general record-at-RECEIVER admission, which was reverted for
+              # shadowing / opening the REF_ALIAS design stop): `return
+              # get_first(items);` renders the T&-returning call bare, and so
+              # does the same call read TRANSIENTLY (`if free_items(b):`,
+              # `1 in free_items(b)`), where nothing binds off it either. The
+              # container family rides the same row: a `std::vector<T>&`
+              # return is the same bare render as a `T&` one.
               or (use.admits(SinkForm.BORROW_RET_PASSTHROUGH)
                   and fi is not None
                   and call_returns_cpp_ref(analyzer, fi)
-                  and _f1_record(ret, analyzer)
+                  and (_f1_record(ret, analyzer)
+                       or _alias_ref_container(ret))
                   and _witness("call.borrow_ret_passthrough"))
               # The FIELD-READ receiver twin (the dedicated flag --
               # `ret_param_ref(shared).n` composes the member read over the
@@ -1729,8 +1739,13 @@ def _r_async_factory_wrap(req: _ArgReq) -> bool:
 
 
 def _r_field_read_ref_ctor(req: _ArgReq) -> bool:
+    # The family's mutated-slot rule is NOT taken here. It exists because a
+    # mutable `T&` cannot bind a temporary; this shape is a field read off a
+    # NAMED receiver (`_field_receiver_ok` admits no other), which is an
+    # lvalue outliving the call -- and the free-call and method families
+    # already bind it at their own mutated slots.
     return _field_read_ref_ctor_arg(req.a, req.ptype, req.locals_,
-                                    req.analyzer, mutated=req.mutated_slots)
+                                    req.analyzer)
 
 
 def _r_own_container_instantiation(req: _ArgReq) -> bool:
@@ -2078,6 +2093,9 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         # verdict-keyed via the shared classifier.
         _ArgRow("dyn_own_conformer", _r_dyn_own_conformer),
         _ArgRow("record_rvalue_temp_ctor", _r_record_rvalue_temp_ctor),
+        # A narrowed wide ptr-opt NAME at its POINTEE slot: the plain
+        # ladder's row, temp-free and position-blind.
+        _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
     )))
 
 
@@ -2137,6 +2155,27 @@ _CTOR_NESTED_ARG_SINK = register_sink(_ArgSink(
         # A checked container-element read binds the record ref slot inline
         # at a flush-less nested position too: it hoists nothing.
         _ArgRow("record_elem_subscript", _r_record_elem_subscript),
+        # A narrowed wide ptr-opt NAME at its POINTEE slot: the deref
+        # renders in place, so the flush-less position admits it too.
+        # AHEAD of the decisive cell, which would otherwise answer the
+        # record-slot half of this shape before the row is reached.
+        _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
+        # The sibling families' remaining TEMP-FREE cells, which is the
+        # whole rule this family expresses -- the bare pass-through set and
+        # the member reads beside it, the inline-rendered container literal,
+        # and the two cells that read `temps_ok` themselves and so take only
+        # their no-temp faces here. The family threads `temps_ok=False`, so
+        # a flush-needing face cannot fire whichever cell names it.
+        _ArgRow("shared_pass_through", _r_shared_pass_through),
+        _ArgRow("container_field_pass", _r_container_field_pass),
+        _ArgRow("record_field_marker", _r_record_field_marker),
+        # ... the literal at an UNMUTATED slot only, like the direct
+        # family's `container_literal` cell: the inline brace is a prvalue,
+        # and a mutated `T&` slot needs the hoist this position cannot make.
+        _ArgRow("container_literal_method", _r_container_literal_method,
+                extra=_x_not_mutated),
+        _ArgRow("optional_ptr", _r_optional_ptr),
+        _ArgRow("protocol_slot", _r_protocol_slot),
         # DECISIVE: an unmutated record-rvalue temp slot is answered HERE.
         # The ladder spelled it as an early `return`, so a source that is
         # not one of the two ctor/call shapes is REFUSED rather than falling
@@ -2365,9 +2404,24 @@ def _lower_marker_method_arg(
     _require_method_call_arg(
         e, a, ptype, index, lc, declared, temp_args=temp_args,
         error_return_ok=error_return_ok)
+    # The callee's const-borrow verdict spells its union slot with const
+    # pointees; the lift built here has to name that same variant.
+    mfi = e.resolved_function_info
+    dcbp = mfi.root.const_borrow_params if mfi is not None else None
+    if (temp_args and dcbp is not None and index not in dcbp
+            and _container_literal_arg(a, ptype, lc.analyzer)):
+        # The method loop's row (`K.s_mutating([1, 2])` -- a static method is
+        # a qualified call): a slot the callee's own verdict says is mutable
+        # cannot bind the in-place brace, so the literal hoists. A callee
+        # with no verdict at all (`dcbp is None` -- every @native /
+        # @cpp_template marker) keeps the inline render its C++ expects.
+        return _container_literal_argtemp(
+            a, ptype, lc, declared,
+            "container-literal qualified arg on the make path")
     return _lower_call_arg(
         a, ptype, lc, declared, temp_args=temp_args, marker_arg=True,
-        callee_fi=measured_arg_callee(e.resolved_function_info),
+        readonly_target=dcbp is not None and index in dcbp,
+        callee_fi=measured_arg_callee(mfi),
         arg_index=index)
 
 
@@ -3304,6 +3358,42 @@ def _fold_literal_chain(e: TpyBinOp, literal_facts: dict) -> 'bool | None':
     return None
 
 
+def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
+                       slot: 'TpyType | None') -> _ExprUse:
+    """The use an ARITHMETIC operand takes -- shared by the binop arm and the
+    unary-dunder arm, which read their operand the same way.
+
+    A record-rvalue operand (`timedelta(...) + timedelta(...)`, `-timedelta(
+    ...)`) rides BORROW_BIND so the ctor/call's record result is admitted --
+    the compare arm's `_cmp_operand_use` twin. An F1-record FIELD operand
+    (`self.end - self.start`) renders the bare member read into the operator
+    parens, exactly as that arm's field row does.
+
+    Everything else reads through a full deref, so a pointer-bound RECORD
+    name derefs here (`((*v)) + (inc)`, `-((*o))`) rather than taking the
+    bare arrow-receiver form its other consumers want. Only NAME reads read
+    the flag, so the two shape-guarded rows above cannot need it.
+    `_LEND_OK` is the OPERAND row's own verdict: the operator reads the
+    operand inside the full expression, so a result lending a dying
+    receiver's storage is still alive here. Spelled because this site names
+    `forms=` for the deref and a `forms=` REPLACES the row."""
+    if _record_call_rvalue_operand(side, analyzer):
+        return _ExprUse(result=_ExprResultUse.BORROW_BIND,
+                        allow_temps=temps_ok,
+                        slot_target=slot)
+    if isinstance(side, TpyFieldAccess):
+        st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            analyzer.get_expr_type(side))))
+        if _f1_record(st, analyzer):
+            return _ExprUse(result=_ExprResultUse.BORROW_BIND,
+                            allow_temps=temps_ok,
+                            slot_target=slot)
+    return _ExprUse(allow_temps=temps_ok,
+                    slot_target=slot,
+                    pos=SinkPos.OPERAND,
+                    forms=_ONLY_INDIRECT_READ | _LEND_OK)
+
+
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  declared: dict[str, TpyType], loc, *,
                  fold_ok: bool = False, slot_threaded: bool = False,
@@ -4233,10 +4323,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # member read (receiver position).
         if isinstance(e.right, TpyMethodCall):
             recv_use = _ExprUse(result=_ExprResultUse.ITERABLE,
-                                pos=SinkPos.RECEIVER, forms=_LEND_OK)
+                                pos=SinkPos.RECEIVER, forms=_TRANSIENT_OK)
         elif isinstance(e.right, TpyFieldAccess):
             recv_use = _ExprUse(result=_ExprResultUse.RECEIVER,
-                                pos=SinkPos.RECEIVER, forms=_LEND_OK)
+                                pos=SinkPos.RECEIVER, forms=_TRANSIENT_OK)
         else:
             recv_use = _MEMBERSHIP_RECV
         # A native-contains CONTAINER-field haystack was admitted by the
@@ -4645,38 +4735,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             slot = lslot if side is e.left else rslot
             return slot if slot is not None else rtype
 
-        def _arith_operand_use(side: TpyExpr) -> _ExprUse:
-            # A record-rvalue operand (`timedelta(...) + timedelta(...)`)
-            # rides BORROW_BIND so the ctor/call's record result is
-            # admitted -- the compare arm's `_cmp_operand_use` twin.
-            if _record_call_rvalue_operand(side, analyzer):
-                return _ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                allow_temps=temps_ok,
-                                slot_target=_operand_slot(side))
-            # An F1-record FIELD operand (`self.end - self.start`) renders
-            # the bare member read into the operator parens, exactly as the
-            # compare arm's `_cmp_operand_use` field row does.
-            if isinstance(side, TpyFieldAccess):
-                st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(side))))
-                if _f1_record(st, analyzer):
-                    return _ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                    allow_temps=temps_ok,
-                                    slot_target=_operand_slot(side))
-            # An arithmetic operand reads through a full deref, so a
-            # pointer-bound RECORD name derefs here (`((*v)) + (inc)`)
-            # rather than taking the bare arrow-receiver form its other
-            # consumers want. Only NAME reads read the flag, so the two
-            # shape-guarded rows above cannot need it.
-            # `_LEND_OK` is the OPERAND row's own verdict: the operator reads
-            # the operand inside the full expression, so a result lending a
-            # dying receiver's storage is still alive here. Spelled because
-            # this site names `forms=` for the deref and a `forms=` REPLACES
-            # the row.
-            return _ExprUse(allow_temps=temps_ok,
-                            slot_target=_operand_slot(side),
-                            pos=SinkPos.OPERAND,
-                            forms=_ONLY_INDIRECT_READ | _LEND_OK)
+        def _binop_operand_use(side: TpyExpr) -> _ExprUse:
+            return _arith_operand_use(side, analyzer, temps_ok=temps_ok,
+                                      slot=_operand_slot(side))
 
         def _comp_operand(side: TpyExpr) -> 'THIRExpr | None':
             # The comprehension operand the container gate admitted: the
@@ -4699,7 +4760,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         if left is None:
             left = _slot_literal_retype(
                 _lower_expr(e.left, lc, declared,
-                            use=_arith_operand_use(e.left),
+                            use=_binop_operand_use(e.left),
                             field_owned_str_ok=isinstance(e.left, TpyFieldAccess)),
                 lslot, lc)
         right = _comp_operand(e.right) or _lower_unproven_opt_scalar(
@@ -4707,7 +4768,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         if right is None:
             right = _slot_literal_retype(
                 _lower_expr(e.right, lc, declared,
-                            use=_arith_operand_use(e.right),
+                            use=_binop_operand_use(e.right),
                             cond_eager=logical_rhs_temps,
                             field_owned_str_ok=isinstance(e.right,
                                                           TpyFieldAccess)),
@@ -7345,15 +7406,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 if operand is None and isinstance(operand_type, OptionalType):
                     raise ThirUnsupported("expr.unary")
                 if operand is None:
+                    # The unary dunder reads its operand exactly as the
+                    # binop arm reads either of its own, so both take the
+                    # one arithmetic-operand use: target-less (a unary
+                    # dunder declares no param slot to render into).
                     operand = _lower_expr(
                         e.operand, lc, declared,
-                        # A record-rvalue operand (`-timedelta(...)` -- the
-                        # __neg__ template over the ctor prvalue) rides
-                        # BORROW_BIND like the binop operand twin.
-                        use=(_ExprUse(result=_ExprResultUse.BORROW_BIND)
-                             if _record_call_rvalue_operand(
-                                 e.operand, analyzer)
-                             else _ExprUse()))
+                        use=_arith_operand_use(
+                            e.operand, analyzer,
+                            temps_ok=use.allow_temps, slot=None))
                 return THIRUnaryArith(
                     result_type=rtype,
                     cpp_template=resolved.method.cpp_template,
@@ -8319,8 +8380,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         init=_ct_lowered, form=Form.BORROW,
                         movable=unwrap_ref_type(_ct_slot).is_movable(),
                         loc=getattr(a, "loc", None)))
-                elif _field_read_ref_ctor_arg(a, p.type, declared, analyzer,
-                                              mutated=i in ctor_mut):
+                elif _field_read_ref_ctor_arg(a, p.type, declared, analyzer):
                     # The gate admitted this exact shape (declared field type
                     # == slot referent), so the render IS the bare member
                     # read. Lower it directly: the generic VALUE position the
@@ -10304,6 +10364,20 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             ro_slot = bool(dcbp_fi is not None
                            and dcbp_fi.const_borrow_params
                            and index in dcbp_fi.const_borrow_params)
+            # A container LITERAL at a slot that same verdict says is NOT a
+            # const borrow (`k.fill([3, 4])`, `K().pick([3, 4])` -- a param
+            # the callee mutates or lends back keeps the mutable
+            # `std::vector<T>&`): the in-place brace below cannot bind it, so
+            # the literal hoists to a named temp, the free-call loop's render.
+            # The gate's `container_literal` cell carries the flush
+            # requirement; without a statement to flush into it rejects there
+            # and this arm is never reached.
+            if (temp_args and not ro_slot and not proto_recv
+                    and not stub_recv
+                    and _container_literal_arg(a, ptype, lc.analyzer)):
+                return _container_literal_argtemp(
+                    a, ptype, lc, declared,
+                    "container-literal method arg on the make path")
             # A protocol slot on a USER-record method takes the same
             # protocol / @dynamic pre-arms as the free-call loop
             # (`canvas().draw(square(4))` -> the `Adapter<shape, square>
@@ -13121,6 +13195,26 @@ def _lower_literal_arg(a: TpyExpr, target: 'TpyType | None', lc: '_LowerCtx',
     return lowered
 
 
+def _container_literal_argtemp(a: TpyExpr, ptype: 'TpyType | None',
+                               lc: '_LowerCtx', declared: dict[str, TpyType],
+                               reject: str) -> THIRExpr:
+    """The ref-param hoist for a container LITERAL at a concrete container
+    slot (`std::vector<T> __tmp_N = {..}; f(__tmp_N)`).
+
+    A brace-init is a prvalue, so a slot the signature spells non-const
+    (`std::vector<T>&`) cannot bind one in place. Every family whose slot may
+    be mutated renders the literal through here -- one spelling, because the
+    free-call loop and the method / qualified loops reached the same render
+    by two copies of it and only one of them ever got the hoist."""
+    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    lowered = _lower_literal_arg(a, slot, lc, declared, reject)
+    _witness("argtemp.container_literal")
+    return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
+                       init=lowered, form=Form.BORROW,
+                       movable=unwrap_ref_type(slot).is_movable(),
+                       loc=getattr(a, "loc", None))
+
+
 def _iterator_protocol_result(e: TpyExpr, analyzer) -> bool:
     """The call's result is the structural Iterator protocol -- a combinator
     rvalue (`map(f, xs)` / `zip(..)` / `enumerate(..)` / `reversed(..)`)."""
@@ -13215,6 +13309,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                 narrowed=frozenset(lc.narrow.narrowed),
                 param_names=lc.prescan.param_names,
                 self_capturable=_self_capture_cpp(lc) is not None,
+                index=arg_index, overload=_lend_fi,
                 movable_locals=lc.movable_locals,
                 func_name=getattr(lc.func, "name", None))
             if not ok and _borrow_tuple_name_arg(
@@ -13630,15 +13725,9 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         # (`std::vector<T> __tmp_N = {..}; f(__tmp_N)`) rather than the
         # ctor's bare in-place brace, so route the hoisted temp here before
         # `_lower_call_arg`'s in-place container-literal arm can fire.
-        slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-        lowered = _lower_literal_arg(
-            a, slot, lc, declared,
+        return _container_literal_argtemp(
+            a, ptype, lc, declared,
             "container-literal free arg on the make_vector path")
-        _witness("argtemp.container_literal")
-        return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
-                           init=lowered, form=Form.BORROW,
-                           movable=unwrap_ref_type(slot).is_movable(),
-                           loc=getattr(a, "loc", None))
     if (isinstance(a, (TpyDictLiteral, TpySetLiteral, TpyArrayLiteral))
             and temp_args
             and (kind is None or kind[0] not in ("native", "native_c", "template"))
@@ -13647,15 +13736,9 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         # container render hoisted into the ref-param `__tmp_N` temp
         # (`::tpy::ordered_map<...> __tmp_N = ::tpy::ordered_map<...>({{..}});`,
         # bare-brace for the `Array[T, N]` slot).
-        slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-        lowered = _lower_literal_arg(
-            a, slot, lc, declared,
+        return _container_literal_argtemp(
+            a, ptype, lc, declared,
             "container-literal free arg on the make_ordered path")
-        _witness("argtemp.container_literal")
-        return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
-                           init=lowered, form=Form.BORROW,
-                           movable=unwrap_ref_type(slot).is_movable(),
-                           loc=getattr(a, "loc", None))
     if (isinstance(a, TpyListRepeat) and temp_args
             and (kind is None
                  or kind[0] not in ("native", "native_c", "template"))):
@@ -15606,16 +15689,19 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             raise ThirUnsupported(call_reject_reason("expr.call"))
     ro_cont = _readonly_container_rvalue_arg(a, ptype, lc.analyzer)
     if ro_cont is not None:
-        # An empty container rvalue at a readonly slot binds INLINE: the
-        # `[]` literal takes the typed empty spelling
-        # (`std::vector<int32_t>{}`), the hint-typed `list()` renders
-        # through the instantiation arm (`std::vector<int32_t>()`).
+        # A container rvalue at a readonly slot binds INLINE: a NON-EMPTY
+        # literal renders its own brace into the const ref
+        # (`ro_list({1, 2, 3})`), the hint-typed `list()` renders through
+        # the instantiation arm (`std::vector<int32_t>()`), and only the
+        # EMPTY `[]` / `{}` needs the typed spelling
+        # (`std::vector<int32_t>{}`) -- a bare `{}` names no type.
         _witness("arg.readonly_empty_container")
         if isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             lit = _lower_expr(a, lc, declared,
                               use=_ExprUse(slot_target=ro_cont))
             if (isinstance(lit, THIRContainerLiteral)
-                    and lit.typed_brace_cpp is None):
+                    and lit.typed_brace_cpp is None
+                    and not lit.elements):
                 lit = replace(lit, typed_brace_cpp=lc.render_type(ro_cont))
             return lit
         return _lower_expr(a, lc, declared,
@@ -16972,7 +17058,7 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                          # only ALWAYS_TRUE discards its render.
                          forms=(None
                                 if mode is TruthinessMode.ALWAYS_TRUE
-                                else _LEND_OK)),
+                                else _TRANSIENT_OK)),
             allow_whole_optional=(mode is TruthinessMode.IS_TRUTHY
                                   or storage_opt_bare),
             allow_unrouted_name=mode is TruthinessMode.IS_TRUTHY,

@@ -7,7 +7,11 @@
 
 namespace tpyapp::main {
 
+struct Acc;
+
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen;
 
 // def scalar() -> None:
 void scalar();
@@ -15,8 +19,64 @@ void scalar();
 void param_rebind(int32_t x);
 // def fresh_stays_scoped() -> None:
 void fresh_stays_scoped();
+// def body_local_then_head() -> None:
+void body_local_then_head();
+// def body_local_unprovable(k: int32, end: int) -> None:
+void body_local_unprovable(int32_t k, const ::tpy::BigInt& end);
+// def body_local_over_list(xs: list[int32]) -> None:
+void body_local_over_list(const std::vector<int32_t>& xs);
+// def gen(k: int32) -> Iterator[int32]:
+__gen_gen gen(int32_t k);
 // def main() -> None:
 void main();
 
+// class Acc:
+struct Acc {
+    // total: int32
+    int32_t total;
+
+    // def __init__(self) -> None:
+    Acc();
+
+    // def run(self, k: int32) -> None:
+    void run(int32_t k);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Acc";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
+    ::tpy::print_object_default(os, "Acc", obj);
+    return os;
+}
+
+// def gen(k: int32) -> Iterator[int32]:
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
+    int32_t __state;
+    int32_t k;
+    int32_t total;
+    int32_t a;
+    int32_t n;
+    int32_t b;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen(int32_t k_)
+        : __state(S_INITIAL), k(std::move(k_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
+
+// def __init__(self) -> None:
+//     self.total = 0
+inline Acc::Acc() : total(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -235,6 +235,30 @@ def reject_attempt(component: RejectComponent, node: object = None, *,
                         compiler._thir_reject_loc or loc, reason)
 
 
+def reject_or_defer(component: RejectComponent, node: object = None, *,
+                    where: str | None = None) -> None:
+    """`reject_attempt` for the bodies lowered AHEAD of emission. In a survey
+    the diagnostic is kept rather than raised, so the loop goes on to the next
+    body; `raise_deferred_rejects` raises the first one when the loops are
+    done, which is the error an ordinary compile reports."""
+    from ..codegen_cpp.context import ThirRejectError
+    try:
+        reject_attempt(component, node, where=where)
+    except ThirRejectError as err:
+        compiler = get_current_compiler()
+        if compiler is None or not compiler._thir_survey:
+            raise
+        compiler._thir_deferred_rejects.append(err)
+
+
+def raise_deferred_rejects() -> None:
+    """Close a survey's pre-emission loops: emission cannot run over a body
+    that did not lower, so the first kept diagnostic is raised here."""
+    compiler = get_current_compiler()
+    if compiler is not None and compiler._thir_deferred_rejects:
+        raise compiler._thir_deferred_rejects[0]
+
+
 def _strict_error(component: RejectComponent, node: object, where: str | None,
                   loc: 'SourceLocation | None',
                   reason: str) -> 'ThirRejectError':

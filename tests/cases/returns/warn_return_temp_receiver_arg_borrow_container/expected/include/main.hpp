@@ -41,7 +41,7 @@ struct Finder {
     Finder();
 
     // def pick(self, h: Holder) -> list[int32]:
-    const std::vector<int32_t>& pick(const Holder& h) const;
+    std::vector<int32_t>& pick(Holder& h) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Finder";
 };
 
@@ -63,7 +63,7 @@ inline Finder::Finder() {
 // def pick(self, h: Holder) -> list[int32]:
 //     # Borrows from ARGUMENT 0.
 //     return h.items
-inline const std::vector<int32_t>& Finder::pick(const Holder& h) const {
+inline std::vector<int32_t>& Finder::pick(Holder& h) const {
     return h.items;
 }
 void __tpy_init();

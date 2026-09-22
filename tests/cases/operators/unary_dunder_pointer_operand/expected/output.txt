@@ -1,0 +1,13 @@
+optparam 0
+optlocal -7 0
+escapehoist -1
+field -4
+foreach -3
+union -3
+ctor -3
+method -5
+gen -3
+gen 0
+async -4
+module -7
+field2 -40

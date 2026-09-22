@@ -23,7 +23,7 @@ template<typename T, typename _T0>
 concept MutableSequence = requires(T& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
     { ::tpy::__getitem__(t, std::declval<int32_t>()) } -> ::tpy::proto_result<_T0>;
-    { ::tpy::__setitem__(t, std::declval<int32_t>(), std::declval<_T0>()) } -> std::convertible_to<void>;
+    { ::tpy::__setitem__(t, std::declval<int32_t>(), std::declval<::tpy::param_val_or_ref_t<_T0>>()) } -> std::convertible_to<void>;
 };
 
 // class Iterator[T](Protocol):

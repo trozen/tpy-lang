@@ -120,7 +120,7 @@ struct Mapper {
     // def transform[U, V](self, u: U, v: V) -> V:
     //     return v
     template<typename U, typename V>
-    ::tpy::val_or_cref_t<V> transform(::tpy::readonly_form_t<U> u, ::tpy::readonly_form_t<V> v) const {
+    ::tpy::val_or_ref_t<V> transform(::tpy::readonly_form_t<U> u, ::tpy::param_val_or_ref_t<V> v) const {
         return ::tpy::param_to_return<V>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Mapper";

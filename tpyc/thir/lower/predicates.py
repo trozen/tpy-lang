@@ -50,6 +50,7 @@ from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...typesys import (
+    return_const_projected,
     substitute_type_params_simple,
     collapse_tuple_own_elements,
     contains_type_param,
@@ -8356,6 +8357,18 @@ def _readonly_self(lc) -> bool:
     ovs = ri.get_method_overloads(lc.func.name) if ri is not None else None
     return bool(ovs and ovs[-1].is_readonly)
 
+def _own_return_const_projected(lc) -> bool:
+    """Whether the enclosing method's SIGNATURE const-projects its borrowed
+    return -- the fact the signature generator reads, so a returned literal
+    builds the slots that signature spells."""
+    if not lc.record_name or lc.func.is_nested_def:
+        return False
+    ri = lc.analyzer.registry.get_record(lc.record_name)
+    ovs = ri.get_method_overloads(lc.func.name) if ri is not None else None
+    if not ovs:
+        return bool(getattr(lc.func, "is_readonly", False))
+    return return_const_projected(ovs[-1])
+
 def _already_pointer_source(expr: TpyExpr, lc) -> bool:
     """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a
     `T*` with no further lifting, so an `&(...)` lift would produce `T**`.
@@ -8494,8 +8507,15 @@ def _expr_is_const_source(src: TpyExpr, lc) -> bool:
     # branch of the indirect-const rule.
     if isinstance(src, TpyMethodCall):
         fi = src.resolved_function_info
-        if (fi is not None and fi.is_readonly
-                and call_returns_cpp_ref(analyzer, fi)):
+        # Both borrow forms of the return are projected: `const T&` and
+        # the pointer-repr Optional's `const T*`. The pointer half holds
+        # only for a signature THIS compiler emits: a native's C++
+        # overload set decides its own pointee const-ness.
+        if (fi is not None and return_const_projected(fi)
+                and (call_returns_cpp_ref(analyzer, fi)
+                     or (fi.native_name is None and fi.cpp_template is None
+                         and _ptr_opt_borrow_call_ret(
+                             src, unwrap_ref_type(fi.return_type))))):
             return True
     # Operator dispatch follows that arm: a readonly dunder's borrow return is
     # const-projected on the friend shim, so `c = a + b` / `c = -a` bind
@@ -8504,11 +8524,11 @@ def _expr_is_const_source(src: TpyExpr, lc) -> bool:
     # ReadonlyType on the source and the raw-sema branch above misses it.
     if isinstance(src, TpyBinOp) and src.resolved_binop is not None:
         fi = src.resolved_binop.method
-        if fi.is_readonly and call_returns_cpp_ref(analyzer, fi):
+        if return_const_projected(fi) and call_returns_cpp_ref(analyzer, fi):
             return True
     if isinstance(src, TpyUnaryOp) and src.resolved_unaryop is not None:
         fi = src.resolved_unaryop.method
-        if fi.is_readonly and call_returns_cpp_ref(analyzer, fi):
+        if return_const_projected(fi) and call_returns_cpp_ref(analyzer, fi):
             return True
     # A subscript / method call on a const-rooted receiver binds const even
     # when sema resolved the MUTABLE twin (the enclosing method's

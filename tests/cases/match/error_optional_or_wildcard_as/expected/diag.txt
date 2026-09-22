@@ -1,1 +1,1 @@
-main.py:13: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.match)
+main.py:13: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.match:match.optional_or_bind)

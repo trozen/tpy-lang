@@ -47,19 +47,49 @@ Scripts (run from the repo root with `uv run python`):
   and the literal-construction sites are the two that legitimately stay, so a
   drop there is a regression, not progress. `--json` for a diffable dump.
 - `property_position_sweep.py` -- **the property x position verdict ratchet.**
-  Generates one program per (position x getter flavour x receiver kind), for
-  the accessor spelling and for its spelled-METHOD twin, compiles each, and
-  records a `[verdict, first warning]` pair per cell in
+  The matrix is (position x getter flavour x receiver kind), for the accessor
+  spelling and for its spelled-METHOD twin, and it records a
+  `[verdict, first warning]` pair per cell in
   `property_position_sweep.expected.json` beside it. The claim it guards is a
   MATRIX one -- a `@property` read is a method call from sema on, so every
   position answers for it the way it answers for the twin, except where a
-  stated rule says otherwise -- and no case can state it. `--update` rewrites
-  the table, `--exec` additionally builds and runs every admitted cell
-  (reviewer-only, needs a toolchain). The committed table is gated by
-  `tests/test_property_position_sweep.py`, one test per cell, in the
+  stated rule says otherwise -- and no case can state it. ONE PROGRAM PER
+  POSITION, not per cell: the position's whole cell set is compiled once
+  in-process and read back through the THIR survey
+  (`collect_thir(tolerate_reject=True)` attempts every function, method and
+  constructor body and records each reject). The cells that lower DURING
+  emission -- a generator, an `async def`, the module-init body -- keep one
+  program each, because a reject there ends the pass and would take the rest
+  of the program with it. `--update` rewrites the table, `--exec`
+  additionally builds and runs every admitted cell (reviewer-only, needs a
+  toolchain). The committed table is gated by
+  `tests/test_property_position_sweep.py`, one test per PROGRAM, in the
   full-suite tier: a future verdict or warning move is a diff there rather
   than a review discovery. The table does NOT certify behaviour -- the cells
   read and print, so copy-vs-alias stays the corpus cases' job.
+- `arg_family_sweep.py` -- **the argument x slot x CALLEE-FAMILY verdict
+  ratchet.** Whether an argument expression is admitted at a parameter slot
+  is decided by `tpyc/thir/lower/arg_table.py`, and every callee family
+  carries its own ordered row list, so the same argument at the same-shaped
+  slot can compile for one kind of callee and be refused for another. The
+  matrix is (source shape) x (parameter slot, in a non-mutating and in a
+  MUTATING callee body) x (callee family: `fn`, `meth`, `ctor`, `nested`,
+  `gen`, `genrec`, `proto`, `static`), and each cell records three strings --
+  the verdict (`ok`, `reject:<tag>` or `sema:<message>`), the first warning
+  inside the cell's own function, and the normalised THIR of the subject
+  statement, which is the half a verdict column cannot show (two families
+  that both admit while one materialises an argument temp differ silently).
+  ONE CELL PER FUNCTION through the same THIR survey, so the whole table is
+  ~70 compilations rather than one process per cell; a SEMA error is what
+  still costs a recompile, since sema stops the module at its first one.
+  Committed as `arg_family_sweep.expected.json` and gated by
+  `tests/test_arg_family_sweep.py`. Run it as
+  `uv run python scripts/thir_migration/review/arg_family_sweep.py` to check,
+  `--update` to rewrite the table, `--only <text>` for a slice, `--routes` to
+  print which sink each column actually reaches (two columns are not the sink
+  their name suggests: a `@staticmethod` call routes to the
+  marker-qualified family, and `Outer(Inner(x))` to the direct ctor family).
+  Like the property sweep it records no behaviour: nothing is built or run.
 - `probe_fallback.py`, `probe_site.py`, `probe_programs.py` -- **RETIRED.**
   Each emitted one program through both codegen paths and compared the
   outcomes, so all three stopped working when the AST body emitters were

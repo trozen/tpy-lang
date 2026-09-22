@@ -49,6 +49,8 @@ from ...parse.nodes import (
     TpyVarDecl,
 )
 from ...typesys import (
+    recorded_return_borrow_sources,
+    return_const_projected,
     AnyType,
     BOOL,
     CallableType,
@@ -1698,6 +1700,20 @@ def _opt_ptr_addr_of_record_source(init, declared: dict[str, TpyType],
                     st, unwrap_readonly(tt.inner)))
 
 
+def _const_borrow_call_result(call: TpyMethodCall, analyzer) -> bool:
+    """Whether a borrow-returning method call hands back a CONST reference --
+    either sema typed the result `readonly[...]`, or the method is readonly
+    (declared or inferred) and the emitted shim const-projects its return.
+
+    The same pair of facts `_expr_is_const_source` reads off a DIRECT
+    method-call init; spelled here because a consumer reached through a FIELD
+    hop has no `_LowerCtx` to ask that derivation with."""
+    if isinstance(analyzer.get_expr_type(call), ReadonlyType):
+        return True
+    fi = call.resolved_function_info
+    return fi is not None and return_const_projected(fi)
+
+
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                           declared: dict[str, TpyType], prescan: _Prescan,
                           analyzer,
@@ -1928,6 +1944,34 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and (_alias_ref_container(target_type)
                      or _f1_record(target_type, analyzer))):
             return binding
+        # A REF_ALIAS field off an admitted METHOD-CALL receiver
+        # (`j = h.peek().jar` -> `Jar& j = h.peek().jar;`): the field
+        # renders `.field` off the bare inner call exactly as the
+        # OPTIONAL_TO_PTR twin above renders it under its lift, and the
+        # receiver call hands back a C++ lvalue, so the alias names storage
+        # the receiver owns rather than a member of a dying temporary. A
+        # by-VALUE receiver (`-> Own[T]`, a protocol or generic return)
+        # answers False at `call_returns_cpp_ref` and keeps rejecting --
+        # that is a lifetime question, not a render one. A CONST-returning
+        # receiver call keeps rejecting for a second reason: the decl's
+        # const verdict does not travel through a field hop off a call
+        # (`_f1_const_rooted_source` stops at the call node), so the alias
+        # would be spelled `T&` over `const T` -- the defect the
+        # OPTIONAL_TO_PTR twin above already has, filed as
+        # BUGS.md#const-borrow-call-field-lift-loses-const.
+        # REF_ALIAS only: the reassigned POINTER sibling
+        # needs the `&(h.peek().jar)` reseat lift, unwitnessed.
+        if (binding is LocalBinding.REF_ALIAS
+                and isinstance(stmt.init, TpyFieldAccess)
+                and isinstance(stmt.init.obj, TpyMethodCall)
+                and call_returns_cpp_ref(
+                    analyzer, stmt.init.obj.resolved_function_info)
+                and not _const_borrow_call_result(stmt.init.obj, analyzer)
+                and _indirect_field_receiver_ok(stmt.init, declared,
+                                                analyzer, pointers)
+                and (_alias_ref_container(target_type)
+                     or _f1_record(target_type, analyzer))):
+            return binding
         # An OPTIONAL_TO_PTR lift whose field source hangs off a CONTAINER-
         # ELEMENT subscript (`box = self.slots[i].box` -> `Box<AnyTask>* box
         # = ::tpy::optional_to_ptr(::tpy::__getitem__(this->slots, i).box);`):
@@ -1961,8 +2005,12 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
             return binding
         # A borrow-returning user-record `__getitem__` subscript (`r = e[k]`)
         # binds the single-assignment `T&` alias of the bare operator[]
-        # lvalue. REF_ALIAS only: the reassigned POINTER sibling needs the
-        # `&(e[k])` reseat lift, unwitnessed.
+        # lvalue. REF_ALIAS only: the reassigned POINTER sibling reaches the
+        # subscript lowering's own record-getitem arm, which refuses the
+        # address-of lift. A CONTAINER pointee does not reach this rung at
+        # all in either flavor -- `_record_getitem_borrow_subscript` keys the
+        # RESULT on `_f1_record` -- so the sibling rungs' container reach
+        # stops here (BUGS.md#record-getitem-container-result-alias-rejects).
         if (binding is LocalBinding.REF_ALIAS
                 and _f1_record(target_type, analyzer)
                 and _record_getitem_borrow_subscript(stmt.init, declared,
@@ -1978,8 +2026,10 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                                                        analyzer)):
             return binding
         # A nested-container element subscript (`row = matrix[0]`) binds the
-        # `T&` alias of the element list/dict/set.
-        if (binding is LocalBinding.REF_ALIAS
+        # `T&` alias of the element list/dict/set, or -- reassigned -- the
+        # reseatable `T* row = &(::tpy::__getitem__(matrix, 0));`, the same
+        # PTR_ADDR lift the record-element rung above takes.
+        if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and _alias_ref_container(target_type)
                 and _container_ref_alias_elem_subscript(stmt.init, declared,
                                                         analyzer, pointers)):
@@ -2037,17 +2087,19 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                      or isinstance(stmt.init, TpyIfExpr)
                      or _borrow_dunder_source(stmt.init, analyzer))):
             return binding
-        # The reassigned POINTER sibling of the bare-name alias: a plain record
-        # NAME source lifts to a reseatable `[const] T* x = &(a);` (later
-        # `x = &(b);`). Record only -- a reassigned container alias is a
-        # later rung. The `&()` lift needs a bare-rendering lvalue, so the
-        # source must not itself be a pointer-local / global (aliased `(*p)`).
+        # The reassigned POINTER sibling of the bare-name alias: a plain
+        # record or container NAME source lifts to a reseatable
+        # `[const] T* x = &(a);` (later `x = &(b);`) -- the same pointee
+        # families the single-assignment `T&` alias above binds, since the
+        # `&()` lift only needs a bare-rendering lvalue. The source must not
+        # itself be a pointer-local / global (aliased `(*p)`).
         if (binding is LocalBinding.POINTER
                 and isinstance(stmt.init, TpyName)
                 and stmt.init.name not in pointers
                 and (stmt.init.name in declared
                      or stmt.init.name in prescan.param_names)
-                and _f1_record(target_type, analyzer)):
+                and (_f1_record(target_type, analyzer)
+                     or _alias_ref_container(target_type))):
             return binding
         # `p2: Point = ptr` off a `Ptr[Point]` binding -- the deref
         # auto-coercion's INLINE flavor as a borrow-local SOURCE. The
@@ -2065,14 +2117,12 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         return None
     if binding is LocalBinding.REF_ALIAS or binding is LocalBinding.POINTER:
         # The FIELD-source aliases: an F1-record field (`r = self.inner` ->
-        # `Inner& r = this->inner;`, REF_ALIAS or the reseatable POINTER)
-        # and, REF_ALIAS-only, a container field (`xs = self.tags` ->
-        # `std::vector<T>& xs = this->tags;`) -- the reassigned container
-        # sibling is a later rung.
+        # `Inner& r = this->inner;`) and a container field (`xs = self.tags`
+        # -> `std::vector<T>& xs = this->tags;`), each in the REF_ALIAS and
+        # the reseatable POINTER flavor (`&(this->tags)`).
         if _f1_record(target_type, analyzer):
             return binding
-        if (binding is LocalBinding.REF_ALIAS
-                and _alias_ref_container(target_type)):
+        if _alias_ref_container(target_type):
             if _bytearray_alias_target(target_type):
                 _witness("decl.bytearray_alias")
             return binding
@@ -4688,19 +4738,22 @@ def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
     """An EMPTY container rvalue into a `readonly[list/dict/set]` slot: the
     const-ref slot binds the rvalue INLINE -- `f(std::vector<int32_t>())`
     for the hint-typed `list()` instantiation, `f(std::vector<int32_t>{})`
-    for the `[]` literal (the typed empty spelling). Empty only: elements
-    would take the mutable slots' temp machinery. Returns the container
+    for the `[]` literal (the typed empty spelling). Returns the container
     slot or None."""
     if not isinstance(ptype, ReadonlyType):
         return None
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
     if not (is_list(inner) or is_dict(inner) or is_set(inner)):
         return None
+    # EMPTY only. A non-empty literal would bind inline too, but whether that
+    # is safe depends on the callee not lending the parameter back, and that
+    # fact is not recorded for every callee
+    # (BUGS.md#readonly-container-literal-arg-rejected).
     if isinstance(a, TpyArrayLiteral) and not a.elements and is_list(inner):
         return inner
     if isinstance(a, TpySetLiteral) and not a.elements and is_set(inner):
         return inner
-    if (isinstance(a, TpyDictLiteral) and not a.keys and is_dict(inner)):
+    if isinstance(a, TpyDictLiteral) and not a.keys and is_dict(inner):
         return inner
     if (isinstance(a, TpyCall) and a.call_type is not None
             and not a.args and not a.kwargs):
@@ -5049,14 +5102,21 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        narrowed: 'set[str] | frozenset[str]',
                        param_names: 'set[str] | frozenset[str]' = frozenset(),
                        self_capturable: bool = False,
+                       index: int = -1,
+                       overload=None,
                        movable_locals: 'set[str] | frozenset[str]' = frozenset(),
                        func_name: 'str | None' = None) -> bool:
     """The plain (non-native, non-marker) free-callee family's arg rows --
     the reference ladder the other families were copied from.
-    Rows: `_PLAIN_ARG_SINK`."""
+    Rows: `_PLAIN_ARG_SINK`.
+
+    `overload` is the callee the RETENTION question may name -- the same one
+    the render side hands `arg_lend_ok`, so the in-place cell and the render
+    cannot answer it differently."""
     return arg_ok(_PLAIN_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
                   temps_ok=temps_ok, self_capturable=self_capturable,
+                  index=index, overload=overload,
                   movable_locals=movable_locals, func_name=func_name)
 
 
@@ -9573,6 +9633,8 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                         narrowed: 'set[str] | frozenset[str]',
                         param_names: 'AbstractSet[str]'
                         = frozenset(),
+                        index: int = -1,
+                        overload=None,
                         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
                         func_name: 'str | None' = None) -> bool:
     """The receiver-less marker-call families' arg rows.
@@ -9591,9 +9653,16 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
         sink = _MARKER_QUALIFIED_ARG_SINK
     else:
         sink = _MARKER_NATIVE_ARG_SINK
+    # The signature-reading cells see a callee only on the QUALIFIED kind:
+    # that is the one whose callee is TPy code, so its per-parameter const
+    # facts exist. A @native / @cpp_template callee has none, and handing one
+    # in would turn "unknown" into a decline for the cells that read them.
+    qualified = sink is _MARKER_QUALIFIED_ARG_SINK
     return arg_ok(sink, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
                   temps_ok=temps_ok, movable_locals=movable_locals,
+                  index=index if qualified else -1,
+                  overload=overload if qualified else None,
                   func_name=func_name)
 
 
@@ -10637,6 +10706,7 @@ def _method_call_arg_ok(
                     a, ptype, kind, locals_, analyzer,
                     temps_ok=temps_ok, narrowed=narrowed,
                     param_names=param_names,
+                    index=index, overload=e.resolved_function_info,
                     movable_locals=movable_locals, func_name=func_name))
 
     recv_type = _method_receiver_type(e.obj, locals_, analyzer)
@@ -10932,6 +11002,44 @@ def _x_comp_slot_const(req: _ArgReq) -> bool:
         return True
     cbp = getattr(req.overload, "const_borrow_params", None)
     return bool(cbp is not None and req.index in cbp)
+
+
+def _x_arg_not_lent(req: _ArgReq) -> bool:
+    """The IN-PLACE container cells' lifetime guard: a container rvalue bound
+    inline lives only to the end of the full expression, so a callee that
+    hands a borrow of it back leaves the caller holding a reference into dead
+    storage. `head([Rec(1), Rec(2)])` against `def head(xs:
+    readonly[list[Rec]]) -> readonly[Rec]` bound `const Rec& r` into the
+    temporary and printed garbage where CPython printed 1.
+
+    Reads the callee's recorded return-borrow sources for THIS position, off
+    the root fi like every other provenance reader. Facts that were never
+    computed DECLINE: a None there means the body has not been analyzed, and
+    "not measured" is not evidence of an owning result. A builtin stub (no
+    resolved overload) admits, the same None leg the slot-const guard beside
+    it takes -- the stub container slots are const borrows and their results
+    are minted, not borrows of what they were handed.
+
+    There is no hoisting alternative here on purpose: a named temporary would
+    only move the question to how long THAT lives, which is a lifetime
+    analysis the language does not have yet. The shape stops being admitted.
+    """
+    if req.frame_capturing:
+        # A generator / coroutine factory's argument never binds inline: the
+        # render hoists it to a named temporary the frame can borrow.
+        return True
+    fi = req.overload
+    if fi is None:
+        return True
+    if fi.root.return_borrows_from is None:
+        return False
+    return req.index not in recorded_return_borrow_sources(fi)
+
+
+def _x_inline_container_literal(req: _ArgReq) -> bool:
+    """The method / qualified families' in-place container-literal cell: the
+    slot must be a const borrow AND the callee must not lend it back."""
+    return _x_comp_slot_const(req) and _x_arg_not_lent(req)
 
 
 def _r_scalar_at_template_slot(req: _ArgReq) -> bool:
@@ -12260,6 +12368,38 @@ _PROTOCOL_ARG_SINK = register_sink(_ArgSink(
         # loop, so the borrow/value builders own the per-element
         # verdict here exactly as they do there.
         _ArgRow("tuple_literal", _r_tuple_literal),
+        # A narrowed wide ptr-opt NAME at its POINTEE slot: the plain
+        # ladder's row -- the deref renders in place, so it is temp-free
+        # (see `_PLAIN_ARG_SINK`'s cell for the whole reason).
+        _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
+        # The sibling families' TEMP-FREE cells. Temp-free is the whole
+        # admission rule here -- the family gate threads `temps_ok=False`,
+        # so a cell that needs a flush position cannot fire even if it is
+        # listed -- and each of these renders its source in place through
+        # the same slot-keyed lowering arm a record method's argument takes.
+        # The temp-hoisting cells (the container comprehension, the record
+        # rvalue, the value-union and wrapper temps, the covariant upcast)
+        # stay out: there is no flush position to thread them to.
+        _ArgRow("func_ref", _r_func_ref),
+        _ArgRow("lambda", _r_lambda),
+        _ArgRow("callable_value_pass", _r_callable_value_pass),
+        # AHEAD of the Own cascade, for the reason it is there in every
+        # other family: the view->owned convert runs before the move/copy
+        # cascade, so a VIEW-form str name must be absorbed here.
+        _ArgRow("str_owned_slot", _r_str_owned_slot),
+        _ArgRow("str_pass_through", _r_str_pass_through),
+        _ArgRow("container_field_pass", _r_container_field_pass),
+        _ArgRow("container_module_var", _r_container_module_var),
+        _ArgRow("record_field_marker", _r_record_field_marker),
+        _ArgRow("record_elem_subscript", _r_record_elem_subscript),
+        _ArgRow("container_literal_method", _r_container_literal_method),
+        _ArgRow("none_unit", _r_none_unit),
+        _ArgRow("none_value_opt", _r_none_value_opt),
+        _ArgRow("value_opt_member", _r_value_opt_member),
+        _ArgRow("union_pass_through", _r_union_pass_through),
+        _ArgRow("union_member_lift", _r_union_member_lift),
+        _ArgRow("union_coerced_literal", _r_union_coerced_literal),
+        _ArgRow("protocol_slot", _r_protocol_slot),
     )))
 
 
@@ -12459,7 +12599,21 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # the stmt-expr prvalue moves in inline.
         _ArgRow("own_container_comp", _r_own_container_comp),
         _ArgRow("any_pass_through", _r_any_pass_through),
-        _ArgRow("container_literal_method", _r_container_literal_method),
+        # The IN-PLACE render, so the slot must be a const borrow for the
+        # same reason the comprehension cell beside it must: a brace-init is
+        # a prvalue and a mutated `std::vector<T>&` cannot bind one. Same
+        # guard, same source of truth (`const_borrow_params`, with a stub's
+        # always-const container slot as the None leg) -- plus the lifetime
+        # half, since a temporary bound in place dies with the statement and
+        # a callee that lends it back would leave a dangling reference.
+        _ArgRow("container_literal_method", _r_container_literal_method,
+                extra=_x_inline_container_literal),
+        # ... and the HOISTING sibling for the slots that guard now declines
+        # (`k.fill([3, 4])` -> `std::vector<int32_t> __tmp_N = {3, 4};`):
+        # the free-call family's row, shared here rather than spelled again,
+        # so a mutated slot hoists where there is a statement to flush into
+        # and rejects where there is none.
+        _ArgRow("container_literal", _r_container_literal, extra=_x_temps_ok),
         # ... and the COMPREHENSION at the same concrete container slot
         # (`d.update({k: k for k in ks})`): the free-call family's row, with
         # no flush guard -- the method arg loops render the stmt-expr inline
@@ -12769,6 +12923,9 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # directly, no temp and no copy -- the CALL sibling of the bare-NAME
         # and FIELD rows above, and the same cell the marker family carries.
         _ArgRow("borrow_ret_record_marker", _r_borrow_ret_record_marker),
+        # A narrowed wide ptr-opt NAME at its POINTEE slot: the plain
+        # ladder's row, temp-free and position-blind.
+        _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
     )))
 
 
@@ -12881,7 +13038,15 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     # the spelled container inline, like the stub-method arg loop -- no
     # ref-param temp hoist (a FREE call would hoist, but the qualcall
     # arg loop emits it in place).
-    _ArgRow("container_literal_method", _r_container_literal_method),
+    # ... under the method family's guard (const slot, and a callee that does
+    # not lend the argument back), for the same reason: only the QUALIFIED
+    # kind threads a resolved overload, so a @native / @cpp_template marker
+    # (whose fi carries no per-parameter facts) keeps the inline render its
+    # hand-written C++ expects.
+    _ArgRow("container_literal_method", _r_container_literal_method,
+            extra=_x_inline_container_literal),
+    # ... and the hoisting sibling, the method family's cell.
+    _ArgRow("container_literal", _r_container_literal, extra=_x_temps_ok),
     # A container FIELD read binding a plain container ref slot
     # (`heapq.heappush(self.heap, ...)` -> bare `this->heap`; the
     # Own[T] item slot arrives SUBSTITUTED from sema, so the ctor
@@ -12917,6 +13082,16 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     # (`math.dist([0.0, 0.0], [3.0, 4.0])` -- the structural
     # rvalue's `auto __tmp_N =` hoist), the plain-loop row.
     _ArgRow("protocol_slot", _r_protocol_slot),
+    # A narrowed wide ptr-opt NAME at its POINTEE slot: the plain
+    # ladder's row, temp-free and position-blind.
+    _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
+    # A comprehension at a container slot, BEHIND the inline-render
+    # `container_literal_method` cell above so the shapes that family
+    # already decides keep their cell: the free-call ladder's row, which
+    # hoists the slot-typed ArgTemp and is flush-gated for it. The
+    # container LITERAL beside it needs no cell here -- the inline-render
+    # sibling above already decides it.
+    _ArgRow("container_comp", _r_container_comp, extra=_x_temps_ok),
 )
 
 # The cells the `native` marker family does NOT carry: its arg loop sets
@@ -13064,6 +13239,10 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("dyn_own_handle", _r_dyn_own_handle),
         _ArgRow("dyn_own_conformer", _r_dyn_own_conformer),
         _ArgRow("dyn_own_forward_call", _r_dyn_own_forward_call),
+        # A narrowed wide ptr-opt NAME at its POINTEE slot: sema's
+        # narrowing is the proof of non-null (an un-narrowed source is a
+        # sema error here), and the deref renders in place, so the cell
+        # owes no flush and is shared by every family.
         _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
         # `None` at a plain unit slot (`takes_none(None)` on
         # `x: None`): the bare `std::monostate{}` render -- the free
@@ -13154,7 +13333,6 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         # The deref auto-coercion name: inline Ptr deref_check, or the
         # slot-typed wrapper-`__deref__()` copy temp (flush-gated).
         _ArgRow("deref_coerce", _r_deref_coerce),
-        # An empty container rvalue at a readonly slot binds inline.
         _ArgRow("readonly_container_rvalue", _r_readonly_container_rvalue),
     )))
 
@@ -13296,6 +13474,33 @@ _GENERIC_PLAIN_ARG_SINK = register_sink(_ArgSink(
         # the by-value slot with no lift, so the render is blind to the
         # callee being generic -- the container family's cell, verbatim.
         _ArgRow("own_tuple_call_rvalue", _r_own_tuple_call_rvalue),
+        # A narrowed wide ptr-opt NAME at its POINTEE slot: the plain
+        # ladder's row, decided against the substituted slot like every
+        # other cell here.
+        _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
+        # The free-call ladder's FIELD / ELEMENT / COMPREHENSION rows, which
+        # this family was transcribed without. Each decides against the
+        # SUBSTITUTED slot, like every cell above, and each renders through
+        # the same slot-keyed lowering arm the concrete free call uses -- so
+        # the substitution has nothing to change. They sit at the END so
+        # every shape a cell above already decides keeps its cell;
+        # `str_owned_slot` therefore sits BEHIND the Own cascade here rather
+        # than ahead of it as at the concrete ladder, and only picks up the
+        # view-form sources that cascade refuses.
+        # NOT plain's `container_literal`: at a substituted slot the literal
+        # renders INLINE, and an inline prvalue cannot bind the mutated
+        # `std::vector<T>&` / `ordered_map<..>&` parameter -- which is why
+        # `generic_list_literal` above exists as its own hoisting cell. The
+        # dict/set literals have no such cell, so they keep rejecting.
+        _ArgRow("container_field_pass", _r_container_field_pass),
+        _ArgRow("container_module_var", _r_container_module_var),
+        _ArgRow("record_field_ref", _r_record_field_ref),
+        _ArgRow("record_elem_subscript", _r_record_elem_subscript),
+        _ArgRow("container_comp", _r_container_comp, extra=_x_temps_ok),
+        _ArgRow("record_rvalue_temp", _r_record_rvalue_temp,
+                extra=_x_temps_ok),
+        _ArgRow("str_owned_slot", _r_str_owned_slot),
+        _ArgRow("bytes_owned_slot", _r_bytes_owned_slot),
     )))
 
 
@@ -13739,6 +13944,16 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # lvalue-ness from the fi, the render is the same bare call.
             or (iterable_ret_ok and _nonvalue_container_ret(ret)
                 and _witness("method.container_iterable"))
+            # The same borrow-returning container read TRANSIENTLY (`if
+            # b.items_m():`, `1 in b.items_m()`): the position holds nothing
+            # past the full expression, so the `std::vector<T>&` renders
+            # BARE -- the free-call row's method twin, on the one verdict
+            # the transient sinks carry. An OWN return is a prvalue and is
+            # not this row (it keeps the storage sinks' own verdicts).
+            or (use.admits(SinkForm.BORROW_RET_PASSTHROUGH)
+                and call_returns_cpp_ref(analyzer, fi)
+                and _alias_ref_container(ret)
+                and _witness("method.borrow_ret_passthrough"))
             # A value-repr Optional return at a WHOLE-optional sink
             # (`a.gettimeout() is None` / `== 0.0` -- the has_value /
             # std::optional mixed-compare renders take the bare call).

@@ -1,0 +1,9 @@
+field_list 2 [1, 9]
+field_dict 2 {'a': 1, 'z': 9}
+field_recs 2 2
+comp_list 3
+comp_dict 3
+elem_rec 2 2
+ctor_rvalue 4
+own_call 6
+str_owned 4 abcd

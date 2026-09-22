@@ -106,6 +106,14 @@ qualifier -- a `const` method returning a `T&` member naturally returns
 `const T&`. Explicit `readonly[T]` return type annotations are not yet
 supported.
 
+A method that is only INFERRED const (it never mutates `self`, no decorator)
+proves its receiver and nothing else: it is emitted `const`, but a return that
+borrows a PARAMETER keeps the declared mutable type and that parameter stays
+mutable -- `def pick(self, other: B) -> Rec: return other.m` is
+`Rec& pick(B& other) const`, the same signature the free-function spelling
+gets. Only the declared `@readonly` makes every parameter readonly and with it
+whatever the return borrows from them.
+
 Forms:
 - `@readonly` -- all params are readonly
 - `@readonly(True)` -- same as above (explicit)

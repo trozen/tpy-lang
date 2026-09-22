@@ -1,0 +1,3 @@
+free_read 1 2
+static_read 1 2
+static_bump 11 102

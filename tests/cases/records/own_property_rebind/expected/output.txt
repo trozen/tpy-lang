@@ -1,0 +1,4 @@
+prop_moved 3 2
+meth_moved 3 2
+prop_aliased 3 3
+meth_aliased 3 3

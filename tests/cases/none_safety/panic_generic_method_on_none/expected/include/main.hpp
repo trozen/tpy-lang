@@ -28,7 +28,7 @@ struct Bag {
     // def conv[T](self, x: T) -> T:
     //     return x
     template<typename T>
-    ::tpy::val_or_cref_t<T> conv(::tpy::readonly_form_t<T> x) const {
+    ::tpy::val_or_ref_t<T> conv(::tpy::param_val_or_ref_t<T> x) const {
         return ::tpy::param_to_return<T>(x);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";

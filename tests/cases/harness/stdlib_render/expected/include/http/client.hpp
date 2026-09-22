@@ -26,7 +26,7 @@ struct _Connection;
 template<typename T>
 concept ___Connection_Concept__ = requires(T& t) {
     { t.connect() } -> std::convertible_to<void>;
-    { t.request(std::declval<std::string>(), std::declval<std::string>(), std::declval<std::optional<::tpy::Bytes>>(), std::declval<std::optional<::tpy::ordered_map<std::string, std::string>>>()) } -> std::convertible_to<void>;
+    { t.request(std::declval<std::string>(), std::declval<std::string>(), std::declval<std::optional<::tpy::Bytes>>(), std::declval<::tpy::ordered_map<std::string, std::string>*>()) } -> std::convertible_to<void>;
     { t.getresponse() } -> std::convertible_to<HTTPResponse>;
     { t.close() } -> std::convertible_to<void>;
 };

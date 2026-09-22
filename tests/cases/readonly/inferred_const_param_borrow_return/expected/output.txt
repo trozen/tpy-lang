@@ -1,0 +1,10 @@
+rec 11
+opt 111
+recs 211
+ints 2
+whole 12
+second 51 112
+generic 1112
+free 1113
+generic_method 8
+peek 1113

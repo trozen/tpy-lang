@@ -1,0 +1,9 @@
+rec 2 2
+list 3 3
+ro_list 3 3
+opt 15 15
+union 107 107
+value 5
+method 21 21
+dyn 31 31
+dyn_borrow 7

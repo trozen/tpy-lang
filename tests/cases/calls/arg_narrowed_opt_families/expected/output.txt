@@ -1,0 +1,7 @@
+free_fn [0, 1]
+method [0, 2]
+static_method [0, 3]
+constructor [0, 4] 2
+1
+generic_fn [0, 6]
+generic_method [0, 7]

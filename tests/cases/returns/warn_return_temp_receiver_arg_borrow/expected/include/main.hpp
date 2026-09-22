@@ -42,7 +42,7 @@ struct Picker {
     Picker();
 
     // def pick(self, rows: list[Row]) -> Row:
-    const Row& pick(const std::vector<Row>& rows) const;
+    Row& pick(std::vector<Row>& rows) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Picker";
 };
 
@@ -64,7 +64,7 @@ inline Picker::Picker() {
 // def pick(self, rows: list[Row]) -> Row:
 //     # Borrows from ARGUMENT 0, not from self.
 //     return rows[0]
-inline const Row& Picker::pick(const std::vector<Row>& rows) const {
+inline Row& Picker::pick(std::vector<Row>& rows) const {
     return ::tpy::__getitem__(rows, 0);
 }
 void __tpy_init();

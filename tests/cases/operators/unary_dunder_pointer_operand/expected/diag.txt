@@ -1,0 +1,1 @@
+main.py:75: warning: 'keep' will not keep the object it was given -- 'c' is rebound on each iteration and both names share its storage; 'c' cannot be copied

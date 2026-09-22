@@ -1,2 +1,2 @@
 main.py:23: warning: non-exhaustive match on 'None | Cat | Dog'; missing: Cat (add 'case _: pass' to suppress)
-main.py:23: error: in function 'kind': this construct is not yet supported by C++ code generation (stmt.match)
+main.py:23: error: in function 'kind': this construct is not yet supported by C++ code generation (stmt.match:match.guarded_union_arm)

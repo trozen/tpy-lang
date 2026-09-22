@@ -1,0 +1,12 @@
+meth_list 3
+meth_recs 4
+meth_dict 2
+meth_set 3
+meth_nested 3
+temp_recv 3
+lend_back 2
+nested_arg 3
+static_list 3
+static_dict 2
+const_slot 6
+readonly_slot 2

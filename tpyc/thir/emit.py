@@ -366,10 +366,13 @@ class _EmitState:
     # name whose every assignment is a fresh declaration in its own scope has
     # no consumer, and emitting it there leaves a dead `std::optional<T>`.
     deferred_rebind_hoists: dict[int, str] = field(default_factory=dict)
-    # False in the resumable LEAF emitter, which has no drain point: a
-    # producer of `hoist_lines` asserts on it so a future
-    # hoisting construct that slips past lowering's defer fails LOUD at the
-    # produce site rather than emitting an undeclared `__slot_N`.
+    # False in the resumable LEAF emitter, whose leaves are scattered across
+    # resume cases with no single top to drain at: a producer of
+    # `hoist_lines` asserts on it so a future hoisting construct that slips
+    # past lowering's defer fails LOUD at the produce site rather than
+    # emitting an undeclared `__slot_N`. That emitter's frame-MEMBER bodies
+    # are contiguous functions and flip it back on for their own top
+    # (`_emit_body_draining_hoists`).
     hoist_drainable: bool = True
     rebind_slots: dict[str, int] = field(default_factory=dict)
     # Plain block slots allocated by a slotless local's first INLINE_RVALUE
@@ -1843,6 +1846,42 @@ def _pop_loop_frame(out: TextIO, indent: str, state: _EmitState,
         out.write(f"{indent}{break_label}:;\n")
 
 
+def _emit_body_draining_hoists(out: TextIO, stmts, indent_level: int,
+                               state: _EmitState, *,
+                               own_top: bool = False,
+                               witness: 'str | None' = None) -> None:
+    """Emit `stmts`, writing the hoist lines they produce AHEAD of them.
+
+    A hoist line is a declaration with no statement position of its own (a
+    rebind/OWN slot, a kept `with` manager, a RECORD_HOISTED pre-decl), so it
+    can only land at the top of a body -- which means the statements have to
+    be buffered first. Every emitter with a real top shares this, and no
+    other emitter may produce one (`hoist_drainable`).
+
+    `own_top` is for a body NESTED in another one -- a nested def's lambda or
+    its frame-member function. Its hoists must land inside ITS braces: the
+    enclosing prologue is out of reach behind the lambda's capture list, and
+    is a different function entirely for the member.
+    """
+    if own_top:
+        saved_lines = state.hoist_lines
+        saved_drainable = state.hoist_drainable
+        state.hoist_lines = []
+        state.hoist_drainable = True
+    body_buf = io.StringIO()
+    try:
+        _emit_stmts(body_buf, stmts, indent_level, state)
+        if witness is not None and state.hoist_lines:
+            _witness(witness)
+        for content in state.hoist_lines:
+            out.write(f"{INDENT * indent_level}{content}\n")
+    finally:
+        if own_top:
+            state.hoist_lines = saved_lines
+            state.hoist_drainable = saved_drainable
+    out.write(body_buf.getvalue())
+
+
 def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
                      state: _EmitState) -> None:
     # A nested def emits as a lambda: header spelled at lowering (capture
@@ -1877,31 +1916,19 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     state.try_except_label = None
     state.try_except_err_opt = None
     state.in_except_tier = None
-    # A hoist line this body produces must be drained INSIDE the lambda: the
-    # enclosing body's prologue is outside this capture list, so a declaration
-    # written there is unreachable from the lambda (`nested_hoist_scope` +
-    # buffered body). Every `hoist_lines` producer is covered, not just the
-    # rebind-slot one lowering knows about.
-    saved_hoists = state.hoist_lines
-    state.hoist_lines = []
-    body_buf = io.StringIO()
     try:
         # No trailing-comment emission for a lambda body, so a comment after
         # its last statement stays OUTSIDE the closing brace.
-        _emit_stmts(body_buf, stmt.body, indent_level + 1, state)
-        if state.hoist_lines:
-            _witness("stmt.nested_def_hoist")
-        for content in state.hoist_lines:
-            out.write(f"{INDENT * (indent_level + 1)}{content}\n")
+        _emit_body_draining_hoists(out, stmt.body, indent_level + 1, state,
+                                   own_top=True,
+                                   witness="stmt.nested_def_hoist")
     finally:
-        state.hoist_lines = saved_hoists
         (state.finally_frames, state.return_cpp, state.loop_depth,
          state.switch_depth, state.loop_break_labels,
          state.loop_else_labels, state.rebind_slots,
          state.error_return_cpp,
          state.try_except_label, state.try_except_err_opt,
          state.in_except_tier, state.inline_rvalue_slots) = saved
-    out.write(body_buf.getvalue())
     out.write(f"{indent}}};\n")
 
 
@@ -4449,13 +4476,7 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                        slot_prefix=("__global_slot" if global_scope
                                     else "__slot"),
                        slot_static=("static " if global_scope else ""))
-    # Buffer the body so function-top hoists (@dynamic rebind slots,
-    # allocated mid-body) can be prepended ahead of it.
-    body_buf = io.StringIO()
-    _emit_stmts(body_buf, fn.body, indent_level, state)
-    for content in state.hoist_lines:
-        out.write(f"{INDENT * indent_level}{content}\n")
-    out.write(body_buf.getvalue())
+    _emit_body_draining_hoists(out, fn.body, indent_level, state)
     # Void @error_return functions return `{}` at the end -- the implicit
     # success value. A body that already terminates on every path (the
     # same fact sema uses to skip the implicit return) would make it a
@@ -4495,15 +4516,10 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
         out.write(", ".join(inits))
     if ctor.body:
         out.write(" {\n")
-        # Buffer + prepend function-top hoists (a @dynamic rebind slot), same as
-        # emit_thir_body -- the ctor body shares the DYN_PROTOCOL rebind arm, so
-        # its hoisted `std::optional<slot>` must land at the body top too (else
-        # the `__slot_N.emplace` references an undeclared slot).
-        body_buf = io.StringIO()
-        _emit_stmts(body_buf, ctor.body, body_indent_level, state)
-        for content in state.hoist_lines:
-            out.write(f"{INDENT * body_indent_level}{content}\n")
-        out.write(body_buf.getvalue())
+        # The ctor body shares the hoisting arms (a @dynamic rebind slot), so
+        # its `std::optional<slot>` lands at the body top like any other
+        # body's (else the `__slot_N.emplace` references an undeclared slot).
+        _emit_body_draining_hoists(out, ctor.body, body_indent_level, state)
         out.write(f"{INDENT * (body_indent_level - 1)}}}\n")
     else:
         out.write(" {}\n")
@@ -4629,10 +4645,17 @@ class ResumableLeafEmitter:
         """Emit a frame nested def's MEMBER body -- the seam
         `gen_coro_finally_top_def` calls for it. The
         signature/struct-decl lines stay skeleton; the body statements were
-        lowered under the member scope at frame lowering."""
+        lowered under the member scope at frame lowering.
+
+        Unlike the frame BODY, whose leaves are scattered across resume cases
+        with no single top, the member is one contiguous function: it has a
+        top of its own, so it drains its own hoists there (`own_top`) and the
+        hoisting arms are open to it. Each call of the member then gets its
+        own slots, since they are its locals."""
         body = self._lookup(self._body.nested_def_bodies, func,
                             "nested def body")
-        _emit_stmts(out, body, indent_level, self._state)
+        _emit_body_draining_hoists(out, body, indent_level, self._state,
+                                   own_top=True)
 
     def render_suspend_expr(self, expr) -> str:
         """Render an ERASED/BORROWED await operand or a bound-method await

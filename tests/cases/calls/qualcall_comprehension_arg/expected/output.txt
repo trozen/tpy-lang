@@ -1,0 +1,5 @@
+static_list 4
+static_dict 3
+static_set 3
+static_recs 3
+generic_static 4

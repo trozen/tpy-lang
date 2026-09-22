@@ -27,7 +27,7 @@ struct Container {
 
     // def get_or_default(self, fallback: T = T()) -> T:
     //     return fallback
-    ::tpy::val_or_cref_t<T> get_or_default(::tpy::readonly_form_t<T> fallback = T{}) const {
+    ::tpy::val_or_ref_t<T> get_or_default(::tpy::param_val_or_ref_t<T> fallback = T{}) const {
         return ::tpy::param_to_return<T>(fallback);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

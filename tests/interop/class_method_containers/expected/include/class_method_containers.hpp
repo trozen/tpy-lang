@@ -33,7 +33,7 @@ struct Stats {
 
     int64_t absorb(std::vector<int64_t>& xs, int64_t v) const;
 
-    const std::vector<int64_t>& same(const std::vector<int64_t>& xs) const;
+    std::vector<int64_t>& same(std::vector<int64_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Stats";
 };
 
@@ -137,7 +137,7 @@ inline int64_t Stats::absorb(std::vector<int64_t>& xs, int64_t v) const {
     return static_cast<int64_t>(::tpy::__len__(xs));
 }
 
-inline const std::vector<int64_t>& Stats::same(const std::vector<int64_t>& xs) const {
+inline std::vector<int64_t>& Stats::same(std::vector<int64_t>& xs) const {
     return xs;
 }
 void __tpy_init();

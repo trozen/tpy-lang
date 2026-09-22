@@ -1,2 +1,0 @@
-main.py:19: warning: Mutation of 'outer[...]' may hit a borrowed element (element assignment may invalidate references)
-main.py:15: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.slot_type)

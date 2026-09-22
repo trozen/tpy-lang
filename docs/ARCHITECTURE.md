@@ -234,8 +234,12 @@ builtin stub) may stand on the declaration.
 Const inference reads recorded return-borrow roots through
 `typesys.recorded_return_borrow_sources`. Receiver inference retains its
 inherently-const-view exception; const-method parameter emission subtracts
-the recorded roots from mutation facts. These are distinct policies over
-the same body-analysis facts, not a second provenance analysis.
+the recorded roots from mutation facts where the return is const-projected
+(`typesys.return_const_projected`) -- an INFERRED-const method whose return
+borrows a parameter keeps that parameter in the mutated set, so the
+parameter stays mutable and the borrow keeps its declared type. These are
+distinct policies over the same body-analysis facts, not a second
+provenance analysis.
 
 Result-representation readers share `typesys.classify_result_representation`.
 An explicit position selects synchronous call classification, async payload

@@ -31,7 +31,7 @@ from ..typesys import (
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, error_return_uses_borrow_slot, unwrap_ref_type,
     property_getter_returns_storage_ref,
-    bare_name, recorded_return_borrow_sources,
+    bare_name, recorded_return_borrow_sources, return_const_projected,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
@@ -818,11 +818,22 @@ class FunctionGenerator:
                 return overloads[-1].addr_escapes_params
         return frozenset()
 
+    def _method_return_const_projected(self, method: TpyFunction, record_name: str) -> bool:
+        """Whether a const method's borrowed return is const too."""
+        record_info = self.ctx.analyzer.registry.get_record(record_name)
+        overloads = record_info.get_method_overloads(method.name) if record_info else None
+        # Only an INFERRED verdict can split the two: the caller's `const` may
+        # come from a clone whose paired overload is the one listed last.
+        return (not overloads or not overloads[-1].root.readonly_inferred
+                or return_const_projected(overloads[-1]))
+
     def _get_method_genuine_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
         """Return mutation indices excluding return-borrow roots for const codegen.
 
         Borrow exposure shares the mutation set; its roots are subtracted
-        even when also modified. Finalized facts retain unrelated transitive
+        even when also modified -- but only where the return is
+        const-projected, since a mutable borrow of a parameter is a write
+        path through it. Finalized facts retain unrelated transitive
         mutations so those parameters stay non-const.
         """
         if method.is_stub or method.is_overload_stub:
@@ -835,6 +846,8 @@ class FunctionGenerator:
                 mp = fi.mutated_params
                 if mp is None:
                     return None
+                if fi.root.readonly_inferred and not return_const_projected(fi):
+                    return mp
                 return mp - recorded_return_borrow_sources(fi)
         return None
 
@@ -1540,6 +1553,10 @@ class FunctionGenerator:
         is_def_mode = mode in ("def_hpp", "def_cpp")
         cpp_record_qualified = escape_cpp_name(record_name.replace(".", "::"))
         rec_short = bare_name(record_name)
+        # The receiver's const-ness and the return's are separate verdicts: an
+        # inferred-const method whose return borrows a parameter stays `const`
+        # and keeps its declared mutable return.
+        ret_const = const and self._method_return_const_projected(method, record_name)
 
         # Inplace dunders return T& (reference to self) in C++.
         is_inplace_dunder = method.name in CONST_PARAMS_METHODS
@@ -1562,14 +1579,14 @@ class FunctionGenerator:
                            else self.types.type_to_cpp(inner))
                 ret_type = f"const {storage}&" if const else f"{storage}&"
             else:
-                ret_type = self._resolve_return_type(cpp_return_type, const=const,
+                ret_type = self._resolve_return_type(cpp_return_type, const=ret_const,
                                                       error_return=method.error_return)
         elif override and is_any_str_type(cpp_return_type):
             # @dynamic protocol virtual returns std::string; override must match
             # even if the impl declares -> StrView or -> String.
             ret_type = "std::string"
         else:
-            ret_type = self._resolve_return_type(cpp_return_type, const=const,
+            ret_type = self._resolve_return_type(cpp_return_type, const=ret_const,
                                                   error_return=method.error_return)
         dfl = method.defaults if method.defaults else None
 

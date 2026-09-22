@@ -1,0 +1,2 @@
+main.py:39: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:32: error: in function 'gen': this construct is not yet supported by C++ code generation (res.nested_def_member)

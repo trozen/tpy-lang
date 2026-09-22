@@ -46,14 +46,14 @@ struct Maker {
     Maker();
 
     // def pair(self, c: Cell) -> tuple[Cell, Cell]:
-    std::tuple<const Cell*, const Cell*> pair(const Cell& c) const;
+    std::tuple<Cell*, Cell*> pair(Cell& c) const;
 
     // @readonly
     // def declared_pair(self, c: Cell) -> tuple[Cell, Cell]:
     std::tuple<const Cell*, const Cell*> declared_pair(const Cell& c) const;
 
     // def mixed(self, c: Cell) -> tuple[Own[Cell], Cell]:
-    std::tuple<Cell, const Cell*> mixed(const Cell& c) const;
+    std::tuple<Cell, Cell*> mixed(Cell& c) const;
 
     // def bump_pair(self, c: Cell) -> tuple[Cell, Cell]:
     std::tuple<Cell*, Cell*> bump_pair(Cell& c);
@@ -74,11 +74,12 @@ inline Cell::Cell(int32_t val) : val(val) {}
 //     self.n = 0
 inline Maker::Maker() : n(0) {}
 
-// # Never mutates self -- readonly is INFERRED, and with it the const return.
+// # Never mutates self, so the METHOD is const; the return borrows `c`, not
+// # self, and stays mutable.
 // def pair(self, c: Cell) -> tuple[Cell, Cell]:
 //     return (c, c)
-inline std::tuple<const Cell*, const Cell*> Maker::pair(const Cell& c) const {
-    return std::tuple<const Cell*, const Cell*>{&(c), &(c)};
+inline std::tuple<Cell*, Cell*> Maker::pair(Cell& c) const {
+    return std::tuple<Cell*, Cell*>{&(c), &(c)};
 }
 
 // @readonly
@@ -90,8 +91,8 @@ inline std::tuple<const Cell*, const Cell*> Maker::declared_pair(const Cell& c) 
 
 // def mixed(self, c: Cell) -> tuple[Own[Cell], Cell]:
 //     return (Cell(1), c)
-inline std::tuple<Cell, const Cell*> Maker::mixed(const Cell& c) const {
-    return std::tuple<Cell, const Cell*>{Cell(1), &(c)};
+inline std::tuple<Cell, Cell*> Maker::mixed(Cell& c) const {
+    return std::tuple<Cell, Cell*>{Cell(1), &(c)};
 }
 
 // # The mutating sibling keeps the non-const render -- the inverse guard.

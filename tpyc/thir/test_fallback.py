@@ -411,18 +411,19 @@ def test_while_bool_literal_routes_at_constructor_boundary():
 
 
 def test_for_lowering_reject_falls_back_at_sync_boundary():
-    # A hoisted loop var whose element is itself a CONTAINER: the reassigned
-    # nested-element local binds only the single-assignment `T&` alias, so the
-    # body falls back whole. (The plain-record flavor of this shape routes now
-    # -- its element lifts to a reseatable `T*`.)
+    # A loop-body reseat from a FIELD source: the reseat ladder carries no
+    # field arm, so the body falls back whole. (The name, element and literal
+    # sources of the same reseat route now -- they lift to a reseatable `T*`.)
     compiler, modules = _compile(
         "from tpy import int32\n"
         "class R:\n    v: int32\n"
         "    def __init__(self, v: int32):\n        self.v = v\n"
-        "def rejected(m: list[list[R]]) -> int32:\n"
+        "class H:\n    rows: list[R]\n"
+        "    def __init__(self):\n        self.rows = []\n"
+        "def rejected(m: list[list[R]], h: H) -> int32:\n"
         "    keep = m[0]\n"
         "    for row in m:\n"
-        "        keep = row\n"
+        "        keep = h.rows\n"
         "    return int32(len(keep))\n"
         "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"

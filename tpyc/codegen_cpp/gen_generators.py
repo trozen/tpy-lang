@@ -841,8 +841,7 @@ class GeneratorCodegen:
             bare = unwrap_readonly(unwrap_ref_type(atype))
             # A reference-typed argument is probed as an lvalue: `declval<T>()`
             # is an xvalue and would not bind the `T&` parameter the callee
-            # declares (BUGS.md#protocol-ref-param-declval-rvalue is the same
-            # mistake in the protocol concept).
+            # declares.
             suffix = "" if bare.is_value_type() else "&"
             args.append(f"std::declval<{self.types.type_to_cpp(bare)}{suffix}>()")
         # Mirrors the three-arm receiver-call dispatch (cpp_template, @native

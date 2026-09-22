@@ -29,7 +29,7 @@ struct Holder {
     // def identity[U](self, key: U) -> U:
     //     return key
     template<typename U>
-    ::tpy::val_or_cref_t<U> identity(::tpy::readonly_form_t<U> key) const {
+    ::tpy::val_or_ref_t<U> identity(::tpy::param_val_or_ref_t<U> key) const {
         return ::tpy::param_to_return<U>(key);
     }
 

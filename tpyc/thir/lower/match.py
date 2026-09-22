@@ -2939,14 +2939,18 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                   else ("!", ".has_value()"))
     hasval_piece = (("", " != nullptr") if uses_ptr
                     else ("", ".has_value()"))
+    # A pointer-slot global reads as `(*g)`, so the subject spelling is the
+    # POINTEE, not the whole-Optional pointer an arm-local capture copies.
+    subject_derefs = (isinstance(stmt.subject, TpyName)
+                      and stmt.subject.name in lc.prescan.global_slots)
     arms: list[THIRMatchArm] = []
     always_arms = 0
     for i, case in enumerate(stmt.cases):
         if case.type_facts:
-            raise ThirUnsupported("stmt.match")
+            raise ThirUnsupported("match.optional_arm_facts", detail=True)
         parts = _match_arm_parts(case)
         if parts is None:
-            raise ThirUnsupported("stmt.match")
+            raise ThirUnsupported("match.optional_arm_shape", detail=True)
         test, bnode = parts
         arm_declared = dict(declared)
         field_bindings: tuple = ()
@@ -2957,30 +2961,30 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
             binds_full = getattr(case.pattern, "binds_full_optional", False)
         elif isinstance(test, TpyLiteralPattern) and test.value is None:
             if bnode is not None:  # `case None as x:` is a sema error
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_none_bind", detail=True)
             opt_conds = ((False, (null_piece,)),)
         elif isinstance(test, TpyLiteralPattern):
             piece = _optional_lit_piece(test.value)
             if piece is None:
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_literal_kind", detail=True)
             opt_conds = ((False, (hasval_piece, piece)),)
         elif isinstance(test, TpyValuePattern):
             piece = _optional_value_piece(test, lc.analyzer)
             if piece is None:
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_value_kind", detail=True)
             opt_conds = ((False, (hasval_piece, piece)),)
         elif isinstance(test, TpyClassPattern):
             if not _optional_class_cond_ok(test, inner_type, lc.analyzer):
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_class_cond", detail=True)
             if not _match_keywords_ok(
                     test, lc.analyzer, pointers, lc.narrow.narrowed.keys(),
                     lc.storage_tuple_locals, dict(arm_declared),
                     allow_conds=True, nested_ok=True,
                     nested_binds_ok=False):
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_class_fields", detail=True)
             if any(lc.value_opt_bindings.get(nm) is ValueOptKind.SCALAR
                    for nm in _match_pattern_captures(test)):
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_capture_value_opt", detail=True)
             field_conds, field_bindings = _lower_field_subpatterns(
                 test, declared, arm_declared, lc, from_case_var=True)
             pieces = (hasval_piece,) + tuple(
@@ -2996,7 +3000,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                 # `case None | 1 as x:` and `case 1 | _ as x:` both match a
                 # None subject, where CPython binds the subject itself -- the
                 # whole-Optional bind the always arm draws.
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_or_bind", detail=True)
             _witness("match.optional_chain_or")
             groups: list[tuple[bool, tuple]] = []
             for alt in test.patterns:
@@ -3008,38 +3012,39 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                 elif isinstance(alt, TpyLiteralPattern):
                     piece = _optional_lit_piece(alt.value)
                     if piece is None:
-                        raise ThirUnsupported("stmt.match")
+                        raise ThirUnsupported("match.optional_literal_kind", detail=True)
                     groups.append((True, (hasval_piece, piece)))
                 elif isinstance(alt, TpyValuePattern):
                     piece = _optional_value_piece(alt, lc.analyzer)
                     if piece is None:
-                        raise ThirUnsupported("stmt.match")
+                        raise ThirUnsupported("match.optional_value_kind", detail=True)
                     groups.append((True, (hasval_piece, piece)))
                 elif isinstance(alt, TpyClassPattern):
                     pieces = _optional_class_alt_pieces(
                         alt, inner_type, lc.analyzer, hasval_piece)
                     if pieces is None:
-                        raise ThirUnsupported("stmt.match")
+                        raise ThirUnsupported("match.optional_class_cond", detail=True)
                     groups.append((True, pieces))
                 else:  # a capture alternative's binding would drop
-                    raise ThirUnsupported("stmt.match")
+                    raise ThirUnsupported("match.optional_or_alt", detail=True)
             opt_conds = tuple(groups) if groups is not None else None
             is_always = opt_conds is None
         else:
-            raise ThirUnsupported("stmt.match")
+            raise ThirUnsupported("match.optional_pattern", detail=True)
         if is_always or opt_conds is None:
             always_arms += 1
             if kind == "if_elif_optional" and (
                     always_arms > 1 or i != len(stmt.cases) - 1):
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_always_arm_order", detail=True)
         binding = None
+        ptr_bind = None
         if bnode is not None:
             if (bnode.name in pointers or bnode.name in lc.narrow.narrowed
                     or bnode.name in lc.storage_tuple_locals
                     or (not binds_full
                         and lc.value_opt_bindings.get(bnode.name)
                         is ValueOptKind.SCALAR)):
-                raise ThirUnsupported("stmt.match")
+                raise ThirUnsupported("match.optional_bind_name", detail=True)
             hkind = hoist_kinds.get(bnode.name)
             if hkind not in (None, "value", "frame") and not (
                     hkind == "opt_ptr" and binds_full):
@@ -3048,23 +3053,31 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                 # captures (`case Box() as bb:` leaked) reject. Value
                 # hoists keep the existing declared-assign paths, and a
                 # frame-declared one is a value hoist minus the decl line.
-                raise ThirUnsupported("stmt.match")
-            if binds_full and hkind == "opt_ptr" and uses_ptr:
-                # The hoisted `T* q;` binds the pointer subject whole
-                # (`q = __match_subject_N;` -- _emit_binding's declared
-                # pointer-local arm over a pointer-repr subject). The
-                # declared Optional entry keeps body reads on the nullable
-                # borrow model (deref_check on unproven access).
-                _witness("match.bind_assign")
-                binding = THIRMatchBinding(name=bnode.name, mode="assign",
+                raise ThirUnsupported("match.optional_hoist_kind", detail=True)
+            if binds_full and uses_ptr and (
+                    hkind == "opt_ptr"
+                    or (hkind is None and not subject_derefs)):
+                # The pointer subject binds whole: the hoisted `T* q;` takes
+                # the assign (`q = __match_subject_N;` -- _emit_binding's
+                # declared pointer-local arm), an arm-local capture the
+                # in-place decl (`auto q = __match_subject_N;`). Either way
+                # the declared Optional entry keeps body reads on the
+                # nullable borrow model (deref_check on unproven access).
+                mode = "assign" if hkind == "opt_ptr" else "copy"
+                _witness(f"match.bind_{mode}")
+                binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                            from_case_var=False)
+                if hkind is None:
+                    _witness("match.optional_full_bind")
+                    arm_declared[bnode.name] = subj_type
+                    ptr_bind = bnode.name
             elif binds_full:
                 # A full-Optional binding needs the value-opt local renders;
                 # only the scalar family has them (pointer-repr subjects
                 # without the hoist bind the raw `T*`, not lowered here).
                 if (uses_ptr
                         or _value_opt_scalar(subj_type, lc.analyzer) is None):
-                    raise ThirUnsupported("stmt.match")
+                    raise ThirUnsupported("match.optional_full_bind_shape", detail=True)
                 mode = _scalar_bind_mode(bnode, declared)
                 _witness(f"match.bind_{mode}")
                 binding = THIRMatchBinding(name=bnode.name, mode=mode,
@@ -3079,6 +3092,8 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                                            from_case_var=True)
                 arm_declared[bnode.name] = inner_type
         with lc.branch_scope():
+            if ptr_bind is not None:
+                lc.pointers.add(ptr_bind)
             if binding is not None and binding.mode != "assign":
                 lc.forbidden_writes.add(binding.name)
             guard = None
@@ -3520,7 +3535,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
         _witness("match.guarded_union_wrapper")
     members = _union_index_members(u)
     if members is None:
-        raise ThirUnsupported("stmt.match")
+        raise ThirUnsupported("match.union_members", detail=True)
     n = len(members)
     subj_name = (stmt.subject.name if isinstance(stmt.subject, TpyName)
                  else None)
@@ -3533,7 +3548,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                 case, lc.analyzer, declared, pointers,
                 lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
                 subj_name, subj_type, members):
-            raise ThirUnsupported("stmt.match")
+            raise ThirUnsupported("match.guarded_union_arm", detail=True)
         test, bnode = _match_arm_parts(case)
         if test is None:
             for idx in range(n):
@@ -3577,7 +3592,9 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
         arm_declared = dict(declared)
         with lc.branch_scope():
             facts = case.type_facts or {}
-            if kind == "class" and facts and alias is not None:
+            subject_aliased = (kind == "class" and bool(facts)
+                               and alias is not None)
+            if subject_aliased:
                 lc.narrow.narrowed[subj_name] = alias
                 arm_declared[subj_name] = facts[subj_name]
             field_conds: tuple = ()
@@ -3601,7 +3618,11 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                 # The guard-only forbidden_reads must not survive into the
                 # arm body -- an inner scope pops them after the guard.
                 with lc.branch_scope():
-                    if subj_name is not None:
+                    # Without the alias rename a subject read in the guard
+                    # would spell the raw variant; with it the read renames
+                    # to `__case_{idx}`, which the group scope declares
+                    # ahead of the guard.
+                    if subj_name is not None and not subject_aliased:
                         lc.forbidden_reads.add(subj_name)
                     if field_conds and pattern is not None:
                         lc.forbidden_reads.update(

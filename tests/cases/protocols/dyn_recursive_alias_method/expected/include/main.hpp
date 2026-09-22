@@ -15,7 +15,7 @@ struct Counter;
 // class Counter(Protocol):
 template<typename T>
 concept __Counter_Concept__ = requires(T& t) {
-    { t.count(std::declval<::tpyapp::treelib::Tree<::tpy::BigInt>>()) } -> std::convertible_to<int32_t>;
+    { t.count(std::declval<::tpyapp::treelib::Tree<::tpy::BigInt>&>()) } -> std::convertible_to<int32_t>;
 };
 
 struct Counter {

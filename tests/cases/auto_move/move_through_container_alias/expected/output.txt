@@ -1,0 +1,8 @@
+list 2 9 3
+nocopy 2 1 2
+kinds 2 2 3 2
+constructor 9
+method 2
+alias 2 2
+readonly 2
+generator 13

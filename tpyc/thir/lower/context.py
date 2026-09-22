@@ -341,6 +341,15 @@ _ONLY_FIELD_VALUE_TUPLE: frozenset[SinkForm] = frozenset(
 # "may this position hold a borrow of dying storage" is one name rather than a
 # property re-derived per consumer.
 _LEND_OK: frozenset[SinkForm] = frozenset({SinkForm.DYING_SOURCE_LEND})
+# The second half of the same TRANSIENT verdict: nothing binds off the read,
+# so a `T&`-returning call also renders BARE here -- no address is taken of
+# it, nothing copies it, and the reference outlives the expression it is read
+# in. One name for the pair, because both answer "does this position hold
+# anything past the full expression?" and a sink that answers no answers no to
+# both. Spelled at the transient SITES whose sink's row is not theirs (a
+# truthiness test, a membership haystack) exactly as `_LEND_OK` is.
+_TRANSIENT_OK: frozenset[SinkForm] = _LEND_OK | frozenset(
+    {SinkForm.BORROW_RET_PASSTHROUGH})
 
 _POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
     # NOT a sink: the row every site inherits when it names none. Binding
@@ -365,14 +374,14 @@ _POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
     SinkPos.GLOBAL_SLOT_WRITE: _ONLY_PTR_OPT_PASSTHROUGH,
     SinkPos.UNPACK_SOURCE: _ONLY_TUPLE_SOURCE,
     SinkPos.ALIAS_BIND: _ONLY_INDIRECT_READ,
-    SinkPos.OPERAND: _ONLY_LITERAL_FOLD | _LEND_OK,
+    SinkPos.OPERAND: _ONLY_LITERAL_FOLD | _TRANSIENT_OK,
     SinkPos.LAMBDA_RETURN: _ONLY_LAMBDA_BTUPLE_RET,
     SinkPos.WALRUS_TARGET: _ONLY_TUPLE_SOURCE,
     SinkPos.FRAME_SLOT_WRITE: _ONLY_TUPLE_SOURCE,
     SinkPos.PRINT_ARG: _ONLY_PTR_OPT_PASSTHROUGH | _LEND_OK,
     SinkPos.FSTRING_INTERP: _ONLY_FIELD_VALUE_TUPLE | _LEND_OK,
     SinkPos.MATCH_SUBJECT: _ONLY_UNION_SUBJECT,
-    SinkPos.TRUTHINESS_OPERAND: _ONLY_TRUTHY_DISCARD | _LEND_OK,
+    SinkPos.TRUTHINESS_OPERAND: _ONLY_TRUTHY_DISCARD | _TRANSIENT_OK,
     SinkPos.RAISE_OPERAND: _ONLY_INDIRECT_READ | _LEND_OK,
     SinkPos.COERCE_INNER: _ONLY_INDIRECT_READ | _LEND_OK,
     SinkPos.WITH_MANAGER: _ONLY_CTX_MANAGER,

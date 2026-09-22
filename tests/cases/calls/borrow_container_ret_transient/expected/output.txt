@@ -1,0 +1,11 @@
+truthy 11
+membership 11
+truthyempty 0
+membershipempty 10
+while 1
+temp 1
+ctor 1
+method 1
+gen 1
+gen 0
+async 1

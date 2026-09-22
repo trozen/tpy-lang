@@ -50,7 +50,7 @@ template<FooMaker T> struct Bar;
 // class BarUser(Protocol):
 template<typename T>
 concept BarUser = requires(T& t) {
-    { t.use_bar(std::declval<Bar<DefaultFooMaker>>()) } -> std::convertible_to<int32_t>;
+    { t.use_bar(std::declval<Bar<DefaultFooMaker>&>()) } -> std::convertible_to<int32_t>;
 };
 
 

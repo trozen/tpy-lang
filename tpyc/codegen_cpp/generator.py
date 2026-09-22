@@ -490,7 +490,9 @@ class CodeGenerator:
             module_native_globals as _thir_native_globals,
         )
         from ..thir.reject import (begin_attempt, commit_attempt,
-                                   is_bodyless_binding, reject_attempt)
+                                   is_bodyless_binding,
+                                   raise_deferred_rejects,
+                                   reject_or_defer)
 
         _ng = _thir_native_globals(module)
 
@@ -551,7 +553,8 @@ class CodeGenerator:
                         break
                     entries.append((stub, stf))
                 if entries is None:
-                    reject_attempt("body", f)
+                    reject_or_defer("body", f)
+                    continue
                 for stub, stf in entries:
                     self.ctx.thir_overload_functions.setdefault(
                         f, IdentityMap())[stub] = stf
@@ -564,7 +567,8 @@ class CodeGenerator:
                                  render_resolve=self.types.resolve_type,
                                  render_concept=_render_concept)
             if tf is None:
-                reject_attempt("body", f)
+                reject_or_defer("body", f)
+                continue
             self.ctx.thir_functions[f] = tf
             commit_attempt()
         self.ctx.thir_constructors = IdentityMap()
@@ -581,10 +585,12 @@ class CodeGenerator:
                                       render_resolve=self.types.resolve_type,
                                       render_concept=_render_concept)
             if tc is None:
-                reject_attempt("ctor", init,
-                               where=f"in the constructor of '{rec.name}'")
+                reject_or_defer("ctor", init,
+                                where=f"in the constructor of '{rec.name}'")
+                continue
             self.ctx.thir_constructors[init] = tc
             commit_attempt()
+        raise_deferred_rejects()
 
         hpp = io.StringIO()
         cpp = io.StringIO()

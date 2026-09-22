@@ -1,0 +1,16 @@
+function 1
+function 2
+nocopy 11
+nocopy 21
+container 2
+container 3
+constructor 7
+method 5
+method 6
+generator 15
+async 9
+async 10
+closure 12
+closure 13
+module 14
+module 15

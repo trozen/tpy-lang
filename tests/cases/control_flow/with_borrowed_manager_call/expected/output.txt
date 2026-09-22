@@ -1,0 +1,18 @@
+func 1
+func after 11
+no_target 12
+no_target after 22
+nocopy 1
+nocopy after 11
+closure 23
+closure after 33
+ctor 34
+ctor after 44
+method 45
+method after 55
+gen 56
+gen after 66
+async 67
+async after 77
+module 1
+module after 11

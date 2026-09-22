@@ -5847,6 +5847,9 @@ class FunctionInfo:
     return_type: Optional[TpyType]
     is_noalloc: bool = False
     is_readonly: bool = False
+    # `is_readonly` was INFERRED from the body (the receiver is never
+    # mutated), not declared: only the receiver's const-ness is proven.
+    readonly_inferred: bool = False
     is_pure: bool = False
     is_inline: bool = False
     is_consuming: bool = False
@@ -6126,6 +6129,31 @@ def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
     (BUGS.md#pending-generic-receiver-call-borrow-unregistered).
     """
     return fi.root.return_borrows_from or frozenset()
+
+
+def return_const_projected(fi: FunctionInfo) -> bool:
+    """Whether the emitted signature const-projects this callee's borrowed
+    return (`const T&` / `const T*`), which every binding off the call must
+    mirror.
+
+    A DECLARED `@readonly` makes the receiver and every parameter readonly, so
+    whatever the return borrows is const. An INFERRED one proves the receiver
+    only: a return that borrows a PARAMETER keeps the declared mutable type,
+    exactly as a free function's does, and that parameter stays in the mutated
+    set. Read off the root: a call site's specialization can predate the
+    inference.
+    """
+    root = fi.root
+    if not (fi.is_readonly or root.is_readonly):
+        return False
+    if not root.readonly_inferred:
+        return True
+    if root.return_type is not None and view_is_inherently_const(root.return_type):
+        return True
+    # No recorded source keeps the projection: an open-`T` member read records
+    # none and still lends the const receiver.
+    sources = recorded_return_borrow_sources(fi)
+    return not sources or -1 in sources
 
 
 @dataclass

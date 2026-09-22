@@ -33,13 +33,13 @@ concept Hashable = requires(const T& t) {
 // class Comparable(Protocol):
 template<typename T>
 concept Comparable = requires(const T& t) {
-    { t < std::declval<T>() } -> std::convertible_to<bool>;
+    { t < std::declval<T&>() } -> std::convertible_to<bool>;
 };
 
 // class Equatable(Protocol):
 template<typename T>
 concept Equatable = requires(const T& t) {
-    { t == std::declval<T>() } -> std::convertible_to<bool>;
+    { t == std::declval<T&>() } -> std::convertible_to<bool>;
 };
 
 // class Deref[T](Protocol):

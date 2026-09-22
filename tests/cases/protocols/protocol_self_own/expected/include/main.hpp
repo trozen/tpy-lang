@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // class Addable(Protocol):
 template<typename T>
 concept Addable = requires(const T& t) {
-    { t + std::declval<T>() } -> std::convertible_to<T>;
+    { t + std::declval<T&>() } -> std::convertible_to<T>;
 };
 
 struct Point;

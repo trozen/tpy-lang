@@ -1,0 +1,1 @@
+main.py:87: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy(b) for an independent value

@@ -13,7 +13,7 @@ template<typename T> struct Container;
 template<typename T, typename _T0>
 concept __Container_Concept__ = requires(T& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
-    { t.set(std::declval<_T0>()) } -> std::convertible_to<void>;
+    { t.set(std::declval<::tpy::param_val_or_ref_t<_T0>>()) } -> std::convertible_to<void>;
 };
 
 template<typename T>

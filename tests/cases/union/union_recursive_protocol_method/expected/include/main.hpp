@@ -12,7 +12,7 @@ struct Expr;
 // class Sink(Protocol):
 template<typename T>
 concept Sink = requires(T& t) {
-    { t.take(std::declval<Expr>()) } -> std::convertible_to<int32_t>;
+    { t.take(std::declval<Expr&>()) } -> std::convertible_to<int32_t>;
 };
 
 struct Counter;

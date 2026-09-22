@@ -707,9 +707,24 @@ class ProtocolGenerator:
                 return TypeParamRef(type_param_map[typ.name])
             return typ.map_inner_types(subst_type)
 
-        def subst_to_cpp(typ: TpyType) -> str:
-            """Convert type to C++, substituting protocol type params."""
-            return subst_type(typ).to_cpp()
+        def concept_param_cpp(typ: TpyType) -> str:
+            """C++ type the requires-expression offers for a protocol param.
+
+            The probe must stand where a real argument stands, so it is spelled
+            at the param FORM the protocol's own signature declares (`T&` for a
+            mutable reference-typed param, `const T&` for a `readonly` one, the
+            pointer for a pointer-repr Optional / union). A prvalue of the bare type cannot bind a conforming
+            implementation's `T&`, so the old spelling made every such protocol
+            unsatisfiable. Same fact the @dynamic base class reads for its
+            virtuals -- the implementation is never consulted.
+            """
+            resolved = subst_type(typ)
+            if unwrap_readonly(unwrap_ref_type(resolved)).is_value_type():
+                # A value keeps the owned prvalue: it binds a by-value, a
+                # `const&`, a view AND an owning (`Own[str]`) parameter, where
+                # the view form would refuse the last one.
+                return resolved.to_cpp()
+            return resolved.to_cpp_param_type()
 
         def concept_type_cpp(typ: TpyType) -> str:
             """C++ type for concept constraint, with covariant str handling.
@@ -745,7 +760,7 @@ class ProtocolGenerator:
                 # {self} -> t, {0}/{1}/... -> std::declval<ParamCpp>()
                 call_expr = expand_cpp_template(
                     cpp_tmpl, "t",
-                    *(f"std::declval<{subst_to_cpp(ptype)}>()"
+                    *(f"std::declval<{concept_param_cpp(ptype)}>()"
                       for _, ptype in method_sig.params))
             elif (method_sig.name in DUNDER_TO_BINARY_OP
                     and method_sig.name not in ("__floordiv__", "__rfloordiv__")
@@ -755,9 +770,10 @@ class ProtocolGenerator:
                 # method call, matching the sema DUNDER_CPP_TEMPLATES lowering.
                 cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
                 _, ptype = method_sig.params[0]
-                call_expr = f"t {cpp_op} std::declval<{subst_to_cpp(ptype)}>()"
+                call_expr = f"t {cpp_op} std::declval<{concept_param_cpp(ptype)}>()"
             else:
-                param_exprs = [f"std::declval<{subst_to_cpp(ptype)}>()" for _, ptype in method_sig.params]
+                param_exprs = [f"std::declval<{concept_param_cpp(ptype)}>()"
+                               for _, ptype in method_sig.params]
                 call_expr = f"t.{method_sig.name}({', '.join(param_exprs)})"
 
             if skip_return_check:

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // class Addable(Protocol):
 template<typename T>
 concept Addable = requires(T& t) {
-    t + std::declval<T>();
+    t + std::declval<T&>();
     { t.value() } -> std::convertible_to<::tpy::BigInt>;
 };
 

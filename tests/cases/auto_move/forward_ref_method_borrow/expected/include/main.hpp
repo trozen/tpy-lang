@@ -40,7 +40,7 @@ struct Picker {
     int32_t run() const;
 
     // def first(self, xs: list[P]) -> P:
-    const P& first(const std::vector<P>& xs) const;
+    P& first(std::vector<P>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Picker";
 };
 
@@ -69,7 +69,7 @@ inline int32_t Picker::run() const {
 
 // def first(self, xs: list[P]) -> P:
 //     return xs[0]
-inline const P& Picker::first(const std::vector<P>& xs) const {
+inline P& Picker::first(std::vector<P>& xs) const {
     return ::tpy::__getitem__(xs, 0);
 }
 void __tpy_init();

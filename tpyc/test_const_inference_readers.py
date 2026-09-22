@@ -25,7 +25,7 @@ PARAM = frozenset({0})
     pytest.param(RECORD, None, MUTATED, True, MUTATED, id="unknown-roots"),
     pytest.param(RECORD, frozenset(), MUTATED, True, MUTATED, id="empty-roots"),
     pytest.param(RECORD, SELF, MUTATED, False, MUTATED, id="self-borrow"),
-    pytest.param(RECORD, PARAM, MUTATED, True, frozenset({1}), id="param-borrow"),
+    pytest.param(RECORD, PARAM, MUTATED, True, MUTATED, id="param-borrow"),
     pytest.param(RECORD, SELF | PARAM, MUTATED, False, frozenset({1}),
                  id="self-and-param-borrow"),
     pytest.param(RECORD, PARAM, None, True, None, id="unknown-mutations"),

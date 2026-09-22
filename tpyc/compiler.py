@@ -695,6 +695,11 @@ class Compiler:
         # First-reject reason per rejected body, keyed by its AST
         # callable, so `--dump-thir` can name why a lowering raised.
         self._thir_reject_by_node: IdentityMap = IdentityMap()
+        # A survey (`collect_thir(tolerate_reject=True)`) defers the rejects of
+        # the bodies lowered ahead of emission, so each one gets its attempt
+        # and its own reason before the first of them is raised.
+        self._thir_survey: bool = False
+        self._thir_deferred_rejects: list = []
         # Arg-table reach tally (thir/lower/arg_table.py): (family, cell) ->
         # count of arguments that cell DECIDED. The stdlib gate asserts every
         # registered family is reached; the cell keys are the coverage
@@ -3761,11 +3766,16 @@ class Compiler:
         the exception. `tolerate_reject` returns the partial ctx instead: it
         holds every body lowered before emission stopped, and the reason rides
         `thir_reject_by_node`, which is what lets `--dump-thir` name the
-        blocking body rather than print nothing at all."""
+        blocking body rather than print nothing at all. It is also a SURVEY:
+        every function, method and constructor body is attempted and gets
+        its own reason, since those lower ahead of emission. A frame,
+        module-init or constant reject still ends the pass where it stands
+        -- those lower while the C++ around them is being written."""
         with activate_compiler(self):
             self._check_no_errors(compiled)
             assert compiled.analyzer is not None
             codegen = self._make_codegen(compiled, options)
+            self._thir_survey = tolerate_reject
             try:
                 self._run_codegen(
                     codegen, compiled, compiled.name,
@@ -3775,6 +3785,9 @@ class Compiler:
             except ThirRejectError:
                 if not tolerate_reject:
                     raise
+            finally:
+                self._thir_survey = False
+                self._thir_deferred_rejects = []
             return codegen.ctx
 
     def _propagate_package_directives(self) -> None:
