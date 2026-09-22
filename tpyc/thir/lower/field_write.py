@@ -94,7 +94,7 @@ from .predicates import (
     _eligible_ptr_value,
     _eligible_scalar,
     _f1_container_ref,
-    _f1_ref,
+    record_like,
     _f1_tuple,
     _f1_tuple_field_write_ok,
     _nested_storage_tuple,
@@ -238,7 +238,7 @@ def _narrowed_optptr_field_write_ok(
         return False
     ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(stmt.target))))
-    if not _f1_ref(ft, analyzer):
+    if not record_like(ft, analyzer):
         return False
     dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
     if not (isinstance(dt, OptionalType) and dt.uses_pointer_repr()):
@@ -255,7 +255,7 @@ def _narrowed_optptr_field_write_ok(
     # membership test the container leg shipped, kept verbatim so no shape
     # it admitted starts rejecting. A user record has no TypeDef, so the
     # record leg is the exact-type one.
-    return (_f1_ref(inner, analyzer)
+    return (record_like(inner, analyzer)
             and (inner == ft
                  or (type_def_of(ft) is not None
                      and type_def_of(ft) is type_def_of(inner)))
@@ -465,7 +465,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan, lc: _LowerCtx,
 
 
 class _RefSlot(Enum):
-    PLAIN = auto()     # `_f1_ref` field: the default field assign
+    PLAIN = auto()     # `record_like` field: the default field assign
     OPT = auto()       # value-storage Optional[record]: operator= absorbs
                        # the inner
     OPT_TAIL = auto()  # an Optional[reference] slot the OPT rows do not
@@ -504,7 +504,7 @@ def _classify_ref(stmt: TpyAssign, lc: _LowerCtx,
     analyzer = lc.analyzer
     ftype = analyzer.get_expr_type(stmt.target)
     narrowed = lc.narrow.narrowed.keys()
-    if _f1_ref(ftype, analyzer):
+    if record_like(ftype, analyzer):
         if not (_ref_field_write_ok(stmt, declared, analyzer, pointers,
                                     narrowed, lc.prescan)
                 or _narrowed_optptr_field_write_ok(stmt, declared, pointers,
@@ -790,7 +790,7 @@ def _object_source_materialize(lowered: THIRExpr, analyzer) -> 'bool | None':
     if rt is None:
         return None
     return (False
-            if _f1_ref(unwrap_readonly(unwrap_ref_type(
+            if record_like(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(rt))), analyzer)
             else None)
 

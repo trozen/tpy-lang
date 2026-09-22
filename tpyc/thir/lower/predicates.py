@@ -579,7 +579,7 @@ def _foreach_storage_opt_elem(et: TpyType | None, analyzer) -> bool:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
     if not (isinstance(t, OptionalType) and t.uses_pointer_repr()):
         return False
-    return _f1_record(_unwrap_own(unwrap_readonly(t.inner)), analyzer)
+    return record_like(_unwrap_own(unwrap_readonly(t.inner)), analyzer)
 
 def _foreach_value_opt_elem(et: TpyType | None) -> 'OptionalType | None':
     """The value-repr `Optional[cheap scalar / char]` loop-var element family
@@ -842,7 +842,7 @@ def _span_slot(t: 'TpyType | None', analyzer) -> bool:
     if not args:
         return False
     elem = _peel_readonly(args[0])
-    return (_eligible_scalar(elem) or _f1_record(elem, analyzer)
+    return (_eligible_scalar(elem) or record_like(elem, analyzer)
             # A str-family element (`argv = sys.argv[1:]` ->
             # `std::span<std::string>`) spells the same plain copy; its reads
             # are the ordinary str-element rows.
@@ -2277,7 +2277,7 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     # slot, so reads render the bare (same-module) or qualified (imported)
     # name with no indirection. The F1 slice pins the type spelling;
     # non-value records take the pointer-slot branch.
-    if gt.is_value_type() and _f1_record(gt, analyzer):
+    if gt.is_value_type() and record_like(gt, analyzer):
         return gt
     # A WRAPPER-union global (`g: Expr = [...]` -> `Expr g;`): the wrapper
     # struct is a direct-storage namespace-scope object -- the generator's
@@ -2322,11 +2322,11 @@ def _pointer_slot_global_type(gt: TpyType | None, analyzer, *,
     # `g == nullptr` tests, narrowed derefs) like an opt-ptr LOCAL's.
     if (isinstance(gt, OptionalType) and gt.uses_pointer_repr()
             and not isinstance(gt.inner, ReadonlyType)
-            and _f1_record(gt.inner, analyzer)):
+            and record_like(gt.inner, analyzer)):
         return gt
     if gt.is_value_type() or gt.needs_wrapper():
         return None
-    if (_f1_ref(gt, analyzer)
+    if (record_like(gt, analyzer)
             # A @dynamic-protocol global is the same `T* g{};` slot; its
             # reads ride the pointer-local arms exactly like the erased
             # dyn LOCAL's (`(*g)` deref, `g->` receiver).
@@ -2698,7 +2698,7 @@ def _global_record_recv(obj: TpyExpr, declared: dict[str, TpyType],
     if gt is None:
         return None
     gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
-    if gt.is_value_type() or not _f1_record(gt, analyzer):
+    if gt.is_value_type() or not record_like(gt, analyzer):
         return None
     return gt
 
@@ -3146,7 +3146,7 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
             rv = _resolve_pending_view(u, analyzer)
             return rv is not None and _f1_record_type_arg_ok(rv, analyzer)
     return (_eligible_scalar(a) or _eligible_char(a)
-            or _f1_record(a, analyzer)
+            or record_like(a, analyzer)
             or _f1_dyn_protocol_type_arg(a, analyzer))
 
 def _f1_dyn_protocol_type_arg(a: 'TpyType | int', analyzer) -> bool:
@@ -3163,13 +3163,13 @@ def _f1_dyn_protocol_type_arg(a: 'TpyType | int', analyzer) -> bool:
         return False
     return dynamic_base_name(u, analyzer) == u.to_cpp()
 
-def _method_rvalue_f1_record(init: 'TpyExpr | None', analyzer) -> bool:
+def _method_rvalue_record_like(init: 'TpyExpr | None', analyzer) -> bool:
     """An F1-record rvalue produced by a METHOD call (`a.clone()`): the
     owned-decl / REBIND_SLOT / rebind-reseat gates share this disjunct, so
     the three admissions cannot drift; the method-call lowering's own gates
     validate callee/args downstream."""
     return (isinstance(init, TpyMethodCall)
-            and _f1_record(analyzer.get_expr_type(init), analyzer)
+            and record_like(analyzer.get_expr_type(init), analyzer)
             and is_rvalue_source(analyzer, init))
 
 def _binding_peel(t: TpyType) -> TpyType:
@@ -3292,18 +3292,43 @@ def _const_default_param_form(t: 'TpyType | None') -> bool:
                 and td.param_mut_cpp_formatter is not None)
 
 
-def _f1_ref(t: TpyType | None, analyzer) -> bool:
-    """The REFERENCE axis: the spelling-equal record slice OR its container
-    half -- user records, the RECORD-category builtins, and the builtin
-    containers, which are the same thing (a `@native` stub class with a
-    `record` payload) distinguished only by carrying a `cpp_formatter`.
+def record_like(t: TpyType | None, analyzer) -> bool:
+    """A NOMINAL type the lowering binds and spells as one object: a user
+    record, a RECORD-category builtin (`Poll`, `Waker`) or a builtin
+    container (`list`, `dict`, `set`, `bytearray`, `Array`). A gate that asks
+    "is this a record or a container" reads this; a `ValueType` record is
+    record-like and copies, so value-ness is the gate's own second question
+    (`is_value_type()`). Record-ness proper (`_f1_record`) stays where the
+    render needs a record fact -- fields, member-init, parents, protocol
+    conformance, the `Deref` target, a record's `operator<<` -- or where the
+    record and the container still take SEPARATE routes and this gate only
+    selects between them; container-ness stays where the render needs a
+    container one (literal construction, pending-literal resolution). The
+    builtin-container arm asks BORROW_REF because a value-form builtin with a
+    formatter (`str`, `bytes`, a view) is not bound as one object.
 
-    A strict SUPERSET of `_f1_record` by construction, which is what a shared
-    gate has to be: merging a record leg and a container leg must not lose the
-    value-form RECORD builtins the record leg admits."""
+    NOMINAL is the rule, not a leftover guard: a record union and a non-value
+    tuple are non-value too but borrow as `Union<A*, B*>` and `tuple<T*, ..>`,
+    and the recursive-union wrapper is a struct whose payload is a member --
+    none of them is one object bound `T&`."""
     if not isinstance(t, TpyType):
         return False
-    return _f1_record(t, analyzer) or _f1_container_ref(_binding_peel(t))
+    t = _binding_peel(t)
+    if not isinstance(t, NominalType):
+        return False
+    td = type_def_of(t)
+    if td is not None and td.is_compile_time_only:
+        return False
+    if t.is_user_record:
+        return analyzer.registry.get_record_for_type(t) is not None
+    if td is None:
+        return False
+    if td.record is not None and td.category is TypeCategory.RECORD:
+        return True
+    return (td.cpp_formatter is not None
+            and t.value_form() is ValueForm.BORROW_REF)
+
+
 
 
 def _record_class_binding(t: 'TpyType | None') -> bool:
@@ -3422,7 +3447,7 @@ def _protocol_union_arg(arg: TpyExpr, ptype: 'TpyType | None',
                     and record_inherits_dynamic(at, m, analyzer.registry))
            for m in members):
         return None
-    if _f1_ref(at, analyzer) or is_span(at):
+    if record_like(at, analyzer) or is_span(at):
         return "addr"
     return None
 
@@ -3637,7 +3662,7 @@ def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     """The borrow-form REFERENCE return slot (`-> Box` -> C++ `Box&` /
     `const Box&`; `-> list[T]` -> `std::vector<T>&` the same way), or None.
     `Own[T]` is the storage (by-value) direction (`_record_storage_return`) --
-    checked before `_f1_ref`'s own Own-unwrap can admit it.
+    checked before `record_like`'s own Own-unwrap can admit it.
 
     One slot for the whole reference axis: the return ladder's source arms
     render the same C++ for a record and for a container (bare name, field
@@ -3655,7 +3680,7 @@ def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
         return t
     if not isinstance(t, NominalType):
         return None
-    return t if _f1_ref(t, analyzer) else None
+    return t if record_like(t, analyzer) else None
 
 def _eligible_ptr_value(t: 'TpyType | None', analyzer) -> bool:
     """A `Ptr[T]` value (`T*` by value -- copied around like a scalar),
@@ -3692,7 +3717,7 @@ def _eligible_ptr_value(t: 'TpyType | None', analyzer) -> bool:
     # the value slice is pointee-blind here like everywhere else.
     return ((is_void_like_type(inner) or _eligible_scalar(inner)
              or _eligible_char(inner) or _is_type_param_slot(inner)
-             or _f1_record(inner, analyzer))
+             or record_like(inner, analyzer))
             and _witness("ptr.value_slot"))
 
 def _dyn_proto_ptr(t: 'TpyType | None') -> bool:
@@ -4106,7 +4131,7 @@ def _record_storage_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     inner = unwrap_readonly(t.wrapped)
     if not isinstance(inner, NominalType):
         return None
-    return inner if _f1_ref(inner, analyzer) else None
+    return inner if record_like(inner, analyzer) else None
 
 def _unwrap_own(t: TpyType) -> TpyType:
     """The payload of an `Own[T]` wrapper, else `t` unchanged -- the recurring unwrap
@@ -4144,7 +4169,7 @@ def _res_container_return(t: TpyType | None, analyzer) -> 'TpyType | None':
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(t, OwnType):
         t = unwrap_readonly(t.wrapped)
-    return t if _f1_ref(t, analyzer) else None
+    return t if record_like(t, analyzer) else None
 
 def _plain_container_read(t: TpyType | None) -> bool:
     """A plain (non-`Own`) reference-form container read at a position where
@@ -4226,7 +4251,7 @@ def _opt_pointee_wide(inner: 'TpyType | None', analyzer) -> bool:
         return False
     iu = unwrap_readonly(inner)
     return bool(
-        _f1_record(iu, analyzer)
+        record_like(iu, analyzer)
         or _wrapper_union_like(iu, analyzer) is not None
         or isinstance(iu, TypeParamRef)
         or (isinstance(iu, NominalType) and is_dyn_protocol(iu))
@@ -4290,7 +4315,7 @@ def _storage_optional_return_wide(t: TpyType | None,
     storage-opt witness and stay out."""
     def _sp(inner) -> bool:
         iu = unwrap_readonly(inner)
-        return bool(_f1_ref(iu, analyzer)
+        return bool(record_like(iu, analyzer)
                     or _wrapper_union_like(iu, analyzer) is not None)
 
     if not isinstance(t, TpyType):
@@ -4332,6 +4357,9 @@ def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
     inner = unwrap_readonly(t.inner)
     if isinstance(inner, OwnType):
         return None
+    # Record slice on purpose: an `Optional[container]` pointee has its own
+    # pointer route (the setitem / aug-assign / field-write consumers), and
+    # this predicate only selects the record one.
     return t if _f1_record(inner, analyzer) else None
 
 def _optional_ptr_borrow_name(e: TpyExpr, declared: dict[str, TpyType],
@@ -4801,7 +4829,7 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
             inner = inner.inner
         inner = unwrap_readonly(inner)
         if (isinstance(inner, TypeParamRef)
-                or _f1_record(inner, analyzer)
+                or record_like(inner, analyzer)
                 or _eligible_ptr_union(inner, analyzer) is not None
                 # An `Own[@dynamic P]` param (`std::unique_ptr<P>`): the
                 # routed reads are the bare forward return and the arrow
@@ -4904,7 +4932,7 @@ def _storage_optional_return_type(t: TpyType | None, analyzer) -> 'OptionalType 
     return annotation."""
     if not isinstance(t, OptionalType) or t.uses_pointer_repr():
         return None
-    return t if _f1_record(_unwrap_own(t.inner), analyzer) else None
+    return t if record_like(_unwrap_own(t.inner), analyzer) else None
 
 def _f1_tuple_element_ok(e: TpyType, analyzer) -> bool:
     """A tuple element the F1 slice can spell: an eligible value scalar (`T`,
@@ -6193,7 +6221,7 @@ def _subscript_record_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
     el = unwrap_readonly(unwrap_send_sync(recv_t.element_types[idx]))
     if isinstance(el, OwnType):
         el = unwrap_readonly(el.wrapped)
-    return idx if _f1_record(el, analyzer) else None
+    return idx if record_like(el, analyzer) else None
 
 def _subscript_optional_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
                                    analyzer) -> 'int | None':
@@ -6208,7 +6236,7 @@ def _subscript_optional_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t.element_types[idx])))
     if not (isinstance(inner, OptionalType) and inner.uses_pointer_repr()):
         return None
-    return idx if _f1_record(_unwrap_own(inner.inner), analyzer) else None
+    return idx if record_like(_unwrap_own(inner.inner), analyzer) else None
 
 def _field_over_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
                              analyzer) -> bool:
@@ -6448,7 +6476,7 @@ def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
     kb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(key)))
     return (is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
             or _owned_str_slot(key, analyzer)
-            or _f1_record(kb, analyzer)
+            or record_like(kb, analyzer)
             or isinstance(kb, AnyType)
             # A VALUE-TUPLE key (`dict[tuple[int32, int32], str]`): the
             # literal key renders its spelled `std::tuple<...>{...}` and
@@ -6762,7 +6790,7 @@ def _set_method_recv(t: TpyType | None, analyzer) -> bool:
                            # An F1-record element (`set[Point]`): inserts
                            # render the bare rvalue / move like a list's;
                            # per-method args and results still gate.
-                           or _f1_record(unwrap_readonly(unwrap_ref_type(
+                           or record_like(unwrap_readonly(unwrap_ref_type(
                                unwrap_send_sync(args[0]))), analyzer)
                            or isinstance(unwrap_readonly(unwrap_ref_type(
                                unwrap_send_sync(args[0]))), AnyType)
@@ -7585,7 +7613,7 @@ def _alias_field_source_ok(init: TpyExpr, declared: dict[str, TpyType],
     identical FIELD-source render, which is why one predicate spans them
     (docs/PITFALLS.md#same-construct-every-position)."""
     return (_field_receiver_ok(init, declared, analyzer)
-            and _f1_ref(analyzer.get_expr_type(init), analyzer))
+            and record_like(analyzer.get_expr_type(init), analyzer))
 
 def _union_base_member_match(st: 'TpyType | None', members, analyzer) -> bool:
     """A record source type deriving from exactly ONE member of a
@@ -9011,7 +9039,7 @@ def _own_storage_opt_param(t: 'TpyType | None', analyzer) -> 'OptionalType | Non
     ow = unwrap_readonly(u.wrapped)
     if not (isinstance(ow, OptionalType) and ow.uses_pointer_repr()):
         return None
-    return ow if _f1_record(unwrap_readonly(ow.inner), analyzer) else None
+    return ow if record_like(unwrap_readonly(ow.inner), analyzer) else None
 
 
 def _own_opt_storage_binding(t: 'TpyType | None') -> bool:

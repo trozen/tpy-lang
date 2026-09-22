@@ -1161,14 +1161,15 @@ def test_if_bool_literal_routes_at_sync_boundary():
 
 
 def test_assign_lowering_reject_falls_back_at_sync_boundary():
+    # A non-empty literal at a readonly container parameter of a free
+    # function is a kept reject (BUGS.md#readonly-container-literal-arg-rejected);
+    # it stands in for whatever body shape the fixture needs to refuse.
     compiler, modules = _compile(
-        "from tpy import int32\n"
-        "class R:\n"
-        "    xs: list[int32]\n"
-        "    def __init__(self, xs: list[int32]):\n"
-        "        self.xs = xs\n"
-        "def rejected(r: R, r2: R) -> None:\n"
-        "    r.xs = r2.xs\n"
+        "from tpy import int32, readonly\n"
+        "def rejected(n: int32) -> None:\n"
+        "    total([1, 2, 3])\n"
+        "def total(xs: readonly[list[int32]]) -> int32:\n"
+        "    return len(xs)\n"
     )
     entry = _entry(modules)
     with activate_compiler(compiler):
@@ -1178,11 +1179,8 @@ def test_assign_lowering_reject_falls_back_at_sync_boundary():
         if fn is None:
             _record_reject("body")
     assert fn is None
-    # The reference field-write gate admits a FIELD source at a container
-    # slot exactly as it does at a record one; the container field READ is
-    # what still has no value-position row, so the reject moved one level in.
     assert _tally(compiler) == {
-        "body:stmt.assign:field.result_type": 1,
+        "body:expr.call:call.arg_shape.container": 1,
     }
 
 

@@ -159,7 +159,7 @@ from .predicates import (
     _eligible_scalar,
     _f1_container_ref,
     _f1_record,
-    _f1_ref,
+    record_like,
     _f1_tuple,
     _generic_value_tuple_return,
     _narrowed_opt_field_read,
@@ -279,7 +279,7 @@ def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
     form-agnostic helpers as the owned str/bytes locals R1a already routes
     (`__len__` / `bytes_getitem` / bare name), so they share that slice.
 
-    Own[T] params (`_f1_ref` peels the Own, so an `Own[F1-record]` or
+    Own[T] params (`record_like` peels the Own, so an `Own[F1-record]` or
     `Own[container]` payload already reads through the axis branch below; the
     capture `b(std::move(b_))` is skeleton) and pointer-repr
     `Optional[F1-record]` params (`p: P | None` -> a `P*` frame field:
@@ -367,9 +367,9 @@ def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
     # unchanged; element-shape gating stays at the use sites. An
     # Own[container] param differs only in capture (the skeleton's
     # OWNED_VALUE move -> a `std::vector<T>` value field); reads are the
-    # same bare container rows, so it rides the same admission -- `_f1_ref`
+    # same bare container rows, so it rides the same admission -- `record_like`
     # peels the Own for both halves.
-    if unwrapped is not None and _f1_ref(unwrapped, analyzer):
+    if unwrapped is not None and record_like(unwrapped, analyzer):
         return True
     # An `Own[value]` / `Own[T]` param is the bare-value capture with
     # ownership transfer: the frame field is the payload spelling itself
@@ -1058,14 +1058,14 @@ def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
     ctx = item.context_expr
     if item.manager_borrowed:
         ok = (isinstance(ctx, TpyName) and ctx.name in declared
-              and _f1_record(declared[ctx.name], analyzer))
+              and record_like(declared[ctx.name], analyzer))
         # ... and the sync gate's field-access lvalue row (`with self.mgr:`,
         # `with h.g:`): the field read IS the lvalue the skeleton's `auto&`
         # binds, so nothing about the manager render depends on the frame.
         if (not ok and isinstance(ctx, TpyFieldAccess)
                 and isinstance(ctx.obj, TpyName)
                 and ctx.obj.name not in narrowed
-                and _f1_record(analyzer.get_expr_type(ctx), analyzer)):
+                and record_like(analyzer.get_expr_type(ctx), analyzer)):
             ok = True
             _witness("res.with_manager_field")
         if not ok and property_access_returns_cpp_ref(analyzer, ctx):
@@ -1076,14 +1076,14 @@ def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
             _witness("res.with_manager_getter")
     else:
         ok = ((isinstance(ctx, TpyCall)
-               and _f1_record(analyzer.get_expr_type(ctx), analyzer)
+               and record_like(analyzer.get_expr_type(ctx), analyzer)
                and (_ctor_shape_ok(ctx, analyzer)
                     or _record_rvalue_source_shape(ctx, analyzer)))
               # A module-qualified ctor manager (`async with svc.Gate()`):
               # the qualified spelling renders through the marker ctor arm
               # (`::tpyapp::svc::Gate()`), same owned `__with_ctx_N`
               # emplace as the bare-name ctor.
-              or (_f1_record(analyzer.get_expr_type(ctx), analyzer)
+              or (record_like(analyzer.get_expr_type(ctx), analyzer)
                   and _module_qual_ctor_shape(ctx, analyzer)))
     if not ok:
         return "res.with_manager"
@@ -1347,7 +1347,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # frame-slot borrow-name arm, a record at the routed
                 # loop-var / frame_slot NAME borrow deref. Other value
                 # shapes reject there.
-                or _f1_ref(yt_tuple, analyzer)):
+                or record_like(yt_tuple, analyzer)):
             return _reject("res.yield_type")
     else:
         rt = func.return_type if isinstance(func.return_type, TpyType) else None
@@ -1388,7 +1388,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # position-blind tail's last-use move serves the sources;
                 # bare reference-type returns stay on return.borrow_form.
                 or (isinstance(rt_inner, OwnType)
-                    and _f1_record(_unwrap_own(rt_inner), analyzer))
+                    and record_like(_unwrap_own(rt_inner), analyzer))
                 # Own[T] slot (generic ownership transfer, `Poll<T>` value
                 # payload): STORAGE form like the bare-T return, so the
                 # position-blind tail serves the sources; the return-await
@@ -1396,10 +1396,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 or (isinstance(rt_inner, OwnType)
                     and isinstance(unwrap_readonly(rt_inner.wrapped),
                                    TypeParamRef))
-                # Bare F1-record slot (Poll<T*> pointer payload): the value
+                # Bare record / container slot (Poll<T*> pointer payload): the value
                 # tail admits only the SELF lift rung (`&(__self)`); every
                 # other source keeps the return.borrow_form fence.
-                or _f1_record(rt_inner, analyzer)
+                or record_like(rt_inner, analyzer)
                 # Storage Optional[F1-record] slot (`-> Own[Box] | None` ->
                 # `Poll<std::optional<Box>>`): the sync F2c return family's
                 # async twin -- None spells nullopt at the return arm's
@@ -2599,7 +2599,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     raise ThirUnsupported("res.btuple_yield_source")
                 _witness("res.btuple_yield")
                 return
-            if _f1_ref(yt_bare, analyzer):
+            if record_like(yt_bare, analyzer):
                 # REFERENCE yield slot (`val_or_ref<T>` in the skeleton's
                 # signature) -- records and containers alike, one ladder over
                 # the whole axis. Both halves emit the same
@@ -2627,8 +2627,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 #   res.yield_record_field      res.yield_container_field
                 #   res.yield_record_param      res.yield_container_param
                 #   res.yield_record_borrow     res.yield_container_borrow
-                half = "record" if _f1_record(yt_bare, analyzer) else \
-                    "container"
+                # Naming only: the container half is the axis's formatter-
+                # carrying members, so a generic record whose type-arg the
+                # record slice does not spell still counts as a record here.
+                half = ("container" if _f1_container_ref(yt_bare)
+                        else "record")
                 yv_src = ys.value
 
                 def _yield_borrow_name(e: TpyExpr) -> THIRExpr:
@@ -2668,7 +2671,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if (isinstance(yv_src, TpyFieldAccess)
                         and isinstance(yv_src.obj, TpyName)
                         and yv_src.obj.name == "self"
-                        and _f1_ref(unwrap_readonly(unwrap_ref_type(
+                        and record_like(unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(analyzer.get_expr_type(yv_src)))),
                             analyzer)):
                     # A reference FIELD off self reads bare (`return
@@ -2685,7 +2688,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if (property_access_returns_cpp_ref(analyzer, yv_src)
                         and isinstance(yv_src.obj, TpyName)
                         and yv_src.obj.name == "self"
-                        and _f1_ref(unwrap_readonly(unwrap_ref_type(
+                        and record_like(unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(analyzer.get_expr_type(yv_src)))),
                             analyzer)):
                     # The ACCESSOR spelling of the field arm above: a getter
@@ -2707,7 +2710,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if (isinstance(unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(yt))), OwnType)
                         and ((isinstance(yv_src, TpyCall)
-                              and ((_f1_record(yt_bare, analyzer)
+                              and ((record_like(yt_bare, analyzer)
                                     and _ctor_shape_ok(yv_src, analyzer))
                                    or _own_return_call_shape(yv_src,
                                                              analyzer)))

@@ -1,0 +1,6 @@
+fn_global_alias 2
+meth_narrowed_alias 3
+ctor_field_write 3
+nested_narrowed_alias 2
+gen_field_write 3
+async_field_write 3

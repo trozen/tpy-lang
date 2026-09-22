@@ -41,7 +41,7 @@ Scripts (run from the repo root with `uv run python`):
   otherwise grow private copies.
 - `container_gates.py` -- **the container-family consolidation's ratchet.**
   AST call counts, per lowering file, of the eight container predicates, the
-  family-enumeration disjunctions, `_f1_record` / `_f1_ref` /
+  family-enumeration disjunctions, `_f1_record` / `record_like` /
   `is_value_type`, and `resolve_pending_container`. The container counts go
   down as gates move onto the reference-type axis; `resolve_pending_container`
   and the literal-construction sites are the two that legitimately stay, so a
@@ -80,8 +80,16 @@ Scripts (run from the repo root with `uv run python`):
   statement, which is the half a verdict column cannot show (two families
   that both admit while one materialises an argument temp differ silently).
   ONE CELL PER FUNCTION through the same THIR survey, so the whole table is
-  ~70 compilations rather than one process per cell; a SEMA error is what
+  ~90 compilations rather than one process per cell; a SEMA error is what
   still costs a recompile, since sema stops the module at its first one.
+  The slot kinds span the REFERENCE AXIS on purpose: a record, a generic
+  record with a record type-arg (`Box[R]`, the type-arg spelling fence), a
+  user-`Deref` wrapper over a record and over a container, `Array`, the
+  builtin containers and `bytearray`, and the recursive-union wrapper
+  (`Json`, a tripwire: on the axis by value form, not admissible as a
+  record or a container); a `subclass_local` source measures the upcast
+  rows. So "the record twin of this row admits and the container twin does
+  not" is a diff of this table, not a review discovery.
   Committed as `arg_family_sweep.expected.json` and gated by
   `tests/test_arg_family_sweep.py`. Run it as
   `uv run python scripts/thir_migration/review/arg_family_sweep.py` to check,
@@ -90,6 +98,32 @@ Scripts (run from the repo root with `uv run python`):
   their name suggests: a `@staticmethod` call routes to the
   marker-qualified family, and `Outer(Inner(x))` to the direct ctor family).
   Like the property sweep it records no behaviour: nothing is built or run.
+- `ref_sink_sweep.py` -- **the SINK x source x reference-kind x position
+  verdict ratchet**, the sibling of the arg sweep for every sink that is NOT
+  an argument: a borrow local, a reseated local, a returned borrow, a field
+  write, a tuple element, the receiver a mutation is applied to directly, a
+  `yield` and a `match` capture. Each reaches the lowering through its own
+  gate, and the gates disagree about the same source expression. It reuses
+  the arg sweep's kind table, source shapes, fixture, render normaliser and
+  compiler loader by import, so the two tables span the same reference axis
+  and the same source spellings; it carries its own runner because a
+  constructor body is not in `iter_module_callables` and a rejecting FRAME
+  ends the emission pass. ONE PROGRAM PER (kind, position) for the four
+  non-frame positions; the generator and `async` positions keep the property
+  sweep's rule -- a reject there takes the rest of the program with it -- so
+  they are surveyed with a retry loop, gated through minimal one-cell
+  programs, and carry a reduced source set, since one compilation per
+  rejecting frame is what they cost. Three strings per cell, as in the arg
+  sweep: verdict, first warning, normalised THIR of the subject. The render
+  column is what makes this table worth having: `x = b._v` at a record binds
+  a COPY in a plain function and a pointer inside a frame, and only the
+  render says so. Committed as `ref_sink_sweep.expected.json`, gated by
+  `tests/test_ref_sink_sweep.py`. `--update` rewrites the table, `--only
+  <text>` takes a slice, `--raw <path>` dumps the unpruned table. The
+  `match_capture` sink is spelled `case v:` rather than `case _ as v:`
+  because the latter is an ICE on a record subject
+  (`_match_record_arm_always`, `tpyc/thir/lower/match.py`, treats an
+  `as`-bound wildcard as an or-pattern).
 - `probe_fallback.py`, `probe_site.py`, `probe_programs.py` -- **RETIRED.**
   Each emitted one program through both codegen paths and compared the
   outcomes, so all three stopped working when the AST body emitters were

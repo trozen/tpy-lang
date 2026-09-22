@@ -67,6 +67,7 @@ from .predicates import (
     _eligible_scalar,
     _callable_value,
     _f1_record,
+    record_like,
     _field_decl_type,
     _field_receiver_ok,
     _for_each_elem_binding_ok,
@@ -567,7 +568,7 @@ def _comp_route(init, declared: dict[str, TpyType],
             # `const auto& p =` -- the inline tuple unpack spells a ref
             # binding for every non-value target).
             if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
-                    or _f1_record(
+                    or record_like(
                         unwrap_readonly(unwrap_send_sync(tt)),
                         analyzer)
                     # A ptr-repr Optional[F1-record] element binds the
@@ -646,7 +647,7 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
         return True
     return (_eligible_enum(slot, analyzer) is not None
             or _callable_value(slot)
-            or _f1_record(slot, analyzer))
+            or record_like(slot, analyzer))
 
 def _comp_container_name_elem(e, vt: 'TpyType | None', lc: '_LowerCtx',
                               body_declared: dict[str, TpyType]) -> bool:
@@ -687,7 +688,7 @@ def _unpack_target_cpps(unpack_types, lc: '_LowerCtx',
     ref = "const auto&" if const_loop_var else "auto&"
     return tuple(
         None if tt is None
-        else (ref if (_f1_record(
+        else (ref if (record_like(
                           unwrap_readonly(unwrap_send_sync(tt)), lc.analyzer)
                       # A storage-optional element binds the same reference
                       # (`auto& p = std::get<0>(t);`).
@@ -763,11 +764,11 @@ def _comp_lowering_route(
                                                            allow_container=True)):
         return None
     if route.kind == "dict":
-        # An owned-move source admits a hashable F1-record KEY (sema validated
+        # An owned-move source admits a hashable record-like KEY (sema validated
         # hashability by giving the dict a record key type); every other dict
         # comp keeps the narrow key slice.
         key_ok = (_comp_slot_ok(args[0], analyzer)
-                  or (route.owns_elements and _f1_record(args[0], analyzer)))
+                  or (route.owns_elements and record_like(args[0], analyzer)))
         # The list leg's node-gated tuple row, on the dict's VALUE slot: a
         # value `TupleType` slot fails the elem-slot ladder, but a tuple
         # LITERAL value_expr rides the storage-direct row the same way (a
@@ -921,7 +922,7 @@ def _lower_array_comprehension(
         var=gen.var,
         loop="array_range",
         elem_type=counter,
-        counter_cpp=counter.to_cpp(),
+        counter_cpp=lc.render_type(counter),
         array_elem_cpp=lc.render_type(elem_t),
         array_size_cpp=str(t.type_args[1]),
         range_start=_lower_expr(args[0], lc, declared) if len(args) >= 2 else None,
@@ -1376,7 +1377,7 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
         loop=route.loop,
         elem_type=route.et,
         const_loop_var=gen.const_loop_var,
-        counter_cpp=(route.counter_type.to_cpp()
+        counter_cpp=(lc.render_type(route.counter_type)
                      if route.counter_type is not None else ""),
         counter_bigint=(route.counter_type is not None
                         and is_big_int_type(route.counter_type)),

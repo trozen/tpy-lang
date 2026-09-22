@@ -810,10 +810,15 @@ and lambda-return cases are proven -- not blessed up front.
 The same axis governs which types a lowering arm ADMITS, not only how a value is
 represented: the direction is that a gate asks whether the type's value form is
 `ValueForm.BORROW_REF` rather than whether it is one of the builtin container
-names. `_f1_ref` (the reference
-axis: the spelling-equal record slice plus its container half `_f1_container_ref`,
-which is the reference form carrying a `cpp_formatter`) is the admission predicate
-where the site's whole decision is reference-ness; per-TypeDef facts carry the
+names. `record_like` (a NOMINAL type the lowering binds and spells as one
+object: a user record of any value form, a RECORD-category builtin, or a builtin
+container -- the reference form carrying a `cpp_formatter`) is the admission
+predicate where the site's whole decision is "record or container"; the
+migration-era type-arg spelling fence is not part of it, because every render
+spells a type through the resolver (`lc.render_type`) rather than the bare
+`to_cpp()` the fence guarded; `_f1_record` stays where the render needs a
+record fact or where a record route and a container route still exist side by
+side and the gate only selects between them; per-TypeDef facts carry the
 residue a family list used to stand in for (`cpp_formatter`,
 `param_cpp_formatter` / `param_mut_cpp_formatter`, `subscript_borrows`), and a
 resolved stub method's `FunctionInfo` carries the rest. The element family is the

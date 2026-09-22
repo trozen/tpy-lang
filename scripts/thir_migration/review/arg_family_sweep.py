@@ -117,10 +117,53 @@ class Kind(NamedTuple):
     slc: str | None = None      # a slice of `@X@` yielding `ty`
     view: bool = False          # has a view-returning getter flavour
     fstr: bool = False          # an f-string is a value of `ty`
+    sub: str | None = None      # a constructor rvalue of a SUBCLASS of `ty`
+    imports: tuple[str, ...] = ()   # what the kind's spellings import
+    defs: tuple[str, ...] = ()      # the kind's own type definitions
+
+
+# The subclass of `R` the upcast rows are measured with.
+SUB_DEFS = ("class Sub(R):", "    def __init__(self, x: int32) -> None:",
+            "        super().__init__(x)", "", "")
+
+# The user-`Deref` wrappers: a record whose members are reached through
+# `__deref__`, over a record and over a container payload -- the two
+# instantiations the hop's gates are asked about.
+DEREF_REC_DEFS = ("class DR(Deref[R]):", "    _inner: R", "",
+                  "    def __init__(self, x: int32) -> None:",
+                  "        self._inner = R(x)", "",
+                  "    def __deref__(self) -> R:", "        return self._inner",
+                  "", "")
+DEREF_LIST_DEFS = ("class DL(Deref[list[int32]]):", "    _inner: list[int32]",
+                   "", "    def __init__(self) -> None:",
+                   "        self._inner = [1, 2]", "",
+                   "    def __deref__(self) -> list[int32]:",
+                   "        return self._inner", "", "")
+
+# The recursive-union WRAPPER: on the reference axis by value form, but a
+# struct whose payload is a member, so a gate that admits it as a record or a
+# container binds the wrong thing. Its cells are a tripwire, not a target.
+WRAPPER_DEFS = ("type Json = None | bool | int32 | str | list[Json]", "", "",
+                "def mk_json() -> Own[Json]:", "    j: Json = [1, 2]",
+                "    return j", "", "")
 
 
 KINDS: dict[str, Kind] = {
-    "rec": Kind(ty="R", seed="R(1)", obs="@X@.x", ctor="R(7)"),
+    "rec": Kind(ty="R", seed="R(1)", obs="@X@.x", ctor="R(7)", sub="Sub(5)",
+                defs=SUB_DEFS),
+    # A GENERIC record with a record type-arg: the gates that still read the
+    # record slice ask the type-arg spelling fence of this kind.
+    "gen_rec": Kind(ty="Box[R]", seed="Box(R(1))", obs="@X@.get().x",
+                    ctor="Box(R(7))", dictable=False,
+                    imports=("from tplib import Box",)),
+    "deref_rec": Kind(ty="DR", seed="DR(1)", obs="@X@.x", ctor="DR(7)",
+                      defs=DEREF_REC_DEFS),
+    "deref_list": Kind(ty="DL", seed="DL()", obs="len(deref(@X@))",
+                       ctor="DL()", defs=DEREF_LIST_DEFS),
+    "array_i": Kind(ty="Array[int32, 2]", seed="[1, 2]", obs="len(@X@)",
+                    lit="[3, 4]", listable=False, dictable=False),
+    "ru_wrap": Kind(ty="Json", seed="mk_json()", obs="1", fieldable=False,
+                    listable=False, dictable=False, defs=WRAPPER_DEFS),
     "opt_rec": Kind(ty="Optional[R]", seed="R(2)",
                     obs="0 if @X@ is None else @X@.x",
                     listable=False, dictable=False, ctor="R(8)"),
@@ -180,6 +223,11 @@ SLOTS: tuple[Slot, ...] = (
     Slot("rec_ro", "readonly[R]", "rec"),
     Slot("rec_own", "Own[R]", "rec", ("p.x += 1",)),
     Slot("rec_opt", "Optional[R]", "opt_rec"),
+    Slot("gen_rec", "Box[R]", "gen_rec", ("p.get().x += 1",)),
+    Slot("deref_rec", "DR", "deref_rec", ("p.x = 9",)),
+    Slot("deref_list", "DL", "deref_list", ("p.append(9)",)),
+    Slot("array_i", "Array[int32, 2]", "array_i", ("p[0] = 9",)),
+    Slot("ru_wrap", "Json", "ru_wrap"),
     Slot("list_i", "list[int32]", "list_i", ("p.append(9)",)),
     Slot("list_i_ro", "readonly[list[int32]]", "list_i"),
     Slot("list_i_own", "Own[list[int32]]", "list_i", ("p.append(9)",)),
@@ -230,6 +278,9 @@ SOURCES: tuple[Source, ...] = (
     Source("local", "s0", pre=("s0 = @SEED@",), post=("print(@OBS_s0@)",)),
     # ... and the same local at its LAST use, which is.
     Source("local_last", "s0", pre=("s0 = @SEED@",)),
+    # A SUBCLASS instance at the base-typed slot: the upcast rows.
+    Source("subclass_local", "s0", need="sub", pre=("s0 = @SUB@",),
+           post=("print(@OBS_s0@)",)),
     Source("param", "pv", param=True),
     Source("obj_field", "b._v", need="field", pre=("b = B()",)),
     Source("nested_field", "w.inner._v", need="field", pre=("w = W()",)),
@@ -368,7 +419,8 @@ GROUPS: dict[str, tuple[str, ...]] = {
 
 BASE_IMPORTS = (
     "from typing import Callable, Optional, Protocol",
-    "from tpy import Own, Span, StrView, copy, dynamic, int32, readonly",
+    "from tpy import (Array, Deref, Own, Span, StrView, copy, deref, dynamic,"
+    " int32, readonly)",
 )
 
 # The records every cell shares. `Other` and `P2`/`Impl2` are spliced in only
@@ -462,6 +514,7 @@ def _kind_has(kind: Kind, need: str) -> bool:
         "slice": kind.slc is not None,
         "view": kind.view,
         "fstr": kind.fstr,
+        "sub": kind.sub is not None,
     }[need]
 
 
@@ -471,6 +524,7 @@ def _subst(text: str, kind: Kind) -> str:
                                                        kind.empty or "")
     out = out.replace("@COMP@", kind.comp or "")
     out = out.replace("@CTOR@", kind.ctor or "")
+    out = out.replace("@SUB@", kind.sub or "")
     for name in ("s0", "s1"):
         out = out.replace("@OBS_" + name + "@", kind.obs.replace("@X@", name))
         out = out.replace("@SLICE_" + name + "@",
@@ -564,8 +618,10 @@ def build_program(slot: Slot, mut: bool, group: str,
         if fam.name not in used:
             continue
         lines += [i for i in fam.imports if i not in lines]
+    lines += [i for i in kind.imports if i not in lines]
     lines += [""]
     lines += list(BASE_DEFS) + [""]
+    lines += list(kind.defs)
     if slot.kind == "uni_rec":
         lines += list(OTHER_DEFS)
     if slot.kind == "proto_p":

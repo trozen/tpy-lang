@@ -159,7 +159,8 @@ from .predicates import (
     _eligible_value_union,
     _f1_container_ref,
     _f1_record,
-    _method_rvalue_f1_record,
+    record_like,
+    _method_rvalue_record_like,
     _f1_tuple,
     _mixed_own_storage_source,
     _nested_storage_tuple,
@@ -1146,7 +1147,7 @@ def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
     # An Own-returning METHOD-call rvalue (`self.shared = Rc.new(Val(0))` ->
     # `shared(Rc<Val>::new_<Val>(Val(0)))`): the same direct construct; the
     # method-call lowering validates callee/args recursively.
-    if _method_rvalue_f1_record(source, analyzer):
+    if _method_rvalue_record_like(source, analyzer):
         return True
     if isinstance(source, TpyFieldAccess):
         return (isinstance(source.obj, TpyName)
@@ -1300,7 +1301,7 @@ def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
             return pt is not None and (_eligible_scalar(pt)
                                        or _eligible_char(pt)) and pt == bare
         return False
-    if _f1_record(bare, analyzer):
+    if record_like(bare, analyzer):
         src = _unwrap_copy(elem, analyzer)
         if (src is elem and isinstance(src, TpyName)
                 and isinstance((_pt := _param_type(src.name)), OwnType)
@@ -1319,7 +1320,7 @@ def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
         return (isinstance(src, TpyName)
                 and _param_type(src.name) == bare)
     if (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
-            and _f1_record(bare.inner, analyzer)):
+            and record_like(bare.inner, analyzer)):
         # `None` stores the storage-form nullopt (`{std::nullopt, ..}` --
         # the spelled literal is the STORAGE tuple, so the element is the
         # optional's own empty value, not the borrow nullptr).
@@ -1474,8 +1475,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             # container param at its last use moves (`f(std::move(p))`, the
             # M3b-move arm; the param classifier admits any Own payload). Exact-shape
             # pin: a family or element-type mismatch could carry a conversion
-            # the bare-name MIL render does not, so only a to_cpp-identical
-            # container param is admitted.
+            # the bare-name MIL render does not, so only a container param the
+            # resolver spells identically to the field is admitted.
             pt = declared.get(source.name)
             if not isinstance(pt, TpyType):
                 return False
@@ -1483,7 +1484,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             own = unwrap_optional_own(pt)
             if own is not None:
                 pt = own.wrapped
-            return _container_storage_field(pt) and pt.to_cpp() == ftype.to_cpp()
+            return _container_storage_field(pt) and lc.render_type(pt) == lc.render_type(ftype)
         if (isinstance(source, TpyCall) and len(source.args) <= 1
                 and not source.kwargs
                 and isinstance(source.func, TpyName)
@@ -2656,7 +2657,7 @@ def _lower_ctor_mil_init(
                     st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
                           if st is not None else slot)
                     return THIRRecordCopy(
-                        result_type=slot, cpp_type=st.to_cpp(),
+                        result_type=slot, cpp_type=lc.render_type(st),
                         value=_lower_expr(src, lc, declared),
                         form=Form.STORAGE, loc=getattr(e, "loc", None))
                 el = _lower_expr(e, lc, declared)
@@ -2821,7 +2822,7 @@ def _lower_ctor_mil_init(
             value=_lower_expr(stmt.value, lc, declared,
                               use=_ExprUse(
                                   pos=SinkPos.MIL_INIT, forms=_ONLY_RECORD_PRVALUE)))
-    if _method_rvalue_f1_record(source, analyzer):
+    if _method_rvalue_record_like(source, analyzer):
         # An Own-returning method-call rvalue constructs the field directly
         # (`shared(Rc<Val>::new_<Val>(Val(0)))`): the MIL slot is a storage
         # sink, so the method's record result rides the storage escape.

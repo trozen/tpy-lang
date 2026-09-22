@@ -85,7 +85,7 @@ from .predicates import (
     _enum_member_cpp,
     _f1_record,
     _move_through_type,
-    _f1_ref,
+    record_like,
     _optional_ptr_borrow_name,
     _poly_subject_const,
     _resolved_bytes_value,
@@ -408,7 +408,7 @@ def _match_capture_field_ok(ft: TpyType, analyzer) -> bool:
             or _eligible_enum(t, analyzer) is not None
             or _resolved_str_value(t, analyzer) is not None
             or _value_tuple(t, analyzer) is not None
-            or _f1_ref(t, analyzer)
+            or record_like(t, analyzer)
             or _value_opt_scalar(t, analyzer) is not None
             or _value_opt_owned_view(t, analyzer) is not None)
 
@@ -442,7 +442,7 @@ def _union_guard_member_ok(t: 'TpyType | None', analyzer) -> bool:
     if t is None:
         return False
     u = unwrap_readonly(t)
-    return (_f1_record(u, analyzer) or _eligible_scalar(u)
+    return (record_like(u, analyzer) or _eligible_scalar(u)
             or _resolved_str_value(u, analyzer) is not None)
 
 
@@ -1146,7 +1146,7 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         vtype = resolve_pending_container(vtype, analyzer) or vtype
         if (isinstance(vtype, OptionalType) and vtype.uses_pointer_repr()
                 and not isinstance(vtype.inner, ReadonlyType)
-                and _f1_record(vtype.inner, analyzer)):
+                and record_like(vtype.inner, analyzer)):
             # Pointer-repr Optional hoist: the bare inner `T* name;`
             # (nullable pointer-local, `_emit_branch_decls`' Optional arm) --
             # a full-Optional whole-subject capture of a pointer-repr
@@ -1163,7 +1163,7 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             hoist_declared.append((name, vtype, "opt_ptr"))
             continue
         # Captures sharing a move target must still satisfy their capture-write gates.
-        family_ok = ((_f1_record(vtype, analyzer) or _container_scalar_read(vtype, analyzer))
+        family_ok = ((record_like(vtype, analyzer) or _container_scalar_read(vtype, analyzer))
                      if name in captures else _move_through_type(vtype, analyzer))
         if not (is_plain_nonvalue(vtype) and family_ok):
             return None

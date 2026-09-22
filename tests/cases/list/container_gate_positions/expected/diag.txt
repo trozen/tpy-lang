@@ -1,0 +1,3 @@
+main.py:47: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:62: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:70: warning: copies list[int32] into field; use copy() to make this explicit
