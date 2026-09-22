@@ -510,7 +510,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_combinator::__
         t = 0;
         __coro_arg_0.emplace(::tpyapp::main::make_values());
         {
-            __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>((*__coro_arg_0)));
+            __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
             auto& __src_0 = (*__for_src_0);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {

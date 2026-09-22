@@ -536,7 +536,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_call_src::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_zip_names_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_src_0.emplace(::tpy::builtin_zip<int32_t, int32_t>(xs, ys));
+        __for_src_0.emplace(::tpy::builtin_zip(xs, ys));
         __state = S_JOIN_0;
         continue;
     }
@@ -576,7 +576,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_enumerate_cells_sr
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         cells.emplace(std::array<Cell, 2>{Cell(1), Cell(2)});
-        __for_src_0.emplace(::tpy::builtin_enumerate<Cell>((*cells)));
+        __for_src_0.emplace(::tpy::builtin_enumerate((*cells)));
         __state = S_JOIN_0;
         continue;
     }
@@ -618,7 +618,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_reversed_temp_src:
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __coro_arg_0.emplace(::tpyapp::main::make_cells());
-        __for_src_0.emplace(::tpy::builtin_reversed<Cell>((*__coro_arg_0)));
+        __for_src_0.emplace(::tpy::builtin_reversed((*__coro_arg_0)));
         __state = S_JOIN_0;
         continue;
     }
@@ -958,7 +958,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_arg_temp_src::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested_combinator_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>(::tpy::builtin_reversed<int32_t>(xs)));
+        __for_src_0.emplace(::tpy::builtin_enumerate(::tpy::builtin_reversed(xs)));
         __state = S_JOIN_0;
         continue;
     }
@@ -995,7 +995,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_combinator_temp_src::_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __coro_arg_0.emplace(Deleg(3));
-        __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>((*__coro_arg_0)));
+        __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
         __state = S_JOIN_0;
         continue;
     }
@@ -1248,19 +1248,17 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_walk::__next__
 
 // def pairs(self, ys: list[int32]) -> Iterator[str]:
 //     # generator METHOD over a combinator of a field and a param; the
-//     # unpack target aliases the field's element. (`calls` is bumped so
-//     # the receiver is mutable: a mutation through `c` alone is not
-//     # traced back to it, BUGS.md#combinator-unpack-mutation-not-propagated.)
-//     self.calls += 1
+//     # unpack target aliases the field's element, and the write through
+//     # it is what makes the receiver mutable (`ys` stays const: the
+//     # target's source is `zip`'s first argument alone).
 //     for c, y in zip(self.cells, ys):  # tpyc: ok
 //         c.v += y
-//         yield "method_zip " + str(c.v)                                        # -> S_RESUME_0
+//         yield "method_zip " + str(c.v)                                  # -> S_RESUME_0
 //         churn()
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
-        __self.calls = ::tpy::add_check<int32_t>(__self.calls, 1);
-        __for_src_0.emplace(::tpy::builtin_zip<Cell, int32_t>(__self.cells, ys));
+        __for_src_0.emplace(::tpy::builtin_zip(__self.cells, ys));
         __state = S_JOIN_0;
         continue;
     }

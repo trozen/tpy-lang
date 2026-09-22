@@ -3,12 +3,9 @@
 # head that zip and enumerate feed and a filter clause over the combinator.
 # The zip/enumerate legs over a REFERENCE element type mutate through the loop
 # var and print the source afterwards: the combinators lend the element, so the
-# mutation must reach it. For reference elements that holds only when every
-# `zip` argument is a NAMED begin()/end() container and every
-# `enumerate`/`map`/`filter`/`iter` argument is such a container of either value
-# category; `reversed()` (BUGS.md#reversed-yields-element-copies) and every other
-# argument shape (BUGS.md#nested-combinator-yields-element-copies) are rejected
-# there, so the legs here that use one stay on value elements.
+# mutation must reach it. Every argument shape lends (a combinator hands an
+# element on in the form its source steps it); the nested and rvalue shapes
+# over reference elements are pinned in `builtins/combinator_elem_off_source`.
 from tpy import int32, Own, Span
 
 

@@ -96,7 +96,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpyapp::main::my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+        auto __src_8 = ::tpy::builtin_enumerate(::tpyapp::main::my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();

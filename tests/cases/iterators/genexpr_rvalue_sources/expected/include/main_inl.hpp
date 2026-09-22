@@ -133,7 +133,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_framegen::__next__() {
     }
     case S_RESUME_0: {  // after: yield sum(x for x in xs)  # tpyc: ok
         __state = S_RESUME_1;
-        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_framegen_8(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(xs, xs); }));
+        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_framegen_8(std::in_place, [&]() { return ::tpy::builtin_zip(xs, xs); }));
     }
     case S_RESUME_1: {  // after: yield sum(a + b for a, b in zip(xs, xs))  # tpyc: ok
         __state = S_RESUME_2;

@@ -218,7 +218,7 @@ __gen_framegen framegen(const std::vector<int32_t>& xs) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_aio_10(std::in_place, [&]() { return ::tpy::builtin_enumerate<int32_t>(xs); }));
+        int32_t __tpy_async_ret = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_aio_10(std::in_place, [&]() { return ::tpy::builtin_enumerate(xs); }));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -392,7 +392,7 @@ int32_t by_match(int32_t n, const std::vector<int32_t>& xs) {
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 1: {
-        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_by_match_12(std::in_place, [&]() { return ::tpy::builtin_reversed<int32_t>(xs); }));
+        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_by_match_12(std::in_place, [&]() { return ::tpy::builtin_reversed(xs); }));
         break;
     }
     default: {
@@ -3145,29 +3145,29 @@ void main() {
     std::cout << "values" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_15(std::in_place, [&]() { return ::tpy::dict_values(d); })) << "\n";
     std::cout << "keys" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_16(std::in_place, [&]() { return ::tpy::dict_keys(d); })) << "\n";
     std::cout << "items" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_17(std::in_place, [&]() { return ::tpy::dict_items(d); })) << "\n";
-    std::cout << "zip" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_18(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(xs, ys); })) << "\n";
-    std::cout << "enumerate" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_19(std::in_place, [&]() { return ::tpy::builtin_enumerate<int32_t>(xs); })) << "\n";
-    std::cout << "reversed" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_20(std::in_place, [&]() { return ::tpy::builtin_reversed<int32_t>(xs); }))) << "\n";
-    std::cout << "filter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_21(std::in_place, [&]() { return ::tpy::builtin_filter<int32_t>(big, xs); }))) << "\n";
-    std::cout << "map" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_22(std::in_place, [&]() { return ::tpy::builtin_map<int32_t, int32_t>(triple, xs); }))) << "\n";
+    std::cout << "zip" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_18(std::in_place, [&]() { return ::tpy::builtin_zip(xs, ys); })) << "\n";
+    std::cout << "enumerate" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_19(std::in_place, [&]() { return ::tpy::builtin_enumerate(xs); })) << "\n";
+    std::cout << "reversed" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_20(std::in_place, [&]() { return ::tpy::builtin_reversed(xs); }))) << "\n";
+    std::cout << "filter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_21(std::in_place, [&]() { return ::tpy::builtin_filter(big, xs); }))) << "\n";
+    std::cout << "map" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_22(std::in_place, [&]() { return ::tpy::builtin_map<int32_t>(triple, xs); }))) << "\n";
     std::cout << "gen" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_23(std::in_place, [&]() { return ::tpyapp::main::gen(); })) << "\n";
     std::cout << "ranged" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_24(std::in_place, [&]() { return ::tpyapp::main::ranged(); })) << "\n";
-    std::cout << "zip_gens" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_25(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::gen(), ::tpyapp::main::four()); })) << "\n";
-    std::cout << "zip_gens_long" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_26(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::four(), ::tpyapp::main::gen()); })) << "\n";
-    std::cout << "enumerate_gen" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_27(std::in_place, [&]() { return ::tpy::builtin_enumerate<int32_t>(::tpyapp::main::gen()); })) << "\n";
-    std::cout << "enumerate_genexpr" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_29(std::in_place, [&]() { return ::tpy::builtin_enumerate<int32_t>(::tpyapp::main::__genexpr_main_28(xs)); })) << "\n";
-    std::cout << "zip_genexpr_gen" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_31(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::__genexpr_main_30(std::in_place, [&]() { return ::tpyapp::main::gen(); }), xs); })) << "\n";
-    std::cout << "filter_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_32(std::in_place, [&]() { return ::tpy::builtin_filter<int32_t>(big, ::tpyapp::main::gen()); }))) << "\n";
+    std::cout << "zip_gens" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_25(std::in_place, [&]() { return ::tpy::builtin_zip(::tpyapp::main::gen(), ::tpyapp::main::four()); })) << "\n";
+    std::cout << "zip_gens_long" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_26(std::in_place, [&]() { return ::tpy::builtin_zip(::tpyapp::main::four(), ::tpyapp::main::gen()); })) << "\n";
+    std::cout << "enumerate_gen" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_27(std::in_place, [&]() { return ::tpy::builtin_enumerate(::tpyapp::main::gen()); })) << "\n";
+    std::cout << "enumerate_genexpr" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_29(std::in_place, [&]() { return ::tpy::builtin_enumerate(::tpyapp::main::__genexpr_main_28(xs)); })) << "\n";
+    std::cout << "zip_genexpr_gen" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_31(std::in_place, [&]() { return ::tpy::builtin_zip(::tpyapp::main::__genexpr_main_30(std::in_place, [&]() { return ::tpyapp::main::gen(); }), xs); })) << "\n";
+    std::cout << "filter_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_32(std::in_place, [&]() { return ::tpy::builtin_filter(big, ::tpyapp::main::gen()); }))) << "\n";
     std::cout << "own_call" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_33(std::in_place, [&]() { return ::tpyapp::main::make_list(); })) << "\n";
     std::cout << "borrow_call" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_34(::tpyapp::main::borrow_list(xs))) << "\n";
     std::cout << "ctor_call_list" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_35(std::in_place, [&]() { return ::tpy::construct<std::vector<int32_t>>(xs); })) << "\n";
     std::cout << "ctor_call_sorted" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_36(std::in_place, [&]() { return ::tpy::builtin_sorted<int32_t>(ys); }))) << "\n";
     std::cout << "literal" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_37(std::in_place, [&]() { return std::array<int32_t, 4>{1, 2, 3, 4}; })) << "\n";
     std::cout << "literal_unpack" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_38(std::in_place, [&]() { return std::array<std::tuple<int32_t, int32_t>, 2>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}; })) << "\n";
-    std::cout << "zip_filter" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_39(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(xs, ys); })) << "\n";
+    std::cout << "zip_filter" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_39(std::in_place, [&]() { return ::tpy::builtin_zip(xs, ys); })) << "\n";
     std::cout << "gen_filter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_40(std::in_place, [&]() { return ::tpyapp::main::gen(); }))) << "\n";
     std::cout << "filter_tail_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_41(std::in_place, [&]() { return ::tpyapp::main::ranged(); }))) << "\n";
-    std::cout << "filter_tail_map" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_42(std::in_place, [&]() { return ::tpy::builtin_map<int32_t, int32_t>(triple, xs); }))) << "\n";
+    std::cout << "filter_tail_map" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_42(std::in_place, [&]() { return ::tpy::builtin_map<int32_t>(triple, xs); }))) << "\n";
     std::cout << "filter_mid_view" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_43(std::in_place, [&]() { return ::tpy::dict_values(d); }))) << "\n";
     auto __tmp_1 = ::tpyapp::main::__genexpr_main_44(std::in_place, [&]() { return ::tpyapp::main::gen(); });
     std::cout << "drain" << " " << ::tpyapp::main::drain(__tmp_1) << "\n";
@@ -3236,7 +3236,7 @@ void main() {
     __ctx_1.__exit__({}, nullptr, {});
     {
         try {
-            std::cout << "try" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_53(std::in_place, [&]() { return ::tpy::builtin_map<int32_t, int32_t>(triple, xs); })) << "\n";
+            std::cout << "try" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_53(std::in_place, [&]() { return ::tpy::builtin_map<int32_t>(triple, xs); })) << "\n";
         } catch (...) {
             std::cout << "finally" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_54(std::in_place, [&]() { return ::tpy::dict_keys(d); })) << "\n";
             throw;
@@ -3405,7 +3405,7 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     XS = &__global_slot_1;
-    std::cout << "module" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(std::in_place, [&]() { return ::tpy::builtin_reversed<int32_t>((*XS)); })) << "\n";
+    std::cout << "module" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(std::in_place, [&]() { return ::tpy::builtin_reversed((*XS)); })) << "\n";
     std::cout << "module_lit" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_2(std::in_place, [&]() { return std::vector<int32_t>{7, 8}; })) << "\n";
     ::tpyapp::main::main();
 }

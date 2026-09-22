@@ -35,7 +35,7 @@ std::tuple<std::string, Point*> to_pair(Point& p) {
 //         print(k, d2[k])
 void main() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    std::vector<Point> result = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+    std::vector<Point> result = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts));
     auto& __obj_0 = result;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -43,7 +43,7 @@ void main() {
         const auto& p = *__beg_0;
         std::cout << p << "\n";
     }
-    ::tpy::ordered_map<std::string, Point> d = ::tpy::dict_construct<std::string, Point>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts));
+    ::tpy::ordered_map<std::string, Point> d = ::tpy::dict_construct<std::string, Point>(::tpy::builtin_map<std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts));
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
@@ -51,7 +51,7 @@ void main() {
         std::string_view k = *__beg_1;
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
     }
-    ::tpy::ordered_map<std::string, Point> d2 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts)));
+    ::tpy::ordered_map<std::string, Point> d2 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts)));
     auto& __obj_2 = d2;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();

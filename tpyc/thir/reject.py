@@ -39,10 +39,10 @@ from dataclasses import fields as dataclass_fields, is_dataclass
 from typing import Literal, NoReturn, TYPE_CHECKING
 
 from ..compilation_context import get_current_compiler
+from ..typesys import is_bodyless_binding as _is_bodyless_binding
 from .faces import (begin_witness_journal, commit_witnesses,
                     rollback_witnesses)
 from ..parse.nodes import (
-    FunctionLinkage,
     is_parse_node,
     SourceLocation,
     TpyAwait,
@@ -111,27 +111,10 @@ class ThirUnsupported(Exception):
         return ThirUnsupported(reason, loc=self.loc)
 
 
-def is_bodyless_binding(fn) -> bool:
-    """A callable with NO body or MIL emit at all, so nothing is lowered
-    for it.
-
-    A call-site dispatch to a runtime symbol / template -- method-style
-    `@native("push_back")` (native_name), `@cpp_template(...)`, free
-    `@native(function=True)` (native_function) -- or any `...` stub (is_stub
-    covers declaration-only stubs like `cast`, native-class method stubs, and
-    bare-`@native` methods whose native_name stays None). Covers the whole
-    builtin-type method/ctor surface (str / int / list / dict / ...); a BODIED
-    method on a builtin receiver still counts (a real deferred surface).
-
-    Shared with `--dump-thir`, which must tell "never attempted" apart from
-    "attempted and rejected".
-    """
-    if getattr(fn, "linkage", None) == FunctionLinkage.EXPORT_C:
-        # An `@export(binding="C")` function carries a `native_name` for the
-        # exported C symbol but has a real body the function driver emits.
-        return False
-    return (fn.native_function or fn.native_name is not None
-            or fn.cpp_template is not None or fn.is_stub)
+# One rule for a FunctionInfo and the TpyFunction it came from; shared with
+# `--dump-thir`, which must tell "never attempted" apart from "attempted and
+# rejected".
+is_bodyless_binding = _is_bodyless_binding
 
 
 def note(reason: str, loc: 'SourceLocation | None' = None) -> bool:

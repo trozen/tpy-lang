@@ -33,7 +33,7 @@ namespace tpyapp::main {
 void main() {
     std::array<std::string, 3> words = {"a", "b", "c"};
     {
-        auto __src_0 = ::tpy::builtin_enumerate<std::string>(words);
+        auto __src_0 = ::tpy::builtin_enumerate(words);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -47,7 +47,7 @@ void main() {
     }
     std::array<int32_t, 3> nums = {10, 20, 30};
     {
-        auto __src_2 = ::tpy::builtin_enumerate<int32_t>(nums);
+        auto __src_2 = ::tpy::builtin_enumerate(nums);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -61,7 +61,7 @@ void main() {
     }
     std::vector<::tpy::BigInt> empty = std::vector<::tpy::BigInt>{};
     {
-        auto __src_4 = ::tpy::builtin_enumerate<::tpy::BigInt>(empty);
+        auto __src_4 = ::tpy::builtin_enumerate(empty);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -75,7 +75,7 @@ void main() {
     }
     std::array<std::string, 1> one = {"only"};
     {
-        auto __src_6 = ::tpy::builtin_enumerate<std::string>(one);
+        auto __src_6 = ::tpy::builtin_enumerate(one);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -89,7 +89,7 @@ void main() {
     }
     std::array<std::string, 3> letters = {"x", "y", "z"};
     {
-        auto __src_8 = ::tpy::builtin_enumerate_start<std::string>(letters, 10);
+        auto __src_8 = ::tpy::builtin_enumerate(letters, 10);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();

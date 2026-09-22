@@ -17,7 +17,7 @@ namespace tpyapp::main {
 void main() {
     std::array<std::string, 3> names = {"alice", "bob", "charlie"};
     {
-        auto __src_0 = ::tpy::builtin_zip<int32_t, std::string>(::tpy::Range<int32_t>(3), names);
+        auto __src_0 = ::tpy::builtin_zip(::tpy::Range<int32_t>(3), names);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -30,7 +30,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = ::tpy::builtin_zip<int32_t, int32_t>(::tpy::Range<int32_t>(4), ::tpy::Range<int32_t>(10, 14));
+        auto __src_2 = ::tpy::builtin_zip(::tpy::Range<int32_t>(4), ::tpy::Range<int32_t>(10, 14));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

@@ -333,7 +333,7 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, int32_t> {
     int32_t i;
     int32_t v;
     ::tpy::frame_slot<Noisy> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate<int32_t>((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*__coro_arg_0))))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
@@ -458,7 +458,7 @@ inline void Scope::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 //     self.n = n
 //     self.quiet = Quiet(n)
 //     self.count = len(list(map(dbl, Quiet(n))))  # tpyc: ok
-inline Holder::Holder(int32_t n) : n(n), quiet(Quiet(n)), count(::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, Quiet(n))))) {}
+inline Holder::Holder(int32_t n) : n(n), quiet(Quiet(n)), count(::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t>(dbl, Quiet(n))))) {}
 
 // def make(self) -> Own[Quiet]:
 //     return Quiet(self.n)
@@ -483,7 +483,7 @@ inline int32_t Holder::total(const std::vector<int32_t>& xs) const {
     int32_t t = 0;
     {
         Noisy __tmp_1 = Noisy(this->n);
-        auto __src_0 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_1, xs);
+        auto __src_0 = ::tpy::builtin_zip(__tmp_1, xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

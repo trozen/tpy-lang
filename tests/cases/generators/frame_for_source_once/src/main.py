@@ -54,10 +54,9 @@ class Bag:
 
     def pairs(self, ys: list[int32]) -> Iterator[str]:
         # generator METHOD over a combinator of a field and a param; the
-        # unpack target aliases the field's element. (`calls` is bumped so
-        # the receiver is mutable: a mutation through `c` alone is not
-        # traced back to it, BUGS.md#combinator-unpack-mutation-not-propagated.)
-        self.calls += 1
+        # unpack target aliases the field's element, and the write through
+        # it is what makes the receiver mutable (`ys` stays const: the
+        # target's source is `zip`'s first argument alone).
         for c, y in zip(self.cells, ys):  # tpyc: ok
             c.v += y
             yield "method_zip " + str(c.v)

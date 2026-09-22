@@ -30,7 +30,7 @@ std::tuple<std::string, Resource> make_pair(int32_t x) {
 //         print(k, d[k].val)
 void main() {
     std::vector<int32_t> vals = {1, 2, 3};
-    std::vector<Resource> result = ::tpy::construct<std::vector<Resource>>(::tpy::builtin_map<int32_t, Resource>(make_resource, vals));
+    std::vector<Resource> result = ::tpy::construct<std::vector<Resource>>(::tpy::builtin_map<Resource>(make_resource, vals));
     auto& __obj_0 = result;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -38,7 +38,7 @@ void main() {
         const auto& r = *__beg_0;
         std::cout << r.val << "\n";
     }
-    ::tpy::ordered_map<std::string, Resource> d = ::tpy::dict_construct<std::string, Resource>(::tpy::builtin_map<int32_t, std::tuple<std::string, Resource>>(make_pair, vals));
+    ::tpy::ordered_map<std::string, Resource> d = ::tpy::dict_construct<std::string, Resource>(::tpy::builtin_map<std::tuple<std::string, Resource>>(make_pair, vals));
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();

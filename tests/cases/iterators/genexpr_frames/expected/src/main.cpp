@@ -4065,10 +4065,10 @@ void main() {
     std::vector<int32_t> xs = {1, 2, 3};
     std::array<int32_t, 3> ys = {10, 20, 30};
     bool flag = (::tpy::__len__(xs) > 2);
-    std::cout << "and_operand" << " " << ::tpy::print_bool((flag && (::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_27(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(xs, ys); })) > 3))) << "\n";
-    bool pinned = (flag && (::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_28(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(Noisy(2), ys); })) > 3));
+    std::cout << "and_operand" << " " << ::tpy::print_bool((flag && (::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_27(std::in_place, [&]() { return ::tpy::builtin_zip(xs, ys); })) > 3))) << "\n";
+    bool pinned = (flag && (::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_28(std::in_place, [&]() { return ::tpy::builtin_zip(Noisy(2), ys); })) > 3));
     std::cout << "and_pinned" << " " << ::tpy::print_bool(pinned) << "\n";
-    std::cout << "ternary" << " " << ((flag) ? (::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_29(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(xs, ys); }))) : (0)) << "\n";
+    std::cout << "ternary" << " " << ((flag) ? (::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_29(std::in_place, [&]() { return ::tpy::builtin_zip(xs, ys); }))) : (0)) << "\n";
     if (((::tpy::__len__(xs) != 0) && ::tpy::builtin_any(::tpyapp::main::__genexpr_main_30(xs)))) {
         std::cout << "if_condition big" << "\n";
     }
@@ -4116,7 +4116,7 @@ void main() {
     auto __tmp_6 = ::tpyapp::main::__genexpr_main_38(xs);
     std::cout << "generator_param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::relay(__tmp_6))) << "\n";
     {
-        auto __src_3 = ::tpy::builtin_enumerate<int32_t>(::tpyapp::main::__genexpr_main_39(xs));
+        auto __src_3 = ::tpy::builtin_enumerate(::tpyapp::main::__genexpr_main_39(xs));
         auto&& __itr_3 = ::tpy::__iter__(__src_3);
         for (;;) {
             auto __r_4 = __itr_3.__next__();
@@ -4129,7 +4129,7 @@ void main() {
         }
     }
     {
-        auto __src_5 = ::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::__genexpr_main_40(xs), ::tpyapp::main::__genexpr_main_41(ys));
+        auto __src_5 = ::tpy::builtin_zip(::tpyapp::main::__genexpr_main_40(xs), ::tpyapp::main::__genexpr_main_41(ys));
         auto&& __itr_5 = ::tpy::__iter__(__src_5);
         for (;;) {
             auto __r_6 = __itr_5.__next__();
@@ -4141,7 +4141,7 @@ void main() {
         std::cout << "zip_two" << " " << a << " " << b << "\n";
         }
     }
-    std::cout << "map_over" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, ::tpyapp::main::__genexpr_main_42(xs)))) << "\n";
+    std::cout << "map_over" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t>(dbl, ::tpyapp::main::__genexpr_main_42(xs)))) << "\n";
     std::cout << "str_join" << " " << ::tpy::str_join(",", ::tpyapp::main::__genexpr_main_43(xs)) << "\n";
     bool short_ = ::tpy::builtin_any(::tpyapp::main::__genexpr_main_44(std::in_place, [&]() { return ::tpyapp::main::gen(5); }));
     std::cout << "any_short_circuit" << " " << ::tpy::print_bool(short_) << "\n";
@@ -4267,8 +4267,8 @@ void main() {
     ::tpyapp::main::bump_yielded(ms);
     std::cout << "param_yield_mutated" << " " << ::tpy::__getitem__(ms, 0).v << " " << ::tpy::__getitem__(ms, 1).v << "\n";
     std::array<Node, 2> zs = {Node(1), Node(2)};
-    std::cout << "zip_unpack" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_67(std::in_place, [&]() { return ::tpy::builtin_zip<Node, int32_t>(zs, ys); })) << " " << ::tpy::__getitem__(zs, 0).v << " " << ::tpy::__getitem__(zs, 1).v << "\n";
-    std::cout << "enumerate_unpack" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_68(std::in_place, [&]() { return ::tpy::builtin_enumerate<Node>(zs); })) << " " << ::tpy::__getitem__(zs, 0).v << " " << ::tpy::__getitem__(zs, 1).v << "\n";
+    std::cout << "zip_unpack" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_67(std::in_place, [&]() { return ::tpy::builtin_zip(zs, ys); })) << " " << ::tpy::__getitem__(zs, 0).v << " " << ::tpy::__getitem__(zs, 1).v << "\n";
+    std::cout << "enumerate_unpack" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_68(std::in_place, [&]() { return ::tpy::builtin_enumerate(zs); })) << " " << ::tpy::__getitem__(zs, 0).v << " " << ::tpy::__getitem__(zs, 1).v << "\n";
     ::tpy::ordered_map<int32_t, Node> dn = ::tpy::ordered_map<int32_t, Node>({{1, Node(3)}, {2, Node(4)}});
     std::cout << "items_unpack" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_69(std::in_place, [&]() { return ::tpy::dict_items(dn); })) << " " << ::tpy::__getitem__(dn, 1).v << " " << ::tpy::__getitem__(dn, 2).v << "\n";
     ::tpy::ordered_map<std::string, int32_t> names = ::tpy::ordered_map<std::string, int32_t>({{"ab", 1}, {"cde", 2}});
@@ -4304,7 +4304,7 @@ void main() {
     int32_t make = 3;
     int32_t __r0 = 3;
     int32_t __src = 2;
-    std::cout << "capture_names" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_75(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }, make)) << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_76(4, __r0)) << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_77(std::in_place, [&]() { return std::array<int32_t, 2>{1, 2}; }, __src)) << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_78(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(xs, ys); })) << "\n";
+    std::cout << "capture_names" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_75(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }, make)) << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_76(4, __r0)) << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_77(std::in_place, [&]() { return std::array<int32_t, 2>{1, 2}; }, __src)) << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_78(std::in_place, [&]() { return ::tpy::builtin_zip(xs, ys); })) << "\n";
     Node __slot_1 = Node(1);
     Node* cur = &__slot_1;
     Node& kept = (*cur);
@@ -4730,7 +4730,7 @@ void __tpy_init() {
     gxs = &__global_slot_1;
     static std::vector<int32_t> __global_slot_2 = {10, 20, 30};
     gys = &__global_slot_2;
-    module_total = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>((*gxs), (*gys)); }));
+    module_total = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(std::in_place, [&]() { return ::tpy::builtin_zip((*gxs), (*gys)); }));
     std::cout << "module_level" << " " << module_total << "\n";
     static std::vector<std::vector<int32_t>> __global_slot_3 = {{1}, {2, 3}};
     ggrid = &__global_slot_3;

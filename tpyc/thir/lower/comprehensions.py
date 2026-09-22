@@ -25,7 +25,6 @@ from ...typesys import (
     IntLiteralType,
     OptionalType,
     OwnType,
-    ReadonlyType,
     TpyType,
     TupleType,
     peel_value_readonly,
@@ -42,7 +41,6 @@ from ...type_def_registry import (
     is_dict_view,
     is_list,
     is_set,
-    is_span,
     is_span_iter,
 )
 from ...modules.type_resolution import get_iterable_element_type, is_native_iterable
@@ -162,104 +160,6 @@ def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
         return False
     return True
 
-def _reference_typed_elem(t: 'TpyType | None') -> bool:
-    """The yielded element is a reference type (a tuple counts if ANY member
-    is), so a combinator that hands back a COPY is observably wrong -- a
-    mutation through the loop var never reaches the source."""
-    if t is None:
-        return False
-    b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(b, TupleType):
-        return any(_reference_typed_elem(m) for m in b.element_types)
-    return not b.is_value_type()
-
-# Only `zip` lacks an owning DIRECT flavor: `builtin_zip`'s rvalue overload
-# gives `owning_zip_iter`, whose tuple members are spelled `T` where
-# `zip_direct_iter` spells `val_or_ref_t<T>`, so one rvalue argument costs
-# every argument its reference. `enumerate` has
-# `owning_enumerate_direct_iter`, so an owned container lends through it
-# (BUGS.md#nested-combinator-yields-element-copies).
-_NAMED_ARG_COMBINATORS = frozenset({"tpy._builtins._funcs.zip"})
-
-# These lend for a begin()/end() container of either value category:
-# `enumerate` / `filter` through their direct flavors, `map` because codegen
-# spells its element `val_or_ref<T>`.
-_CONTAINER_ARG_COMBINATORS = frozenset({
-    "tpy._builtins._funcs.enumerate",
-    "tpy._builtins._funcs.map",
-    "tpy._builtins._funcs.filter",
-    "tpy._builtins._funcs.iter",
-})
-
-def _begin_end_container(at, analyzer) -> bool:
-    """The argument types the runtime's `detail::has_begin_end` accepts: the
-    container families plus `Span` and the records the record emitter gives
-    synthesized begin()/end(). Every `next_iter_mixin` iterator is excluded,
-    which is why a combinator argument never qualifies."""
-    at = unwrap_ref_type(unwrap_send_sync(at))
-    at = resolve_pending_container(at, analyzer) or at
-    return (_comp_sized_iterable(at) or _lending_span(unwrap_readonly(at))
-            or _comp_synth_begin_end(at, analyzer))
-
-
-def _lending_span(t) -> bool:
-    """A `Span[T]` argument lends, but not `Span[readonly[T]]`: the combinator
-    then spells its element as `val_or_ref<const T>` and the loop var binds
-    the raw proxy (double-wrapped), which no member access can use -- an
-    ill-formed render on both paths, so the readonly-element span stays a
-    located reject until the element spelling peels the readonly layer."""
-    if not is_span(t):
-        return False
-    args = getattr(t, "type_args", None)
-    return not (args and isinstance(args[0], ReadonlyType))
-
-def _source_arg_copies(a, analyzer, *, named_only: bool) -> bool:
-    """Whether one combinator ARGUMENT costs the source its references.
-
-    An argument that is not a source at all -- `map`/`filter`'s callable,
-    `enumerate`'s start -- never does. Every other argument must be a
-    begin()/end() container, and under `named_only` (`zip`, whose rvalue
-    overload has no direct flavor) a plain NAME as well. A combinator argument
-    is neither: `next_iter_mixin` types have no begin()/end(), so
-    `filter(pred, filter(pred, xs))` reaches the by-value
-    `owning_filter_iter` -- which is why the rule mirrors factory selection
-    per node instead of recursing into the argument's own verdict.
-
-    `named_only` is narrower than the C++ rule, which takes any lvalue: a
-    FIELD source is an lvalue and does select `zip_direct_iter`, but inside a
-    method whose `self` is inferred readonly the container arrives `const` and
-    `val_or_ref_t<T>` cannot bind, which is a build failure on the pre-THIR
-    emitter too. Distinguishing the two needs the receiver's const-ness, which
-    is not a fact this lowering has."""
-    at = analyzer.get_expr_type(a)
-    if at is None:
-        return True
-    if get_iterable_element_type(at, registry=analyzer.registry) is None:
-        return False
-    if not _begin_end_container(at, analyzer):
-        return True
-    return named_only and not isinstance(a, TpyName)
-
-def _combinator_copies(it, analyzer) -> bool:
-    """Whether the combinator source `it` hands its elements back by value.
-
-    Mirrors the runtime's factory selection one node at a time. An unverified
-    callee copies, `reversed_iter` above all
-    (BUGS.md#reversed-yields-element-copies). `zip` needs every source
-    argument to be a NAMED begin()/end() container; the others need a
-    begin()/end() container of either value category. No recursion: a
-    combinator argument fails the container test at this level, whatever its
-    own verdict would have been."""
-    fi = getattr(it, "resolved_function_info", None)
-    qn = fi.qualified_name if fi is not None else ""
-    if qn in _CONTAINER_ARG_COMBINATORS:
-        return any(_source_arg_copies(a, analyzer, named_only=False)
-                   for a in it.args)
-    if qn in _NAMED_ARG_COMBINATORS:
-        return any(_source_arg_copies(a, analyzer, named_only=True)
-                   for a in it.args)
-    return True
-
 def _iter_rvalue_source(it, analyzer) -> bool:
     """`iter(<rvalue>)`: `::tpy::__iter__` has no owning overload, so the
     `auto __obj_N = ::tpy::__iter__(mk());` capture iterates a destroyed
@@ -323,10 +223,9 @@ def _source_route(gen, declared: dict[str, TpyType],
         return _SourceRoute(loop="range", counter_type=counter,
                             it_type=None, et=counter, iterable_lvalue=True)
     combinator = False
-    combinator_copies = False
     if not owns and _native_iter_combinator(it, analyzer):
         # The combinator rvalue is captured owning (`auto __obj_N =
-        # ::tpy::builtin_zip<...>(xs, ys);`) and iterated begin/end; its own
+        # ::tpy::builtin_zip(xs, ys);`) and iterated begin/end; its own
         # lowering re-validates callee and args. Never sized -- an Iterator
         # has no len().
         if _iter_rvalue_source(it, analyzer):
@@ -336,7 +235,6 @@ def _source_route(gen, declared: dict[str, TpyType],
         if it_type is None:
             return None
         combinator = True
-        combinator_copies = _combinator_copies(it, analyzer)
         lvalue = False
     elif isinstance(it, TpyMethodCall):
         methods = (("items",) if gen.unpack_vars is not None
@@ -507,8 +405,6 @@ def _source_route(gen, declared: dict[str, TpyType],
         synth_src = True
     et = get_iterable_element_type(it_type, registry=analyzer.registry)
     if et is None:
-        return None
-    if combinator_copies and _reference_typed_elem(et):
         return None
     if synth_src:
         et_b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))

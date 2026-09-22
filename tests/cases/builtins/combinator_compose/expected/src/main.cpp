@@ -53,7 +53,7 @@ __gen_triple_gen triple_gen(std::span<int32_t> items) {
 void main() {
     std::array<int32_t, 5> xs = {1, 2, 3, 4, 5};
     {
-        auto __src_0 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_map<int32_t, int32_t>(double_, xs));
+        auto __src_0 = ::tpy::builtin_enumerate(::tpy::builtin_map<int32_t>(double_, xs));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -69,7 +69,7 @@ void main() {
     }
     std::array<int32_t, 5> nums = {-1, 2, -3, 4, -5};
     {
-        auto __src_2 = ::tpy::builtin_filter<int32_t>(is_positive, nums);
+        auto __src_2 = ::tpy::builtin_filter(is_positive, nums);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -80,7 +80,7 @@ void main() {
     }
     int32_t total = 0;
     {
-        auto __src_4 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_filter<int32_t>(is_positive, nums));
+        auto __src_4 = ::tpy::builtin_enumerate(::tpy::builtin_filter(is_positive, nums));
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -94,7 +94,7 @@ void main() {
     }
     std::cout << total << "\n";
     {
-        auto __src_6 = ::tpy::builtin_map<int32_t, int32_t>(double_, ::tpy::builtin_filter<int32_t>(is_positive, nums));
+        auto __src_6 = ::tpy::builtin_map<int32_t>(double_, ::tpy::builtin_filter(is_positive, nums));
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -104,7 +104,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = ::tpy::builtin_enumerate<int32_t>(::tpyapp::main::triple_gen(::tpy::as_mut_span(xs)));
+        auto __src_8 = ::tpy::builtin_enumerate(::tpyapp::main::triple_gen(::tpy::as_mut_span(xs)));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();

@@ -16,6 +16,7 @@
 #include <memory>
 #include <tuple>
 #include <optional>
+#include <type_traits>
 
 namespace tpy {
 
@@ -48,11 +49,31 @@ decltype(auto) unwrap_ref_move(T& v) {
     }
 }
 
-// Tuple overload: unwrap val_or_ref from each element.
-// Produces tuple<string, Point> from tuple<string, val_or_ref<Point>>.
-template<typename Tuple, std::size_t... Is>
-auto unwrap_tuple_refs(Tuple& t, std::index_sequence<Is...>) {
-    return std::tuple{unwrap_ref_move(std::get<Is>(t))...};
+// Tuple overload: the same rule per member. A member the tuple OWNS (a
+// value, a `val_or_ref` over a value payload, an rvalue-reference member an
+// owning combinator lends out of the container it holds) is moved out; a
+// member it LENDS -- an lvalue-reference member (`std::tuple<int32_t, Cell&>`,
+// what a combinator over a caller's container steps) or a `val_or_ref` over
+// a reference payload -- stays the reference, so a collect into storage
+// COPIES the source element rather than moving it out from under the
+// container; a nested tuple recurses. `std::get` on a reference member is an
+// lvalue exactly like an owned member's, so the member TYPE decides, and the
+// result spells its members rather than deducing them (CTAD would decay
+// every reference into a move).
+template<typename M, typename V>
+decltype(auto) unwrap_tuple_member(V& v) {
+    if constexpr (std::is_lvalue_reference_v<M>) return (v);
+    else return unwrap_ref_move(v);
+}
+
+template<typename R>
+using tuple_member_out_t = std::conditional_t<
+    std::is_lvalue_reference_v<R>, R, std::remove_cvref_t<R>>;
+
+template<typename... Ts, std::size_t... Is>
+auto unwrap_tuple_refs(std::tuple<Ts...>& t, std::index_sequence<Is...>) {
+    return std::tuple<tuple_member_out_t<decltype(unwrap_tuple_member<Ts>(std::get<Is>(t)))>...>{
+        unwrap_tuple_member<Ts>(std::get<Is>(t))...};
 }
 
 template<typename... Ts>

@@ -71,6 +71,7 @@ from ..type_def_registry import (
 from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
 from .type_ops import signature_may_return_borrow
+from ..value_category import iterator_source_callee
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import expr_to_cpp_default
@@ -1551,20 +1552,12 @@ class TypeRegistrar:
                 originating_module=self.ctx.module_name,
             )
             if method.is_generator:
-                # Same registration-time stamp as generator free functions.
                 # The frame also stores the receiver by reference, but -1 is
                 # NOT stamped: return_borrows_from containing -1 blocks
                 # readonly inference (a self-borrowing return pins non-const),
                 # which would flip every generator method non-readonly; the
                 # receiver borrow is tracked in BUGS.md instead.
-                # Read the assembled parameter list, not `method_params`: a
-                # `*args` pack is absent from the latter, so the index set
-                # would both miss it and shift any keyword-only param behind
-                # it -- and these indices are matched against a call's
-                # argument list.
-                func_info.return_borrows_from = (
-                    self.generator_borrow_param_indices(
-                        [p.type for p in func_info.params]))
+                self._stamp_iterator_retention(method, func_info)
             elif ((func_info.native_name is not None
                        or func_info.is_native
                        or func_info.cpp_template is not None)
@@ -3284,6 +3277,29 @@ class TypeRegistrar:
                     protocol.loc
                 )
 
+    def _stamp_iterator_retention(self, func: TpyFunction, info: FunctionInfo) -> None:
+        """Set `return_borrows_from` at registration for a callee whose result
+        is an ITERATOR over its arguments: a generator, or a body-less lazy
+        combinator (`zip`, `enumerate`, `filter`, ...).
+
+        Exact and signature-derived, so a caller whose body is analyzed
+        before the generator's still sees the frame's reference captures
+        (the auto-move gate would otherwise miss them); finalize unions the
+        body-derived facts on top. A combinator has no body to derive the
+        fact from at all, and its C++ object keeps its reference-typed
+        arguments alive exactly as a frame does: the loop variable a caller
+        binds off its result aliases those arguments, so a mutation through
+        it has to climb to them.
+
+        Indices are read against the CALL's argument list, so they come from
+        the full parameter list -- a `*args` pack is absent from the resolved
+        params and would both be missed and shift any keyword-only param
+        behind it.
+        """
+        if func.is_generator or (func.is_stub and iterator_source_callee(info)):
+            info.return_borrows_from = self.generator_borrow_param_indices(
+                [p.type for p in info.params])
+
     @staticmethod
     def generator_borrow_param_indices(
             param_types: 'list[TpyType]') -> frozenset[int]:
@@ -3573,18 +3589,7 @@ class TypeRegistrar:
             originating_module=(None if func.builtin_function_key
                                 else self.ctx.module_name),
         )
-        if func.is_generator:
-            # Set at registration (exact, signature-derived): a caller whose
-            # body is analyzed before this generator's would otherwise see
-            # return_borrows_from=None and the auto-move gate would miss the
-            # frame's reference captures. Finalize unions body-derived facts
-            # on top.
-            # Indices are read against the CALL's argument list, so they must
-            # come from the full parameter list -- a `*args` pack is absent
-            # from resolved_params and would both be missed and shift the
-            # indices of any keyword-only param behind it.
-            info.return_borrows_from = self.generator_borrow_param_indices(
-                [p.type for p in info.params])
+        self._stamp_iterator_retention(func, info)
         # @inline: store body for call-site inlining
         if func.is_inline and not func.is_stub:
             non_doc = [s for s in func.body
@@ -3754,6 +3759,7 @@ class TypeRegistrar:
                 qualified_name=f"{self.ctx.module_name}.{func.name}",
                 originating_module=self.ctx.module_name,
             )
+            self._stamp_iterator_retention(func, info)
             # Propagate resolved types back to AST (matches register_record behavior)
             func.params = list(resolved_params)
             func.return_type = resolved_return

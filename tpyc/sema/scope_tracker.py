@@ -46,6 +46,87 @@ class DeferredEscape(NamedTuple):
     node: TpyExpr | TpyStmt | None
 
 
+def lend_roots(ctx: SemanticContext, expr: TpyExpr, through_call: bool = False,
+               assumed: bool = False) -> list[LendRoot]:
+    """The named storage `expr` hands out a reference INTO, in source
+    order; empty when it builds what it yields.
+
+    A name, a field or an element lends its root. A call lends whatever
+    its callee's `return_borrows_from` names -- the receiver, an argument,
+    several -- so the question is answered by the same fact the borrow
+    tracker files the binding's loans from, never by how the call is
+    spelled: a getter, a method, a free function and an operator dunder
+    that hand back a reference into `b` all point the binding at `b`.
+    """
+    if isinstance(expr, TpyCoerce):
+        return lend_roots(ctx, expr.expr, through_call, assumed)
+    if isinstance(expr, TpyName):
+        return [LendRoot(expr.name, through_call, assumed)]
+    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        return lend_roots(ctx, expr.obj, through_call, assumed)
+    if isinstance(expr, TpyIfExpr):
+        # A mixed arm pair is a prvalue: the binding owns a copy of the
+        # chosen arm and points at neither.
+        arms = [lend_roots(ctx, expr.then_expr, through_call, assumed),
+                lend_roots(ctx, expr.else_expr, through_call, assumed)]
+        return arms[0] + arms[1] if all(arms) else []
+    if isinstance(expr, TpyAwait):
+        # A borrow-returning await aliases what the awaited call borrows.
+        return (lend_roots(ctx, expr.value, through_call, assumed)
+                if expr.await_result_is_borrow else [])
+    if isinstance(expr, TpyVarargPack):
+        return [root for arg in expr.args for root in lend_roots(
+            ctx, arg.expr if isinstance(arg, TpyStarUnpack) else arg,
+            through_call, assumed)]
+    operands = call_borrow_operands(expr)
+    if operands is None:
+        # Literals, comprehensions etc. -- fresh storage.
+        return []
+    # A `@property` read is a path hop like the field it wraps.
+    through_call = through_call or not is_property_getter_read(expr)
+    sources, facts_pending = _call_lend_sources(ctx, expr, operands)
+    roots: list[LendRoot] = []
+    for source in sources:
+        roots.extend(lend_roots(ctx, source, through_call,
+                                assumed or facts_pending))
+    return roots
+
+
+def _call_lend_sources(ctx: SemanticContext, expr: TpyExpr,
+                       operands: CallOperands) -> tuple[list[TpyExpr], bool]:
+    """The operands of one call whose storage its result may point into,
+    and whether that answer is an assumption about a pending callee."""
+    fi, obj, args = operands
+    everything = ([obj] if obj is not None else []) + list(args)
+    if is_property_getter_read(expr):
+        # The read's own convention is decided per INSTANTIATION (a bare
+        # type-param return) and per storage-ref shape, which the body
+        # fact cannot see.
+        return ([obj] if property_access_returns_cpp_ref(ctx, expr)
+                else []), False
+    if not signature_may_return_borrow(fi):
+        return [], False
+    # The ROOT carries the fact: a call site's resolved fi can be a
+    # specialization synthesized before the callee's body facts landed.
+    if fi.root.return_borrows_from is None:
+        pending = ctx.pending_borrow_fact_fis
+        if fi in pending or fi.root in pending:
+            # Body not analyzed yet (a forward reference): assume every
+            # operand, as the borrow registration does.
+            return everything, True
+        # A body-less stub records no fact; its declared convention is
+        # the answer, and a reference it returns is into its receiver.
+        return ([obj] if obj is not None
+                and call_returns_cpp_ref(ctx, fi) else []), False
+    sources = []
+    for idx in sorted(recorded_return_borrow_sources(fi)):
+        if idx == -1 and obj is not None:
+            sources.append(obj)
+        elif 0 <= idx < len(args):
+            sources.append(args[idx])
+    return sources, False
+
+
 class ScopeTracker:
     """Scope depth tracking, loop scope management, and escape detection."""
 
@@ -223,85 +304,6 @@ class ScopeTracker:
 
     # --- Escape detection ---
 
-    def lend_roots(self, expr: TpyExpr, through_call: bool = False,
-                   assumed: bool = False) -> list[LendRoot]:
-        """The named storage `expr` hands out a reference INTO, in source
-        order; empty when it builds what it yields.
-
-        A name, a field or an element lends its root. A call lends whatever
-        its callee's `return_borrows_from` names -- the receiver, an argument,
-        several -- so the question is answered by the same fact the borrow
-        tracker files the binding's loans from, never by how the call is
-        spelled: a getter, a method, a free function and an operator dunder
-        that hand back a reference into `b` all point the binding at `b`.
-        """
-        if isinstance(expr, TpyCoerce):
-            return self.lend_roots(expr.expr, through_call, assumed)
-        if isinstance(expr, TpyName):
-            return [LendRoot(expr.name, through_call, assumed)]
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-            return self.lend_roots(expr.obj, through_call, assumed)
-        if isinstance(expr, TpyIfExpr):
-            # A mixed arm pair is a prvalue: the binding owns a copy of the
-            # chosen arm and points at neither.
-            arms = [self.lend_roots(expr.then_expr, through_call, assumed),
-                    self.lend_roots(expr.else_expr, through_call, assumed)]
-            return arms[0] + arms[1] if all(arms) else []
-        if isinstance(expr, TpyAwait):
-            # A borrow-returning await aliases what the awaited call borrows.
-            return (self.lend_roots(expr.value, through_call, assumed)
-                    if expr.await_result_is_borrow else [])
-        if isinstance(expr, TpyVarargPack):
-            return [root for arg in expr.args for root in self.lend_roots(
-                arg.expr if isinstance(arg, TpyStarUnpack) else arg,
-                through_call, assumed)]
-        operands = call_borrow_operands(expr)
-        if operands is None:
-            # Literals, comprehensions etc. -- fresh storage.
-            return []
-        # A `@property` read is a path hop like the field it wraps.
-        through_call = through_call or not is_property_getter_read(expr)
-        sources, facts_pending = self._call_lend_sources(expr, operands)
-        roots: list[LendRoot] = []
-        for source in sources:
-            roots.extend(self.lend_roots(source, through_call,
-                                         assumed or facts_pending))
-        return roots
-
-    def _call_lend_sources(self, expr: TpyExpr,
-                           operands: CallOperands) -> tuple[list[TpyExpr], bool]:
-        """The operands of one call whose storage its result may point into,
-        and whether that answer is an assumption about a pending callee."""
-        fi, obj, args = operands
-        everything = ([obj] if obj is not None else []) + list(args)
-        if is_property_getter_read(expr):
-            # The read's own convention is decided per INSTANTIATION (a bare
-            # type-param return) and per storage-ref shape, which the body
-            # fact cannot see.
-            return ([obj] if property_access_returns_cpp_ref(self.ctx, expr)
-                    else []), False
-        if not signature_may_return_borrow(fi):
-            return [], False
-        # The ROOT carries the fact: a call site's resolved fi can be a
-        # specialization synthesized before the callee's body facts landed.
-        if fi.root.return_borrows_from is None:
-            pending = self.ctx.pending_borrow_fact_fis
-            if fi in pending or fi.root in pending:
-                # Body not analyzed yet (a forward reference): assume every
-                # operand, as the borrow registration does.
-                return everything, True
-            # A body-less stub records no fact; its declared convention is
-            # the answer, and a reference it returns is into its receiver.
-            return ([obj] if obj is not None
-                    and call_returns_cpp_ref(self.ctx, fi) else []), False
-        sources = []
-        for idx in sorted(recorded_return_borrow_sources(fi)):
-            if idx == -1 and obj is not None:
-                sources.append(obj)
-            elif 0 <= idx < len(args):
-                sources.append(args[idx])
-        return sources, False
-
     def _storage_depth(self, name: str) -> int:
         """The scope depth `name` was declared at."""
         return self.ctx.func.var_scope_depth.get(name, 0)
@@ -309,7 +311,7 @@ class ScopeTracker:
     def get_expr_scope_depth(self, expr: TpyExpr) -> int:
         """The deepest storage scope `expr` lends from; 0 for fresh storage."""
         return max((self._storage_depth(root.name)
-                    for root in self.lend_roots(expr)), default=0)
+                    for root in lend_roots(self.ctx, expr)), default=0)
 
     def _escaping_roots(self, target_name: str,
                         source_expr: TpyExpr) -> list[LendRoot]:
@@ -319,7 +321,7 @@ class ScopeTracker:
             return []
         target_depth = self._storage_depth(target_name)
         by_name: dict[str, LendRoot] = {}
-        for root in self.lend_roots(source_expr):
+        for root in lend_roots(self.ctx, source_expr):
             if self._storage_depth(root.name) <= target_depth:
                 continue
             # A name lent for certain anywhere in the source is certain.
@@ -377,7 +379,7 @@ class ScopeTracker:
         self.ctx.deferred_escapes = []
         for entry in deferred:
             if any(root.name == entry.root_name
-                   for root in self.lend_roots(entry.source_expr)):
+                   for root in lend_roots(self.ctx, entry.source_expr)):
                 self._warn_shared_slot(entry.target_name, entry.root_name,
                                        entry.remedy, entry.node)
 

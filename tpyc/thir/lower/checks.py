@@ -12403,7 +12403,7 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
     note=lambda req: _native_arg_reject(req.a, req.ptype, req.analyzer),
     rows=(
         _ArgRow("shared_pass_through", _r_shared_pass_through),
-        # Callable args at a template callee (`builtin_filter<T>(
+        # Callable args at a template callee (`builtin_filter(
         # is_even, nums)`): a func-ref renders its bare C++ name and a
         # lambda its inline closure -- both loops emit them identically,
         # so the plain ladder's rows serve here too.

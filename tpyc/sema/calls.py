@@ -57,6 +57,7 @@ from .overloads import (
     _scalar_widening_cost,
 )
 from .statements import _root_name_of_expr, _is_self_call_deferred
+from .scope_tracker import lend_roots
 from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import partial_substitute, post_substitute_hint, seeded_arg_hint
 from .send_chain import why_not_send, why_not_sync, render_chain
@@ -3393,6 +3394,9 @@ class CallAnalyzer:
         # caller param beyond the first spawns a standalone edge (collected
         # here, emitted alongside the main edge).
         extra_param_edges: list[tuple[int, int]] = []
+        # Callee slots whose argument LENDS the caller's storage through a
+        # call, so only the callee's writes through the slot reach it.
+        lent: set[int] = set()
         for i, callee_param in enumerate(fi.params):
             if i >= len(expr.args):
                 break
@@ -3448,20 +3452,38 @@ class CallAnalyzer:
                 continue
             arg = expr.args[i]
             arg_root = _root_name_of_expr(arg)
-            if arg_root is None:
-                continue
+            # An argument with no path root may still lend storage: a call
+            # whose result borrows its own arguments (a lazy combinator, a
+            # generator factory) or a conditional of two lvalues hands the
+            # callee a reference into every root it lends, so a mutation
+            # through the callee's param reaches each of them. An assumed
+            # root (a callee whose facts are pending) is kept: the edge only
+            # widens the mutated set, which is the safe direction.
+            if arg_root is not None:
+                arg_roots = [arg_root]
+                through_handle = False
+            else:
+                roots = lend_roots(self.ctx, arg)
+                arg_roots = [r.name for r in roots]
+                through_handle = any(r.through_call for r in roots)
             # Resolve alias and element borrow chains to find the original param.
             # 8a.5: the walk also follows element/field/ptr borrows so that
             # mutating a call arg that element-borrows from a param correctly
-            # traces back to the source param.
-            for resolved in self._arg_storage_roots(arg_root):
-                if resolved not in name_to_idx or resolved in rebound:
-                    continue
-                caller_idx = name_to_idx[resolved]
-                if i not in param_map:
-                    param_map[i] = caller_idx
-                elif param_map[i] != caller_idx:
-                    extra_param_edges.append((i, caller_idx))
+            # traces back to the source param. A root reached only across a
+            # HANDLE loan (`it = zip(xs, ys); f(it)`) is lent the same way a
+            # combinator call in argument position is.
+            for arg_root in arg_roots:
+                direct = set(self._arg_storage_roots(arg_root, cross_handles=False))
+                for resolved in self._arg_storage_roots(arg_root):
+                    if resolved not in name_to_idx or resolved in rebound:
+                        continue
+                    caller_idx = name_to_idx[resolved]
+                    if through_handle or resolved not in direct:
+                        lent.add(i)
+                    if i not in param_map:
+                        param_map[i] = caller_idx
+                    elif param_map[i] != caller_idx:
+                        extra_param_edges.append((i, caller_idx))
         if param_map or receiver_is_self:
             # Edge stores the canonical so Phase 2 reads facts as they evolve.
             callee = fi.root
@@ -3469,14 +3491,16 @@ class CallAnalyzer:
                 f"non-collapsed canonical_fi chain on {callee.name}")
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee, param_map=param_map,
-                                 receiver_is_self=receiver_is_self)
+                                 receiver_is_self=receiver_is_self,
+                                 lent=frozenset(lent))
             )
         for callee_idx, caller_idx in extra_param_edges:
             callee = fi.root
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee,
                                  param_map={callee_idx: caller_idx},
-                                 receiver_is_self=False)
+                                 receiver_is_self=False,
+                                 lent=frozenset(lent & {callee_idx}))
             )
 
     @staticmethod
@@ -3492,11 +3516,13 @@ class CallAnalyzer:
         declared = unwrap_ref_type(params[index].type)
         return isinstance(declared, TypeParamRef)
 
-    def _arg_storage_roots(self, arg_root: str) -> list[str]:
+    def _arg_storage_roots(self, arg_root: str, *,
+                           cross_handles: bool = True) -> list[str]:
         """The caller storages an argument name can reach, for mutation
         attribution. A re-seated name has several and a mutating callee
         reaches whichever loan is live, so all of them owe an edge."""
-        return self.ctx.func.borrow_tracker.storage_roots_or_self(arg_root)
+        return self.ctx.func.borrow_tracker.storage_roots_or_self(
+            arg_root, cross_handles=cross_handles)
 
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
         """Validate pointer constructor arguments (type match, no void args).

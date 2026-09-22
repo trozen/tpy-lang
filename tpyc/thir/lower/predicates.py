@@ -11299,7 +11299,7 @@ def _native_iterable_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     """A `_native_iterable_source`-returning CALL rvalue into a NATIVE
     builtin's structural `Iterable[T]` / `Sequence[T]` slot
     (`zip(get_names(), get_scores())` ->
-    `::tpy::builtin_zip<...>(get_names(), get_scores())`): the call-branch twin
+    `::tpy::builtin_zip(get_names(), get_scores())`): the call-branch twin
     of `_native_iterable_container_arg`'s bare-name row. The runtime overload
     is a C++ template that binds the container BARE, so an `Own[list]`-returning
     free/method call renders in place with no move temp -- the Iterable slot is

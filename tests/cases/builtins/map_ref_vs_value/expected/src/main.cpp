@@ -48,7 +48,7 @@ Point& set_x(Point& p, int32_t new_x) {
 void main() {
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     {
-        auto __src_0 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+        auto __src_0 = ::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -60,7 +60,7 @@ void main() {
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
     {
-        auto __src_2 = ::tpy::builtin_map<Point, Point>(make_new, pts);
+        auto __src_2 = ::tpy::builtin_map<Point>(make_new, pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

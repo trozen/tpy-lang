@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show(xs: list[int32]) -> str:
 //     return f"{list(map(lambda v: v + 1, xs))}"
 std::string show(const std::vector<int32_t>& xs) {
-    return std::format("{}", ::tpy::list_to_str(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t v) -> int32_t { return (::tpy::add_check<int32_t>(v, 1)); }, xs))));
+    return std::format("{}", ::tpy::list_to_str(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t>([](int32_t v) -> int32_t { return (::tpy::add_check<int32_t>(v, 1)); }, xs))));
 }
 
 // def main() -> None:

@@ -73,7 +73,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_pairs::__next__() {
         t = 0;
         __coro_arg_0.emplace(Noisy(2));
         {
-            __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>((*__coro_arg_0)));
+            __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
             auto& __src_0 = (*__for_src_0);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {
