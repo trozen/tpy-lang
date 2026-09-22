@@ -8783,6 +8783,14 @@ independence; repeated writes retain the selected backing's identity. Broader
 move sources and owning aggregate operations remain outside this coverage.
 Source behavior, C++ emission and checker authority are unchanged.
 
+The [approved M4.1/M4.2 interface](MIR_CALL_SUMMARY_INTERFACE_PLAN.md) targets
+analysis-only MIR for direct ordinary calls with scalar results and
+proven absence of external mutation, retention and exceptional exits. It
+separates local evidence extracted from validated MIR from workspace-owned
+summary scheduling. M4.1 implements the immutable states and bounded local
+extractor; ordinary calls remain uncovered until M4.2. Named argument
+temporary storage follows separately.
+
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 
 **`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).

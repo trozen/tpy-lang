@@ -79,6 +79,12 @@ the others visible.
   supplies the internal lowering contract; M3.23 connects scalar constructor
   reads/discards in ordinary expressions and conditions. Named argument
   temporaries and aggregate materialization remain open.
+  The [named argument temporary investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md)
+  confirms that meaningful source coverage first needs the M3/M4 call-summary
+  interface: current MIR excludes the consuming calls. Eager and deferred
+  argument backing must follow actual emitted block scopes, not the existing
+  full-expression lifetime. No new implementation batch is approved by that
+  investigation.
   [M3.18](MIR_M3_TUPLE_ALIAS_PLAN.md) additionally covers fixed whole aliases
   of body-local constructor tuples; alias reseating, owning tuple rebinding
   and hoists remain open, including the source defects listed in that plan.
@@ -170,6 +176,12 @@ coverage alongside W1 when its storage facts suffice. W3 and W5 need defined
 M4 interfaces; W4 needs frame facts and W3 cleanup semantics. M2 representation
 gaps remain prerequisites for their corresponding shapes, not work made
 complete by starting M3.
+
+The [proposed M4.1/M4.2 call-summary batch](MIR_CALL_SUMMARY_INTERFACE_PLAN.md)
+defines the interface needed before named argument storage can gain useful
+source coverage. It keeps interprocedural orchestration in workspace analysis
+and extracts local evidence from validated MIR. This is proposed work, not an
+approved or completed M3/M4 milestone.
 
 Batch work around shared invariants. Specify commit boundaries before coding,
 review the cumulative batch, and run the full forced suite after its final
