@@ -309,7 +309,7 @@ def moved(run: bool, stop: bool, skip: bool, early: bool, items: list[int32], n:
         assert sum(fields[fn.records[0].fields[0].id] == 9 for fields in heap.values()) == count
 
 
-def test_hoisted_move_compiles_without_claiming_mir_coverage() -> None:
+def test_hoisted_move_assigns_optional_backing_without_retagging_source() -> None:
     source = SOURCE.split("    def copied_self")[0] + '''
 def moved(flag: bool) -> int32:
     original = Cell(3)
@@ -325,7 +325,17 @@ def moved(flag: bool) -> int32:
     assert "target = std::move(original);" in cpp
     result = lower_function(function, MIRBodyId("cyclic", "hoisted"), kind=MIRBodyKind.FREE_FUNCTION,
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
-    assert isinstance(result, MIRNotCovered)
+    assert isinstance(result, MIRFunction), result
+    write, = (s for s in analyze_storage(result).writes.values() if isinstance(s.value, MIRMove))
+    assert write.storage_write.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN
+    assignment, = (n for n in nodes(function) if isinstance(n, th.THIRAssign) and isinstance(n.value, th.THIRMove))
+    assert assignment.optional_record_assignment is not None
+    assert assignment.value.form is assignment.value.value.form
+    for flag in (False, True):
+        heap = {}
+        assert execute(result, flag, heap=heap) == (3 if flag else 0)
+        assert len(heap) == (2 if flag else 1)
+    assert inspect_scope_lifetimes(result).conflicts == ()
 
 
 @pytest.mark.parametrize("member", ["custom_copy", "custom_move", "custom_destructor"])

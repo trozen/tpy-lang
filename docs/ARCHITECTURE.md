@@ -75,8 +75,10 @@ facts, without reaching back into sema. Each OWN replacement site has distinct
 storage; repeated execution reuses that site's body-hoisted backing. IN_PLACE
 replacements preserve referent identity. Positive MIR record-write facts
 distinguish initial construction, reusable OWN sites and in-place replacement.
-Only eligible constructor-backed OWN sites are admitted in CFG cycles;
-cyclic initial construction, copy/move and IN_PLACE remain uncovered.
+Verified scalar-field record construction, copy and move can write reusable
+OWN sites, optional backing and IN_PLACE referents in CFG cycles. Fresh scoped
+backing uses region initialization; body initialization in a cycle remains
+uncovered. Source eligibility and retained aliases are checked independently.
 The debug dump exposes write events and possible retained-object conflicts,
 using incoming referents and post-write liveness. It exempts the deliberately
 rebound holder but retains other aliases, including aggregate payloads.

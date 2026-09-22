@@ -122,9 +122,10 @@ their source-form and storage constraints as coverage grows.
    transfer, explicit-copy spellings and escaping field references.
 3. Production THIR-to-MIR tests cover while, range and native loop moves:
    scoped owner facts, INITIALIZE_REGION, zero/repeated activation,
-   continue/break/return, interpreter values and debug collection. Hoisted
-   moves compile while MIR reports not covered. No MIR admission, solver or
-   validation rule changed.
+   continue/break/return, interpreter values and debug collection. This
+   checkpoint left hoisted moves outside MIR; M3.26/M3.27 subsequently cover
+   them under existing storage modes. The local binding consolidation itself
+   changed no MIR admission, solver or validation rule.
 
 ## Remaining boundaries
 
@@ -138,5 +139,6 @@ it therefore does not enter match's borrow-pointer route. A record field
 capture sharing a name with an ordinary binding still rejects at its
 capture-write gate. These boundaries do not warrant dropping the gates.
 
-The broader local-slot redesign remains in TODO.md. Hoisted/reused-slot
-move analysis is the next MIR storage gap; tuple completeness is separate.
+The broader local-slot redesign remains in TODO.md. M3.26/M3.27 cover bounded
+hoisted/reused-slot record copy/move analysis; broader move sources and owning
+aggregates remain MIR storage gaps. Tuple completeness is separate.

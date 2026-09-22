@@ -8739,17 +8739,19 @@ renamed and module-qualified copies use semantic copy facts while preserving
 the existing emitted C++.
 The [local binding consolidation](LOCAL_BINDING_LOWERING_PLAN.md) also admits
 scoped and hoisted source moves, along with hoisted explicit copies. Fixed
-region-local record moves now reach MIR through production THIR; hoisted and
-reused-slot moves remain explicit MIR coverage boundaries. Existing C++
+region-local record moves now reach MIR through production THIR. Existing C++
 storage conventions and checker authority stay unchanged.
 
-[M3.26](MIR_M3_REUSED_RECORD_STORAGE_PLAN.md) extends the existing reusable
+[M3.26/M3.27](MIR_M3_REUSED_RECORD_STORAGE_PLAN.md) extend the existing reusable
 record storage modes to copy/move operations at the internal THIR/MIR boundary.
 Existing source copy replacements with complete storage facts also reach MIR,
 including separate backing for a retained old alias, in-place writes through
 plain/present Optional holders and escape-hoisted body backing. Hoisted
-copy/move producer metadata remains M3.27 work. Source behavior, C++ emission
-and checker authority are unchanged.
+copy/move assignments now carry their production facts, including readonly
+copies and guarded moves from fixed owned locals. Copies retain their source
+independence; repeated writes retain the selected backing's identity. Broader
+move sources and owning aggregate operations remain outside this coverage.
+Source behavior, C++ emission and checker authority are unchanged.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

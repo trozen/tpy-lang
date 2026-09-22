@@ -229,6 +229,7 @@ from ..nodes import (
     THIRMethodCall,
     THIRModuleVar,
     THIRMove,
+    THIRCopy,
     THIRName,
     THIRDynNarrowAlias,
     THIRNarrowAlias,
@@ -9456,7 +9457,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                 loc=loc),
                 value=value,
                 optional_record_assignment=(borrowed_record(target_t, False, analyzer)
-                                            if isinstance(value, THIRCtorCall) else None),
+                                            if isinstance(value, THIRCtorCall) or (
+                                                isinstance(value, (THIRCopy, THIRMove))
+                                                and unwrap_readonly(unwrap_ref_type(value.result_type)) == target_t)
+                                            else None),
                 loc=loc)
         # A None reseat of a wide-opt POINTER binding nulls the pointer
         # (`z = nullptr;`) -- slot or no slot; checked before the

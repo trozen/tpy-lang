@@ -245,21 +245,18 @@ def test_thir_rejects_contradictory_record_facts(artifacts: Artifacts) -> None:
         validate_thir(replace(fn, body=(replace(hoist, then_body=(bad_write,)), *fn.body[1:])))
 
 
-@pytest.mark.parametrize("initializer,extra", [
-    ("make()", "def make() -> Own[Cell]:\n    return Cell(1)\n"),
-    ("copy(source)", ""),
-])
-def test_nonconstructor_sources_keep_their_coverage_boundary(initializer: str, extra: str) -> None:
-    source = '''from tpy import int32, Own, copy
+def test_call_result_keeps_its_coverage_boundary() -> None:
+    source = '''from tpy import int32, Own
 class Cell:
     value: int32
     def __init__(self, value: int32):
         self.value = value
-''' + extra + f'''
+def make() -> Own[Cell]:
+    return Cell(1)
+
 def example(flag: bool) -> int32:
-    source = Cell(1)
     if flag:
-        cell = {initializer}
+        cell = make()
     else:
         return 0
     return cell.value
@@ -269,4 +266,4 @@ def example(flag: bool) -> int32:
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "example")
     result = lower_function(fn, MIRBodyId("record_hoists", "unsupported"), kind=MIRBodyKind.FREE_FUNCTION,
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
-    assert isinstance(result, MIRNotCovered), result
+    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported expression type", result

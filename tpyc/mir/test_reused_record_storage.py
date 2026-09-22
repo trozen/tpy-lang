@@ -107,7 +107,8 @@ def test_optional_transfer_backedge_does_not_reinitialize_wrapper(move: bool) ->
 
 @pytest.mark.parametrize("move", [False, True])
 @pytest.mark.parametrize("live_alias", [False, True])
-def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool) -> None:
+@pytest.mark.parametrize("readonly_alias", [False, True])
+def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool, readonly_alias: bool) -> None:
     read = optional.READ if live_alias else replace(optional.READ, value=MIRRead(
         MIRPlace(optional.CURRENT, (MIRDeref(), optional.FIELD))))
     # CURRENT and SAVED both point at BACKING; root-ID inequality is not referent disjointness.
@@ -117,10 +118,29 @@ def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool)
     fn = optional.function(MIRBlock(optional.ENTRY, (
         optional.INIT, optional.WRITE, optional.BIND, optional.SAVE, write, read),
         MIRReturn(optional.RESULT), optional.ROOT))
+    if readonly_alias:
+        fn = replace(fn, slots=tuple(replace(s, readonly=True) if s.id == optional.SAVED else s for s in fn.slots))
     assert execute(fn, 7, False) == 7
     assert {c.holder for c in analyze(fn).conflicts} == ({MIRPlace(optional.SAVED)} if live_alias else set())
     if not move:
         assert optional.SAVED in analyze_liveness(fn).points[MIRPoint(optional.ENTRY, 4)]
+
+
+@pytest.mark.parametrize("move", [False, True])
+@pytest.mark.parametrize("mode,reason", [
+    (None, "unsupported record replacement"),
+    (MIRRecordWriteMode.OWN_SITE, "backing write needs private body storage"),
+    (MIRRecordWriteMode.OPTIONAL_ASSIGN, "invalid optional backing assignment"),
+])
+def test_projected_transfer_requires_in_place_fact(move: bool, mode: MIRRecordWriteMode | None, reason: str) -> None:
+    write = MIRAssign(MIRPlace(optional.CURRENT, (MIRDeref(),)),
+                      MIRMove(optional.BACKING) if move else MIRCopy(MIRPlace(optional.BACKING)),
+                      storage_write=MIRRecordWrite(mode) if mode is not None else None)
+    fn = optional.function(MIRBlock(optional.ENTRY, (
+        optional.INIT, optional.WRITE, optional.BIND, optional.SAVE, write, optional.READ),
+        MIRReturn(optional.RESULT), optional.ROOT))
+    with pytest.raises(MIRValidationError, match=reason):
+        validate_function(fn)
 
 
 @pytest.mark.parametrize("move", [False, True])
@@ -186,3 +206,13 @@ def test_internal_hoisted_transfer_preserves_source_read_form(hoist: tuple[th.TH
     bad = replace(changed, value=replace(value, form=th.Form.VALUE))
     with pytest.raises(THIRValidationError, match="invalid optional record assignment fact"):
         validate_thir(replace(fn, body=(fn.body[0], replace(branch, then_body=(bad,)), *fn.body[2:])))
+
+
+def test_optional_assignment_fact_rejects_a_bare_record_read(hoist: tuple[th.THIRFunction, MIRDefinitions]) -> None:
+    fn, _ = hoist
+    branch = fn.body[1]
+    write = branch.then_body[0]
+    source = th.THIRName(fn.body[0].resolved_type, "original", form=th.Form.BORROW)
+    write = replace(write, value=source)
+    with pytest.raises(THIRValidationError, match="invalid optional record assignment fact"):
+        validate_thir(replace(fn, body=(fn.body[0], replace(branch, then_body=(write,)), *fn.body[2:])))

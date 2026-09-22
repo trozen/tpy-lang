@@ -1,7 +1,7 @@
 # M3 completion checklist
 
-Current planning index, updated 2026-09-21. Implementation exists through
-M3.26; review/merge status is separate. The numbered increment plans below record
+Current planning index, updated 2026-09-22. Implementation exists through
+M3.27; review/merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
 ## Completion contract
@@ -88,16 +88,15 @@ the others visible.
   covers fresh region-local copy/move internally and constructor IN_PLACE
   replacement, then connects existing source copies/replacements. The
   [local binding consolidation](LOCAL_BINDING_LOWERING_PLAN.md) additionally
-  connects source loop-local moves to the same region-initialization model;
-  hoisted/reused-slot moves remain analysis boundaries. This does not close
-  the box.
+  connects source loop-local moves to the same region-initialization model.
   M3.24's internal activation/retention contract and M3.25's bounded source-copy
   integration are implemented.
-  The approved [M3.26/M3.27 batch](MIR_M3_REUSED_RECORD_STORAGE_PLAN.md)
+  The implemented [M3.26/M3.27 batch](MIR_M3_REUSED_RECORD_STORAGE_PLAN.md)
   extends existing hoisted/reused record write modes to copy/move. M3.26
   implements the internal contract and admits source replacements with complete
-  existing facts; M3.27 will supply the remaining hoisted THIR facts. The box
-  remains open.
+  existing facts; M3.27 supplies the hoisted copy/move THIR facts and verifies
+  source integration. Broader move sources, owning aggregates and excluded
+  position/shape cells keep the box open.
 
 Exit evidence: source binding availability, physical construction, payload
 engagement, replacement and end events remain distinct on every admitted path.

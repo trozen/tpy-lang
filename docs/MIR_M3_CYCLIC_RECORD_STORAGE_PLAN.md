@@ -119,11 +119,14 @@ definitions use the existing verified-definition input.
 
 Source loop-local move-through was excluded from M3.25. The separate local
 binding consolidation now admits it and tests its scoped-storage contract
-through production THIR. Hoisted/reused-slot move analysis remains excluded.
+through production THIR. M3.26/M3.27 subsequently cover hoisted/reused-slot
+record copy/move analysis under the same verified scalar-field restriction.
 
 ## Factored scope matrix
 
 All axes must admit a cell; exclusions retain their owning work package.
+This table records M3.24/M3.25's scope; M3.26/M3.27 extend its reusable-write
+operation boundary as noted above.
 
 | Axis | Covered | Gap / reason |
 | --- | --- | --- |
@@ -228,5 +231,5 @@ by the 20-file changeset, accepts the existing activation/retention machinery,
 bounded semantic-copy normalization and separate internal/source/runtime tests.
 It accepts the source-move exclusion as this branch's boundary, not the
 frontend defect itself: the subsequent local binding consolidation fixes that
-producer. Reused-slot copy/move and the other matrix exclusions remain
-open; this batch does not complete W1 or M3.
+producer. M3.26/M3.27 subsequently cover reused-slot copy/move. The other
+matrix exclusions remain open; these batches do not complete W1 or M3.

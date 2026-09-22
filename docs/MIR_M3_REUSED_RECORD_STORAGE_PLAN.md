@@ -1,6 +1,6 @@
 # Hoisted and reused record writes: M3.26/M3.27
 
-Status: design approved. M3.26 implemented; M3.27 remains to implement.
+Status: M3.26 and M3.27 implemented; review/merge status is separate.
 Base: `228154ec92`. Architectural scope: extend existing THIR/MIR storage
 facts and validation for copy/move operations. This advances W1 in the
 [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md); it does not complete W1
@@ -21,9 +21,9 @@ def moved(flag: bool) -> int32:
 ```
 
 C++ declares `std::optional<Cell> target` before the branch and writes
-`target = std::move(original)` inside it. MIR currently reports not covered.
-An explicit `target = copy(source)` at that position has the same gap.
-The extension analyzes those existing operations and their emitted storage.
+`target = std::move(original)` inside it. MIR now covers that write and an
+explicit `target = copy(source)` at the same position. The extension analyzes
+those existing operations and their emitted storage.
 
 Invariant: a write reads its source before initializing or replacing the
 selected backing; physical lifetime, payload engagement, source assignment
@@ -43,7 +43,7 @@ source operations; this work must not infer operations from C++ spelling.
 Design probes on the base compile and match CPython for zero/multiple
 iterations and both branch outcomes:
 
-| Source shape | Existing emitted storage | MIR boundary |
+| Source shape | Existing emitted storage | MIR boundary on the base |
 | --- | --- | --- |
 | Branch-hoisted last-use move | One optional backing; guarded move write | Assignment lacks `optional_record_assignment` |
 | Branch-hoisted explicit copy, including readonly source/receiver | Same backing; guarded copy write | Same missing fact |
@@ -125,6 +125,14 @@ gate just to defer their coverage to M3.27.
 - Equivalent direct, renamed-import and module-qualified copies resolving to
   the same semantic operation share coverage. Unproduced combinations stay
   internal coverage; do not alter source semantics to manufacture witnesses.
+
+Static methods are verified through direct receiverless THIR-to-MIR lowering;
+the existing debug collector still classifies them as receiver methods and
+reports its body-kind mismatch. Constructor parameters remain scalar-only;
+native-for parameters are therefore exercised in the other callable positions.
+Copy/move into a different nominal target type (such as a base-typed hoist)
+keeps compiling without the new same-record assignment fact; exact-type MIR
+coverage is not a frontend restriction.
 
 ## Factored scope matrix
 

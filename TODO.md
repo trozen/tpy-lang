@@ -1687,12 +1687,11 @@ alongside related feature work; only the big-rock deferrals live here.
   region-local copy/move initialization and cyclic constructor IN_PLACE,
   followed by existing source copy/replacement producers.
   Source loop-local move-through is covered by the production lowering tests.
-  Hoisted/reused-slot copy/move, owning aggregate operations and excluded
-  position/shape/slot cells remain open; tuple completeness stays separate.
-  `docs/MIR_M3_REUSED_RECORD_STORAGE_PLAN.md` scopes approved M3.26/M3.27.
-  M3.26 implements copy/move under existing reusable record write modes,
-  including source replacements whose facts were complete. M3.27's hoisted
-  producer facts remain open, alongside the other W1-W5/M2/M4 matrix cells.
+  `docs/MIR_M3_REUSED_RECORD_STORAGE_PLAN.md` records M3.26/M3.27's copy/move
+  coverage under existing reusable record write modes and hoisted production
+  facts. Broader move sources, owning aggregate operations and excluded
+  position/shape/slot cells remain open, alongside the other W1-W5/M2/M4
+  matrix cells; tuple completeness stays separate.
   `docs/MIR_M3_WRAPPER_STORAGE_PLAN.md` records implemented M3.12/M3.13:
   separate physical-initialization/source-assignment facts and bool/int32
   Optional/union if/while hoists, for analysis only. Record
