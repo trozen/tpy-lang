@@ -43,7 +43,9 @@ from ..parse.nodes import (
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, CodeGenError
 from . import emit_prims
 from .param_const import decide_param_const, ParamConstDecision
-from .type_resolution import resolve_stmt_type_cascade
+from .forms import is_borrow_form_tuple_global
+from .type_resolution import (resolve_global_binding_type,
+                              resolve_stmt_type_cascade)
 from .int_literals import render_int_literal_value
 from ..sema.literal_utils import literal_value_from_expr
 
@@ -1784,10 +1786,11 @@ class FunctionGenerator:
 
     def _resolve_global_type(self, stmt: TpyVarDecl) -> TpyType:
         """Resolve the type of a global variable, unwrapping Own[T]/Optional[T] to T."""
-        if stmt.type:
+        if stmt.init:
+            var_type = resolve_global_binding_type(
+                stmt, self.ctx.analyzer, self.types)
+        elif stmt.type:
             var_type = stmt.type
-        elif stmt.init:
-            var_type = resolve_stmt_type_cascade(stmt, self.ctx.analyzer, self.types)
         else:
             raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
         if isinstance(var_type, OwnType):
@@ -1868,7 +1871,11 @@ class FunctionGenerator:
         # std::optional<T> in a global, so this asks the storage predicate, not
         # a boundary-form one.
         is_value = var_type.is_value_type() or var_type.needs_wrapper()
-        if is_value:
+        if is_borrow_form_tuple_global(var_type):
+            # A tuple of pointer slots, null until module init binds it.
+            out.write(f"{self.types.tuple_borrow_cpp(var_type)} "
+                      f"{stmt.name}{{}};\n")
+        elif is_value:
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
             init = "{}" if (is_primitive_type(var_type) or isinstance(var_type, PtrType)) else ""
             out.write(f"{cpp_type} {stmt.name}{init};\n")
@@ -1880,7 +1887,10 @@ class FunctionGenerator:
         var_type = self._resolve_global_type(stmt)
         cpp_type = self._global_cpp_type(var_type, stmt)
         is_value = var_type.is_value_type() or var_type.needs_wrapper()
-        if is_value:
+        if is_borrow_form_tuple_global(var_type):
+            out.write(f"extern {self.types.tuple_borrow_cpp(var_type)} "
+                      f"{stmt.name};\n")
+        elif is_value:
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:
             out.write(f"extern {cpp_type}* {stmt.name};\n")

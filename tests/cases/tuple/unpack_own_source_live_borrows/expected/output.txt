@@ -1,0 +1,13 @@
+module_level 9 1
+unpack_borrow_global 9 1
+live_local 9 1
+last_use_moves 2
+nocopy_live 9 1
+nocopy_last_use 2
+two_unpacks 9 9 2
+param_live 10
+param_consumed 2
+nocopy_param_live 10
+sink_off_live 9 1 1
+live_in_method 9 1
+relayed_call 1 9

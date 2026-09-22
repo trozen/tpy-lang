@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    g = ::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>(std::tuple<int32_t, Cell>{1, Cell(2)});
+    g = std::tuple<int32_t, Cell>{1, Cell(2)};
     ::tpyapp::main::main();
 }
 

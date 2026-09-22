@@ -1481,7 +1481,7 @@ class SemanticAnalyzer:
                     continue
                 self.ctx.warning(
                     f"owned tuple param '{pname}' is never consumed "
-                    f"(not unpacked, stored, forwarded, or returned)",
+                    f"(not moved out by an unpack, stored, forwarded, or returned)",
                     func,
                 )
                 continue

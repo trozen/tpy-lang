@@ -147,6 +147,7 @@ from ...value_category import (
 )
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...codegen_cpp.forms import (
+    is_borrow_form_tuple_global,
     LocalBinding,
     is_ptr_variant_union,
     reads_storage_form_optional,
@@ -2266,11 +2267,16 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     if _value_tuple_global(gt, analyzer) is not None:
         return gt
     if _f1_tuple(gt, analyzer) is not None:
-        # A pointer-repr F3 tuple global is ALSO a plain namespace-scope
-        # value (`std::tuple<std::optional<T>, ..> g;` -- tuples are value
-        # types, never pointer slots); its read is a STORAGE lvalue, so the
-        # seeding call site must register the name in `storage_tuple_locals`
-        # (the borrow-vs-storage NAME partition) alongside this admission.
+        # A tuple of REFERENCES is the tuple of pointer slots (`std::tuple<T*,
+        # ..> g;`), read like a borrow-tuple local; one with an OWNED element
+        # (sema marks a fresh literal element or an owning call's element
+        # `Own` on the binding) is a namespace-scope STORAGE value, which
+        # the seeding call site registers in `storage_tuple_locals`
+        # (`_storage_tuple_global`, the borrow-vs-storage NAME partition).
+        return gt
+    if _own_record_tuple(gt, analyzer) is not None:
+        # The all-owned storage tuple global (`g = (1, Cell(5))` owns its
+        # fresh element): the same storage lvalue, registered the same way.
         return gt
     # A VALUE-record global (`UTC: timezone = timezone(timedelta())`) is a
     # plain namespace-scope object like any value global: never a pointer
@@ -5222,6 +5228,17 @@ def _tuple_has_own_element(t: 'TupleType') -> bool:
         if isinstance(eu, TupleType) and _tuple_has_own_element(eu):
             return True
     return False
+
+
+def _storage_tuple_global(t: 'TpyType | None', analyzer) -> 'TupleType | None':
+    """A tuple GLOBAL that is a namespace-scope STORAGE value, or None: a
+    pointer-repr F3 tuple or an Own-record tuple, minus the tuple of
+    references, which is the tuple of pointer slots (borrow form). The one
+    family test the seeding sites and the read-only admission share."""
+    if is_borrow_form_tuple_global(t):
+        return None
+    ft = _f1_tuple(t, analyzer)
+    return ft if ft is not None else _own_record_tuple(t, analyzer)
 
 
 def _own_record_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':

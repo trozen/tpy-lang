@@ -49,6 +49,7 @@ from ...parse.nodes import (
     TpyVarDecl,
 )
 from ...typesys import (
+    collapse_tuple_own_elements,
     recorded_return_borrow_sources,
     return_const_projected,
     AnyType,
@@ -5231,7 +5232,13 @@ def _borrow_tuple_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer, *,
     at = arg_type(a)
     atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
            if at is not None else None)
-    return slot if atu == slot else None
+    if atu is None:
+        return None
+    # Equal modulo per-element ownership: a storage name whose binding marks
+    # a fresh element `Own` (a tuple global that owns its literal's record)
+    # holds the slot's borrow element by value, which is what the lift
+    # points at -- the marking is the storage fact, not a different slot.
+    return slot if collapse_tuple_own_elements(atu) == slot else None
 
 
 def _borrow_tuple_field_arg(a: TpyExpr, ptype: 'TpyType | None',

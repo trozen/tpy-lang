@@ -2654,9 +2654,9 @@ class TupleSourceBind(Enum):
         NAME_MOVE     -> auto&& __tup_N = std::move(<src>); (an Own-element
                          tuple NAME at its last use -- owned elements move
                          out of the moved-from holder)
-        NAME_COPY     -> auto __tup_N = <src>;             (the same tuple
-                         NOT at its last use: the holder copies, elements
-                         still move out of the copy)
+        NAME_COPY     -> auto __tup_N = <src>;             (a `for` head's
+                         const-ref loop element with an owned member: the
+                         holder copies, the member moves out of the copy)
     """
     NAME_CREF = auto()
     RVALUE = auto()
@@ -2705,6 +2705,8 @@ class THIRTupleUnpack(THIRStmt):
                         // recursive-wrapper element (a live `X&` slot)
         "global_slot" -> static T __global_slot_N = std::move(std::get<i>(tup));
                          name = &__global_slot_N;   // pointer-slot global
+        "global_ptr" -> name = std::get<i>(tup);    // the same global, a
+                        // borrowed element: the capture yields its pointer
 
     Two RESUMABLE-frame modes (targets are frame fields -- assigned, never
     re-declared; the `wraps` slot carries the per-element unwrap_ref /
@@ -2737,7 +2739,7 @@ class THIRTupleUnpack(THIRStmt):
 
     _BIND_TOKENS: ClassVar[frozenset[str]] = frozenset({
         "value", "cref", "move", "assign", "ref", "opt_ptr", "ptr_variant",
-        "unwrap_ref", "global_slot",
+        "unwrap_ref", "global_slot", "global_ptr",
         "frame_assign", "frame_emplace", "frame_opt_ptr", "frame_ptr_addr",
         "frame_ptr_elem",
     })

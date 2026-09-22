@@ -1883,6 +1883,11 @@ class SemanticContext:
 
     # --- Final globals ---
     final_globals: set[str] = field(default_factory=set)
+    # Tuple globals a module-level unpack has borrowed an element out of: a
+    # pointer-slot target now aims into their storage, so a later
+    # module-level rebind would re-point that alias (CPython keeps the old
+    # object). The set is what the rebind refusal keys on.
+    tuple_globals_aliased: set[str] = field(default_factory=set)
     analyzed_finals: set[str] = field(default_factory=set)
 
     # --- Builtins ---

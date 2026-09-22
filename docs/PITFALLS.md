@@ -23,7 +23,9 @@ a copy unavoidable, the compiler warns and the user silences the warning with an
 **Example.** `V = Box(2)` and `G: tuple[Box, Box] = (V, V)` at module level, then `G[0].n = 42`.
 Wrong: `extern std::tuple<Box, Box> G` (owning storage), so `V.n` prints 2 under TPy and 42 under
 CPython, with no diagnostic. Right: the form the scalar global `G: Box = V` already takes, a
-borrow slot `Box* G`, as the local tuple does with `std::tuple<Box*, Box*>`.
+borrow slot `Box* G`, as the local tuple does -- `std::tuple<Box*, Box*> G{}`, bound bare at
+module init. The same global from a MIXED call (`make_mixed(V)` -> `tuple[Own[Box], Box]`) still
+takes storage and copies the borrowed element.
 (open: `BUGS.md#global-tuple-ref-storage-form`,
 `BUGS.md#callable-value-borrow-return-copies-unwarned`)
 
@@ -57,18 +59,19 @@ each element would have alone. Changing a return type from `Obj` to `(Obj, int)`
 change how `Obj` behaves.
 
 **Example.** `def mk() -> tuple[Own[Box], int32]`, then `t = mk()` / `x, k = t` / `x.n = 9` /
-`print(t[0].n)` prints 1 under TPy and 9 under CPython, with no warning: the unpack emits
-`auto __tup_1 = t;`, a whole-tuple copy, and moves out of the copy. The scalar twin (`t = mk()`
-off `-> Own[Box]`, then `x = t`) aliases, and so does the same unpack off a literal-bound
-`t = (Box(1), 1)`. Same axis, other shapes: `def f(x: Own[Box])` renders `Box&&` and the body may
+`print(t[0].n)`. Wrong: `auto __tup_1 = t;`, a whole-tuple copy the elements then move out of,
+so TPy printed 1 where CPython prints 9, with no warning -- the target was tagged owned off the
+element's declared `Own` alone, while the scalar twin (`t = mk()` off `-> Own[Box]`, then
+`x = t`) asks whether the USE consumes the source and binds `Box& x = t` when it does not.
+Right: the same question at the unpack, so a live source lifts to `tuple_to_pointer` and its
+elements alias, and only the last-use source moves. Same axis, other shapes: `def f(x: Own[Box])` renders `Box&&` and the body may
 move `x`, while the `Own` element of `def f(p: tuple[Own[Box], Box])` can be neither unpacked,
 consumed nor written through; `xs.append(v)` at `list[Box]` warns and copies, while at
 `list[tuple[Box, Box]]` the literal `xs.append((v, v))` is a hard error, a local `xs.append(t)` an
 unsupported-construct reject and only the call result `xs.append(make(v))` warns like the scalar;
 `a: str = v` is `std::string_view a = v` while `t: tuple[str] = (v,)` is
 `std::tuple<std::string>(std::string(v))`.
-(open: `BUGS.md#owned-call-tuple-unpack-copies-live-source`,
-`BUGS.md#consume-own-element-of-mixed-tuple`, `BUGS.md#borrowed-tuple-at-own-call-arg`,
+(open: `BUGS.md#consume-own-element-of-mixed-tuple`, `BUGS.md#borrowed-tuple-at-own-call-arg`,
 `BUGS.md#str-tuple-element-local-owned`)
 
 **Check.** Wrap the subject in `(x,)` and `(x, 1)` and diff the three variants' emitted C++ for

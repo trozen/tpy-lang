@@ -34,7 +34,7 @@ the raw grid.
 | element form | param | return | field | collection | local | global |
 |---|---|---|---|---|---|---|
 | `Own[T]` (ref) | ok | ok | ok (both reject) | ok (both reject) | ok (both reject) | ok (both reject) |
-| borrow (ref) | ok alias | ok alias | ok copy+warn | D1 | ok alias | D2 |
+| borrow (ref) | ok alias | ok alias | ok copy+warn | D1 | ok alias | ok alias |
 | value type | ok | ok | ok | ok | ok | ok |
 | `int` (BigInt) | ok | ok | ok | ok | ok | ok |
 | `str` | D3 | ok | ok | ok | D4 | ok |
@@ -44,8 +44,10 @@ the raw grid.
 - **D1** `BUGS.md#borrowed-tuple-at-own-call-arg` -- a borrowed tuple at an
   owning container insert: literal source is a hard error, a local source an
   unsupported-construct reject, only the call source warns like the scalar.
-- **D2** `BUGS.md#global-tuple-ref-storage-form` -- the tuple global copies
-  SILENTLY where the scalar global aliases.
+- **D2** `BUGS.md#global-tuple-ref-storage-form` -- the MIXED tuple global
+  (an owned element beside a borrowed one, from a call) copies its borrowed
+  element SILENTLY; the all-borrow tuple global is a tuple of pointer slots
+  and aliases (closed in U1).
 - **D3 / D4** `BUGS.md#str-tuple-element-local-owned` and design-entry instance
   (1) -- a `str` / `bytes` element is owned storage at a param and a local where
   the scalar is a free view.
@@ -91,12 +93,38 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
   cell whose parity reads "?" in `--report` is stale and owed a build.
 - [ ] **U1 -- no silent tuple divergence.** Size: 2-3 weeks; the frame entries
   are the risk. Order: the three HIGH first.
-  - [ ] `BUGS.md#owned-call-tuple-unpack-copies-live-source` (HIGH) -- the
-    correct render already exists for the literal-bound local.
-  - [ ] `BUGS.md#own-tuple-relay-loses-pointer-lift` (HIGH)
-  - [ ] `BUGS.md#global-tuple-ref-storage-form` (HIGH, D2) -- the large one: a
-    borrow-form global slot mirroring the local's. The stopgap warning is a U3
-    decision.
+  - [x] the live-source owned-call unpack copy (was HIGH, entry removed) --
+    DONE on `u1-tuple-silent`: sema tags an `Own` element target owned only when
+    the unpack CONSUMES its source (`is_auto_move_use`, the scalar decl's
+    verdict); a live source borrows through the storage lift. Cell
+    `x__unpack_live_own__T` differs -> same. Also closed the owned-tuple
+    PARAM's silent copy at a non-last-use unpack (unfiled; same cause) and
+    turned the `@nocopy` live unpack from an error into the alias the scalar
+    twin takes. Sibling filed: `BUGS.md#for-head-owned-yield-copies-before-move`.
+  - [x] the relayed owned-call unpack (was HIGH, entry removed) -- STALE on
+    re-probe: direct and relayed renders are identical, a `@nocopy` element
+    compiles and matches CPython; the dual-emit-era "correct" AST render it
+    cited (`tuple_to_pointer` over a call temporary) was the wrong side.
+    Pinned as a section of `tuple/unpack_own_source_live_borrows`.
+  - [x] `BUGS.md#global-tuple-ref-storage-form` (was HIGH, D2), the ALL-BORROW
+    half -- DONE on `u1-tuple-silent`: a tuple of references at a global is
+    the tuple of pointer slots (`std::tuple<Box*, Box*>`); a fresh literal
+    element is `Own` on the binding (storage, as the local); the form is a
+    type-level fact (`TupleType.takes_borrow_slot_as_global`) so importing
+    modules agree; rebind from a function body gets the scalar's error. Cell
+    `borrow__global__T` differs -> same. The MIXED global (`mixed__global__T`)
+    stays storage and SILENT: entry narrowed to it and lowered to MED; its
+    stopgap warning is the U3 decision, its full form -- a pointer at
+    per-assignment static backing, the scalar global's own shape -- is the
+    remaining work and also unlocks the module-level REBIND of an owning
+    tuple global (`tg = mk(7)` after `gx, gk = tg`), refused at sema
+    meanwhile. Shipped position gaps from this unit: a module-level unpack of
+    a tuple-of-references global (`ga, gb = pair_g` at module scope) and of
+    an IMPORTED one from a function body both still reject at
+    `stmt.tuple_unpack` (the source arm admits same-module readonly globals);
+    a later module-level literal with a FRESH element into a borrow-slot
+    tuple global (`P = (copy(W), 2)`) rejects where the scalar allocates a
+    static slot -- the per-assignment backing item above.
   - [ ] `BUGS.md#borrow-unpack-target-rebind-writes-through` -- confirmed live
     2026-09-21, cell `x__rebind_unpack__T` (prints 6 where CPython prints 1)
   - [ ] `BUGS.md#tuple-literal-subscript-store-skips-copy-check`

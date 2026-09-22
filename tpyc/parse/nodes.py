@@ -884,6 +884,12 @@ class TpyTupleUnpack(TpyStmt):
     """Tuple unpacking: a, b = expr. None in targets means discard (_)."""
     targets: list[str | None]
     value: TpyExpr
+    # The head of a `for a, b in ...` loop: `value` is the synthetic
+    # per-iteration holder the target was desugared into, fresh on every
+    # iteration, so an `Own` element off it is consumed rather than
+    # borrowed. Sema sets it off the enclosing `TpyForEach.is_tuple_unpack`,
+    # so a macro-built loop head is marked like a parsed one.
+    is_loop_head: bool = False
     # Set by sema:
     target_types: list[TpyType] = field(default_factory=list)
     is_new: list[bool] = field(default_factory=list)

@@ -1570,20 +1570,21 @@ class _LowerCtx:
             if hoisted_override is None else hoisted_override)
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
         # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
-        # PARTIAL against codegen's `storage_form_tuple_locals`: the owned-tuple
-        # PARAM seeds and the generator/resumable frame-local registrations are
-        # not mirrored, so a name from either would read BORROW here off
-        # `_is_borrow_form_name`'s type verdict. Both stay unreachable via the
-        # call/subscript arms rejecting an owned-tuple source.
+        # The two owned-tuple PARAM shapes seed below; the generator/resumable
+        # frame-local registrations are not mirrored, so such a name would
+        # read BORROW here off `_is_borrow_form_name`'s type verdict -- it
+        # stays unreachable via the call/subscript arms rejecting it.
         self.storage_tuple_locals: set[str] = set()
         # Only unconditional constructor locals and their fixed aliases carry these facts.
         self.owned_tuple_layouts: dict[str, THIRTupleLayout] = {}
-        # The owned-MOVABLE tuple PARAM seed is the documented partial above
-        # and stays unseeded. The `Own[tuple-with-pointer-repr-element]` param
-        # seeds FOR REAL: the signature spells the storage tuple by value, so
-        # its name reads are STORAGE -- the unpack lift
+        # Two param shapes spell a STORAGE tuple in the signature, so their
+        # name reads are storage -- the unpack lift
         # (`tuple_to_pointer<std::tuple<P*, P*>>(t)`), the optional-element
-        # decl lift, and the storage-name arg row all key on this membership.
+        # decl lift, and the storage-name arg row all key on this membership:
+        # the `Own[tuple-with-pointer-repr-element]` param (by value), and
+        # the owned-MOVABLE per-element-Own param (`tuple[Own[A], int32]` ->
+        # `std::tuple<A, int32_t>&&`), whose elements a NON-consuming unpack
+        # borrows through the same lift.
         for pname, ptype in self.params:
             actual = unwrap_readonly(unwrap_send_sync(ptype))
             if isinstance(actual, OwnType):
@@ -1591,6 +1592,9 @@ class _LowerCtx:
                 if (isinstance(inner_t, TupleType)
                         and inner_t.has_pointer_repr_element()):
                     self.storage_tuple_locals.add(pname)
+            elif (isinstance(actual, TupleType)
+                  and actual.is_owned_movable()):
+                self.storage_tuple_locals.add(pname)
         # Nullable borrow-form tuple locals (`tuple[.., ref] | None` ->
         # `std::optional<std::tuple<.., T*>>` -- the OPTIONAL_BORROW_TUPLE
         # LocalCppForm): None-tests read `.has_value()`, narrowed reads

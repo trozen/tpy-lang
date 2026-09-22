@@ -3114,6 +3114,20 @@ def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
     return None
 
 
+def global_binds_by_reference(t: 'TpyType | None') -> bool:
+    """A module global whose binding is a POINTER SLOT (a reference type) or
+    a tuple of pointer slots (`TupleType.takes_borrow_slot_as_global`): bound
+    once at module init, so rebinding it from a function body is refused --
+    a slot aimed at a function's storage would dangle. The tuple form has to
+    be named here because `is_value_type()` alone calls it a value."""
+    if t is None:
+        return False
+    t = unwrap_readonly(t)
+    if isinstance(t, TupleType):
+        return t.takes_borrow_slot_as_global()
+    return not t.is_value_type()
+
+
 def collapse_tuple_own_elements(var_type: 'TpyType') -> 'TpyType':
     """Collapse per-element `Own[T]` -> `T` in a tuple type.
 
@@ -4059,6 +4073,19 @@ class TupleType(TpyType):
         # (`tuple[Own[A], A]`) is excluded: its borrow slot aliases the caller,
         # so the whole-tuple move model does not fit (it stays a const& borrow).
         return self.has_own_element() and not self.has_ref_elements()
+
+    def takes_borrow_slot_as_global(self) -> bool:
+        """A module global of this tuple type is a tuple of POINTER SLOTS
+        (`std::tuple<T*, ...>`, bound once at module init, never rebound
+        from a function body) -- the tuple of the slot every reference-typed
+        global is, so an element aliases the object it was given as the
+        scalar global does. The tuple as a whole answers `is_value_type()`,
+        which is why the global classification cannot ask that. An owned
+        element (sema marks a fresh literal element or an owning call's
+        element `Own` on the binding) keeps the storage form: the owned
+        half needs static backing."""
+        return (self.has_pointer_repr_element() and not self.has_own_element()
+                and not self.needs_wrapper())
 
     def is_mixed_own(self) -> bool:
         # The complement of is_owned_movable() among Own-carrying tuples: an

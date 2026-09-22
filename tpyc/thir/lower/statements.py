@@ -140,6 +140,7 @@ from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr)
 from ...codegen_cpp.forms import (
+    is_borrow_form_tuple_global,
     loop_binding_kind,
     LocalBinding,
     is_plain_nonvalue,
@@ -2357,6 +2358,11 @@ def _standalone_unpack_target_binds(
       "assign" rung's `blocked` check sends away. `fresh_global_slots` carries
       the caller's slot-less pointer-slot globals (an already-slotted one
       REUSES its slot, a different render).
+    - "global_ptr": a BORROWED F1-record element landing in that same
+      pointer-slot global -- `g = std::get<i>(tmp);`, the element pointer
+      the caller's `tuple_to_pointer` capture already yields. The source is
+      a tuple GLOBAL (module scope has no other tuple name), so the slot
+      aims at static storage, as `g: T = other_global` does.
 
     A borrow (`is_ref`) F1-record target aliases the source tuple element,
     lifted through the caller's `tuple_to_pointer` source wrap; other borrow
@@ -2386,6 +2392,16 @@ def _standalone_unpack_target_binds(
             #     plain nullable-pointer local (the opt_ptr arm). The caller
             #     gates the source form (a borrow-form pointer-repr tuple).
             if not (stmt.is_new[i] and name not in declared):
+                if (not stmt.is_new[i] and name in fresh_global_slots
+                        and isinstance(stmt.value, TpyName)
+                        and record_like(tt, analyzer)):
+                    # A module-level pointer-slot global: it points at the
+                    # element of the source tuple GLOBAL, static storage. A
+                    # NAME is the only module-level source with that
+                    # lifetime -- a call result or a container element is
+                    # a module-init temporary the slot would outlive.
+                    out.append((tt, "global_ptr"))
+                    continue
                 return None
             if record_like(tt, analyzer):
                 out.append((tt, "ref"))
@@ -2403,10 +2419,9 @@ def _standalone_unpack_target_binds(
             if (not stmt.is_new[i] and name in fresh_global_slots
                     and stmt.is_owned[i] and record_like(tt, analyzer)):
                 # The pointer-slot-global tail: the element materializes in a
-                # `static` slot the pre-declared global then points at. Owned
-                # F1-record elements only -- an Optional / union / container
-                # global's slot line differs, and a BORROWED element would
-                # aim the global at the dying capture.
+                # `static` slot the pre-declared global then points at. F1-
+                # record elements only -- an Optional / union / container
+                # global's slot line differs.
                 out.append((tt, "global_slot"))
                 continue
             if (name not in declared or name in blocked
@@ -3362,6 +3377,11 @@ def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx') -> bool:
             return False
         for elem, cap in zip(src.elements, src.elem_capture):
             if cap is TupleElemCapture.VALUE:
+                continue
+            if isinstance(elem, TpyNoneLiteral):
+                # A `None` at a pointer-form Optional element is captured
+                # REF so the literal keeps one pointer shape; it renders
+                # `nullptr`, so there is no source to be const.
                 continue
             if not isinstance(elem, TpyName) or name_const(elem.name):
                 return False
@@ -9387,6 +9407,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             st_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 declared[stmt.name])))
             st_ft = _f1_tuple(st_bare, analyzer)
+            st_own = _own_record_tuple(st_bare, analyzer)
+            if st_own is not None:
+                if isinstance(stmt.init, TpyTupleLiteral):
+                    # The global OWNS the fresh elements its literal builds
+                    # (sema marked them `Own` on the binding), so the
+                    # storage literal is the slot's own form -- no lift.
+                    _witness("top_level.tuple_global_owned_literal")
+                    return THIRAssign(
+                        target=THIRName(result_type=st_bare, name=stmt.name,
+                                        loc=loc),
+                        value=_lower_tuple_literal(stmt.init, st_own, lc,
+                                                   declared),
+                        loc=loc)
+                if not isinstance(stmt.init, (TpyCall, TpyMethodCall)):
+                    # An LVALUE source (a name, a subscript) would be a
+                    # plain storage assign -- a COPY where CPython aliases
+                    # -- so it rejects here rather than leaking to the value
+                    # reseat. An owning CALL is a fresh rvalue the plain
+                    # assign moves in; it falls through to that arm.
+                    note_detail("top_level.tuple_global_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
             if st_ft is not None:
                 if isinstance(stmt.init, TpyTupleLiteral):
                     _witness("top_level.tuple_storage_global")
@@ -15308,6 +15349,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 lc.global_slot_assigned.add(name)
                 _witness("stmt.tuple_unpack.global_slot_target")
                 continue
+            if bind == "global_ptr":
+                # The borrowed twin: no slot, the global points into the
+                # source tuple global's own storage.
+                target_cpps.append(None)
+                bind_tags.append(bind)
+                _witness("stmt.tuple_unpack.global_ptr_target")
+                continue
             if bind == "unwrap_ref":
                 # Wrapper-reference element: `Tree<int32_t>& a =
                 # ::tpy::unwrap_ref(std::get<i>(__tup_N));` -- the alias
@@ -15394,7 +15442,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         _witness("stmt.tuple_unpack")
         source_wrap_cpp = None
         ref_name_source = False
-        if any(b in ("ref", "opt_ptr") for b in bind_tags):
+        if any(b in ("ref", "opt_ptr", "global_ptr") for b in bind_tags):
             # Borrow/opt-ptr targets read `std::get<i>` off the borrow pointer
             # tuple. Two source forms qualify, both name-only:
             #   * a value-tuple STORAGE local -- lifted via tuple_to_pointer to
@@ -15430,6 +15478,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                   and _borrow_form_tuple_param(stmt.value.name, lc)):
                 ref_name_source = True
                 _witness("stmt.tuple_unpack.ref_param_source")
+            elif (isinstance(stmt.value, TpyName)
+                  and stmt.value.name in lc.prescan.global_readonly
+                  and is_borrow_form_tuple_global(declared.get(
+                      stmt.value.name))):
+                # A tuple-of-references GLOBAL is a tuple of pointer slots:
+                # already borrow form, bound by ref like the param, its
+                # elements read bare. Same-module globals only: an imported
+                # one lives in `global_cpp`, disjoint from `global_readonly`.
+                ref_name_source = True
+                _witness("stmt.tuple_unpack.ref_global_source")
             elif isinstance(stmt.value, (TpyCall, TpyMethodCall)):
                 # A borrow-tuple-returning CALL source (`a, b = both(t1,
                 # t2)` / `conn, _ = srv.accept()`): the result is ALREADY
@@ -15510,13 +15568,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             elif ref_name_source:
                 src_bind = TupleSourceBind.NAME_REF
             elif any(b == "move" for b in bind_tags):
-                # An Own-element tuple NAME: the holder moves at the
-                # source's last use, else copies -- the any(is_owned) name
-                # arms (the one-shot frame lift belongs to the resumable
-                # path and never reaches this sync arm).
-                src_bind = (TupleSourceBind.NAME_MOVE
-                            if _is_move_source(stmt.value, lc)
-                            else TupleSourceBind.NAME_COPY)
+                # An Own-element tuple NAME the unpack CONSUMES: sema tags an
+                # element owned only off a source at its last use (a live
+                # source binds its elements as borrows and takes the storage
+                # lift above), so the holder moves. The lowering's own
+                # last-use reading must agree; a disagreement used to become
+                # a silent whole-tuple copy, so it rejects instead. (The
+                # one-shot frame lift belongs to the resumable path and never
+                # reaches this sync arm.)
+                if not _is_move_source(stmt.value, lc):
+                    note_detail("tuple_unpack.owned_source_not_movable")
+                    raise ThirUnsupported("stmt.tuple_unpack")
+                src_bind = TupleSourceBind.NAME_MOVE
             else:
                 src_bind = TupleSourceBind.NAME_CREF
             narrowed_vot_src = None

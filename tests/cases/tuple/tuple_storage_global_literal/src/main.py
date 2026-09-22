@@ -1,12 +1,8 @@
-# A module GLOBAL of pointer-repr tuple type initialised from a fresh tuple
-# LITERAL -- the storage slot and the literal already agree, so the
-# `tuple_to_storage` lift over it is an identity wrap; this pins that spelling.
-# Storage form is harmless HERE because both elements are fresh -- there is
-# nothing to alias. The general rule is not: a tuple global built from an
-# existing object copies it, and an alias into one follows a rebind
-# (BUGS.md#global-tuple-ref-storage-form).
-# Cell is @nocopy so a silent copy into the global slot is a build error, and
-# main() mutates through the slot before reading, so the write is observed.
+# A module GLOBAL of tuple type initialised from a fresh tuple LITERAL owns
+# its fresh element: sema marks it `Own` on the binding, the slot is storage
+# and the literal is spelled in storage form, no lift. (A tuple of NAMES is
+# the other form -- a tuple of pointer slots that aliases; a mixed one from a
+# call still copies, BUGS.md#global-tuple-ref-storage-form.)
 from tpy import int32, nocopy
 
 

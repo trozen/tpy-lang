@@ -1,0 +1,1 @@
+main.py:20: error: Cannot reassign global variable 'pair_g' of a tuple of reference types 'tuple[Box, int32]'

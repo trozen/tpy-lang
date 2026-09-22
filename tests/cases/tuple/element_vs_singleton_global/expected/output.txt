@@ -1,3 +1,4 @@
-42
-2
-2
+scalar 42
+tuple 43
+owned 9
+rebound 7 43

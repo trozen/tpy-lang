@@ -161,7 +161,7 @@ from .predicates import (
     _f1_record,
     record_like,
     _method_rvalue_record_like,
-    _f1_tuple,
+    _f1_tuple, _storage_tuple_global,
     _mixed_own_storage_source,
     _nested_storage_tuple,
     _field_receiver_ok,
@@ -904,12 +904,12 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
             # arms (bare whole-optional, narrowed `(*g)`, unproven
             # deref_optional_check).
             lc.value_opt_bindings[n] = ValueOptKind.SCALAR
-        elif _f1_tuple(params_set.get(n), analyzer) is not None:
-            # A read-only F3 tuple global is a namespace-scope STORAGE
-            # lvalue: register it with the storage-form tuple names so its
-            # reads tag STORAGE (bare copy at storage sinks, the
-            # tuple_to_pointer lift at borrow-tuple param slots) instead of
-            # the borrow default a declared ptr-repr tuple name gets.
+        elif _storage_tuple_global(params_set.get(n), analyzer) is not None:
+            # A read-only STORAGE tuple global: register it with the
+            # storage-form tuple names so its reads tag STORAGE (bare copy at
+            # storage sinks, the tuple_to_pointer lift at borrow-tuple param
+            # slots). A tuple of references is the borrow form the declared
+            # ptr-repr tuple name gets by default -- the pointer-slot tuple.
             lc.storage_tuple_locals.add(n)
     for n, cname in global_write_cpp.items():
         # Reads of a write-seeded native global keep the ordinary
@@ -3175,14 +3175,14 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
             lc.global_ptr_slots.add(name)
             lc.pointers.add(name)
             lc.prescan.global_slots = lc.prescan.global_slots | {name}
-        elif _f1_tuple(gt, analyzer) is not None:
-            # A pointer-repr F3 tuple global is a namespace-scope STORAGE
-            # value (`std::tuple<std::optional<T>, ..> g;` -- tuples are
-            # value types, never pointer slots). Register it with the
-            # storage-form tuple names so the btuple-local reseat cannot
-            # mis-key it as a borrow local (which would emit the borrow
-            # literal bare, skipping the tuple_to_storage lift -- ill-formed
-            # C++); its top-level write takes the storage-global arm.
+        elif _storage_tuple_global(gt, analyzer) is not None:
+            # A STORAGE tuple global: register it with the storage-form tuple
+            # names so the btuple-local reseat cannot mis-key it as a borrow
+            # local (which would emit the borrow literal bare, skipping the
+            # tuple_to_storage lift -- ill-formed C++); its top-level write
+            # takes the storage-global arm. A tuple of references IS the
+            # borrow tuple (`std::tuple<T*, ..> g;`), so its module-init
+            # write takes the btuple reseat arm and binds the slots bare.
             lc.storage_tuple_locals.add(name)
     for name, ft in (final_types or {}).items():
         # A `Final` global lives at namespace scope as a `const T` and is

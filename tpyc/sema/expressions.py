@@ -26,7 +26,7 @@ from ..typesys import (
     PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-    unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, owned_tuple_storage_type,
+    unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, global_binds_by_reference, owned_tuple_storage_type,
     ConcreteCoroType,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse.nodes import GENEXPR_FUNC_PREFIX
@@ -2962,19 +2962,20 @@ class ExpressionAnalyzer:
             raise self.ctx.error(
                 f"name '{name}' is not defined at module level", expr)
         inner_global = unwrap_readonly(global_type)
-        if not inner_global.is_value_type():
+        if global_binds_by_reference(inner_global):
+            from .statements import global_rebind_message
             raise self.ctx.error(
-                f"Cannot reassign global variable '{name}' of non-value type "
-                f"'{inner_global}'", expr)
+                global_rebind_message(name, inner_global), expr)
         # Same exclusion the walrus local-reassign arm makes: a borrow-form
         # tuple needs the var-decl path's storage lift, which the inline
         # assign has no place to put.
         if (isinstance(inner_global, TupleType)
-                and inner_global.has_pointer_repr_element()):
+                and (inner_global.has_pointer_repr_element()
+                     or inner_global.has_own_element())):
             raise self.ctx.error(
                 f"walrus reassignment of global '{name}' of type "
-                f"'{inner_global}' is not supported yet; use a separate "
-                f"assignment statement", expr)
+                f"'{collapse_tuple_own_elements(inner_global)}' is not "
+                f"supported yet; use a separate assignment statement", expr)
         _, expr.value = self.compat.coerce_reassignment(
             name, global_type, value_type, expr.value, expr)
         # Mirror the var-decl global arm: the global scope carries the write,

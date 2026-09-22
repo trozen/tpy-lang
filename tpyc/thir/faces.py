@@ -2636,6 +2636,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # `static T __global_slot_N = std::move(std::get<i>(__tup_N));` +
     # `g = &__global_slot_N;` (the pointer-local reassign tail).
     "stmt.tuple_unpack.global_slot_target",
+    "stmt.tuple_unpack.global_ptr_target",  # the borrowed twin: no slot
+    "stmt.tuple_unpack.ref_global_source",  # a pointer-slot tuple global, bound by ref
     # THIRComprehension (lowering, the C1+C2 slice).
     "comp.list",                    # list comp -> vector stmt-expr
     "comp.set",                     # set comp -> ordered_set stmt-expr
@@ -3313,6 +3315,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # The same global written from a MIXED-own-tuple CALL: the call renders
     # bare under the same non-move lift.
     "top_level.tuple_global_mixed_call",
+    # The same global OWNING the fresh elements of its literal (sema marks
+    # them `Own` on the binding): the storage literal bare, no lift.
+    "top_level.tuple_global_owned_literal",
     "top_level.global_null",        # `g = nullptr;`
     # A BORROW-returning method call at a global slot: the slot points AT
     # the callee-owned storage (`pt = &(points->load(0));`), no slot alloc.
