@@ -58,9 +58,10 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, ::tpy::val_or_ref<Point>> {
     int32_t __state;
     Bag& __self;
-    Point* p = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_end_0;
+    using __for_src_0_t = decltype((__self.items));
+    ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -88,9 +89,10 @@ inline __gen_Bag___iter__ Bag::__iter__() {
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     int32_t __state;
     Bag& bag;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<Bag>> p;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<Bag>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<Bag>> __for_r_0;
+    using __for_src_0_t = decltype((bag));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> p;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -41,9 +41,10 @@ struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate, st
     int32_t __state;
     std::vector<Point>& items;
     int32_t i;
-    Point* item = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_end_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::begin_elem_t<__for_src_0_t>* item = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

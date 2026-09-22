@@ -36,9 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, Point> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<Point>> src;
-    Point* p = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Point>>> __for_end_0;
+    using __for_src_0_t = decltype(((*src)));
+    ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

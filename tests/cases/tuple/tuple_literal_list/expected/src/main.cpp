@@ -13,8 +13,9 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
     std::tuple<std::string, int32_t> __for_tup_gx;
     std::string k;
     int32_t v;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<std::tuple<std::string, int32_t>, 2>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<std::tuple<std::string, int32_t>, 2>>> __for_end_0;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -34,6 +35,7 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
     }
 };
 
+// # the unpack holder of a value tuple stays a value copy (no member aliases).
 // d2 = dict[str, int32]((k, v) for k, v in raw)  # -> S_RESUME_0
 std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
@@ -68,6 +70,7 @@ __genexpr_main_1_frame __genexpr_main_1(const std::array<std::tuple<std::string,
 //
 //     # Unannotated list of tuples (IntLiteralType resolved inside tuples)
 //     raw = [("x", 10), ("y", 20)]
+//     # the unpack holder of a value tuple stays a value copy (no member aliases).
 //     d2 = dict[str, int32]((k, v) for k, v in raw)
 //     print(d2["x"], d2["y"])
 void main() {

@@ -495,7 +495,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_rsum::__next__() {
 }
 
 // # a lazy combinator over a temporary, nothing escaping: the holder stays in the
-// # state block because the frame cannot name its type
+// # state block, as for any source the body lends nothing out of; the temporary
+// # the combinator retains is seated on the frame regardless
 // def gen_combinator() -> Iterator[str]:
 //     t = 0
 //     for i, v in enumerate(make_values()):  # tpyc: ok
@@ -507,8 +508,10 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_combinator::__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         t = 0;
+        __coro_arg_0.emplace(::tpyapp::main::make_values());
         {
-            auto __src_0 = ::tpy::builtin_enumerate<int32_t>(::tpyapp::main::make_values());
+            __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>((*__coro_arg_0)));
+            auto& __src_0 = (*__for_src_0);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {
                 auto __r_1 = __itr_0.__next__();

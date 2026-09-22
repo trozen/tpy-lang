@@ -57,3 +57,42 @@ async_slice 5
 gx_named 12
 gx_own_call 30
 gx_accessor 3 calls 1
+zip_names [11, 22]
+enumerate 0 101
+enumerate 1 102
+enumerate total 203
+reversed_tmp 20
+reversed_tmp churn 40
+reversed_tmp 10
+reversed_tmp churn 40
+genexpr [2, 4, 6]
+genexpr_capture [12, 13]
+readonly_view [5, 6]
+const_method [1, 2]
+ternary_params [2]
+delegate_proto [-1, 0, 2, 4]
+iter_object [2, 1, 0] gets 1 left 0
+nested 101
+nested 102
+nested 103
+nested 104
+nested after 104
+method_zip 6
+method_zip 8
+method_zip after 6 8
+arg_temp 5
+arg_temp churn 40
+arg_temp 6
+arg_temp churn 40
+nested_combinator [2, 11]
+combinator_temp [2, 2, 2]
+str_lit a
+str_lit a!
+str_lit b
+str_lit b!
+next_unpack [11, 13] 11 12
+shared_var [6, 5]
+own_param_iter [1, 0]
+async_combinator_temp 6
+async_zip 11
+async_genexpr 9

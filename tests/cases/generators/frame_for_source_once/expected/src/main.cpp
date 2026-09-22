@@ -227,8 +227,9 @@ struct __genexpr_gx_named_1_frame : public ::tpy::next_iter_mixin<__genexpr_gx_n
     int32_t __state;
     const std::array<int32_t, 3>& __src;
     int32_t v;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 3>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::array<int32_t, 3>>> __for_end_0;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -281,9 +282,10 @@ template <::tpystd::typing::Iterable<Cell> T___src>
 struct __genexpr_gx_own_call_2_frame : public ::tpy::next_iter_mixin<__genexpr_gx_own_call_2_frame<T___src>, int32_t> {
     int32_t __state;
     T___src __src;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<T___src>> c;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> c;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -354,9 +356,10 @@ template <::tpystd::typing::Iterable<Cell> T___src>
 struct __genexpr_gx_accessor_3_frame : public ::tpy::next_iter_mixin<__genexpr_gx_accessor_3_frame<T___src>, int32_t> {
     int32_t __state;
     T___src __src;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<T___src>> c;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> c;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -420,6 +423,283 @@ int32_t gx_accessor(Bag& b) {
     return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_gx_accessor_3(b.items()));
 }
 
+
+// def zip_names_src(xs: list[int32], ys: list[int32]) -> Iterator[int32]:
+__gen_zip_names_src zip_names_src(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys) {
+    return __gen_zip_names_src(xs, ys);
+}
+
+
+// def enumerate_cells_src() -> Iterator[str]:
+__gen_enumerate_cells_src enumerate_cells_src() {
+    return __gen_enumerate_cells_src();
+}
+
+
+// def reversed_temp_src() -> Iterator[str]:
+__gen_reversed_temp_src reversed_temp_src() {
+    return __gen_reversed_temp_src();
+}
+
+
+// def genexpr_src(xs: list[int32]) -> Iterator[int32]:
+__gen_genexpr_src genexpr_src(const std::vector<int32_t>& xs) {
+    return __gen_genexpr_src(xs);
+}
+
+
+// def genexpr_capture_src(xs: list[int32], k: int32) -> Iterator[int32]:
+__gen_genexpr_capture_src genexpr_capture_src(const std::vector<int32_t>& xs, int32_t k) {
+    return __gen_genexpr_capture_src(xs, k);
+}
+
+
+// def readonly_view_src(d: readonly[dict[str, Cell]]) -> Iterator[int32]:
+__gen_readonly_view_src readonly_view_src(const ::tpy::ordered_map<std::string, Cell>& d) {
+    return __gen_readonly_view_src(d);
+}
+
+
+// def const_method_src(b: readonly[Bag]) -> Iterator[int32]:
+__gen_const_method_src const_method_src(const Bag& b) {
+    return __gen_const_method_src(b);
+}
+
+
+// def ternary_params_src(xs: list[Cell], ys: list[Cell], flag: bool) -> Iterator[int32]:
+__gen_ternary_params_src ternary_params_src(const std::vector<Cell>& xs, const std::vector<Cell>& ys, bool flag) {
+    return __gen_ternary_params_src(xs, ys, flag);
+}
+
+
+// def delegate_proto_src(xs: list[int32]) -> Iterator[int32]:
+__gen_delegate_proto_src delegate_proto_src(std::vector<int32_t>& xs) {
+    return __gen_delegate_proto_src(xs);
+}
+
+
+// def iter_object_src(h: Holder) -> Iterator[int32]:
+__gen_iter_object_src iter_object_src(Holder& h) {
+    return __gen_iter_object_src(h);
+}
+
+
+// def nested_src(rows: list[Row]) -> Iterator[str]:
+__gen_nested_src nested_src(std::vector<Row>& rows) {
+    return __gen_nested_src(rows);
+}
+
+// def take(seed: Cell, n: int32) -> Own[list[Cell]]:
+//     return [Cell(seed.v + i) for i in range(n)]
+std::vector<Cell> take(const Cell& seed, int32_t n) {
+    return ({
+        std::vector<Cell> __result;
+        const int32_t __stop_0 = n;
+        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
+        for (int32_t i = 0; i < __stop_0; ++i) {
+            __result.push_back(Cell((::tpy::add_check<int32_t>(seed.v, i))));
+        }
+        std::move(__result);
+    });
+}
+
+
+// def arg_temp_src() -> Iterator[str]:
+__gen_arg_temp_src arg_temp_src() {
+    return __gen_arg_temp_src();
+}
+
+
+// def nested_combinator_src(xs: list[int32]) -> Iterator[int32]:
+__gen_nested_combinator_src nested_combinator_src(const std::vector<int32_t>& xs) {
+    return __gen_nested_combinator_src(xs);
+}
+
+
+// def combinator_temp_src() -> Iterator[int32]:
+__gen_combinator_temp_src combinator_temp_src() {
+    return __gen_combinator_temp_src();
+}
+
+
+// def str_literal_src() -> Iterator[str]:
+__gen_str_literal_src str_literal_src() {
+    return __gen_str_literal_src();
+}
+
+
+// def pairs_of(cells: list[Cell]) -> Iterator[tuple[int32, Cell]]:
+__gen_pairs_of pairs_of(std::vector<Cell>& cells) {
+    return __gen_pairs_of(cells);
+}
+
+
+// def next_unpack_src(cells: list[Cell]) -> Iterator[int32]:
+__gen_next_unpack_src next_unpack_src(std::vector<Cell>& cells) {
+    return __gen_next_unpack_src(cells);
+}
+
+
+// def shared_var_src(b: readonly[list[Cell]]) -> Iterator[int32]:
+__gen_shared_var_src shared_var_src(const std::vector<Cell>& b) {
+    return __gen_shared_var_src(b);
+}
+
+
+// def own_param_iter_src(h: Own[Holder]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
+__gen_own_param_iter_src own_param_iter_src(Holder h) {
+    return __gen_own_param_iter_src(std::move(h));
+}
+
+// async def async_combinator_temp() -> int32:
+//     total = 0
+//     # the async twin of the seated combinator temporary.
+//     for i, v in enumerate(Deleg(3)):  # tpyc: ok
+//         total += i + v
+//         await asyncio.sleep(0)                            # -> S_RESUME_0
+//     return total
+::tpystd::tpy::Poll<int32_t> __coro_async_combinator_temp::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        total = 0;
+        __coro_arg_0.emplace(Deleg(3));
+        __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>((*__coro_arg_0)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            int32_t __tpy_async_ret = total;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        }
+        __for_tup_6 = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_6;
+        i = std::get<0>(__tup_1);
+        v = std::get<1>(__tup_1);
+        total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(i, v)));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def async_combinator_temp() -> int32:
+__coro_async_combinator_temp async_combinator_temp() {
+    return __coro_async_combinator_temp();
+}
+
+// async def async_zip(xs: list[int32], ys: list[int32]) -> int32:
+//     total = 0
+//     # the async twin of the combinator source.
+//     for a, b in zip(xs, ys):  # tpyc: ok
+//         total += a * b
+//         await asyncio.sleep(0)                                   # -> S_RESUME_0
+//     return total
+::tpystd::tpy::Poll<int32_t> __coro_async_zip::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        total = 0;
+        __for_src_0.emplace(::tpy::builtin_zip<int32_t, int32_t>(xs, ys));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            int32_t __tpy_async_ret = total;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        }
+        __for_tup_7 = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_7;
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
+        total = ::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(a, b)));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def async_zip(xs: list[int32], ys: list[int32]) -> int32:
+__coro_async_zip async_zip(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys) {
+    return __coro_async_zip(xs, ys);
+}
+
+// async def async_genexpr(xs: list[int32]) -> int32:
+//     total = 0
+//     # the async twin of the genexpr source.
+//     for v in (x * 3 for x in xs):  # tpyc: ok
+//         total += v
+//         await asyncio.sleep(0)                      # -> S_RESUME_0
+//     return total
+::tpystd::tpy::Poll<int32_t> __coro_async_genexpr::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        total = 0;
+        __for_src_0.emplace(::tpyapp::main::__genexpr_async_genexpr_6(xs));
+        ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            int32_t __tpy_async_ret = total;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        }
+        v = ::tpy::unwrap_ref(*(*__for_r_0));
+        total = ::tpy::add_check<int32_t>(total, v);
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def async_genexpr(xs: list[int32]) -> int32:
+__coro_async_genexpr async_genexpr(const std::vector<int32_t>& xs) {
+    return __coro_async_genexpr(xs);
+}
+
 // def main() -> None:
 //     drain(named_src())
 //
@@ -468,12 +748,44 @@ int32_t gx_accessor(Bag& b) {
 //     print("gx_own_call", gx_own_call())
 //     b4 = Bag()
 //     print("gx_accessor", gx_accessor(b4), "calls", b4.calls)
+//
+//     print("zip_names", list(zip_names_src([1, 2, 3], [10, 20])))
+//     drain(enumerate_cells_src())
+//     drain(reversed_temp_src())
+//     print("genexpr", list(genexpr_src([1, 2, 3])))
+//     print("genexpr_capture", list(genexpr_capture_src([1, 2, 3], 10)))
+//     rd = {"a": Cell(5), "b": Cell(6)}
+//     print("readonly_view", list(readonly_view_src(rd)))
+//     b5 = Bag()
+//     print("const_method", list(const_method_src(b5)))
+//     print("ternary_params", list(ternary_params_src([Cell(1)], [Cell(2)], False)))
+//     print("delegate_proto", list(delegate_proto_src([1, 2])))
+//     h = Holder(3)
+//     print("iter_object", list(iter_object_src(h)), "gets", h.gets, "left", h.it.n)
+//     rows = [Row(1, 2), Row(3, 4)]
+//     drain(nested_src(rows))
+//     print("nested after", rows[1].cells[1].v)
+//     b6 = Bag()
+//     for s in b6.pairs([5, 6]):
+//         print(s)
+//     print("method_zip after", b6.cells[0].v, b6.cells[1].v)
+//     drain(arg_temp_src())
+//     print("nested_combinator", list(nested_combinator_src([1, 2])))
+//     print("combinator_temp", list(combinator_temp_src()))
+//     drain(str_literal_src())
+//     ncells = [Cell(1), Cell(2)]
+//     print("next_unpack", list(next_unpack_src(ncells)), ncells[0].v, ncells[1].v)
+//     print("shared_var", list(shared_var_src([Cell(6)])))
+//     print("own_param_iter", list(own_param_iter_src(Holder(2))))
+//     print("async_combinator_temp", asyncio.run(async_combinator_temp()))
+//     print("async_zip", asyncio.run(async_zip([1, 2], [3, 4])))
+//     print("async_genexpr", asyncio.run(async_genexpr([1, 2])))
 void main() {
-    auto __tmp_1 = ::tpyapp::main::named_src();
-    ::tpyapp::main::drain(__tmp_1);
-    std::vector<Cell> pcells = {Cell(1), Cell(2)};
-    auto __tmp_2 = ::tpyapp::main::param_src(pcells);
+    auto __tmp_2 = ::tpyapp::main::named_src();
     ::tpyapp::main::drain(__tmp_2);
+    std::vector<Cell> pcells = {Cell(1), Cell(2)};
+    auto __tmp_3 = ::tpyapp::main::param_src(pcells);
+    ::tpyapp::main::drain(__tmp_3);
     std::cout << "param after" << " " << ::tpy::__getitem__(pcells, 0).v << " " << ::tpy::__getitem__(pcells, 1).v << "\n";
     Bag b0 = Bag();
     {
@@ -488,51 +800,121 @@ void main() {
     }
     std::cout << "field after" << " " << ::tpy::__getitem__(b0.cells, 0).v << " " << ::tpy::__getitem__(b0.cells, 1).v << "\n";
     ::tpy::ordered_map<std::string, std::vector<Cell>> table = ::tpy::ordered_map<std::string, std::vector<Cell>>({{"a", {Cell(1), Cell(2)}}});
-    auto __tmp_3 = ::tpyapp::main::subscript_src(table);
-    ::tpyapp::main::drain(__tmp_3);
+    auto __tmp_4 = ::tpyapp::main::subscript_src(table);
+    ::tpyapp::main::drain(__tmp_4);
     std::cout << "subscript after" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, "a"), 0).v << " " << ::tpy::__getitem__(::tpy::__getitem__(table, "a"), 1).v << "\n";
     Bag b1 = Bag();
-    auto __tmp_4 = ::tpyapp::main::accessor_src(b1);
-    ::tpyapp::main::drain(__tmp_4);
+    auto __tmp_5 = ::tpyapp::main::accessor_src(b1);
+    ::tpyapp::main::drain(__tmp_5);
     std::cout << "accessor after" << " " << ::tpy::__getitem__(b1.cells, 0).v << " " << "calls" << " " << b1.calls << "\n";
     Bag b2 = Bag();
-    auto __tmp_5 = ::tpyapp::main::property_src(b2);
-    ::tpyapp::main::drain(__tmp_5);
-    std::cout << "property after" << " " << ::tpy::__getitem__(b2.cells, 0).v << " " << ::tpy::__getitem__(b2.cells, 1).v << "\n";
-    auto __tmp_6 = ::tpyapp::main::own_call_src();
+    auto __tmp_6 = ::tpyapp::main::property_src(b2);
     ::tpyapp::main::drain(__tmp_6);
-    std::vector<Cell> ccells = {Cell(1), Cell(2)};
-    auto __tmp_7 = ::tpyapp::main::copy_src(ccells);
+    std::cout << "property after" << " " << ::tpy::__getitem__(b2.cells, 0).v << " " << ::tpy::__getitem__(b2.cells, 1).v << "\n";
+    auto __tmp_7 = ::tpyapp::main::own_call_src();
     ::tpyapp::main::drain(__tmp_7);
-    std::cout << "copy after" << " " << ::tpy::__getitem__(ccells, 0).v << " " << ::tpy::__getitem__(ccells, 1).v << "\n";
-    auto __tmp_8 = ::tpyapp::main::literal_src();
+    std::vector<Cell> ccells = {Cell(1), Cell(2)};
+    auto __tmp_8 = ::tpyapp::main::copy_src(ccells);
     ::tpyapp::main::drain(__tmp_8);
-    auto __tmp_9 = ::tpyapp::main::slice_mut_src();
+    std::cout << "copy after" << " " << ::tpy::__getitem__(ccells, 0).v << " " << ::tpy::__getitem__(ccells, 1).v << "\n";
+    auto __tmp_9 = ::tpyapp::main::literal_src();
     ::tpyapp::main::drain(__tmp_9);
-    std::vector<Cell> __tmp_10 = {Cell(1), Cell(2), Cell(3)};
-    auto __tmp_11 = ::tpyapp::main::slice_const_src(__tmp_10);
-    ::tpyapp::main::drain(__tmp_11);
-    auto __tmp_12 = ::tpyapp::main::ternary_lvalues_src(true);
+    auto __tmp_10 = ::tpyapp::main::slice_mut_src();
+    ::tpyapp::main::drain(__tmp_10);
+    std::vector<Cell> __tmp_11 = {Cell(1), Cell(2), Cell(3)};
+    auto __tmp_12 = ::tpyapp::main::slice_const_src(__tmp_11);
     ::tpyapp::main::drain(__tmp_12);
-    auto __tmp_13 = ::tpyapp::main::ternary_temps_src(true);
+    auto __tmp_13 = ::tpyapp::main::ternary_lvalues_src(true);
     ::tpyapp::main::drain(__tmp_13);
-    auto __tmp_14 = ::tpyapp::main::walrus_src();
+    auto __tmp_14 = ::tpyapp::main::ternary_temps_src(true);
     ::tpyapp::main::drain(__tmp_14);
-    std::string __tmp_15 = "ab";
-    std::string __tmp_16 = "c";
-    auto __tmp_17 = ::tpyapp::main::str_temp_src(__tmp_15, __tmp_16);
-    ::tpyapp::main::drain(__tmp_17);
-    auto __tmp_18 = ::tpyapp::main::gen_call_src();
+    auto __tmp_15 = ::tpyapp::main::walrus_src();
+    ::tpyapp::main::drain(__tmp_15);
+    std::string __tmp_16 = "ab";
+    std::string __tmp_17 = "c";
+    auto __tmp_18 = ::tpyapp::main::str_temp_src(__tmp_16, __tmp_17);
     ::tpyapp::main::drain(__tmp_18);
+    auto __tmp_19 = ::tpyapp::main::gen_call_src();
+    ::tpyapp::main::drain(__tmp_19);
     Bag b3 = Bag();
     std::cout << "async_accessor" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_accessor(b3))) << " " << "calls" << " " << b3.calls << "\n";
-    std::vector<Cell> __tmp_19 = {Cell(1), Cell(2), Cell(3)};
-    std::cout << "async_slice" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_slice(__tmp_19))) << "\n";
+    std::vector<Cell> __tmp_20 = {Cell(1), Cell(2), Cell(3)};
+    std::cout << "async_slice" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_slice(__tmp_20))) << "\n";
     std::cout << "gx_named" << " " << ::tpyapp::main::gx_named() << "\n";
     std::cout << "gx_own_call" << " " << ::tpyapp::main::gx_own_call() << "\n";
     Bag b4 = Bag();
     std::cout << "gx_accessor" << " " << ::tpyapp::main::gx_accessor(b4) << " " << "calls" << " " << b4.calls << "\n";
+    std::vector<int32_t> __tmp_21 = {1, 2, 3};
+    std::vector<int32_t> __tmp_22 = {10, 20};
+    std::cout << "zip_names" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::zip_names_src(__tmp_21, __tmp_22))) << "\n";
+    auto __tmp_23 = ::tpyapp::main::enumerate_cells_src();
+    ::tpyapp::main::drain(__tmp_23);
+    auto __tmp_24 = ::tpyapp::main::reversed_temp_src();
+    ::tpyapp::main::drain(__tmp_24);
+    std::vector<int32_t> __tmp_25 = {1, 2, 3};
+    std::cout << "genexpr" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::genexpr_src(__tmp_25))) << "\n";
+    std::vector<int32_t> __tmp_26 = {1, 2, 3};
+    std::cout << "genexpr_capture" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::genexpr_capture_src(__tmp_26, 10))) << "\n";
+    ::tpy::ordered_map<std::string, Cell> rd = ::tpy::ordered_map<std::string, Cell>({{"a", Cell(5)}, {"b", Cell(6)}});
+    std::cout << "readonly_view" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::readonly_view_src(rd))) << "\n";
+    Bag b5 = Bag();
+    std::cout << "const_method" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::const_method_src(b5))) << "\n";
+    std::vector<Cell> __tmp_27 = {Cell(1)};
+    std::vector<Cell> __tmp_28 = {Cell(2)};
+    std::cout << "ternary_params" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::ternary_params_src(__tmp_27, __tmp_28, false))) << "\n";
+    std::vector<int32_t> __tmp_29 = {1, 2};
+    std::cout << "delegate_proto" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::delegate_proto_src(__tmp_29))) << "\n";
+    Holder h = Holder(3);
+    std::cout << "iter_object" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::iter_object_src(h))) << " " << "gets" << " " << h.gets << " " << "left" << " " << h.it.n << "\n";
+    std::vector<Row> rows = {Row(1, 2), Row(3, 4)};
+    auto __tmp_30 = ::tpyapp::main::nested_src(rows);
+    ::tpyapp::main::drain(__tmp_30);
+    std::cout << "nested after" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 1).cells, 1).v << "\n";
+    Bag b6 = Bag();
+    {
+        std::vector<int32_t> __tmp_31 = {5, 6};
+        auto __src_2 = b6.pairs(__tmp_31);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
+        std::cout << s << "\n";
+        }
+    }
+    std::cout << "method_zip after" << " " << ::tpy::__getitem__(b6.cells, 0).v << " " << ::tpy::__getitem__(b6.cells, 1).v << "\n";
+    auto __tmp_32 = ::tpyapp::main::arg_temp_src();
+    ::tpyapp::main::drain(__tmp_32);
+    std::vector<int32_t> __tmp_33 = {1, 2};
+    std::cout << "nested_combinator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::nested_combinator_src(__tmp_33))) << "\n";
+    std::cout << "combinator_temp" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::combinator_temp_src())) << "\n";
+    auto __tmp_34 = ::tpyapp::main::str_literal_src();
+    ::tpyapp::main::drain(__tmp_34);
+    std::vector<Cell> ncells = {Cell(1), Cell(2)};
+    std::cout << "next_unpack" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::next_unpack_src(ncells))) << " " << ::tpy::__getitem__(ncells, 0).v << " " << ::tpy::__getitem__(ncells, 1).v << "\n";
+    std::vector<Cell> __tmp_35 = {Cell(6)};
+    std::cout << "shared_var" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::shared_var_src(__tmp_35))) << "\n";
+    std::cout << "own_param_iter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::own_param_iter_src(Holder(2)))) << "\n";
+    std::cout << "async_combinator_temp" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_combinator_temp())) << "\n";
+    std::vector<int32_t> __tmp_36 = {1, 2};
+    std::vector<int32_t> __tmp_37 = {3, 4};
+    std::cout << "async_zip" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_zip(__tmp_36, __tmp_37))) << "\n";
+    std::vector<int32_t> __tmp_38 = {1, 2};
+    std::cout << "async_genexpr" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_genexpr(__tmp_38))) << "\n";
 }
+
+
+// for v in (x * 2 for x in xs):  # tpyc: ok
+__genexpr_genexpr_src_4_frame __genexpr_genexpr_src_4(const std::vector<int32_t>& __src) {
+    return __genexpr_genexpr_src_4_frame(__src);
+}
+
+
+// for v in (x * 3 for x in xs):  # tpyc: ok
+__genexpr_async_genexpr_6_frame __genexpr_async_genexpr_6(const std::vector<int32_t>& __src) {
+    return __genexpr_async_genexpr_6_frame(__src);
+}
+
 
 
 // import asyncio

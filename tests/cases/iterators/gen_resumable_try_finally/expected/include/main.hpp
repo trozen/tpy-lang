@@ -21,8 +21,9 @@ struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, ::tpy::BigIn
     ::tpy::frame_state __state;
     const std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -14,6 +14,8 @@
 #include "frame_slot.hpp"
 #include "dunder.hpp"
 
+#include <cstddef>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -24,9 +26,18 @@ namespace tpy {
 // back (a lent `T&`, a fresh value, a proxy tuple of references). The slot
 // keeps the result until the next advance, so the pointer holds for the
 // iteration and nothing is copied or converted to take it.
+template<typename R>
+using step_elem_t = std::remove_reference_t<
+    decltype(::tpy::unwrap_ref(*std::declval<R&>()))>;
 template<typename S>
-using for_step_elem_t = std::remove_reference_t<
-    decltype(::tpy::unwrap_ref(*std::declval<iter_result_t<S>&>()))>;
+using for_step_elem_t = step_elem_t<iter_result_t<S>>;
+
+// Member I of a step element as an unpack target points at it: through the
+// normalizing deref the target's bind uses, so a member that is itself a
+// reference or a pointer (a proxy tuple's) yields the pointee, not the handle.
+template<std::size_t I, typename Tup>
+using step_elem_member_t = std::remove_reference_t<decltype(
+    ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<I>(std::declval<Tup&>()))))>;
 
 // Resumable-frame `for x in <Iterable>` iterator handling. The source `src` is
 // already frame-resident (a captured param, a frame-held local, or a moved-in

@@ -55,9 +55,10 @@ struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it
     int32_t __state;
     T_it it;
     bool started;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    using __for_src_0_t = decltype((it));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -132,9 +133,10 @@ struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it
     int32_t __state;
     F_pred pred;
     T_it it;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    using __for_src_0_t = decltype((it));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -208,8 +210,9 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
     int32_t __state;
     const std::vector<int32_t>& it;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((it));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -237,9 +240,10 @@ struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, ::t
     T_it it;
     int32_t n;
     int32_t c;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    using __for_src_0_t = decltype((it));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -318,8 +322,9 @@ struct __gen_Doubler_each_twice : public ::tpy::next_iter_mixin<__gen_Doubler_ea
     const Doubler& __self;
     const std::vector<int32_t>& it;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((it));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

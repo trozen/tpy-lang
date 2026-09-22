@@ -75,7 +75,8 @@ struct __gen_make_toks : public ::tpy::next_iter_mixin<__gen_make_toks<T_src>, T
     int32_t __state;
     T_src src;
     int32_t n;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<T_src>> __for_r_0;
+    using __for_src_0_t = decltype((src));
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

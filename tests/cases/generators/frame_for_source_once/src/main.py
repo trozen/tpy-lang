@@ -1,17 +1,19 @@
-# A `for` inside a resumable frame evaluates a CONTAINER iterable exactly ONCE:
-# an rvalue source is kept in the frame for the loop's whole life, an lvalue
-# source is captured by reference exactly as in a plain function. (An
-# iterator-OBJECT source is re-rendered per advance --
-# BUGS.md#frame-iter-next-source-reevaluated -- so no section claims otherwise
-# for one.)
+# A `for` inside a resumable frame evaluates its iterable exactly ONCE: an
+# rvalue source is kept in the frame for the loop's whole life, an lvalue
+# source is captured by reference exactly as in a plain function, and an
+# iterator OBJECT reached through a call on a param is held by reference.
+# Every field of the loop is spelled off the source expression's own type
+# (`decltype`), so a lazy combinator, a generator expression, a view of a
+# readonly dict, a `T&` method on a const receiver and a conditional of two
+# const params all take the frame route.
 #
 # Every section's loop body SUSPENDS. The lvalue sections mutate an element
 # through the loop variable and the caller reads the change back, so a copy
 # would be visible; the rvalue sections allocate between the yields, so a
 # holder that died at the end of its state block would be disturbed. The
 # accessor sections count their calls -- one, as CPython counts them.
-from typing import Iterator
-from tpy import int32, Own, copy
+from typing import Iterable, Iterator
+from tpy import int32, Own, copy, readonly, auto_readonly
 import asyncio
 
 
@@ -45,6 +47,87 @@ class Bag:
         for c in self.cells:  # tpyc: ok
             c.v += 100
             yield "field " + str(c.v)
+
+    @auto_readonly
+    def items_m(self) -> list[Cell]:
+        return self.cells
+
+    def pairs(self, ys: list[int32]) -> Iterator[str]:
+        # generator METHOD over a combinator of a field and a param; the
+        # unpack target aliases the field's element. (`calls` is bumped so
+        # the receiver is mutable: a mutation through `c` alone is not
+        # traced back to it, BUGS.md#combinator-unpack-mutation-not-propagated.)
+        self.calls += 1
+        for c, y in zip(self.cells, ys):  # tpyc: ok
+            c.v += y
+            yield "method_zip " + str(c.v)
+            churn()
+
+
+class Counter:
+    n: int32
+    calls: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+        self.calls = 0
+
+    def __iter__(self) -> "Counter":
+        return self
+
+    def __next__(self) -> int32:
+        if self.n == 0:
+            raise StopIteration()
+        self.n -= 1
+        return self.n
+
+
+class Holder:
+    it: Counter
+    gets: int32
+
+    def __init__(self, n: int32) -> None:
+        self.it = Counter(n)
+        self.gets = 0
+
+    def get(self) -> Counter:
+        self.gets += 1
+        return self.it
+
+
+class Cur:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    def __iter__(self) -> "Cur":
+        return self
+
+    def __next__(self) -> int32:
+        if self.n == 0:
+            raise StopIteration()
+        self.n -= 1
+        return self.n
+
+
+class Deleg:
+    inner: Cur
+
+    def __init__(self, n: int32) -> None:
+        self.inner = Cur(n)
+
+    # lends its member iterator: a combinator over a Deleg keeps a reference
+    # into the Deleg itself.
+    def __iter__(self) -> Cur:
+        return self.inner
+
+
+class Row:
+    cells: list[Cell]
+
+    def __init__(self, a: int32, b: int32) -> None:
+        self.cells = [Cell(a), Cell(b)]
 
 
 def churn() -> int32:
@@ -213,6 +296,197 @@ def gx_accessor(b: Bag) -> int32:
     return sum(c.v for c in b.items())  # tpyc: ok
 
 
+def zip_names_src(xs: list[int32], ys: list[int32]) -> Iterator[int32]:
+    # lazy combinator over NAMES -- an rvalue iterator the frame owns.
+    for a, b in zip(xs, ys):  # tpyc: ok
+        yield a + b
+        churn()
+
+
+def enumerate_cells_src() -> Iterator[str]:
+    cells = [Cell(1), Cell(2)]
+    # combinator over a local NAME; the unpack target aliases the element,
+    # so the mutation shows in the list afterwards.
+    for i, c in enumerate(cells):  # tpyc: ok
+        c.v += 100
+        yield "enumerate " + str(i) + " " + str(c.v)
+        churn()
+    yield "enumerate total " + str(cells[0].v + cells[1].v)
+
+
+def reversed_temp_src() -> Iterator[str]:
+    # combinator over a TEMPORARY -- the frame owns the combinator, which
+    # owns the list.
+    for c in reversed(make_cells()):  # tpyc: ok
+        yield "reversed_tmp " + str(c.v)
+        yield "reversed_tmp churn " + str(churn())
+
+
+def genexpr_src(xs: list[int32]) -> Iterator[int32]:
+    # generator EXPRESSION at the head -- its frame is embedded in this one.
+    for v in (x * 2 for x in xs):  # tpyc: ok
+        yield v
+        churn()
+
+
+def genexpr_capture_src(xs: list[int32], k: int32) -> Iterator[int32]:
+    # genexpr with a capture -- the embedded frame is a template over it.
+    for v in (x + k for x in xs if x > 1):  # tpyc: ok
+        yield v
+
+
+def readonly_view_src(d: readonly[dict[str, Cell]]) -> Iterator[int32]:
+    # view of a READONLY dict -- the slot takes the const view's own type.
+    for c in d.values():  # tpyc: ok
+        yield c.v
+        churn()
+
+
+def const_method_src(b: readonly[Bag]) -> Iterator[int32]:
+    # `T&`-returning method on a CONST receiver -- a const_iterator pair.
+    for c in b.items_m():  # tpyc: ok
+        yield c.v
+        churn()
+
+
+def ternary_params_src(xs: list[Cell], ys: list[Cell], flag: bool) -> Iterator[int32]:
+    # conditional of two CONST params -- const iterators, no copy. Read only:
+    # a mutation through `c` is not traced to the params
+    # (BUGS.md#frame-ternary-params-mutation-not-propagated).
+    for c in (xs if flag else ys):  # tpyc: ok
+        yield c.v
+        churn()
+
+
+def doubled(items: Iterable[int32]) -> Iterator[int32]:
+    yield 0
+    for x in items:
+        yield x * 2
+
+
+def delegate_proto_src(xs: list[int32]) -> Iterator[int32]:
+    # delegating to a generator with a PROTOCOL-typed param: the embedded
+    # frame is a template over the deduced argument type.
+    yield -1
+    for v in doubled(xs):  # tpyc: ok
+        yield v
+
+
+def iter_object_src(h: Holder) -> Iterator[int32]:
+    # an iterator OBJECT reached through a call on a param -- held by
+    # reference, so the accessor runs once and the object is drained.
+    for v in h.get():  # tpyc: ok
+        yield v
+        churn()
+
+
+def nested_src(rows: list[Row]) -> Iterator[str]:
+    # inner source reads the OUTER loop var: the inner alias is spelled after
+    # the outer loop var's field.
+    for row in rows:  # tpyc: ok
+        for c in row.cells:  # tpyc: ok
+            c.v += 100
+            yield "nested " + str(c.v)
+
+
+def take(seed: Cell, n: int32) -> Own[list[Cell]]:
+    return [Cell(seed.v + i) for i in range(n)]
+
+
+def arg_temp_src() -> Iterator[str]:
+    # an owned source whose ARGUMENT is a temporary the call does not keep:
+    # the alias renders the argument as `std::declval`, the setup as itself.
+    for c in take(Cell(5), 2):  # tpyc: ok
+        yield "arg_temp " + str(c.v)
+        yield "arg_temp churn " + str(churn())
+
+
+def nested_combinator_src(xs: list[int32]) -> Iterator[int32]:
+    # a combinator over a combinator: the inner rvalue is OWNED by the
+    # outer, not seated on the frame.
+    for i, v in enumerate(reversed(xs)):  # tpyc: ok
+        yield i * 10 + v
+        churn()
+
+
+def combinator_temp_src() -> Iterator[int32]:
+    # combinator over a TEMPORARY that lends its iterator: the temporary is
+    # seated on the frame, not in the state block the combinator outlives.
+    for i, v in enumerate(Deleg(3)):  # tpyc: ok
+        yield i + v
+        churn()
+
+
+def str_literal_src() -> Iterator[str]:
+    # a `str` LITERAL source -- the frame holds the view of its storage.
+    for ch in "ab":  # tpyc: ok
+        yield "str_lit " + ch
+        yield "str_lit " + ch + "!"
+
+
+def pairs_of(cells: list[Cell]) -> Iterator[tuple[int32, Cell]]:
+    i = 0
+    for c in cells:
+        yield (i, c)
+        i += 1
+
+
+def next_unpack_src(cells: list[Cell]) -> Iterator[int32]:
+    # unpack over a GENERATOR yielding a record member: the target aliases
+    # the element, so the caller sees the mutation.
+    for i, c in pairs_of(cells):  # tpyc: ok
+        c.v += 10
+        yield i + c.v
+
+
+def shared_var_src(b: readonly[list[Cell]]) -> Iterator[int32]:
+    a = [Cell(5)]
+    # one loop var bound by two loops whose sources differ in const (a
+    # readonly param, a local): its one field takes the join (const), and
+    # both loops read through it. A mutation in the second loop would be a
+    # C++ error, as it was under sema's marking before.
+    for c in b:  # tpyc: ok
+        yield c.v
+    for c in a:  # tpyc: ok
+        yield c.v
+
+
+def own_param_iter_src(h: Own[Holder]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
+    # an iterator object reached through a call on a BY-VALUE param: the
+    # holder is a frame field, so the source is not held by reference and
+    # the call re-renders at every advance
+    # (BUGS.md#frame-iter-next-source-reevaluated). The count is not printed.
+    for v in h.get():  # tpyc: ok
+        yield v
+
+
+async def async_combinator_temp() -> int32:
+    total = 0
+    # the async twin of the seated combinator temporary.
+    for i, v in enumerate(Deleg(3)):  # tpyc: ok
+        total += i + v
+        await asyncio.sleep(0)
+    return total
+
+
+async def async_zip(xs: list[int32], ys: list[int32]) -> int32:
+    total = 0
+    # the async twin of the combinator source.
+    for a, b in zip(xs, ys):  # tpyc: ok
+        total += a * b
+        await asyncio.sleep(0)
+    return total
+
+
+async def async_genexpr(xs: list[int32]) -> int32:
+    total = 0
+    # the async twin of the genexpr source.
+    for v in (x * 3 for x in xs):  # tpyc: ok
+        total += v
+        await asyncio.sleep(0)
+    return total
+
+
 def drain(it: Iterator[str]) -> None:
     for s in it:
         print(s)
@@ -266,6 +540,38 @@ def main() -> None:
     print("gx_own_call", gx_own_call())
     b4 = Bag()
     print("gx_accessor", gx_accessor(b4), "calls", b4.calls)
+
+    print("zip_names", list(zip_names_src([1, 2, 3], [10, 20])))
+    drain(enumerate_cells_src())
+    drain(reversed_temp_src())
+    print("genexpr", list(genexpr_src([1, 2, 3])))
+    print("genexpr_capture", list(genexpr_capture_src([1, 2, 3], 10)))
+    rd = {"a": Cell(5), "b": Cell(6)}
+    print("readonly_view", list(readonly_view_src(rd)))
+    b5 = Bag()
+    print("const_method", list(const_method_src(b5)))
+    print("ternary_params", list(ternary_params_src([Cell(1)], [Cell(2)], False)))
+    print("delegate_proto", list(delegate_proto_src([1, 2])))
+    h = Holder(3)
+    print("iter_object", list(iter_object_src(h)), "gets", h.gets, "left", h.it.n)
+    rows = [Row(1, 2), Row(3, 4)]
+    drain(nested_src(rows))
+    print("nested after", rows[1].cells[1].v)
+    b6 = Bag()
+    for s in b6.pairs([5, 6]):
+        print(s)
+    print("method_zip after", b6.cells[0].v, b6.cells[1].v)
+    drain(arg_temp_src())
+    print("nested_combinator", list(nested_combinator_src([1, 2])))
+    print("combinator_temp", list(combinator_temp_src()))
+    drain(str_literal_src())
+    ncells = [Cell(1), Cell(2)]
+    print("next_unpack", list(next_unpack_src(ncells)), ncells[0].v, ncells[1].v)
+    print("shared_var", list(shared_var_src([Cell(6)])))
+    print("own_param_iter", list(own_param_iter_src(Holder(2))))
+    print("async_combinator_temp", asyncio.run(async_combinator_temp()))
+    print("async_zip", asyncio.run(async_zip([1, 2], [3, 4])))
+    print("async_genexpr", asyncio.run(async_genexpr([1, 2])))
 
 
 main()

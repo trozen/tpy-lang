@@ -44,9 +44,10 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 struct __gen_handles : public ::tpy::next_iter_mixin<__gen_handles, ::tpy::val_or_ref<Handle>> {
     int32_t __state;
     std::vector<Handle>& items;
-    Handle* h = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Handle>>> __for_end_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -45,10 +45,11 @@ struct __coro_process {
     std::vector<std::tuple<int32_t, Item>>& rows;
     int32_t total;
     int32_t idx;
-    Item* it = nullptr;
-    std::tuple<int32_t, Item>* __for_tup_0 = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, Item>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, Item>>>> __for_end_0;
+    using __for_src_0_t = decltype((rows));
+    std::tuple_element_t<1, ::tpy::begin_elem_t<__for_src_0_t>>* it = nullptr;
+    ::tpy::begin_elem_t<__for_src_0_t>* __for_tup_0 = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

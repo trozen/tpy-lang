@@ -23,10 +23,12 @@ struct __gen_matrix : public ::tpy::next_iter_mixin<__gen_matrix, int32_t> {
     const std::vector<int32_t>& cols;
     int32_t c;
     int32_t r;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_1;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_1;
+    using __for_src_0_t = decltype((rows));
+    using __for_src_1_t = decltype((cols));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_it_1;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_end_1;
 
     enum : int32_t {
         S_INITIAL = 0,

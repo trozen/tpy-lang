@@ -66,8 +66,9 @@ struct __gen_Lim_first : public ::tpy::next_iter_mixin<__gen_Lim_first, int32_t>
     int32_t cap;
     int32_t n;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -98,8 +99,9 @@ struct __gen_Lim_ro_pair : public ::tpy::next_iter_mixin<__gen_Lim_ro_pair, int3
     const Lim& __self;
     const std::vector<int32_t>& xs;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -158,8 +160,9 @@ struct __gen_Lim_dvals : public ::tpy::next_iter_mixin<__gen_Lim_dvals, int32_t>
     const Lim& __self;
     const ::tpy::ordered_map<std::string, int32_t>& d;
     std::string k;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((d));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

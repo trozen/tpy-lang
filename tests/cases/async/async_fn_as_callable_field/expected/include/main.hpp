@@ -80,9 +80,10 @@ struct __coro_Dispatcher_run {
     int32_t count;
     ::tpy::frame_slot<std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>> tasks;
     int32_t i;
-    ::tpystd::asyncio::_executor::Task<std::monostate>* t = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>>> __for_end_0;
+    using __for_src_0_t = decltype(((*tasks)));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_0 = nullptr;
 
     enum : int32_t {

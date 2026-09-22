@@ -32,9 +32,9 @@ def _parse_rows[R: Readable](
     doublequote: bool,
     skipinitialspace: bool,
 ) -> Iterator[Own[list[str]]]:
-    # A `Ptr[R]` (concrete) param -- not a `Readable` protocol param -- so this
-    # generator can be embedded in another resumable frame (DictReader.__iter__)
-    # and a borrowed-Ptr holder can drive it without a copy.
+    # A `Ptr[R]` (concrete) param so a borrowed-Ptr holder can drive it
+    # without a copy; a protocol-param generator embeds in a frame too now,
+    # so this twin of `reader` can go (TODO.md, "csv: deduplicate").
     while True:
         line = fp.readline()
         if not line:
@@ -118,9 +118,7 @@ def reader(
     # `Readable` protocol param (not generic `[R]`) because a cross-module call
     # `csv.reader(io.StringIO(...))` must accept an rvalue temporary, which a
     # generic `R&` param rejects; _parse_rows takes `Ptr[R]` because DictReader
-    # drives it from a borrowed-Ptr field inside a resumable frame. Neither
-    # shape can feed the other (a protocol value can't form a Ptr; a Ptr-param
-    # generator can't take a protocol). Tracked in TODO.md.
+    # drives it from a borrowed-Ptr field. Tracked in TODO.md.
     while True:
         line = fp.readline()
         if not line:

@@ -87,9 +87,10 @@ struct __gen_bump_all : public ::tpy::next_iter_mixin<__gen_bump_all, int32_t> {
     int32_t __state;
     Holder& h;
     int32_t total;
-    Node* n = nullptr;
-    ::tpy::frame_loop_slot<__gen_Holder_nodes_gen> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_Holder_nodes_gen>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((h.nodes_gen()))>;
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* n = nullptr;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

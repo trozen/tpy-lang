@@ -54,9 +54,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 struct __gen_Holder_bump : public ::tpy::next_iter_mixin<__gen_Holder_bump, int32_t> {
     int32_t __state;
     Holder& __self;
-    Node* n = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+    using __for_src_0_t = decltype((__self.nodes));
+    ::tpy::begin_elem_t<__for_src_0_t>* n = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -13,7 +13,7 @@ inside a body carries a comment.
 from __future__ import annotations
 
 import io
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields as dc_fields, is_dataclass
 from typing import Callable, Mapping, TextIO
 
 from ..parse.nodes import RebindStorage, TryTier
@@ -74,6 +74,7 @@ from .nodes import (
     THIRConsumingIter,
     THIRCopy,
     THIRForEach,
+    THIRNode,
     THIRForIterProto,
     THIRForRange,
     THIRFormConvert,
@@ -212,6 +213,49 @@ class TempSink:
 
     def flush(self, out: TextIO, indent: str) -> None:
         self._ctx.temps.flush(out, indent)
+
+
+def _is_thir_record(v: object) -> bool:
+    # Every dataclass of the THIR module: the nodes and the auxiliary records
+    # that hold them (a match arm, an f-string argument). A TpyType is a
+    # dataclass too, but of another module, and may be cyclic.
+    return is_dataclass(v) and type(v).__module__ == THIRNode.__module__
+
+
+def _walk_thir(roots):
+    """Every THIR node under `roots`, statements and expressions alike."""
+    stack = list(roots)
+    while stack:
+        node = stack.pop()
+        yield node
+        for f in dc_fields(node):
+            v = getattr(node, f.name, None)
+            if isinstance(v, (list, tuple)):
+                stack.extend(x for x in v if _is_thir_record(x))
+            elif _is_thir_record(v):
+                stack.append(v)
+
+
+class UnevaluatedTemps(TempSink):
+    """A TempSink for a render that C++ will never evaluate -- the operand of
+    a `decltype` spelling a frame field's type. An argument temporary has no
+    statement to be declared in there, so it renders as `std::declval<T&>()`
+    of its own type instead: the same value category the declared temp would
+    have had, so the deduced type is the one the evaluated render produces.
+    A named pre-declaration (a walrus target) has no such stand-in."""
+
+    def create(self, cpp_type: str, init_expr: str, *,
+               brace_init: bool = False, movable: bool = False) -> str:
+        return f"std::declval<{cpp_type}&>()"
+
+    def declare_named(self, name: str, cpp_type: str, *,
+                      init: 'str | None' = None) -> None:
+        raise THIRCodeGenError(
+            "internal error: a named declaration inside an unevaluated render")
+
+    def declare_named_auto(self, prefix: str, cpp_type: str) -> str:
+        raise THIRCodeGenError(
+            "internal error: a named declaration inside an unevaluated render")
 
 
 class ModuleCounter:
@@ -1324,7 +1368,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRDefaultConstruct):
         return f"{e.cpp_type}{{}}"
     if isinstance(e, THIRStrLiteral):
-        return cpp_string_literal_expr(e.value)
+        lit = cpp_string_literal_expr(e.value)
+        # The view over the literal's static storage, where the position
+        # needs the literal typed (a C string literal carries its NUL, which
+        # the view trims).
+        return f"std::string_view({lit})" if e.form is Form.BORROW else lit
     if isinstance(e, THIRBytesLiteral):
         # The owned/view verdict was decided at lowering from the sink and
         # rides the form tag (see the node's doc); an empty view literal
@@ -2065,8 +2113,7 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
         # A fresh source whose elements this body binds into borrowing frame
         # storage: the frame owns the source so those bindings stay valid
         # past the state block.
-        emplace = emit_prims.for_src_emplace(stmt.frame_src_field,
-                                       stmt.frame_src_cpp or "", iterable_cpp)
+        emplace = emit_prims.for_src_emplace(stmt.frame_src_field, iterable_cpp)
         out.write(f"{indent}{emplace}\n")
         obj = f"(*{stmt.frame_src_field})"
     else:
@@ -2113,8 +2160,7 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
         # A fresh source the frame owns (see THIRForEach): the loop's own
         # capture binds the slot instead of a block-local copy that dies with
         # the state block.
-        emplace = emit_prims.for_src_emplace(stmt.frame_src_field,
-                                       stmt.frame_src_cpp or "", it_cpp)
+        emplace = emit_prims.for_src_emplace(stmt.frame_src_field, it_cpp)
         out.write(f"{indent}{emplace}\n")
         out.write(f"{indent}auto& {src} = (*{stmt.frame_src_field});\n")
     else:
@@ -4568,6 +4614,7 @@ class ResumableLeafEmitter:
         self._state.ast_finally_pop = ast_finally_pop
         if iter_counter is not None:
             self._state.iter_counter = iter_counter
+        self._held_loops: 'dict[str, THIRStmt] | None' = None
 
     def _lookup(self, table, node, what: str):
         if node not in table:
@@ -4594,6 +4641,51 @@ class ResumableLeafEmitter:
         """A leaf statement that lowered to no code (`pass`, a docstring)."""
         return isinstance(self._lookup(self._body.leaves, stmt, "leaf statement"),
                           THIRNoOpStmt)
+
+    def _held_leaf_loops(self) -> 'dict[str, THIRStmt]':
+        """The leaf `for` loops whose source the frame holds, by the field
+        that holds it; one walk of the body's leaves, shared by every alias
+        render."""
+        if self._held_loops is None:
+            self._held_loops = {
+                n.frame_src_field: n
+                for n in _walk_thir(self._body.leaves.values())
+                if isinstance(n, (THIRForEach, THIRForIterProto))
+                and n.frame_src_field is not None}
+        return self._held_loops
+
+    def render_for_source(self, stmt, *, temps: 'TempSink',
+                          frame_src_field: 'str | None' = None) -> str:
+        """The render of a `for` head's iterable, as the loop's own setup
+        will spell it -- what the frame struct puts under `decltype` to
+        spell the loop's fields. A loop the skeleton decomposed keeps its
+        iterable as a region expression; one that stays inside a leaf is
+        found by the frame field it was given, wherever in the leaf's tree
+        it sits. `temps` is the sink for this one render, an unevaluated
+        one at the struct."""
+        node = self._body.region_exprs.get(stmt.iterable)
+        leaf = None
+        if node is None:
+            if frame_src_field is None:
+                # A decomposed loop's iterable is a region expression; not
+                # finding it is a seam bug, never a leaf loop's to answer.
+                self._lookup(self._body.region_exprs, stmt.iterable,
+                             "region expr")
+            leaf = self._held_leaf_loops().get(frame_src_field)
+            if leaf is None:
+                raise THIRCodeGenError(
+                    "resumable seam: routed body has no lowered for-loop "
+                    f"holding {frame_src_field} (lowering/seam disagreement)")
+            node = leaf.iterable
+        saved = self._state.temps
+        self._state.temps = temps
+        try:
+            cpp = _emit_expr(node, self._state)
+        finally:
+            self._state.temps = saved
+        if leaf is not None and getattr(leaf, "str_literal_iterable", False):
+            cpp = f"std::string_view({cpp})"
+        return cpp
 
     def render_cond(self, cond) -> str:
         """Render a Branch terminator's condition; arg temps queue on the

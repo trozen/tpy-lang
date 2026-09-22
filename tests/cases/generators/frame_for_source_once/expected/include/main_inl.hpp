@@ -528,6 +528,694 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_call_src::__ne
     __builtin_unreachable();
 }
 
+// def zip_names_src(xs: list[int32], ys: list[int32]) -> Iterator[int32]:
+//     # lazy combinator over NAMES -- an rvalue iterator the frame owns.
+//     for a, b in zip(xs, ys):  # tpyc: ok
+//         yield a + b                                                      # -> S_RESUME_0
+//         churn()
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_zip_names_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(::tpy::builtin_zip<int32_t, int32_t>(xs, ys));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield a + b
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_1 = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_1;
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
+        __state = S_RESUME_0;
+        return (::tpy::add_check<int32_t>(a, b));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def enumerate_cells_src() -> Iterator[str]:
+//     cells = [Cell(1), Cell(2)]
+//     # combinator over a local NAME; the unpack target aliases the element,
+//     # so the mutation shows in the list afterwards.
+//     for i, c in enumerate(cells):  # tpyc: ok
+//         c.v += 100
+//         yield "enumerate " + str(i) + " " + str(c.v)                        # -> S_RESUME_0
+//         churn()
+//     yield "enumerate total " + str(cells[0].v + cells[1].v)                 # -> S_RESUME_1
+inline std::expected<std::string, ::tpy::StopIteration> __gen_enumerate_cells_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        cells.emplace(std::array<Cell, 2>{Cell(1), Cell(2)});
+        __for_src_0.emplace(::tpy::builtin_enumerate<Cell>((*cells)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield "enumerate " + str(i) + " " + str(c.v)
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: yield "enumerate total " + str(cells[0].v + cells[1].v)
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_RESUME_1;
+            return (::tpy::str_concat("enumerate total ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*cells), 0).v, ::tpy::__getitem__((*cells), 1).v)))));
+        }
+        __for_tup_2 = &(::tpy::unwrap_ref(*(*__for_r_0)));
+        auto& __tup_1 = (*__for_tup_2);
+        i = std::get<0>(__tup_1);
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        c->v = ::tpy::add_check<int32_t>(c->v, 100);
+        __state = S_RESUME_0;
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("enumerate ", ::tpy::fixed_to_str<int32_t>(i))), " ")), ::tpy::fixed_to_str<int32_t>(c->v)));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def reversed_temp_src() -> Iterator[str]:
+//     # combinator over a TEMPORARY -- the frame owns the combinator, which
+//     # owns the list.
+//     for c in reversed(make_cells()):  # tpyc: ok
+//         yield "reversed_tmp " + str(c.v)                                   # -> S_RESUME_0
+//         yield "reversed_tmp churn " + str(churn())                         # -> S_RESUME_1
+inline std::expected<std::string, ::tpy::StopIteration> __gen_reversed_temp_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __coro_arg_0.emplace(::tpyapp::main::make_cells());
+        __for_src_0.emplace(::tpy::builtin_reversed<Cell>((*__coro_arg_0)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield "reversed_tmp " + str(c.v)
+        __state = S_RESUME_1;
+        return (::tpy::str_concat("reversed_tmp churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+    }
+    case S_RESUME_1:  // after: yield "reversed_tmp churn " + str(churn())
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = &(::tpy::unwrap_ref(*(*__for_r_0)));
+        __state = S_RESUME_0;
+        return (::tpy::str_concat("reversed_tmp ", ::tpy::fixed_to_str<int32_t>(c->v)));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def genexpr_src(xs: list[int32]) -> Iterator[int32]:
+//     # generator EXPRESSION at the head -- its frame is embedded in this one.
+//     for v in (x * 2 for x in xs):  # tpyc: ok
+//         yield v                                                               # -> S_RESUME_0
+//         churn()
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_genexpr_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(::tpyapp::main::__genexpr_genexpr_src_4(xs));
+        ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield v
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def genexpr_capture_src(xs: list[int32], k: int32) -> Iterator[int32]:
+//     # genexpr with a capture -- the embedded frame is a template over it.
+//     for v in (x + k for x in xs if x > 1):  # tpyc: ok
+//         yield v                                                            # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_genexpr_capture_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(::tpyapp::main::__genexpr_genexpr_capture_src_5(xs, k));
+        ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield v
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def readonly_view_src(d: readonly[dict[str, Cell]]) -> Iterator[int32]:
+//     # view of a READONLY dict -- the slot takes the const view's own type.
+//     for c in d.values():  # tpyc: ok
+//         yield c.v                                                           # -> S_RESUME_0
+//         churn()
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_view_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(::tpy::dict_values(d));
+        __for_it_0.emplace(((*__for_src_0)).begin());
+        __for_end_0.emplace(((*__for_src_0)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield c.v
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return c->v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def const_method_src(b: readonly[Bag]) -> Iterator[int32]:
+//     # `T&`-returning method on a CONST receiver -- a const_iterator pair.
+//     for c in b.items_m():  # tpyc: ok
+//         yield c.v                                                          # -> S_RESUME_0
+//         churn()
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_const_method_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto& __for_obj_0 = b.items_m();
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield c.v
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return c->v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def ternary_params_src(xs: list[Cell], ys: list[Cell], flag: bool) -> Iterator[int32]:
+//     # conditional of two CONST params -- const iterators, no copy. Read only:
+//     # a mutation through `c` is not traced to the params
+//     # (BUGS.md#frame-ternary-params-mutation-not-propagated).
+//     for c in (xs if flag else ys):  # tpyc: ok
+//         yield c.v                                                                       # -> S_RESUME_0
+//         churn()
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_ternary_params_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto& __for_obj_0 = ((flag) ? (xs) : (ys));
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield c.v
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return c->v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def delegate_proto_src(xs: list[int32]) -> Iterator[int32]:
+//     # delegating to a generator with a PROTOCOL-typed param: the embedded
+//     # frame is a template over the deduced argument type.
+//     yield -1                                                               # -> S_RESUME_0
+//     for v in doubled(xs):  # tpyc: ok
+//         yield v                                                            # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_delegate_proto_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_RESUME_0;
+        return -1;
+    }
+    case S_RESUME_0: {  // after: yield -1
+        __for_src_0.emplace(::tpyapp::main::doubled(xs));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1:  // after: yield v
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_1;
+        return v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def iter_object_src(h: Holder) -> Iterator[int32]:
+//     # an iterator OBJECT reached through a call on a param -- held by
+//     # reference, so the accessor runs once and the object is drained.
+//     for v in h.get():  # tpyc: ok
+//         yield v                                                        # -> S_RESUME_0
+//         churn()
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_iter_object_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(h.get());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield v
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def nested_src(rows: list[Row]) -> Iterator[str]:
+//     # inner source reads the OUTER loop var: the inner alias is spelled after
+//     # the outer loop var's field.
+//     for row in rows:  # tpyc: ok
+//         for c in row.cells:  # tpyc: ok
+//             c.v += 100
+//             yield "nested " + str(c.v)                                         # -> S_RESUME_0
+inline std::expected<std::string, ::tpy::StopIteration> __gen_nested_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        auto& __for_obj_0 = rows;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        row = &(*((*__for_it_0))++);
+        auto& __for_obj_1 = row->cells;
+        __for_it_1.emplace((__for_obj_1).begin());
+        __for_end_1.emplace((__for_obj_1).end());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield "nested " + str(c.v)
+    case S_JOIN_1: {
+        if ((*__for_it_1) == (*__for_end_1)) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        c = &(*((*__for_it_1))++);
+        c->v = ::tpy::add_check<int32_t>(c->v, 100);
+        __state = S_RESUME_0;
+        return (::tpy::str_concat("nested ", ::tpy::fixed_to_str<int32_t>(c->v)));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def arg_temp_src() -> Iterator[str]:
+//     # an owned source whose ARGUMENT is a temporary the call does not keep:
+//     # the alias renders the argument as `std::declval`, the setup as itself.
+//     for c in take(Cell(5), 2):  # tpyc: ok
+//         yield "arg_temp " + str(c.v)                                          # -> S_RESUME_0
+//         yield "arg_temp churn " + str(churn())                                # -> S_RESUME_1
+inline std::expected<std::string, ::tpy::StopIteration> __gen_arg_temp_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        Cell __tmp_1 = Cell(5);
+        __for_src_0.emplace(::tpyapp::main::take(__tmp_1, 2));
+        __for_it_0.emplace(((*__for_src_0)).begin());
+        __for_end_0.emplace(((*__for_src_0)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield "arg_temp " + str(c.v)
+        __state = S_RESUME_1;
+        return (::tpy::str_concat("arg_temp churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+    }
+    case S_RESUME_1:  // after: yield "arg_temp churn " + str(churn())
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (::tpy::str_concat("arg_temp ", ::tpy::fixed_to_str<int32_t>(c->v)));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def nested_combinator_src(xs: list[int32]) -> Iterator[int32]:
+//     # a combinator over a combinator: the inner rvalue is OWNED by the
+//     # outer, not seated on the frame.
+//     for i, v in enumerate(reversed(xs)):  # tpyc: ok
+//         yield i * 10 + v                                                # -> S_RESUME_0
+//         churn()
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested_combinator_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>(::tpy::builtin_reversed<int32_t>(xs)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i * 10 + v
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_3 = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_3;
+        i = std::get<0>(__tup_1);
+        v = std::get<1>(__tup_1);
+        __state = S_RESUME_0;
+        return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), v));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def combinator_temp_src() -> Iterator[int32]:
+//     # combinator over a TEMPORARY that lends its iterator: the temporary is
+//     # seated on the frame, not in the state block the combinator outlives.
+//     for i, v in enumerate(Deleg(3)):  # tpyc: ok
+//         yield i + v                                                          # -> S_RESUME_0
+//         churn()
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_combinator_temp_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __coro_arg_0.emplace(Deleg(3));
+        __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>((*__coro_arg_0)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield i + v
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_4 = ::tpy::unwrap_ref(*(*__for_r_0));
+        const auto& __tup_1 = __for_tup_4;
+        i = std::get<0>(__tup_1);
+        v = std::get<1>(__tup_1);
+        __state = S_RESUME_0;
+        return (::tpy::add_check<int32_t>(i, v));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def str_literal_src() -> Iterator[str]:
+//     # a `str` LITERAL source -- the frame holds the view of its storage.
+//     for ch in "ab":  # tpyc: ok
+//         yield "str_lit " + ch                                             # -> S_RESUME_0
+//         yield "str_lit " + ch + "!"                                       # -> S_RESUME_1
+inline std::expected<std::string, ::tpy::StopIteration> __gen_str_literal_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(std::string_view("ab"));
+        __for_it_0.emplace(((*__for_src_0)).begin());
+        __for_end_0.emplace(((*__for_src_0)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield "str_lit " + ch
+        __state = S_RESUME_1;
+        return (::tpy::str_concat((::tpy::str_concat("str_lit ", ::tpy::char_to_str(ch))), "!"));
+    }
+    case S_RESUME_1:  // after: yield "str_lit " + ch + "!"
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        ch = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return (::tpy::str_concat("str_lit ", ::tpy::char_to_str(ch)));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def pairs_of(cells: list[Cell]) -> Iterator[tuple[int32, Cell]]:
+//     i = 0
+//     for c in cells:
+//         yield (i, c)                                              # -> S_RESUME_0
+//         i += 1
+inline std::expected<std::tuple<int32_t, Cell*>, ::tpy::StopIteration> __gen_pairs_of::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        i = 0;
+        auto& __for_obj_0 = cells;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield (i, c)
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return std::tuple<int32_t, Cell*>{i, c};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def next_unpack_src(cells: list[Cell]) -> Iterator[int32]:
+//     # unpack over a GENERATOR yielding a record member: the target aliases
+//     # the element, so the caller sees the mutation.
+//     for i, c in pairs_of(cells):  # tpyc: ok
+//         c.v += 10
+//         yield i + c.v                                                       # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_next_unpack_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __for_src_0.emplace(::tpyapp::main::pairs_of(cells));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield i + c.v
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_5 = &(::tpy::unwrap_ref(*(*__for_r_0)));
+        auto& __tup_1 = (*__for_tup_5);
+        i = std::get<0>(__tup_1);
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        c->v = ::tpy::add_check<int32_t>(c->v, 10);
+        __state = S_RESUME_0;
+        return (::tpy::add_check<int32_t>(i, c->v));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def shared_var_src(b: readonly[list[Cell]]) -> Iterator[int32]:
+//     a = [Cell(5)]
+//     # one loop var bound by two loops whose sources differ in const (a
+//     # readonly param, a local): its one field takes the join (const), and
+//     # both loops read through it. A mutation in the second loop would be a
+//     # C++ error, as it was under sema's marking before.
+//     for c in b:  # tpyc: ok
+//         yield c.v                                                           # -> S_RESUME_0
+//     for c in a:  # tpyc: ok
+//         yield c.v                                                           # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_shared_var_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        a.emplace(std::array<Cell, 1>{Cell(5)});
+        auto& __for_obj_0 = b;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield c.v
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            auto& __for_obj_1 = (*a);
+            __for_it_1.emplace((__for_obj_1).begin());
+            __for_end_1.emplace((__for_obj_1).end());
+            __state = S_JOIN_1;
+            continue;
+        }
+        c = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return c->v;
+    }
+    case S_RESUME_1:  // after: yield c.v
+    case S_JOIN_1: {
+        if ((*__for_it_1) == (*__for_end_1)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = &(*((*__for_it_1))++);
+        __state = S_RESUME_1;
+        return c->v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def own_param_iter_src(h: Own[Holder]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
+//     # an iterator object reached through a call on a BY-VALUE param: the
+//     # holder is a frame field, so the source is not held by reference and
+//     # the call re-renders at every advance
+//     # (BUGS.md#frame-iter-next-source-reevaluated). The count is not printed.
+//     for v in h.get():  # tpyc: ok
+//         yield v                                                                                # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_param_iter_src::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL:  // entry
+    case S_RESUME_0:  // after: yield v
+    case S_JOIN_0: {
+        __for_r_0.emplace(h.get().__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return v;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # generator EXPRESSION at the head -- its frame is embedded in this one.
+// for v in (x * 2 for x in xs):  # tpyc: ok  # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __genexpr_genexpr_src_4_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (::tpy::mul_check<int32_t>(x, 2));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// # the async twin of the genexpr source.
+// for v in (x * 3 for x in xs):  # tpyc: ok  # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __genexpr_async_genexpr_6_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        x = *((*__for_it_0))++;
+        return (::tpy::mul_check<int32_t>(x, 3));
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
 // def walk(self) -> Iterator[str]:
 //     # self.field source -- an lvalue, captured by reference.
 //     for c in self.cells:  # tpyc: ok
@@ -552,6 +1240,48 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_walk::__next__
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
         return (::tpy::str_concat("field ", ::tpy::fixed_to_str<int32_t>(c->v)));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def pairs(self, ys: list[int32]) -> Iterator[str]:
+//     # generator METHOD over a combinator of a field and a param; the
+//     # unpack target aliases the field's element. (`calls` is bumped so
+//     # the receiver is mutable: a mutation through `c` alone is not
+//     # traced back to it, BUGS.md#combinator-unpack-mutation-not-propagated.)
+//     self.calls += 1
+//     for c, y in zip(self.cells, ys):  # tpyc: ok
+//         c.v += y
+//         yield "method_zip " + str(c.v)                                        # -> S_RESUME_0
+//         churn()
+inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_pairs::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __self.calls = ::tpy::add_check<int32_t>(__self.calls, 1);
+        __for_src_0.emplace(::tpy::builtin_zip<Cell, int32_t>(__self.cells, ys));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield "method_zip " + str(c.v)
+        ::tpyapp::main::churn();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_0 = &(::tpy::unwrap_ref(*(*__for_r_0)));
+        auto& __tup_1 = (*__for_tup_0);
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        y = std::get<1>(__tup_1);
+        c->v = ::tpy::add_check<int32_t>(c->v, y);
+        __state = S_RESUME_0;
+        return (::tpy::str_concat("method_zip ", ::tpy::fixed_to_str<int32_t>(c->v)));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

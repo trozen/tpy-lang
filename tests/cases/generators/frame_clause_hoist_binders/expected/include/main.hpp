@@ -554,7 +554,8 @@ struct __gen_gen_optional : public ::tpy::next_iter_mixin<__gen_gen_optional, st
     int32_t i;
     std::optional<::tpy::BigInt> n;
     std::string s;
-    ::tpy::frame_loop_slot<std::array<int32_t, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<int32_t, 2>{1, 2}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -609,7 +610,8 @@ struct __gen_gen_record : public ::tpy::next_iter_mixin<__gen_gen_record, std::s
     int32_t i;
     Cell* r = nullptr;
     ::tpy::BigInt k;
-    ::tpy::frame_loop_slot<std::array<int32_t, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<int32_t, 2>{1, 2}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -635,7 +637,8 @@ struct __gen_gen_own_list : public ::tpy::next_iter_mixin<__gen_gen_own_list, st
     int32_t i;
     ::tpy::frame_slot<std::vector<::tpy::BigInt>> xs;
     ::tpy::BigInt k;
-    ::tpy::frame_loop_slot<std::array<int32_t, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<int32_t, 2>{1, 2}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -814,7 +817,8 @@ struct __gen_gen_own_record_loop : public ::tpy::next_iter_mixin<__gen_gen_own_r
     int32_t i;
     ::tpy::frame_slot<Cell> r;
     ::tpy::BigInt k;
-    ::tpy::frame_loop_slot<std::array<int32_t, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<int32_t, 2>{1, 2}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -841,7 +845,8 @@ struct __gen_gen_own_union : public ::tpy::next_iter_mixin<__gen_gen_own_union, 
     int32_t i;
     ::tpy::frame_slot<::tpy::Union<Flat, Pic>> u;
     int32_t k;
-    ::tpy::frame_loop_slot<std::array<int32_t, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<int32_t, 2>{1, 2}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -874,7 +879,8 @@ struct __gen_gen_own_box : public ::tpy::next_iter_mixin<__gen_gen_own_box, std:
     int32_t i;
     ::tpy::frame_slot<::tpystd::tplib::box::Box<int32_t>> b;
     int32_t k;
-    ::tpy::frame_loop_slot<std::array<int32_t, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<int32_t, 2>{1, 2}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -925,7 +931,8 @@ struct __gen_gen_literal_src : public ::tpy::next_iter_mixin<__gen_gen_literal_s
     int32_t i;
     std::string_view s;
     int32_t k;
-    ::tpy::frame_loop_slot<std::array<int32_t, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<int32_t, 2>{1, 2}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,

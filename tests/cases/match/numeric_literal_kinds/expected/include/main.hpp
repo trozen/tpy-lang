@@ -130,8 +130,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     int32_t __state;
     const std::vector<double>& vals;
     double v;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<double>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<double>>> __for_end_0;
+    using __for_src_0_t = decltype((vals));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

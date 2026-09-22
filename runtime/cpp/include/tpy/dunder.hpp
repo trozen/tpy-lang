@@ -808,6 +808,47 @@ using begin_iter_t = decltype(std::declval<C&>().begin());
 template<typename S>
 using aiter_type_t = std::decay_t<decltype(std::declval<S&>().__aiter__())>;
 
+// A resumable frame spells everything about a `for` loop off ONE type: the
+// source expression's own, `decltype((E))`. An existing object keeps its
+// reference (and so its const: `begin_iter_t<const C&>` is a const_iterator),
+// while `for_source_t` is what the frame OWNS of a fresh one -- the value
+// with its reference and const stripped, so a moved-in local and a prvalue
+// call land in the same owning slot.
+namespace detail {
+    template<typename X>
+    struct for_source {
+        // The verdict that a source is fresh is the compiler's; an lvalue
+        // reaching this strip would be copied into the frame silently.
+        static_assert(!std::is_lvalue_reference_v<X>,
+                      "a frame owns only a fresh for-loop source");
+        using type = std::remove_cvref_t<X>;
+    };
+}
+template<typename X>
+using for_source_t = typename detail::for_source<X>::type;
+// The pointee of a pointer-form loop var over a begin()/end() source: `*it`
+// with its reference stripped, const included.
+template<typename C>
+using begin_elem_t = std::remove_reference_t<decltype(*std::declval<begin_iter_t<C>&>())>;
+
+// One loop variable bound by several loops has one field, whose pointee is
+// const as soon as any of those loops lends const elements -- the write the
+// other loop makes through it is then the C++ error it should be, rather
+// than a const_iterator address stored in a mutable pointer.
+namespace detail {
+    template<typename T, typename... Ts>
+    struct const_join {
+        static_assert((std::is_same_v<std::remove_const_t<T>,
+                                      std::remove_const_t<Ts>> && ...),
+                      "a loop variable's loops must agree on its element type");
+        using type = std::conditional_t<
+            (std::is_const_v<T> || ... || std::is_const_v<Ts>),
+            const std::remove_const_t<T>, std::remove_const_t<T>>;
+    };
+}
+template<typename... Ts>
+using const_join_t = typename detail::const_join<Ts...>::type;
+
 // A self-iterator -- one whose __iter__() returns *this (S&) -- is its own
 // iterator: a holder keeps NO iterator state for it and calls the source's
 // __next__() directly, so moving the holder cannot dangle a stored

@@ -741,8 +741,8 @@ keyword surface (`repeat(object=...)`), and the impl's `Optional` sentinel stays
 private behind the stubs, so `repeat(object, None)` is rejected as CPython
 rejects a non-int `times`. Deferred,
 each on a distinct compiler gap: `chain` / `product` / `permutations` /
-`combinations` (variadic tuples), `compress` (zip /
-cross-module-iterator-in-generator), `accumulate` (generic accumulator across
+`combinations` (variadic tuples), `compress` (its gap, `zip` at a
+suspending `for` head, closed 2026-09-22), `accumulate` (generic accumulator across
 the resumable frame), `pairwise` (`Optional[T]`-across-yield tuple miscompile),
 `starmap` (2-arg form unblocked since the single-yield generator peephole
 went, 2026-09-12, but not yet implemented; variadic form also needs variadic
@@ -767,7 +767,7 @@ case, are unaffected). `islice(it, negative)` yields `[]` rather than raising
 | `islice` | Partial | `islice(it, stop)` only; the `(start, stop[, step])` form is future work (overloaded generators now unblocked; needs `/tpy-add-feature`) |
 | `starmap` | Missing | 2-arg form unblocked (its blocker, the single-yield generator peephole's `Iterable`-param dangling capture, went with the peephole on 2026-09-12) but not yet implemented; variadic form also needs variadic tuples |
 | `chain`, `chain.from_iterable` | Missing | Blocked on variadic tuples |
-| `compress` | Missing | Blocked on zip / cross-module-iterator-in-generator |
+| `compress` | Missing | Unblocked 2026-09-22: `zip` at a suspending `for` head compiles |
 | `tee` | Missing | Needs buffering |
 | `zip_longest` | Missing | Wrapper |
 | `product`, `permutations`, `combinations`, `combinations_with_replacement` | Missing | Blocked on variadic tuples |

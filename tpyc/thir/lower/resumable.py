@@ -198,6 +198,7 @@ from .statements import (
     _lower_stmt,
     _lower_stmts,
     _make_narrow_alias,
+    self_typed_frame_source,
     _nested_def_entry_reject,
     _nested_def_lowering_scope,
     _persistent_alias_name,
@@ -1040,7 +1041,7 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
             lowered_it = replace(lowered_it, deref=True)
         else:
             raise ThirUnsupported("res.for_narrowed_optional")
-    region_exprs[it] = lowered_it
+    region_exprs[it] = self_typed_frame_source(lowered_it, lc)
 
 
 def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
@@ -1465,8 +1466,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             borrow_tuple_loop_vars.add(f_info.borrow_tuple_loop_var)
         if f_info.opt_ptr_loop_var is not None:
             opt_ptr_loop_vars.add(f_info.opt_ptr_loop_var)
-        if (f_info.pointer_form_payload is not None
-                and f_info.pointer_form_loop_var is not None):
+        # An ITERATOR source's unpack holder points into the step RESULT,
+        # whose members may themselves be references or pointers (a proxy
+        # tuple), so its targets re-point through the normalizing deref; a
+        # `begin_end` holder points at the container's storage tuple.
+        if (f_info.pointer_form_loop_var is not None
+                and f_info.strategy in ("iter_next", "next")):
             source_typed_holders.add(f_info.pointer_form_loop_var)
         # Tuple-unpack targets aliasing a non-value container member: `T*`
         # fields the head unpack re-points via `= &(std::get<i>(__tup_N));`

@@ -524,11 +524,12 @@ struct __gen_gen_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_ptr_ro, int32_
 struct __gen_gen_loop_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ro, int32_t> {
     int32_t __state;
     const Grid& g;
-    const Holder* h = nullptr;
+    using __for_src_0_t = decltype((g.rows));
+    ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;
     int32_t a;
     const Box* b = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -553,11 +554,12 @@ struct __gen_gen_loop_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ro, int3
 struct __gen_gen_loop_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ptr_ro, int32_t> {
     int32_t __state;
     const Grid* p;
-    const Holder* h = nullptr;
+    using __for_src_0_t = decltype((::tpy::deref_check(p).rows));
+    ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;
     int32_t a;
     const Box* b = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Holder>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -633,11 +635,12 @@ struct __gen_gen_alias_root : public ::tpy::next_iter_mixin<__gen_gen_alias_root
 struct __gen_gen_loop_root : public ::tpy::next_iter_mixin<__gen_gen_loop_root, int32_t> {
     int32_t __state;
     std::vector<Holder>& hs;
-    Holder* h = nullptr;
+    using __for_src_0_t = decltype((hs));
+    ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;
     int32_t a;
     Box* b = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Holder>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Holder>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

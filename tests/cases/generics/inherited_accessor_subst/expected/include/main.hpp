@@ -122,9 +122,10 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 struct __gen_bump_gen : public ::tpy::next_iter_mixin<__gen_bump_gen, int32_t> {
     int32_t __state;
     Holder<int32_t, std::vector<Rec>>& h;
-    Rec* r = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
+    using __for_src_0_t = decltype((h.val()));
+    ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

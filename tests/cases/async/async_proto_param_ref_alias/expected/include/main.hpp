@@ -47,9 +47,10 @@ struct __coro_bump {
     bool __cancel_pending;
     T_items items;
     int32_t total;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<T_items>> p;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_items>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_items>> __for_r_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> p;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

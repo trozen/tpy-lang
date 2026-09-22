@@ -43,9 +43,10 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 struct __gen_first_only : public ::tpy::next_iter_mixin<__gen_first_only, std::tuple<P*, P*>> {
     int32_t __state;
     std::vector<P>& items;
-    P* it = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -71,7 +72,8 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_src>, std::tupl
     int32_t __state;
     T_src src;
     std::tuple<P*, P*> pair;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<T_src>> __for_r_0;
+    using __for_src_0_t = decltype((src));
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

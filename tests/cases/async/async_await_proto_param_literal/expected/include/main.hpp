@@ -31,8 +31,9 @@ struct __coro_consume {
     bool __cancel_pending;
     T_it it;
     ::tpy::BigInt x;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_it>> __for_r_0;
+    using __for_src_0_t = decltype((it));
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

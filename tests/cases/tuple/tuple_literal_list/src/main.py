@@ -16,6 +16,7 @@ def main() -> None:
 
     # Unannotated list of tuples (IntLiteralType resolved inside tuples)
     raw = [("x", 10), ("y", 20)]
+    # the unpack holder of a value tuple stays a value copy (no member aliases).
     d2 = dict[str, int32]((k, v) for k, v in raw)
     print(d2["x"], d2["y"])
 

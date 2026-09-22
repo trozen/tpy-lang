@@ -20,10 +20,11 @@ void main();
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     int32_t __state;
     ::tpy::ordered_map<std::string, std::vector<int32_t>>& d;
-    std::vector<int32_t>* v = nullptr;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<::tpy::ordered_map<std::string, std::vector<int32_t>>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(d)))>;
+    ::tpy::begin_elem_t<__for_src_0_t>* v = nullptr;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -23,9 +23,10 @@ template <typename T>
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     std::vector<T>& xs;
-    T* x = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

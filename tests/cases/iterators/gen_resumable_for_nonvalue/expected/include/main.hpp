@@ -38,9 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
     int32_t __state;
     const std::vector<Node>& items;
-    const Node* it = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_end_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

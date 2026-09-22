@@ -22,8 +22,9 @@ struct __gen_stream : public ::tpy::next_iter_mixin<__gen_stream, int32_t> {
     int32_t __state;
     int32_t n;
     int32_t v;
-    ::tpy::frame_loop_slot<::tpyapp::deep::__gen_doubles> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<::tpyapp::deep::__gen_doubles>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::deep::doubles(n)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

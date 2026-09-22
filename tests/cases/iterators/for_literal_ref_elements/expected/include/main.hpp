@@ -100,7 +100,8 @@ struct __coro_in_async {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
-    ::tpy::frame_loop_slot<std::array<Box, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<Box, 2>{Box(8), Box(9)}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -123,7 +124,8 @@ struct __gen_in_generator : public ::tpy::next_iter_mixin<__gen_in_generator, in
     int32_t __state;
     int32_t total;
     ::tpy::frame_slot<Box> b;
-    ::tpy::frame_loop_slot<std::array<Box, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<Box, 2>{Box(6), Box(7)}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,

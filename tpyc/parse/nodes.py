@@ -2140,6 +2140,18 @@ def stmts_have_any_return(stmts: list[TpyStmt]) -> bool:
     return False
 
 
+def read_names(e: TpyExpr) -> set[str]:
+    """Every name an expression reads, nested sub-expressions included."""
+    out: set[str] = set()
+    stack = [e]
+    while stack:
+        n = stack.pop()
+        if isinstance(n, TpyName):
+            out.add(n.name)
+        stack.extend(n.children())
+    return out
+
+
 def written_names(stmt: TpyStmt, *, match_binds: bool = True) -> set[str]:
     """Roots written AT NAME LEVEL by `stmt` itself (not its sub-bodies) --
     a rebind, bare-name value write, re-decl, unpack target, `del name`, a

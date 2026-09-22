@@ -161,9 +161,10 @@ struct __coro_achain_hop {
     bool __cancel_pending;
     Shelf& s;
     int32_t t;
-    Rec* r = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
+    using __for_src_0_t = decltype((::tpy::__getitem__(s.rows, 0)));
+    ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -190,10 +191,11 @@ struct __coro_aalias_mut {
     bool __cancel_pending;
     std::vector<Depot>& ds;
     int32_t t;
-    Depot* d = nullptr;
+    using __for_src_0_t = decltype((ds));
+    ::tpy::begin_elem_t<__for_src_0_t>* d = nullptr;
     Shelf* sh = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Depot>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Depot>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -221,8 +223,9 @@ struct __coro_aro {
     const std::vector<int32_t>& xs;
     int32_t t;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -272,8 +275,9 @@ struct __gen_ro : public ::tpy::next_iter_mixin<__gen_ro, int32_t> {
     int32_t __state;
     const std::vector<int32_t>& xs;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -297,9 +301,10 @@ struct __gen_ro : public ::tpy::next_iter_mixin<__gen_ro, int32_t> {
 struct __gen_mut : public ::tpy::next_iter_mixin<__gen_mut, ::tpy::val_or_ref<Rec>> {
     int32_t __state;
     std::vector<Rec>& recs;
-    Rec* r = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
+    using __for_src_0_t = decltype((recs));
+    ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -323,12 +328,14 @@ struct __gen_mut : public ::tpy::next_iter_mixin<__gen_mut, ::tpy::val_or_ref<Re
 struct __gen_sub_hop : public ::tpy::next_iter_mixin<__gen_sub_hop, int32_t> {
     int32_t __state;
     std::vector<std::vector<std::vector<Rec>>>& grid;
-    Rec* r = nullptr;
-    std::vector<std::vector<Rec>>* rows = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<std::vector<Rec>>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::vector<std::vector<Rec>>>>> __for_end_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_1;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_1;
+    using __for_src_0_t = decltype((grid));
+    ::tpy::begin_elem_t<__for_src_0_t>* rows = nullptr;
+    using __for_src_1_t = decltype((::tpy::__getitem__((*rows), 0)));
+    ::tpy::begin_elem_t<__for_src_1_t>* r = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_it_1;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_end_1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -353,9 +360,10 @@ struct __gen_sub_hop : public ::tpy::next_iter_mixin<__gen_sub_hop, int32_t> {
 struct __gen_chain_hop : public ::tpy::next_iter_mixin<__gen_chain_hop, int32_t> {
     int32_t __state;
     Shelf& s;
-    Rec* r = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Rec>>> __for_end_0;
+    using __for_src_0_t = decltype((::tpy::__getitem__(s.rows, 0)));
+    ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -379,10 +387,11 @@ struct __gen_chain_hop : public ::tpy::next_iter_mixin<__gen_chain_hop, int32_t>
 struct __gen_alias_ro : public ::tpy::next_iter_mixin<__gen_alias_ro, int32_t> {
     int32_t __state;
     const std::vector<Depot>& ds;
-    const Depot* d = nullptr;
+    using __for_src_0_t = decltype((ds));
+    ::tpy::begin_elem_t<__for_src_0_t>* d = nullptr;
     const Shelf* sh = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Depot>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Depot>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -406,10 +415,11 @@ struct __gen_alias_ro : public ::tpy::next_iter_mixin<__gen_alias_ro, int32_t> {
 struct __gen_alias_mut : public ::tpy::next_iter_mixin<__gen_alias_mut, int32_t> {
     int32_t __state;
     std::vector<Depot>& ds;
-    Depot* d = nullptr;
+    using __for_src_0_t = decltype((ds));
+    ::tpy::begin_elem_t<__for_src_0_t>* d = nullptr;
     Shelf* sh = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Depot>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Depot>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -434,8 +444,9 @@ struct __gen_to_mut_callee : public ::tpy::next_iter_mixin<__gen_to_mut_callee, 
     int32_t __state;
     std::vector<int32_t>& xs;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -462,9 +473,10 @@ struct __gen_items_ro : public ::tpy::next_iter_mixin<__gen_items_ro, int32_t> {
     std::tuple<int32_t, int32_t> __for_tup_0;
     int32_t k;
     int32_t v;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -490,9 +502,10 @@ struct __gen_values_ro : public ::tpy::next_iter_mixin<__gen_values_ro, int32_t>
     int32_t __state;
     const ::tpy::ordered_map<int32_t, int32_t>& d;
     int32_t v;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_values(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_values(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(d)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -544,8 +557,9 @@ struct __gen_Bag_scan : public ::tpy::next_iter_mixin<__gen_Bag_scan, int32_t> {
     const Bag& __self;
     const std::vector<int32_t>& ys;
     int32_t y;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((ys));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

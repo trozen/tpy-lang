@@ -2720,11 +2720,12 @@ class CodeGenContext:
         element addresses derived from it come out `const T*`: an lvalue chain
         (field / subscript, arbitrarily deep) rooted at a const receiver
         (self in a readonly method, const param/local), or a name bound const
-        (const-storage loop var, const-inferred param/local), or a borrowing-view
-        accessor call (`d.items()` / `d.values()`) whose verdict is its
-        RECEIVER's -- the view aliases the receiver's storage, and the
-        `@auto_readonly` clone pair means sema may have typed the call off the
-        mutable half while C++ overload resolution picks the const one.
+        (const-storage loop var, const-inferred param/local), or a call whose
+        verdict is its RECEIVER's: a borrowing-view accessor (`d.items()` /
+        `d.values()`, the view aliases the receiver's storage) or a method
+        that returns a reference into it (`T&`, the `@auto_readonly` clone
+        pair means sema may have typed the call off the mutable half while
+        C++ overload resolution picks the const one).
         """
         if self.is_const_union_source(expr):
             return True
@@ -2732,15 +2733,13 @@ class CodeGenContext:
             fi = expr.resolved_function_info
             if fi is not None and (
                     is_borrowing_view_type(unwrap_ref_type(fi.return_type))
-                    # ... and a reference-returning accessor, which lends the
-                    # receiver's OWN storage rather than a view of it: a
-                    # `@property` getter over a container field is the member
-                    # read one spelling over, so its verdict is the
-                    # receiver's exactly as the member read's was. The
-                    # convention comes from the one predicate that owns it --
-                    # spelling it here again lost the storage-ref Optional /
-                    # union returns, which are references into the field too.
-                    or property_access_returns_cpp_ref(self.analyzer, expr)):
+                    # A `@property` getter over a container field is the
+                    # member read one spelling over; the convention comes
+                    # from the one predicate that owns it -- spelling it
+                    # here again lost the storage-ref Optional / union
+                    # returns, which are references into the field too.
+                    or property_access_returns_cpp_ref(self.analyzer, expr)
+                    or _call_returns_cpp_ref_shared(self.analyzer, fi)):
                 return self.is_const_storage_source(expr.obj)
             return False
         if isinstance(expr, TpyName):

@@ -1,1 +1,0 @@
-main.py:16: error: cannot iterate 'doubled(...)' here: a generator with protocol-typed parameters cannot be embedded in a resumable frame yet; bind the elements first (e.g. `xs = list(...)`) and iterate those

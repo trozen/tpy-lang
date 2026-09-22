@@ -204,8 +204,9 @@ def odd(v: int32) -> bool:
     return v % 2 != 0
 
 
-# generator position. The loop holds no yield: a suspending `for` over a
-# combinator has no frame lowering at any source.
+# generator position, with no yield in the loop, so the holder is the state
+# block's; the suspending twin (the frame holding the combinator and its
+# temporary) is `combinator_temp_src` in generators/frame_for_source_once.
 def pairs(xs: list[int32]) -> Iterator[int32]:
     t = 0
     for i, v in enumerate(Noisy(2)):  # tpyc: ok

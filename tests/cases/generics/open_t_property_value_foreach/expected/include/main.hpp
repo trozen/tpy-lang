@@ -71,9 +71,10 @@ struct __gen_chars : public ::tpy::next_iter_mixin<__gen_chars, int32_t> {
     const Cell<std::string>& c;
     int32_t n;
     char ch;
-    ::tpy::frame_loop_slot<std::string> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((c.payload()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -99,9 +100,10 @@ struct __gen_chars_m : public ::tpy::next_iter_mixin<__gen_chars_m, int32_t> {
     Cell<std::string>& c;
     int32_t n;
     char ch;
-    ::tpy::frame_loop_slot<std::string> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((c.payload_m()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

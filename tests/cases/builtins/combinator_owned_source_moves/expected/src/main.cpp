@@ -139,8 +139,9 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
     int32_t b;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -206,8 +207,9 @@ struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_f
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t i;
     int32_t s;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -273,8 +275,9 @@ struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_f
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
     int32_t b;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T___src>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T___src>> __for_r_0;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -580,8 +583,8 @@ void main() {
     std::cout << "map_set" << " " << ::tpy::ListPrinter(ss) << "\n";
     std::cout << "enum_genexpr_zip" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_2(std::in_place, [&]() { return ::tpy::builtin_enumerate<int32_t>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(::tpyapp::main::gen(), ::tpyapp::main::gen()); })); })) << "\n";
     {
-        Noisy __tmp_5 = Noisy(2);
-        auto __src_12 = ::tpy::builtin_enumerate<int32_t>(__tmp_5);
+        Noisy __tmp_4 = Noisy(2);
+        auto __src_12 = ::tpy::builtin_enumerate<int32_t>(__tmp_4);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -594,8 +597,8 @@ void main() {
         }
     }
     {
-        Noisy __tmp_6 = Noisy(2);
-        auto __src_14 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_6, xs);
+        Noisy __tmp_5 = Noisy(2);
+        auto __src_14 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_5, xs);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -607,15 +610,15 @@ void main() {
         std::cout << "zip" << " " << a << " " << b << "\n";
         }
     }
-    Noisy __tmp_7 = Noisy(2);
-    std::vector<int32_t> ys = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_7));
+    Noisy __tmp_6 = Noisy(2);
+    std::vector<int32_t> ys = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_6));
     std::cout << "map" << " " << ::tpy::ListPrinter(ys) << "\n";
-    Noisy __tmp_8 = Noisy(3);
-    std::vector<int32_t> zs = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>(odd, __tmp_8));
+    Noisy __tmp_7 = Noisy(3);
+    std::vector<int32_t> zs = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>(odd, __tmp_7));
     std::cout << "filter" << " " << ::tpy::ListPrinter(zs) << "\n";
     {
-        Noisy __tmp_9 = ::tpyapp::main::make_noisy(3);
-        auto __src_16 = ::tpy::builtin_zip<int32_t, int32_t>(xs, __tmp_9);
+        Noisy __tmp_8 = ::tpyapp::main::make_noisy(3);
+        auto __src_16 = ::tpy::builtin_zip<int32_t, int32_t>(xs, __tmp_8);
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
@@ -685,8 +688,8 @@ void main() {
         }
     }
     {
-        Sub __tmp_10 = Sub(2);
-        auto __src_26 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_10, xs);
+        Sub __tmp_9 = Sub(2);
+        auto __src_26 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_9, xs);
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
         for (;;) {
             auto __r_27 = __itr_26.__next__();
@@ -699,8 +702,8 @@ void main() {
         }
     }
     {
-        Deleg __tmp_11 = Deleg(3);
-        auto __src_28 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_11, xs);
+        Deleg __tmp_10 = Deleg(3);
+        auto __src_28 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_10, xs);
         auto&& __itr_28 = ::tpy::__iter__(__src_28);
         for (;;) {
             auto __r_29 = __itr_28.__next__();
@@ -756,8 +759,8 @@ void main() {
     }
     std::cout << "borrow_both_left" << " " << left.i << " " << right.i << "\n";
     {
-        Rng __tmp_12 = Rng(2);
-        auto __src_34 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_12, xs);
+        Rng __tmp_11 = Rng(2);
+        auto __src_34 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_11, xs);
         auto&& __itr_34 = ::tpy::__iter__(__src_34);
         for (;;) {
             auto __r_35 = __itr_34.__next__();
@@ -770,9 +773,9 @@ void main() {
         }
     }
     {
-        Noisy __tmp_13 = Noisy(2);
-        Noisy __tmp_14 = Noisy(3);
-        auto __src_36 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_13, __tmp_14);
+        Noisy __tmp_12 = Noisy(2);
+        Noisy __tmp_13 = Noisy(3);
+        auto __src_36 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_12, __tmp_13);
         auto&& __itr_36 = ::tpy::__iter__(__src_36);
         for (;;) {
             auto __r_37 = __itr_36.__next__();
@@ -785,8 +788,8 @@ void main() {
         }
     }
     {
-        Noisy __tmp_15 = Noisy(1);
-        auto __src_38 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_15, Cur(1));
+        Noisy __tmp_14 = Noisy(1);
+        auto __src_38 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_14, Cur(1));
         auto&& __itr_38 = ::tpy::__iter__(__src_38);
         for (;;) {
             auto __r_39 = __itr_38.__next__();
@@ -798,10 +801,10 @@ void main() {
         std::cout << "order_mixed" << " " << a << " " << b << "\n";
         }
     }
-    Noisy __tmp_16 = Noisy(2);
+    Noisy __tmp_15 = Noisy(2);
     std::vector<int32_t> prods = ({
         std::vector<int32_t> __result;
-        auto __obj_40 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_16, xs);
+        auto __obj_40 = ::tpy::builtin_zip<int32_t, int32_t>(__tmp_15, xs);
         auto __beg_40 = __obj_40.begin();
         auto __end_40 = __obj_40.end();
         for (; __beg_40 != __end_40; ++__beg_40) {
@@ -813,26 +816,26 @@ void main() {
         std::move(__result);
     });
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(prods) << "\n";
-    std::optional<Noisy> __tmp_17;
-    int32_t taken = (((::tpy::__len__(xs) > 1)) ? (__tmp_17.emplace(Noisy(2)), ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>((*__tmp_17), xs)))) : (0));
+    std::optional<Noisy> __tmp_16;
+    int32_t taken = (((::tpy::__len__(xs) > 1)) ? (__tmp_16.emplace(Noisy(2)), ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>((*__tmp_16), xs)))) : (0));
     std::cout << "cond_taken" << " " << taken << "\n";
-    std::optional<Loud> __tmp_18;
-    int32_t skipped = (((::tpy::__len__(xs) > 9)) ? (__tmp_18.emplace(Loud(9)), ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>((*__tmp_18), xs)))) : (0));
+    std::optional<Loud> __tmp_17;
+    int32_t skipped = (((::tpy::__len__(xs) > 9)) ? (__tmp_17.emplace(Loud(9)), ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>((*__tmp_17), xs)))) : (0));
     std::cout << "cond_skipped" << " " << skipped << "\n";
-    std::optional<Loud> __tmp_19;
-    int32_t built = (((::tpy::__len__(xs) > 1)) ? (__tmp_19.emplace(Loud(2)), ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>((*__tmp_19), xs)))) : (0));
+    std::optional<Loud> __tmp_18;
+    int32_t built = (((::tpy::__len__(xs) > 1)) ? (__tmp_18.emplace(Loud(2)), ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>((*__tmp_18), xs)))) : (0));
     std::cout << "cond_built" << " " << built << "\n";
     int32_t rounds = 0;
     while (true) {
-        Noisy __tmp_20 = Noisy(2);
-        if (!((rounds < ::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_20)))))) break;
+        Noisy __tmp_19 = Noisy(2);
+        if (!((rounds < ::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_19)))))) break;
         rounds = ::tpy::add_check<int32_t>(rounds, 1);
     }
     std::cout << "while_head" << " " << rounds << "\n";
+    Quiet __tmp_20 = Quiet(2);
+    std::cout << "nested_call" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_20))) << "\n";
     Quiet __tmp_21 = Quiet(2);
-    std::cout << "nested_call" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_21))) << "\n";
-    Quiet __tmp_22 = Quiet(2);
-    std::cout << "nested_call_multi" << " " << "p" << " " << ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_22, xs))) << "\n";
+    std::cout << "nested_call_multi" << " " << "p" << " " << ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_21, xs))) << "\n";
     std::cout << "genexpr_source" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_3(std::in_place, [&]() { return ::tpy::builtin_zip<int32_t, int32_t>(Quiet(2), xs); })) << "\n";
     if (((::tpy::__len__(xs) > 1) && (::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, Quiet(2)))) == 2))) {
         std::cout << "and_operand" << "\n";
@@ -883,29 +886,29 @@ void main() {
         }
     }
     auto inner_total = [&xs]() -> int32_t {
-        Quiet __tmp_23 = Quiet(2);
-        return ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_23, xs)));
+        Quiet __tmp_22 = Quiet(2);
+        return ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_22, xs)));
     };
     std::cout << "closure" << " " << inner_total() << "\n";
     int32_t tf;
     {
         try {
-            Quiet __tmp_24 = Quiet(2);
-            tf = ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_24, xs)));
+            Quiet __tmp_23 = Quiet(2);
+            tf = ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_23, xs)));
             std::cout << "try" << " " << tf << "\n";
         } catch (...) {
-            Quiet __tmp_25 = Quiet(1);
-            std::cout << "finally" << " " << ::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_25))) << "\n";
+            Quiet __tmp_24 = Quiet(1);
+            std::cout << "finally" << " " << ::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_24))) << "\n";
             throw;
         }
-        Quiet __tmp_26 = Quiet(1);
-        std::cout << "finally" << " " << ::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_26))) << "\n";
+        Quiet __tmp_25 = Quiet(1);
+        std::cout << "finally" << " " << ::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_25))) << "\n";
     }
     auto __ctx_1 = Scope();
     auto one = __ctx_1.__enter__();
     try {
-        Quiet __tmp_27 = Quiet(2);
-        std::cout << "with" << " " << (::tpy::add_check<int32_t>(one, ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_27, xs))))) << "\n";
+        Quiet __tmp_26 = Quiet(2);
+        std::cout << "with" << " " << (::tpy::add_check<int32_t>(one, ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip<int32_t, int32_t>(__tmp_26, xs))))) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -943,8 +946,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    Quiet __tmp_28 = Quiet(2);
-    module_count = ::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_28)));
+    Quiet __tmp_27 = Quiet(2);
+    module_count = ::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(dbl, __tmp_27)));
     ::tpyapp::main::main();
 }
 

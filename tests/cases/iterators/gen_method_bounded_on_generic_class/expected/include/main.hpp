@@ -90,8 +90,9 @@ struct __gen_Summer_each_doubled : public ::tpy::next_iter_mixin<__gen_Summer_ea
     int32_t __state;
     const Summer<T>& __self;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<const T>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<const T>> __for_r_0;
+    using __for_src_0_t = decltype((__self.items));
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

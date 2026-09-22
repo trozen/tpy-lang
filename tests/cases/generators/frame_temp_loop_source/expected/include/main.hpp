@@ -233,7 +233,8 @@ struct __coro_Bag_total {
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -265,7 +266,8 @@ struct __coro_async_fn {
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -362,7 +364,8 @@ struct __gen_gen_plain : public ::tpy::next_iter_mixin<__gen_gen_plain, std::str
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -390,7 +393,8 @@ struct __gen_gen_unpack : public ::tpy::next_iter_mixin<__gen_gen_unpack, std::s
     Cell* r = nullptr;
     int32_t k;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -417,7 +421,8 @@ struct __gen_gen_field : public ::tpy::next_iter_mixin<__gen_gen_field, std::str
     ::tpy::frame_slot<Cell> x;
     Inner* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -445,7 +450,8 @@ struct __gen_gen_two_arms : public ::tpy::next_iter_mixin<__gen_gen_two_arms, st
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -474,8 +480,10 @@ struct __gen_gen_nested : public ::tpy::next_iter_mixin<__gen_gen_nested, std::s
     Cell* q = nullptr;
     ::tpy::frame_slot<Cell> x;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_1;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -502,7 +510,8 @@ struct __gen_gen_literal : public ::tpy::next_iter_mixin<__gen_gen_literal, std:
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::array<Cell, 2>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<Cell, 2>{Cell(11), Cell(22)}))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -529,7 +538,8 @@ struct __gen_gen_slice : public ::tpy::next_iter_mixin<__gen_gen_slice, std::str
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
-    ::tpy::frame_loop_slot<decltype(::tpy::list_slice(std::declval<std::vector<Cell>&>(), std::declval<::tpy::BasicSlice>()))> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::list_slice((*cells), ::tpy::BasicSlice{1, std::nullopt})))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -605,7 +615,8 @@ struct __gen_gen_param_slice : public ::tpy::next_iter_mixin<__gen_gen_param_sli
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
-    ::tpy::frame_loop_slot<decltype(::tpy::list_slice(std::declval<std::vector<Cell>&>(), std::declval<::tpy::BasicSlice>()))> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::list_slice(cells, ::tpy::BasicSlice{1, std::nullopt})))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -633,7 +644,8 @@ struct __gen_gen_in_match : public ::tpy::next_iter_mixin<__gen_gen_in_match, st
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -709,6 +721,9 @@ struct __gen_gen_combinator : public ::tpy::next_iter_mixin<__gen_gen_combinator
     std::tuple<int32_t, int32_t> __for_tup_0;
     int32_t i;
     int32_t v;
+    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate<int32_t>((*__coro_arg_0))))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -735,7 +750,8 @@ struct __gen_gen_user_iter : public ::tpy::next_iter_mixin<__gen_gen_user_iter, 
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Cell* held = nullptr;
-    ::tpy::frame_loop_slot<Feed> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_feed()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -762,7 +778,8 @@ struct __gen_gen_ptr_local : public ::tpy::next_iter_mixin<__gen_gen_ptr_local, 
     ::tpy::frame_slot<Cell> x;
     Cell* p;
     Cell* q;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -789,7 +806,8 @@ struct __gen_gen_ptr_field : public ::tpy::next_iter_mixin<__gen_gen_ptr_field, 
     ::tpy::frame_slot<Cell> x;
     ::tpy::frame_slot<Holder> h;
     ::tpy::frame_slot<Holder> g;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -866,7 +884,8 @@ struct __gen_gen_same_block : public ::tpy::next_iter_mixin<__gen_gen_same_block
     int32_t v;
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -892,7 +911,8 @@ struct __gen_gen_in_try : public ::tpy::next_iter_mixin<__gen_gen_in_try, std::s
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -920,7 +940,8 @@ struct __gen_gen_in_with : public ::tpy::next_iter_mixin<__gen_gen_in_with, std:
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -948,7 +969,8 @@ struct __gen_Bag_rows : public ::tpy::next_iter_mixin<__gen_Bag_rows, std::strin
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
     Cell* alias = nullptr;
-    ::tpy::frame_loop_slot<std::vector<Cell>> __for_src_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,

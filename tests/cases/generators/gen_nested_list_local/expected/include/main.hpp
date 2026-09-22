@@ -20,9 +20,10 @@ void main();
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<std::array<int32_t, 2>>> rows;
-    std::array<int32_t, 2>* r = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::array<int32_t, 2>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::array<int32_t, 2>>>> __for_end_0;
+    using __for_src_0_t = decltype(((*rows)));
+    ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

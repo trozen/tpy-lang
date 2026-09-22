@@ -230,8 +230,13 @@ class THIRStrLiteral(THIRExpr):
     """A string literal, rendered via `cpp_string_literal_expr`, the single
     quoting/escaping helper. Form stays VALUE: the emitted
     const char[N] converts implicitly to both string_view and string slots,
-    so a literal is never wrapped by the owned-sink view->owned copy."""
+    so a literal is never wrapped by the owned-sink view->owned copy. The one
+    position that needs the literal to HAVE a type of its own -- a frame's
+    `for` source, whose fields are spelled off `decltype` of the render --
+    lowers it BORROW, the static-storage view (`std::string_view(...)`),
+    exactly as a bytes literal's view positions do."""
     value: str
+    form: Form = field(default=Form.VALUE, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -2843,7 +2848,6 @@ class THIRForEach(THIRStmt):
     # `auto __obj_N` would die with. Decided by the resumable frame prescan,
     # which is the pass that places the field.
     frame_src_field: 'str | None' = None
-    frame_src_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -2879,7 +2883,6 @@ class THIRForIterProto(THIRStmt):
     orelse: tuple[THIRStmt, ...] = ()
     # The frame field owning this loop's source -- see THIRForEach.
     frame_src_field: 'str | None' = None
-    frame_src_cpp: 'str | None' = None
 
 
 class WithTargetArm(Enum):

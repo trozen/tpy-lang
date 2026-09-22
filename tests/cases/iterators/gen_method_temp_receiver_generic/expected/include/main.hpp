@@ -43,9 +43,10 @@ template <typename T>
 struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, ::tpy::yield_slot_t<T>> {
     int32_t __state;
     Holder<T>& __self;
-    T* x = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+    using __for_src_0_t = decltype((__self.items));
+    ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

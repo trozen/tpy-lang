@@ -136,9 +136,10 @@ struct __gen_gen_found : public ::tpy::next_iter_mixin<__gen_gen_found, bool> {
     int32_t __state;
     const std::vector<Pt>& pts;
     const std::vector<Pt>& probes;
-    const Pt* q = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Pt>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Pt>>> __for_end_0;
+    using __for_src_0_t = decltype((probes));
+    ::tpy::begin_elem_t<__for_src_0_t>* q = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

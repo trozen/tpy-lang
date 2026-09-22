@@ -7,8 +7,8 @@
 # appends to the returned container.
 # The reject is the FRAME route's, so it applies exactly when the loop body
 # SUSPENDS: the generator below yields inside the loop and the `async def` twin
-# awaits inside it, so both take it (the twin is unannotated only because the
-# compile stops at the first error). The same `async def` with no suspension in
+# awaits inside it, so both take it (the generator is unannotated only because
+# the compile stops at the first error, which the `async def` unit reports). The same `async def` with no suspension in
 # the loop lowers on the sync route and compiles, as a plain function does
 # (tests/cases/iterators/foreach_property_chain).
 # Workaround: bind the intermediate record -- `inner = o.inner` then
@@ -46,7 +46,7 @@ class Outer:
 
 
 # generator: the iterator outlives every yield
-def gen(o: Outer) -> Iterator[int32]:  # tpyc: error(/res.for_iter_borrow_unplaceable/)
+def gen(o: Outer) -> Iterator[int32]:
     for b in o.inner.items:
         yield b.n
 
@@ -56,7 +56,7 @@ async def tick() -> None:
 
 
 # async def: the await in the loop body is what puts it on the frame route
-async def drain(o: Outer) -> None:
+async def drain(o: Outer) -> None:  # tpyc: error(/res.for_iter_borrow_unplaceable/)
     for b in o.inner.items:
         await tick()
         print(b.n)

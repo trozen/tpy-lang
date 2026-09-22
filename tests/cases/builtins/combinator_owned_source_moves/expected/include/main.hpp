@@ -332,6 +332,9 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, int32_t> {
     std::tuple<int32_t, int32_t> __for_tup_1;
     int32_t i;
     int32_t v;
+    ::tpy::frame_slot<Noisy> __coro_arg_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate<int32_t>((*__coro_arg_0))))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
 
     enum : int32_t {
         S_INITIAL = 0,

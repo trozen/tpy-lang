@@ -38,9 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<P*, P*>> {
     int32_t __state;
     std::vector<P>& items;
-    P* it = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

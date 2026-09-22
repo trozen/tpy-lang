@@ -493,6 +493,26 @@ def frame_factory_callee(fi: 'FunctionInfo | None') -> bool:
             and rt.qualified_name() == "typing.Iterator")
 
 
+def iterator_source_callee(fi: 'FunctionInfo | None') -> bool:
+    """Does this callee hand back an ITERATOR over its arguments -- a frame
+    factory, or a lazy combinator (`zip`, `enumerate`, `reversed`, ...)?
+    Both keep their reference-typed arguments alive for as long as the
+    result is driven, so where the result is held by a frame, the arguments
+    must be too. Same declared-return test as `frame_factory_callee`, without
+    its native / template exclusion: a C++ combinator object retains exactly
+    as a frame does."""
+    if fi is None:
+        return False
+    if frame_factory_callee(fi):
+        return True
+    rt = getattr(fi, "return_type", None)
+    if not isinstance(rt, TpyType):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    return (isinstance(rt, NominalType) and rt.is_protocol
+            and rt.qualified_name() == "typing.Iterator")
+
+
 def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
                           analyzer) -> 'TpyExpr | None':
     """The SOURCE expression a TEMPORARY argument to a generator/coroutine

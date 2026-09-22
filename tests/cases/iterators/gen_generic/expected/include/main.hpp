@@ -355,9 +355,10 @@ struct __gen_enumerate : public ::tpy::next_iter_mixin<__gen_enumerate<T, T_iter
     int32_t __state;
     T_iterable iterable;
     int32_t i;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<T_iterable>> item;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_iterable>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_iterable>> __for_r_0;
+    using __for_src_0_t = decltype((iterable));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> item;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

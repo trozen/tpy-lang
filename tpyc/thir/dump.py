@@ -156,7 +156,7 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRDefaultConstruct):
         return f"default({e.cpp_type})"
     if isinstance(e, THIRStrLiteral):
-        return f"str({e.value!r})"
+        return f"str({e.value!r})" + ("" if e.form is Form.VALUE else " [view]")
     if isinstance(e, THIRBytesLiteral):
         # The owned/span render verdict (the form tag) is emit-relevant.
         return f"bytes({e.value!r})" + ("" if e.form is Form.STORAGE else " [span]")

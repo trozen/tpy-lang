@@ -69,9 +69,10 @@ struct __coro_f {
     ::tpy::frame_slot<::tpy::ordered_map<int32_t, Box>> d;
     int32_t total;
     std::tuple<int32_t, Box*> kv;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, Box>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, Box>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, Box>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items((*d))))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<__coro_step> __sub_0;
 
     enum : int32_t {

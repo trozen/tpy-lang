@@ -85,8 +85,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
 struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay, std::tuple<int32_t, Box*>> {
     int32_t __state;
     std::tuple<int32_t, Box*> p;
-    ::tpy::frame_loop_slot<__gen_gen> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::gen()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -110,8 +111,9 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay, std::tuple<int32
 struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std::tuple<int32_t, Box*>> {
     int32_t __state;
     std::tuple<int32_t, Box*> p;
-    ::tpy::frame_loop_slot<__gen_gen> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::gen()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -137,8 +139,9 @@ struct __gen_Hub_relay : public ::tpy::next_iter_mixin<__gen_Hub_relay, std::tup
     int32_t __state;
     const Hub& __self;
     std::tuple<int32_t, Box*> p;
-    ::tpy::frame_loop_slot<__gen_gen> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::gen()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

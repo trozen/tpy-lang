@@ -46,9 +46,10 @@ template <::tpystd::typing::Iterable<Point> T_items>
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump<T_items>, int32_t> {
     int32_t __state;
     T_items items;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<T_items>> p;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_items>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_items>> __for_r_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> p;
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -115,8 +116,9 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_nums>, int3
     int32_t __state;
     T_nums nums;
     int32_t n;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<T_nums>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<T_nums>> __for_r_0;
+    using __for_src_0_t = decltype((nums));
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

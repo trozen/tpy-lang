@@ -59,8 +59,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ranged::__next__() {
     __builtin_unreachable();
 }
 
-// # generator position. The loop holds no yield: a suspending `for` over a
-// # combinator has no frame lowering at any source.
+// # generator position, with no yield in the loop, so the holder is the state
+// # block's; the suspending twin (the frame holding the combinator and its
+// # temporary) is `combinator_temp_src` in generators/frame_for_source_once.
 // def pairs(xs: list[int32]) -> Iterator[int32]:
 //     t = 0
 //     for i, v in enumerate(Noisy(2)):  # tpyc: ok
@@ -70,9 +71,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         t = 0;
+        __coro_arg_0.emplace(Noisy(2));
         {
-            Noisy __tmp_4 = Noisy(2);
-            auto __src_0 = ::tpy::builtin_enumerate<int32_t>(__tmp_4);
+            __for_src_0.emplace(::tpy::builtin_enumerate<int32_t>((*__coro_arg_0)));
+            auto& __src_0 = (*__for_src_0);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {
                 auto __r_1 = __itr_0.__next__();

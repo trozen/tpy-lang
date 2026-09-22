@@ -10,9 +10,10 @@ namespace {
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, ::tpy::val_or_ref<Node>> {
     int32_t __state;
     std::array<Node, 3>& __src;
-    Node* n = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::array<Node, 3>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::array<Node, 3>>> __for_end_0;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::begin_elem_t<__for_src_0_t>* n = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

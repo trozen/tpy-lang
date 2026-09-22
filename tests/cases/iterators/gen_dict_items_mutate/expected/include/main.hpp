@@ -44,9 +44,10 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     std::tuple<int32_t, C*> __for_tup_0;
     int32_t k;
     C* c = nullptr;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -71,9 +72,10 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, int32_t> {
     int32_t __state;
     ::tpy::ordered_map<int32_t, C>& d;
     std::tuple<int32_t, C*> kv;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, C>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

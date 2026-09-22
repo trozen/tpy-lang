@@ -274,7 +274,8 @@ def rsum(n: int32) -> Iterator[int32]:
 
 
 # a lazy combinator over a temporary, nothing escaping: the holder stays in the
-# state block because the frame cannot name its type
+# state block, as for any source the body lends nothing out of; the temporary
+# the combinator retains is seated on the frame regardless
 def gen_combinator() -> Iterator[str]:
     t = 0
     for i, v in enumerate(make_values()):  # tpyc: ok

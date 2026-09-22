@@ -81,9 +81,10 @@ struct __coro_walk_async {
     bool __cancel_pending;
     std::vector<std::tuple<int32_t, A>>& xs;
     int32_t total;
-    std::tuple<int32_t, A>* t = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, A>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, A>>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -111,9 +112,10 @@ struct __coro_sum_items {
     const ::tpy::ordered_map<int32_t, int32_t>& d;
     int32_t total;
     std::tuple<int32_t, int32_t> kv;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<int32_t, int32_t>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -167,9 +169,10 @@ struct __coro_async_section {
 struct __gen_walk_free : public ::tpy::next_iter_mixin<__gen_walk_free, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, A>>& xs;
-    std::tuple<int32_t, A>* t = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, A>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, A>>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -194,9 +197,10 @@ struct __gen_walk_free : public ::tpy::next_iter_mixin<__gen_walk_free, int32_t>
 struct __gen_walk_value : public ::tpy::next_iter_mixin<__gen_walk_value, int32_t> {
     int32_t __state;
     const std::vector<std::tuple<int32_t, int32_t>>& xs;
-    const std::tuple<int32_t, int32_t>* t = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, int32_t>>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -222,9 +226,10 @@ struct __gen_walk_items : public ::tpy::next_iter_mixin<__gen_walk_items, int32_
     int32_t __state;
     ::tpy::ordered_map<int32_t, A>& d;
     std::tuple<int32_t, A*> kv;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, A>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, A>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<::tpy::ordered_map<int32_t, A>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -249,9 +254,10 @@ struct __gen_walk_items : public ::tpy::next_iter_mixin<__gen_walk_items, int32_
 struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk, int32_t> {
     int32_t __state;
     Holder& __self;
-    std::tuple<int32_t, A>* t = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, A>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, A>>>> __for_end_0;
+    using __for_src_0_t = decltype((__self.xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -281,9 +287,10 @@ inline __gen_Holder_walk Holder::walk() {
 struct __gen_Holder_peek : public ::tpy::next_iter_mixin<__gen_Holder_peek, int32_t> {
     int32_t __state;
     const Holder& __self;
-    const std::tuple<int32_t, A>* t = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, A>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<std::tuple<int32_t, A>>>> __for_end_0;
+    using __for_src_0_t = decltype((__self.xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

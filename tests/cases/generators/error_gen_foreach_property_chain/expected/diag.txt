@@ -1,1 +1,1 @@
-main.py:49: error: in function 'gen': this construct is not yet supported by C++ code generation (res.for_iter_borrow_unplaceable)
+main.py:59: error: in function 'drain': this construct is not yet supported by C++ code generation (res.for_iter_borrow_unplaceable)

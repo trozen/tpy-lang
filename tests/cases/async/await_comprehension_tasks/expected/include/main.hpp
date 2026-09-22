@@ -50,10 +50,11 @@ struct __coro_main_coro {
     bool __cancel_pending;
     ::tpy::frame_slot<std::array<::tpystd::asyncio::_executor::Task<int32_t>, 4>> tasks;
     int32_t total;
-    ::tpystd::asyncio::_executor::Task<int32_t>* t = nullptr;
+    using __for_src_0_t = decltype(((*tasks)));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
     int32_t __await_lift_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::array<::tpystd::asyncio::_executor::Task<int32_t>, 4>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::array<::tpystd::asyncio::_executor::Task<int32_t>, 4>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {

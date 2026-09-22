@@ -697,8 +697,9 @@ struct __gen_CaseInsensitiveDict___iter__ : public ::tpy::next_iter_mixin<__gen_
     int32_t __state;
     const CaseInsensitiveDict& __self;
     std::string lk;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, std::tuple<std::string, std::string>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, std::tuple<std::string, std::string>>>> __for_end_0;
+    using __for_src_0_t = decltype((__self._store));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -727,8 +728,9 @@ struct __gen_CookieJar___iter__ : public ::tpy::next_iter_mixin<__gen_CookieJar_
     int32_t __state;
     const CookieJar& __self;
     std::string name;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, Cookie>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, Cookie>>> __for_end_0;
+    using __for_src_0_t = decltype((__self._store));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -802,8 +804,9 @@ struct __gen_Response_iter_lines : public ::tpy::next_iter_mixin<__gen_Response_
     ::tpy::Bytes buf;
     int32_t nl;
     ::tpy::Bytes chunk;
-    ::tpy::frame_loop_slot<__gen_Response_iter_content> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_Response_iter_content>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((__self.iter_content(_ITER_LINES_CHUNK)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

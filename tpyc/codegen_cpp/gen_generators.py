@@ -2,27 +2,24 @@
 from __future__ import annotations
 
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from ..parse.nodes import (
-    TpyFunction, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpySubscript, TpyTupleUnpack,
+    TpyFieldAccess, TpyFunction, TpyGeneratorExpression, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpySubscript, TpyTupleUnpack,
 )
-from ..typesys import expand_fi_template, IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_always_borrows, yield_borrow_slot_cpp, yield_slot_borrows
+from ..typesys import IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_slot_borrows
 from tpyc import modules as builtin_modules
 from ..compilation_context import get_current_compiler
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
                                   is_owned_in_coro_frame)
 from . import emit_prims
-from .context import (CodeGenError, FrameSourceUnnameable,
-                      expand_cpp_template, qualify_native_name)
-from .resumable_cfg import (ResumableShape, frame_struct_qualname,
-                            recursive_delegation_error, resumable_state,
+
+from .resumable_cfg import (recursive_delegation_error, resumable_state,
                             same_module_dep_unit)
-from .protocols import protocol_param_template_name
-from ..value_category import (for_source_is_rvalue,
-                              property_access_returns_cpp_ref)
+from ..value_category import (call_returns_cpp_ref, for_source_is_rvalue,
+                              peel_coerce, property_access_returns_cpp_ref)
 
 
 @dataclass(frozen=True)
@@ -62,25 +59,22 @@ class GeneratorForInfo:
     # (what sema's `varargs_as_const` flip makes the default for `*args`)
     # both yield a `const T*`, and a plain `T*` field would not compile.
     pointer_form_is_const: bool = False
-    # The pointee's C++ spelling when the TPy element type cannot give it: an
-    # `iter_next` unpack holder points into the step result, whose type only
-    # the source knows. None = spell it from the element type.
-    pointer_form_payload: str | None = None
-    # (loop var name, fully-spelled C++ payload for its frame field). The
-    # payload is derived from the ITERATION SOURCE rather than the TPy element
-    # type -- e.g. `::tpy::for_elem_next_t<T_items>` -- so C++ decides at
-    # instantiation whether the element aliases the source or is owned, with
-    # `frame_slot` supplying both forms behind one spelling. Name and payload
-    # travel together so they cannot drift.
-    #
-    # Set ONLY by `iter_next`, and only where the choice is genuinely open:
-    # that strategy's source may lend an element or hand back a fresh one, and
-    # a protocol-typed or generic source settles which at instantiation. The
-    # other strategies deliberately keep `pointer_form_loop_var` -- `begin_end`
-    # and `next` can decide from the element type because their sources always
-    # lend an lvalue, `range` synthesizes its element, and a concrete value
-    # element is copy-only whatever the source. Widening this to them would
-    # trade a legible `Box* b` for a trait sandwich and buy nothing.
+    # The `using` alias the struct defines for this loop's source type
+    # (`__for_src_<uid>_t`); every field above is spelled through it. None
+    # for the `range` counters, which have no source object.
+    src_alias: str | None = None
+    # Pointee spelling per pointer-form field of this loop -- the loop var
+    # and the tuple-unpack targets that alias a member -- derived from the
+    # SOURCE through `src_alias`, so the pointer's const is the element's.
+    pointer_payloads: dict[str, str] = field(default_factory=dict)
+    # (loop var name, fully-spelled C++ payload for its frame field):
+    # `::tpy::for_elem_next_t<src_alias>`, so C++ decides at instantiation
+    # whether the element aliases the source or is owned, with `frame_slot`
+    # supplying both forms behind one spelling. Set ONLY by `iter_next`, the
+    # one strategy where the choice is open: its source may lend an element
+    # or hand back a fresh one. `begin_end` and `next` sources always lend an
+    # lvalue, so their loop var is the pointer form above; `range`
+    # synthesizes its element; a concrete value element is copy-only.
     loop_var_field: tuple[str, str] | None = None
     # For a tuple-unpack loop (`for a, b in items:`) whose element tuple
     # contains non-value, non-readonly members, the names of the unpack
@@ -111,11 +105,10 @@ class GeneratorForInfo:
     # generator. Recorded here because this is where the source
     # type is resolved; consumed as an emit-ordering edge.
     dep_units: tuple[tuple[str, str | None], ...] = ()
-    # Whether the ITERATION SOURCE is const in this frame (a const-borrow
-    # capture, a const-bound local, or a chain rooted at one). Every slot this
-    # loop spells off the source carries it -- the iterator, the `__next__`
-    # result, the source-form loop-var payload -- and so does the loop var's
-    # own binding, which is why it is recorded rather than re-derived.
+    # Sema's verdict on whether the ITERATION SOURCE is const in this frame (a
+    # const-borrow capture, a const-bound local, or a chain rooted at one).
+    # The loop's own fields take their const from the source's C++ type; this
+    # is for the loop var's BINDING, which the rest of the body reads.
     source_is_const: bool = False
 
 
@@ -212,7 +205,6 @@ def elem_is_known_value(elem_type: 'TpyType | None') -> bool:
 
 
 if TYPE_CHECKING:
-    from ..typesys import FunctionInfo
     from .context import CodeGenContext
     from .types import TypeMapper
     from .functions import FunctionGenerator
@@ -280,87 +272,46 @@ class GeneratorCodegen:
             return yield_borrow_slot_cpp(elem_type, cpp_elem)
         return cpp_elem
 
-    def _deduced_source_template(
-            self, stmt: TpyForEach, iterable_type: 'TpyType',
-            proto_param_names: frozenset[str],
-            proto_param_alias: dict[str, str] | None) -> str | None:
-        """The deduced template arg `T_<pname>` naming a static-protocol param's
-        frame-field type, or None when the source is not one.
-
-        A direct loop over such a param sources from that arg, not from
-        `type_to_cpp`, which renders the protocol as a C++ concept --
-        un-instantiable inside `std::declval`. The dual guard (name is a
-        classified param AND the resolved type is still a static protocol)
-        means a concrete-typed local that shadows the param name falls back to
-        the ordinary rendering.
-        """
-        if not isinstance(stmt.iterable, TpyName):
-            return None
-        subj_pname = (proto_param_alias or {}).get(
-            stmt.iterable.name, stmt.iterable.name)
-        if (subj_pname in proto_param_names
-                and self.functions.protocols.is_static_protocol_param(iterable_type)):
-            return protocol_param_template_name(subj_pname)
-        return None
-
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int,
-                              proto_param_names: frozenset[str] = frozenset(),
-                              proto_param_alias: dict[str, str] | None = None,
-                              aliasing_source: bool = False
+                              pinned_roots: frozenset[str] = frozenset(),
+                              deduced_source_concrete: bool = False
                               ) -> GeneratorForInfo | None:
-        """Determine the iteration strategy and struct fields for a for-loop with yield.
+        """Determine the iteration strategy and struct fields for a for-loop
+        with yield.
 
-        `proto_param_names` is the set of static-protocol param names of the
-        enclosing coro; iterating directly over one types the iterator frame
-        field against its deduced template arg `T_<pname>` (see the universal
-        strategy below) rather than the un-instantiable concept rendering.
-        `proto_param_alias` maps a forwarded local (`xs = it`) to the param it
-        aliases, so iterating the alias reuses the same `T_<pname>` deduction.
+        Every field of the loop is spelled off ONE alias, `__for_src_<uid>_t`,
+        which the struct emit defines as `decltype((<source render>))` -- the
+        source expression's own C++ type, reference and const included (an
+        rvalue's is stripped to the value the frame owns). A `T&`-returning
+        method on a const receiver, a view of a readonly dict, a conditional
+        of two const params, a lazy combinator, a generator expression: each
+        spells its iterator and result slots through that alias without this
+        analysis naming the type, so it cannot disagree with what the setup
+        actually stores. What IS decided here: the strategy, which fields
+        exist, whether the frame holds the source, and the loop var's form.
+
+        `pinned_roots` are the names (params, captures, `self`) whose storage
+        outlives the frame. An lvalue ITERATOR source rooted at one of them
+        is held by reference in the frame so it is evaluated once.
+        `deduced_source_concrete` says a protocol-typed source is a genexpr's
+        deduced slot, instantiated by its one creation site -- not an open
+        protocol param that may be driven at a container of value tuples.
         """
         from tpyc.modules import get_error_return_next_element_type
 
         elem_type = stmt.elem_type
         if elem_type and isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
-        elem_cpp = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
-        # An iterator yielding a pointer-repr tuple hands out the borrow form
-        # (std::tuple<..., T*>); the `__for_r` result slot must match that
-        # ABI, not the ref/value rendering of the element type.
-        elem_bare = (unwrap_readonly(unwrap_ref_type(elem_type))
-                     if elem_type else None)
-        if (isinstance(elem_bare, TupleType)
-                and elem_bare.has_pointer_repr_element()):
-            elem_cpp = self.types.tuple_borrow_cpp(elem_bare)
-        # The frame's one answer for "is this source const here" (a const-borrow
-        # capture, a const frame binding, a chain rooted at one). Every slot
-        # below that names the source type must apply it, or the field is
-        # declared off a mutable spelling and initialized from a const one.
+        alias = f"__for_src_{uid}_t"
+        # Sema's answer for "is this source const here", recorded for the loop
+        # var's BINDING (the frame's const bindings, which the rest of the body
+        # reads); the loop's own fields carry their const through the alias.
         src_is_const = self.ctx.is_const_storage_source(stmt.iterable)
-        # What the iteration LENDS (src_is_const) and what the iterated OBJECT
-        # is are two facts. A borrowing-view accessor (`d.items()`) lends const
-        # elements off a const receiver, but the frame owns its result as a
-        # fresh, non-const view whose element const rides inside the view's own
-        # type -- so the slots naming the SOURCE type must not const-qualify it.
-        # ... and the exclusion is about what the call DOES, not its node
-        # kind: a view accessor MINTS a fresh view, a reference-returning one
-        # (a `@property` getter over a container field) LENDS the receiver's
-        # own container exactly as a member read does, so its slots must
-        # carry the receiver's const or `begin()` hands back a
-        # const_iterator the slot cannot hold. Only the ACCESSOR convention
-        # is asked, through the predicate that owns it: a plain method never
-        # reaches here, because `is_const_storage_source` above answers True
-        # for a call only when it is a view accessor or a getter. (A
-        # `T&`-returning plain method off a const receiver therefore gets no
-        # const carried at all; that gap is loud and filed as
-        # `BUGS.md#foreach-frame-const-not-carried-through-method`.)
-        src_obj_is_const = (
-            src_is_const
-            and not (isinstance(stmt.iterable, TpyMethodCall)
-                     and not property_access_returns_cpp_ref(
-                         self.ctx.analyzer, stmt.iterable)))
+        holds_source = for_source_is_rvalue(stmt, self.ctx.analyzer)
 
         # Range counter optimization
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range":
+            elem_cpp = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
             fields: list[tuple[str, str]] = [
                 (f"__for_i_{uid}", elem_cpp),
                 (f"__for_stop_{uid}", elem_cpp),
@@ -371,82 +322,56 @@ class GeneratorCodegen:
             return GeneratorForInfo(uid=uid, strategy="range", fields=fields)
 
         # A narrowed value-Optional iterable (`str|None`/`bytes|None`) is still
-        # `std::optional<V>` in the frame -- dispatch on / build the iterator
-        # field type from the contained `V` (the resumable for-src render derefs
-        # `(*v)` to match). Shared with the sync for-loop's type handling.
+        # `std::optional<V>` in the frame -- dispatch on the contained `V` (the
+        # source render derefs `(*v)` to match). Shared with the sync for-loop.
         iterable_type = emit_prims.narrowed_value_optional_iter_type(
             self.ctx, stmt.iterable,
             self.types.get_resolved_type(stmt.iterable))
 
-        # Iterator[T] protocol -- iterable already has __next__()
-        if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "typing.Iterator":
+        # The source IS the iterator: `typing.Iterator` (a generator frame, a
+        # combinator, a protocol param) or a user type whose `__next__` is
+        # `@error_return`.
+        is_iterator = (is_protocol_type(iterable_type)
+                       and iterable_type.qualified_name() == "typing.Iterator")
+        if is_iterator or get_error_return_next_element_type(
+                iterable_type, registry=self.ctx.analyzer.registry) is not None:
             fields: list[tuple[str, str]] = []
-            if for_source_is_rvalue(stmt, self.ctx.analyzer):
-                # The source iterator must live in the frame: re-emitting
-                # the expression per advance would restart it every pass.
-                # With the source struct known, spell the result slot from
-                # its actual __next__ (the elem-type formula renders a
-                # borrow element as `T&`, ill-formed inside std::expected).
-                src_cpp = self._temp_iterator_field_cpp(stmt)
-                fields.append((f"__for_src_{uid}", src_cpp))
-                result_type = f"::tpy::iter_next_t<{src_cpp}>"
-            else:
-                src_tmpl = self._deduced_source_template(
-                    stmt, iterable_type, proto_param_names, proto_param_alias)
-                if src_tmpl is not None:
-                    # A static-protocol param source: its deduced template arg
-                    # names the producer struct, so the slot comes off that
-                    # producer's own `__next__` -- the one spelling that cannot
-                    # disagree with it. Re-deriving the payload from the element
-                    # type would have this consumer answer a question
-                    # (does the producer LEND?) that only the producer's
-                    # per-generator provenance verdict settles.
-                    result_type = f"::tpy::iter_next_t<{src_tmpl}>"
-                else:
-                    # No source struct to read the slot off, so a CONCRETE
-                    # reference element takes the producer's own slot spelling
-                    # -- the bare elem-type formula renders it `T&`, which
-                    # std::expected cannot hold. The peel is off `Ref[T]`, which
-                    # is how a for-head element type arrives. An open `T` keeps
-                    # the formula's `val_or_ref_t<T>`: with no producer in hand
-                    # there is nothing to read the verdict off.
-                    slot_elem = unwrap_ref_type(elem_type) if elem_type else None
-                    slot_cpp = (
-                        yield_borrow_slot_cpp(slot_elem,
-                                              self.types.type_to_cpp(slot_elem))
-                        if slot_elem is not None
-                        and yield_always_borrows(slot_elem) else elem_cpp)
-                    result_type = f"std::expected<{slot_cpp}, ::tpy::StopIteration>"
-            fields.append((f"__for_r_{uid}", result_type))
+            if holds_source or self._lvalue_source_pinned(stmt, pinned_roots):
+                # The source iterator lives in the frame -- owned when fresh,
+                # by reference when it is existing storage reached through a
+                # call: re-rendering the call per advance would run it once
+                # per element. The frame struct it embeds must be complete.
+                self._check_delegated_source(stmt)
+                fields.append((f"__for_src_{uid}", alias))
+                holds_source = True
+            fields.append((f"__for_r_{uid}", f"::tpy::iter_next_t<{alias}>"))
+            step_elem = f"::tpy::step_elem_t<::tpy::iter_next_t<{alias}>>"
             # Non-value elements alias the producer's live yield slot (T*),
             # mirroring begin_end's pointer-form loop var -- a frame_slot
             # copy would hide loop-var mutations from the source elements.
+            # An unpack head aliases its reference members the same way.
+            pointer_payloads = self._step_unpack_payloads(stmt, elem_type,
+                                                          step_elem)
             pointer_form_var = (
                 stmt.var
                 if (not stmt.is_tuple_unpack
                     and elem_wants_borrow_form(elem_type))
                 else None
             )
+            if pointer_form_var is not None:
+                pointer_payloads[pointer_form_var] = step_elem
+            elif pointer_payloads:
+                pointer_form_var = stmt.var
             return GeneratorForInfo(
-                uid=uid, strategy="next", fields=fields,
+                uid=uid, strategy="next", fields=fields, src_alias=alias,
                 source_is_const=src_is_const,
                 pointer_form_loop_var=pointer_form_var,
                 pointer_form_is_const=isinstance(
                     unwrap_ref_type(elem_type) if elem_type else None,
-                    ReadonlyType))
-
-        # error_return __next__ types (user iterators)
-        er_elem = get_error_return_next_element_type(
-            iterable_type, registry=self.ctx.analyzer.registry)
-        if er_elem is not None:
-            iter_cpp = self.types.type_to_cpp(iterable_type)
-            result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
-            fields = []
-            if for_source_is_rvalue(stmt, self.ctx.analyzer):
-                fields.append((f"__for_src_{uid}", iter_cpp))
-            fields.append((f"__for_r_{uid}", result_type))
-            return GeneratorForInfo(uid=uid, strategy="next", fields=fields,
-                                    source_is_const=src_is_const)
+                    ReadonlyType),
+                pointer_form_unpack_targets=frozenset(
+                    n for n in pointer_payloads if n != stmt.var),
+                pointer_payloads=pointer_payloads)
 
         # Built-in NativeIterable containers (list, dict, set, Array, Span, str) -- begin/end
         record = self.ctx.analyzer.registry.get_record_for_type(iterable_type)
@@ -454,27 +379,17 @@ class GeneratorCodegen:
                          and builtin_modules.is_native_iterable(iterable_type, registry=self.ctx.analyzer.registry))
         native_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry) if is_builtin_ni else None
         if native_elem is not None:
-            container_cpp = (self._source_result_decltype(stmt.iterable)
-                             or self.types.type_to_cpp(iterable_type))
-            # A const-rooted lvalue chain (self.field in a readonly method,
-            # const param/local, a const frame binding) renders const, so
-            # begin() yields a const_iterator -- the slot type must match.
-            # Over-approximation is safe (iterator converts to
-            # const_iterator); the __for_src_ copy slot below stays non-const
-            # (temporaries are never const-storage sources).
-            iter_container_cpp = (f"const {container_cpp}" if src_obj_is_const
-                                  else container_cpp)
-            iter_type = f"::tpy::begin_iter_t<{iter_container_cpp}>"
+            iter_type = f"::tpy::begin_iter_t<{alias}>"
             fields = [
                 (f"__for_it_{uid}", iter_type),
                 (f"__for_end_{uid}", iter_type),
             ]
-            # A temporary source needs a frame field; a stable lvalue (name,
-            # field path, container subscript) is borrowed instead -- copying
-            # it into the frame would hide loop-var mutations from the source
-            # (CPython aliasing semantics).
-            if for_source_is_rvalue(stmt, self.ctx.analyzer):
-                fields.insert(0, (f"__for_src_{uid}", container_cpp))
+            # A fresh source needs a frame field; existing storage (a name, a
+            # field path, a reference-returning call) is borrowed instead --
+            # copying it into the frame would hide loop-var mutations from the
+            # source (CPython aliasing semantics).
+            if holds_source:
+                fields.insert(0, (f"__for_src_{uid}", alias))
             # Non-value element type with stable lvalue source: the loop var
             # becomes T* (aliasing the container element) instead of
             # std::optional<T> (value-copy). Preserves CPython aliasing
@@ -489,32 +404,25 @@ class GeneratorCodegen:
             # tuple via tuple_to_pointer instead of a `T*` to the element.
             yields_proxy = iter_yields_ref_tuple_proxies(iterable_type)
             pointer_form_targets: frozenset[str] = frozenset()
+            target_payloads: dict[str, str] = {}
             opt_ptr_var: str | None = None
             if (stmt.is_tuple_unpack and isinstance(elem_for_form, TupleType)
                     and stmt.body and isinstance(stmt.body[0], TpyTupleUnpack)):
                 # Tuple-unpack over a stable lvalue container: alias the
-                # non-value, non-readonly members so mutating an unpacked
-                # record propagates to the source element (CPython semantics,
-                # matching the plain pointer-form loop var). `__for_tup`
-                # becomes T* and the aliased targets become T* too; value /
-                # readonly members stay value-copy.
-                unpack = stmt.body[0]
-                # Optional members are excluded: they go through the existing
-                # pointer-repr-Optional path (`T* = nullptr`, optional_to_ptr)
-                # in the struct emit and the tuple-unpack emit. Only plain
-                # reference members alias via `&std::get<i>(...)`.
-                aliased = {
-                    tname
-                    for tname, etype in zip(
-                        unpack.targets, elem_for_form.element_types)
-                    if tname is not None
-                    and not unwrap_ref_type(etype).is_value_type()
-                    and not isinstance(
-                        unwrap_ref_type(etype), (ReadonlyType, OptionalType))
-                }
+                # reference members so mutating an unpacked record propagates
+                # to the source element (CPython semantics, matching the plain
+                # pointer-form loop var). `__for_tup` becomes T* and the
+                # aliased targets become T* too via `&std::get<i>(...)`; a
+                # holder with nothing to alias stays a value copy.
+                aliased = self._unpack_alias_members(stmt, elem_for_form)
                 pointer_form_var = (stmt.var
                                     if aliased and not yields_proxy else None)
-                pointer_form_targets = frozenset(aliased)
+                pointer_form_targets = frozenset(aliased.values())
+                if pointer_form_var is not None:
+                    target_payloads = {
+                        tname: f"std::tuple_element_t<{i}, "
+                               f"::tpy::begin_elem_t<{alias}>>"
+                        for i, tname in aliased.items()}
             else:
                 # A pointer-repr `Optional[T]` element is NOT a `T*` to the
                 # container's slot: its loop var is the nullable `T*` every
@@ -538,14 +446,19 @@ class GeneratorCodegen:
                 if (yields_proxy and isinstance(elem_for_form, TupleType)
                     and elem_for_form.has_pointer_repr_element())
                 else None)
+            pointer_payloads = dict(target_payloads)
+            if pointer_form_var is not None:
+                pointer_payloads[pointer_form_var] = (
+                    f"::tpy::begin_elem_t<{alias}>")
             return GeneratorForInfo(
-                uid=uid, strategy="begin_end", fields=fields,
+                uid=uid, strategy="begin_end", fields=fields, src_alias=alias,
                 source_is_const=src_is_const,
                 pointer_form_loop_var=pointer_form_var,
                 pointer_form_is_const=(src_is_const
                                        or isinstance(elem_for_form,
                                                      ReadonlyType)),
                 pointer_form_unpack_targets=pointer_form_targets,
+                pointer_payloads=pointer_payloads,
                 borrow_tuple_loop_var=borrow_tuple_var,
                 opt_ptr_loop_var=opt_ptr_var,
             )
@@ -553,31 +466,17 @@ class GeneratorCodegen:
         # Universal default: ::tpy::__iter__() + __next__() loop.
         # Handles Iterable[T]/NativeIterable[T] protocol params, user types
         # with __iter__(), and any remaining iterable types.
-        src_cpp = (self._deduced_source_template(
-                       stmt, iterable_type, proto_param_names, proto_param_alias)
-                   or self.types.type_to_cpp(iterable_type))
-        # Every trait below probes `__iter__` on an `S&`, so a const source has
-        # to reach them as `const S` -- its `__iter__` is a different overload
-        # returning a different iterator (`SpanIter<const T>`), which no
-        # qualifier on the mutable spelling can express. The `__for_src_` copy
-        # slot keeps the mutable spelling: a temporary is never const-bound.
-        iter_src_cpp = f"const {src_cpp}" if src_obj_is_const else src_cpp
-        iter_field_type = f"::tpy::iter_type_t<{iter_src_cpp}>"
-        result_field_type = f"::tpy::iter_result_t<{iter_src_cpp}>"
         fields = [
-            (f"__for_itr_{uid}", iter_field_type),
-            (f"__for_r_{uid}", result_field_type),
+            (f"__for_itr_{uid}", f"::tpy::iter_type_t<{alias}>"),
+            (f"__for_r_{uid}", f"::tpy::iter_result_t<{alias}>"),
         ]
-        if for_source_is_rvalue(stmt, self.ctx.analyzer):
-            # `tpy::__iter__` borrows its argument, so a temporary source
-            # must be stored in the frame first or the iterator dangles.
-            if self.functions.protocols.is_static_protocol_param(iterable_type):
-                raise FrameSourceUnnameable(
-                    "iterating a temporary protocol-typed iterable across a "
-                    "suspension is not supported; bind the elements first "
-                    "(e.g. `xs = list(...)`) and iterate those",
-                    loc=stmt.loc)
-            fields.insert(0, (f"__for_src_{uid}", src_cpp))
+        if holds_source or self._lvalue_source_pinned(stmt, pinned_roots):
+            # `tpy::__iter__` borrows its argument, so a fresh source is stored
+            # in the frame first or the iterator dangles; existing storage
+            # reached through a call is held by reference, so the call runs
+            # once rather than at every advance of a self-iterator.
+            fields.insert(0, (f"__for_src_{uid}", alias))
+            holds_source = True
         # The source's `__next__` may lend an element or hand back a fresh one,
         # and for a protocol-typed or generic source that is settled only at
         # instantiation -- so the field's payload comes from the trait, not from
@@ -593,22 +492,19 @@ class GeneratorCodegen:
         # &std::get<0>(*__for_tup)`). The result stays there until the next
         # advance, so the alias holds for the iteration, and nothing is copied
         # to take it -- a proxy tuple of references (`zip`, `enumerate`,
-        # `dict.items()`) has no value form to copy into. Only where the source
-        # cannot be a native container LVALUE: that one's adaptor hands back a
-        # COPY of a value tuple, and a mutation through the target would then
-        # miss the source silently.
+        # `dict.items()`) has no value form to copy into. Not for an OPEN
+        # protocol-typed source: it may instantiate at a native container of
+        # value tuples, whose adaptor hands back a COPY of the element, and a
+        # mutation through the target would then miss the source silently.
         elem_bare = unwrap_ref_type(elem_type) if elem_type is not None else None
-        aliased_targets: frozenset[str] = frozenset()
-        if (aliasing_source and stmt.is_tuple_unpack
-                and isinstance(elem_bare, TupleType)
-                and stmt.body and isinstance(stmt.body[0], TpyTupleUnpack)):
-            aliased_targets = frozenset(
-                tname for tname, etype in zip(
-                    stmt.body[0].targets, elem_bare.element_types)
-                if tname is not None
-                and not unwrap_ref_type(etype).is_value_type()
-                and not isinstance(unwrap_ref_type(etype),
-                                   (ReadonlyType, OptionalType)))
+        source_open = (
+            self.functions.protocols.is_static_protocol_param(iterable_type)
+            and not deduced_source_concrete)
+        pointer_payloads: dict[str, str] = (
+            {} if source_open else self._step_unpack_payloads(
+                stmt, elem_type, f"::tpy::for_step_elem_t<{alias}>"))
+        aliased_targets = frozenset(n for n in pointer_payloads
+                                    if n != stmt.var)
         # A pointer-repr `Optional[T]` element is the nullable `T*` here as
         # under `begin_end`: the step result stays in the frame's result slot
         # until the next advance, lent or fresh, so the pointer holds for the
@@ -622,8 +518,9 @@ class GeneratorCodegen:
         loop_var_field = (
             None if (stmt.is_tuple_unpack or opt_ptr_var is not None
                      or elem_is_known_value(elem_type))
-            else (stmt.var, f"::tpy::for_elem_next_t<{iter_src_cpp}>"))
+            else (stmt.var, f"::tpy::for_elem_next_t<{alias}>"))
         return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields,
+                                src_alias=alias,
                                 loop_var_field=loop_var_field,
                                 opt_ptr_loop_var=opt_ptr_var,
                                 pointer_form_is_const=(
@@ -631,13 +528,75 @@ class GeneratorCodegen:
                                     or isinstance(elem_bare, ReadonlyType)),
                                 pointer_form_loop_var=(
                                     stmt.var if aliased_targets else None),
-                                pointer_form_payload=(
-                                    f"::tpy::for_step_elem_t<{iter_src_cpp}>"
-                                    if aliased_targets else None),
+                                pointer_payloads=pointer_payloads,
                                 pointer_form_unpack_targets=aliased_targets,
                                 source_is_const=src_is_const,
                                 dep_units=self._iter_source_dep_units(
                                     iterable_type))
+
+    @staticmethod
+    def _unpack_alias_members(stmt: TpyForEach,
+                              elem_bare: 'TpyType | None') -> dict[int, str]:
+        """The members a tuple-unpack head ALIASES, by tuple index -> target
+        name: the plain reference members. A value or `readonly` member is
+        copied, and an Optional member takes its own pointer-repr path
+        (`T* = nullptr`, `optional_to_ptr`). Empty for a non-unpack loop."""
+        if not (stmt.is_tuple_unpack and isinstance(elem_bare, TupleType)
+                and stmt.body and isinstance(stmt.body[0], TpyTupleUnpack)):
+            return {}
+        return {
+            i: tname
+            for i, (tname, etype) in enumerate(zip(
+                stmt.body[0].targets, elem_bare.element_types))
+            if tname is not None
+            and not unwrap_ref_type(etype).is_value_type()
+            and not isinstance(unwrap_ref_type(etype),
+                               (ReadonlyType, OptionalType))}
+
+    def _step_unpack_payloads(self, stmt: TpyForEach,
+                              elem_type: 'TpyType | None',
+                              step_elem: str) -> dict[str, str]:
+        """Pointee spellings for a tuple-unpack head over an ITERATOR
+        source: the holder points at the step result in the frame's own
+        result slot (`step_elem`), and each aliased member's target points
+        through it. The result stays there until the next advance, so the
+        alias holds for the iteration, and nothing is copied to take it -- a
+        proxy tuple of references (`zip`, `enumerate`, `dict.items()`) has
+        no value form to copy into."""
+        elem_bare = unwrap_ref_type(elem_type) if elem_type is not None else None
+        payloads = {
+            tname: f"::tpy::step_elem_member_t<{i}, {step_elem}>"
+            for i, tname in self._unpack_alias_members(stmt, elem_bare).items()}
+        if payloads:
+            payloads[stmt.var] = step_elem
+        return payloads
+
+    def _lvalue_source_pinned(self, stmt: TpyForEach,
+                              pinned_roots: frozenset[str]) -> bool:
+        """An lvalue ITERATOR source the frame holds by reference: a method
+        call (which may be impure, so it must run once) whose receiver chain
+        is rooted at storage that outlives the frame. A chain rooted at a
+        frame local of the frame's own is not held: a frame move would leave
+        the reference pointing into the moved-from frame, so that shape keeps
+        re-rendering the call (`BUGS.md#frame-iter-next-source-reevaluated`).
+        """
+        e = peel_coerce(stmt.iterable)
+        if not isinstance(e, TpyMethodCall):
+            return False
+        # Every hop below the root must LEND: a method returning by value
+        # mints a temporary the reference would dangle into. A getter's
+        # convention is the property predicate's (a storage-ref return, an
+        # open `T` settled at the instantiation).
+        analyzer = self.ctx.analyzer
+        root: TpyExpr = e
+        while isinstance(root, (TpyMethodCall, TpyFieldAccess, TpySubscript)):
+            if isinstance(root, TpyMethodCall) and not (
+                    property_access_returns_cpp_ref(analyzer, root)
+                    or call_returns_cpp_ref(analyzer,
+                                            root.resolved_function_info)):
+                return False
+            root = root.obj
+        return isinstance(root, TpyName) and root.name in pinned_roots
 
     def _iter_source_dep_units(
             self, iterable_type: 'TpyType | None',
@@ -747,162 +706,21 @@ class GeneratorCodegen:
                     if f is not None else None)
         return None
 
-    def _source_result_decltype(self, expr: TpyExpr) -> str | None:
-        """Frame-slot spelling for a for-loop source whose C++ result type the
-        resolved TPy type cannot express, deduced by C++ instead of named.
-
-        Two shapes qualify, for the same reason: the receiver's const-ness
-        picks a different C++ TYPE, not the same type under a `const`. A
-        SLICE of a const container is `std::span<const T>` where
-        `type_to_cpp(Span[T])` says `std::span<T>` -- the element const rides
-        INSIDE the span, so no qualifier on the named type reaches it. The
-        `@auto_readonly` call below is the same problem one node kind over.
-        A sync body sidesteps both with `auto`; a frame field must name a
-        type, so it names the same deduction.
-
-        What the frame then OWNS for a slice is a VIEW, not the elements: the
-        sliced container has to outlive it. That holds because a slice of a
-        TEMPORARY receiver is refused where the slice is taken, so the
-        receiver of an admitted one is storage the caller already keeps.
-        """
-        if (isinstance(expr, TpySubscript)
-                and expr.slice_function_info is not None):
-            fi = expr.slice_function_info
-            # The receiver is not among `params` for a builtin method; the
-            # slice object is the only declared one.
-            ptypes = [p.type for p in fi.params]
-            if len(ptypes) != 1:
-                return None
-            return self._declval_call_decltype(fi, expr.obj, ptypes, None)
-        return self._auto_readonly_result_decltype(expr)
-
-    def _auto_readonly_result_decltype(self, expr: TpyExpr) -> str | None:
-        """Frame-slot spelling for a call to an `@auto_readonly` method,
-        deduced by C++ instead of named from the resolved TPy type.
-
-        Sema types such a call off the MUTABLE half of the auto_readonly
-        pair; WHICH half runs is settled by C++ overload resolution on the
-        receiver, and the receiver's constness here is the Phase-2 borrow
-        verdict -- a fact sema did not have when it picked the half. The two
-        results are different C++ types, not one type under a `const`
-        (`dict_items_view<K, const V>` vs `const dict_items_view<K, V>`), so
-        no qualifier on the named type can express it. A sync body sidesteps
-        this with `auto`; a frame field must name a type, so it names the
-        same deduction. Naming the half in sema instead would need the
-        Phase-2 borrow verdict at method-resolution time, which runs before
-        it.
-
-        None means "keep the named type": the receiver's own spelling, a
-        `__deref__` hop or keyword arguments would each have to be mirrored
-        here, and nothing is gained by deducing a call whose halves agree.
-        """
-        if not isinstance(expr, TpyMethodCall):
-            return None
-        fi = expr.resolved_function_info
-        if fi is None or not fi.is_auto_readonly_mutable_clone:
-            return None
-        if fi.is_property_getter:
-            # A `@property` getter is an auto_readonly clone like any other,
-            # but its frame slot must NOT be deduced: the loop variable this
-            # slot feeds is spelled from the named element type, so deducing
-            # a `const_iterator` off a const receiver while the loop var stays
-            # `T*` is two halves of one decision disagreeing -- ill-formed
-            # C++. Keep the named type until the loop var derives its const
-            # from the same place (TODO.md,
-            # `BUGS.md#getter-source-const-not-tracked`).
-            return None
-        if expr.deref_depth or expr.kwargs or expr.double_star_unpack:
-            return None
-        atypes: list[TpyType] = []
-        for a in expr.args:
-            atype = self.types.get_resolved_type(a)
-            if atype is None:
-                return None
-            atypes.append(atype)
-        return self._declval_call_decltype(fi, expr.obj, atypes,
-                                           expr.inferred_type_args)
-
-    def _declval_call_decltype(self, fi: 'FunctionInfo', recv_expr: TpyExpr,
-                               arg_types: 'list[TpyType]',
-                               inferred_type_args: 'tuple | None'
-                               ) -> str | None:
-        """`decltype(...)` of `fi` called on `recv_expr` with arguments of
-        `arg_types` -- the receiver probed at the const-ness the frame gives
-        it, so C++ picks the same overload the emitted call will."""
-        recv_type = self.types.get_resolved_type(recv_expr)
-        if recv_type is None:
-            return None
-        recv_cpp = self.types.type_to_cpp(
-            unwrap_readonly(unwrap_ref_type(recv_type)))
-        qual = "const " if self.ctx.is_const_storage_source(recv_expr) else ""
-        recv = f"std::declval<{qual}{recv_cpp}&>()"
-        args: list[str] = []
-        for atype in arg_types:
-            bare = unwrap_readonly(unwrap_ref_type(atype))
-            # A reference-typed argument is probed as an lvalue: `declval<T>()`
-            # is an xvalue and would not bind the `T&` parameter the callee
-            # declares.
-            suffix = "" if bare.is_value_type() else "&"
-            args.append(f"std::declval<{self.types.type_to_cpp(bare)}{suffix}>()")
-        # Mirrors the three-arm receiver-call dispatch (cpp_template, @native
-        # free function with the receiver prepended, plain member call).
-        if fi.cpp_template:
-            call = expand_cpp_template(
-                expand_fi_template(fi, inferred_type_args), recv, *args)
-        elif fi.native_function and fi.native_name:
-            call = (f"{qualify_native_name(fi.native_name)}"
-                    f"({', '.join([recv, *args])})")
-        else:
-            call = f"{recv}.{fi.native_name or fi.name}({', '.join(args)})"
-        return f"decltype({call})"
-
-    def _temp_iterator_field_cpp(self, stmt: TpyForEach) -> str:
-        """C++ frame-field type for a temporary `typing.Iterator` source:
-        the callee generator's frame-struct name, qualified by
-        `rcfg.frame_struct_qualname` so a callee in another module is
-        spelled through its own namespace (its header is included here, and
-        its struct is complete at the field declaration).
-
-        Two shapes still reject, each because the field would be
-        ill-formed rather than merely unhandled: a callee in a module that
-        imports this one back (mutually infinite-size); and a source that
-        is not a resolvable direct generator call at all.
-        """
+    def _check_delegated_source(self, stmt: TpyForEach) -> None:
+        """Reject a `typing.Iterator` source the frame cannot hold: a direct
+        call to a generator defined in a module that imports this one back.
+        Its frame would be embedded by value in this one and vice versa, so
+        neither header can complete the other's struct (mutually
+        infinite-size). Any other source needs no check here: the field's
+        type is the source expression's own, deduced by C++."""
         resolved = self._resolve_generator_call(stmt.iterable)
         if resolved is None:
-            raise FrameSourceUnnameable(
-                "a for-loop with a yield/await in its body over an "
-                "Iterator-returning expression is only supported for a "
-                "direct call to a generator; bind the elements first "
-                "(e.g. `xs = list(...)`) and iterate those",
-                loc=stmt.loc)
-        callee = resolved.func
-        call_node = resolved.call
-        if self.functions.protocols.get_all_protocol_params(callee.params):
-            raise FrameSourceUnnameable(
-                f"cannot iterate '{callee.name}(...)' here: a generator "
-                "with protocol-typed parameters cannot be embedded in a "
-                "resumable frame yet; bind the elements first "
-                "(e.g. `xs = list(...)`) and iterate those",
-                loc=stmt.loc)
+            return
         # `cycle_peers` includes this module itself, so the membership test
         # only means "mutually infinite-size" for a callee defined elsewhere.
         if (resolved.defining_module != self.ctx.analyzer.ctx.module_name
                 and resolved.defining_module in self.ctx.cycle_peers):
-            raise recursive_delegation_error(callee.name, loc=stmt.loc)
-        inferred: tuple | None = None
-        if callee.type_params:
-            args = getattr(call_node, "inferred_type_args", None)
-            if not args or len(args) != len(callee.type_params):
-                raise FrameSourceUnnameable(
-                    f"cannot iterate '{callee.name}(...)' here: the generic "
-                    "generator's type arguments were not resolved at the "
-                    "call site", loc=stmt.loc)
-            inferred = tuple(args)
-        return frame_struct_qualname(
-            self.types, resolved.owner, callee.name, inferred,
-            module_qual=resolved.module_qual,
-            shape=ResumableShape.GENERATOR, loc=stmt.loc)
+            raise recursive_delegation_error(resolved.func.name, loc=stmt.loc)
 
     def _for_src_generator_targets(
             self, func: TpyFunction) -> list[tuple[str, str | None]]:
@@ -926,6 +744,11 @@ class GeneratorCodegen:
                 # stays in its block names no field, so it orders nothing.
                 if (isinstance(s, TpyForEach) and not s.is_async
                         and frame_holds_source(s)):
+                    src = peel_coerce(s.iterable)
+                    if (isinstance(src, TpyGeneratorExpression)
+                            and src.frame_func is not None):
+                        # A genexpr's frame is a unit of this module too.
+                        targets.append((src.frame_func.name, None))
                     t = self.types.get_resolved_type(s.iterable)
                     if (t is not None and is_protocol_type(t)
                             and t.qualified_name() == "typing.Iterator"):

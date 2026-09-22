@@ -133,9 +133,10 @@ struct __coro_drain {
     const Snap& s;
     int32_t n;
     int32_t x;
-    ::tpy::frame_loop_slot<std::vector<int32_t>> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((s.snapshot()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<__coro_tick> __sub_0;
 
     enum : int32_t {
@@ -161,9 +162,10 @@ struct __gen_gen_snapshot : public ::tpy::next_iter_mixin<__gen_gen_snapshot, in
     int32_t __state;
     const Snap& s;
     int32_t x;
-    ::tpy::frame_loop_slot<std::vector<int32_t>> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((s.snapshot()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

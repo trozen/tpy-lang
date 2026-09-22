@@ -110,8 +110,9 @@ struct __gen_deep_gen : public ::tpy::next_iter_mixin<__gen_deep_gen, int32_t> {
     int32_t i;
     std::vector<int32_t>* row = nullptr;
     int32_t v;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype(((*row)));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

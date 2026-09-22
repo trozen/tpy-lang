@@ -51,8 +51,9 @@ struct __coro_total_of {
     ::tpy::BigInt total;
     ::tpy::BigInt x;
     ::tpy::BigInt __await_lift_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<::tpy::BigInt>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<__coro_value> __sub_0;
 
     enum : int32_t {

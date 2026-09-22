@@ -724,8 +724,9 @@ struct __coro_async_sections {
     ::tpy::BigInt __await_lift_13;
     int32_t __await_lift_14;
     int32_t __await_lift_15;
-    ::tpy::frame_loop_slot<__gen_2_5_Outer_5_Inner_6_values> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_2_5_Outer_5_Inner_6_values>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype(((*inner).values()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     Outer::Gate* __with_ctx_0 = nullptr;
     std::exception_ptr __finally_exc_0;
     std::optional<__coro_2_5_Outer_5_Inner_7_compute> __sub_1;
@@ -804,8 +805,9 @@ struct __gen_delegated : public ::tpy::next_iter_mixin<__gen_delegated, ::tpy::B
     int32_t __state;
     Outer::Inner& inner;
     ::tpy::BigInt value;
-    ::tpy::frame_loop_slot<__gen_2_5_Outer_5_Inner_6_values> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen_2_5_Outer_5_Inner_6_values>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((inner.values()))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

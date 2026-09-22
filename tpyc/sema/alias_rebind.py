@@ -47,7 +47,7 @@ from ..parse import (
     TpyRaise, TpyReturn, TpySlice, TpyStmt, TpySubscript, TpyTry,
     TpyTupleUnpack, TpyVarDecl, TpyWhile, TpyWith,
 )
-from ..parse.nodes import RebindStorage
+from ..parse.nodes import RebindStorage, read_names
 from ..prescan import bound_names_of, walrus_names_of
 from ..type_def_registry import (
     is_bytes_view_type, is_char_type, is_str_view_type,
@@ -483,7 +483,7 @@ class _Replay:
         # A holder bound from another holder carries that holder's loans:
         # a copied Ptr, an alias of an alias, a view read off a pointer.
         if not self.carries_no_borrow(value):
-            for n in _read_names(inner):
+            for n in read_names(inner):
                 if n in st.loans:
                     out |= st.loans[n]
         # A generator or coroutine object keeps its reference arguments
@@ -639,17 +639,6 @@ class _Replay:
             f"'{alias}' will not keep the object it was given -- '{name}' is "
             f"rebound here and {fix}",
             stmt)
-
-
-def _read_names(e: TpyExpr) -> set[str]:
-    out: set[str] = set()
-    stack = [e]
-    while stack:
-        n = stack.pop()
-        if isinstance(n, TpyName):
-            out.add(n.name)
-        stack.extend(n.children())
-    return out
 
 
 def _ptr_escape_roots(e: TpyExpr) -> list[str]:

@@ -2185,9 +2185,8 @@ def _select_for_each_route(
                    iterable_lvalue=not for_source_is_rvalue(stmt, analyzer))
 
 
-def _frame_src_slot(stmt: TpyForEach,
-                    lc: '_LowerCtx') -> 'tuple[str | None, str | None]':
-    """The frame field owning this loop's source, and its C++ type.
+def _frame_src_slot(stmt: TpyForEach, lc: '_LowerCtx') -> 'str | None':
+    """The frame field owning this loop's source.
 
     Inside a resumable body a name bound out of a loop ELEMENT can be a frame
     field, and then the fresh source it points into has to outlive the state
@@ -2199,12 +2198,29 @@ def _frame_src_slot(stmt: TpyForEach,
     """
     if not lc.resumable_leaf_mode or not for_source_is_rvalue(stmt,
                                                               lc.analyzer):
-        return (None, None)
+        return None
     verdicts = rcfg.resumable_state(lc.func).for_src_fields
     if stmt not in verdicts:
         note_detail("foreach.frame_src_unplaced")
         raise ThirUnsupported("res.for_src_unplaced")
-    return verdicts.get(stmt) or (None, None)
+    held = verdicts.get(stmt)
+    return held[0] if held is not None else None
+
+
+def self_typed_frame_source(iterable: 'THIRExpr', lc: '_LowerCtx') -> 'THIRExpr':
+    """A literal at a `for` head whose loop the frame spells off the source
+    expression (`decltype((...))`) renders as a value of its own type: a
+    container literal names its type (a bare brace is not an expression, and
+    a `frame_slot` cannot deduce one either), and a `str` literal is the
+    view over its static storage (its own type is a char array, which
+    iterates the NUL as well)."""
+    if (isinstance(iterable, THIRContainerLiteral)
+            and iterable.typed_brace_cpp is None):
+        return replace(iterable,
+                       typed_brace_cpp=lc.render_type(iterable.result_type))
+    if isinstance(iterable, THIRStrLiteral):
+        return replace(iterable, form=Form.BORROW)
+    return iterable
 
 
 def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
@@ -16023,7 +16039,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # (`auto& __src_N = (*d);`) -- the ptr-opt name carve-out
                 # keeps the bare pointer elsewhere, so retag here.
                 proto_iterable = replace(proto_iterable, deref=True)
-            proto_src_field, proto_src_cpp = _frame_src_slot(stmt, lc)
+            proto_src_field = _frame_src_slot(stmt, lc)
+            if proto_src_field is not None:
+                proto_iterable = self_typed_frame_source(proto_iterable, lc)
             return THIRForIterProto(
                 var=stmt.var,
                 elem_type=et,
@@ -16032,7 +16050,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 const_loop_var=stmt.const_loop_var,
                 iterable_lvalue=route.iterable_lvalue,
                 frame_src_field=proto_src_field,
-                frame_src_cpp=proto_src_cpp,
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                           "loop.for_else"),
                 loc=loc,
@@ -16104,9 +16121,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # (`own_iter(std::move(xs))`); what it iterates is that wrapper, which
         # the frame does not place -- so it asks nothing here, exactly as it
         # sets its own `iterable_lvalue`.
-        src_field, src_cpp = ((None, None)
-                              if route.consuming_native_name is not None
-                              else _frame_src_slot(stmt, lc))
+        src_field = (None if route.consuming_native_name is not None
+                     else _frame_src_slot(stmt, lc))
+        if src_field is not None:
+            iterable = self_typed_frame_source(iterable, lc)
         source_fact = (native_container(iterable.result_type,
                        _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
                        if route.iterable_lvalue and isinstance(iterable, THIRName)
@@ -16131,7 +16149,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             iteration=iteration,
             hoist_ptr_inits=tuple(sorted(ptr_null_hoists)),
             frame_src_field=src_field,
-            frame_src_cpp=src_cpp,
             orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                       "loop.for_else"),
             loc=loc,

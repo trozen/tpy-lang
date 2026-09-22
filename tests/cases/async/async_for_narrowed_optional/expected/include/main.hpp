@@ -32,8 +32,9 @@ struct __coro_count_chars {
     std::optional<std::string> s;
     int32_t n;
     char _c;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::string>> __for_end_0;
+    using __for_src_0_t = decltype(((*s)));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -87,8 +88,9 @@ struct __gen_each_byte : public ::tpy::next_iter_mixin<__gen_each_byte, ::tpy::B
     int32_t __state;
     std::optional<::tpy::Bytes> b;
     uint8_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::Bytes>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<::tpy::Bytes>> __for_end_0;
+    using __for_src_0_t = decltype(((*b)));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -91,8 +91,9 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
     const std::vector<int32_t>& xs;
     std::vector<std::string>& log;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -159,9 +160,10 @@ struct __gen_echoed : public ::tpy::next_iter_mixin<__gen_echoed, int32_t> {
 struct __gen_Bag_evens : public ::tpy::next_iter_mixin<__gen_Bag_evens, ::tpy::val_or_ref<Cell>> {
     int32_t __state;
     Bag& __self;
-    Cell* c = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Cell>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<Cell>>> __for_end_0;
+    using __for_src_0_t = decltype((__self.cells));
+    ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

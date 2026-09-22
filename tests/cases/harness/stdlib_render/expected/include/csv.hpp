@@ -323,9 +323,9 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
 //     doublequote: bool,
 //     skipinitialspace: bool,
 // ) -> Iterator[Own[list[str]]]:
-//     # A `Ptr[R]` (concrete) param -- not a `Readable` protocol param -- so this
-//     # generator can be embedded in another resumable frame (DictReader.__iter__)
-//     # and a borrowed-Ptr holder can drive it without a copy.
+//     # A `Ptr[R]` (concrete) param so a borrowed-Ptr holder can drive it
+//     # without a copy; a protocol-param generator embeds in a frame too now,
+//     # so this twin of `reader` can go (TODO.md, "csv: deduplicate").
 //     while True:
 //         line = fp.readline()
 //         if not line:
@@ -558,9 +558,7 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
 //     # `Readable` protocol param (not generic `[R]`) because a cross-module call
 //     # `csv.reader(io.StringIO(...))` must accept an rvalue temporary, which a
 //     # generic `R&` param rejects; _parse_rows takes `Ptr[R]` because DictReader
-//     # drives it from a borrowed-Ptr field inside a resumable frame. Neither
-//     # shape can feed the other (a protocol value can't form a Ptr; a Ptr-param
-//     # generator can't take a protocol). Tracked in TODO.md.
+//     # drives it from a borrowed-Ptr field. Tracked in TODO.md.
 //     while True:
 //         line = fp.readline()
 //         if not line:
@@ -744,8 +742,9 @@ struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReade
     ::tpy::frame_slot<::tpy::ordered_map<std::string, std::string>> out;
     int32_t i;
     int32_t m;
-    ::tpy::frame_loop_slot<__gen__parse_rows<W>> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__gen__parse_rows<W>>> __for_r_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpystd::csv::_parse_rows<W>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

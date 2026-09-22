@@ -23,9 +23,10 @@ struct __gen_g_items : public ::tpy::next_iter_mixin<__gen_g_items, int32_t> {
     std::tuple<std::string, std::optional<int32_t>> __for_tup_0;
     std::string k;
     std::optional<int32_t> v;
-    ::tpy::frame_loop_slot<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<decltype(::tpy::dict_items(std::declval<const ::tpy::ordered_map<std::string, std::optional<int32_t>>&>()))>> __for_end_0;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

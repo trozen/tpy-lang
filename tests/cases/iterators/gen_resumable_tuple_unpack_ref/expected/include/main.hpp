@@ -38,11 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 struct __gen_process : public ::tpy::next_iter_mixin<__gen_process, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, Item>>& rows;
-    std::tuple<int32_t, Item>* __for_tup_0 = nullptr;
+    using __for_src_0_t = decltype((rows));
+    ::tpy::begin_elem_t<__for_src_0_t>* __for_tup_0 = nullptr;
     int32_t idx;
-    Item* it = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, Item>>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<std::tuple<int32_t, Item>>>> __for_end_0;
+    std::tuple_element_t<1, ::tpy::begin_elem_t<__for_src_0_t>>* it = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

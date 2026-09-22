@@ -23,8 +23,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_slot<::tpy::ordered_map<int32_t, int32_t>> d;
     ::tpy::frame_slot<::tpy::ordered_set<int32_t>> s;
     int32_t n;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::array<int32_t, 3>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::array<int32_t, 3>>> __for_end_0;
+    using __for_src_0_t = decltype(((*nums)));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

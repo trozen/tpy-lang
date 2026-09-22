@@ -73,10 +73,11 @@ struct __coro_total {
     bool __cancel_pending;
     const std::vector<Point>& ps;
     int32_t n;
-    const Point* p = nullptr;
+    using __for_src_0_t = decltype((ps));
+    ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
     int32_t __await_lift_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<const std::vector<Point>>> __for_end_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     std::optional<__coro_step> __sub_0;
 
     enum : int32_t {

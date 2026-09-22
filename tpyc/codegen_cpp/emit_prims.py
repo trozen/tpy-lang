@@ -383,15 +383,13 @@ def gen_range_overflow_check(out: TextIO, indent: str, start_expr: str,
 
 # -- fragment emitters -----------------------------------------------------
 
-def for_src_emplace(field: str, slot_cpp: str, src_cpp: str) -> str:
+def for_src_emplace(field: str, src_cpp: str) -> str:
     """The frame taking ownership of a `for` loop's fresh source, in the one
-    spelling both the suspending and the block-local path use.
-
-    A bare brace init (`{a, b}`) carries no type for `emplace` to deduce, so
-    a container literal names the slot's own type.
+    spelling both the suspending and the block-local path use. The render
+    names its own type where a bare brace would not (the frame spells the
+    loop's fields off this same expression, so it is always an expression).
     """
-    init = f"{slot_cpp}{src_cpp}" if src_cpp.startswith("{") else src_cpp
-    return f"{field}.emplace({init});"
+    return f"{field}.emplace({src_cpp});"
 
 
 def emit_except_handler_header(ctx: 'CodeGenContext', out: TextIO,

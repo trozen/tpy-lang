@@ -52,8 +52,9 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
     int32_t __state;
     std::vector<int32_t> items;
     int32_t x;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<std::vector<int32_t>>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<std::vector<int32_t>>> __for_r_0;
+    using __for_src_0_t = decltype((items));
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -77,8 +78,9 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
 struct __gen_over_global : public ::tpy::next_iter_mixin<__gen_over_global, int32_t> {
     int32_t __state;
     int32_t v;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
+    using __for_src_0_t = decltype(((*xs)));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
