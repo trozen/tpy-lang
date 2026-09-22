@@ -1,0 +1,2 @@
+main.py:300: warning: 'holder' will not keep the object it was given -- 'duplicate' is rebound on each iteration and both names share its storage; use copy(duplicate) for an independent value
+main.py:455: warning: 'holder' will not keep the object it was given -- 'duplicate' is rebound on each iteration and both names share its storage; 'duplicate' cannot be copied

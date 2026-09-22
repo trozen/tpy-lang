@@ -274,7 +274,7 @@ from ..nodes import (
 )
 from .predicates import (
     _own_return_const_projected,
-    copy_call_arg,
+    _move_through_type,
     _binding_peel,
     _narrow_alias_name,
     _fresh_narrow_local,
@@ -3042,7 +3042,7 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
     or a container-returning by-value/Own call (the storage-call family --
     the rebind render is source-shape-blind past is_rvalue_source; these
     are the vetted slices of it). Every sink that admits through here
-    lowers the source through `_lower_rebind_rvalue`."""
+    lowers the source through `_lower_storage_value`."""
     if isinstance(init, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
         return _container_literal_shape_ok(init, target_t, analyzer)
     if _container_comp_arg(init, target_t):
@@ -3093,13 +3093,13 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
     return False
 
 
-def _rebind_rvalue_use(init: TpyExpr) -> '_ExprUse':
+def _rebind_rvalue_use(init: TpyExpr, slot_t: TpyType) -> '_ExprUse':
     """A slot assign is a storage sink at statement position: a
     container-returning call needs the STORAGE result use (the storage-decl
     sink's admission) and may hoist arg temps."""
-    if isinstance(init, (TpyCall, TpyMethodCall)):
-        return _ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True)
-    return _ExprUse()
+    use = (_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True)
+           if isinstance(init, (TpyCall, TpyMethodCall)) else _ExprUse())
+    return replace(use, pos=SinkPos.LOCAL_DECL, slot_target=slot_t)
 
 
 def _rebind_storage(stmt: 'TpyVarDecl | TpyAssign', name: str,
@@ -3129,7 +3129,8 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
             or _rvalue_storage_decl_op(stmt.init, lc.analyzer)):
         note_detail("res.rebind_ptr_source")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    value = _lower_rebind_rvalue(stmt.init, slot_t, lc, declared, loc)
+    value = _lower_storage_value(stmt.init, slot_t, lc, declared, loc,
+                                 use=_rebind_rvalue_use(stmt.init, slot_t))
     target = THIRName(result_type=vtype, name=stmt.name, loc=loc)
     if _rebind_storage(stmt, stmt.name, lc) is RebindStorage.IN_PLACE:
         _witness("res.rebind_ptr_in_place")
@@ -3194,29 +3195,56 @@ def _lower_opt_reseat_literal(stmt: TpyVarDecl, lc: '_LowerCtx',
     return lit, lit_pointee
 
 
-def _lower_rebind_rvalue(init: TpyExpr, slot_t: TpyType, lc: '_LowerCtx',
-                         declared: dict[str, TpyType], loc) -> THIRExpr:
-    """The value a slot rebind assigns (`__slot_N = <init>` at every sink
-    `_rebind_rvalue_source_ok` admits): a comprehension renders its whole
-    stmt-expr into the slot -- dispatched HERE because the generic
-    `_lower_expr` has no comprehension arm -- a `copy(x)` its
-    copy-construct rvalue, anything else the plain storage-sink lowering."""
+_LOCAL_MOVE_USE = _ExprUse(result=_ExprResultUse.BORROW_BIND,
+                           pos=SinkPos.LOCAL_DECL, forms=_ONLY_INDIRECT_READ)
+
+
+def _lower_storage_value(init: TpyExpr, slot_t: TpyType, lc: '_LowerCtx',
+                          declared: dict[str, TpyType], loc, *,
+                          use: '_ExprUse', move: bool = False) -> THIRExpr:
+    """Lower an admitted operation with the caller's source-read policy."""
+    if move:
+        # Sema already chose the consume; read the payload without consuming twice.
+        source = _lower_expr(init, lc, declared, use=use)
+        return THIRMove(result_type=source.result_type, value=source,
+                        form=source.form, loc=loc)
+    # Generic expression lowering has no comprehension arm and rejects copy().
     if type(init) in _comprehensions._COMP_KINDS:
         _witness("reseat.rvalue_comp")
         return _comprehensions._lower_comprehension(
             init, slot_t, lc, declared,
             _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
+    # This adapter keeps the payload type; sinks needing a declared result
+    # type pass slot_type to the same copy helper.
     value = _lower_copy_record(init, lc, declared, loc=loc)
     if value is None:
-        value = _lower_expr(init, lc, declared,
-                            # The SLOT holds the value past the statement,
-                            # so the sink is a local's, not a transient one
-                            # -- named here because `_rebind_rvalue_use`
-                            # answers the RESULT half only.
-                            use=replace(_rebind_rvalue_use(init),
-                                        pos=SinkPos.LOCAL_DECL,
-                                        slot_target=slot_t))
+        value = _lower_expr(init, lc, declared, use=use)
     return value
+
+
+def _move_through_source(stmt: TpyVarDecl, typ: TpyType,
+                           lc: '_LowerCtx') -> bool:
+    return (stmt.name in lc.prescan.move_through
+            and isinstance(stmt.init, TpyName)
+            and _move_through_type(typ, lc.analyzer))
+
+
+def _owned_local_decl(stmt: TpyVarDecl, vtype: TpyType, lc: '_LowerCtx',
+                       declared: dict[str, TpyType], *,
+                       value: THIRExpr | None = None) -> THIRVarDecl:
+    declared[stmt.name] = vtype
+    # Value records retain value-copy behavior even if sema proved ownership.
+    if not vtype.is_value_type():
+        lc.promote_movable(stmt.name)
+    if value is None:
+        value = _lower_expr(stmt.init, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                         pos=SinkPos.LOCAL_DECL, forms=_NO_FORMS,
+                                         allow_temps=True))
+    return THIRVarDecl(
+        name=stmt.name, resolved_type=vtype, init=value,
+        owned_storage=borrowed_record(vtype, False, lc.analyzer),
+        cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=stmt.loc)
 
 
 def _record_hoisted_binding(bindings: list[THIRHoistedBinding] | None,
@@ -3486,7 +3514,7 @@ class HoistFlavor(Enum):
     BORROW_TUPLE = auto()        # `std::tuple<..., T*> name;`, a loop var
     BRANCH_BORROW_TUPLE = auto() # the branch-bound borrow tuple
     RESUMABLE = auto()           # reject: no function-top drain for the line
-    MOVE_THROUGH = auto()        # reject: the plain storage decl, another arm
+    MOVE_THROUGH = auto()        # reject: move payload outside the owning-slot family
     CONST_REBOUND = auto()       # reject: a const borrow decl rebound to rvalues
     NOT_PLAIN = auto()           # reject: no non-value flavor for this type
 
@@ -3569,7 +3597,9 @@ def _nonvalue_hoist_flavor(name: str, var_type: TpyType,
     if lc.func.is_generator or lc.func.is_async:
         return HoistFlavor.RESUMABLE
     if name in lc.prescan.move_through:
-        return HoistFlavor.MOVE_THROUGH
+        # Sema's ordinary move bindings consume owned, unreassigned sources.
+        return (HoistFlavor.OPT_STORAGE if _move_through_type(var_type, analyzer)
+                else HoistFlavor.MOVE_THROUGH)
     borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
     if borrow_decls.get(name, False):
         return (HoistFlavor.CONST_REBOUND
@@ -3716,8 +3746,7 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                 note_detail("if.hoist_nonvalue_resumable")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             if flavor is HoistFlavor.MOVE_THROUGH:
-                # `_needs_indirection` exempts move-through names -- they
-                # take the plain storage decl, a different arm.
+                # This payload has no admitted owning-slot representation.
                 note_detail("if.hoist_move_through")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             if flavor in (HoistFlavor.CONST_POINTER,
@@ -4151,20 +4180,12 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
                                   TpySetLiteral)):
             _witness("decl.container_rebind_slot")
         if type(stmt.init) in _comprehensions._COMP_KINDS:
-            # A comprehension fills the init slot with its whole stmt-expr
-            # (`std::vector<T> __slot_1 = ({...});`) -- the generic
-            # `_lower_expr` has no comprehension arm.
             _witness("decl.comp_rebind_slot")
-            init = _comprehensions._lower_comprehension(
-                stmt.init, vtype, lc, declared,
-                _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
-        else:
-            # A decl is a flush position: the emitter drains the init's arg
-            # temps before the `T __slot_N = <init>;` line.
-            init = _lower_expr(
-                stmt.init, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                             slot_target=vtype, allow_temps=True))
+        # Declarations drain argument temporaries before writing their slot.
+        init = _lower_storage_value(
+            stmt.init, vtype, lc, declared, loc,
+            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                         slot_target=vtype, allow_temps=True))
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=init,
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
@@ -4780,8 +4801,11 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         # Single-assignment rvalues are plain value decls; rvalue-reassigned
         # ones are the REBIND_SLOT binding -- both other paths.
         return None
-    if stmt.init is None or not _record_rvalue_source_shape(stmt.init,
-                                                            analyzer):
+    move = _move_through_source(stmt, vtype, lc)
+    if stmt.init is None or not (
+            copy_construct_source(stmt.init, analyzer, lc.pointers) is not None
+            or move
+            or _record_rvalue_source_shape(stmt.init, analyzer)):
         return None
     it = analyzer.get_expr_type(stmt.init)
     it_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it))) \
@@ -4798,9 +4822,11 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         # explicitly -- keep the invariant self-evident rather than implied.
         note_detail("decl.record_slot_const")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    init = _lower_expr(stmt.init, lc, declared,
-                       use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                    slot_target=vtype))
+    init = _lower_storage_value(
+        stmt.init, vtype, lc, declared, loc,
+        use=(_LOCAL_MOVE_USE if move else
+             _ExprUse(result=_ExprResultUse.BORROW_BIND, slot_target=vtype)),
+        move=move)
     if hoisted:
         # A resumable body's leaves emit through non-draining leaf emitters
         # (hoist_lines has no function-top drain there) -- reject like the
@@ -5452,16 +5478,13 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     own_hoisted = lc.analyzer.function_hoisted_vars.get(func, set())
     lc.unhandled_hoists = set(own_hoisted)
     outer_prescan = lc.prescan
+    # Nested defs have no stored move-through facts; outer names cannot lend them.
     prescan = _Prescan(func, lc.analyzer)
     # Module-level facts carry over; the nested func has no global decls
     # (gate-rejected), so the seeded-globals gating fields stay empty.
     prescan.native_globals = outer_prescan.native_globals
     prescan.global_readonly = outer_prescan.global_readonly
     prescan.global_cpp = outer_prescan.global_cpp
-    # ONLY the return/error/frame facts swap here -- the
-    # reassigned/hoisted/move-through seeding stays the OUTER function's
-    # (setup_body_scope runs once per outer body), so the body's binding
-    # classification reads the same sets.
     # A CAPTURED outer param keeps its outer render inside the lambda (the
     # capture holds the enclosing signature's form -- a `str` param is a
     # `std::string_view` on both sides), so the form predicates that ask
@@ -5485,7 +5508,6 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     # reason its rebinds do: a local it declares and lends past a loop needs
     # its slot inside the closure body.
     prescan.hoisted = outer_prescan.hoisted | own_hoisted
-    prescan.move_through = outer_prescan.move_through
     # Same reason the outer param NAMES are unioned above: a captured name
     # keeps its outer render, so the predicates keyed on the enclosing
     # signature's const verdict must be able to reach that function.
@@ -9164,25 +9186,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             copy_row = (_lower_copy_record(stmt.init, lc, declared,
                                            slot_type=vtype, loc=loc)
                         if fn_top or (
-                            isinstance(copy_call_arg(stmt.init, analyzer), TpyName)
-                            and borrowed_record(vtype, False, analyzer) is not None
-                            and stmt.name not in lc.prescan.hoisted
+                            stmt.name not in lc.prescan.hoisted
                             and stmt.name not in lc.prescan.reassigned
                             and stmt.name not in lc.prescan.move_through
                             and not lc.func.is_generator and not lc.func.is_async)
                         else None)
             if copy_row is not None:
                 _witness("decl.copy_record")
-                declared[stmt.name] = vtype
-                # The plain decl arm promotes non-value locals only: a VALUE
-                # record's last-use read copies even when sema marked it
-                # movable.
-                if not vtype.is_value_type():
-                    lc.promote_movable(stmt.name)
-                return THIRVarDecl(
-                    name=stmt.name, resolved_type=vtype, init=copy_row,
-                    owned_storage=borrowed_record(vtype, False, lc.analyzer),
-                    cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
+                return _owned_local_decl(stmt, vtype, lc, declared,
+                                          value=copy_row)
             # Owned record local: `Box b = Box(n);` -- the plain value decl,
             # cpp_type spelled the way codegen does (render_type qualifies
             # cross-module / native records). The name enters `declared` only
@@ -9193,21 +9205,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _witness("decl.owned_record_method"
                          if isinstance(stmt.init, TpyMethodCall)
                          else "decl.owned_record")
-                declared[stmt.name] = vtype
-                # The plain arm's value-type filter: a VALUE record decl
-                # never promotes, so its last-use read copies.
-                if not vtype.is_value_type():
-                    lc.promote_movable(stmt.name)
-                return THIRVarDecl(
-                    name=stmt.name, resolved_type=vtype,
-                    owned_storage=borrowed_record(vtype, False, lc.analyzer),
-                    init=_lower_expr(
-                        stmt.init, lc, declared,
-                        use=_ExprUse(
-                            result=_ExprResultUse.BORROW_BIND,
-                            pos=SinkPos.LOCAL_DECL, forms=_NO_FORMS,
-                            allow_temps=True)),
-                    cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
+                return _owned_local_decl(stmt, vtype, lc, declared)
             # Move-through owned record local: `a = h` where `h` is a non-value
             # local consumed at its last use (`Handle a = std::move(h);`). Sema
             # marks the target in `move_through` only for a non-reassigned NAME
@@ -9215,35 +9213,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # wrap keys on the target (not a fresh last-use test), so the
             # membership drives the move directly.
             _mt_u = unwrap_readonly(unwrap_send_sync(vtype))
-            if (fn_top and stmt.name in lc.prescan.move_through
-                    and ((isinstance(vtype, NominalType)
-                          and _f1_record(vtype, analyzer))
-                         # ... or a reference-form builtin container beside it
-                         # (`std::vector<int32_t> xs = std::move(ys);`). The
-                         # ARRAY value container is in the same family -- sema
-                         # marks expensive-copy value containers move-through
-                         # too, not only non-value locals -- and the owning
-                         # slot spells one decl for all of them, so the
-                         # admission is the TypeDef's reference form rather
-                         # than a list of container kinds.
-                         or _f1_container_ref(_mt_u))
-                    and isinstance(stmt.init, TpyName)):
+            # Frame names already in declared cannot enter this fresh-local arm.
+            if _move_through_source(stmt, vtype, lc):
                 _witness("decl.move_through_array" if is_array(_mt_u)
                          else "decl.move_through_container"
                          if _f1_container_ref(_mt_u)
                          else "decl.move_through_record")
-                src = _lower_expr(
-                    stmt.init, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-                declared[stmt.name] = vtype
-                if not vtype.is_value_type():
-                    lc.promote_movable(stmt.name)
-                return THIRVarDecl(
-                    name=stmt.name, resolved_type=vtype,
-                    init=THIRMove(result_type=src.result_type, value=src,
-                                  form=src.form, loc=loc),
-                    owned_storage=borrowed_record(vtype, False, lc.analyzer),
-                    cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
+                return _owned_local_decl(
+                    stmt, vtype, lc, declared,
+                    value=_lower_storage_value(
+                        stmt.init, vtype, lc, declared, loc,
+                        use=_LOCAL_MOVE_USE, move=True))
         # Borrow-form tuple local reseat (`std::tuple<..., T*>` -- a branch
         # hoist or btuple.decl literal): a REF/VALUE-capture literal assigns
         # the borrow literal directly, a storage lvalue subscript lifts via
@@ -9462,11 +9442,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         stmt.init, target_t, lc, declared,
                         scope.admission_pointers()),
                     loc=loc)
-            if not _rebind_rvalue_source_ok(stmt.init, target_t, analyzer):
+            move = _move_through_source(stmt, target_t, lc)
+            if not (move or _rebind_rvalue_source_ok(stmt.init, target_t, analyzer)):
                 note_detail("reseat.opt_storage_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.opt_storage")
-            value = _lower_rebind_rvalue(stmt.init, target_t, lc, declared, loc)
+            value = _lower_storage_value(
+                stmt.init, target_t, lc, declared, loc,
+                use=(_LOCAL_MOVE_USE if move else
+                     _rebind_rvalue_use(stmt.init, target_t)), move=move)
             return THIRAssign(
                 target=THIRName(result_type=target_t, name=stmt.name,
                                 loc=loc),
@@ -9507,8 +9491,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _witness("reseat.branch_rvalue")
             return THIRPtrLocalRebind(
                 name=stmt.name, kind=PtrSlotKind.BRANCH_RVALUE,
-                value=_lower_rebind_rvalue(stmt.init, slot_t, lc, declared,
-                                           loc),
+                value=_lower_storage_value(
+                    stmt.init, slot_t, lc, declared, loc,
+                    use=_rebind_rvalue_use(stmt.init, slot_t)),
                 val_cpp=lc.render_type(slot_t),
                 rebind_storage=_rebind_storage(stmt, stmt.name, lc), loc=loc)
         # An OPT_STORAGE_CALL-declared name reseats by re-filling ITS slot
@@ -9681,8 +9666,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 return THIRAssign(
                     target=THIRName(result_type=vtype, name=stmt.name,
                                     loc=loc),
-                    value=_lower_rebind_rvalue(
-                        stmt.init, declared[stmt.name], lc, declared, loc),
+                    value=_lower_storage_value(
+                        stmt.init, declared[stmt.name], lc, declared, loc,
+                        use=_rebind_rvalue_use(stmt.init, declared[stmt.name])),
                     rebind_storage=_rebind_storage(stmt, stmt.name, lc),
                     slot_cpp=_rebind_slot_cpp(declared[stmt.name], lc),
                     loc=loc)

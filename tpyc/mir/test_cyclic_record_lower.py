@@ -5,14 +5,13 @@ from collections.abc import Iterator
 
 import pytest
 
-from ..codegen_cpp.context import ThirRejectError
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import _iter_children
 from .collect import dump_codegen_mir
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRCopy, MIRFunction, MIRNotCovered, MIRRecordWriteMode
+from .nodes import MIRBodyId, MIRBodyKind, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .testutil import ContainerValue, Reference, execute
@@ -258,21 +257,75 @@ def test_codegen_collection_includes_loop_copy() -> None:
     assert "in_place" in replaced
 
 
-def test_source_move_through_keeps_its_frontend_boundary() -> None:
+@pytest.mark.parametrize("loop", ["while", "range", "native"])
+def test_source_moves_reach_mir_with_scoped_storage(loop: str) -> None:
+    header = {"while": "while run", "range": "for index in range(n)",
+              "native": "for index in items"}[loop]
     source = SOURCE.split("    def copied_self")[0] + '''
-def boundary(run: bool) -> int32:
+def moved(run: bool, stop: bool, skip: bool, early: bool, items: list[int32], n: int32) -> int32:
     result = 0
-    while run:
+    second = False
+    LOOP:
         original = Cell(3)
         target = original
         target.value = 9
         result = target.value
-        run = False
+        if early:
+            return result
+        if stop:
+            break
+        run = not second
+        second = True
+        if skip:
+            continue
     return result
+'''.replace("LOOP", header)
+    compiler, modules = _compile(source)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    function = next(fn for node, fn in ctx.thir_functions.items() if node.name == "moved")
+    target, = (n for n in nodes(function) if isinstance(n, th.THIRVarDecl) and n.name == "target")
+    assert isinstance(target.init, th.THIRMove)
+    assert target.owned_storage is not None
+    assert target.storage_placement is th.THIRStoragePlacement.SCOPE
+    fn = lower_function(function, MIRBodyId("cyclic", "moved"), kind=MIRBodyKind.FREE_FUNCTION,
+                        definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+    assert isinstance(fn, MIRFunction), fn
+    move, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove))
+    assert move.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
+    assert inspect_scope_lifetimes(fn).conflicts == ()
+    entry = _entry(modules)
+    dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
+                              MIRDefinitions(tuple(ctx.thir_constructors.values())), compiler.thir_reject_by_node)
+    assert " = move " in dumped and "initialize_region" in dumped
+    for run, stop, skip, early, count in ((False, False, False, False, 0),
+                                         (True, False, False, False, 2),
+                                         (True, True, False, False, 1),
+                                         (True, False, True, False, 2),
+                                         (True, False, False, True, 1)):
+        heap = {}
+        items = ContainerValue((2, 3) if run else ())
+        assert execute(fn, run, stop, skip, early, items, 2 if run else 0, heap=heap) == (9 if count else 0)
+        assert len(heap) == 2 * count
+        assert sum(fields[fn.records[0].fields[0].id] == 9 for fields in heap.values()) == count
+
+
+def test_hoisted_move_compiles_without_claiming_mir_coverage() -> None:
+    source = SOURCE.split("    def copied_self")[0] + '''
+def moved(flag: bool) -> int32:
+    original = Cell(3)
+    if flag:
+        target = original
+    else:
+        return 0
+    return target.value
 '''
     compiler, modules = _compile(source)
-    with pytest.raises(ThirRejectError, match="decl.branch_slot_type"):
-        compiler.generate_code_and_thir(_entry(modules))
+    (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+    function = next(fn for node, fn in ctx.thir_functions.items() if node.name == "moved")
+    assert "target = std::move(original);" in cpp
+    result = lower_function(function, MIRBodyId("cyclic", "hoisted"), kind=MIRBodyKind.FREE_FUNCTION,
+                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+    assert isinstance(result, MIRNotCovered)
 
 
 @pytest.mark.parametrize("member", ["custom_copy", "custom_move", "custom_destructor"])

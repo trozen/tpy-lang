@@ -86,9 +86,11 @@ the others visible.
   behavior is representable; preserve activation and retained-reference rules.
   The approved [M3.24/M3.25 batch](MIR_M3_CYCLIC_RECORD_STORAGE_PLAN.md)
   covers fresh region-local copy/move internally and constructor IN_PLACE
-  replacement, then connects existing source copies/replacements. Source
-  loop-local move-through has a separate frontend boundary; the batch
-  does not close this box.
+  replacement, then connects existing source copies/replacements. The
+  [local binding consolidation](LOCAL_BINDING_LOWERING_PLAN.md) additionally
+  connects source loop-local moves to the same region-initialization model;
+  hoisted/reused-slot moves remain analysis boundaries. This does not close
+  the box.
   M3.24's internal activation/retention contract and M3.25's bounded source-copy
   integration are implemented.
 

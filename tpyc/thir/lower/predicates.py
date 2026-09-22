@@ -3261,6 +3261,12 @@ def _f1_container_ref(t: TpyType | None) -> bool:
             and t.value_form() is ValueForm.BORROW_REF)
 
 
+def _move_through_type(typ: TpyType, analyzer) -> bool:
+    """Payload families admitted by the local move and match storage adapters."""
+    return ((isinstance(typ, NominalType) and _f1_record(typ, analyzer))
+            or _f1_container_ref(unwrap_readonly(unwrap_send_sync(typ))))
+
+
 def _bytes_family_ref(t: 'TpyType | None') -> bool:
     """The bytes family's REFERENCE-typed member -- `bytearray`, named by two
     facts rather than by qname: it is on the reference axis

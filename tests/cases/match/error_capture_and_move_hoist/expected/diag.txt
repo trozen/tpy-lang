@@ -1,0 +1,1 @@
+main.py:26: error: in function 'mixed': this construct is not yet supported by C++ code generation (match.field_bind_ptr_hoist)

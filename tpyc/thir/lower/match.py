@@ -84,6 +84,7 @@ from .predicates import (
     _eligible_scalar,
     _enum_member_cpp,
     _f1_record,
+    _move_through_type,
     _f1_ref,
     _optional_ptr_borrow_name,
     _poly_subject_const,
@@ -1104,15 +1105,14 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
     try arm's discipline): already-declared names skip, a name the
     resumable frame already declares takes the decl-less "frame" kind,
     fresh plain-value names admit in straight-line function scope only.
-    With `nonvalue_ok` (the record tiers), F1-record non-value hoists
-    additionally classify into `_emit_branch_decls`' two non-value arms --
-    borrow-only names
-    (aliasing whole-subject captures; sema's stmt-borrow fact) take the
-    pointer form, single-bind rvalue names the owned optional slot. None
-    rejects the whole match."""
+    Ordinary non-value assignments share the pointer/owned-optional flavors.
+    `nonvalue_ok` additionally admits the record tiers' pattern captures,
+    whose write modes depend on the subject strategy. None rejects the match."""
     hoist_declared: list[tuple[str, TpyType, str]] = []
     borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
     ever_owned = analyzer.function_ever_owned_locals.get(lc.func, set())
+    captures = {binding.name for case in stmt.cases
+                for binding in iter_capture_bindings(case.pattern)}
     for name, raw in analyzer.if_branch_decls.get(stmt, {}).items():
         if name in declared:
             continue
@@ -1139,7 +1139,9 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             # with / for) would each need their own re-verification.
             hoist_declared.append((name, vtype, "value"))
             continue
-        if not nonvalue_ok:
+        # Pattern captures have strategy-specific writes. Ordinary body
+        # assignments use the same storage adapters for every subject kind.
+        if not nonvalue_ok and name in captures:
             return None
         vtype = resolve_pending_container(vtype, analyzer) or vtype
         if (isinstance(vtype, OptionalType) and vtype.uses_pointer_repr()
@@ -1160,19 +1162,14 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
                 return None
             hoist_declared.append((name, vtype, "opt_ptr"))
             continue
-        if not (is_plain_nonvalue(vtype)
-                and (_f1_record(vtype, analyzer)
-                     # A scalar-read CONTAINER hoist takes the same two
-                     # non-value flavors (`std::optional<vector<T>> xs;` /
-                     # `vector<T>* xs;`) -- the if cascade's arms are
-                     # type-generic.
-                     or _container_scalar_read(vtype, analyzer))):
+        # Captures sharing a move target must still satisfy their capture-write gates.
+        family_ok = ((_f1_record(vtype, analyzer) or _container_scalar_read(vtype, analyzer))
+                     if name in captures else _move_through_type(vtype, analyzer))
+        if not (is_plain_nonvalue(vtype) and family_ok):
             return None
         if lc.func.is_generator or lc.func.is_async:
             # Both non-value flavors hoist storage to function top; resumable
             # leaves cannot drain those lines (the if cascade's guard).
-            return None
-        if name in prescan.move_through:
             return None
         if borrow_decls.get(name, False):
             # The borrow-decl const bit is the const-indirect rung. NB it is

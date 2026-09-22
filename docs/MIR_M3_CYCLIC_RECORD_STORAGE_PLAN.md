@@ -1,6 +1,8 @@
 # Cyclic record storage: M3.24/M3.25
 
-Status: M3.24 and M3.25 implemented, reviewed and verified; ready for merge.
+Status: M3.24 and M3.25 merged. The subsequent
+[local binding consolidation](LOCAL_BINDING_LOWERING_PLAN.md) connects
+source loop-local moves to the existing scoped-storage MIR contract.
 Base: `9950ab55fa`. Architectural scope: extend the storage/activation
 contract across THIR and MIR. This covers part of W1 in the
 [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md), not all of W1 or M3.
@@ -62,10 +64,10 @@ unchanged. Unsupported analysis means MIR not covered, not a source rejection.
   `Cell(source)`. M3.25 uses that semantic node at the nested declaration and
   shared named-record copy builtin routes, preserving declaration and
   last-use registrations as well as the emitted bytes.
-- `source = Cell(n); target = source` at the source's final use inside a loop
-  fails before MIR with `decl.branch_slot_type`. The related if/hoisted defect
-  is `BUGS.md#branch-first-move-through-alias-rejected`; its measured
-  scoped loop-local face is recorded there as well.
+- At the original baseline, `source = Cell(n); target = source` at the
+  source's final use inside a loop failed before MIR with
+  `decl.branch_slot_type`. The subsequent local binding consolidation
+  resolves that frontend boundary and tests production THIR-to-MIR moves.
 
 Design probes matched CPython without warnings. For source value 3 and
 zero/three iterations, explicit and readonly copies printed `3 15 3`,
@@ -115,10 +117,9 @@ native-for CFG admission. No new iterator coverage is implied. Equivalent
 copy spellings resolving to the same operation must stay consistent. Imported
 definitions use the existing verified-definition input.
 
-Source loop-local move-through is excluded. Internal move tests establish its
-storage contract, not source acceptance. The user approved keeping that
-frontend fix separate and recording the loop face alongside the related
-move-through defect.
+Source loop-local move-through was excluded from M3.25. The separate local
+binding consolidation now admits it and tests its scoped-storage contract
+through production THIR. Hoisted/reused-slot move analysis remains excluded.
 
 ## Factored scope matrix
 
@@ -131,7 +132,7 @@ All axes must admit a cell; exclusions retain their owning work package.
 | Wrappers/access | Present Optional-record IN_PLACE; readonly copy source into independent mutable storage; borrowed tuple/Optional/union retention probes | Owning wrapper/tuple copy/move: W1/M2 and separate tuple work. Readonly move/replacement remains invalid. |
 | Other shapes | Existing scalar CFG controls | str/bytes, views, Ptr/Span, Box/Rc, containers, protocols/enums, generics need their existing M2/M4/W5 facts; no new ownership producer. |
 | Slot | Scoped owned local destination; named local/parameter/receiver copy source; local replacement holder | Field/subscript copy sources remain outside this admission. Reference returns, field/container/global stores, captures: W5. Own call boundaries: M4. |
-| Operation | Region-initializing copy/move internally; existing explicit-copy source producers; constructor IN_PLACE | Copy/move into reusable OWN_SITE, copy/move IN_PLACE, hoisted copy/move and source loop move-through remain W1/frontend work. |
+| Operation | Region-initializing copy/move; explicit-copy source producers; constructor IN_PLACE; subsequent source loop-move integration | Copy/move into reusable OWN_SITE, copy/move IN_PLACE and hoisted copy/move analysis remain W1 work. |
 | Lifetime | Fresh activation, skipped writes, joins/backedges, normal early exits, logical replacement | Partial initialization, exceptions/destruction, suspension: W3/W4/M4. Banked argument temporaries: remaining W1/M4. |
 
 ## Verification and risks
@@ -226,6 +227,6 @@ The readiness retrospective, including an independent second opinion triggered
 by the 20-file changeset, accepts the existing activation/retention machinery,
 bounded semantic-copy normalization and separate internal/source/runtime tests.
 It accepts the source-move exclusion as this branch's boundary, not the
-frontend defect itself: fixing the tracked loop-local move-through producer is
-the first follow-up. Reused-slot copy/move and the other matrix exclusions remain
+frontend defect itself: the subsequent local binding consolidation fixes that
+producer. Reused-slot copy/move and the other matrix exclusions remain
 open; this batch does not complete W1 or M3.

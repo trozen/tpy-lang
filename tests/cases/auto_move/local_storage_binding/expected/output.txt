@@ -1,0 +1,56 @@
+scoped 0 22 10
+branch 0 13 0 3
+chain 0 14
+closure alias 9
+closure owner 1
+hoisted loops 3
+native 5
+with exit
+with 11
+finally exit
+finally 5
+match 0 6
+error return 3
+constructor 3
+method 6
+static 3
+containers 9 8 7 2 99
+containers 9 8 7 2 99
+hoisted containers 9 8
+live source 7
+third alias 8
+live source 7
+third alias 8
+copies 1 7 8 9
+copies 2 7 8 9
+copies 1 7 8 9
+copies 2 7 8 9
+hoisted copy 1 10
+escape copy 2 9
+branch alias 11
+with exit
+with alias 12
+finally alias 13
+match alias 14
+loop alias 15 15
+live closure 19
+nested owner 6
+generator alias 0
+generator alias 10
+generator alias 0
+generator alias 20
+generator alias 1
+generator alias 11
+generator alias 1
+generator alias 21
+async alias 10
+async last use 20
+async alias 11
+async last use 21
+owned argument 1
+owned field 10
+owned argument 2
+owned field 11
+owned container 20 1
+caught alias 21
+escape move 22
