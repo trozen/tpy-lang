@@ -1757,6 +1757,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.btuple_name",              # already-borrow tuple local returned bare
     "ret.dyn_own_factory",          # return-position async-factory erasure (make_adapter wrap)
     "ret.consuming_self_field",     # consuming method: `return std::move(this->f);`
+    "ret.finally_deferred_tuple",   # a tuple literal's deferred members
     "ret.finally_deferred",         # deferred return capture: auto* p before the
                                     # finally chain, move/ptr_to_optional_move after
     "ret.genrec_literal",           # Own[Tree[T]] return of a container literal:
@@ -2582,6 +2583,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # The for-head twin over a STORAGE (own-element) gen-call yield tuple:
     # the owned local moves out of the mutable copy-head.
     "foreach.own_unpack_move",
+    "foreach.ptr_unpack_target",
     # An expensive-copy value target bound zero-copy (lowering, sema's
     # is_const_ref): `const T& a = std::get<i>(__tup_N);`.
     "stmt.tuple_unpack.cref_target",
@@ -2615,6 +2617,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # (const tracks the source param), registered as a pointer-optional local so
     # its None-test / narrowed reads ride the `T | None` param machinery.
     "stmt.tuple_unpack.opt_ptr_target",
+    # A REASSIGNED borrow F1-record target: `auto* a = &(unwrap_ref(
+    # tuple_elem_ref(std::get<i>(__tup_N))));`, a pointer local, so a later
+    # rebind re-points the name instead of writing through the alias. The
+    # for-each head's twin is foreach.ptr_unpack_target.
+    "stmt.tuple_unpack.ptr_target",
     # An `Own[P] | None` STORAGE element target: the plain
     # `std::optional<P> a = std::get<i>(__tup_N);` value copy, registered
     # RECORD-kind so has_value / `(*a)` reads ride the value-opt arms.

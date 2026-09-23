@@ -1,0 +1,15 @@
+yield_param 1
+yield_live_local gen 10
+yield_repack gen 20
+yield_mixed 1 80
+dup 1
+async_dup 1
+getter_member 3
+walrus_member 4 44
+walrus_return 5
+container_ternary 3 2
+dict_setitem 1
+list_setitem 2
+match_arm 3
+try_body 4
+method_repack 2

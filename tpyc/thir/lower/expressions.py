@@ -12725,7 +12725,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             loc=getattr(e, "loc", None))
     _witness("btuple.literal")
     return THIRBorrowTupleLiteral(
-        result_type=slot, spelled_cpp=spelled,
+        result_type=slot, spelled_cpp=spelled, elem_cpps=tuple(parts),
         elements=tuple(lowered), addr_of=tuple(lifts),
         elem_wraps=elem_wraps or (),
         tuple_layout=tuple_layout(slot, analyzer, captures=tuple(captures)),
@@ -12852,7 +12852,7 @@ def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
     _witness("gentuple.literal")
     return THIRBorrowTupleLiteral(
         result_type=slot,
-        spelled_cpp=f"std::tuple<{', '.join(parts)}>",
+        spelled_cpp=f"std::tuple<{', '.join(parts)}>", elem_cpps=tuple(parts),
         elements=tuple(lowered), addr_of=tuple(False for _ in lowered),
         elem_wraps=tuple(wraps), loc=getattr(e, "loc", None))
 

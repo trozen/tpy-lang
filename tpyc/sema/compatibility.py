@@ -6,6 +6,7 @@ Type compatibility checking, coercions, and lvalue analysis.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
+from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from ..typesys import (
@@ -22,6 +23,7 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
     unify_literal_types,
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
+    unwrap_qualifiers,
     disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources)
 from .. import qnames
 from ..value_category import (
@@ -245,6 +247,29 @@ def _union_member_order(actual: TpyType,
 
     natural.sort(key=rank)
     return natural + widening
+
+
+class TupleSink(Enum):
+    """Where a tuple literal lands, which decides each member's copy rule.
+
+    A member gets the rule a scalar of its type gets at the same slot: an
+    `Own`-marked member takes the sink's `Own` rule, an unmarked reference
+    member is a borrow (it aliases) at the RETURN / ARG / YIELD / LOCAL
+    sinks and owned storage at FIELD / CONTAINER. A member of a NESTED value
+    tuple is owned storage at every sink that stores one."""
+    RETURN = auto()
+    ARG = auto()
+    YIELD = auto()
+    LOCAL = auto()
+    FIELD = auto()
+    CONTAINER = auto()
+
+
+_BORROW_FORM_SINKS = frozenset({TupleSink.RETURN, TupleSink.ARG,
+                                TupleSink.YIELD, TupleSink.LOCAL})
+# The sinks whose codegen MOVES a last-use owned member into the slot; the
+# others lift the literal through `tuple_to_storage`, which copies even then.
+_LAST_USE_MOVES_SINKS = frozenset({TupleSink.FIELD, TupleSink.YIELD})
 
 
 class CompatError:
@@ -1218,9 +1243,7 @@ class TypeCompatibility:
             # family. An open type-param payload is no exception: the copy is
             # the same one the monomorphic twin makes, and `copy()` is
             # spellable there now that it takes a readonly source.
-            arrives_borrowed = (self.is_lvalue(source_expr)
-                                or self._tuple_call_carries_borrow(source_expr)
-                                or returns_borrow(self.ctx, source_expr))
+            arrives_borrowed = self.arrives_borrowed(source_expr)
             warned_ptr_repr_tuple = False
             if (not is_return and source_expr is not None
                     and (ref_scalar or ptr_repr_tuple)
@@ -1891,6 +1914,7 @@ class TypeCompatibility:
                 else:
                     self.deduction.track_view_reassign_source(name, inner_value_owned, vf)
                     self.deduction.mark_view_nonstatic_reassign(name, value_expr, vf)
+                    self.deduction.note_view_rebind(name, value_expr, vf)
             coerced = self.coerce_expr(
                 value_expr, inner_value_owned, inner_existing, ctx,
                 coercion_ctx=CoercionContext.ASSIGN)
@@ -2290,13 +2314,12 @@ class TypeCompatibility:
         if self.is_copy_call(expr):
             self.check_own_consumption(expr)
             return
-        borrowed = returns_borrow(self.ctx, expr)
-        is_lvalue = self.is_lvalue(expr)
-        if not (is_lvalue or borrowed):
+        if not self.arrives_borrowed(expr):
             return
         self._check_own_borrowed_source(
             own_type, expr, context, action,
-            from_call=borrowed and not is_lvalue,
+            from_call=(returns_borrow(self.ctx, expr)
+                       and not self.is_lvalue(expr)),
             whole_slot=whole_slot)
 
     def _check_own_borrowed_source(
@@ -2325,12 +2348,21 @@ class TypeCompatibility:
                 return
             # action="return": Own-typed lvalues at non-last-use are tolerated
             # (codegen falls back to copy, paired with the coercion-path warning).
+            # One ELEMENT of a returned tuple literal has no coercion-path
+            # warning (a literal is exempt there), so its copy is declared
+            # below -- `return (b, b)` hands back two copies where CPython
+            # hands back one object twice.
             # action="pass": enforce last-use even for Own locals -- the
             # per-element check exists precisely because the user opted in to
             # ownership semantics by writing Own[tuple[...]] and the silent copy
             # is the bug being fixed.
-            if action == "return" and isinstance(unwrapped, OwnType):
+            if (action == "return" and isinstance(unwrapped, OwnType)
+                    and (whole_slot or self.is_auto_move_use(expr))):
                 return
+            owned_element_copy = (action == "return"
+                                  and isinstance(unwrapped, OwnType))
+        else:
+            owned_element_copy = False
         # Consuming method: self.field is owned and movable out of the struct.
         if (self.ctx.in_consuming_method
                 and isinstance(expr, TpyFieldAccess)
@@ -2341,9 +2373,15 @@ class TypeCompatibility:
             self.check_own_consumption(expr)
             return
         expr_type = self.ctx.get_expr_type(expr)
-        is_nocopy = expr_type is not None and self.ctx.is_type_nocopy(expr_type)
+        # Non-copyable, not just @nocopy: a record with `__del__` has no copy
+        # constructor either, so the copy the warning below would declare
+        # could not be built.
+        is_nocopy = (expr_type is not None
+                     and self.ctx.is_type_non_copyable(expr_type))
         if is_nocopy:
-            reason = self.ctx.nocopy_reason(expr_type)
+            reason = (self.ctx.nocopy_reason(expr_type)
+                      if self.ctx.is_type_nocopy(expr_type)
+                      else f"non-copyable type '{unwrap_readonly(expr_type)}'")
             is_movable = (isinstance(expr, TpyName)
                           and self._is_owned_var(expr.name))
             if is_movable:
@@ -2360,12 +2398,14 @@ class TypeCompatibility:
                 f"Only the original owner can be moved at its last use.",
                 expr
             )
-        if action == "return" and whole_slot:
+        if action == "return" and (whole_slot or owned_element_copy):
             # The RETURN slot copies and says so, exactly as the insert, the
             # `Own[T]` parameter and the `yield` do -- one owning-slot rule,
             # one text, and `copy(...)` silences it at all four. The copy is
             # an acknowledged CPython divergence (CPython hands back the very
-            # object), which is what the warning declares.
+            # object), which is what the warning declares. One element of a
+            # returned literal names its element.
+            where = "" if whole_slot else f" ({context})"
             payload = own_type.wrapped
             if self._is_value_type_param(payload):
                 # A `T: ValueType` bound proves the copy, so there is nothing
@@ -2375,10 +2415,10 @@ class TypeCompatibility:
             # Whether this copies at all is the instantiation's answer, not
             # the body's, so an open payload defers to the discharge.
             if not self.ctx.defer_own_copy_verdict(
-                    value_type, payload, "owned storage", expr):
+                    value_type, payload, f"owned storage{where}", expr):
                 self.ctx.warning(
-                    f"copies {value_type} into owned storage; use copy() to "
-                    f"make this explicit",
+                    f"copies {value_type} into owned storage{where}; use "
+                    f"copy() to make this explicit",
                     expr
                 )
             return
@@ -3817,7 +3857,7 @@ class TypeCompatibility:
         the assignment caller warns for any non-literal/non-copy/non-owning-call
         source); this helper only applies the tuple-specific exemptions -- a
         fresh tuple LITERAL source (whose per-member copy is handled by
-        `warn_tuple_literal_member_copy` -- a literal needs per-member-expr
+        `check_tuple_literal_members` -- a literal needs per-member-expr
         gating, not the per-element-type rule here), an explicit `copy()`, and
         an owning-tuple-call rvalue. A nested value-tuple element is walked
         into (the storage lift copies its reference members just the same);
@@ -3867,53 +3907,157 @@ class TypeCompatibility:
             fired = True
         return fired
 
-    def warn_tuple_literal_member_copy(self, literal: TpyTupleLiteral,
-                                       tuple_type: TpyType, dest: str,
-                                       elem_path: str = "") -> bool:
-        """Per-member copy diagnostic for a fresh tuple LITERAL element stored
-        into owned storage (`[(1, c)]`). A literal's members are individual
-        expressions, so only an lvalue reference member is copied where CPython
-        aliases; a fresh rvalue member constructs in place. Codegen lifts the
-        member through `tuple_to_storage`, which COPIES even a last-use local
-        (no per-member move for a container-literal tuple element): so a
-        `@nocopy` member is rejected regardless of last use (it would otherwise
-        reach a raw g++ deleted-ctor), while a copyable member at last use is
-        suppressed -- the copy is then unobservable (the source is dead),
-        matching the scalar last-use rule. Members come back Own-wrapped (owned
-        storage form), so unwrap before applying the same pointer-repr
-        predicate the whole-lvalue `warn_pointer_repr_tuple_copy` path uses.
-        A nested value-tuple member is walked into through
-        `warn_storage_tuple_copy`, so the deeper level re-dispatches on ITS
-        own source shape (an inner literal keeps per-member-expr gating, an
-        inner lvalue takes the per-element-type rule)."""
+    def check_tuple_literal_members(self, literal: TpyTupleLiteral,
+                                    tuple_type: TpyType, sink: TupleSink,
+                                    dest: str, elem_path: str = "", *,
+                                    pname: str = "") -> bool:
+        """Per-member copy check for a tuple LITERAL at `sink`: member i takes
+        the rule a scalar of its type takes at that slot (`tuple-equals-
+        scalar`). An `Own`-marked member at a return or an argument takes that
+        slot's `Own` rule (a borrowed source is an error); at a yield or a
+        storage sink it is owned storage, like every unmarked reference member
+        at a field or container sink and every member of a nested value tuple.
+        A literal's members are separate expressions, so each is gated on its
+        own source shape. `pname` names the parameter at an ARG sink. Returns
+        whether a warning fired."""
         if not isinstance(tuple_type, TupleType):
             return False
         fired = False
         for i, et in enumerate(tuple_type.element_types):
-            member_t = unwrap_own(et)
-            path = f"{elem_path}{i}"
             if i >= len(literal.elements):
                 continue
             m = literal.elements[i]
-            if not TupleType._element_is_pointer_repr(member_t):
-                nested = unwrap_readonly(unwrap_ref_type(member_t))
-                if isinstance(nested, TupleType):
-                    fired |= self.warn_storage_tuple_copy(
-                        m, nested, dest, f"{path}.")
+            path = f"{elem_path}{i}"
+            owned = isinstance(et, OwnType)
+            if owned and sink is TupleSink.RETURN:
+                self.check_own_lvalue_into_own(
+                    et, m, f"tuple element {path}", action="return",
+                    whole_slot=False)
                 continue
-            if not self.is_lvalue(m) or self.is_copy_call(m):
+            if owned and sink is TupleSink.ARG:
+                self.check_own_lvalue_into_own(
+                    et, m, f"argument '{pname}' tuple element {path}",
+                    action="pass")
                 continue
-            if self.ctx.is_type_non_copyable(member_t):
-                raise self.ctx.error(
-                    f"cannot copy non-copyable type '{member_t}' into {dest} "
-                    f"(tuple element {path}){NOCOPY_REMEDIATION_HINT}", m)
-            if self._is_auto_moved(m):
+            member_t = unwrap_own(et)
+            nested = unwrap_readonly(unwrap_ref_type(member_t))
+            if isinstance(nested, TupleType):
+                fired |= self._check_nested_tuple_member(
+                    m, nested, sink, dest, f"{path}.", pname)
                 continue
-            self.ctx.warning(
-                f"copies {member_t} into {dest} (tuple element {path}); "
-                f"use copy() to make this explicit", m)
-            fired = True
+            if member_t.is_value_type() or isinstance(nested, TypeParamRef):
+                continue
+            if not owned and sink in _BORROW_FORM_SINKS:
+                continue
+            fired |= self._warn_literal_member_copy(
+                m, member_t, dest, path,
+                last_use_moves=sink in _LAST_USE_MOVES_SINKS)
         return fired
+
+    def _check_nested_tuple_member(self, m: TpyExpr, nested: TupleType,
+                                   sink: TupleSink, dest: str, path: str,
+                                   pname: str) -> bool:
+        """A nested value-tuple member is owned storage wherever the outer
+        tuple stores it. A return and a yield reject an unmarked reference
+        member nested a level down outright, so there only its `Own`-marked
+        members still need their rule."""
+        if sink in (TupleSink.RETURN, TupleSink.YIELD):
+            peeled = peel_value_wrappers(m)
+            if isinstance(peeled, TpyTupleLiteral):
+                return self.check_tuple_literal_members(
+                    peeled, nested, sink, dest, path, pname=pname)
+            return False
+        return self.warn_storage_tuple_copy(m, nested, dest, path)
+
+    def _warn_literal_member_copy(self, m: TpyExpr, member_t: TpyType,
+                                  dest: str, path: str, *,
+                                  last_use_moves: bool) -> bool:
+        """One literal member landing in owned storage. Only a member that
+        arrives borrowed is copied where CPython aliases; a fresh rvalue
+        constructs in place. A copyable member at its last use is suppressed
+        (the source is dead, so the copy is unobservable); a `@nocopy` one is
+        rejected even then unless the sink moves it (`last_use_moves`), or it
+        would reach a deleted copy constructor."""
+        if self.is_copy_call(m) or not (self.arrives_borrowed(m)
+                                        or self._ternary_member_copies(m)):
+            return False
+        auto_moved = self._is_auto_moved(m)
+        if auto_moved and last_use_moves:
+            return False
+        if self.ctx.is_type_non_copyable(member_t):
+            raise self.ctx.error(
+                f"cannot copy non-copyable type '{member_t}' into {dest} "
+                f"(tuple element {path}){NOCOPY_REMEDIATION_HINT}", m)
+        if auto_moved:
+            return False
+        self.ctx.warning(
+            f"copies {member_t} into {dest} (tuple element {path}); "
+            f"use copy() to make this explicit", m)
+        return True
+
+    def arrives_borrowed(self, expr: 'TpyExpr | None') -> bool:
+        """The source names storage that outlives the expression, so an
+        owning slot copies it: an lvalue (a ternary of lvalue arms included),
+        a borrow-returning call (a tuple result carrying a borrowed element
+        included), a walrus whose value is one of those, or a MIXED-arm
+        ternary whose name arm is a reference. The one question every `Own`
+        slot and owned-storage member asks before its copy rule.
+
+        A walrus renders `(d = &(c), *d)`, a read of the named object that
+        never moves, so the bound name takes no last-use exemption. A mixed
+        ternary is judged wherever it lowers; a RECORD or protocol result is
+        the one shape the lowering refuses at an owning slot, so it is left
+        to that reject rather than pre-empted by a per-arm verdict."""
+        if expr is None:
+            return False
+        if (self.is_lvalue(expr) or self._tuple_call_carries_borrow(expr)
+                or returns_borrow(self.ctx, expr)):
+            return True
+        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+        if isinstance(inner, TpyNamedExpr):
+            return self.arrives_borrowed(inner.value)
+        if not isinstance(inner, TpyIfExpr):
+            return False
+        result = unwrap_qualifiers(self.ctx.get_expr_type(inner))
+        if isinstance(result, NominalType) and (result.is_protocol
+                                                or result.is_user_record):
+            return False
+        return self.ternary_arm_copies(inner)
+
+    def _ternary_member_copies(self, m: TpyExpr) -> bool:
+        """A tuple literal member that is a ternary whose arms are names:
+        each arm stores on its own, so a reference-typed NAME arm copies (the
+        rule the field store has always applied per member). A scalar `Own`
+        slot does not ask this -- a mixed-arm ternary there is left to the
+        lowering, which refuses it."""
+        inner = m.expr if isinstance(m, TpyCoerce) else m
+        return isinstance(inner, TpyIfExpr) and self.ternary_arm_copies(inner)
+
+    def ternary_arm_copies(self, expr: TpyIfExpr) -> bool:
+        """Whether either arm of a ternary store source copies into storage.
+
+        A name behind a ternary is not an lvalue of the whole expression
+        unless both arms are, yet each arm stores on its own, so classify per
+        arm. The arm render is a plain C++ `?:` operand and never a move (an
+        owned local arm does not lower at all today), so a last-use mark on
+        the name does not exempt it.
+        """
+        for arm in (expr.then_expr, expr.else_expr):
+            if isinstance(arm, TpyIfExpr):
+                if self.ternary_arm_copies(arm):
+                    return True
+                continue
+            # A prvalue arm (constructor call, literal) materializes in place;
+            # only a named arm names storage that outlives the store.
+            if not isinstance(arm, TpyName):
+                continue
+            scope_type = (self.ctx.func.current_scope.lookup(arm.name)
+                          if self.ctx.func.current_scope else None)
+            if scope_type is None:
+                continue
+            if not unwrap_qualifiers(scope_type).is_value_type():
+                return True
+        return False
 
     def warn_storage_tuple_copy(self, elem: TpyExpr, tuple_type: TpyType,
                                 dest: str, elem_path: str = "") -> bool:
@@ -3928,8 +4072,8 @@ class TypeCompatibility:
         path too."""
         peeled = peel_value_wrappers(elem)
         if isinstance(peeled, TpyTupleLiteral):
-            return self.warn_tuple_literal_member_copy(
-                peeled, tuple_type, dest, elem_path)
+            return self.check_tuple_literal_members(
+                peeled, tuple_type, TupleSink.CONTAINER, dest, elem_path)
         if ((self.is_lvalue(elem) and not self._is_auto_moved(elem))
                 or self._tuple_call_carries_borrow(elem)):
             return self.warn_pointer_repr_tuple_copy(
@@ -4045,10 +4189,10 @@ class TypeCompatibility:
         """Reject when a tuple LOCAL referenced by `name` feeds a plain-borrow
         element into an `Own[T]` slot of the contextual `tuple_type` -- the
         implicit copy the scalar `Own[T]` and the literal-tuple forms already
-        gate. The literal forms check inline; this covers the deferred NAME
-        path via the construction-time hazard fact (BindingProvenance).
-        `action` is "return" or "pass" (verb only); the field-literal warning
-        path lives inline in `_annotate_tuple_elem_capture`."""
+        gate. The literal forms go through `check_tuple_literal_members`;
+        this covers the deferred NAME path via the construction-time hazard
+        fact (BindingProvenance). `action` is "return" or "pass" (verb
+        only)."""
         for i, et in enumerate(tuple_type.element_types):
             if not isinstance(et, OwnType):
                 continue

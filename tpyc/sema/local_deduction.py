@@ -27,6 +27,7 @@ from ..typesys import (
     LiteralType,
     make_array,
     NoneType,
+    is_numeric_type,
     OptionalType,
     OwnType,
     PendingDictType,
@@ -64,6 +65,8 @@ from ..type_def_registry import (
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
     is_enum_type,
     is_borrowing_view_type,
+    is_bool_type,
+    is_char_type,
 )
 
 if TYPE_CHECKING:
@@ -102,6 +105,12 @@ def is_enum_name_read(expr: 'TpyExpr', ctx: 'SemanticContext') -> bool:
             and expr.field == "name"
             and is_str_view_type(ctx.get_expr_type(expr))
             and is_enum_type(ctx.get_expr_type(expr.obj)))
+
+
+def _is_bufferless_scalar(t: TpyType) -> bool:
+    """A value no view can point into: a number, bool, char, enum or None."""
+    return (is_numeric_type(t) or is_bool_type(t) or is_char_type(t)
+            or is_enum_type(t) or isinstance(t, NoneType))
 
 
 def walk_view_source_leaves(expr: 'TpyExpr', leaf_fn: 'Callable[[TpyExpr], list]') -> 'list':
@@ -1311,6 +1320,21 @@ class LocalTypeDeduction:
         if info is not None and source_var_id not in info.source_var_ids:
             info.source_var_ids.append(source_var_id)
 
+    def register_view_source_storage(self, family: ViewTypeFamily, var_id: int,
+                                     storage: str) -> None:
+        """Record that view local `var_id` borrows the owned storage `storage`,
+        so a reseat or mutation of that storage demotes the view to owned. A
+        storage rooted at a name a nested def rebinds via `nonlocal` counts as
+        reseated already: the closure can run while the view is live."""
+        info = self.ctx.view_vars(family).get(var_id)
+        if info is None:
+            return
+        if storage not in info.source_storages:
+            info.source_storages.append(storage)
+        self.ctx.view_source_borrows_map(family).setdefault(storage, set()).add(var_id)
+        if storage.split(".", 1)[0] in self.ctx.func.nested_nonlocal_rebinds:
+            info.source_mutated = True
+
     def tuple_target_view_family(self, name: str) -> ViewTypeFamily | None:
         """The pending str/bytes view family of tuple-unpack target `name`, or
         None if it is not a pending-view local."""
@@ -1319,17 +1343,213 @@ class LocalTypeDeduction:
                  if bound is not None else None)
         return inner.family if isinstance(inner, PendingViewType) else None
 
-    def promote_predecl_view_targets(self, hoisted: set[str]) -> None:
-        """Own any str/bytes tuple-unpack view target that gets hoisted out of
-        a branch or loop body (pre-declared in the outer scope). The hoisted
-        slot outlives the per-branch/iteration `__tup` temp and any branch-local
-        by-ref source, so a view into it would dangle. Conservative: own every
-        hoisted view target; a precise check that keeps the view when the source
-        provably outlives the hoist is future work."""
-        for name in hoisted & self.ctx.func.tuple_unpack_view_targets:
-            fam = self.tuple_target_view_family(name)
-            if fam is not None:
-                self.mark_view_reassigned_from_owned(name, fam)
+    def view_hoist_roots(self, expr: TpyExpr) -> 'set[str] | None':
+        """The storage roots a view bound to `expr` reads, resolved as of this
+        binding, or None when some arm has no root the hoist rule can place.
+        Static leaves (literals, a module or class attribute) contribute
+        nothing; a call's result may borrow its receiver or any operand that
+        can lend storage, so all of those count."""
+        roots: set[str] = set()
+
+        def of(e: TpyExpr) -> bool:
+            if isinstance(e, TpyCoerce):
+                return of(e.expr)
+            if isinstance(e, (TpyStrLiteral, TpyBytesLiteral)) or is_enum_name_read(e, self.ctx):
+                return True
+            if isinstance(e, TpyName):
+                resolved = self._resolve_hoist_root(e.name, set())
+                if resolved is None:
+                    return False
+                roots.update(resolved)
+                return True
+            if isinstance(e, TpyFieldAccess) and isinstance(e.obj, TpyName) \
+                    and self.ctx.get_expr_type(e.obj) is None:
+                # A module or class qualifier: static only for a `Final`
+                # constant (a constexpr view); a plain module variable can be
+                # rebound through `global` in its own module.
+                et = self.ctx.get_expr_type(e)
+                return et is not None and is_borrowing_view_type(unwrap_readonly(et))
+            if isinstance(e, (TpySubscript, TpyFieldAccess)):
+                if isinstance(e.obj, (TpyCall, TpyMethodCall)):
+                    return False    # an element of a temporary
+                return of(e.obj)
+            if isinstance(e, (TpyCall, TpyMethodCall)):
+                rt = self.ctx.get_expr_type(e)
+                if isinstance(rt, LiteralType) and rt.is_str_base():
+                    return True
+                if rt is None or not is_borrowing_view_type(unwrap_readonly(rt)):
+                    return False    # a fresh result: a temporary
+                # A view result borrows its receiver or a lending operand;
+                # with none of those it reads nothing this rule can place, so
+                # it owns (it may be a view of a module-level container).
+                operands = list(e.args)
+                if (isinstance(e, TpyMethodCall)
+                        and self.ctx.get_expr_type(e.obj) is not None):
+                    # A module or class qualifier (`util.head(s)`) lends nothing.
+                    operands.append(e.obj)
+                lending = False
+                for a in operands:
+                    at = self.ctx.get_expr_type(a)
+                    bare = unwrap_readonly(unwrap_ref_type(at)) if at is not None else None
+                    if bare is not None and _is_bufferless_scalar(bare):
+                        continue
+                    lending = True
+                    if not of(a):
+                        return False
+                return lending
+            return False
+
+        ok = all(walk_view_source_leaves(expr, lambda leaf: [of(leaf)]))
+        return roots if ok else None
+
+    def _resolve_hoist_root(self, name: str, seen: set[str]) -> 'set[str] | None':
+        """The storage `name` stands for at this point: a view names itself
+        (the hoist rule follows its own entries), a live loop variable its
+        iterable's storage as this loop bound it, a borrow its referents, a
+        `with` target nothing placeable; anything else is its own storage."""
+        if name in seen:
+            return set()
+        seen = seen | {name}
+        func = self.ctx.func
+        if name in func.view_ids_by_name:
+            return {name}
+        if name in func.with_target_names:
+            return None
+        if name in func.move_through_vars:
+            # The binding moved its source in: the object lives in `name`.
+            return {name}
+        if name in func.loop_vars:
+            keys = func.loop_var_iter_roots.get(name)
+            if keys is None:
+                return None
+            out: set[str] = set()
+            for k in keys:
+                sub_roots = self._resolve_hoist_root(k, seen)
+                if sub_roots is None:
+                    return None
+                out |= sub_roots
+            return out
+        storages = func.borrow_tracker.all_storage_through_borrows(name)
+        if not storages:
+            return {name}
+        out = set()
+        for st in storages:
+            sub_roots = self._resolve_hoist_root(st.split(".", 1)[0], seen)
+            if sub_roots is None:
+                return None
+            out |= sub_roots
+        return out
+
+    def note_view_binding(self, family: ViewTypeFamily, var_id: int,
+                          expr: 'TpyExpr | None', *,
+                          roots: 'set[str] | None' = None,
+                          replace: bool = False) -> None:
+        """Record what one binding of view `var_id` reads, for the hoist rule:
+        the roots of `expr`, or `roots` a caller resolved itself; neither is
+        a source this site cannot name. `replace` sets the entry's first
+        binding for a caller that registered it with no expression."""
+        info = self.ctx.view_vars(family).get(var_id)
+        if info is None:
+            return
+        if expr is not None:
+            roots = self.view_hoist_roots(expr)
+        if replace:
+            info.hoist_roots = set()
+            info.hoist_unknown = False
+        if roots is None:
+            info.hoist_unknown = True
+        else:
+            info.hoist_roots |= roots - {info.variable_name}
+
+    def note_view_rebind(self, name: str, value_expr: TpyExpr,
+                         family: ViewTypeFamily) -> None:
+        """A view-compatible rebind of pending view `name` is one more binding
+        the hoist rule has to see."""
+        var_id = self.ctx.view_var_map(family).get(name)
+        if var_id is not None:
+            self.note_view_binding(family, var_id, value_expr)
+
+    def own_views_borrowing(self, storage: str) -> None:
+        """Make every view local that holds a borrow of `storage` (or of a
+        path under it) own its buffer."""
+        prefix = storage + "."
+        for key, holders in self.ctx.func.borrow_tracker.loans.items():
+            if key != storage and not key.startswith(prefix):
+                continue
+            for borrower in holders:
+                for info in self._view_entries(borrower):
+                    info.source_mutated = True
+
+    def _view_entries(self, name: str) -> 'list[ViewVarInfo]':
+        out = []
+        for fam, vid in self.ctx.func.view_ids_by_name.get(name, ()):
+            info = self.ctx.view_vars(fam).get(vid)
+            if info is not None:
+                out.append(info)
+        return out
+
+    def promote_hoisted_views(self, hoisted: set[str],
+                              block_new: 'set[str] | frozenset[str]' = frozenset()
+                              ) -> None:
+        """Apply the hoist rule to every str/bytes view local pre-declared in
+        the enclosing scope of a branch, `with`, `try` or loop-`else` block.
+        `block_new` holds the names first bound in the block that were NOT
+        hoisted with it: their storage dies with the block. A tuple-unpack
+        view target owns whatever its source: conservative, see TODO.md "Keep
+        a hoisted str/bytes tuple view target zero-copy"."""
+        for name in hoisted:
+            if name in self.ctx.func.tuple_unpack_view_targets:
+                fam = self.tuple_target_view_family(name)
+                if fam is not None:
+                    self.mark_view_reassigned_from_owned(name, fam)
+                continue
+            self.own_hoisted_view(name, block_new)
+
+    def own_hoisted_view(self, name: str,
+                         block_new: 'set[str] | frozenset[str]' = frozenset()) -> None:
+        """The one hoist rule for a view local: once declared in an enclosing
+        scope it stays a view only if every binding reads static storage or
+        storage bound in that scope or further out (a param, a global, a
+        name visible there and not in `block_new`, a loop variable over such
+        storage, or a view that itself qualifies). Anything else owns."""
+        entries = self._view_entries(name)
+        if not entries:
+            return
+        if not all(self._view_hoist_safe(i, block_new, {name}) for i in entries):
+            for i in entries:
+                i.reassigned_from_owned = True
+
+    def _view_hoist_safe(self, info: 'ViewVarInfo',
+                         block_new: 'set[str] | frozenset[str]',
+                         seen: set[str]) -> bool:
+        if info.hoist_unknown:
+            return False
+        return all(self._root_durable(r, block_new, seen) for r in info.hoist_roots)
+
+    def _root_durable(self, root: str, block_new: 'set[str] | frozenset[str]',
+                      seen: set[str]) -> bool:
+        if root in seen:
+            return True
+        seen = seen | {root}
+        if root not in block_new and self._bound_in_view_scope(root):
+            return True
+        if root in self.ctx.func.global_declarations:
+            return True
+        entries = self._view_entries(root)
+        return bool(entries) and all(
+            self._view_hoist_safe(i, block_new, seen) for i in entries)
+
+    def _bound_in_view_scope(self, name: str) -> bool:
+        """Whether `name` is visible from the current scope as THIS binding.
+        A module-scope hit for a name the function binds itself is a
+        different variable (the local shadows it), so it does not count."""
+        scope = self.ctx.func.current_scope
+        while scope is not None:
+            if name in scope.bindings:
+                return not (scope is self.ctx.global_scope
+                            and name in self.ctx.func.var_scope_depth)
+            scope = scope.parent
+        return False
 
     def track_view_reassign_source(self, var_name: str, source_type: TpyType, family: ViewTypeFamily) -> None:
         """Track source relationship when reassigning from another pending view-type."""

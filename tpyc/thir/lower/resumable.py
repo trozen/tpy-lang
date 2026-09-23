@@ -2363,7 +2363,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # contract).
             return_values[ret] = _lower_resumable_return_value(
                 ret, lc, declared)
-            deferred = _resumable_deferred_recipe(ret, lc, declared)
+            deferred = _resumable_deferred_recipe(ret, lc, declared,
+                                                  return_values[ret])
             if deferred is not None:
                 deferred_returns[ret] = deferred
             _witness("res.return_value")

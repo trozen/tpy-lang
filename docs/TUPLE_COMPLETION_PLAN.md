@@ -70,6 +70,11 @@ unit starts by RE-PROBING its entries: of the five entries re-measured on
 matrix cells and its entries' repros match CPython (or warn), its entries are
 deleted from `BUGS.md`, and the box here is ticked with the merge commit.
 
+Ordering: global-position cells rank LAST in every unit, whatever their
+severity (user decision 2026-09-23). A global divergence is filed against the
+TODO design entry "Module scope is the body of __tpy_init" rather than fixed
+per shape; the mixed tuple global (D2) waits on that entry.
+
 ### 0.6.0
 
 - [x] **U0 -- the matrix as an instrument.** DONE 2026-09-21:
@@ -92,7 +97,16 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
   cell is either the fix or a regression, and the commit body says which. A
   cell whose parity reads "?" in `--report` is stale and owed a build.
 - [ ] **U1 -- no silent tuple divergence.** Size: 2-3 weeks; the frame entries
-  are the risk. Order: the three HIGH first.
+  are the risk. Order: the three HIGH first. PARTIAL on `u1-tuple-meds`
+  (2026-09-23): every box below but two is done; still open are
+  `list-of-zip-ref-element-silent-copy` and
+  `frame-tuple-param-temp-element-dangles` (both HIGH, silent). Shipped
+  limitations of the unit (valid Python now rejected, loud): an alias of an
+  element of a rebound owning tuple frame slot (`BUGS.md#resumable-alias-identity`,
+  including a rebind in a branch exclusive with the alias, chained paths and
+  a nested-def `nonlocal` rebind); a
+  walrus-bound name returned under a finally
+  (`BUGS.md#walrus-local-return-under-finally-rejects`).
   - [x] the live-source owned-call unpack copy (was HIGH, entry removed) --
     DONE on `u1-tuple-silent`: sema tags an `Own` element target owned only when
     the unpack CONSUMES its source (`is_auto_move_use`, the scalar decl's
@@ -106,7 +120,7 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
     compiles and matches CPython; the dual-emit-era "correct" AST render it
     cited (`tuple_to_pointer` over a call temporary) was the wrong side.
     Pinned as a section of `tuple/unpack_own_source_live_borrows`.
-  - [x] `BUGS.md#global-tuple-ref-storage-form` (was HIGH, D2), the ALL-BORROW
+  - [x] the tuple-of-references global (was HIGH, D2), the ALL-BORROW
     half -- DONE on `u1-tuple-silent`: a tuple of references at a global is
     the tuple of pointer slots (`std::tuple<Box*, Box*>`); a fresh literal
     element is `Own` on the binding (storage, as the local); the form is a
@@ -125,17 +139,114 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
     a later module-level literal with a FRESH element into a borrow-slot
     tuple global (`P = (copy(W), 2)`) rejects where the scalar allocates a
     static slot -- the per-assignment backing item above.
-  - [ ] `BUGS.md#borrow-unpack-target-rebind-writes-through` -- confirmed live
-    2026-09-21, cell `x__rebind_unpack__T` (prints 6 where CPython prints 1)
-  - [ ] `BUGS.md#tuple-literal-subscript-store-skips-copy-check`
-  - [ ] `BUGS.md#own-tuple-arg-nested-member-silent-copy`
-  - [ ] `BUGS.md#walrus-tuple-binding-not-copy-checked`
-  - [ ] `BUGS.md#tuple-return-under-finally-captures-early`
-  - [ ] `BUGS.md#tuple-repack-yield-silent-elem-copy` (frame)
-  - [ ] `BUGS.md#resumable-alias-identity` (frame)
-  - [ ] `BUGS.md#frame-tuple-param-elem-alias-slot-address` (frame)
-  - [ ] `BUGS.md#tuple-unpack-view-outlives-reseat` (dangling view)
-  - [ ] `BUGS.md#loop-body-view-unpack-target-dangles` (dangling view)
+  - [ ] the MIXED tuple global (`BUGS.md#global-tuple-ref-storage-form`,
+    D2's remaining half) -- moved out of U1 to the module-scope design
+    entry (TODO: "Module scope is the body of __tpy_init"), with the
+    module-level rebind of an owning tuple global after an unpack.
+  - [x] the rebound borrow unpack target (was MED, entry removed) -- DONE on
+    `u1-tuple-meds`: sema marks a borrowed target `is_rebound` (the loop
+    body's rebinds for a for head, the function's for a standalone unpack)
+    and the target binds `auto* x = &(element)`, the scalar alias's
+    pointer local, instead of the `auto&&` alias a rebind wrote through; a
+    rebound target marks its source mutable, as the scalar's does. Cell
+    `x__rebind_unpack__T` differs -> same. Also silent before and fixed: the
+    for head over `zip` / a generator, a branch, a loop and a closure. The
+    recursive-wrapper element (`Tree` off `tuple[Tree[T], ...]`) rejects
+    when rebound, as its scalar twin does (`error_unpack_wrapper_target_rebind`).
+    Filed while probing: `BUGS.md#try-finally-borrow-unpack-target-predeclared`,
+    `BUGS.md#method-rvalue-arg-at-mutable-ref-param` (both loud). Left
+    open, not tuple-specific (the scalar alias diverges the same way):
+    `BUGS.md#match-capture-reuses-alias-writes-through` (HIGH, silent) and
+    `BUGS.md#nonlocal-rebind-overwrites-in-place`. The loop-head rebind the
+    unpack target now admits is refused for the scalar loop variable:
+    `BUGS.md#scalar-loop-var-rebind-rejects`.
+  - [x] the tuple-literal member copy check (was four MED entries:
+    subscript store, nested member at an `Own` argument, walrus, re-packed
+    yield; all removed) -- DONE on `u1-tuple-meds`: one sema walker,
+    `check_tuple_literal_members` (`tpyc/sema/compatibility.py`), gives each
+    literal member the scalar's rule at its slot, keyed on the sink (return,
+    argument, yield, local, field, container). Live and silent before, warned
+    now: a `P | None` member stored by subscript (`d[0] = (a, b)`), every
+    tuple-literal yield into an `Own` element (a borrowed param, a live owned
+    local, the `(t[0], t[1])` re-pack, the `Own` half of a mixed tuple), a
+    field re-pack of a live owning tuple, and `return (b, b)` into two `Own`
+    elements (two copies where CPython returns one object twice). Stale on
+    re-probe, and now declared in sema ahead of the lowering reject: the
+    nested member at an `Own` argument / `append` and the nested walrus
+    member (rows under U2); a nested `Own` element returned from a borrowed
+    source now errors like the direct one. The two per-member predicates the
+    field and container sinks kept apart are one. Cell `x__dict_value__T`
+    gains the scalar twin's container copy warning. Filed:
+    `BUGS.md#list-setitem-ref-tuple-false-readonly`. Deferred, latent: a
+    NAMED nested member at an `Own` element of a return or a yield
+    (`return (1, h.keep)` / `yield (1, inner)` into
+    `tuple[int32, tuple[int32, Own[C]]]`) takes no member rule -- the walker
+    recurses into a nested LITERAL only there; both shapes reject in the
+    lowering today (`return.tuple_source`, `iter.call.generator`).
+  - [x] a walrus-wrapped source (was HIGH, entry removed) -- DONE on
+    `u1-tuple-meds`: `arrives_borrowed` answers for the walrus's value, so
+    `(d := c)` at a field, a return into `Own`, an append and the scalar
+    `return (d := c)` into `Own[C]` warn or error exactly like `c`; the
+    bound name takes no last-use exemption (the render never moves)
+  - [ ] `BUGS.md#list-of-zip-ref-element-silent-copy` (HIGH, silent;
+    `list(zip(ns, cs))` into a list of tuples)
+  - [x] the tuple return under a `finally` (was MED, entry removed) -- DONE on
+    `u1-b3`: the finally-deferred return takes one capture per member -- an
+    owned reference local at an `Own` element slot is captured by pointer
+    and moved out after the chain, every other member is evaluated into a
+    temporary before it, so the evaluation order is unchanged. Covers nested
+    literals, `return t` of an owning tuple local, method, closure, `with`
+    body, match arm, `@error_return` and async bodies. The entry's own shape
+    (a borrowed element off a param) already aliased; the live shape was the
+    owned element (TPy 1, CPython 2). Also closes the `(b, ys)` container
+    member that rejected as "non-last-use" under a finally. The
+    `Optional`-element return rejects at `return.slot_type` with or
+    without a finally (unchanged).
+  - [x] `BUGS.md#resumable-alias-identity` (frame) -- made LOUD on
+    `u1-tuple-meds`; the real fix moved to U5. An alias of an element held
+    by value in a tuple frame slot the body rebinds now rejects at
+    `res.alias_bind` (literal, owning-call, async and mixed-slot-owned
+    shapes; was a silent wrong value). SHIPPED LIMITATION: that is valid
+    Python rejected -- `t = (A(1), A(2)); saved = t[1]; yield ...; t = ...`
+    in a generator no longer compiles, where the record twin (`saved = r;
+    r = A(8)`) does. The reject follows the path (a tuple reached through a
+    list or another tuple counts) and only fires when a rebind can run after
+    the alias; a rebind in a branch exclusive with the alias but later in
+    program order still rejects.
+  - Found while fixing the frame items, loud, queued elsewhere:
+    `BUGS.md#frame-two-hop-tuple-alias-ice` (U7 loud tail) and
+    `BUGS.md#tuple-param-rebind-from-readonly-tuple` (a U2 row).
+  - [ ] `BUGS.md#frame-tuple-param-temp-element-dangles` (frame, dangling)
+    -- a generator's borrow-tuple param bound from a tuple literal with a
+    temporary element points into the dead temporary (found 2026-09-22).
+  - [x] the frame tuple element alias of a pointer element (frame, entry
+    removed) -- DONE on `u1-tuple-meds`: an alias of a pointer-repr element
+    in a resumable body re-addresses the pointee (`a = &((*std::get<0>(p)));`)
+    instead of the element slot (`A**`). Wider than filed: the tuple param
+    (readonly or written), the async twin, a method generator, a nested def
+    capturing the alias, a borrow-form tuple frame local and the borrowed
+    element of a mixed slot all failed the C++ build; all now match CPython
+    (`generators/frame_tuple_elem_alias`).
+  - [x] the dangling `str`/`bytes` unpack views (both entries removed) -- DONE
+    on `u1-b2`. Reseat: an unpack target off a tuple NAME registers that
+    tuple as its source storage, as `a = t[i]` does, so a rebind of the
+    tuple (plain, narrowed-`Optional`, `= None`, a later loop iteration),
+    a `del` of it, or a `nonlocal` rebind or `del` in a nested def --
+    including a SIBLING closure the reading closure calls -- makes it own;
+    the same reseats make the `int` element's target a copy rather than a
+    `const&`. Hoist: a view declared outside the block it was bound in (loop
+    body, if/elif/match arm, try body, except handler, loop `else`) stays a
+    view only when every binding reads static storage or a name bound in
+    that outer scope (a param, a global, a local bound before the block, a
+    loop variable over such storage, a view that qualifies); anything else
+    -- a call result, an alias of a block-local view, a nested subscript --
+    owns (`own_hoisted_view`). Not closed, filed: a hoisted view of a live
+    container mutated after the loop (the LOW leaked-loop-variable entry),
+    a view declared BEFORE the block and rebound inside it
+    (`view-local-escapes-loop-local-source`), a closure writing a viewed
+    field (`closure-field-write-dangles-view`). Known precision gap: the
+    loop rule decides at the first read after the loop, so a body-local
+    source read after the view is copied rather than hoisted with it.
   - Settled by the instrument: `x, k = h.f` on a field tuple with a REFERENCE
     element takes the `tuple_to_pointer` lift and aliases (cell
     `x__unpack_field__T`), so it is not a U1 item. The whole-tuple copy seen
@@ -151,23 +262,42 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
     the rebind after it (`x = Box(5)`) sits behind the same reject
   - [ ] element read off a container: `t = xs[0]` on `list[tuple[Box, int32]]`
     [`decl.slot_type`]
-  - [ ] `xs.append(t)` with a local or param tuple [`method.arg_shape`]
+  - [ ] `xs.append(t)` with a local or param tuple [`method.arg_shape`];
+    a nested literal `xs.append((1, (2, c)))` / `sink((1, (2, c)))` at an
+    `Own` tuple slot [`expr.tuple_literal`] (sema warns the nested copy)
   - [ ] `d["a"] = (b, 1)` [`setitem.family`]
   - [ ] an `Optional` element local: `t: tuple[Box | None, int32] = (b, 1)`
     [`decl.slot_type`]
-  - [ ] walrus of a tuple call: `(t := g(b))[1]` [`expr.walrus`]
+  - [ ] walrus of a tuple call: `(t := g(b))[1]` [`expr.walrus`]; a nested
+    literal `(u := (1, (2, c)))` [`expr.walrus`] (sema warns the nested copy)
   - [ ] a tuple local at an `Own[tuple[...]]` arg: `take(t)`
     [`call.arg_shape.own_tuple`]
   - [ ] `BUGS.md#bytes-tuple-element-subscript-read-rejects` (D6), and the
     `bytes` global unpack / `print(G)` rejects behind it
   - [ ] `BUGS.md#rvalue-ref-tuple-unpack-address-of-rvalue` -- `a, b = stack.pop()`
-  - [ ] yield re-packing an owning local: `yield (t[0], t[1])` (a located
-    error today; decide with `tuple-repack-yield-silent-elem-copy`)
+  - [x] yield re-packing an owning local: `yield (t[0], t[1])` -- compiles
+    (a local literal or a call source) and warns the element copy since the
+    tuple-literal member walker; moving the element at the root's last use
+    is a perf item, not a reject
+  - [ ] an element alias off a tuple local: `a = t[0]` [`decl.slot_type`],
+    and `a = p[0]; a = q` off a borrow-tuple param [`decl.slot_type`] where
+    the scalar `a = p; a = q` compiles (found 2026-09-22)
+  - [ ] a tuple-unpack for head over pre-bound names: `k, v = ...` then
+    `for k, v in make_pairs()` [`tuple.reused_target`]
+  - [ ] an ENUM element beside a reference element: `return (b, c)` into
+    `-> tuple[Box, Color]` [`return.slot_type`] and `b, c = mk(Color.Blue)`
+    off `-> tuple[Own[Box], Color]` [`stmt.tuple_unpack`], where the `int32`
+    twin compiles (found 2026-09-23)
+  - [ ] an owning tuple off a METHOD: `t = h.meth()` for
+    `-> tuple[Own[Box], int32]` [`method.ret_type`], the free twin compiles
 - [ ] **U3 -- policy decisions, then the flips.** Each is small once decided;
   none is decided. Present each on its own, leading with the generated code.
   - [ ] D1 tier: the per-element arg check follows the scalar WARN tier
     (`BUGS.md#borrowed-tuple-at-own-call-arg`; eight `error_` cases stop
-    erroring, `@nocopy` sources keep erroring).
+    erroring, `@nocopy` sources keep erroring). One element slot has two
+    verdicts today: `xs.append((2, c))` (the ARG sink, `list.append` takes
+    `Own[T]`) errors, while `[(1, c)]` and `{1: (4, c)}` (the CONTAINER sink)
+    warn for the same borrowed `c` into the same storage.
   - [ ] TODO: "Decide ONE policy for a borrow-returning call at a
     tuple-element `Own[T]` slot" -- errors today where the scalar warns.
   - [ ] TODO: "Warn at the mixed-tuple module GLOBAL as a stopgap" -- only
@@ -181,6 +311,10 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
     the owned element as its own `Own[T]` parameter), pinned by an `error_`
     case for the PARAM flavour; the `p[0].n = 99` build failure gets the same.
   - [ ] `BUGS.md#unconsumed-own-warning-whole-tuple-granular`
+  - [ ] The frame alias reject (`BUGS.md#resumable-alias-identity`) says the
+    generic "not yet supported (res.alias_bind)"; give it a located
+    diagnostic naming the limitation and the workaround (take the element
+    by value with `copy()`, or alias after the last rebind).
 
 ### 0.7.0
 
@@ -191,6 +325,22 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
   drifts. Prerequisites: TODO: "Make the tuple RENDER 3-valued instead of
   stacking booleans over it" and TODO: "Sema mirrors codegen's tuple-render
   pair at a different breadth". Needs `/tpy-add-feature`. Size: 2-3 weeks.
+  Also owns the real fix of `BUGS.md#resumable-alias-identity` (loud since
+  U1): the per-rebind-site element ownership verdict, decided in sema, feeds
+  a tuple twin of the record's pointer-over-per-site-frame-field form. Then
+  delete the lowering guard (`alias.rebound_tuple_slot_elem`,
+  `_alias_into_rebound_tuple_slot`) including its chain and timing
+  extensions.
+  ONE shared root, to be designed as one `/tpy-add-feature` unit before or
+  inside U5: `tpyc/sema/alias_rebind.py` admits neither tuple locals nor
+  multi-hop loans. Two U1 stopgaps and one HIGH come from it -- the
+  lowering frame-alias guard above, the eager capture for a name a finally
+  rebinds (`BUGS.md#finally-mutate-then-rebind-return`; its record-local slice,
+  which also lifts the `@nocopy` refusal, is designed there and needs only
+  records, so it can land first) and
+  `BUGS.md#nested-list-literal-alias-rebind-clobbers`. Extending the
+  alias-gated IN_PLACE proof to tuples and multi-hop element loans closes
+  all of them and deletes the two stopgaps.
   Also owns the container FIELD as a borrow-tuple element: the bind is the
   record's (`T*`), the READER of a container element is what is missing
   (`btuple.elem_container_field` in the lowering).

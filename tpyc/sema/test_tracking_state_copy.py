@@ -66,6 +66,8 @@ def _populated() -> FunctionTrackingState:
         pending_view_storage_checks=[(expr, INT32, loc, INT32, False)],
         unread_coro_locals={'c': stmt},
         var_decl_by_name={'x': N.TpyVarDecl("x", None, None)},
+        pending_return_borrows=[
+            {'b': ("return b", [(N.TpyReturn(N.TpyName("b")), None)])}],
         # Fields whose annotation says nothing about what they hold.
         pre_analyzed_method_args=pre_analyzed,
         bind_kinds=binds,
@@ -105,7 +107,7 @@ _FIXTURE_FIELDS = {
     'super_del_call', 'pending_loop_vars', 'write_history', 'nested_def_nodes',
     'nested_def_block_defs', 'pending_yield_root_checks',
     'pending_generic_yield_sources', 'pending_view_storage_checks',
-    'unread_coro_locals', 'var_decl_by_name',
+    'unread_coro_locals', 'var_decl_by_name', 'pending_return_borrows',
     'pre_analyzed_method_args', 'bind_kinds', 'gate_sites',
     'pending_elem_type_fields', 'pending_composite_exprs', 'borrow_tracker',
     'current_call_edges', 'current_awaited_subframes',
@@ -126,6 +128,7 @@ _LEAF_VALUE_NAMES = {
     'LoopClauseEdges',  # sets of names only
     'LoanInfo',         # a borrow kind, a flag and an index key
     'NestedMutationMark',  # a name and four flags
+    'ViewTypeFamily',   # a static descriptor of the str / bytes family
 }
 _CONTAINER_NAMES = {'list', 'dict', 'set', 'frozenset', 'tuple'}
 

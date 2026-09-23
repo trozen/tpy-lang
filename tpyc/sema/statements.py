@@ -58,7 +58,10 @@ from ..prescan import (
     FactKills, collect_fact_kills, liveness_alias_sources,
 )
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
-                        stmts_terminate, while_head_always_true)
+                        collect_deleted_names, collect_finally_rebound_returns,
+                        collect_nested_def_nonlocal_rebinds,
+                        stmts_terminate, tuple_literal_leaves,
+                        while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage
 from .context import (addr_taken_roots, call_borrow_operands,
                       canonical_storage_key,
@@ -90,10 +93,12 @@ if TYPE_CHECKING:
     from ..diagnostics import Scope
 
 from .alias_rebind import decide_rebind_storage, stamp_bind_kind
+from .compatibility import TupleSink
 from .context import _is_borrowing_auto_readonly_accessor, _root_name_of_expr, BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, iterator_source_callee,
+    peel_value_wrappers,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by)
@@ -440,6 +445,29 @@ def global_rebind_message(name: str, t: TpyType) -> str:
             else "non-value type")
     return (f"Cannot reassign global variable '{name}' of {what} "
             f"'{collapse_tuple_own_elements(bare)}'")
+
+
+def _deferred_tuple_spelling(lit: TpyTupleLiteral) -> str:
+    """A returned tuple literal as a diagnostic quotes it: names and
+    literals as written, anything else as `...`."""
+    parts = []
+    for e in lit.elements:
+        while isinstance(e, TpyCoerce):
+            e = e.expr
+        if isinstance(e, TpyName):
+            parts.append(e.name)
+        elif isinstance(e, TpyTupleLiteral):
+            parts.append(_deferred_tuple_spelling(e))
+        elif isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):
+            parts.append(repr(e.value))
+        elif isinstance(e, TpyStrLiteral):
+            parts.append(repr(e.value))
+        elif isinstance(e, TpyNoneLiteral):
+            parts.append("None")
+        else:
+            parts.append("...")
+    inner = ", ".join(parts)
+    return f"({inner},)" if len(parts) == 1 else f"({inner})"
 
 
 class StatementAnalyzer:
@@ -849,41 +877,36 @@ class StatementAnalyzer:
         without a recipe falls back to the eager copy, whose pre-mutation
         value silently diverges from CPython's aliasing pending return, so
         the gate errs narrow: plain non-value scalars returned as Own[T], and
-        pointer-repr Optional locals returned as a storage Optional. Narrowed
-        Optional sources and tuple/union-typed values keep the eager capture
-        (tracked in BUGS.md).
+        pointer-repr Optional locals returned as a storage Optional, and the
+        same per member for a returned tuple. Narrowed Optional sources and
+        union-typed values keep the eager capture.
         """
+        # A returned Own param is consumed by the return whatever capture
+        # takes it (a finally that rebinds it keeps an eager one).
+        for _, leaf in tuple_literal_leaves(stmt.value):
+            if isinstance(leaf, TpyName):
+                self.ctx.mark_own_param_consumed(leaf.name)
+                # The last-use mark does not see a finally's reads through an
+                # alias or a closure, so a move there could leave the finally
+                # reading a moved-from object: always refuse.
+                if leaf in self.ctx.finally_rebound_returns:
+                    self._check_eager_return_copyable(leaf, leaf)
+        if isinstance(stmt.value, TpyTupleLiteral):
+            self._mark_finally_deferred_tuple_return(stmt, expected)
+            return
+        if (isinstance(stmt.value, TpyName)
+                and self._mark_finally_deferred_tuple_name(stmt, expected)):
+            return
         if not (isinstance(stmt.value, TpyName)
                 and stmt.value in self.ctx.finally_return_candidates
                 and self.compat._is_owned_var(stmt.value.name)):
             return
         exp = unwrap_ref_type(expected)
         val = unwrap_readonly(unwrap_own(unwrap_ref_type(ret_type)))
-        declared = (self.ctx.func.current_scope.lookup(stmt.value.name)
-                    if self.ctx.func.current_scope is not None else None)
-        if declared is not None:
-            declared = unwrap_readonly(unwrap_own(unwrap_ref_type(declared)))
+        declared = self._declared_binding(stmt.value.name)
         eligible = False
         if isinstance(exp, OwnType) and not exp.wrapped.is_value_type():
-            # Shape A: Own[T] return of a plain reference-type local
-            # (including a declared-Optional local narrowed to T -- its T*
-            # slot is what the recipe dereferences). A declared UNION local
-            # stores a variant even when narrowed, and the recipe's
-            # &(name)/std::move(*p) would move the wrong C++ type -- key the
-            # storage-shape questions on the DECLARED binding, not the
-            # (possibly narrowed) analyzed type.
-            declared_ok = (
-                declared is not None
-                and not isinstance(declared, (UnionType, TupleType))
-                and not isinstance(declared, RecursiveAliasInstanceType)
-                and (not isinstance(declared, OptionalType)
-                     or declared.uses_pointer_repr())
-                and not is_protocol_type(declared))
-            eligible = (declared_ok
-                        and not val.is_value_type()
-                        and not isinstance(val, (OptionalType, UnionType,
-                                                 TupleType))
-                        and not is_protocol_type(val))
+            eligible = self._own_slot_deferrable(declared, val)
         elif isinstance(exp, OptionalType) and not exp.uses_pointer_repr():
             # Shape B: pointer-repr Optional local returned as the storage
             # Optional (Own[T] | None) -- the ptr_to_optional_move arm. The
@@ -895,6 +918,130 @@ class StatementAnalyzer:
             self.ctx.all_last_uses.add(stmt.value)
             stmt.finally_deferred_capture = True
 
+    def _declared_binding(self, name: str) -> 'TpyType | None':
+        declared = (self.ctx.func.current_scope.lookup(name)
+                    if self.ctx.func.current_scope is not None else None)
+        if declared is not None:
+            declared = unwrap_readonly(unwrap_own(unwrap_ref_type(declared)))
+        return declared
+
+    @staticmethod
+    def _own_slot_deferrable(declared: 'TpyType | None', val: TpyType) -> bool:
+        """Shape A: a plain reference-type local at an Own[T] slot
+        (including a declared-Optional local narrowed to T -- its T* slot is
+        what the recipe dereferences). A declared UNION local stores a variant
+        even when narrowed, and the recipe's &(name)/std::move(*p) would move
+        the wrong C++ type -- so the storage-shape questions key on the
+        DECLARED binding, not the (possibly narrowed) analyzed type."""
+        declared_ok = (
+            declared is not None
+            and not isinstance(declared, (UnionType, TupleType))
+            and not isinstance(declared, RecursiveAliasInstanceType)
+            and (not isinstance(declared, OptionalType)
+                 or declared.uses_pointer_repr())
+            and not is_protocol_type(declared))
+        return (declared_ok
+                and not val.is_value_type()
+                and not isinstance(val, (OptionalType, UnionType, TupleType))
+                and not is_protocol_type(val))
+
+    def _mark_finally_deferred_tuple_return(self, stmt: TpyReturn,
+                                            expected: TpyType) -> None:
+        """The tuple-literal twin of shape A, per member: a member that is an
+        owned reference-type local at an `Own` element slot is deferred like
+        the scalar `return b`; every other member keeps being evaluated before
+        the finally chain, into a temporary, so no member moves relative to
+        another or to the chain."""
+        exp = unwrap_readonly(unwrap_ref_type(expected))
+        whole_owned = isinstance(exp, OwnType)
+        if whole_owned:
+            exp = unwrap_readonly(exp.wrapped)
+        if not isinstance(exp, TupleType):
+            return
+        paths: list[tuple[int, ...]] = []
+        leaves_all = tuple_literal_leaves(stmt.value)
+        # A name the tuple holds twice cannot be one pending alias per slot:
+        # it keeps the eager capture, where the explicit-copy rule applies
+        # exactly as it does without a finally.
+        seen: dict[str, int] = {}
+        for _, leaf in leaves_all:
+            if isinstance(leaf, TpyName):
+                seen[leaf.name] = seen.get(leaf.name, 0) + 1
+        for path, leaf in leaves_all:
+            if isinstance(leaf, TpyName) and seen[leaf.name] > 1:
+                continue
+            if not (isinstance(leaf, TpyName)
+                    and leaf in self.ctx.finally_return_candidates
+                    and self.compat._is_owned_var(leaf.name)):
+                continue
+            slot = self._tuple_slot_at(exp, path)
+            if slot is None:
+                continue
+            owned = whole_owned or isinstance(slot, OwnType)
+            slot_t = unwrap_readonly(unwrap_own(slot))
+            if not owned or slot_t.is_value_type():
+                continue
+            leaf_t = self.ctx.get_expr_type(leaf)
+            if leaf_t is None:
+                continue
+            val = unwrap_readonly(unwrap_own(unwrap_ref_type(leaf_t)))
+            if self._own_slot_deferrable(self._declared_binding(leaf.name),
+                                         val):
+                paths.append(path)
+        if not paths:
+            return
+        leaves = dict(tuple_literal_leaves(stmt.value))
+        for path in paths:
+            self.ctx.all_last_uses.add(leaves[path])
+            # The deferred member is moved out after the chain: a consume.
+            self.ctx.mark_own_param_consumed(leaves[path].name)
+        stmt.finally_deferred_leaves = tuple(paths)
+        stmt.finally_deferred_capture = True
+
+    def _mark_finally_deferred_tuple_name(self, stmt: TpyReturn,
+                                          expected: TpyType) -> bool:
+        """`return t` of an owned tuple local into an owning tuple slot: the
+        whole tuple is the deferred member (path `()`), captured like the
+        scalar `return b` when the lowering finds the local's storage is the
+        return's own C++ type, else kept eager."""
+        value = stmt.value
+        assert isinstance(value, TpyName)
+        exp = unwrap_readonly(unwrap_ref_type(expected))
+        whole_owned = isinstance(exp, OwnType)
+        if whole_owned:
+            exp = unwrap_readonly(exp.wrapped)
+        if not isinstance(exp, TupleType):
+            return False
+        if not (whole_owned or any(
+                isinstance(et, OwnType)
+                and not unwrap_readonly(et.wrapped).is_value_type()
+                for et in exp.element_types)):
+            return False
+        if not (value in self.ctx.finally_return_candidates
+                and self.compat._is_owned_var(value.name)
+                and isinstance(self._declared_binding(value.name),
+                               TupleType)):
+            return False
+        self.ctx.all_last_uses.add(value)
+        self.ctx.mark_own_param_consumed(value.name)
+        stmt.finally_deferred_leaves = ((),)
+        stmt.finally_deferred_capture = True
+        return True
+
+    @staticmethod
+    def _tuple_slot_at(exp: TupleType, path: tuple[int, ...]
+                       ) -> 'TpyType | None':
+        """The declared element slot at `path` of a (nested) tuple return,
+        or None when the path leaves the tuple structure."""
+        cur: TpyType = exp
+        for i in path:
+            cur_t = unwrap_readonly(unwrap_own(cur))
+            if not (isinstance(cur_t, TupleType)
+                    and i < len(cur_t.element_types)):
+                return None
+            cur = cur_t.element_types[i]
+        return cur
+
     def _is_in_constructor(self) -> bool:
         """Check if currently analyzing an __init__ method body."""
         func = self.ctx.func.current_function
@@ -904,18 +1051,24 @@ class StatementAnalyzer:
 
     def _annotate_tuple_elem_capture(
         self, literal: TpyTupleLiteral, tuple_type: TupleType,
-        *, is_return: bool = False, is_field: bool = False,
+        *, sink: TupleSink = TupleSink.LOCAL,
         sink_dest: str = "owned storage"
     ) -> None:
-        """Annotate each element of a tuple literal with its capture mode.
+        """Annotate each element of a tuple literal with its capture mode,
+        after the per-member copy check for the literal's `sink`.
 
         Args:
             literal: The tuple literal AST node to annotate.
             tuple_type: The resolved TupleType for the literal.
-            is_return: True if this literal is in a return statement.
-            is_field: True if this literal is assigned to a class field.
+            sink: Where the literal lands -- a RETURN, a FIELD, a CONTAINER
+                element or a LOCAL; decides each member's copy rule and its
+                capture.
             sink_dest: How to name the destination in a copy diagnostic.
         """
+        self.compat.check_tuple_literal_members(
+            literal, tuple_type, sink, sink_dest)
+        is_return = sink is TupleSink.RETURN
+        is_field = sink is TupleSink.FIELD
         V = TupleElemCapture.VALUE
         R = TupleElemCapture.REF
         CR = TupleElemCapture.CONST_REF
@@ -932,53 +1085,11 @@ class StatementAnalyzer:
 
             # Value types, Own[T], and TypeParamRef are always VALUE.
             if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
-                # A nested value-tuple member is a storage lift all the same --
-                # its own reference members are copied, and this per-member walk
-                # never sees below the direct level. Even a LOCAL is a sink
-                # here: only a DIRECT reference element gives the tuple a borrow
-                # form, so a nested one lands in owned storage. A return is not
-                # this kind of sink -- a nested reference member is rejected
-                # there outright.
-                if (not is_return and isinstance(et, TupleType)
-                        and et.has_nested_pointer_repr_element()):
-                    self.compat.warn_storage_tuple_copy(
-                        elem, et, sink_dest, f"{i}.")
                 literal.elem_capture.append(V)
                 continue
 
-            # Field context: all reference-type elements are owned (VALUE)
-            # Warn if not an explicit copy() -- same as scalar field assignment
+            # Field context: all reference-type elements are owned (VALUE).
             if is_field:
-                elem_val_type = self.ctx.get_raw_expr_type(elem)
-                # Last-use of an owned local moves into the slot (matches
-                # scalar `self.f = local` auto-move) -- no copy, no warning.
-                is_auto_moved = self.compat.is_auto_move_use(elem)
-                should_warn = False
-                if elem_val_type is not None and isinstance(elem_val_type, (RefType, OwnType)):
-                    if not self.compat.is_copy_call(elem) and not is_auto_moved:
-                        should_warn = isinstance(elem_val_type, RefType) or isinstance(elem, TpyName)
-                elif self._is_non_owned_var_copy(elem, et):
-                    should_warn = True
-                else:
-                    elem_stripped = self.ctx.get_expr_type(elem)
-                    if not self.compat.is_copy_call(elem):
-                        if (isinstance(elem_stripped, OptionalType) and not elem_stripped.inner.is_value_type()):
-                            should_warn = True
-                        elif (isinstance(elem_stripped, UnionType) and elem_stripped.uses_pointer_repr()
-                              and not elem_stripped.needs_wrapper()):
-                            should_warn = True
-                if should_warn:
-                    if self.ctx.is_type_non_copyable(et):
-                        raise self.ctx.error(
-                            f"cannot copy non-copyable type '{et}' into field "
-                            f"(tuple element {i}){NOCOPY_REMEDIATION_HINT}",
-                            elem
-                        )
-                    self.ctx.warning(
-                        f"copies {et} into field (tuple element {i}); "
-                        f"use copy() to make this explicit",
-                        elem
-                    )
                 literal.elem_capture.append(V)
                 continue
 
@@ -1652,14 +1763,10 @@ class StatementAnalyzer:
                 if isinstance(stmt.value, TpyTupleLiteral):
                     tuple_target = own_tuple_target(expected)
                     if tuple_target is not None:
-                        for i, et in enumerate(tuple_target.element_types):
-                            if isinstance(et, OwnType) and i < len(stmt.value.elements):
-                                self._check_own_lvalue_return(et, stmt.value.elements[i],
-                                                              f"tuple element {i}",
-                                                              whole_slot=False)
-                        # Annotate per-element capture mode (ref/value/const_ref)
+                        # The Own-element checks, then the per-element
+                        # capture mode (ref/value/const_ref).
                         self._annotate_tuple_elem_capture(
-                            stmt.value, tuple_target, is_return=True)
+                            stmt.value, tuple_target, sink=TupleSink.RETURN)
                 # A tuple LOCAL returned by name: the literal-element check
                 # above never ran, so consult the construction-time
                 # plain-borrow-into-Own hazard for each Own slot.
@@ -1841,18 +1948,19 @@ class StatementAnalyzer:
             # Detect variables first declared inside branches that need
             # pre-declaration. Skip when both branches terminate (no code
             # after the if needs the variable).
+            branch_new = set(self.ctx.func.current_scope.bindings.keys()) - scope_before
             if not self.ctx.func.init_terminated:
-                branch_new = set(self.ctx.func.current_scope.bindings.keys()) - scope_before
                 newly_assigned = self.ctx.func.definitely_assigned - assigned_before
                 predecl = (branch_new & newly_assigned) - self.ctx.func.global_declarations
             else:
                 predecl = set()
+            self.ctx.block_locals_of[stmt] = branch_new - predecl
             if predecl:
                 self.ctx.record_branch_decls(stmt, {
                     name: self.ctx.func.current_scope.lookup(name)
                     for name in sorted(predecl)
                 })
-                self.deduction.promote_predecl_view_targets(predecl)
+                self.deduction.promote_hoisted_views(predecl, branch_new - predecl)
         elif isinstance(stmt, TpyWhile):
             head = self._analyze_condition_walrus(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
@@ -1904,6 +2012,10 @@ class StatementAnalyzer:
                 head = stmt.body[0]
                 if isinstance(head, TpyTupleUnpack):
                     head.is_loop_head = True
+                    head.loop_body_rebinds = frozenset(scan_reassigned_vars(
+                        stmt.body[1:],
+                        pre_declared={t for t in head.targets
+                                      if t is not None}).reassigned)
             if stmt.is_async:
                 self._analyze_async_for(stmt)
                 return
@@ -1972,7 +2084,11 @@ class StatementAnalyzer:
                         before, kills=collect_fact_kills(stmt.body))
                     # Track range facts for loop variable from range() calls
                     self._track_for_range_facts(stmt)
+                    prior_iter = self.ctx.func.loop_var_iterable.get(stmt.var)
                     self._register_foreach_iter_loans(stmt, iterable_type)
+                    self._note_loop_var_iteration(
+                        stmt.var, elem_type, prior_iter,
+                        placeable=not self._iteration_yields_copies(iterable_type))
                     # A user `__iter__` that mutates its receiver needs a
                     # non-const receiver; record that so an enclosing read-only
                     # method isn't wrongly inferred const (the loop_var_iterable
@@ -2555,31 +2671,96 @@ class StatementAnalyzer:
 
     @staticmethod
     def _walk_deferred_return_names(stmts: list[TpyStmt],
-                                    names: set[str]) -> None:
-        """Collect names of finally-deferred returns in `stmts` (deep;
-        nested defs excluded -- their returns exit the inner function and
-        never hold a borrow across an enclosing finally)."""
+                                    names: dict[str, tuple]) -> None:
+        """Collect the names finally-deferred returns in `stmts` borrow, each
+        mapped to how the return spells it in a diagnostic and to the
+        (return, tuple path) sites that defer it (deep; nested defs excluded
+        -- their returns exit the inner function and never hold a borrow
+        across an enclosing finally)."""
         for s in stmts:
             if isinstance(s, TpyReturn):
                 if s.finally_deferred_capture:
                     inner = s.value
                     while isinstance(inner, TpyCoerce):
                         inner = inner.expr
-                    if isinstance(inner, TpyName):
-                        names.add(inner.name)
+                    if isinstance(inner, TpyName) and (
+                            not s.finally_deferred_leaves
+                            or () in s.finally_deferred_leaves):
+                        names.setdefault(
+                            inner.name, (f"return {inner.name}", []))[1] \
+                            .append((s, None))
+                    elif isinstance(inner, TpyTupleLiteral):
+                        spelled = _deferred_tuple_spelling(inner)
+                        for path, leaf in tuple_literal_leaves(inner):
+                            while isinstance(leaf, TpyCoerce):
+                                leaf = leaf.expr
+                            if (path in s.finally_deferred_leaves
+                                    and isinstance(leaf, TpyName)):
+                                names.setdefault(
+                                    leaf.name, (f"return {spelled}", []))[1] \
+                                    .append((s, path))
             elif not isinstance(s, TpyNestedDef):
                 for body in s.sub_bodies():
                     StatementAnalyzer._walk_deferred_return_names(body, names)
 
-    def _collect_deferred_return_names(self, stmt: TpyTry) -> frozenset[str]:
+    def _collect_deferred_return_names(self, stmt: TpyTry) -> dict[str, tuple]:
         """Names borrowed by finally-deferred returns anywhere in the try's
-        try/else/handler bodies."""
-        names: set[str] = set()
+        try/else/handler bodies, each with its return's spelling and sites."""
+        names: dict[str, tuple] = {}
         self._walk_deferred_return_names(stmt.try_body, names)
         self._walk_deferred_return_names(stmt.else_body, names)
         for h in stmt.handlers:
             self._walk_deferred_return_names(h.body, names)
-        return frozenset(names)
+        return names
+
+    def _check_eager_return_copyable(self, leaf: TpyName,
+                                     at: 'TpyStmt | TpyExpr') -> None:
+        """A returned member the finally rebinds keeps the eager capture before
+        the chain; a non-copyable one has no such capture."""
+        t = self.ctx.get_expr_type(leaf)
+        if t is not None and self.ctx.is_type_non_copyable(
+                unwrap_own(unwrap_ref_type(t))):
+            reason = self.ctx.nocopy_reason(unwrap_own(unwrap_ref_type(t)))
+            fn = self.ctx.func.current_function
+            by_closure = (fn is not None and leaf.name
+                          in collect_nested_def_nonlocal_rebinds(fn.body))
+            where = ("a nested def rebinds it" if by_closure
+                     else "its finally rebinds it")
+            raise self.ctx.error(
+                f"'{leaf.name}' ({reason}) cannot be returned from inside "
+                f"a try while {where}: the pending return would need a "
+                f"copy of it. Bind the new value to another name", at)
+
+    def _decline_deferred_return(self, name: str,
+                                 at: 'TpyStmt | TpyExpr') -> None:
+        """Undo the finally-deferred capture of `name` in every enclosing
+        pending return (a finally body is analysed after its try's returns
+        are stamped): the member goes back to the eager capture and its
+        last-use move is retracted, since the finally still reads it."""
+        for pending in self.ctx.func.pending_return_borrows:
+            entry = pending.pop(name, None)
+            if entry is None:
+                continue
+            for ret, path in entry[1]:
+                if path is None or path == ():
+                    ret.finally_deferred_capture = False
+                    ret.finally_deferred_leaves = ()
+                    leaf = ret.value
+                    while isinstance(leaf, TpyCoerce):
+                        leaf = leaf.expr
+                else:
+                    ret.finally_deferred_leaves = tuple(
+                        p for p in ret.finally_deferred_leaves if p != path)
+                    if not ret.finally_deferred_leaves:
+                        ret.finally_deferred_capture = False
+                    leaves = dict(tuple_literal_leaves(ret.value))
+                    leaf = leaves.get(path)
+                    while isinstance(leaf, TpyCoerce):
+                        leaf = leaf.expr
+                if leaf is not None:
+                    self._check_eager_return_copyable(leaf, at)
+                    self.ctx.all_last_uses.discard(leaf)
+                    self.ctx.finally_return_candidates.discard(leaf)
 
     def _analyze_finally_body(self, stmt: TpyTry,
                               try_kills: FactKills | None = None) -> None:
@@ -2654,7 +2835,7 @@ class StatementAnalyzer:
                 if name in all_bindings
             })
             self.ctx.func.hoisted_vars |= predecl
-            self.deduction.promote_predecl_view_targets(predecl)
+            self.deduction.promote_hoisted_views(predecl)
 
     def _analyze_try_return(self, stmt: TpyTry) -> None:
         """Analyze return-tier try/except (ReturnException, goto-based)."""
@@ -2785,7 +2966,8 @@ class StatementAnalyzer:
                 for name in sorted(predecl)
                 if name in all_bindings
             })
-            self.deduction.promote_predecl_view_targets(predecl)
+            self.deduction.promote_hoisted_views(predecl, branch_new - predecl)
+        self.ctx.block_locals_of[stmt] = branch_new - predecl
 
     def _analyze_try_throw(self, stmt: TpyTry) -> None:
         """Analyze throw-tier try/except (C++ try/catch)."""
@@ -2941,7 +3123,8 @@ class StatementAnalyzer:
                 if name in all_bindings
             })
             self.ctx.func.hoisted_vars |= predecl
-            self.deduction.promote_predecl_view_targets(predecl)
+            self.deduction.promote_hoisted_views(predecl, branch_new - predecl)
+        self.ctx.block_locals_of[stmt] = branch_new - predecl
 
     def _merge_consumed_own(self, then_terminated: bool, else_terminated: bool,
                             consumed_then: set[str], consumed_else: set[str]) -> None:
@@ -3055,6 +3238,7 @@ class StatementAnalyzer:
             stmt.var, elem_type, None, None,
             line=(stmt.loc.line if stmt.loc else None),
         )
+        self._note_loop_var_iteration(stmt.var, elem_type, None, placeable=False)
         stmt.elem_type = make_ref(elem_type)
         if contains_pending_leaf(stmt.elem_type):
             self.ctx.func.pending_elem_type_fields.append((stmt, "elem_type"))
@@ -3293,6 +3477,7 @@ class StatementAnalyzer:
                     item.target, enter_type, None, None,
                     line=(stmt.loc.line if stmt.loc else None),
                 )
+                self.ctx.func.with_target_names.add(item.target)
                 item.enter_type = resolved
                 self.ctx.func.current_scope.define(item.target, resolved)
                 self.ctx.func.nonstmt_bound_names.add(item.target)
@@ -3359,7 +3544,7 @@ class StatementAnalyzer:
                 for name in sorted(predecl)
                 if name in self.ctx.func.current_scope.bindings
             })
-            self.deduction.promote_predecl_view_targets(predecl)
+            self.deduction.promote_hoisted_views(predecl)
 
     # --- Nested def / nonlocal ---
 
@@ -3423,7 +3608,12 @@ class StatementAnalyzer:
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan))
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
+        self.ctx.finally_rebound_returns |= collect_finally_rebound_returns(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
+        self.ctx.func.nested_nonlocal_rebinds = (
+            collect_nested_def_nonlocal_rebinds(func.body, include_del=True)
+            | self.ctx.func.enclosing_nonlocal_rebinds)
+        self.ctx.func.deleted_names = collect_deleted_names(func.body)
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
@@ -3498,7 +3688,7 @@ class StatementAnalyzer:
         the closure need not provably run inside the finally -- but the
         combination is exotic and the diagnostic names the conflict.
         """
-        deferred: set[str] = set()
+        deferred: dict[str, tuple] = {}
         self._walk_deferred_return_names(func.body, deferred)
         if not deferred:
             return
@@ -3519,7 +3709,7 @@ class StatementAnalyzer:
                                         raise self.ctx.error(
                                             f"cannot delete nonlocal "
                                             f"'{name}' here: an enclosing "
-                                            f"'return {name}' under a "
+                                            f"'{deferred[name][0]}' under a "
                                             f"finally still borrows it (the "
                                             f"value is materialized after "
                                             f"the finally chain runs)", d)
@@ -3613,9 +3803,11 @@ class StatementAnalyzer:
                     f"the default", stmt)
 
         self_is_receiver = self.ctx.receiver_self_in_scope()
+        enclosing_nonlocal = set(self.ctx.func.nested_nonlocal_rebinds)
 
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
+            self.ctx.func.enclosing_nonlocal_rebinds = enclosing_nonlocal
             self.ctx.func.outer_scope_locals = outer_locals
             self.ctx.func.outer_self_is_receiver = self_is_receiver
             self.ctx.func.nested_def_pending = outer_pending
@@ -3907,8 +4099,7 @@ class StatementAnalyzer:
             # clause's own and dies with the block, while the hoisted slot
             # stands at the loop statement. Inside the scope, which is where
             # the targets are still looked up.
-            self.deduction.promote_predecl_view_targets(
-                set(else_scope.bindings))
+            self.deduction.promote_hoisted_views(set(else_scope.bindings))
         self._propagate_loop_body_vars(stmt, else_scope, runs_once=True,
                                        body_end_assigned=else_end_assigned)
 
@@ -4204,15 +4395,19 @@ class StatementAnalyzer:
                         source_storages.append(storage)
             info = ViewVarInfo(var_id=var_id, variable_name=name,
                                decl_line=line, initialized_from_owned=is_owned,
-                               source_storages=source_storages,
                                frame_unsafe_source=(
                                    not is_owned
                                    and self.deduction.has_nonstatic_view_source(init_expr)))
+            vars_reg[var_id] = info
             for storage in source_storages:
-                self.ctx.view_source_borrows_map(family).setdefault(storage, set()).add(var_id)
+                self.deduction.register_view_source_storage(family, var_id, storage)
 
         vars_reg[var_id] = info
         var_map[name] = var_id
+        self.ctx.func.view_ids_by_name.setdefault(name, []).append((family, var_id))
+        # No expression here means the binding site records it itself (a
+        # loop variable, an unpack target); until then it is unknown.
+        self.deduction.note_view_binding(family, var_id, init_expr)
         self.ctx.view_pending_resolutions(family).append(var_id)
         return family.pending_type_class(var_id)
 
@@ -4306,6 +4501,56 @@ class StatementAnalyzer:
             )
 
         return var_type
+
+    def _note_loop_var_iteration(self, var: str, elem_type: TpyType,
+                                 prior: 'list[str] | None', *,
+                                 placeable: bool = True) -> None:
+        """Record the storage this loop's variable iterates -- only what THIS
+        loop registered (a reused name keeps the last loop's entry otherwise)
+        -- and, for a str/bytes loop variable, its one binding."""
+        keys = self.ctx.func.loop_var_iterable.get(var) if placeable else None
+        roots = ({k.split(".", 1)[0] for k in keys}
+                 if keys and keys is not prior else None)
+        self.ctx.func.loop_var_iter_roots[var] = roots
+        inner = unwrap_own(unwrap_ref_type(unwrap_readonly(elem_type)))
+        if isinstance(inner, PendingViewType):
+            resolved: 'set[str] | None' = set()
+            for r in roots or ():
+                sub_roots = self.deduction._resolve_hoist_root(r, {var})
+                if sub_roots is None:
+                    resolved = None
+                    break
+                resolved |= sub_roots
+            self.deduction.note_view_binding(
+                inner.family, inner.var_id, None,
+                roots=resolved if roots is not None else None, replace=True)
+
+    def _iteration_yields_copies(self, iterable_type: TpyType,
+                                 depth: int = 0) -> bool:
+        """Whether iterating this source hands the element out by value, into
+        the per-step result the loop variable then reads, rather than lending
+        an element the source holds: the iteration loan names what the
+        iterator WALKS, not what the loop variable views. A generator /
+        genexpr, a user type's `__iter__` returning one, and a user
+        iterator's `__next__` answer by their element; a user type this cannot
+        resolve counts as copying."""
+        inner = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
+        if isinstance(inner, GenExprType):
+            return not yield_always_borrows(inner.element_type)
+        if (is_protocol_type(inner) and isinstance(inner, NominalType)
+                and inner.qualified_name() == "typing.Iterator" and inner.type_args
+                and isinstance(inner.type_args[0], TpyType)):
+            return not yield_always_borrows(inner.type_args[0])
+        if not (isinstance(inner, NominalType) and inner.is_user_record):
+            return False
+        record = self.ctx.registry.get_record_for_type(inner)
+        if record is None or depth > 4:
+            return True
+        iters = record.get_method_overloads("__iter__")
+        if iters and unwrap_readonly(iters[0].return_type) != inner:
+            return self._iteration_yields_copies(iters[0].return_type, depth + 1)
+        nexts = record.get_method_overloads("__next__")
+        return not (nexts and yield_always_borrows(nexts[0].return_type))
 
     def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType, *,
                                          open_param_borrows: bool = False) -> bool:
@@ -4467,6 +4712,15 @@ class StatementAnalyzer:
         stmt.value = self.compat.coerce_expr(
             stmt.value, yield_type, elem_type, "yield value",
             coercion_ctx=CoercionContext.RETURN)
+        # The coercion compares the literal against the declared tuple as a
+        # whole, so an `Own` element's scalar `T -> Own[T]` copy rule never
+        # runs per member -- apply it here.
+        yielded = peel_value_wrappers(stmt.value)
+        yield_bare = unwrap_readonly(unwrap_ref_type(elem_type))
+        if (isinstance(yielded, TpyTupleLiteral)
+                and isinstance(yield_bare, TupleType)):
+            self.compat.check_tuple_literal_members(
+                yielded, yield_bare, TupleSink.YIELD, "owned storage")
         # Re-yielding an ephemeral borrow onward (consumed from an inner
         # generator/iterator) past its iteration step would let the outer
         # consumer read a stale slot -- reject unless copied out. EXCEPTION:
@@ -5594,6 +5848,10 @@ class StatementAnalyzer:
             is_ref = (not owned and not elem_type.is_value_type()
                       and not isinstance(elem_type, TypeParamRef))
             stmt.is_ref.append(is_ref)
+            stmt.is_rebound.append(
+                is_ref and name is not None
+                and name in (stmt.loop_body_rebinds if stmt.is_loop_head
+                             else self.ctx.func.current_reassigned_vars))
 
             stmt.target_types.append(elem_type)
 
@@ -5698,15 +5956,34 @@ class StatementAnalyzer:
             # into it dangles. A fresh same-scope target keeps the view (the named
             # `__tup` outlives it -- zero-copy, safe). Mirrors the scalar
             # `s = owned()` reassign chokepoint. The other "outlives __tup" shape
-            # -- a target first-declared in an if/match branch and used AFTER it
-            # -- is owned where it is hoisted to the outer scope, via
-            # deduction.promote_predecl_view_targets. (The loop-body variant is
-            # not yet covered -- see BUGS.md.)
+            # -- a target first-declared in a block and used AFTER it -- is
+            # owned where it is hoisted, by the hoist rule
+            # (`deduction.own_hoisted_view`).
             if (not source_binds_by_ref
                     and name in self.ctx.func.current_reassigned_vars):
                 fam = self.deduction.tuple_target_view_family(name)
                 if fam is not None:
                     self.deduction.mark_view_reassigned_from_owned(name, fam)
+            fam = self.deduction.tuple_target_view_family(name)
+            tgt_id = self.ctx.view_var_map(fam).get(name) if fam else None
+            if fam is not None and tgt_id is not None:
+                # A per-statement capture (call / rvalue source) has no name
+                # the hoist rule can place; a NAME source is that tuple.
+                self.deduction.note_view_binding(
+                    fam, tgt_id, stmt.value if source_binds_by_ref else None,
+                    replace=True)
+            # A view target off a NAME source views that tuple's own element,
+            # exactly as `a = t[i]` does, so it registers the same source
+            # storage and a reseat of the tuple demotes it to owned.
+            if (source_binds_by_ref and not stmt.is_loop_head
+                    and not self.ctx.is_top_level):
+                fam = self.deduction.tuple_target_view_family(name)
+                src_id = self.ctx.view_var_map(fam).get(name) if fam else None
+                if fam is not None and src_id is not None:
+                    bt = self.ctx.func.borrow_tracker
+                    self.deduction.register_view_source_storage(
+                        fam, src_id, canonical_storage_key(
+                            bt, bt.effective_storage(stmt.value.name)))
             if stmt.loc:
                 display_type = unwrap_own(elem_type) if elem_type else elem_type
                 self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type
@@ -5766,11 +6043,17 @@ class StatementAnalyzer:
                 # own source (`zip(xs, ys)`) lends the target that source
                 # directly, so a write through it climbs to `xs` alone.
                 elem_srcs = self.ctx.func.loop_var_elem_iterable.get(src_root)
-                if elem_srcs is not None and i < len(elem_srcs):
-                    for elem_src in elem_srcs[i]:
-                        bt.add_borrow(elem_src, name, BorrowKind.ELEMENT)
-                else:
-                    bt.add_borrow(src_root, name, BorrowKind.ELEMENT)
+                lenders = (elem_srcs[i] if elem_srcs is not None
+                           and i < len(elem_srcs) else (src_root,))
+                for lender in lenders:
+                    bt.add_borrow(lender, name, BorrowKind.ELEMENT)
+                # A reassigned target binds `T* x = &(element)`, one type
+                # for every referent it is re-pointed at, so the source must
+                # stay mutable -- the reassigned scalar alias's rule. The
+                # reassign drops the loan, so a write after it cannot climb.
+                if stmt.is_rebound[i]:
+                    for lender in lenders:
+                        self.ctx.mark_param_mutated(lender)
                 # A MUTABLE element borrow out of a loop var is the same
                 # reason `x = h` (a non-value local off a loop var) marks it:
                 # the element pointers come off the loop var's binding, so a
@@ -5805,7 +6088,7 @@ class StatementAnalyzer:
             source_safe = True
             if source_is_lvalue:
                 source_name = stmt.value.name
-                source_safe = (source_name not in self.ctx.func.current_reassigned_vars)
+                source_safe = not self.ctx.is_reseated(source_name)
             for i, name in enumerate(stmt.targets):
                 if name is None:
                     stmt.is_const_ref.append(False)
@@ -6109,6 +6392,7 @@ class StatementAnalyzer:
                         self.deduction.mark_view_reassigned_from_owned(stmt.target.name, vf)
                     else:
                         self.deduction.track_view_reassign_source(stmt.target.name, inner_value, vf)
+                        self.deduction.note_view_rebind(stmt.target.name, stmt.value, vf)
                 # target_type stays pending
             else:
                 target_type = self.deduction.resolve_reassignment_target_type(
@@ -6295,12 +6579,15 @@ class StatementAnalyzer:
             tuple_target = own_tuple_target(target_type)
             if tuple_target is not None:
                 is_field = isinstance(stmt.target, TpyFieldAccess)
+                is_subscript = isinstance(stmt.target, TpySubscript)
                 self._annotate_tuple_elem_capture(
-                    stmt.value, tuple_target, is_field=is_field,
+                    stmt.value, tuple_target,
                     sink_dest=("field" if is_field
-                               else "container"
-                               if isinstance(stmt.target, TpySubscript)
-                               else "owned storage"))
+                               else "container" if is_subscript
+                               else "owned storage"),
+                    sink=(TupleSink.FIELD if is_field
+                          else TupleSink.CONTAINER if is_subscript
+                          else TupleSink.LOCAL))
         # Residual copy warning: reassigned vars without OwnType in scope
         if isinstance(stmt.target, TpyName):
             _register_tuple_binding_borrows(
@@ -6547,11 +6834,13 @@ class StatementAnalyzer:
             # from. (CPython's pending return keeps the object alive -- the
             # restructure is to drop other cleanup targets, not the returned
             # local.)
-            if any(name in pending
-                   for pending in self.ctx.func.pending_return_borrows):
+            spelled = next((pending[name][0] for pending
+                            in self.ctx.func.pending_return_borrows
+                            if name in pending), None)
+            if spelled is not None:
                 raise self.ctx.error(
                     f"cannot delete '{name}' in this finally block: an "
-                    f"enclosed 'return {name}' still borrows it (the value "
+                    f"enclosed '{spelled}' still borrows it (the value "
                     f"is materialized after the finally runs)", stmt)
             # Global-declared and nonlocal vars are always reachable;
             # locals/params must be definitely assigned.
@@ -6560,6 +6849,10 @@ class StatementAnalyzer:
             if not is_external and name not in self.ctx.func.definitely_assigned:
                 raise self.ctx.error(
                     f"variable '{name}' may not be assigned at this point", stmt)
+            # The value is destroyed here, so views of its storage own --
+            # including one a call handed back, which holds a borrow of it.
+            self.ctx.mark_all_view_borrowers_mutated(name)
+            self.deduction.own_views_borrowing(name)
             # Remove from definitely_assigned so use-after-del is caught
             self.ctx.func.definitely_assigned.discard(name)
             # Clear narrowing facts
@@ -6625,7 +6918,7 @@ class StatementAnalyzer:
         if self.compat.is_copy_call(expr):
             return False
         if isinstance(expr, TpyIfExpr):
-            return self._ternary_arm_copies(expr)
+            return self.compat.ternary_arm_copies(expr)
         if not isinstance(expr, TpyName):
             return False
         scope_type = self.ctx.func.current_scope.lookup(expr.name) if self.ctx.func.current_scope else None
@@ -6639,34 +6932,6 @@ class StatementAnalyzer:
         if scope_type is None:
             return False
         return True
-
-    def _ternary_arm_copies(self, expr: TpyIfExpr) -> bool:
-        """Whether either arm of a ternary store source copies into storage.
-
-        The unified Ref/Own check keys on the whole right-hand side, so a name
-        behind a ternary is unclaimed there -- including the Ref and Own
-        spellings `_is_non_owned_var_copy` defers to it. Each arm stores on its
-        own, so classify per arm. The arm render is a plain C++ `?:` operand
-        and never a move (an owned local arm does not lower at all today), so a
-        last-use mark on the name does not exempt it.
-        """
-        for arm in (expr.then_expr, expr.else_expr):
-            if isinstance(arm, TpyIfExpr):
-                if self._ternary_arm_copies(arm):
-                    return True
-                continue
-            # A prvalue arm (constructor call, literal) materializes in place;
-            # only a named arm names storage that outlives the store.
-            if not isinstance(arm, TpyName):
-                continue
-            scope_type = (self.ctx.func.current_scope.lookup(arm.name)
-                          if self.ctx.func.current_scope else None)
-            if scope_type is None:
-                continue
-            inner = unwrap_qualifiers(unwrap_own(unwrap_ref_type(scope_type)))
-            if not inner.is_value_type():
-                return True
-        return False
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
@@ -6859,6 +7124,11 @@ class StatementAnalyzer:
                         stmt,
                     )
                 stmt.resolved_binop = result
+                if isinstance(stmt.target, TpyName):
+                    # `__add__` REBINDS the name: a pending deferred return
+                    # of it must keep the object it named, so its capture
+                    # goes back to eager, as for a plain rebind.
+                    self._decline_deferred_return(stmt.target.name, stmt)
                 return
             raise self.ctx.error(
                 f"Operator '{stmt.op}=' is not supported for {target_type}",

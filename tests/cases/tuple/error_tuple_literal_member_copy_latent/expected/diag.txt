@@ -1,0 +1,7 @@
+main.py:31: warning: copies P into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:37: warning: copies P into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:43: warning: copies P into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:49: warning: copies P into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:55: warning: copies P into container (tuple element 1); use copy() to make this explicit
+main.py:60: warning: copies P into field (tuple element 1); use copy() to make this explicit
+main.py:31: error: in function 'walrus_nested': this construct is not yet supported by C++ code generation (expr.walrus)

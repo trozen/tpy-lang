@@ -1,5 +1,7 @@
 # A borrow-into-Own hazard bound inside a loop body survives the loop exit
 # (UNION-merged), so the post-loop name return into an Own[T] slot is rejected.
+# TO BE FIXED: the scalar twin WARNS and copies here; this error becomes that
+# warning (BUGS.md#borrowed-tuple-at-own-call-arg, plan unit U3 D1).
 from tpy import int32, Own, copy
 
 

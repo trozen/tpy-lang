@@ -1264,6 +1264,8 @@ class THIRBorrowTupleLiteral(THIRExpr):
     addr_of: tuple[bool, ...]
     elem_wraps: tuple[str | None, ...] = ()
     tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
+    # The element slot spellings `spelled_cpp` is made of.
+    elem_cpps: tuple[str, ...] = field(default=(), kw_only=True)
 
     def __post_init__(self) -> None:
         assert not any(w is not None and a
@@ -2288,6 +2290,42 @@ class THIRFinallyDeferredReturn(THIRStmt):
     capture: 'THIRExpr | None' = None
     indirect: bool = False
     optional_move: bool = False
+    # A returned tuple literal: the rebuilt tuple's spelling and one part per
+    # member, in the literal's evaluation order. `capture` is None then.
+    tuple_cpp: str | None = None
+    tuple_parts: 'tuple[DeferredTuplePart, ...]' = ()
+
+
+class DeferredPartKind(Enum):
+    """How one member of a finally-deferred tuple return is held across the
+    chain.
+
+      * `CAPTURE` -- a deferred owned local: `auto* p = &(b);` before, then
+                     `std::move(*p)` (or `(*p)` for an earlier occurrence of
+                     a name the tuple holds twice) in the rebuilt tuple.
+      * `TEMP`    -- any other member, evaluated before the chain into
+                     `T __tpy_rete_N = <member>;` and moved out after.
+      * `INLINE`  -- a scalar literal: nothing to evaluate early.
+      * `TUPLE`   -- a nested literal holding a deferred member: its own
+                     parts, rebuilt as `cpp_type{...}` after the chain."""
+    CAPTURE = auto()
+    TEMP = auto()
+    INLINE = auto()
+    TUPLE = auto()
+
+
+@dataclass(frozen=True)
+class DeferredTuplePart:
+    kind: DeferredPartKind
+    expr: 'THIRExpr | None' = None
+    # TEMP: the element slot's spelling; TUPLE: the nested tuple's spelling.
+    cpp_type: str | None = None
+    # TEMP: a `{0}` template the member's render is spliced into (the borrow
+    # literal's `&({0})` lift); None renders it bare.
+    wrap: str | None = None
+    indirect: bool = False
+    move: bool = True
+    parts: 'tuple[DeferredTuplePart, ...]' = ()
 
 
 @dataclass(frozen=True)
@@ -2738,7 +2776,8 @@ class THIRTupleUnpack(THIRStmt):
     source_wrap_cpp: str | None = None
 
     _BIND_TOKENS: ClassVar[frozenset[str]] = frozenset({
-        "value", "cref", "move", "assign", "ref", "opt_ptr", "ptr_variant",
+        "value", "cref", "move", "assign", "ref", "ptr", "opt_ptr",
+        "ptr_variant",
         "unwrap_ref", "global_slot", "global_ptr",
         "frame_assign", "frame_emplace", "frame_opt_ptr", "frame_ptr_addr",
         "frame_ptr_elem",

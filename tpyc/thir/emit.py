@@ -124,7 +124,7 @@ from .nodes import (
     THIRRaise,
     THIRResumableReturn,
     THIRReturn,
-    THIRFinallyDeferredReturn,
+    THIRFinallyDeferredReturn, DeferredPartKind,
     THIRStmtSeq,
     THIRSetItem,
     THIRSelf,
@@ -2261,22 +2261,60 @@ def _emit_finally_return(out: TextIO, value_cpp: 'str | None', indent: str,
         out.write(f"{indent}return {tmp};\n")
 
 
-def _deferred_return_triple(stmt: THIRFinallyDeferredReturn,
-                            state: _EmitState) -> 'tuple[str, str, str]':
-    """(pointer name, capture RHS, materialize expression) for a
-    finally-deferred return, shared by the sync statement emit and the
-    resumable frame's leaf seam.
+def _deferred_return_capture(stmt: THIRFinallyDeferredReturn,
+                             state: _EmitState) -> 'tuple[list[str], str]':
+    """(capture declarations, materialize expression) for a finally-deferred
+    return, shared by the sync statement emit and the resumable frame's leaf
+    seam: the declarations go before the finally chain, the expression is
+    the value returned after it. A member's argument temps are left for the
+    caller to flush ahead of the declarations (sync path only: the validator
+    keeps them out of a frame's recipe).
 
-    The local's own render comes first and the pointer name second, so their
-    counter draws stay in that order; both happen before the finally chain
+    Each member's render comes before its own name draw, so the counter draws
+    stay in source order; all of them happen before the finally chain
     renders, which is where the chain's own draws belong."""
+    if stmt.tuple_cpp is not None:
+        lines: list[str] = []
+        return lines, _deferred_tuple_build(stmt.tuple_cpp, stmt.tuple_parts,
+                                            lines, state)
     assert stmt.capture is not None
     base = _emit_expr(stmt.capture, state)
     ptr = f"__tpy_retp_{state.iter_counter.draw()}"
     if stmt.optional_move:
-        return ptr, base, f"::tpy::ptr_to_optional_move({ptr})"
+        return ([f"auto* {ptr} = {base};"],
+                f"::tpy::ptr_to_optional_move({ptr})")
     lvalue = f"(*{base})" if stmt.indirect else base
-    return ptr, f"&({lvalue})", f"std::move(*{ptr})"
+    return [f"auto* {ptr} = &({lvalue});"], f"std::move(*{ptr})"
+
+
+def _deferred_tuple_build(cpp_type: str, parts, lines: list[str],
+                          state: _EmitState) -> str:
+    """Append each member's pre-chain declaration to `lines` and return the
+    post-chain rebuild of the tuple."""
+    members: list[str] = []
+    for part in parts:
+        if part.kind is DeferredPartKind.TUPLE:
+            members.append(_deferred_tuple_build(part.cpp_type, part.parts,
+                                                 lines, state))
+        elif part.kind is DeferredPartKind.INLINE:
+            members.append(_emit_expr(part.expr, state))
+        elif part.kind is DeferredPartKind.CAPTURE:
+            base = _emit_expr(part.expr, state)
+            ptr = f"__tpy_retp_{state.iter_counter.draw()}"
+            lvalue = f"(*{base})" if part.indirect else base
+            lines.append(f"auto* {ptr} = &({lvalue});")
+            members.append(f"std::move(*{ptr})" if part.move else f"(*{ptr})")
+        else:
+            val = _emit_expr(part.expr, state)
+            if part.wrap is not None:
+                val = part.wrap.format(val)
+            tmp = f"__tpy_rete_{state.iter_counter.draw()}"
+            lines.append(f"{part.cpp_type} {tmp} = {val};")
+            members.append(f"std::move({tmp})" if part.move else tmp)
+    joined = ", ".join(members)
+    if len(members) == 1:
+        return f"{cpp_type}({joined})"
+    return f"{cpp_type}{{{joined}}}"
 
 
 def _er_check_inline(tmp: str, state: _EmitState) -> str:
@@ -4043,11 +4081,15 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # terminating finally keeps the [[maybe_unused]] capture -- Python
         # still evaluates the return expression it then overrides.
         _witness_chain("return", state, 0)
-        ptr, capture_rhs, materialize = _deferred_return_triple(stmt, state)
+        captures, materialize = _deferred_return_capture(stmt, state)
+        # All members' argument temps land ahead of every capture, where the
+        # eager render places them: evaluation order stays what it was.
+        state.temps.flush(out, indent)
         chain = io.StringIO()
         terminated = _emit_finally_chain(chain, indent, state)
         maybe_unused = "[[maybe_unused]] " if terminated else ""
-        out.write(f"{indent}{maybe_unused}auto* {ptr} = {capture_rhs};\n")
+        for line in captures:
+            out.write(f"{indent}{maybe_unused}{line}\n")
         out.write(chain.getvalue())
         if terminated:
             _witness("try.chain_terminated")
@@ -4191,6 +4233,12 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             elif bind == "cref":
                 out.write(f"{indent}const {cpp}& {escape_cpp_name(name)} = "
                           f"{get};\n")
+            elif bind == "ptr":
+                # The reseatable twin of "ref": `auto*` keeps the element's
+                # const-ness exactly as the `auto&&` alias does.
+                out.write(f"{indent}auto* {escape_cpp_name(name)} = "
+                          f"&(::tpy::unwrap_ref(::tpy::tuple_elem_ref"
+                          f"({get})));\n")
             elif bind == "ref":
                 # Borrow-tuple element: `std::get<i>(__tup)` is a `T*` (or
                 # val_or_ref); one `auto&&` reference aliases the live element
@@ -4716,8 +4764,8 @@ class ResumableLeafEmitter:
             node = node.value
         return _emit_expr(node, self._state)
 
-    def render_deferred_return(self, ret) -> 'tuple[str, str, str]':
-        """The (pointer name, capture RHS, materialize expression) triple the
+    def render_deferred_return(self, ret) -> 'tuple[list[str], str]':
+        """The (capture declarations, materialize expression) pair the
         frame's return scaffolding binds around its inline finally chain, for
         a sema-stamped finally-deferred return.
 
@@ -4728,7 +4776,7 @@ class ResumableLeafEmitter:
         the finally chain still reads."""
         node = self._lookup(self._body.deferred_returns, ret,
                             "deferred return recipe")
-        return _deferred_return_triple(node, self._state)
+        return _deferred_return_capture(node, self._state)
 
     def render_yield_value(self, ys) -> str:
         """Render a generator `yield v`'s value -- the seam the skeleton

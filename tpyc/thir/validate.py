@@ -67,6 +67,7 @@ from .nodes import (
     THIRIfExpr, THIRMethodCall,
     THIRNode, THIRName, THIRInplaceContainerOp, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
+    THIRFinallyDeferredReturn, DeferredPartKind,
     THIRSubscript,
     THIRFrameSlotWrite,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
@@ -151,6 +152,14 @@ def _iter_children(node: THIRNode):
                     # MIL/base-init cells (THIRMilInit / THIRBaseInit) are
                     # plain dataclasses holding THIR exprs.
                     yield from _iter_children(item)
+
+
+def _deferred_leaf_parts(parts):
+    for part in parts:
+        if part.kind is DeferredPartKind.TUPLE:
+            yield from _deferred_leaf_parts(part.parts)
+        else:
+            yield part
 
 
 def _fail(owner: str, node: THIRNode, why: str) -> None:
@@ -931,6 +940,15 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         if node.value is not None:
             _walk(owner, node.value, return_type, argtemp_ok=True)
         return
+    if isinstance(node, THIRFinallyDeferredReturn):
+        # A tuple part evaluated before the chain is its own declaration
+        # line, which the sync emit flushes its temps ahead of.
+        if node.capture is not None:
+            _walk(owner, node.capture, return_type)
+        for part in _deferred_leaf_parts(node.tuple_parts):
+            _walk(owner, part.expr, return_type,
+                  argtemp_ok=part.kind is DeferredPartKind.TEMP)
+        return
     if isinstance(node, THIRRaise):
         # `raise X(args)` flushes its ctor arg temps before the throw line, so
         # the args are a flush position exactly like a call's. (They are the
@@ -1103,7 +1121,10 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     # The deferred-return recipe is consulted by the return scaffolding, which
     # renders the capture into an `auto* p = ...;` line with no flush point.
     for stmt in body.deferred_returns.values():
-        _walk(owner, stmt)
+        if stmt.capture is not None:
+            _walk(owner, stmt.capture)
+        for part in _deferred_leaf_parts(stmt.tuple_parts):
+            _walk(owner, part.expr)
     # Flushable seams: the Branch condition, the sub-coro emplace, the await
     # operand and the sync for-head source are positions where the skeleton
     # flushes temps ahead of the line. For a condition the flush lands INSIDE

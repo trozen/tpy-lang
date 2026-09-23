@@ -350,6 +350,9 @@ class MatchAnalyzer:
                 self.ctx.func.current_scope.define(name, ty)
                 self.ctx.func.nonstmt_bound_names.add(name)
                 self.stmts.init.mark_assigned(name)
+                # A capture rebinding a str/bytes view local reads the subject.
+                for fam, vid in self.ctx.func.view_ids_by_name.get(name, ()):
+                    self.stmts.deduction.note_view_binding(fam, vid, stmt.subject)
                 if name not in self.ctx.func.var_scope_depth:
                     self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
                 # Resumable frame (H1): a `match` carrying a suspension
@@ -591,6 +594,7 @@ class MatchAnalyzer:
             predecl = (branch_new & newly_assigned) - self.ctx.func.global_declarations
         else:
             predecl = set()
+        arm_new = set().union(*(set(b) for b in arm_bindings)) - scope_before
         # A rebound capture hoists on its own account, whatever the arms'
         # termination: the hoist above serves post-match reads, but a rebind
         # needs the binding to be an ASSIGNMENT within its own arm -- a
@@ -616,7 +620,8 @@ class MatchAnalyzer:
                 name: self.ctx.func.current_scope.lookup(name)
                 for name in sorted(predecl)
             })
-            self.stmts.deduction.promote_predecl_view_targets(predecl)
+            self.stmts.deduction.promote_hoisted_views(predecl, arm_new - predecl)
+        self.ctx.block_locals_of[stmt] = arm_new - predecl
 
     def _reject_nested_capture_retype(
         self, stmt: TpyMatch, hoistable: set[str],

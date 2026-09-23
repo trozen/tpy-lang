@@ -1,0 +1,26 @@
+to_name 1 80 80
+to_fresh 1 6 7
+mixed 1 80 101
+param_src 70 80 2
+branch 1 83
+loop 84 85
+closure 1 85
+method 1 86
+zip_head 1 2 20
+gen_head 5 5 2
+er_body 1 87
+match_arm 1 88
+try_except 1 89
+two_loops 5
+unwritten_param 1 81
+unwritten_zip 1 2 82
+with_as 1 80
+ctor 1 80
+swap 1 80 1
+enum_head 1 2 51
+items_head 1 50
+list_tuple_head 1 50
+cond_head 11 22 21
+late_closure 1 85
+nocopy 1 9
+not_rebound 42 7

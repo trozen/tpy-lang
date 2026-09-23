@@ -4,6 +4,8 @@
 # in-consuming-method `self.field` early-return at
 # check_own_lvalue_into_own's branch 5 (not tested here -- the silent
 # acceptance path is harder to capture; this test pins the error path).
+# TO BE FIXED: the scalar twin WARNS and copies here; this error becomes that
+# warning (BUGS.md#borrowed-tuple-at-own-call-arg, plan unit U3 D1).
 from tpy import int32, Own
 
 

@@ -1,0 +1,18 @@
+main.py:30: warning: copies C into field (tuple element 1); use copy() to make this explicit
+main.py:57: warning: copies C into owned storage (tuple element 1); use copy() to make this explicit
+main.py:63: warning: copies C into owned storage (tuple element 1); use copy() to make this explicit
+main.py:70: warning: copies C into owned storage (tuple element 1); use copy() to make this explicit
+main.py:76: warning: copies C into owned storage (tuple element 0); use copy() to make this explicit
+main.py:83: warning: copies C into owned storage (tuple element 0); use copy() to make this explicit
+main.py:83: warning: copies C into owned storage (tuple element 1); use copy() to make this explicit
+main.py:89: warning: copies C into owned storage (tuple element 0); use copy() to make this explicit
+main.py:89: warning: copies C into owned storage (tuple element 1); use copy() to make this explicit
+main.py:103: warning: copies C into field (tuple element 1); use copy() to make this explicit
+main.py:110: warning: copies C into owned storage; use copy() to make this explicit
+main.py:113: warning: Own[list[int32]] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:123: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:130: warning: copies C into field (tuple element 1); use copy() to make this explicit
+main.py:139: warning: copies C | None into container (tuple element 0); use copy() to make this explicit
+main.py:148: warning: copies C | None into container (tuple element 0); use copy() to make this explicit
+main.py:159: warning: copies C | None into container (tuple element 0); use copy() to make this explicit
+main.py:171: warning: copies C | None into container (tuple element 0); use copy() to make this explicit

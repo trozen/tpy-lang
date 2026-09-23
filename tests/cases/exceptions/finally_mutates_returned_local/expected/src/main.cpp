@@ -113,23 +113,28 @@ int32_t ret_value_int() {
 
 // def ret_rebound() -> Own[Box]:
 //     b = Box()
+//     b.n = 7
 //     try:
 //         return b
 //     finally:
 //         b = Box()  # rebinding: the pending return keeps the original object
+//         b.n = 99
 Box ret_rebound() {
     Box __slot_1 = Box();
     Box* b = &__slot_1;
+    b->n = 7;
     {
         bool __fin_ran_5 = false;
         try {
-            auto* __tpy_retp_0 = &((*b));
+            Box __tpy_ret_0 = std::move((*b));
             __fin_ran_5 = true;
             (*b) = Box();
-            return std::move(*__tpy_retp_0);
+            b->n = 99;
+            return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_5) {
                 (*b) = Box();
+                b->n = 99;
             }
             throw;
         }

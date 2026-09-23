@@ -1,0 +1,25 @@
+free_fn 2 5
+whole_name 2 5
+nested 2
+nested_k 2
+mixed 2 111 111
+call_member 3 2
+container_member 2 2
+str_member 2 before the finally, long enough
+outer_own 2 8
+with_body 2 1
+match_arm 2 7
+method 2 3
+closure 4
+rebind_member 1 5
+rebind_scalar 1
+rebind_own_param 1 3
+rebind_other 2 4
+arg_temp_member 2 2 3
+aug_record 6 1
+aug_list 2 2
+aug_set 2 3
+aug_rebinds 1 4
+consuming_self 2 1
+async_body 2 10
+async_rebind 1 11

@@ -1,0 +1,1 @@
+main.py:26: error: 't' (@nocopy type 'Tok') cannot be returned from inside a try while its finally rebinds it: the pending return would need a copy of it. Bind the new value to another name

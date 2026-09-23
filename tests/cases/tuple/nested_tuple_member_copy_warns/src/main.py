@@ -56,7 +56,7 @@ def via_field(h: Holder, c: P) -> int32:
 
 def via_setitem(c: P) -> int32:
     # A subscript target names the sink "container" rather than "owned
-    # storage"; the direct level at this sink is a separate silent gap.
+    # storage".
     d: dict[int32, tuple[int32, tuple[int32, P]]] = {}
     d[0] = (9, (8, c))  # tpyc: warning(/copies P into container \(tuple element 1.1\)/)
     d[0][1][1].n = 47
