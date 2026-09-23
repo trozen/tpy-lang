@@ -16,7 +16,7 @@ from ..typesys import (
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRStorageInit, MIRStatement,
-    MIRCall, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
+    MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRRecordStorageInit, MIRRecordStorageKind,
@@ -27,10 +27,11 @@ from .nodes import (
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
+    statement_target,
 )
 from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
-from .call_contract import MIRCallSummary, MIRSummaryResult, MIRSummaryState, reader_call_problem, summary_problem
+from .call_contract import MIRCallSummary, MIRSummaryResult, MIRSummaryState, summary_problem
 from .validate import MIRDefiniteAssignmentError, MIRPresenceError, statement_reads, successors, validate_function
 
 
@@ -78,8 +79,12 @@ class _Coverage:
         summary = entry.summary
         _require(expr, summary_problem(summary) is None and summary.callee == callee,
                  "call summary signature or contract mismatch")
-        problem = reader_call_problem(summary)
-        _require(expr, problem is None, problem or "unsupported call consumer")
+        for write in summary.writes:
+            for field in write.path:
+                definition = self.definitions.get(expr, field.owner)
+                _require(expr, MIRField(MIRFieldId(field.owner, field.name), field.type) in definition.layout.fields,
+                         "call write field does not match record layout")
+                self.records[field.owner] = definition
         _require(expr, expr.result_type == callee.signature.return_type
                  and len(expr.args) == len(summary.parameters), "call signature mismatch")
         for arg, typ, ref in zip(expr.args, callee.signature.param_types, summary.parameters):
@@ -138,7 +143,8 @@ class _Coverage:
             case th.THIRArgTemp():
                 return expr in self.argument_temporaries
             case th.THIRCall():
-                return expr in self.calls and all(self.ordered_temporary_expression(arg) for arg in expr.args)
+                return (expr in self.calls and not self.calls[expr].writes
+                        and all(self.ordered_temporary_expression(arg) for arg in expr.args))
             case th.THIRBinOp():
                 return all(self.ordered_temporary_expression(arg) for arg in (expr.left, expr.right))
             case th.THIRValueSelect():
@@ -834,6 +840,10 @@ class _Coverage:
         try:
             if discard and isinstance(expr, th.THIRCtorCall):
                 typ = self.temporary(expr).type
+            elif discard and isinstance(expr, th.THIRCall) and isinstance(expr.result_type, VoidType):
+                _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
+                self.call(expr)
+                typ = expr.result_type
             else:
                 typ = self.expr(expr)
             if self.active_temporaries:
@@ -861,6 +871,7 @@ class _Coverage:
                          "unsupported literal value")
             case th.THIRCall():
                 self.call(expr)
+                writing = bool(self.calls[expr].writes)
             case th.THIRNarrowedRead():
                 _require(expr, self.inline_union(expr) == typ, "union scalar extraction required")
             case th.THIRIsinstance():
@@ -1491,19 +1502,22 @@ class _Builder:
         self.current = join
         return dest
 
+    def call(self, expr: th.THIRCall) -> MIRCall:
+        summary = self.calls[expr]
+        arguments = tuple(self.expr(arg) if ref is None else
+                          self.temp_holders[self.temp_plan.placement(arg).index]
+                          if isinstance(arg, th.THIRArgTemp) else
+                          self.bindings[arg.name if isinstance(arg, th.THIRName) else "self"]
+                          for arg, ref in zip(expr.args, summary.parameters))
+        return MIRCall(summary, arguments)
+
     def expr(self, expr: th.THIRExpr) -> MIRSlotId:
         self.initialize_temporaries(expr)
         typ = INT32 if isinstance(expr.result_type, IntLiteralType) else expr.result_type
         loc = expr.loc
         match expr:
             case th.THIRCall():
-                summary = self.calls[expr]
-                arguments = tuple(self.expr(arg) if ref is None else
-                                  self.temp_holders[self.temp_plan.placement(arg).index]
-                                  if isinstance(arg, th.THIRArgTemp) else
-                                  self.bindings[arg.name if isinstance(arg, th.THIRName) else "self"]
-                                  for arg, ref in zip(expr.args, summary.parameters))
-                return self.result(typ, MIRCall(summary, arguments), loc)
+                return self.result(typ, self.call(expr), loc)
             case th.THIRLiteral():
                 return self.result(typ, MIRConstant(expr.value), loc)
             case th.THIRCoerce():
@@ -1739,6 +1753,9 @@ class _Builder:
                     with self.full_expression(stmt.expr):
                         if isinstance(stmt.expr, th.THIRCtorCall):
                             self.place(stmt.expr)
+                        elif isinstance(stmt.expr, th.THIRCall) and isinstance(stmt.expr.result_type, VoidType):
+                            self.initialize_temporaries(stmt.expr)
+                            self.current.statements.append(MIRCallStmt(self.call(stmt.expr), loc))
                         else:
                             self.expr(stmt.expr)
                 case th.THIRReturn():
@@ -2025,7 +2042,8 @@ class _Builder:
             retained.update(v for v in receiver.fields if isinstance(v, MIRSlotId))
         for block in blocks:
             for stmt in block.statements:
-                retained.add(stmt.target.root)
+                if (target := statement_target(stmt)) is not None:
+                    retained.add(target.root)
                 retained.update(statement_reads(stmt))
                 if (isinstance(stmt, MIRAssign) and isinstance(stmt.storage_write, MIRRecordWrite)
                         and stmt.storage_write.rebind_owner is not None):

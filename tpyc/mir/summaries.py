@@ -3,13 +3,15 @@
 from ..thir import nodes as th
 from ..typesys import BOOL, INT32, VoidType, unwrap_readonly, unwrap_ref_type
 from .call_contract import MIRCallSummary, MIRParameterWrite, MIRSummaryResult, MIRSummaryState, summary_problem
+from .call_effects import resolve_call_writes
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
-from .dependencies import analyze_dependencies, resolve_referents
+from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyKind, MIRCall, MIRCompare, MIRConstant, MIRDeref,
+    MIRAlias, MIRAssign, MIRBodyKind, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFunction, MIRNot, MIRNotCovered, MIRPoint, MIRRead, MIRSlotKind, MIRValueKind,
+    statement_call,
 )
 from .validate import _cyclic_blocks, successors, validate_function
 
@@ -61,30 +63,41 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         return MIRSummaryResult.opaque(f"summary dependencies: {dependencies.reason}")
     parameters = {slot.id: i for i, slot in enumerate(params)}
     writes: set[MIRParameterWrite] = set()
+
+    def include_writes(origins: frozenset[MIRReferent] | None) -> str | None:
+        if origins is None:
+            return "summary missing write origin"
+        for origin in origins:
+            path = origin.place.projections
+            if (not origin.external or origin.place.root not in parameters or len(path) != 1
+                    or not isinstance(path[0], MIRField) or path[0].type not in (BOOL, INT32)):
+                return "summary unsupported write origin"
+            field = path[0]
+            if field not in definitions.get(declaration, field.id.owner).layout.fields:
+                return "summary write field differs from definition"
+            writes.add(MIRParameterWrite(parameters[origin.place.root], (
+                th.THIRFieldIdentity(field.id.owner, field.id.name, field.type),)))
+        return None
+
     for block in body.blocks:
         for index, stmt in enumerate(block.statements):
+            state = dependencies.referents.get(MIRPoint(block.id, index), {})
+            if (call := statement_call(stmt)) is not None:
+                problem = include_writes(resolve_call_writes(call, state, slots))
+                if problem is not None:
+                    return MIRSummaryResult.opaque(problem)
+            if isinstance(stmt, MIRCallStmt):
+                continue
             if not isinstance(stmt, MIRAssign) or stmt.storage_write is not None:
                 return MIRSummaryResult.opaque("summary storage operation")
             target = slots[stmt.target.root]
             if stmt.target.projections:
-                state = dependencies.referents.get(MIRPoint(block.id, index), {})
                 origins = resolve_referents(stmt.target, state, slots)
-                if not origins:
-                    return MIRSummaryResult.opaque("summary missing write origin")
-                for origin in origins:
-                    path = origin.place.projections
-                    if (not origin.external or origin.place.root not in parameters or len(path) != 1
-                            or not isinstance(path[0], MIRField) or path[0].type not in (BOOL, INT32)):
-                        return MIRSummaryResult.opaque("summary unsupported write origin")
-                    field = path[0]
-                    if field not in definitions.get(declaration, field.id.owner).layout.fields:
-                        return MIRSummaryResult.opaque("summary write field differs from definition")
-                    writes.add(MIRParameterWrite(parameters[origin.place.root], (
-                        th.THIRFieldIdentity(field.id.owner, field.id.name, field.type),)))
+                problem = include_writes(origins or None)
+                if problem is not None:
+                    return MIRSummaryResult.opaque(problem)
             match stmt.value:
                 case MIRCall():
-                    # The workspace supplies semantic evidence; validation
-                    # checks its contract and membership in this body's table.
                     pass
                 case MIRConstant() | MIRCompare() | MIRNot():
                     pass

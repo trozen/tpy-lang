@@ -8,7 +8,7 @@ from .dump import _location, _place
 from .liveness import MIRPoint
 from .nodes import (
     MIRAssign, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered,
-    MIRRecordWrite, MIRStorageInit, MIRRecordStorageInit, MIRTupleConstruct, MIRTupleIndex, MIRPlace,
+    MIRRecordWrite, MIRTupleConstruct, MIRTupleIndex, MIRPlace,
 )
 from .validate import successors, validate_function
 
@@ -34,7 +34,7 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
     members: dict[MIRPoint, tuple[MIRPlace, ...]] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
-            if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
+            if not isinstance(stmt, MIRAssign):
                 continue
             match stmt.value:
                 case MIRTupleConstruct(elements=elements):

@@ -196,10 +196,10 @@ the [bounded named-storage consumer](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) now
 uses that interface. Broader argument shapes and general M4 summary
 obligations remain open.
 
-The approved [call-effect batch](MIR_CALL_EFFECTS_PLAN.md) extends that interface
+The [call-effect batch](MIR_CALL_EFFECTS_PLAN.md) extends that interface
 with typed scalar-field writes, alias-aware forwarding and ordinary void
-setters. M4.3 leaf extraction is implemented; M4.4 call consumption and
-forwarding are in progress. Exception/cleanup, storage
+setters. M4.3 leaf extraction and M4.4 call consumption/forwarding are
+implemented for analysis only. Exception/cleanup, storage
 invalidation and escaping dependencies remain separate M3/M4 obligations.
 
 Batch work around shared invariants. Specify commit boundaries before coding,

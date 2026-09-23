@@ -9,7 +9,7 @@ from ..typesys import BOOL, INT32, NominalType, unwrap_readonly
 from .dump import _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
-    MIRAlias, MIRStatement, MIRStorageInit, MIRRecordStorageInit, MIRBlockId, MIRBorrow, MIRCall, MIRCompare, MIRConstant,
+    MIRAlias, MIRAssign, MIRStatement, MIRBlockId, MIRBorrow, MIRCall, MIRCompare, MIRConstant,
     MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFunction, MIRIsAlternative,
     MIRIsPresent, MIRMove, MIRNot, MIRNotCovered, MIROptionalConstruct,
     MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId,
@@ -18,6 +18,7 @@ from .nodes import (
     MIRContainerStructure, MIRContainerElements,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance,
+    statement_target,
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -75,8 +76,9 @@ def _coverage(fn: MIRFunction) -> str | None:
     places = [s.alias_source for s in fn.slots if s.alias_source is not None]
     for block in fn.blocks:
         for stmt in block.statements:
-            places.append(stmt.target)
-            if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
+            if (target := statement_target(stmt)) is not None:
+                places.append(target)
+            if not isinstance(stmt, MIRAssign):
                 continue
             match stmt.value:
                 case MIRBorrow(source=p) | MIRRead(source=p) | MIRCopy(source=p) | MIRUnionExtract(source=p):
@@ -147,7 +149,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     empty: frozenset[MIRReferent] = frozenset()
 
     def transfer(stmt: MIRStatement, state: dict[MIRPlace, frozenset[MIRReferent]]) -> None:
-        if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
+        if not isinstance(stmt, MIRAssign):
             return
         target, value = stmt.target, stmt.value
         result: dict[MIRPlace, frozenset[MIRReferent]] = {}

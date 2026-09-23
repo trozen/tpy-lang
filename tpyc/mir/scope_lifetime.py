@@ -15,7 +15,7 @@ from .nodes import (
     MIRNotCovered, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
     MIRRecordWrite, MIRRegionId, MIRSlotId, MIRSlotKind, MIRStorageDuration,
     MIRUnionPayload, MIRValueKind, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRTupleInitialization,
+    MIRTupleInitialization, statement_target,
 )
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind, MIREngagement
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -63,7 +63,8 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
     for block in fn.blocks:
         initialized[block.id] = set()
         for stmt in block.statements:
-            if stmt.target.projections or stmt.target.root not in roots:
+            target = statement_target(stmt)
+            if target is None or target.projections or target.root not in roots:
                 continue
             if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
                 initialized[block.id].add(stmt.target.root)

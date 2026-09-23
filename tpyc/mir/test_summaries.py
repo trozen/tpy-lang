@@ -10,7 +10,7 @@ from ..typesys import BOOL, INT32
 from .call_contract import MIRSummaryResult, MIRSummaryState, summary_problem
 from .definitions import MIRDefinitions
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
+from .nodes import MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
 from .summaries import summarize_function
 from .validate import MIRValidationError
 
@@ -160,6 +160,29 @@ def test_malformed_write_contract(artifacts: Artifacts, damage: str) -> None:
         case "untyped":
             write = 0
     assert summary_problem(replace(summary, writes=frozenset({write}))) is not None
+
+
+@pytest.mark.parametrize("damage", ["field", "origin"])
+def test_write_evidence_needs_definition_and_reachable_origin(artifacts: Artifacts, damage: str) -> None:
+    functions, bodies, definitions = artifacts
+    body = bodies["write"]
+    if damage == "field":
+        def stale(stmt: MIRAssign) -> MIRAssign:
+            if not stmt.target.projections:
+                return stmt
+            deref, field = stmt.target.projections
+            return replace(stmt, target=replace(stmt.target, projections=(
+                deref, replace(field, id=replace(field.id, name="missing")))))
+        body = replace(body, blocks=tuple(replace(b, statements=tuple(stale(s) for s in b.statements))
+                                         for b in body.blocks))
+        reason = "summary write field differs from definition"
+    else:
+        # A disconnected but well-typed block has no dependency state to justify a write.
+        extra = replace(body.blocks[0], id=MIRBlockId(body.id, max(b.id.index for b in body.blocks) + 1))
+        body = replace(body, blocks=(*body.blocks, extra))
+        reason = "summary missing write origin"
+    result = summarize_function(functions["write"], body, definitions)
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == reason
 
 
 def test_missing_or_mismatched_definition_cannot_supply_empty_effects(artifacts: Artifacts) -> None:

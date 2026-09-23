@@ -1886,6 +1886,12 @@ collection and supplies finalized entries to MIR lowering. Direct forward and
 imported calls with stable arguments are covered. This does not complete M4,
 fix existing production summary gaps or admit named argument temporaries.
 
+[M4.3/M4.4](MIR_CALL_EFFECTS_PLAN.md) extend the interface with typed scalar-field
+may-writes, void calls and alias-aware effect substitution/forwarding. Existing
+readonly named record temporaries are covered separately by the
+[named-argument storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md).
+General invalidation, escapes and non-normal exits remain open.
+
 ## Pitfalls and risks
 
 | Pitfall | M1 check / later obligation |

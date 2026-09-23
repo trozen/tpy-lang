@@ -8820,11 +8820,6 @@ independence; repeated writes retain the selected backing's identity. Broader
 move sources and owning aggregate operations remain outside this coverage.
 Source behavior, C++ emission and checker authority are unchanged.
 
-M4.3 extracts typed bool/int32-field may-writes from borrowed parameters,
-including writes through conditional aliases and void-returning setters.
-Call consumers still admit only scalar readers; source behavior is unchanged.
-See the [call-effect batch](MIR_CALL_EFFECTS_PLAN.md).
-
 The [M4.1/M4.2 interface](MIR_CALL_SUMMARY_INTERFACE_PLAN.md) supplies
 analysis-only MIR for direct ordinary calls with scalar results and
 proven absence of external mutation, retention and exceptional exits. It
@@ -8833,9 +8828,19 @@ summary scheduling. M4.1 implements the immutable states and bounded local
 extractor; M4.2 admits direct ordinary calls to known reader-only scalar-result
 callees through `--dump-mir`, including forward definitions and imported aliases.
 Arguments are stable scalar/record names or scalar literals. Calls retain their
-argument uses and produce unknown scalar values. Recursive, effectful, throwing
-or incompletely summarized callees remain uncovered. The
-[named argument storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) adds
+argument uses and produce unknown scalar values. Recursive, throwing and
+incompletely summarized callees remain uncovered.
+
+M4.3/M4.4 extend this interface with typed bool/int32-field may-writes from
+borrowed parameters, including writes through conditional aliases and
+void-returning setters. Calls remap those writes through actual referents and
+forwarding summaries; void setters have no result holder. MIR preserves alias
+and storage facts and excludes unproven eager/named-temporary evaluation order.
+Broader effects remain uncovered. These are analysis-only extensions; source
+behavior and production checking are unchanged.
+See the [call-effect batch](MIR_CALL_EFFECTS_PLAN.md).
+
+The [named argument storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) adds
 hook-free scalar-field record constructors as readonly borrowed arguments,
 with stable bool/int32 constructor operands. Shared THIR placement retains
 eager block lifetime, lazy optional backing, synthetic elif scopes and fresh

@@ -251,7 +251,7 @@ def test_owning_callers_remain_opaque_and_excluded_calls_stay_uncovered(artifact
     for name in ("eager", "lazy", "multiple", "branches", "loop"):
         assert workspace.summaries[th.THIRFunctionIdentity("main", name)].state is MIRSummaryState.OPAQUE
     for name, reason in (("nested_operand", "named constructor needs stable scalar operands"),
-                         ("effect", "call needs scalar reader summary")):
+                         ("effect", "named argument needs readonly record constructor")):
         body = next(value for key, value in workspace.bodies.items() if key.declaration.split("@")[0] == name)
         assert isinstance(body, MIRNotCovered) and body.reason == reason, body
 

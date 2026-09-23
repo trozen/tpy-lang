@@ -394,7 +394,33 @@ class MIRRecordStorageInit:
     loc: SourceLocation | None = None
 
 
-MIRStatement = MIRAssign | MIRStorageInit | MIRRecordStorageInit
+@dataclass(frozen=True)
+class MIRCallStmt:
+    call: MIRCall
+    loc: SourceLocation | None = None
+
+
+MIRStatement = MIRAssign | MIRStorageInit | MIRRecordStorageInit | MIRCallStmt
+
+
+def statement_target(stmt: MIRStatement) -> MIRPlace | None:
+    match stmt:
+        case MIRAssign(target=target) | MIRStorageInit(target=target) | MIRRecordStorageInit(target=target):
+            return target
+        case MIRCallStmt():
+            return None
+        case _:
+            raise TypeError("unknown MIR statement")
+
+
+def statement_call(stmt: MIRStatement) -> MIRCall | None:
+    match stmt:
+        case MIRAssign(value=MIRCall() as call) | MIRCallStmt(call=call):
+            return call
+        case MIRAssign() | MIRStorageInit() | MIRRecordStorageInit():
+            return None
+        case _:
+            raise TypeError("unknown MIR statement")
 
 
 @dataclass(frozen=True)

@@ -151,11 +151,14 @@ validation and analysis. Recursion and general effects/exits remain outside
 this slice. No summary feeds back into production
 sema, and no new checker authority is introduced.
 
-M4.3 adds typed parameter-relative scalar-field may-writes to leaf summaries,
-including void setters (`MIR_CALL_EFFECTS_PLAN.md`). Existing dependency facts
-resolve writes through aliases at their program points. Call lowering and
-standalone validation still require scalar reader summaries until the writing
-consumer is implemented; a richer certificate alone cannot widen admission.
+M4.3/M4.4 add typed parameter-relative scalar-field may-writes and void setters
+(`MIR_CALL_EFFECTS_PLAN.md`). Existing dependency facts resolve writes through
+aliases at their program points; call-site inspection and forwarding summaries
+share that substitution. `MIRCallStmt` represents void calls without a result
+slot. Their arguments stay live, while scalar-field writes preserve holder
+dependencies and storage engagement. Eager operand order and named-argument
+materialization retain conservative effect-aware gates. Layouts and mutable
+access are checked before these richer summaries can be consumed.
 
 Named scalar-field record arguments additionally share a prepared THIR storage
 plan with C++ emission (`MIR_NAMED_ARGUMENT_STORAGE_PLAN.md`). The shared queue

@@ -2,7 +2,7 @@
 
 from ..parse import SourceLocation
 from .nodes import (
-    MIRAlias, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRDeref, MIRField,
+    MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
@@ -18,6 +18,14 @@ from .validate import validate_function
 
 def _location(loc: SourceLocation | None) -> str:
     return f" @ {loc.line}:{loc.column}" if loc is not None else ""
+
+
+def _call(call: MIRCall) -> str:
+    callee = call.summary.callee.identity
+    args = ", ".join(f"%{sid.index}" for sid in call.arguments)
+    writes = sorted(f"param{w.parameter}." + ".".join(f.name for f in w.path) for w in call.summary.writes)
+    effects = "writes={" + ", ".join(writes) + "}" if writes else "reader"
+    return f"call {callee.module}::{callee.name}({args}) [{effects}, normal-return]"
 
 
 def _place(place: MIRPlace) -> str:
@@ -98,6 +106,9 @@ def dump_function(fn: MIRFunction) -> str:
     for block in fn.blocks:
         lines.append(f"bb{block.id.index}:")
         for stmt in block.statements:
+            if isinstance(stmt, MIRCallStmt):
+                lines.append(f"  {_call(stmt.call)}{_location(stmt.loc)}")
+                continue
             if isinstance(stmt, MIRRecordStorageInit):
                 lines.append(f"  initialize-record-wrapper {_place(stmt.target)} empty{_location(stmt.loc)}")
                 continue
@@ -152,10 +163,8 @@ def dump_function(fn: MIRFunction) -> str:
                     rhs = f"copy {_place(source)}"
                 case MIRMove(source=source):
                     rhs = f"move %{source.index}"
-                case MIRCall(summary=summary, arguments=arguments):
-                    callee = summary.callee.identity
-                    args = ", ".join(f"%{sid.index}" for sid in arguments)
-                    rhs = f"call {callee.module}::{callee.name}({args}) [reader, normal-return]"
+                case MIRCall() as call:
+                    rhs = _call(call)
                 case MIRCompare(op=op, left=left, right=right):
                     rhs = f"%{left.index} {op} %{right.index}"
                 case MIRNot(operand=operand):

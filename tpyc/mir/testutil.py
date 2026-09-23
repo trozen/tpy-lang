@@ -6,7 +6,7 @@ import operator
 from ..typesys import INT32_MIN, INT32_MAX
 
 from .nodes import (
-    MIRAlias, MIRBranch, MIRCompare, MIRConstant, MIRField, MIRFieldId,
+    MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind, MIRSlotId,
     MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind,
@@ -138,6 +138,8 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
     for _ in range(100):
         block = blocks[bid]
         for stmt in block.statements:
+            if isinstance(stmt, MIRCallStmt):
+                raise AssertionError("calls require callee execution, not summary evaluation")
             if isinstance(stmt, MIRRecordStorageInit):
                 physical[stmt.target.root] = OptionalValue()
                 values.pop(stmt.target.root, None)

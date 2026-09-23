@@ -156,7 +156,7 @@ def calls(body: MIRFunction) -> list[tuple[MIRPoint, MIRAssign]]:
 
 def test_forward_definitions_and_transitive_calls_are_known(artifacts: Artifacts) -> None:
     _, workspace, _, _, dump = artifacts
-    for name in ("read", "forward", "choice", "yes", "noarg_forward", "unknown_result"):
+    for name in ("read", "forward", "choice", "yes", "noarg_forward", "unknown_result", "write", "effect"):
         result = workspace.summaries[th.THIRFunctionIdentity("main", name)]
         assert result.state is MIRSummaryState.KNOWN, (name, result.reason)
     assert "call main::read" in dump and "call main::forward" in dump
@@ -215,7 +215,6 @@ def test_covered_caller_need_not_have_usable_summary(artifacts: Artifacts) -> No
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("effect", "call needs scalar reader summary"),
     ("recurse_a", "recursive or recursion-dependent call"),
     ("recurse_b", "recursive or recursion-dependent call"),
     ("recurse_user", "recursive or recursion-dependent call"),
@@ -228,7 +227,7 @@ def test_unproven_calls_never_acquire_empty_effects(artifacts: Artifacts, name: 
 
 
 @pytest.mark.parametrize("bad_field", [False, True])
-def test_valid_writer_summary_does_not_bypass_reader_consumer(artifacts: Artifacts, bad_field: bool) -> None:
+def test_writer_summary_requires_layout_and_mutable_actual(artifacts: Artifacts, bad_field: bool) -> None:
     workspace = artifacts[1]
     summary = workspace.summaries[th.THIRFunctionIdentity("main", "write")].summary
     assert summary is not None and summary.writes
@@ -243,7 +242,7 @@ def test_valid_writer_summary_does_not_bypass_reader_consumer(artifacts: Artifac
         replace(stmt, value=replace(stmt.value, summary=summary))
         if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall) else stmt
         for stmt in block.statements)) for block in body.blocks))
-    reason = "call write field does not match record layout" if bad_field else "call needs scalar reader summary"
+    reason = "call write field does not match record layout" if bad_field else "call record argument mismatch"
     with pytest.raises(MIRValidationError, match=reason):
         validate_function(body)
 

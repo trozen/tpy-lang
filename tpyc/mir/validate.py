@@ -11,7 +11,7 @@ from ..typesys import (
     UnionType, is_void_like_type, unwrap_readonly,
 )
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRDeref,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
@@ -23,11 +23,12 @@ from .nodes import (
     MIRContainerLayout, MIRContainerElements, MIRContainerStructure,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance,
+    statement_target,
 )
 from .presence import MIRPresence, _analyze_presence
 from .coverage import owned_tuple, scalar_wrapper
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .call_contract import reader_call_problem, summary_problem
+from .call_contract import summary_problem
 
 
 class MIRValidationError(ValueError):
@@ -154,6 +155,8 @@ def successors(term: MIRGoto | MIRBranch | MIRReturn) -> tuple[MIRBlockId, ...]:
 
 def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
     match stmt:
+        case MIRCallStmt(call=call):
+            return operands(call)
         case MIRStorageInit() | MIRRecordStorageInit():
             return ()
         case MIRAssign(target=target, value=value):
@@ -164,7 +167,7 @@ def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
 
 def source_definition(stmt: MIRStatement) -> MIRSlotId | None:
     match stmt:
-        case MIRStorageInit() | MIRRecordStorageInit():
+        case MIRStorageInit() | MIRRecordStorageInit() | MIRCallStmt():
             return None
         case MIRAssign(target=target):
             return None if target.projections else target.root
@@ -504,6 +507,21 @@ def _validate_structure(fn: MIRFunction) -> None:
         return (source.type == target.type and source.kind is target.kind
                 and (not source.readonly or target.readonly))
 
+    def validate_call(call: MIRCall) -> None:
+        _require(isinstance(call, MIRCall) and call.summary in call_summaries,
+                 "call summary does not belong to this body")
+        summary = call.summary
+        _require(len(call.arguments) == len(summary.parameters), "call arity mismatch")
+        for sid, typ, ref in zip(call.arguments, summary.callee.signature.param_types, summary.parameters):
+            _require(sid in slots, "unknown slot ID")
+            source = slots[sid]
+            if ref is None:
+                _require(source.type == typ and source.value_kind is MIRValueKind.SCALAR,
+                         "call scalar argument mismatch")
+            else:
+                _require(source.type == ref.type and source.value_kind is MIRValueKind.BORROWED_RECORD
+                         and (not source.readonly or ref.readonly), "call record argument mismatch")
+
     pred: dict[MIRBlockId, set[MIRBlockId]] = {b: set() for b in blocks}
     initialized_storage: set[MIRSlotId] = set()
     owning_blocks: set[MIRBlockId] = set()
@@ -514,15 +532,23 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(block.id.body == fn.id and block.id.index >= 0,
                  "foreign or invalid block ID")
         for stmt in block.statements:
-            _require(isinstance(stmt, (MIRAssign, MIRStorageInit, MIRRecordStorageInit)), "unknown instruction")
-            target_type = place_type(stmt.target, write=True)
-            target = slots[stmt.target.root]
+            _require(isinstance(stmt, (MIRAssign, MIRStorageInit, MIRRecordStorageInit, MIRCallStmt)), "unknown instruction")
+            target_place = statement_target(stmt)
+            if isinstance(stmt, MIRCallStmt):
+                validate_call(stmt.call)
+                _require(isinstance(stmt.call.summary.callee.signature.return_type, VoidType),
+                         "effect-only call needs void result")
             if fn.regions:
                 active = regions.chains[block.region]
-                for sid in (*statement_reads(stmt), stmt.target.root):
+                targets = () if target_place is None else (target_place.root,)
+                for sid in (*statement_reads(stmt), *targets):
                     _require(sid in slots, "unknown slot ID")
                     residence = slots[sid].residence
                     _require(residence is None or residence in active, "use outside binding residence")
+            if target_place is None:
+                continue
+            target_type = place_type(target_place, write=True)
+            target = slots[target_place.root]
             if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
                 match stmt:
                     case MIRRecordStorageInit():
@@ -789,24 +815,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and target_type == source_type, "storage borrow type mismatch")
                     _require(not readonly or target.readonly, "borrow increases access")
                 case MIRCall():
-                    _require(value.summary in call_summaries,
-                             "call summary does not belong to this body")
-                    summary = value.summary
-                    problem = reader_call_problem(summary)
-                    _require(problem is None, problem or "unsupported call consumer")
+                    validate_call(value)
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.SCALAR
-                             and target_type == summary.callee.signature.return_type,
+                             and target_type in (BOOL, INT32)
+                             and target_type == value.summary.callee.signature.return_type,
                              "call result type or target mismatch")
-                    _require(len(value.arguments) == len(summary.parameters), "call arity mismatch")
-                    for sid, typ, ref in zip(value.arguments, summary.callee.signature.param_types,
-                                             summary.parameters):
-                        source = slots[sid]
-                        if ref is None:
-                            _require(source.type == typ and source.value_kind is MIRValueKind.SCALAR,
-                                     "call scalar argument mismatch")
-                        else:
-                            _require(source.type == ref.type and source.value_kind is MIRValueKind.BORROWED_RECORD
-                                     and (not source.readonly or ref.readonly), "call record argument mismatch")
                 case MIRConstant():
                     _require((target_type == BOOL and type(value.value) is bool)
                              or (target_type == INT32 and type(value.value) is int
@@ -889,8 +902,9 @@ def _validate_structure(fn: MIRFunction) -> None:
     parameters = {s.id for s in fn.slots if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
     writes = {bid: {sid for s in blocks[bid].statements if (sid := source_definition(s)) is not None}
               for bid in reachable}
-    physical_writes = {bid: {s.target.root for s in blocks[bid].statements if not s.target.projections
-                             and (slots[s.target.root].record_storage is not MIRRecordStorageKind.OPTIONAL
+    physical_writes = {bid: {target.root for s in blocks[bid].statements
+                             if (target := statement_target(s)) is not None and not target.projections
+                             and (slots[target.root].record_storage is not MIRRecordStorageKind.OPTIONAL
                                   or isinstance(s, MIRRecordStorageInit))}
                        for bid in reachable}
     # Intersection is a must analysis; initialize at top, with a synthetic
@@ -943,9 +957,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                 _require(stmt.target.root in constructed, "record assignment before wrapper initialization")
             if (definition := source_definition(stmt)) is not None:
                 assigned.add(definition)
-            if not stmt.target.projections and (slots[stmt.target.root].record_storage is not MIRRecordStorageKind.OPTIONAL
-                                                or isinstance(stmt, MIRRecordStorageInit)):
-                constructed.add(stmt.target.root)
+            target = statement_target(stmt)
+            if (target is not None and not target.projections
+                    and (slots[target.root].record_storage is not MIRRecordStorageKind.OPTIONAL
+                         or isinstance(stmt, MIRRecordStorageInit))):
+                constructed.add(target.root)
         term = block.terminator
         match term:
             case MIRBranch():

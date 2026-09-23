@@ -1,6 +1,6 @@
 # MIR call effects: design and first writing-call batch
 
-Status: approved; M4.3 implemented, M4.4 in progress. This extends the
+Status: M4.3 and M4.4 implemented for analysis and debug inspection. This extends the
 implemented [M4.1/M4.2 interface](MIR_CALL_SUMMARY_INTERFACE_PLAN.md).
 It advances M4 and supplies foundations for M3 W3/W5; it does not complete
 general effects, exception handling, escape analysis or production admission.
@@ -34,8 +34,8 @@ referents, and writing contents never implicitly means ending storage.
 Source probes for scalar-returning writes, void setters, forwarding, local
 aliases, branch-selected aliases and repeated actual arguments compile and
 match CPython. `@nocopy` plus mutation observations guard reference semantics.
-Current MIR lowers the writing leaf bodies, but `summarize_function` returns
-Opaque for external writes or void results, leaving their callers uncovered.
+MIR summarizes these writing leaf bodies and remaps their effects through
+callers; unsupported storage operations, roots and exits remain Opaque.
 This is an analysis extension, unlike the source-lowering prerequisite found
 by the [range-head investigation](MIR_RANGE_HEAD_STORAGE_PLAN.md).
 
@@ -158,21 +158,19 @@ for named-argument materialization. Stable argument restrictions remain.
 Update debug output to display actual effects instead of labelling every
 call a reader. No compiler invocation outside MIR inspection gains new checks.
 
-## Two independently coherent commits
+## Implemented layers
 
-1. **M4.3: typed write contract and leaf extraction.** Add validated field paths,
+1. **M4.3: typed write contract and leaf extraction.** Validated field paths,
    direct write extraction through alias/branch provenance, and void-returning
-   leaf summaries. Keep an explicit old-consumer gate in lowering AND MIR
-   validation: a valid richer summary alone must not admit new calls before
-   their ordering and statement handling are ready.
-2. **M4.4: writing-call application and forwarding.** Add the no-result statement,
+   leaf summaries. Summary validity is separate from consumer coverage: a
+   richer certificate cannot bypass lowering and standalone validation gates.
+2. **M4.4: writing-call application and forwarding.** The no-result statement,
    shared validation/argument helpers, call-site remapping and transitive
-   summaries, effect-aware ordering and every statement consumer. Then relax
-   the first commit's consumer gate. Keep recursive/unknown callees Opaque.
+   summaries compose with effect-aware ordering and every statement consumer.
+   Recursive and unknown callees remain Opaque.
 
-Each commit carries its tests and docs. Review the cumulative branch, run the
-full forced suite after the final implementation, and leave two squashed
-commits on a branch for the user's merge.
+The remaining effect families and source-coverage boundaries are listed below;
+these layers do not change production checker authority.
 
 ## Scope matrix
 
@@ -189,6 +187,12 @@ Existing local tuple/Optional/union holders may remain live across these calls;
 that does not admit wrapper parameters or wrapper mutation. Existing readonly
 named temporary arguments remain subject to their stricter placement rules;
 this batch adds no mutable-temporary source or MIR admission.
+
+Constructor callers are exercised through an existing scalar-parameter tail
+with local record storage. Borrowed-record constructor parameters remain
+outside the current constructor lowering boundary. Holder controls use the
+existing tuple parameter and record-only union forms; mixed record/scalar
+unions and new tuple-local alias forms are not added here.
 
 ## Verification and pitfalls
 

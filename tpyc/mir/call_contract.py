@@ -74,12 +74,6 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
     return None
 
 
-def reader_call_problem(summary: MIRCallSummary) -> str | None:
-    """The scalar reader consumer deliberately lags the richer summary contract."""
-    return ("call needs scalar reader summary" if summary.writes
-            or summary.callee.signature.return_type not in (BOOL, INT32) else None)
-
-
 class MIRSummaryState(Enum):
     PENDING = auto()
     OPAQUE = auto()

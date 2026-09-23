@@ -7,6 +7,7 @@ from ..sema.analyzer import SemanticAnalyzer
 from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.reject import is_bodyless_binding
 from .definitions import MIRDefinitions
+from .call_effects import analyze_call_effects, dump_call_effects
 from .dependencies import analyze_dependencies, dump_dependencies
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
@@ -70,6 +71,7 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
                 lines.append(dump_scope_ends(scope.ends))
                 lines.append(dump_scope_inspection(scope))
                 lines.append(dump_dependencies(dependencies))
+                lines.append(dump_call_effects(analyze_call_effects(result, dependencies)))
                 lines.append(dump_storage(events))
                 lines.append(dump_retention(analyze_retention(result, liveness, dependencies, events)))
                 inspection = inspect_payload_lifetimes(result)

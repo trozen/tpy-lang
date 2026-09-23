@@ -1,7 +1,7 @@
 # Range-head temporary storage: investigation and dependency plan
 
-Status: investigation complete; revised implementation scope awaits approval.
-No compiler behavior has changed. This follows the implemented
+Status: investigated; range-head materialization is not implemented.
+This follows the implemented
 [ordinary-for body storage extension](MIR_FOR_ARGUMENT_STORAGE_PLAN.md).
 
 ## Observed boundary
@@ -21,8 +21,8 @@ conditional bounds, ordinary methods, constructor tails and a generic caller.
 The stable-argument spelling `range(read(cell))` compiles. CPython executes
 the temporary-bearing source, including zero-trip and conditional examples.
 
-The initial proposal to preserve existing C++ while adding MIR coverage was
-therefore incomplete: admitting this example requires source lowering first.
+Admitting this example requires source lowering and emitted sequencing,
+as well as MIR coverage; a MIR-only extension cannot accept the source.
 
 Three independent boundaries matter:
 
@@ -121,10 +121,10 @@ source diagnostics are intended. Existing snapshot changes require review
 and approval. Document actual admission in LANGUAGE_FEATURES and the M3
 checklist; do not mark W1/W2 complete on this slice.
 
-## Recommended next decision
+## Dependencies before implementation
 
-Advance the general M4 call-effect design before implementing this extension.
-The [call-effect plan](MIR_CALL_EFFECTS_PLAN.md) records the proposed first batch.
-It is already required by M3 cleanup and escape propagation and avoids making
+The [call-effect plan](MIR_CALL_EFFECTS_PLAN.md) records implemented bounded
+scalar-field effects and the remaining general effect families.
+General effects are required by M3 cleanup and escape propagation and avoid making
 a local range-head workaround the authority for source effects. Revisit the
 two-step delivery above when sequencing and cleanup boundaries are explicit.

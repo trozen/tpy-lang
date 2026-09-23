@@ -9,6 +9,7 @@ from types import MappingProxyType
 from ..typesys import BOOL
 from .nodes import (
     MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
+    statement_target,
     MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIRValueKind,
     MIREdge, MIRReturn, MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign, MIRRecordWrite, MIRRecordWriteMode,
@@ -113,7 +114,8 @@ def _join(states: list[_State]) -> _State:
 def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
               domains: dict[MIRSlotId, frozenset[int]] | None = None,
               aliases: dict[MIRSlotId, frozenset[MIRSlotId]] | None = None) -> _State:
-    if stmt.target.projections:
+    place = statement_target(stmt)
+    if place is None or place.projections:
         return state
     match stmt:
         case MIRRecordStorageInit():
@@ -287,7 +289,8 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
                     and dict(state.present).get(stmt.value.source) != frozenset({1})):
                 issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
                                                "iterator operation without current availability proof"))
-            places = [stmt.target] if stmt.target.projections else []
+            target = statement_target(stmt)
+            places = [target] if target is not None and target.projections else []
             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRRead, MIRUnionExtract, MIRBorrow)):
                 places.append(stmt.value.source)
             for place in places:
