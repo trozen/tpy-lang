@@ -56,6 +56,7 @@ from ...parse.nodes import (
 )
 from ...namespace import BindingKind
 from ...prescan import scan_reassigned_vars
+from ...sema.registration import receiver_self_type
 from ...typesys import (
     AnyType,
     IntLiteralType,
@@ -967,10 +968,17 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     if is_record_method and not func.is_method:
         _witness("fn.macro_staticmethod")
     has_self = is_record_method and not func.is_staticmethod
-    self_receiver = "self" if has_self else None
     record_name = (self_type.name
                    if is_record_method and isinstance(self_type, NominalType)
                    else None)
+    # An enum's companion wraps the member as a by-value `self` MEMBER (a
+    # C++ enum has no `this`): the body reads it as a plain name.
+    owner = (analyzer.registry.get_record(record_name)
+             if has_self and record_name is not None else None)
+    value_self = (receiver_self_type(owner, analyzer.registry)
+                  if owner is not None and owner.enum_companion_of is not None
+                  else None)
+    self_receiver = "self" if has_self and value_self is None else None
     # A literal-only group's per-stub emission binds the IMPL's signature:
     # only the return type and the injected literal facts are per-stub, so
     # no params override applies.
@@ -1028,7 +1036,10 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                                    if isinstance(stub.return_type, TpyType)
                                    else None)
     _seed_int_kind_tparams(func, record_name, analyzer, params_set)
-    if has_self:
+    if value_self is not None:
+        params_set["self"] = value_self
+        lc.member_self = True
+    elif has_self:
         params_set["self"] = self_type  # the record receiver, a field source
         if func.is_readonly:
             # A readonly method's `this` is const, so a borrow local off `self.opt`
@@ -1071,7 +1082,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             error_return_cpp=lc.error_return_cpp,
             body_terminates=stmts_terminate(func.body),
             receiver=(borrowed_record(self_type, func.is_readonly, analyzer)
-                      if has_self and not (
+                      if self_receiver is not None and not (
                           func.is_consuming or func.type_params or stub is not None
                           or func.is_property_getter or func.is_property_setter
                           or (func.name.startswith("__") and func.name.endswith("__"))

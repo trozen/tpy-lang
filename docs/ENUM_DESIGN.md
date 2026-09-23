@@ -101,7 +101,8 @@ class Direction(Enum):
 Rules:
 - Base class must be `Enum` (imported from `enum` module)
 - Members must have integer literal values or `auto()` calls
-- No methods in enum body (v1)
+- Methods are allowed (instance, `@property`, `@staticmethod`, `@classmethod`);
+  they are methods of a companion record, see "Methods" below
 - No duplicate member names
 - No duplicate values (aliases are a Python feature we reject for now)
 - Negative values allowed (`Error = -1`)
@@ -328,7 +329,8 @@ class Color(Enum):
 Parser validates:
 - Each statement is a simple `name = value` assignment
 - Value is an integer literal (positive or negative) or `auto()` call
-- No other statements (methods, nested classes, etc. are rejected in v1)
+- `def`s are parsed as methods of the companion record (`_parse_enum_method`);
+  other statements (nested classes, etc.) are rejected
 - `Pass` and docstrings are allowed but ignored
 
 ### `auto()` Recognition
@@ -390,7 +392,46 @@ enum type itself):
 - `.value` -> result type is the enum's underlying type (default `int32`)
 
 These are also special-cased in the expression analyzer -- not synthesized
-methods on a `RecordInfo`. Other attribute access on enum values is an error.
+methods on a `RecordInfo`. Other attribute access on enum values is an error,
+except a method call or a property read, which resolves through the companion
+record.
+
+### Methods
+
+A C++ `enum class` carries no members, so an `Enum` body's `def`s become the
+methods of a companion record `__enum_<Name>` (a `TpyRecord` in
+`module.records`, `enum_companion_of` set; `EnumInfo.companion` links the
+enum to its `RecordInfo`). They are ORDINARY methods -- instance methods keep
+their implicit `self`, `@property` / `@staticmethod` / `@classmethod` are what
+they are on a record -- and registration, body analysis and emission treat
+the companion as any other record, with three enum-specific inputs:
+`receiver_self_type` makes `self` and `Self` the enum, `cls` in a classmethod
+is an ENUM alias binding, and `registry.receiver_record(t)` answers the
+companion for an enum at the method / property lookups (instance call,
+property read, `Color.m()` / `mod.Color.m()` / `cls.m()` dispatch, and the
+THIR record-method arm). The enum TypeDef carries no record payload, so the
+record storage and lowering gates never see an enum as a record. The companion is
+in `module.records` and in no namespace: a walk over a module's records
+that exports, binds or validates names must skip it (the export loops, the
+native-module check and `install_binding` do).
+
+The one difference from a record method -- `self` is the member by value,
+not the object `this` points at -- is consumed by the renders only: the
+companion struct declares the member as its one field (`Color self;`), a
+call wraps its receiver (`__enum_Color{c}.label()`), the body reads `self`
+as a plain name (the field), and a closure captures it by value
+(`[self = self]`, the wrapper being a temporary). The receiver stays a
+postfix expression, so C++17 evaluates it before the arguments, and a static
+reached through it still evaluates it. The companion is
+spelled by `enum_companion_cpp` from the owner sema resolved, qualified by
+the declaring module everywhere else, since an importer or re-exporter has a
+`using` alias for the enum only. Rejected with
+located errors: dunders, the `Enum` hooks, a property setter, a method named
+`name`/`value`/`self` or like a member, generator/async methods, an annotated
+`self`, a default naming the enum, nested, `@native` and `@export` enums, a method taken
+as a value. An unbound call through the type (`Color.label(c)`) is rejected
+exactly as `Point.norm(p)` is for a record. Slices in TODO "Methods on enums
+-- deferred slices".
 
 ### `is` / `is not` Lowering
 
@@ -839,3 +880,4 @@ Enum tests should be CPython-compatible (no `no_cpython.txt` needed). CPython's
 | `error_enum_no_members` | Empty enum |
 | `error_enum_bad_value` | Non-integer member value |
 | `error_enum_mixed_auto` | Mixed auto() and explicit values (v1) |
+| `error_enum_method_*`, `error_enum_property_*`, `error_native_enum_methods`, `error_enum_companion_name` | Enum method rejections (@native enum, companion name spelled as a type, dunder, hook, property setter / write, name/value/self, member clash, generator/async, self annotation, default naming the enum, nested, as-value through the type and a member, cls-as-value, Optional receiver, unbound self-call, type args naming the enum) |

@@ -1,0 +1,1 @@
+main.py:8: error: 'Shape.name(self, ...)' calls a method of 'Shape' itself, which is not supported

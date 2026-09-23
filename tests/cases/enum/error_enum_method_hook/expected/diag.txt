@@ -1,0 +1,1 @@
+main.py:12: error: '_missing_' on enum 'Color': Enum hooks (_missing_, _generate_next_value_, ...) are not supported yet

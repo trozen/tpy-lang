@@ -137,6 +137,9 @@ from ...codegen_cpp.context import (
     free_callee_cpp,
     qualified_cpp_name,
     qualify_native_name,
+    enum_companion_cpp,
+    module_static_class_cpp,
+    static_class_cpp,
     view_key_target,
 )
 from ...codegen_cpp.protocols import (dynamic_adapter_type,
@@ -565,6 +568,7 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 
 
 from .checks import (
+    _enum_receiver,
     _is_move_source_facts,
     _own_opt_ptr_name_move_arg_facts,
     _r_own_opt_ptr_name_move,
@@ -9913,7 +9917,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 if e.obj.name not in declared:
                     note_detail("method.recv.name_absent")
                     raise ThirUnsupported(call_reject_reason("expr.method_call"))
-            elif not (_method_nonname_receiver_ok(e.obj, declared, analyzer,
+            elif not (
+                      # An enum member is the companion call's wrapped
+                      # value, lowered and gated as any enum argument is.
+                      _enum_receiver(e.obj, analyzer) is not None
+                      or _method_nonname_receiver_ok(e.obj, declared, analyzer,
                                                   frozenset(lc.pointers))
                       # An unproven ptr-Optional CALL receiver: the raw
                       # `T*` result feeds the deref_check member render
@@ -10455,6 +10463,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 for t in e.inferred_type_args)
         _mnu = (_assign_narrowed_union_recv(e.obj, declared, lc)
                 if isinstance(e.obj, TpyName) else None)
+        enum_wrap = _enum_companion_wrap(e, lc)
         if (fi is not None and fi.is_generator
                 and gen_recv_ctor_temp(e.obj, lc.analyzer)):
             # The generator-factory receiver lift: the frame/peephole
@@ -10510,10 +10519,18 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                                  (TpyCall, TpyMethodCall))),
                                  (fi is not None
                                   and (fi.cpp_template is not None
+                                       or enum_wrap is not None
                                        or bool(fi.native_function
                                                and fi.native_name))))),
-                field_prechecked=isinstance(e.obj, TpyFieldAccess),
-                subscript_prechecked=isinstance(e.obj, TpySubscript))
+                field_prechecked=(isinstance(e.obj, TpyFieldAccess)
+                                  and enum_wrap is None),
+                subscript_prechecked=(isinstance(e.obj, TpySubscript)
+                                      and enum_wrap is None))
+            if enum_wrap is not None:
+                recv_lowered = THIRCoerce(
+                    result_type=recv_lowered.result_type, expr=recv_lowered,
+                    coercion_name="enum_companion", wrap=enum_wrap,
+                    form=recv_lowered.form, loc=getattr(e.obj, "loc", None))
         method_node = _self_recv_positioned(THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
             receiver=recv_lowered,
@@ -10524,7 +10541,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             native_function_name=fi.native_name if fi.native_function else None,
             cpp_template=fi.cpp_template,
             method_targs_cpp=method_targs,
-            is_arrow=not deref_check and (
+            is_arrow=not deref_check and enum_wrap is None and (
                 (isinstance(e.obj, TpyName)
                  and (_ptr_read_derefs(e.obj.name, lc)
                       # A poly-narrowed `self` reads through the cast
@@ -11146,6 +11163,12 @@ def _borrow_tuple_bare_names(lc: '_LowerCtx',
     return frozenset(names)
 
 
+def _receiver_name(lc: '_LowerCtx') -> 'str | None':
+    """The name the body's receiver goes by: the method receiver, or an
+    enum companion's `self` member."""
+    return "self" if lc.member_self else lc.self_receiver
+
+
 def _self_capture_cpp(lc: '_LowerCtx') -> 'str | None':
     """The capture-list entry that hands a LAMBDA the enclosing receiver, or
     None when this body holds none it can reach. A plain method (`this`)
@@ -11153,7 +11176,11 @@ def _self_capture_cpp(lc: '_LowerCtx') -> 'str | None':
     the lambda copies that pointer; a resumable frame holds the receiver as
     its `__self` reference member, so the lambda binds the same referent --
     a copy of the HANDLE, never of the frame that stores it. The body read
-    spelling comes from `lc.self_cpp` and matches the entry's name."""
+    spelling comes from `lc.self_cpp` and matches the entry's name. An enum
+    companion's `self` is a by-value member of a temporary wrapper, so the
+    lambda copies the member itself."""
+    if lc.member_self:
+        return "self = self"
     if lc.self_receiver != "self":
         return None
     if lc.self_cpp == "this":
@@ -11308,7 +11335,7 @@ def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
         # variable the enclosing scope names directly.
         parts: list[str] = []
         for n in e.captured_names:
-            if n == lc.self_receiver and self_cap is not None:
+            if n == _receiver_name(lc) and self_cap is not None:
                 entry = self_cap
             else:
                 entry = _capture_entry_cpp(n, lc, declared,
@@ -12887,26 +12914,33 @@ def _compose_static_targs(cpp_class: str, record_info, cpp_method: str,
     return (f"{cpp_class}::{template_kw}{cpp_method}", targs)
 
 
+def _enum_companion_wrap(e: TpyMethodCall, lc: '_LowerCtx') -> 'str | None':
+    """The `{0}` wrap that turns an enum MEMBER receiver into its companion
+    record (`__enum_E{recv}`), or None for any other receiver. A C++ enum has
+    no members, so its methods live on the companion, which holds the member
+    as `self`; the call then renders as any member call. The receiver stays a
+    postfix expression, so C++ evaluates it before the arguments, and a static
+    reached through it still evaluates it. Keyed on the receiver's occurrence
+    type, so a narrowed `Optional[enum]` name qualifies."""
+    rt = _enum_receiver(e.obj, lc.analyzer)
+    if rt is None:
+        return None
+    owner = lc.analyzer.registry.receiver_record(rt)
+    assert owner is not None, rt
+    return enum_companion_cpp(owner, lc.analyzer.ctx.module_name) + "{{{0}}}"
+
+
 def _generic_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, ...] | None]':
     """Compose a same-module generic STATIC call's callee spelling --
     the static tail: the class name (implicit-stdlib peers qualify) over
     the shared class/method targs split."""
     analyzer = lc.analyzer
-    record_info = analyzer.registry.get_record(e.obj.name)
-    # `cls` inside a @classmethod names no record of its own -- spell sema's
-    # resolved owner, the same fallback the plain qualified arm takes.
-    if record_info is None and e.static_call_owner is not None:
-        record_info = e.static_call_owner
-        class_name = record_info.name
-    else:
-        class_name = e.obj.name
     compiler = get_current_compiler()
     implicit = (compiler._implicit_stdlib_set() if compiler is not None
                 else set())
-    if (record_info is not None and record_info.module is not None
-            and record_info.module in implicit
-            and record_info.module != analyzer.ctx.module_name):
-        class_name = qualified_cpp_name(record_info.module, record_info.name)
+    class_name, record_info = static_class_cpp(
+        analyzer.registry, implicit, analyzer.ctx.module_name, e.obj.name,
+        e.static_call_owner)
     return _compose_static_targs(class_name, record_info,
                                  escape_cpp_name(e.method), e, lc)
 
@@ -12919,12 +12953,12 @@ def _generic_module_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, 
     analyzer = lc.analyzer
     fi = e.resolved_function_info
     class_short = e.obj.field
-    record_info = analyzer.registry.find_record_by_qname(
-        f"{e.user_module_call}.{class_short}")
-    if record_info is not None and record_info.is_native and record_info.native_name:
-        cpp_class = record_info.native_name
-    else:
-        cpp_class = qualified_cpp_name(e.user_module_call, class_short)
+    record_info = (e.static_call_owner
+                   or analyzer.registry.find_record_by_qname(
+                       f"{e.user_module_call}.{class_short}"))
+    cpp_class = module_static_class_cpp(
+        analyzer.registry, e.user_module_call, class_short,
+        owner=e.static_call_owner)
     cpp_method = (fi.native_name if fi is not None and fi.native_name
                   else escape_cpp_name(e.method))
     return _compose_static_targs(cpp_class, record_info, cpp_method, e, lc)

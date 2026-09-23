@@ -750,7 +750,8 @@ class ExpressionAnalyzer:
                     return self._apply_own_wrapper(expr, result)
                 if binding.kind == BindingKind.BUILTIN:
                     return binding.type
-                if (expr.name == "cls" and binding.kind == BindingKind.RECORD
+                if (expr.name == "cls"
+                        and binding.kind in (BindingKind.RECORD, BindingKind.ENUM)
                         and self.ctx.func.current_function is not None
                         and self.ctx.func.current_function.is_classmethod):
                     raise self.ctx.error(
@@ -1759,7 +1760,7 @@ class ExpressionAnalyzer:
             return None
 
         if isinstance(typ, NominalType) and typ.is_record:
-            record = self.ctx.registry.get_record_for_type(typ)
+            record = self.ctx.registry.receiver_record(typ)
             if not record:
                 return None
             # Multi-base same-name ambiguity: when the child doesn't declare
@@ -1988,8 +1989,8 @@ class ExpressionAnalyzer:
         # caller fall through to a generic "can't treat class as value".
         if not self.ctx.registry.is_subclass_of_record(current_rec, record_info):
             raise self.ctx.error(
-                f"'{record_info.name}' is not an ancestor of '{current_rec.name}'; "
-                f"cannot access '{record_info.name}.{expr.field}' here",
+                f"'{record_info.display_name}' is not an ancestor of '{current_rec.display_name}'; "
+                f"cannot access '{record_info.display_name}.{expr.field}' here",
                 expr,
             )
 
@@ -2035,6 +2036,13 @@ class ExpressionAnalyzer:
                     if expr.field in enum_info_of(enum_type).members:
                         expr.enum_member_of = enum_type
                         return enum_type
+                    companion = self.ctx.registry.receiver_record(enum_type)
+                    if (companion is not None
+                            and companion.get_method_overloads(expr.field)):
+                        raise self.ctx.error(
+                            f"'{enum_type.name}.{expr.field}' is a method; an enum "
+                            f"method cannot be used as a value yet -- call it",
+                            expr)
                     raise self.ctx.error(
                         f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)
 
@@ -2133,9 +2141,21 @@ class ExpressionAnalyzer:
                 return STRVIEW
             elif expr.field == "value":
                 return enum_info_of(actual_type).underlying_type
-            raise self.ctx.error(
-                f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
-                f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
+            # A property of the enum's companion falls through to the record
+            # lookup below; a plain method read is not a value yet.
+            companion = self.ctx.registry.receiver_record(actual_type)
+            if (companion is not None
+                    and self.protocols.lookup_record_property(companion, expr.field) is not None):
+                pass
+            elif companion is None or not companion.get_method_overloads(expr.field):
+                raise self.ctx.error(
+                    f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
+                    f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
+            else:
+                raise self.ctx.error(
+                    f"'{expr.field}' is a method of enum '{actual_type.name}'; "
+                    f"an enum method cannot be used as a value yet -- call it",
+                    expr)
 
         # Deref chain loop -- resolves through Ptr (mutable and readonly) and any Deref[T] type
         current_type = actual_type

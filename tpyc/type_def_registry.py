@@ -113,6 +113,9 @@ class EnumInfo:
     # per-member static_assert pinning each TPy-declared value to the C++
     # side. False for auto()/native_member() (no assertion; C++ is the truth).
     has_explicit_values: bool = False
+    # The companion record carrying the enum body's methods, or None. The
+    # enum itself stays record-free, so no record gate mistakes it for one.
+    companion: "Optional[RecordInfo]" = None
 
     @property
     def member_value_map(self) -> dict[str, int]:

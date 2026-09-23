@@ -1,0 +1,1 @@
+main.py:14: error: 'warm' on enum 'Color': an enum member is immutable, so a property setter has nothing to set

@@ -5973,7 +5973,7 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property_getter is not None:
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             actual = unwrap_readonly(obj_type) if obj_type else None
-            record = self.ctx.registry.get_record_for_type(actual) if isinstance(actual, NominalType) else None
+            record = self.ctx.registry.receiver_record(actual) if isinstance(actual, NominalType) else None
             prop = self.protocols.lookup_record_property(record, stmt.target.field) if record else None
             if prop and prop.setter:
                 stmt.target.property_setter = True

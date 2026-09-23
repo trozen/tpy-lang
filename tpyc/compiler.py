@@ -2249,7 +2249,7 @@ class Compiler:
         # stdlib registration loop and shadow the real RecordInfo at
         # conformance-check time.
         for record in ast.all_records():
-            if record.builtin_type_key:
+            if record.builtin_type_key or record.enum_companion_of is not None:
                 continue
             if record.name in compiled.exports.records:
                 continue
@@ -2938,8 +2938,11 @@ class Compiler:
                     exports.functions[func.name] = func_infos
                     exported_funcs.add(func.name)
 
-        # Export all user-defined records (including nested)
+        # Export all user-defined records (including nested). An enum's
+        # companion is not a name: importers reach it through the enum.
         for record in compiled.ast.all_records():
+            if record.enum_companion_of is not None:
+                continue
             record_info = analyzer.registry.get_record(record.name)
             if record_info:
                 exports.records[record.name] = record_info
@@ -3841,8 +3844,11 @@ class Compiler:
                             lineno=func.loc.line if func.loc else None)
                 for record in compiled.ast.records:
                     if record.linkage == RL.DEFAULT and not record.builtin_type_key:
+                        what = (f"methods on enum '{record.enum_companion_of}'"
+                                if record.enum_companion_of is not None
+                                else f"non-native class '{record.name}'")
                         raise CompileError(
-                            f"non-native class '{record.name}' not allowed "
+                            f"{what} not allowed "
                             f"in native_module ('{compiled.name}' is declaration-only)",
                             compiled.name, compiled.path,
                             lineno=record.loc.line if record.loc else None)

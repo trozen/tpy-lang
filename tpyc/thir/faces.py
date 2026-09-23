@@ -618,6 +618,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # cross-module, @native, and concrete-arg generic records all qualify), so
     # native / generic field receivers ride the same face as a plain one.
     "method.recv.record_field",
+    "method.recv.enum_prop",        # enum member `.name` / `.value` receiver
     # Ptr[T]-VALUE field receiver (`self.ptr.__deref__()` ->
     # `::tpy::deref_check(this->ptr)`): the member read composes the
     # Ptr/@cpp_template family like a Ptr NAME receiver.

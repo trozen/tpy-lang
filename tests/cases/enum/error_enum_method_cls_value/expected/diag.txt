@@ -1,0 +1,1 @@
+main.py:12: error: 'cls' can only be used to construct ('cls(...)') or to access class members ('cls.NAME') -- passing or returning a class as a value needs 'type[T]', which is not supported yet

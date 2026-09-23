@@ -499,6 +499,20 @@ def _check_no_return_value_in_generator(
             _check_no_return_value_in_generator(child_body, func_name)
 
 
+ENUM_COMPANION_PREFIX = "__enum_"
+
+
+def _default_names_enum(expr: 'TpyExpr | None', enum_name: str,
+                        member_names: set[str]) -> bool:
+    """True when a parameter default reads the enclosing enum (`Color.Red`)
+    or a bare member name -- undefined at class-body time in CPython."""
+    if isinstance(expr, TpyName):
+        return expr.name == enum_name or expr.name in member_names
+    if isinstance(expr, TpyFieldAccess):
+        return _default_names_enum(expr.obj, enum_name, member_names)
+    return False
+
+
 def _positional_ast_args(node: 'ast.FunctionDef | ast.AsyncFunctionDef') -> 'list[ast.arg]':
     """All positional params in declaration order. CPython's ast splits
     them into posonlyargs (before '/') and args; dropping posonlyargs
@@ -1104,6 +1118,8 @@ class Parser:
                     # the fully-populated NominalType + TypeDef.enum payload.
                     self.registry.register_enum_placeholder(
                         result.name, module=self._public_module())
+                    if result.companion is not None:
+                        records.append(result.companion)
                 else:
                     records.append(result)
                     # Register the record type
@@ -1852,6 +1868,11 @@ class Parser:
                         raise ParseError(
                             f"Nested enums are not supported inside generic classes "
                             f"('{node.name}' has type parameters)", item)
+                    if nested.companion is not None:
+                        raise ParseError(
+                            f"Methods on a nested enum are not supported yet "
+                            f"('{nested.name}' inside '{node.name}') -- declare "
+                            f"the enum at module level", item)
                     # Register immediately with dotted name so forward references
                     # within the same class body work (e.g., kind: Container.Kind)
                     dotted_name = f"{node.name}.{nested.name}"
@@ -2142,6 +2163,7 @@ class Parser:
         auto_form: str | None = None
         has_explicit = False
         auto_value = 1  # auto() starts at 1, matching CPython
+        method_nodes: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
 
         for stmt in node.body:
             # Skip pass and docstrings
@@ -2151,21 +2173,15 @@ class Parser:
                     and isinstance(stmt.value.value, str)):
                 continue
 
+            if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                # Parsed after the member table is complete: the collision
+                # checks need the whole enum.
+                method_nodes.append(stmt)
+                continue
             if not isinstance(stmt, ast.Assign):
-                # Name the rule for a method specifically: it is the shape users
-                # reach for (`Color.from_str`, `c.label()`) and the generic
-                # node-kind message gives them nothing to act on.
-                if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    raise ParseError(
-                        f"Methods on enums are not supported yet, so '{stmt.name}' "
-                        f"cannot be declared here -- an enum body takes only member "
-                        f"assignments (name = value). Use a module-level function "
-                        f"taking the enum as a parameter.",
-                        stmt,
-                    )
                 raise ParseError(
-                    f"Enum body must contain only member assignments (name = value), "
-                    f"got {type(stmt).__name__}",
+                    "Enum body must contain only member assignments (name = value) "
+                    "and methods",
                     stmt,
                 )
             if len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
@@ -2254,6 +2270,27 @@ class Parser:
         if not members:
             raise ParseError(f"Enum '{node.name}' must have at least one member", node)
 
+        companion: TpyRecord | None = None
+        if method_nodes and is_native:
+            raise ParseError(
+                f"Methods on @native enum '{node.name}' are not supported: a "
+                f"@native type is declaration-only -- use a module-level "
+                f"function taking the enum", method_nodes[0])
+        if method_nodes:
+            member_names = {m for m, _, _ in members}
+            property_names: set[str] = set()
+            methods = []
+            for fn in method_nodes:
+                parsed = self._parse_enum_method(fn, node.name, member_names,
+                                                 property_names)
+                if parsed.is_property_getter:
+                    property_names.add(parsed.name)
+                methods.append(parsed)
+            companion = TpyRecord(
+                name=f"{ENUM_COMPANION_PREFIX}{node.name}", fields=[],
+                methods=methods, enum_companion_of=node.name,
+                loc=self._loc(node))
+
         return TpyEnum(
             name=node.name, members=members,
             is_int_enum=is_int_enum, underlying_type_name=underlying_type_name,
@@ -2262,8 +2299,78 @@ class Parser:
             has_explicit_values=has_explicit,
             exposed_to_host=exposed_to_host,
             docstring=ast.get_docstring(node, clean=False),
+            companion=companion,
             loc=self._loc(node),
         )
+
+    def _parse_enum_method(
+        self, fn: 'ast.FunctionDef | ast.AsyncFunctionDef', enum_name: str,
+        member_names: set[str], property_names: set[str],
+    ) -> TpyFunction:
+        """A `def` in an `Enum` body: an ordinary method of the enum's
+        companion record. The rejected forms have no meaning on an enum or
+        are not supported yet; each is a located error, never dropped."""
+        name = fn.name
+        if name.startswith("__") and name.endswith("__"):
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': dunder methods on enums are "
+                f"not supported yet (an enum prints, compares and hashes by "
+                f"its intrinsic rules) -- define a plain method instead", fn)
+        if len(name) > 2 and name.startswith("_") and name.endswith("_"):
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': Enum hooks (_missing_, "
+                f"_generate_next_value_, ...) are not supported yet", fn)
+        if name in ("name", "value"):
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': '{name}' is the intrinsic "
+                f"member property and cannot be redefined as a method", fn)
+        if name in member_names:
+            raise ParseError(
+                f"'{name}' is defined both as a member and as a method of "
+                f"enum '{enum_name}'", fn)
+        if name == "self":
+            # The compiled enum holds its member under that name.
+            raise ParseError(
+                f"'self' on enum '{enum_name}': an enum method cannot be "
+                f"named 'self'", fn)
+        parsed = self._parse_method(fn, enum_name, property_names=property_names)
+        if parsed.is_property_setter:
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': an enum member is immutable, "
+                f"so a property setter has nothing to set", fn)
+        if parsed.is_override or parsed.has_auto_readonly_decorator:
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': @override / @auto_readonly "
+                f"do not apply to an enum method (nothing is inherited and "
+                f"the member is passed by value)", fn)
+        if (parsed.linkage != FunctionLinkage.DEFAULT or parsed.native_name
+                or parsed.cpp_template):
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': @native / @cpp_template "
+                f"are not supported on enum methods", fn)
+        if parsed.pending_macros:
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': decorator "
+                f"'{bare_name(parsed.pending_macros[0][0])}' is not supported "
+                f"on enum methods", fn)
+        if parsed.self_annotation is not None:
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': 'self' is the enum member "
+                f"and cannot be annotated", fn)
+        if parsed.is_generator or parsed.is_async:
+            raise ParseError(
+                f"'{name}' on enum '{enum_name}': "
+                f"{'generator' if parsed.is_generator else 'async'} methods "
+                f"on enums are not supported yet -- use a module-level "
+                f"function taking the enum", fn)
+        for dflt in parsed.defaults:
+            if _default_names_enum(dflt, enum_name, member_names):
+                raise ParseError(
+                    f"'{name}' on enum '{enum_name}': a default value cannot "
+                    f"name '{enum_name}' or its members inside the enum body "
+                    f"(CPython has not created the enum yet, so a member name "
+                    f"there is its raw value, not the member)", fn)
+        return parsed
 
     _RECORD_LINKAGE_MAP: dict[str, RecordLinkage] = {
         qnames.NATIVE: RecordLinkage.NATIVE,

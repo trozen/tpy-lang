@@ -1,0 +1,1 @@
+main.py:9: error: 'self' on enum 'Color': an enum method cannot be named 'self'

@@ -1,0 +1,1 @@
+main.py:9: error: 'g' on enum 'Color': 'self' is the enum member and cannot be annotated

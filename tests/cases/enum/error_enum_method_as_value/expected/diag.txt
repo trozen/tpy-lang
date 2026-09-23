@@ -1,0 +1,1 @@
+main.py:15: error: 'Color.label' is a method; an enum method cannot be used as a value yet -- call it

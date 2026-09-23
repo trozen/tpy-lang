@@ -1149,6 +1149,7 @@ class _LowerCtx:
                  "top_level_scope", "global_binding_scope", "global_ptr_slots", "global_slot_assigned",
                  "in_for_body",
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
+                 "member_self",
                  "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
                  "_btuple_const_computed", "_alias_taken_memo")
 
@@ -1250,6 +1251,10 @@ class _LowerCtx:
         self.self_receiver = self_receiver
         self.self_cpp = self_cpp
         self.self_is_pointer = self_is_pointer
+        # An enum companion's method: `self` is the companion's by-value
+        # MEMBER, read as a plain name and copied into a closure (the
+        # companion is a temporary wrapper).
+        self.member_self = False
         # The owning record's name when `func` is a method: `_param_is_const`
         # resolves a record param's const verdict from the method's FunctionInfo
         # on this record, not the free-function registry.

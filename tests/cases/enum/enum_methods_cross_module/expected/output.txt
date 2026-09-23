@@ -1,0 +1,8 @@
+plain: Shade.Dark 10
+alias: Shade.Light 20
+qualified: Shade.Light 20
+member: Shade.Dark Shade.Dark
+collision: tones:Loud Shade.Dark
+qualified static: Shade.Loud Shade.Loud
+property: False True
+generic: x 3 4

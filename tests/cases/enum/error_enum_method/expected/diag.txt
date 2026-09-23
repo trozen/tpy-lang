@@ -1,1 +1,0 @@
-main.py:11: error: Methods on enums are not supported yet, so 'is_warm' cannot be declared here -- an enum body takes only member assignments (name = value). Use a module-level function taking the enum as a parameter.

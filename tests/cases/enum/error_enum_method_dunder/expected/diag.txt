@@ -1,0 +1,1 @@
+main.py:10: error: '__str__' on enum 'Color': dunder methods on enums are not supported yet (an enum prints, compares and hashes by its intrinsic rules) -- define a plain method instead

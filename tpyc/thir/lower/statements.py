@@ -554,6 +554,7 @@ from .checks import (
     _user_iterator_iterable,
 )
 from .expressions import (
+    _self_capture_cpp,
     _whole_optional_bare,
     _is_own_param,
     _lower_module_var,
@@ -5613,12 +5614,15 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     # (`self_captures_this`: the body renders the receiver through `this`, so
     # the capture is the pointer -- alias semantics in every capture mode).
     # Only the PLAIN method receiver is admitted; the resumable `__self` frame
-    # member spells its own form.
-    self_capture_this = (lc.self_receiver == "self" and lc.self_cpp == "this"
-                         and lc.self_is_pointer)
-    if "self" in stmt.captured_names and not self_capture_this:
+    # member spells its own form. An enum companion's `self` is a by-value
+    # member of a temporary wrapper, so it is copied (`self = self`).
+    self_capturable = ((lc.self_receiver == "self" and lc.self_cpp == "this"
+                        and lc.self_is_pointer)
+                       or lc.member_self)
+    if "self" in stmt.captured_names and not self_capturable:
         note_detail("nesteddef.self_capture")
         raise ThirUnsupported(stmt_reject_reason(stmt))
+    self_capture = _self_capture_cpp(lc)
     # A narrowed capture's reads rename to an OUTER extraction alias (or the
     # poly-narrow `(*__p_ptr)` spelling) the capture list does not carry, so
     # it rejects.
@@ -5635,7 +5639,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
             parts = []
             for n in stmt.captured_names:
                 if n == "self":
-                    parts.append("this")
+                    parts.append(self_capture)
                     continue
                 cpp_n = escape_cpp_name(n)
                 if n in stmt.ref_captures:
@@ -5647,7 +5651,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
             capture = f"[{', '.join(parts)}]"
         else:
             capture = "[" + ", ".join(
-                "this" if n == "self" else f"&{escape_cpp_name(n)}"
+                self_capture if n == "self" else f"&{escape_cpp_name(n)}"
                 for n in stmt.captured_names) + "]"
     else:
         capture = "[]"

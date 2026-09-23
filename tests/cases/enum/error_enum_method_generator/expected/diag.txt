@@ -1,0 +1,1 @@
+main.py:11: error: 'counts' on enum 'Color': generator methods on enums are not supported yet -- use a module-level function taking the enum

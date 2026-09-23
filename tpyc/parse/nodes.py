@@ -1750,6 +1750,17 @@ class TpyRecord:
     # TpyFunction.exposed_to_host; the record keeps DEFAULT linkage (the glue
     # is separate). Set only by the parser inside an ext_module.
     exposed_to_host: bool = False
+    # Set on the companion record an `Enum` body's methods live on
+    # (`__enum_<Name>`): the enum's name. The companion is never bound in the
+    # module namespace; only the enum's EnumInfo reaches it.
+    enum_companion_of: str | None = None
+
+    @property
+    def display_name(self) -> str:
+        """The name a diagnostic spells: an enum's companion is the enum the
+        user wrote, never its internal record name."""
+        return self.enum_companion_of or self.name
+
     # The class body's leading string literal. A function/method keeps its
     # docstring as `body[0]`, but a record has no statement body to read it
     # back from, so the text is captured here at parse time. Consumed only by
@@ -1827,6 +1838,8 @@ class TpyEnum:
     # reason TpyRecord's is: there is no statement body to read it back
     # from. Consumed only by the CPython-extension glue.
     docstring: str | None = None
+    # The record carrying the body's `def`s, or None when it declares none.
+    companion: 'TpyRecord | None' = None
     loc: SourceLocation | None = None
 
 

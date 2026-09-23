@@ -43,8 +43,8 @@ Features:
   "Iterating a tuple"
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
   TODO: "Nested comprehensions"
-- Methods on enums (instance, `@staticmethod`, `@classmethod`; covers
-  `Color.from_str`) -- TODO: "Methods on enums"
+- [SHIPPED] Methods on enums (instance, `@staticmethod`, `@classmethod`;
+  covers `Color.from_str`) -- TODO: "Methods on enums"
 - `collections.defaultdict` -- TODO: "collections: the rest of the
   module"
 - [SHIPPED] Interop: Optional/None at the `@export` boundary (param +
