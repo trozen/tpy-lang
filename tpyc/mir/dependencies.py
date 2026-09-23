@@ -137,6 +137,17 @@ def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependenc
     return _dependencies(_validated_function(fn), liveness)
 
 
+def resolve_call_returns(call: MIRCall, state: MIRReferents,
+                         slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent] | None:
+    origins: set[MIRReferent] = set()
+    for index in call.summary.returns:
+        refs = resolve_referents(MIRPlace(call.arguments[index]), state, slots)
+        if not refs:
+            return None
+        origins.update(refs)
+    return frozenset(origins)
+
+
 def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
     fn = prepared.function
     if liveness.function is not fn:
@@ -154,6 +165,9 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
         target, value = stmt.target, stmt.value
         result: dict[MIRPlace, frozenset[MIRReferent]] = {}
         match value:
+            case MIRCall():
+                if value.summary.callee.signature.borrowed_result is not None:
+                    result[target] = resolve_call_returns(value, state, slots) or empty
             case MIRIteratorInit(source=source):
                 result[target] = frozenset(
                     MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
@@ -185,7 +199,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 leaf = MIRPlace(target.root, (MIRUnionPayload(alternative),))
                 if source is not None and leaf in leaves[target.root]:
                     result[leaf] = state.get(MIRPlace(source), empty)
-            case (MIRConstant() | MIRCall() | MIRRead() | MIRCompare() | MIRNot() | MIRIsPresent()
+            case (MIRConstant() | MIRRead() | MIRCompare() | MIRNot() | MIRIsPresent()
                   | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove() | MIRIteratorHasNext()
                   | MIRRangeAdvance()):
                 pass
@@ -236,6 +250,11 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
         for index in range(len(block.statements) + 1):
             point = MIRPoint(block.id, index)
             points[point] = MappingProxyType(state.copy())
+            if index < len(block.statements):
+                stmt = block.statements[index]
+                if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+                        and resolve_call_returns(stmt.value, state, slots) is None):
+                    return MIRNotCovered(fn.id, "dependencies", "missing call return origin", stmt.loc)
             live = {leaf: refs for leaf, refs in state.items() if leaf.root in liveness.points[point]}
             active[point] = MappingProxyType(live)
             inverse: dict[MIRReferent, set[MIRPlace]] = {}

@@ -25,6 +25,8 @@ def _call(call: MIRCall) -> str:
     args = ", ".join(f"%{sid.index}" for sid in call.arguments)
     writes = sorted(f"param{w.parameter}." + ".".join(f.name for f in w.path) for w in call.summary.writes)
     effects = "writes={" + ", ".join(writes) + "}" if writes else "reader"
+    if call.summary.callee.signature.borrowed_result is not None:
+        effects += ", returns={" + ", ".join(f"param{i}" for i in sorted(call.summary.returns)) + "}"
     return f"call {callee.module}::{callee.name}({args}) [{effects}, normal-return]"
 
 

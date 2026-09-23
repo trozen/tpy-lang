@@ -1,0 +1,11 @@
+selected True 22
+write-back True 11 33
+selected False 11
+write-back False 33 22
+reseated 41 42
+repeated 43
+readonly 44
+lazy True 71
+lazy False 72
+method 51
+constructor 61

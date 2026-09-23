@@ -19,6 +19,17 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 
 ## Compiler bugs
 
+- **[MED small] (rejects valid code, located) A ternary cannot join mutable and readonly aliases of the same record at a readonly return.** [`readonly-record-ternary-join-rejected`]
+  In a function taking `a: Cell` and `b: readonly[Cell]` and returning
+  `readonly[Cell]`, `return a if flag else b` rejects because the ternary
+  branches have incompatible types. The equivalent separate branches,
+  `if flag: return a` followed by `return b`, compile; both return an alias
+  through the readonly result. The rejection happens during semantic analysis,
+  before THIR or MIR. Audit common-type selection and expected-type propagation
+  for readonly reference branches alongside Optional/union and other readonly
+  joins; neither branch should acquire mutable access or require a copy.
+  Needs `/tpy-fix-bug`.
+
 - **[MED small] (ill-formed C++, toolchain-caught) Binding a borrowed result from an `@readonly` free function drops return constness.** [`readonly-free-return-binding-drops-const`]
   With a plain reference-type `Cell`, a free function decorated `@readonly`
   and defined as `def keep(cell: Cell) -> Cell: return cell` emits
@@ -31,8 +42,8 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
   access. An explicit `readonly[Cell]` return annotation works in the probe.
   Audit the shared result-access decision across declaration, reseat,
   forwarding and sibling callable forms before fixing individual consumers.
-  A selected signature fact
-  must preserve emitted access and refuse mismatched caller bindings.
+  MIR's selected signature fact preserves emitted access and refuses
+  mismatched caller bindings.
   Needs `/tpy-fix-bug`.
 
 - **[LOW small] (rejects valid code, loud) Discarding a tuple-returning call with a record constructor argument is rejected.** [`discarded-tuple-call-rejects`] With a hook-free `Cell(value: int32)` and `def pair(cell: Cell) -> tuple[int32, int32]: return cell.value, 1`, the expression statement `pair(Cell(1))` inside an ordinary function fails with `expr.call:call.ret_type.tuple`. The result is unused, but the call must still run with its argument evaluated. This is an existing frontend/THIR-lowering rejection before MIR, found during named-argument storage review on 2026-09-23. Handle in the separate tuple-completeness work: audit discarded call results alongside binding, unpacking and return positions, preserving argument evaluation and temporary lifetime. Needs `/tpy-fix-bug`.

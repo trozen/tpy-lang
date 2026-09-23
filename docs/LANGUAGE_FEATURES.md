@@ -8843,7 +8843,10 @@ See the [call-effect batch](MIR_CALL_EFFECTS_PLAN.md).
 The [borrowed-return batch](MIR_BORROWED_RETURN_PLAN.md) adds
 parameter-derived plain-record return summaries. M4.5 preserves emitted result
 access and extracts direct/conditional/alias return roots from validated MIR.
-M4.6 caller alias propagation remains pending. Production behavior is unchanged.
+M4.6 substitutes actual origins into local result holders and forwarded
+summaries, including imported aliases, readonly results and repeated arguments.
+Temporary actuals and richer result forms remain uncovered. Production behavior
+is unchanged.
 
 The [named argument storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) adds
 hook-free scalar-field record constructors as readonly borrowed arguments,

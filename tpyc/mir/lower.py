@@ -67,6 +67,7 @@ class _Coverage:
         self.active_temporaries: list[th.THIRCtorCall] | None = None
         self.summaries = summaries if summaries is not None else {}
         self.calls: IdentityMap[th.THIRCall, MIRCallSummary] = IdentityMap()
+        self.borrowed_bindings: IdentityMap[th.THIRStmt, th.THIRBorrowedRecord] = IdentityMap()
         self.argument_temporaries: IdentityMap[th.THIRArgTemp, th.THIRBorrowedRecord] = IdentityMap()
 
     def call(self, expr: th.THIRCall) -> None:
@@ -79,14 +80,18 @@ class _Coverage:
         summary = entry.summary
         _require(expr, summary_problem(summary) is None and summary.callee == callee,
                  "call summary signature or contract mismatch")
-        _require(expr, callee.signature.borrowed_result is None, "borrowed call result not covered")
+        result = callee.signature.borrowed_result
+        if result is not None:
+            self.reference(expr, result, callee.signature.return_type)
+            self.records[result.type] = self.definitions.get(expr, result.type)
         for write in summary.writes:
             for field in write.path:
                 definition = self.definitions.get(expr, field.owner)
                 _require(expr, MIRField(MIRFieldId(field.owner, field.name), field.type) in definition.layout.fields,
                          "call write field does not match record layout")
                 self.records[field.owner] = definition
-        _require(expr, expr.result_type == callee.signature.return_type
+        _require(expr, (unwrap_readonly(unwrap_ref_type(expr.result_type)) == result.type if result is not None
+                       else expr.result_type == callee.signature.return_type)
                  and len(expr.args) == len(summary.parameters), "call signature mismatch")
         for arg, typ, ref in zip(expr.args, callee.signature.param_types, summary.parameters):
             if ref is None:
@@ -99,6 +104,7 @@ class _Coverage:
                 _require(arg, self.expr(arg) == typ, "call scalar argument mismatch")
             else:
                 if isinstance(arg, th.THIRArgTemp):
+                    _require(arg, result is None, "borrowed result needs stable arguments")
                     self.argument_temporary(arg, ref)
                     continue
                 _require(arg, isinstance(arg, (th.THIRName, th.THIRSelf))
@@ -323,6 +329,10 @@ class _Coverage:
                 if stmt.alias_binding is not None or stmt.storage_borrow is not None:
                     self.borrow_binding(stmt, declaration=True)
                     continue
+                if (isinstance(stmt.init, (th.THIRCall, th.THIRIfExpr))
+                        and (isinstance(stmt, th.THIRPtrLocalDecl) or stmt.form is th.Form.BORROW)):
+                    self.borrowed_binding(stmt, declaration=True)
+                    continue
                 _require(stmt, isinstance(stmt, th.THIRVarDecl), "missing alias binding")
                 _plain(stmt, {"name", "resolved_type", "init", "is_const"})
                 _require(stmt, stmt.form is th.Form.VALUE and stmt.resolved_type in (BOOL, INT32),
@@ -478,9 +488,15 @@ class _Coverage:
         return name
 
     def borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> None:
-        _require(expr, expr.form is th.Form.BORROW, "borrowed result needs reference form")
+        _require(expr, expr.form is (th.Form.VALUE if isinstance(expr, th.THIRCall) else th.Form.BORROW),
+                 "unsupported borrowed expression form")
         self.reference(expr, result, expr.result_type)
         match expr:
+            case th.THIRCall():
+                self.call(expr)
+                actual = self.calls[expr].callee.signature.borrowed_result
+                _require(expr, actual is not None and actual.type == result.type
+                         and (not actual.readonly or result.readonly), "call result increases access")
             case th.THIRIfExpr():
                 _plain(expr, {"cond", "then", "orelse"})
                 _require(expr, self.expr(expr.cond) == BOOL, "condition requires bool")
@@ -489,6 +505,34 @@ class _Coverage:
             case _:
                 source = self.references[self.reference_name(expr)]
                 _require(expr, not source.readonly or result.readonly, "return increases access")
+
+    def borrowed_binding(self, stmt: th.THIRStmt, *, declaration: bool = False) -> None:
+        if declaration:
+            allowed = {"name", "resolved_type", "init", "cpp_type", "is_const"}
+            if isinstance(stmt, th.THIRVarDecl):
+                allowed.add("cpp_local_representation")
+                _require(stmt, stmt.form is th.Form.BORROW, "call binding needs borrowed form")
+            else:
+                allowed.add("kind")
+                _require(stmt, stmt.kind is th.PtrSlotKind.PTR_ADDR, "unsupported call binding")
+            _plain(stmt, allowed)
+            fact = th.THIRBorrowedRecord(unwrap_readonly(unwrap_ref_type(stmt.resolved_type)), stmt.is_const)
+            self.reference(stmt, fact, stmt.resolved_type)
+            source = stmt.init
+        else:
+            _plain(stmt, {"name", "kind", "value"})
+            _require(stmt, stmt.kind is th.PtrSlotKind.PTR_ADDR and stmt.name not in self.parameters,
+                     "unsupported call reseat")
+            fact = self.references.get(stmt.name)
+            _require(stmt, fact is not None, "missing call reseat destination")
+            source = stmt.value
+        self.borrowed_expression(source, fact)
+        self.borrowed_bindings[stmt] = fact
+        if declaration:
+            self.bindings[stmt.name] = fact.type
+            self.references[stmt.name] = fact
+        else:
+            self.fixed_owned.discard(stmt.name)
 
     def borrow_binding(self, stmt: th.THIRStmt, *, declaration: bool = False) -> None:
         storage = stmt.storage_borrow is not None
@@ -1081,6 +1125,8 @@ class _Coverage:
                 self.replacement(stmt)
             case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.alias_binding is not None or stmt.storage_borrow is not None:
                 self.borrow_binding(stmt)
+            case th.THIRPtrLocalRebind() if isinstance(stmt.value, (th.THIRCall, th.THIRIfExpr)):
+                self.borrowed_binding(stmt)
             case th.THIRNoOpStmt():
                 _plain(stmt, set())
             case th.THIRAssign():
@@ -1289,6 +1335,7 @@ class _Builder:
         self.current: _Block | None = self.block()
         self.loops: list[tuple[MIRBlockId, MIRBlockId]] = []
         self.records = coverage.records
+        self.borrowed_bindings = coverage.borrowed_bindings
         self.tuple_exprs = coverage.tuple_exprs
         self.storage: dict[str, MIRSlotId] = {}
         self.global_facts = coverage.globals
@@ -1492,6 +1539,10 @@ class _Builder:
 
     def borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> MIRSlotId:
         match expr:
+            case th.THIRCall():
+                dest = self.slot(result.type, reference=result)
+                self.write(dest, self.call(expr), expr.loc)
+                return dest
             case th.THIRIfExpr():
                 condition = self.expr(expr.cond)
                 dest = self.slot(result.type, reference=result)
@@ -1762,6 +1813,13 @@ class _Builder:
                     self.write(self.bindings[name], value, loc)
                 case th.THIRVarDecl() if stmt.tuple_storage_alias is not None:
                     self.bindings[stmt.name] = self.bindings[stmt.tuple_storage_alias.source]
+                case th.THIRVarDecl() | th.THIRPtrLocalDecl() | th.THIRPtrLocalRebind() if stmt in self.borrowed_bindings:
+                    fact = self.borrowed_bindings[stmt]
+                    declaration = isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl))
+                    source = self.borrowed_expression(stmt.init if declaration else stmt.value, fact)
+                    if declaration:
+                        self.bindings[stmt.name] = self.slot(fact.type, MIRSlotKind.LOCAL, stmt.name, fact)
+                    self.write(self.bindings[stmt.name], MIRAlias(source), loc)
                 case th.THIRVarDecl() if stmt.tuple_layout is not None:
                     owning = stmt.tuple_layout.owns_records
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,

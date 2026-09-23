@@ -202,6 +202,12 @@ setters. M4.3 leaf extraction and M4.4 call consumption/forwarding are
 implemented for analysis only. Exception/cleanup, storage
 invalidation and escaping dependencies remain separate M3/M4 obligations.
 
+The [M4.5/M4.6 borrowed-return batch](MIR_BORROWED_RETURN_PLAN.md) adds
+whole-parameter result origins and caller alias/forwarding propagation.
+Returned holders participate in existing storage analyses; projected/aggregate
+results and general escape channels remain W5 work. Production authority is
+unchanged.
+
 Batch work around shared invariants. Specify commit boundaries before coding,
 review the cumulative batch, and run the full forced suite after its final
 implementation changes. Each implementation step should finish as one commit

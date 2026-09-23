@@ -1720,9 +1720,21 @@ alongside related feature work; only the big-rock deferrals live here.
   typed scalar-field writes, forwarding and void setters; broader roots, storage
   invalidation, escapes and exit-specific cleanup remain open.
   `docs/MIR_BORROWED_RETURN_PLAN.md` records M4.5/M4.6: whole-parameter
-  borrowed-record return summaries are implemented; caller holders and forwarding
-  remain next. Projected/aggregate/owned results, temporary actuals,
+  borrowed-record return summaries, caller holders and forwarding are implemented.
+  Projected/aggregate/owned results, temporary actuals,
   broader callees and escape channels stay in the M2/M4/W5 backlog.
+  Before the M5 authority switch, unify selected return access across emitted
+  signatures, caller bindings and MIR certificates. The current certificate
+  follows the emitter's declaration readonly flag; the caller mismatch is
+  `BUGS.md#readonly-free-return-binding-drops-const`. Audit call-result binding
+  facts at the selected THIR operation too: MIR currently combines existing
+  declaration form, resolved type, pointer-slot kind and constness. Preserve
+  those decisions in one typed binding fact when expanding the result families,
+  rather than adding independent access/ownership classification in consumers.
+  Consolidate the shared borrowed-record contract predicates and audit
+  originless alias joins before expanding coverage or switching authority;
+  current covered operations seed their origins, but future operations must not
+  silently drop an unknown branch from a known returned-origin set.
   Cleanup: share common CFG assembly between `_Builder.planned_if` /
   `planned_while` and the ordinary if/while arms in `mir/lower.py`, preserving
   their different emitted scope boundaries and existing plain-body graphs.

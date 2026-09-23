@@ -1,7 +1,7 @@
 # MIR borrowed-return summaries
 
-M4.5 leaf extraction is implemented; M4.6 caller propagation is the next step.
-Based on merged M4.3/M4.4 (`184f9ef232`). This architectural extension supplies
+M4.5 leaf extraction and M4.6 caller propagation extend the M4.3/M4.4
+call-effect interface. This architectural extension supplies
 another M3 W5 prerequisite; it does not complete escape analysis or change
 production checking, source acceptance, diagnostics or C++ emission.
 
@@ -69,7 +69,10 @@ existing name-to-name purpose; do not encode call expressions as source names.
 MIR lowering copies the selected result fact onto `MIRFunction` so standalone
 validation retains emitted return access without a THIR/workspace lookup.
 This transports one decision across IR phases rather than re-deriving it.
-MIR calls read the same fact from their summary's selected signature.
+MIR calls read the same fact from their summary's selected signature. Existing
+THIR free-call nodes use `Form.VALUE` even when the selected signature returns
+a reference; result shape comes from that signature certificate. Borrowed
+names and conditional expressions still require their existing borrow form.
 Normalize the declared
 reference wrapper when matching holder types while preserving exact signature
 identity and access checks. Extend the shared borrowed-expression path for
@@ -127,7 +130,8 @@ their existing supported argument/storage forms, not a new constructor ABI.
 ## Tests and pitfalls
 
 MIR unit tests compile their own source and assert exact return sets, caller
-origins, access and holder lifetime; they do not read snippet fixtures.
+origin externality and projection shape, access and holder lifetime; they do not
+read snippet fixtures.
 Cover direct/conditional/multiple returns, alias reseats, transitive and
 imported forwarding with permuted parameters, repeated actuals, read-vs-return
 root independence, writes plus returned aliases, readonly and decorated
@@ -144,8 +148,7 @@ One condensed CPython-compatible source case is justified: existing ordinary
 borrow-return cases mostly read, so they do not pin the conditional plain-record
 boundary against silent copies. Use `@nocopy`, distinct owner mutations and
 result writes, both flags, readonly observation, reseats and caller positions.
-Print section names. Update only this new case's snapshots. Existing snapshots
-are expected unchanged; consult before refreshing any unexpected differences.
+Section names identify each output witness. Existing snapshots remain unchanged.
 
 Pitfall disposition:
 
@@ -180,13 +183,21 @@ build. Tracked as
 reflect the emitted const return; a mismatched caller stays uncovered.
 Explicit `readonly[Cell]` return
 annotations work in the probe and supply the positive readonly witness.
+The decorated definition's parameter signature/facts also fail the existing
+exact summary-identity check, so its summary remains Opaque; this batch does not
+relax that check to admit the inconsistent source boundary.
+
+Mixed mutable/readonly record ternaries are rejected before MIR
+(`BUGS.md#readonly-record-ternary-join-rejected`). Separate typed return
+branches supply the mixed-access origin-join witness without changing that
+frontend boundary.
 
 ## Dependency split
 
 1. **M4.5: borrowed result contract and leaf summaries.** Shared THIR signature
    fact, borrowed return lowering/validation, leaf extraction and boundary tests.
-   Update all return consumers, including dump and interpreter, in this step.
-   Borrow-returning call consumption stays closed until step 2.
+   Return consumers, including dump and interpreter, preserve reference identity.
+   These producer facts are the prerequisite for call consumption.
 2. **M4.6: caller holders and forwarding.** Result substitution, local binding
    and reseat support, forwarded writes/return roots, call-result dump and
    analysis-consumer integration, condensed source witness and negative coverage.

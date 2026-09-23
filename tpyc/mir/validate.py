@@ -817,10 +817,16 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(not readonly or target.readonly, "borrow increases access")
                 case MIRCall():
                     validate_call(value)
-                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.SCALAR
-                             and target_type in (BOOL, INT32)
-                             and target_type == value.summary.callee.signature.return_type,
-                             "call result type or target mismatch")
+                    result = value.summary.callee.signature.borrowed_result
+                    _require(not stmt.target.projections, "call needs whole result holder")
+                    if result is None:
+                        _require(target.value_kind is MIRValueKind.SCALAR and target_type in (BOOL, INT32)
+                                 and target_type == value.summary.callee.signature.return_type,
+                                 "call result type or target mismatch")
+                    else:
+                        _require(target.value_kind is MIRValueKind.BORROWED_RECORD
+                                 and target_type == result.type and (not result.readonly or target.readonly),
+                                 "call result type or access mismatch")
                 case MIRConstant():
                     _require((target_type == BOOL and type(value.value) is bool)
                              or (target_type == INT32 and type(value.value) is int

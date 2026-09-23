@@ -85,8 +85,8 @@ fix expression sequencing or materialized-argument destruction timing.
 
 The [M4.5/M4.6 borrowed-return batch](MIR_BORROWED_RETURN_PLAN.md)
 starts the storage/escape group with whole-parameter result dependencies and
-caller holder propagation. Leaf extraction is implemented; caller consumption
-remains the second step.
+caller holder propagation. Leaf extraction and caller consumption are
+implemented; the broader storage/escape group remains open.
 
 ## First batch representation and proof
 

@@ -164,8 +164,11 @@ M4.5 adds whole-parameter borrowed-record return evidence
 (`MIR_BORROWED_RETURN_PLAN.md`). The resolved THIR signature retains emitted
 result access; MIR carries that fact into standalone return validation.
 Leaf summaries collect origins from pre-return dependency states, preserving
-alias joins independently of read/write effects. Borrowed call-result
-consumption is the subsequent M4.6 step.
+alias joins independently of read/write effects. M4.6 substitutes those origins
+through actual holders during dependency transfer, before overwriting any
+destination. Returned holders feed the existing storage and retention analyses;
+forwarding reuses those dependency states. Unsupported origins never certify
+an empty result dependency set.
 
 Named scalar-field record arguments additionally share a prepared THIR storage
 plan with C++ emission (`MIR_NAMED_ARGUMENT_STORAGE_PLAN.md`). The shared queue
