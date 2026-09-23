@@ -5,6 +5,10 @@ Named-temp implementation scope is not approved. This records a W1 dependency in
 [the M3 completion plan](MIR_M3_COMPLETION_PLAN.md), not another completed
 increment. Tuple completeness remains separate.
 
+The proposed [storage implementation plan](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md)
+defines the shared placement authority and bounded MIR consumer. It awaits
+implementation approval.
+
 ## Concrete boundary
 
 For a hook-free `Cell` with one `int32` field and a scalar-only constructor:

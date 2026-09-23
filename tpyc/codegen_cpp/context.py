@@ -6,7 +6,6 @@ Shared state and utilities for C++ code generation.
 
 from __future__ import annotations
 import io
-import re
 import tokenize
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -37,6 +36,7 @@ from ..type_def_registry import (
 )
 from ..symbol_binding import lookup_imported, lookup_qualified, resolve_definer, SymbolKind
 from ..identity_map import IdentityMap
+from ..temp_schedule import TempQueue, banks_in_region
 from ..compilation_context import get_current_compiler
 from ..value_category import (
     is_rvalue_source as _is_rvalue_source_shared,
@@ -861,36 +861,6 @@ class CondRegion:
 
     def __init__(self):
         self.prefix: str = ""
-        self._slots: list[tuple[int, str, str]] = []
-
-    def bank(self, index: int, name: str, emplace_arg: str) -> None:
-        self._slots.append((index, name, emplace_arg))
-
-
-def _slot_spellable(cpp_type: str) -> bool:
-    """True if `std::optional<cpp_type>` is a legal spelling.
-
-    `auto` cannot appear in a template argument list, and `std::optional` of a
-    reference is ill-formed before C++26 -- such temps stay eager.
-    """
-    stripped = cpp_type.strip()
-    if stripped.endswith("&"):
-        return False
-    return not re.match(r"^(const\s+)?auto\b", stripped)
-
-
-def banks_in_region(cpp_type: str, movable: 'bool | None') -> bool:
-    """True if a temp of this shape goes into an open conditional-operand
-    region's deferred `std::optional` slot instead of hoisting eagerly at the
-    enclosing statement.
-
-    The single authority for that question: the lowering gate PREDICTS it to
-    decide whether an eager placement ahead of the guard is acceptable, and
-    both temp sinks act on it. Two copies of the condition drifted apart once
-    already, which is how a conditionally-evaluated argument's copy came to
-    run unconditionally.
-    """
-    return bool(movable) and _slot_spellable(cpp_type)
 
 
 def _as_expression(type_cpp: str, init_expr: str, brace_init: bool) -> str:
@@ -917,10 +887,9 @@ class TempState:
     """Manages temporary variables for array literals passed to mutable reference params."""
 
     def __init__(self):
-        self._pending: list[tuple[str, str, str | None, bool]] = []
+        self._queue: TempQueue[tuple[str, str, str | None, bool]] = TempQueue()
         self._pending_named: list[tuple[str, str, str | None, bool]] = []
         self._counter: int = 0
-        self._regions: list[CondRegion] = []
 
     @contextmanager
     def conditional_region(self) -> Iterator[CondRegion]:
@@ -941,41 +910,30 @@ class TempState:
         at each level.
         """
         region = CondRegion()
-        self._regions.append(region)
+        entries = self._queue.begin()
         try:
             yield region
         finally:
-            self._regions.pop()
-            self._close_region(region)
-
-    def _close_region(self, region: CondRegion) -> None:
-        parts = []
-        for index, name, emplace_arg in region._slots:
-            if index >= len(self._pending) or self._pending[index][0] != name:
-                # An intervening flush relocated the decl into a nested scope
-                # that is itself inside the conditional (a comprehension loop
-                # body), or a rollback discarded the render. Leaving the entry
-                # untouched keeps its eager `std::optional<T> t = init;` form,
-                # which is correct in that position and still derefs as
-                # `(*t)`.
-                continue
-            _, cpp_type, _, brace_init = self._pending[index]
-            self._pending[index] = (name, cpp_type, None, brace_init)
-            parts.append(f"{name}.emplace({emplace_arg})")
-        region.prefix = "".join(f"{p}, " for p in parts)
+            deferred = self._queue.end(entries)
+            region.prefix = "".join(f"{entry.value[0]}.emplace({entry.value[2]}), "
+                                    for entry in deferred)
 
     def _register(self, temp_name: str, type_cpp: str,
-                  init_expr: str, brace_init: bool, movable: bool) -> str:
-        """Queue a temp decl and return the expression that reads it."""
-        region = self._regions[-1] if self._regions else None
-        if region is None or not banks_in_region(type_cpp, movable):
-            self._pending.append((temp_name, type_cpp, init_expr, brace_init))
+                  init_expr: str, brace_init: bool, movable: bool,
+                  planned_optional: bool | None = None) -> str:
+        entry = self._queue.register((temp_name, type_cpp, init_expr, brace_init),
+                                     banks_in_region(type_cpp, movable) if planned_optional is None else planned_optional)
+        assert planned_optional is None or entry.optional == planned_optional
+        if not entry.optional:
             return temp_name
-        emplace_arg = _as_expression(type_cpp, init_expr, brace_init)
-        region.bank(len(self._pending), temp_name, emplace_arg)
-        self._pending.append(
-            (temp_name, f"std::optional<{type_cpp}>", emplace_arg, False))
+        entry.value = (temp_name, f"std::optional<{type_cpp}>",
+                       _as_expression(type_cpp, init_expr, brace_init), False)
         return f"(*{temp_name})"
+
+    @staticmethod
+    def _rows(entries: tuple) -> list[tuple[str, str, str | None, bool]]:
+        return [(name, typ, None if entry.deferred else init, brace)
+                for entry in entries for name, typ, init, brace in (entry.value,)]
 
     def create(self, param_type: TpyType, init_expr: str) -> str:
         """Create a temp variable and return its name for use in the call."""
@@ -988,7 +946,8 @@ class TempState:
                               param_type.is_movable())
 
     def create_typed(self, cpp_type: str, init_expr: str, *,
-                     brace_init: bool = False, movable: bool = False) -> str:
+                     brace_init: bool = False, movable: bool = False,
+                     planned_optional: bool | None = None) -> str:
         """Create a temp variable with an explicit C++ type.
 
         `movable` gates deferral into an open conditional region and defaults
@@ -1000,7 +959,7 @@ class TempState:
         self._counter += 1
         temp_name = f"__tmp_{self._counter}"
         return self._register(temp_name, cpp_type, init_expr, brace_init,
-                              movable)
+                              movable, planned_optional)
 
     def declare_named_auto(self, prefix: str, cpp_type: str, *, init: str | None = None) -> str:
         """Register a uniquely-named hoisted declaration and return its name.
@@ -1020,7 +979,7 @@ class TempState:
 
     def has_pending_since(self, checkpoint: tuple[int, ...]) -> bool:
         """True if anonymous temps were registered after `checkpoint`."""
-        return len(self._pending) > checkpoint[0]
+        return len(self._queue.pending) > checkpoint[0]
 
     def has_named_since(self, checkpoint: tuple[int, ...]) -> bool:
         """True if named pre-declarations were registered after `checkpoint`."""
@@ -1033,7 +992,7 @@ class TempState:
         calls -- needed when emitting into a context that has no place to
         flush declarations (e.g. a C++ member-initializer-list expression).
         """
-        return (len(self._pending), len(self._pending_named))
+        return (len(self._queue.pending), len(self._pending_named))
 
     def rollback_to(self, checkpoint: tuple[int, int]) -> bool:
         """Discard temps registered after `checkpoint`. Returns True if any were dropped.
@@ -1044,17 +1003,16 @@ class TempState:
         number is harmless -- temp names only need to be unique within a pass.
         """
         pending, pending_named = checkpoint
-        if len(self._pending) == pending and len(self._pending_named) == pending_named:
+        if len(self._queue.pending) == pending and len(self._pending_named) == pending_named:
             return False
-        del self._pending[pending:]
+        self._queue.drain(pending)
         del self._pending_named[pending_named:]
         return True
 
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""
-        self._render(out, indent, self._pending_named, self._pending)
+        self._render(out, indent, self._pending_named, self._rows(self._queue.drain()))
         self._pending_named.clear()
-        self._pending.clear()
 
     def flush_since(self, out: TextIO, checkpoint: tuple[int, int], indent: str) -> None:
         """Emit (and remove) only the anonymous temps registered after `checkpoint`.
@@ -1066,8 +1024,7 @@ class TempState:
         containing scope (PEP 572), so it must not move into the loop body.
         """
         pending_n, _named_n = checkpoint
-        self._render(out, indent, [], self._pending[pending_n:])
-        del self._pending[pending_n:]
+        self._render(out, indent, [], self._rows(self._queue.drain(pending_n)))
 
     @staticmethod
     def _render(out: TextIO, indent: str,

@@ -1642,7 +1642,7 @@ def _facts_emit_alias(facts: dict[str, TpyType]) -> bool:
     )
 
 def _is_elif_link(outer: TpyIf, inner: TpyIf) -> bool:
-    """Mirror of `emit._is_elif`: an elif keeps the outer's column; a
+    """An elif keeps the outer's column; a
     nested `else: if` sits deeper. Both-locs-None (macro
     fragments) counts as elif."""
     if outer.loc is None and inner.loc is None:

@@ -5,6 +5,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
+from ..temp_plan import prepare_temporaries
 from .callables import resolved_definition
 from .storage import borrowed_record, native_container, optional_layout, record_layout, tuple_parameter_layout
 from ...liveness import stmts_terminate
@@ -1082,6 +1083,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         )
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
+        fn = replace(fn, temp_plan=prepare_temporaries(fn.body))
         validate_function(fn)
         return fn
     except ThirUnsupported as ex:
@@ -2043,6 +2045,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         )
         if _rejects_lambda_hoist(ctor.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
+        ctor = replace(ctor, temp_plan=prepare_temporaries(ctor.body))
         validate_constructor(ctor)
         return ctor
     except ThirUnsupported as ex:

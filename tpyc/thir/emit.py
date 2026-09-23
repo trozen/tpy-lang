@@ -13,12 +13,14 @@ inside a body carries a comment.
 from __future__ import annotations
 
 import io
+from contextlib import contextmanager
 from dataclasses import dataclass, field, fields as dc_fields, is_dataclass
-from typing import Callable, Mapping, TextIO
+from typing import Callable, ContextManager, Iterator, Mapping, TextIO
 
+from ..temp_schedule import TempQueue
 from ..parse.nodes import RebindStorage, TryTier
 from ..codegen_cpp.context import (
-    INDENT,
+    INDENT, CondRegion,
     any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
     cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
     escape_cpp_string, expand_cpp_template, loop_var_binding,
@@ -157,6 +159,7 @@ from .nodes import (
     WithTargetArm,
 )
 from .faces import witness as _witness
+from .temp_plan import THIRTempPlan, THIRTempPlacement, if_chain, validate_plan
 
 
 class THIRCodeGenError(Exception):
@@ -181,21 +184,87 @@ class TempSink:
 
     def __init__(self, ctx) -> None:
         self._ctx = ctx
+        self.plan: THIRTempPlan | None = None
+        self.scope = 0
+        self.statement: THIRStmt | None = None
+        self._planned: TempQueue[THIRTempPlacement] = TempQueue()
+        self._declared: list[THIRTempPlacement] = []
+        self._initialized: set[int] = set()
+
+    def bind_plan(self, plan: THIRTempPlan) -> None:
+        assert self.plan is None and self.checkpoint() == (0, 0)
+        self.scope = 0
+        self.statement = None
+        self._declared.clear()
+        self._initialized.clear()
+        self.plan = plan
+
+    def finish_plan(self) -> None:
+        if self.plan is not None:
+            assert len(self._declared) == len(self.plan.placements)
+            assert all(a is b for a, b in zip(self._declared, self.plan.placements))
+            assert len(self._initialized) == len(self.plan.placements)
+            assert not self._planned.pending and self.checkpoint() == (0, 0)
+            self.plan = None
+
+    def enter_scope(self, owner: object, role: str) -> None:
+        if self.plan is not None:
+            index = self.plan.scope(owner, role)
+            assert index is not None and self.plan.scopes[index].parent == self.scope
+            self.scope = index
+
+    def _check_flush(self, start: int = 0) -> None:
+        if self.plan is None:
+            return
+        assert self.checkpoint() == (len(self._planned.pending), 0)
+        for entry in self._planned.drain(start):
+            placement = entry.value
+            assert placement.declaration is self.statement and placement.scope == self.scope
+            if not entry.deferred:
+                assert placement.initialization is self.statement
+                assert placement.index not in self._initialized
+                self._initialized.add(placement.index)
+            self._declared.append(placement)
 
     def create(self, cpp_type: str, init_expr: str, *,
                brace_init: bool = False, movable: bool = False) -> str:
+        assert self.plan is None, "unplanned temporary producer"
         return self._ctx.temps.create_typed(cpp_type, init_expr,
                                             brace_init=brace_init,
                                             movable=movable)
 
-    def conditional_region(self):
-        return self._ctx.temps.conditional_region()
+    @contextmanager
+    def conditional_region(self, anchor: THIRExpr | None = None) -> Iterator[CondRegion]:
+        region = self._planned.begin() if self.plan is not None else None
+        with self._ctx.temps.conditional_region() as rendered:
+            yield rendered
+        if region is not None:
+            entries = self._planned.end(region)
+            expected = self.plan.initializations.get(anchor, ())
+            assert len(entries) == len(expected)
+            for entry, placement in zip(entries, expected):
+                assert entry.value is placement and placement.initialization is anchor
+                assert placement.index not in self._initialized
+                self._initialized.add(placement.index)
+
+    def argument(self, expr: THIRArgTemp, init: str, plan: THIRTempPlan | None) -> str:
+        if plan is None:
+            return self.create(expr.cpp_type or "auto", init, brace_init=expr.brace_init,
+                               movable=bool(expr.movable))
+        placement = plan.placement(expr)
+        entry = self._planned.register(placement, expr.would_bank())
+        assert entry.optional == placement.optional
+        return self._ctx.temps.create_typed(expr.cpp_type or "auto", init,
+                                            brace_init=expr.brace_init, movable=bool(expr.movable),
+                                            planned_optional=placement.optional)
 
     def declare_named(self, name: str, cpp_type: str, *,
                       init: 'str | None' = None) -> None:
+        assert self.plan is None, "unplanned named declaration"
         self._ctx.temps.declare_named(name, cpp_type, init=init)
 
     def declare_named_auto(self, prefix: str, cpp_type: str) -> str:
+        assert self.plan is None, "unplanned named declaration"
         return self._ctx.temps.declare_named_auto(prefix, cpp_type)
 
     def checkpoint(self) -> tuple[int, int]:
@@ -209,9 +278,11 @@ class TempSink:
 
     def flush_since(self, out: TextIO, checkpoint: tuple[int, int],
                     indent: str) -> None:
+        self._check_flush(checkpoint[0])
         self._ctx.temps.flush_since(out, checkpoint, indent)
 
     def flush(self, out: TextIO, indent: str) -> None:
+        self._check_flush()
         self._ctx.temps.flush(out, indent)
 
 
@@ -362,6 +433,7 @@ class _EmitState:
     # order.
     finally_guard_counter: ModuleCounter
     return_cpp: 'str | None' = None
+    temp_plan: THIRTempPlan | None = None
     # @error_return context, mirroring the ctx fields the error_return
     # renders read: `error_return_cpp` is the enclosing function's error type
     # (ctx.current_error_return; seeds bare-return `{}`, the void success
@@ -600,7 +672,7 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
         # The RHS runs only when the LHS does not short-circuit: its
         # deferred temps bank into a conditional region and splice ahead of
         # the operand -- the `({prefix}{right})` wrap.
-        with state.temps.conditional_region() as _rhs_region:
+        with _lazy_region(state, e.right) as _rhs_region:
             right = _emit_expr(e.right, state)
     else:
         _rhs_region = None
@@ -1554,7 +1626,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             truthy = lhs_r
         # The RHS evaluates lazily inside its branch: deferred temps bank
         # into the region and splice ahead of the operand.
-        with state.temps.conditional_region() as _rhs_region:
+        with _lazy_region(state, e.rhs) as _rhs_region:
             rhs_r = _emit_expr(e.rhs, state)
         if e.rhs_sv:
             rhs_r = f"std::string_view({rhs_r})"
@@ -1641,9 +1713,9 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # a per-arm region and splice ahead of the arm render (an empty prefix
         # concatenates as a no-op).
         cond_cpp = _emit_expr(e.cond, state)
-        with state.temps.conditional_region() as _then_region:
+        with _lazy_region(state, e.then) as _then_region:
             then_cpp = _emit_expr(e.then, state)
-        with state.temps.conditional_region() as _else_region:
+        with _lazy_region(state, e.orelse) as _else_region:
             else_cpp = _emit_expr(e.orelse, state)
         return (f"(({cond_cpp}) ? "
                 f"({_then_region.prefix}{then_cpp}) : "
@@ -1661,9 +1733,9 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # here; args render left-to-right, so temps are created in argument
         # order. The pending decl flushes before the statement line.
         init_cpp = _emit_expr(e.init, state)
-        cpp_type = e.cpp_type if e.cpp_type is not None else "auto"
-        name = state.temps.create(cpp_type, init_cpp, brace_init=e.brace_init,
-                                  movable=bool(e.movable))
+        name = (state.temps.argument(e, init_cpp, state.temp_plan) if state.temp_plan is not None
+                else state.temps.create(e.cpp_type or "auto", init_cpp,
+                                        brace_init=e.brace_init, movable=bool(e.movable)))
         if e.move:
             return f"std::move({name})"
         return f"&({name})" if e.addr_of else name
@@ -1789,16 +1861,6 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
 # --- statements ---
 
 
-def _is_elif(outer: THIRIf, inner: THIRIf) -> bool:
-    """An `else_body` of a single THIRIf is a flattenable elif (vs a nested
-    `else: if`) when their source columns match."""
-    if outer.loc is None and inner.loc is None:
-        return True
-    if outer.loc is None or inner.loc is None:
-        return False
-    return inner.loc.column == outer.loc.column
-
-
 def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) -> None:
     # The outer `// if ...:` comment is emitted by the caller (_emit_stmts).
     # Flatten the elif chain into `} else if (...)`.
@@ -1814,19 +1876,17 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
             slot = (state.assert_local_slot() or state.next_slot())
             _declare_rebind_slot(state, name, slot, slot_types[name])
         out.write(f"{indent}{cpp_type} {name};\n")
-    chain = [stmt]
-    while (len(chain[-1].else_body) == 1
-           and isinstance(chain[-1].else_body[0], THIRIf)
-           and not chain[-1].else_is_nested
-           and _is_elif(chain[-1], chain[-1].else_body[0])):
-        chain.append(chain[-1].else_body[0])
+    chain = if_chain(stmt)
     # An elif condition that registers temps abandons the flat `} else if`
     # chain: the temps have no legal spot between `}` and `else`, so the
     # remainder nests in an `} else {` block with the decls flushed inside
     # -- the probe-then-nest arm, which renders the condition once so the
     # `__tmp_N` names it registers are the ones emitted.
     extra_closes: list[str] = []
+    parent_scope = state.temps.scope if state.temp_plan is not None else 0
     for i, node in enumerate(chain):
+        if state.temp_plan is not None:
+            state.temps.statement = node
         # Per-node keyword choice: a protocol-isinstance condition compiles
         # `if constexpr`.
         if_kw = "if constexpr" if node.is_constexpr else "if"
@@ -1837,8 +1897,14 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
         else:
             cp = state.temps.checkpoint()
             cond = _emit_expr(node.condition, state)
-            if (state.temps.has_pending_since(cp)
-                    or state.temps.has_named_since(cp)):
+            nested = state.temps.has_pending_since(cp) or state.temps.has_named_since(cp)
+            if state.temp_plan is not None:
+                planned = state.temp_plan.scope(node, "condition") is not None
+                assert planned == nested, "temporary plan and elif placement disagree"
+                nested = planned
+            if nested:
+                if state.temp_plan is not None:
+                    state.temps.enter_scope(node, "condition")
                 out.write(f"{indent}}} else {{\n")
                 extra_closes.append(indent)
                 indent_level += 1
@@ -1848,14 +1914,16 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
                 out.write(f"{indent}{if_kw} ({cond}) {{\n")
             else:
                 out.write(f"{indent}}} else {if_kw} ({cond}) {{\n")
-        _emit_stmts(out, node.then_body, indent_level + 1, state)
+        _emit_stmts(out, node.then_body, indent_level + 1, state, scope_owner=node, scope_role="then")
     last = chain[-1]
     if last.else_body:
         out.write(f"{indent}}} else {{\n")
-        _emit_stmts(out, last.else_body, indent_level + 1, state)
+        _emit_stmts(out, last.else_body, indent_level + 1, state, scope_owner=last, scope_role="else")
     out.write(f"{indent}}}\n")
     for ind in reversed(extra_closes):
         out.write(f"{ind}}}\n")
+    if state.temp_plan is not None:
+        state.temps.scope = parent_scope
 
 
 def _push_loop_frame(state: _EmitState, has_else: bool = False) -> int:
@@ -1876,7 +1944,7 @@ def _push_loop_frame(state: _EmitState, has_else: bool = False) -> int:
 
 def _pop_loop_frame(out: TextIO, indent: str, state: _EmitState,
                     saved_depth: int, orelse: 'tuple[THIRStmt, ...]' = (),
-                    indent_level: int = 0) -> None:
+                    indent_level: int = 0, *, scope_owner: THIRStmt | None = None) -> None:
     # The loop-exit half: restore the switch depth, emit the else block (a
     # bare `{...}` + its `__after_else_N:;` label -- run on normal completion,
     # jumped past by a break), then place the lazily allocated
@@ -1887,7 +1955,7 @@ def _pop_loop_frame(out: TextIO, indent: str, state: _EmitState,
     break_label = state.loop_break_labels.pop()
     if else_label:
         out.write(f"{indent}{{\n")
-        _emit_stmts(out, orelse, indent_level + 1, state)
+        _emit_stmts(out, orelse, indent_level + 1, state, scope_owner=scope_owner, scope_role="else")
         out.write(f"{indent}}}\n")
         out.write(f"{indent}{else_label}:;\n")
     if break_label:
@@ -1993,8 +2061,16 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
     # only ever rides the plain flush (before the loop, where it stays
     # visible after it).
     cond_checkpoint = state.temps.checkpoint()
+    parent_scope = state.temps.scope if state.temp_plan is not None else 0
     cond = _emit_expr(stmt.condition, state)
-    if state.temps.has_pending_since(cond_checkpoint):
+    repeated = state.temps.has_pending_since(cond_checkpoint)
+    if state.temp_plan is not None:
+        planned = state.temp_plan.scope(stmt, "iteration") is not None
+        assert planned == repeated, "temporary plan and while placement disagree"
+        repeated = planned
+    if repeated:
+        if state.temp_plan is not None:
+            state.temps.enter_scope(stmt, "iteration")
         # Sink-side guard for the lowering-side mixed reject: an in-head
         # temp next to a pre-loop-flushed walrus pre-decl would be the
         # stale-read hazard _cond_mixed_walrus_temps exists to exclude.
@@ -2010,10 +2086,13 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
         state.temps.flush(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
     state.loop_depth += 1
-    _emit_stmts(out, stmt.body, indent_level + 1, state)
+    _emit_stmts(out, stmt.body, indent_level + 1, state,
+                scope_owner=None if repeated else stmt, scope_role="loop")
     state.loop_depth -= 1
     out.write(f"{indent}}}\n")
-    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
+    if state.temp_plan is not None:
+        state.temps.scope = parent_scope
+    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level, scope_owner=stmt)
 
 
 def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
@@ -4494,10 +4573,26 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
     out.write(f"{indent}{sink} << " + " << ".join(parts) + ";\n")
 
 
-def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> None:
-    indent = INDENT * indent_level
-    for stmt in stmts:
-        _emit_stmt(out, stmt, indent_level, state)
+def _lazy_region(state: _EmitState, anchor: THIRExpr) -> ContextManager[CondRegion]:
+    return (state.temps.conditional_region(anchor) if state.temp_plan is not None
+            else state.temps.conditional_region())
+
+
+def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState, *,
+                scope_owner: object | None = None, scope_role: str = "") -> None:
+    if state.temp_plan is None:
+        for stmt in stmts:
+            _emit_stmt(out, stmt, indent_level, state)
+        return
+    saved_scope, saved_statement = state.temps.scope, state.temps.statement
+    if scope_owner is not None:
+        state.temps.enter_scope(scope_owner, scope_role)
+    try:
+        for stmt in stmts:
+            state.temps.statement = stmt
+            _emit_stmt(out, stmt, indent_level, state)
+    finally:
+        state.temps.scope, state.temps.statement = saved_scope, saved_statement
 
 
 def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
@@ -4517,6 +4612,8 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
     spelling (`ctx.current_return_cpp` at the seam), read only by the
     finally-chain return temp decl. `global_scope` emits the module-init body
     (`__tpy_init`), whose slots spell `static __global_slot_N`."""
+    if fn.temp_plan is not None:
+        validate_plan(fn.body, fn.temp_plan)
     state = _EmitState(temps=temps,
                        with_counter=with_counter,
                        try_counter=try_counter,
@@ -4526,7 +4623,12 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                        slot_prefix=("__global_slot" if global_scope
                                     else "__slot"),
                        slot_static=("static " if global_scope else ""))
+    state.temp_plan = fn.temp_plan
+    if fn.temp_plan is not None:
+        temps.bind_plan(fn.temp_plan)
     _emit_body_draining_hoists(out, fn.body, indent_level, state)
+    if fn.temp_plan is not None:
+        temps.finish_plan()
     # Void @error_return functions return `{}` at the end -- the implicit
     # success value. A body that already terminates on every path (the
     # same fact sema uses to skip the implicit return) would make it a
@@ -4564,6 +4666,11 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     if inits:
         out.write(" : ")
         out.write(", ".join(inits))
+    if ctor.temp_plan is not None:
+        validate_plan(ctor.body, ctor.temp_plan)
+    state.temp_plan = ctor.temp_plan
+    if ctor.temp_plan is not None:
+        temps.bind_plan(ctor.temp_plan)
     if ctor.body:
         out.write(" {\n")
         # The ctor body shares the hoisting arms (a @dynamic rebind slot), so
@@ -4573,6 +4680,8 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
         out.write(f"{INDENT * (body_indent_level - 1)}}}\n")
     else:
         out.write(" {}\n")
+    if ctor.temp_plan is not None:
+        temps.finish_plan()
 
 
 class ResumableLeafEmitter:

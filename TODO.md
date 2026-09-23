@@ -1703,6 +1703,9 @@ alongside related feature work; only the big-rock deferrals live here.
   local MIR evidence and workspace-scheduled reader-only scalar calls. Named
   argument storage follows separately; effects, escapes, recursion, richer
   value shapes and generic obligations keep the general M4 work open.
+  `docs/MIR_NAMED_ARGUMENT_STORAGE_PLAN.md` proposes the W1 follow-up:
+  one shared THIR declaration/initialization plan and a bounded MIR consumer
+  for eager/lazy named record arguments. Approval and implementation remain.
   `docs/MIR_M3_WRAPPER_STORAGE_PLAN.md` records implemented M3.12/M3.13:
   separate physical-initialization/source-assignment facts and bool/int32
   Optional/union if/while hoists, for analysis only. Record

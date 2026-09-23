@@ -20,10 +20,12 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
 from ..identity_map import IdentityMap, IdentitySet
+from ..temp_schedule import banks_in_region
 from ..parse import RebindStorage, SourceLocation, TryTier
 from ..typesys import NominalType, ResolvedBinop, TpyType
 
 if TYPE_CHECKING:
+    from .temp_plan import THIRTempPlan
     # The shared binding tags carry no runtime dependency on codegen here.
     from ..codegen_cpp.forms import LocalBinding, LoopBinding
 
@@ -903,10 +905,9 @@ class THIRArgTemp(THIRExpr):
     record temporary whose `__iter__` returns a separate iterator at a native
     iterator callee's slot (`Noisy __tmp_N = Noisy(2);`, so the combinator
     borrows it and stays movable). Only
-    the flushable statement positions admit it (expr stmt / var-decl init /
-    name assign / scalar field write / return): a while-condition hoist is
-    the stale-snapshot miscompile (BUGS.md), an elif temp breaks the flat
-    `else if` chain -- both gate-rejected.
+    the flushable statement positions admit it. Condition temps require
+    actual declaration scopes: a while head reconstructs them per iteration,
+    and a temp-bearing elif nests the remaining chain in an else block.
 
     Carries NO temp number: numbering is emit-time via the TempSink (the
     `__slot_N` precedent), drawing real numbers from the module-cumulative
@@ -940,9 +941,6 @@ class THIRArgTemp(THIRExpr):
         what the emit hands it: the audited `movable` fact (an UNAUDITED
         row emits `movable=False`) and the slot spelling (a `None`
         cpp_type is the `auto` row, which no `std::optional` can name)."""
-        # Local import: codegen_cpp.context imports thir.nodes (a genuine
-        # cycle), so the printer helper cannot move to module level.
-        from ..codegen_cpp.context import banks_in_region
         return banks_in_region(self.cpp_type or "auto", self.movable)
 
 
@@ -3591,6 +3589,7 @@ class THIRFunction:
     body_terminates: bool = False
     receiver: THIRBorrowedRecord | None = None
     resolved_callee: THIRResolvedCallee | None = None
+    temp_plan: THIRTempPlan | None = None
 
 
 @dataclass(frozen=True)
@@ -3642,6 +3641,7 @@ class THIRConstructor:
     base_inits: tuple[THIRBaseInit, ...] = ()
     body: tuple[THIRStmt, ...] = ()
     record_layout: THIRRecordLayout | None = None
+    temp_plan: THIRTempPlan | None = None
 
 
 @dataclass(frozen=True)

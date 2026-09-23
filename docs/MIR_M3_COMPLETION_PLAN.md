@@ -79,13 +79,16 @@ the others visible.
   supplies the internal lowering contract; M3.23 connects scalar constructor
   reads/discards in ordinary expressions and conditions. Named argument
   temporaries and aggregate materialization remain open.
+  The proposed [named argument storage plan](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md)
+  separates a shared THIR placement/scheduling refactor from its MIR consumer;
+  implementation awaits approval.
   The [named argument temporary investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md)
   identified the need for the M3/M4 call-summary interface. M4.1/M4.2 now
   cover bounded calls with stable arguments; named temporary arguments remain
   excluded. Eager and deferred
   argument backing must follow actual emitted block scopes, not the existing
-  full-expression lifetime. The named-temp integration batch remains to be
-  designed; the call interface alone does not close it.
+  full-expression lifetime. The proposed integration design awaits approval;
+  the call interface alone does not close it.
   [M3.18](MIR_M3_TUPLE_ALIAS_PLAN.md) additionally covers fixed whole aliases
   of body-local constructor tuples; alias reseating, owning tuple rebinding
   and hoists remain open, including the source defects listed in that plan.
