@@ -328,7 +328,7 @@ def rejected() -> int32:
     for index in range(2):
         result = read(Cell(value))
     return result
-''', "named argument needs complete temporary plan", None),
+''', "named argument needs for-loop scope mapping", None),
 ], ids=["order-proof", "record-layout-summary", "record-hook-summary", "effectful-summary",
         "unsupported-result-form", "owned-parameter-summary", "global-constructor-input",
         "unplanned-optional-narrowing", "unplanned-union-narrowing", "unplanned-for-body"])

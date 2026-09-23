@@ -143,6 +143,13 @@ class _Planner:
                 len(self.placements), node, scope, stmt,
                 self.initializers[node] if entry.deferred else stmt, entry.optional))
 
+    def head(self, expressions: tuple[th.THIRExpr | None, ...]) -> None:
+        for expr in expressions:
+            if expr is not None:
+                self.expr(expr)
+        if self.queue.pending:
+            raise _Unplanned()
+
     def stmts(self, body: tuple[th.THIRStmt, ...], scope: int) -> None:
         for stmt in body:
             match stmt:
@@ -163,6 +170,27 @@ class _Planner:
                     self.flush(stmt, scope if repeated is None else repeated)
                     body_scope = repeated if repeated is not None else self.scope(stmt, "loop", scope)
                     self.stmts(stmt.body, body_scope)
+                    if stmt.orelse:
+                        self.stmts(stmt.orelse, self.scope(stmt, "else", scope))
+                case th.THIRForRange():
+                    _plain(stmt, {"var", "elem_type", "start", "stop", "start_is_literal",
+                                  "stop_is_literal", "body", "step_kind", "orelse", "hoist_loop_var",
+                                  "target_written", "hoist_decls", "hoisted_bindings"})
+                    if stmt.step_kind not in ("plus_one", "unit_neg"):
+                        raise _Unplanned()
+                    self.head((stmt.start, stmt.stop))
+                    counter = self.scope(stmt, "counter", scope)
+                    self.stmts(stmt.body, self.scope(stmt, "loop", counter))
+                    if stmt.orelse:
+                        self.stmts(stmt.orelse, self.scope(stmt, "else", scope))
+                case th.THIRForEach():
+                    _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var",
+                                  "iterable_lvalue", "orelse", "hoist_loop_var", "hoist_decls",
+                                  "hoisted_bindings", "iteration"})
+                    if not stmt.iterable_lvalue:
+                        raise _Unplanned()
+                    self.head((stmt.iterable,))
+                    self.stmts(stmt.body, self.scope(stmt, "loop", scope))
                     if stmt.orelse:
                         self.stmts(stmt.orelse, self.scope(stmt, "else", scope))
                 case th.THIRVarDecl():

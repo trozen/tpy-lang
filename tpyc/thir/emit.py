@@ -2160,11 +2160,16 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
         out.write(f"{INDENT * (indent_level + 1)}{var} = {counter};\n")
     elif stmt.target_written:
         out.write(f"{INDENT * (indent_level + 1)}{cpp_elem} {var} = {counter};\n")
+    parent_scope = state.temps.scope if state.temp_plan is not None else None
+    if state.temp_plan is not None:
+        state.temps.enter_scope(stmt, "counter")
     state.loop_depth += 1
-    _emit_stmts(out, stmt.body, indent_level + 1, state)
+    _emit_stmts(out, stmt.body, indent_level + 1, state, scope_owner=stmt, scope_role="loop")
     state.loop_depth -= 1
     out.write(f"{indent}}}\n")
-    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
+    if state.temp_plan is not None:
+        state.temps.scope = parent_scope
+    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level, scope_owner=stmt)
 
 
 def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
@@ -2208,10 +2213,10 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
                               hoisted_tuple_lift_cpp=stmt.hoisted_tuple_lift_cpp)
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
-    _emit_stmts(out, stmt.body, indent_level + 1, state)
+    _emit_stmts(out, stmt.body, indent_level + 1, state, scope_owner=stmt, scope_role="loop")
     state.loop_depth -= 1
     out.write(f"{indent}}}\n")
-    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
+    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level, scope_owner=stmt)
 
 
 def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,

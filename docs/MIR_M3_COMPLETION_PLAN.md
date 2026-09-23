@@ -84,6 +84,9 @@ the others visible.
   scalar-field record arguments at known readonly reader calls. Eager/lazy
   initialization, if/elif scopes and fresh while activations are covered;
   unplanned bodies and richer argument materialization remain open.
+  The [ordinary-for storage extension](MIR_FOR_ARGUMENT_STORAGE_PLAN.md)
+  connects the shared plan to existing range/native loop bodies and else
+  scopes; loop-head materialization remains separate.
   The [named argument temporary investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md)
   identified the need for the M3/M4 call-summary interface. M4.1/M4.2 now
   cover bounded calls with stable arguments. The named-storage consumer uses

@@ -1105,6 +1105,7 @@ class _Coverage:
                 raise MIRUnsupported(stmt, "unsupported statement")
 
     def range_loop(self, stmt: th.THIRForRange, loops: int) -> None:
+        _require(stmt, self.fn.temp_plan is None, "named argument needs for-loop scope mapping")
         _plain(stmt, {"var", "elem_type", "start", "stop", "start_is_literal", "stop_is_literal",
                       "body", "step_kind", "orelse", "hoist_loop_var", "target_written",
                       "hoist_decls", "hoisted_bindings"})
@@ -1133,6 +1134,7 @@ class _Coverage:
         self.scoped(stmt.orelse, loops)
 
     def native_loop(self, stmt: th.THIRForEach, loops: int) -> None:
+        _require(stmt, self.fn.temp_plan is None, "named argument needs for-loop scope mapping")
         _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var", "iterable_lvalue",
                       "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings", "iteration"})
         fact = stmt.iteration
