@@ -893,12 +893,19 @@ class TpyTupleUnpack(TpyStmt):
     # borrowed. Sema sets it off the enclosing `TpyForEach.is_tuple_unpack`,
     # so a macro-built loop head is marked like a parsed one.
     is_loop_head: bool = False
+    # Set by sema at a loop head: the names the loop body rebinds. Each for
+    # head declares its targets afresh, so a sibling loop reusing a name is
+    # not a rebind of this binding.
+    loop_body_rebinds: frozenset[str] = frozenset()
     # Set by sema:
     target_types: list[TpyType] = field(default_factory=list)
     is_new: list[bool] = field(default_factory=list)
     is_owned: list[bool] = field(default_factory=list)
     is_ref: list[bool] = field(default_factory=list)
     is_const_ref: list[bool] = field(default_factory=list)
+    # A borrowed target the name is later rebound in: it binds a pointer
+    # local, since a reference alias would write the rebind through.
+    is_rebound: list[bool] = field(default_factory=list)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value]
@@ -978,6 +985,10 @@ class TpyReturn(TpyStmt):
     # the inline finally chain and materializes (moves) the return value
     # after it, so finally mutations stay visible (CPython aliasing).
     finally_deferred_capture: bool = False
+    # With the stamp on a returned tuple literal: the index paths of the
+    # members that are such locals (each captured by pointer before the
+    # chain); every other member is evaluated into a temporary there.
+    finally_deferred_leaves: tuple[tuple[int, ...], ...] = ()
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value] if self.value else []

@@ -1,0 +1,3 @@
+The copy each section pins IS a divergence from CPython (which aliases the
+tuple member), acknowledged by the warning plus copy(). Comparing output
+against CPython would compare the divergence itself.

@@ -1,5 +1,7 @@
 # The borrow-into-Own hazard UNIONs both ternary arms: a borrowed element in
 # either arm rejects the name return into an Own[T] slot.
+# TO BE FIXED: the scalar twin WARNS and copies here; this error becomes that
+# warning (BUGS.md#borrowed-tuple-at-own-call-arg, plan unit U3 D1).
 from tpy import int32, Own, copy
 
 

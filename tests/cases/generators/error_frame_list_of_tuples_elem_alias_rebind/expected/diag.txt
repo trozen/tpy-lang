@@ -1,0 +1,1 @@
+main.py:19: error: in function 'g': this construct is not yet supported by C++ code generation (res.alias_bind)

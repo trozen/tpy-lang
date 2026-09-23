@@ -1,6 +1,7 @@
-# dict[K, tuple[T | None, ...]] subscript-assign of an rvalue tuple lifts
-# pointer-form -> storage-form via tuple_to_storage. Storage-form sources
-# (subscript, field, value-form local) skip the wrap.
+# dict[K, tuple[T | None, ...]] subscript-assign of a tuple literal lifts
+# pointer-form -> storage-form via tuple_to_storage, copying a named member
+# that is read again (a is, below). Storage-form sources (subscript, field,
+# value-form local) skip the wrap.
 from tpy import int32
 
 
@@ -28,7 +29,7 @@ def main() -> None:
 
     d: dict[int32, tuple[P | None, P | None]] = {}
     # rvalue tuple literal -> storage-form lift required
-    d[int32(0)] = (a, b)
+    d[int32(0)] = (a, b)  # tpyc: warning(/copies P \| None into container \(tuple element 0\)/)
     d[int32(1)] = (a, None)
     d[int32(2)] = (None, None)
 

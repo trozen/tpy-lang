@@ -3096,8 +3096,8 @@ def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
     Both `tuple[Own[T], ...]` and `Own[tuple[T, ...]]` imply per-element
     move semantics: the value tuple owns its elements, so non-value
     elements need ownership transfer at construction. For `Own[Tuple]`
-    we synthesize an Own-wrapped inner tuple so the existing per-element
-    `Own[T]` handling (sema's `_check_own_lvalue_return` and
+    we synthesize an Own-wrapped inner tuple so the per-element `Own[T]`
+    handling (sema's `check_tuple_literal_members` and
     `_annotate_tuple_elem_capture`) covers both shapes uniformly.
     """
     if isinstance(expected, TupleType):
@@ -5161,6 +5161,12 @@ class ViewVarInfo:
     # promotes the local to owned storage. Literal / Final sources have
     # static storage and never set this.
     frame_unsafe_source: bool = False
+    # What every binding of this view reads from, for the hoist rule: the
+    # storage roots it views, resolved at the binding (a view name is
+    # followed through its own entries), or unknown -- no binding recorded,
+    # or a source with no root the rule can place -- which owns once hoisted.
+    hoist_roots: set[str] = field(default_factory=set)
+    hoist_unknown: bool = False
     resolved_type: Optional[TpyType] = None
 
 

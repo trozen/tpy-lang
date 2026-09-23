@@ -1,0 +1,40 @@
+for_call_unpack iter2-left-part-long-enough-for-heap iter2-right-part-long-enough-for-heap
+while_call_unpack w1-left-part-long-enough-for-heap w1-right-part-long-enough-for-heap
+loop_local_unpack payload-number-2-long-enough-to-defeat-sso 2
+loop_local_views payload-number-2-long-enough-to-defeat-sso holder-name-2-long-enough-to-defeat-sso ice-source-2-long-enough-to-defeat-sso
+branch_views payload-number-1-long-enough-to-defeat-sso holder-name-in-branch-long-enough-to-defeat-sso
+match_views payload-number-7-long-enough-to-defeat-sso
+loop_durable_source payload-number-5-long-enough-to-defeat-sso
+branch_durable_source outer-holder-name-long-enough-to-defeat-sso
+leaked_head second-key-long-enough-to-defeat-sso 2
+view_of_view payload-number-1-long-enough-to-defeat-sso -of-slice-source-long-enough-to-defeat-sso-1
+deep_sources payload-number-1-long-enough-to-defeat-sso strip-source-long-enough-to-defeat-sso-1
+elif_arm payload-number-1-long-enough-to-defeat-sso
+except_handler payload-number-2-long-enough-to-defeat-sso
+try_body payload-number-3-long-enough-to-defeat-sso
+loop_else payload-number-4-long-enough-to-defeat-sso
+er_body payload-number-3-long-enough-to-defeat-sso
+ctor payload-number-1-long-enough-to-defeat-sso
+method method-holder-long-enough-to-defeat-sso-1
+closure_body payload-number-1-long-enough-to-defeat-sso
+param_source payload-number-6-long-enough-to-defeat-sso param-holder-long-enough-to-defeat-sso
+read_order 1 payload-number-1-long-enough-to-defeat-sso
+read_order_late payload-number-1-long-enough-to-defeat-sso 1
+alias_arm alias-arm-holder-long-enough-to-defeat-sso
+elem_alias_arm elem-alias-holder-long-enough-to-defeat-sso
+try_alias try-alias-holder-long-enough-to-defeat-sso
+with_target_arm with-target-name-long-enough-to-defeat-sso
+capture_rebind capture-holder-1-long-enough-to-defeat-sso
+lending_operands payload-number-8-long-enough-to-defeat-sso value-type-name-long-enough-to-defeat-sso
+reused_loop_var payload-number-11-long-enough-to-defeat-sso
+static_sources final-global-long-enough-to-defeat-sso-xxxxxxxxxx class-constant-long-enough-to-defeat-sso-xxxxxxx
+moved_alias moved-alias-holder-long-enough-to-defeat-sso
+kept_alias kept-alias-holder-long-enough-to-defeat-sso kept-alias-holder-long-enough-to-defeat-sso
+module_attr store-plain-module-variable-long-enough-to-defeat-sso store-final-constant-long-enough-to-defeat-sso-xx
+capture_of_call capture-of-call-1-long-enough-to-defeat-sso
+nested_loop_in_arm payload-number-2-long-enough-to-defeat-sso nested-arm-holder-long-enough-to-defeat-sso
+shadows_global payload-number-1-long-enough-to-defeat-sso
+generator_heads GENERATOR-HEAD-OMEGA-LONG-ENOUGH-TO-DEFEAT-SSO GENERATOR-HEAD-OMEGA-LONG-ENOUGH-TO-DEFEAT-SSO generator-head-omega-long-enough-to-defeat-sso
+list_param_head generator-head-omega-long-enough-to-defeat-sso
+implicit_iter_heads bag-element-omega-long-enough-to-defeat-sso counter-omega-fresh-suffix-long-enough-to-defeat-sso bag-element-omega-long-enough-to-defeat-sso
+qualified_call qualified-call-param-lon qualified-call-param-lon

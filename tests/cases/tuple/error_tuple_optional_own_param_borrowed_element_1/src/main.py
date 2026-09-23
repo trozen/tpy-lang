@@ -3,6 +3,8 @@
 # proving the per-element check continues past element 0 when element 0
 # is OK. (The first-error-wins behaviour is otherwise documented in the
 # sibling error_tuple_optional_own_param_borrowed test.)
+# TO BE FIXED: the scalar twin WARNS and copies here; this error becomes that
+# warning (BUGS.md#borrowed-tuple-at-own-call-arg, plan unit U3 D1).
 from tpy import int32, Own
 
 

@@ -1,0 +1,1 @@
+main.py:18: error: non-copyable type 'G' cannot be returned as return type Own[G]. Only the original owner can be moved at its last use.

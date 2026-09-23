@@ -410,6 +410,16 @@ def _membership(e: THIRExpr) -> str:
             f", {e.method_cpp!r})")
 
 
+def _deferred_parts(parts) -> str:
+    out = []
+    for p in parts:
+        if p.kind.name == "TUPLE":
+            out.append(_deferred_parts(p.parts))
+        else:
+            out.append(f"{p.kind.name.lower()}:{_expr(p.expr)}")
+    return f"({', '.join(out)})"
+
+
 def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     pad = "  " * depth
     if isinstance(stmt, THIRVarDecl):
@@ -442,6 +452,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}return {_expr(stmt.value)}" if stmt.value is not None
                 else f"{pad}return"]
     if isinstance(stmt, THIRFinallyDeferredReturn):
+        if stmt.tuple_cpp is not None:
+            return [f"{pad}return [finally-deferred tuple] "
+                    f"{_deferred_parts(stmt.tuple_parts)}"]
         kind = "opt-move" if stmt.optional_move else "move"
         cap = _expr(stmt.capture)
         return [f"{pad}return [finally-deferred {kind}] "

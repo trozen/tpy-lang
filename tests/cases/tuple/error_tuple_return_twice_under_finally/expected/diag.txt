@@ -1,0 +1,1 @@
+main.py:11: error: Cannot return borrowed value as tuple element 0 Own[list[int32]] without explicit copy(). The source is borrowed (parameter, attribute, or non-last-use variable); use 'copy(...)' to make an owned copy.

@@ -47,10 +47,12 @@ def ret_value_int() -> int32:
 
 def ret_rebound() -> Own[Box]:
     b = Box()
+    b.n = 7
     try:
         return b
     finally:
         b = Box()  # rebinding: the pending return keeps the original object
+        b.n = 99
 
 
 def ret_param_ref(b: Box) -> Box:

@@ -677,7 +677,7 @@ class _Coverage:
                      "unsupported tuple expression")
             allowed = {"elements", "tuple_layout"}
             if isinstance(expr, th.THIRBorrowTupleLiteral):
-                allowed |= {"spelled_cpp", "addr_of"}
+                allowed |= {"spelled_cpp", "elem_cpps", "addr_of"}
                 _require(expr, len(expr.addr_of) == len(expr.elements), "tuple address arity")
             _plain(expr, allowed)
             layout = expr.tuple_layout

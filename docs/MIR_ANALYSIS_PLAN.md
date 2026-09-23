@@ -693,9 +693,9 @@ their selected representation. These are required sibling checks, not claims
 that all paths have already been reproduced. Do not patch IN_PLACE selection
 with a tuple-specific exception or infer local capture from escape roots alone.
 
-The existing `resumable-alias-identity` and `tuple-unpack-view-outlives-reseat`
-entries in BUGS.md concern different ownership directions/producers; neither
-tracks this literal-capture defect. It is an active prerequisite here, not a
+The existing `resumable-alias-identity` entry in BUGS.md concerns a different
+ownership direction/producer; it does not track this literal-capture
+defect. It is an active prerequisite here, not a
 deferred backlog entry.
 
 An independent mixed-tuple probe confirms both lost identities: before mutation
