@@ -1961,8 +1961,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # REF_ALIAS from a borrow-record-returning call (lowering; the
     # `T& p = shared(x);` bind of the callee's returned reference).
     "decl.record_borrow_call",
-    "decl.container_borrow_call",   # borrow container return binds the T&
-                                    # alias (the record row's container twin)
     "decl.dunder_borrow_alias",     # the operator flavor: a borrow-returning
                                     # `__add__`/`__neg__` result binds the
                                     # alias -- `const Acc& c = ((a) + (b));`
@@ -2885,9 +2883,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.optptr_container_literal",  # container literal into a ptr-repr
                                     # Optional[container] slot: typed __tmp_N
                                     # + &(__tmp_N)
-    "argtemp.container_call",       # container-returning rvalue call into a
-                                    # plain call's container ref param -> the
-                                    # hoisted `__tmp_N` ArgTemp
     "field.opt_deref_check_read",   # unproven opt-scalar field operand unwrap
     "field.whole_optional",         # WHOLE value-repr Optional field read into
                                     # an optional sink -> bare member copy

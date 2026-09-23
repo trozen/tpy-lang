@@ -40,6 +40,7 @@ from .predicates import (
     _is_type_param_slot,
     _native_iter_value_slot,
     _optional_ptr_borrow,
+    _record_class_binding,
     _optional_ptr_borrow_wide,
     _nullable_static_protocol_param,
     _storage_optional_return_wide,
@@ -1928,9 +1929,16 @@ class _LowerScope:
     loop_depth: int = 0
 
     def admission_pointers(self) -> set[str]:
-        """Pointer locals whose statement admission follows pointer rules."""
-        return {
-            name for name in self.lc.pointers
-            if _optional_ptr_borrow(self.declared.get(name),
-                                    self.lc.analyzer) is None
-        }
+        """Pointer locals whose statement admission follows pointer rules:
+        every pointer binding except the Optional-ptr borrow of a RECORD,
+        whose bare-name reads stay bare and reach members through `->` (its
+        admissions are the Optional record route's). A container pointee
+        derefs at value positions like any other pointer binding
+        (`__setitem__((*xs), i, v)`), so it stays under the pointer rules."""
+        out = set()
+        for name in self.lc.pointers:
+            opt = _optional_ptr_borrow(self.declared.get(name),
+                                       self.lc.analyzer)
+            if opt is None or not _record_class_binding(opt.inner):
+                out.add(name)
+        return out

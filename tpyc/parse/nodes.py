@@ -646,6 +646,9 @@ class TpyGeneratorExpression(TpyExpr):
     # A `range(...)` source's bounds: the function takes them by value as its
     # leading params and loops over a range of them, in place of a source.
     frame_range_args: 'tuple[TpyExpr, ...]' = ()
+    # The call the expression IS, as borrow provenance asks it: the frame
+    # function over the source (or range bounds) and the captures.
+    frame_creation: 'TpyCall | None' = None
 
     def children(self) -> list[TpyExpr]:
         return [self.element_expr, self.generator.iterable] + self.generator.conditions
@@ -1649,6 +1652,16 @@ class TpyFunction:
     # inferred expression types (which don't exist yet at macro-expansion time).
     pending_deferred_sema_macros: list[Any] = field(default_factory=list)
     loc: SourceLocation | None = None
+
+    @property
+    def genexpr_loop(self) -> 'TpyForEach | None':
+        """The loop a generator expression's function is: its whole body, the
+        source's for-each around the filters and the yield. None for any
+        other function."""
+        if not self.is_genexpr or not self.body:
+            return None
+        loop = self.body[0]
+        return loop if isinstance(loop, TpyForEach) else None
 
     @property
     def is_overload_stub(self) -> bool:

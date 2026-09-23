@@ -14,6 +14,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sink(n: int32) -> int32:
 int32_t sink(int32_t n);
+// def mk() -> Own[list[int32]]:
+std::vector<int32_t> mk();
+// def push_gen[T](x: T, xs: list[int32]) -> int32:
+template<typename T>
+int32_t push_gen(::tpy::param_val_or_ref_t<T> x, std::vector<int32_t>& xs);
+// def push_free(xs: list[int32]) -> int32:
+int32_t push_free(std::vector<int32_t>& xs);
 // def main() -> None:
 void main();
 
@@ -37,6 +44,8 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 struct K {
     // tag: int32
     int32_t tag;
+    // items: list[int32]
+    std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     K();
@@ -58,6 +67,9 @@ struct K {
 
     // def pick(self, xs: list[int32]) -> list[int32]:
     std::vector<int32_t>& pick(std::vector<int32_t>& xs) const;
+
+    // def stash(self, xs: list[int32]) -> list[int32]:
+    std::vector<int32_t>& stash(std::vector<int32_t>& xs);
 
     // def total(self, xs: list[int32]) -> int32:
     int32_t total(const std::vector<int32_t>& xs) const;
@@ -87,7 +99,8 @@ inline Rec::Rec(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
 //     self.tag = 0
-inline K::K() : tag(0) {}
+//     self.items = []
+inline K::K() : tag(0), items(std::vector<int32_t>{}) {}
 
 // def fill(self, xs: list[int32]) -> int32:
 //     xs.append(9)
@@ -137,6 +150,16 @@ inline std::vector<int32_t>& K::pick(std::vector<int32_t>& xs) const {
     return xs;
 }
 
+// # lends CALLER-visible storage back after absorbing the argument, so a
+// # bound result that copied would miss the caller's later append
+// def stash(self, xs: list[int32]) -> list[int32]:
+//     self.items.extend(xs)
+//     return self.items
+inline std::vector<int32_t>& K::stash(std::vector<int32_t>& xs) {
+    ::tpy::list_extend(this->items, xs);
+    return this->items;
+}
+
 // # reads only: the slot is const-inferred and keeps the in-place render
 // def total(self, xs: list[int32]) -> int32:
 //     s = 0
@@ -178,5 +201,16 @@ inline int32_t K::fill_static_dict(::tpy::ordered_map<std::string, int32_t>& d) 
     ::tpy::__setitem__(d, "z", 9);
     return ::tpy::__len__(d);
 }
+// # generic function with a concrete mutable slot beside the open one: the
+// # temp hoists there too
+// def push_gen[T](x: T, xs: list[int32]) -> int32:
+//     xs.append(9)
+//     return len(xs)
+template<typename T>
+int32_t push_gen(::tpy::param_val_or_ref_t<T> x, std::vector<int32_t>& xs) {
+    xs.push_back(9);
+    return ::tpy::__len__(xs);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

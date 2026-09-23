@@ -29,10 +29,26 @@ void rebound_set(::tpy::ordered_set<int32_t>& other);
 void rebound_bytes(::tpy::ByteArray& other);
 // def rebound_array(other: Array[int32, 2]) -> None:
 void rebound_array(std::array<int32_t, 2>& other);
+// def longer(a: list[int32], b: list[int32]) -> list[int32]:
+std::vector<int32_t>& longer(std::vector<int32_t>& a, std::vector<int32_t>& b);
+// def rebound_borrow(other: list[int32]) -> None:
+void rebound_borrow(std::vector<int32_t>& other);
+// def identity[T: Sized](x: T) -> T:
+template<::tpystd::typing::Sized T>
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
+// def rebound_generic_borrow(other: list[int32]) -> None:
+void rebound_generic_borrow(std::vector<int32_t>& other);
 // def hoisted() -> int32:
 int32_t hoisted();
 // def main() -> None:
 void main();
+
+// def identity[T: Sized](x: T) -> T:
+//     return x
+template<::tpystd::typing::Sized T>
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
+    return ::tpy::param_to_return<T>(x);
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

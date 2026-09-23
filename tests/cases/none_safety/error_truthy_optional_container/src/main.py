@@ -1,5 +1,7 @@
-# `if xs:` on an `Optional[list]`: builtin containers are outside the
-# truthiness dunder dispatch, so the name has no admitted truthy render.
+# `if xs:` on an `Optional[list]`: the bare pointer test a record pointee
+# takes would drop CPython's emptiness half, and sema attaches no mode for
+# it, so the name keeps rejecting
+# (BUGS.md#optional-container-truthiness-drops-emptiness).
 from tpy import int32
 
 

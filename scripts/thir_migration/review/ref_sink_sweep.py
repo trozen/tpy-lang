@@ -117,11 +117,11 @@ MUTATIONS: dict[str, str] = {
 # and `copy_call` (an explicit `copy()`, whose whole point is that it copies).
 # `nested_field` goes with them -- it is `obj_field` with one more receiver
 # hop, and no gate here asks about the hop.
-SOURCE_NAMES = ("local", "local_last", "param", "obj_field", "subscript",
-                "dict_subscript", "borrow_method", "prop_ref", "prop_own",
-                "narrowed_opt", "own_call", "ctor_rvalue", "temp_accessor",
-                "global_name", "loop_var", "closure_capture",
-                "subclass_local")
+SOURCE_NAMES = ("local", "local_last", "param", "narrowed_opt_param",
+                "obj_field", "subscript", "dict_subscript", "borrow_method",
+                "prop_ref", "prop_own", "narrowed_opt", "own_call",
+                "ctor_rvalue", "temp_accessor", "temp_field", "global_name",
+                "loop_var", "closure_capture", "subclass_local")
 
 # One compilation per rejecting frame is what the two frame positions cost, so
 # they carry the source shapes that span the axis rather than all of them: a
@@ -141,6 +141,7 @@ BACK: dict[str, str] = {
     "local_last": "",
     "subclass_local": "",
     "param": "pv",
+    "narrowed_opt_param": "pv",
     "obj_field": "b._v",
     "subscript": "xs[0]",
     "dict_subscript": "d[" + Q + "k" + Q + "]",
@@ -151,6 +152,7 @@ BACK: dict[str, str] = {
     "own_call": "",
     "ctor_rvalue": "",
     "temp_accessor": "",
+    "temp_field": "",
     "global_name": "G",
     "loop_var": "s0",
     "closure_capture": "s0",
@@ -162,7 +164,8 @@ BACK: dict[str, str] = {
 # expression sits inside a `wrap` cannot carry a return at all.
 BORROWABLE = frozenset({"param", "obj_field", "subscript", "dict_subscript",
                         "borrow_method", "prop_ref", "prop_own", "own_call",
-                        "ctor_rvalue", "temp_accessor", "global_name"})
+                        "ctor_rvalue", "temp_accessor", "temp_field",
+                        "global_name"})
 
 SOURCE_BY_NAME = {s.name: s for s in SOURCES}
 
@@ -378,7 +381,7 @@ def _cell_def(kind_name: str, pos: Position, src, sink: Sink) -> list[str]:
     kind = KINDS[kind_name]
     tag = "%s__%s" % (src.name, sink.name)
     body = _cell_body(kind_name, src, sink)
-    params = ["pv: " + kind.ty] if src.param else []
+    params = ["pv: " + _subst(src.param_ty, kind)] if src.param else []
     sig = ", ".join(params)
     ret = kind.ty if sink.ret else "None"
     if pos.ctor:

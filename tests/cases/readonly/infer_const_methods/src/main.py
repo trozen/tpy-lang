@@ -41,7 +41,7 @@ class Box:
 
 
 # self.field.method() -- calling a non-readonly method on a field IS self-mutation.
-# Deferred to Phase 2 via receiver_is_self call edge; Phase 2 marks self as
+# Deferred to Phase 2 via a receiver_idx call edge; Phase 2 marks self as
 # mutated because list.sort/append have unknown (conservative) mutation status.
 class SortableBox:
     items: list[int32]

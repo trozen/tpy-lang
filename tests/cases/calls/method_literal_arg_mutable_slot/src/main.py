@@ -5,8 +5,9 @@
 # the literal hoists to a named temporary instead, the free-function family's
 # render. The argument is a fresh temporary at every subject line, so there is
 # no caller-side alias to observe: what each section prints is the callee's
-# own view of the container it was handed.
-from tpy import int32, readonly
+# own view of the container it was handed. The other temporaries -- an owning
+# call, an explicit copy -- take the same hoist at the same slots.
+from tpy import Own, copy, int32, readonly
 
 
 class Rec:
@@ -18,9 +19,11 @@ class Rec:
 
 class K:
     tag: int32
+    items: list[int32]
 
     def __init__(self) -> None:
         self.tag = 0
+        self.items = []
 
     def fill(self, xs: list[int32]) -> int32:
         xs.append(9)
@@ -47,6 +50,12 @@ class K:
     def pick(self, xs: list[int32]) -> list[int32]:
         return xs
 
+    # lends CALLER-visible storage back after absorbing the argument, so a
+    # bound result that copied would miss the caller's later append
+    def stash(self, xs: list[int32]) -> list[int32]:
+        self.items.extend(xs)
+        return self.items
+
     # reads only: the slot is const-inferred and keeps the in-place render
     def total(self, xs: list[int32]) -> int32:
         s = 0
@@ -72,6 +81,22 @@ def sink(n: int32) -> int32:
     return n
 
 
+def mk() -> Own[list[int32]]:
+    return [1, 2]
+
+
+# generic function with a concrete mutable slot beside the open one: the
+# temp hoists there too
+def push_gen[T](x: T, xs: list[int32]) -> int32:
+    xs.append(9)
+    return len(xs)
+
+
+def push_free(xs: list[int32]) -> int32:
+    xs.append(9)
+    return len(xs)
+
+
 def main() -> None:
     k = K()
     # method, named receiver
@@ -88,6 +113,25 @@ def main() -> None:
     print("temp_recv", K().fill([1, 2]))  # tpyc: ok
     # method whose slot stays mutable only because the return borrows it
     print("lend_back", len(k.pick([3, 4])))  # tpyc: ok
+    # ... and the borrowed result BOUND: the declaration is a flush position
+    # too, so the literal hoists to a named temporary the alias then outlives
+    got = k.pick([3, 4])  # tpyc: ok
+    got.append(5)
+    print("lend_back_bound", got)
+    # ... and bound from a callee that lends the receiver's own storage: the
+    # alias sees the append, and the receiver's field shows it
+    kept = k.stash([6])  # tpyc: ok
+    kept.append(7)
+    print("lend_back_stash", k.items)
+    # an owning call and an explicit copy as the temporary: bound in place
+    # at a const method slot, hoisted at a generic function's mutable slot
+    # and at a free function's, the call's result bound to a local (the
+    # static method's slot has no such row yet)
+    print("own_call_const_meth", k.total(mk()))  # tpyc: ok
+    print("own_call_generic", push_gen(1, mk()))  # tpyc: ok
+    src: list[int32] = [1, 2, 3]
+    n = push_free(copy(src))  # tpyc: ok
+    print("copy_free_bound", n, src)
     # method call nested in another call's argument list
     print("nested_arg", sink(k.fill([1, 2])))  # tpyc: ok
     # static method (a qualified call, not a receiver call)

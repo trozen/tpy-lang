@@ -1,5 +1,5 @@
 # An ancestor method that mutates self, called via BaseN.method(self, ...).
-# Exercises Phase 2 mutation propagation through the receiver_is_self call edge
+# Exercises Phase 2 mutation propagation through the receiver_idx call edge
 # on the synthetic self-rebinding used by the unbound-self dispatch.
 from tpy import int32
 

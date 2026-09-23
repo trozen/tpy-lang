@@ -2732,8 +2732,7 @@ class TypeCompatibility:
         # Only a real receiver is durable by being `self`; in a free function
         # or a staticmethod the name is an ordinary local, param or global and
         # must answer from its storage, like any other name.
-        if name == "self" and (self.ctx.receiver_self_in_scope()
-                               or self.ctx.func.outer_self_is_receiver):
+        if name == "self" and self.ctx.self_names_receiver():
             return not (isinstance(func, TpyFunction) and func.is_consuming)
         if isinstance(func, TpyFunction):
             for pname, ptype in func.params:

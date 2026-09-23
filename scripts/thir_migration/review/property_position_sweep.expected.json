@@ -220,7 +220,7 @@
   ""
  ],
  "call_arg__items__prop__temp": [
-  "stmt.expr_stmt:call.arg_shape.container",
+  "stmt.expr_stmt:arg.lends_from_temporary",
   ""
  ],
  "call_arg__n__meth__named": [
@@ -421,7 +421,7 @@
  ],
  "comp_iter__items__meth__temp": [
   "ok",
-  ""
+  "Iterator borrows from temporary receiver object; the temporary is destroyed befo"
  ],
  "comp_iter__items__prop__named": [
   "ok",
@@ -429,7 +429,7 @@
  ],
  "comp_iter__items__prop__temp": [
   "expr.method_call:foreach.iter_lends_from_temporary",
-  ""
+  "Iterator borrows from temporary receiver object; the temporary is destroyed befo"
  ],
  "comp_iter__own__meth__named": [
   "ok",
@@ -508,7 +508,7 @@
   "copies list[int32] into field; use copy() to make this explicit"
  ],
  "ctor_arg__items__prop__temp": [
-  "expr.call:call.ctor_arg.container",
+  "expr.method_call:method.ret_type",
   "copies list[int32] into field; use copy() to make this explicit"
  ],
  "ctor_arg__n__meth__named": [
@@ -1312,7 +1312,7 @@
   ""
  ],
  "loop_decl__items__meth__local": [
-  "stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "'v' will not keep the object it was given -- 'b' is rebound on each iteration an"
  ],
  "loop_decl__items__prop__local": [

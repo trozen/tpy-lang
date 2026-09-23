@@ -3,11 +3,9 @@
 # at the end of this statement, while what the getter lent can OUTLIVE that
 # receiver -- here it lends a GLOBAL, which CPython mutates through -- so the
 # copy a by-value slot would take loses every later mutation silently.
-# This spelling stops one gate EARLIER than the rule it belongs to: the
-# argument-shape gate refuses a container rvalue at a plain container slot
-# before the sink is asked, which is why the tag below is
-# `call.arg_shape.container` and not `arg.lends_from_temporary`. The sink's own
-# tag is pinned by the `_method_arg` sibling.
+# The stop is the rule's own tag, `arg.lends_from_temporary`, at the free-call
+# family too (the container rvalue reaches the sink now that the hoisting
+# row is shared with the record's).
 # The full table -- one sink, one tag, one case each -- is in
 # docs/PROPERTY_DESIGN.md, "A read off a TEMPORARY receiver: the sink table".
 from tpy import Own, int32
@@ -35,7 +33,7 @@ def mutate(xs: list[int32]) -> None:
 
 
 def main() -> None:
-    mutate(mk().items)  # tpyc: error(/call.arg_shape.container/)
+    mutate(mk().items)  # tpyc: error(/arg\.lends_from_temporary/)
     print(len(G))
 
 

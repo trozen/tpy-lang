@@ -318,8 +318,7 @@ class TestMethodArgSinkShape:
             "value_opt_scalar_value",
             "str_literal_value_opt",
             "bytes_literal_value_opt",
-            "optional_ptr_container",
-            "optional_ptr_container_literal",
+            "optional_ptr_container_temp",
             "optional_ptr_scalar_temp",
             "protocol_slot",
             "ru_wrapper_name",
@@ -335,7 +334,7 @@ class TestMethodArgSinkShape:
         # already name: 15 shapes were written twice, and the leading cell is
         # now the only one deciding them.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 110
+        assert len(rows) == 109
         assert len(rows[:self.STUB_ROWS]) == 51
         assert rows[self.STUB_ROWS] == "lambda"
 
@@ -484,6 +483,7 @@ class TestMethodArgSinkShape:
                 if r.extra is not None] == [
             ("bytes_owned_lvalue", "_x_insert_own_slot"),
             ("own_enum_elem", "_x_insert_own_slot"),
+            ("container_slot_call_rvalue", "_x_comp_slot_const"),
             ("own_lvalue", "_x_own_lvalue_flush"),
             ("container_literal_method", "_x_inline_container_literal"),
             ("container_literal", "_x_temps_ok"),
@@ -502,7 +502,7 @@ class TestMethodArgSinkShape:
             ("union_ctor_temp", "_x_temps_ok"),
             ("union_bytes_literal_temp", "_x_temps_ok"),
             ("value_union_temp", "_x_temps_ok"),
-            ("optional_ptr_container_literal", "_x_temps_ok"),
+            ("optional_ptr_container_temp", "_x_temps_ok"),
             ("optional_ptr_scalar_temp", "_x_temps_ok"),
             ("ru_wrapper_member_name", "_x_temps_ok"),
             ("ru_wrapper_scalar_literal", "_x_temps_ok"),
@@ -610,8 +610,7 @@ class TestMethodArgSinkShape:
             "value_opt_scalar_value",
             "str_literal_value_opt",
             "bytes_literal_value_opt",
-            "optional_ptr_container",
-            "optional_ptr_container_literal",
+            "optional_ptr_container_temp",
             "optional_ptr_scalar_temp",
         ]
 

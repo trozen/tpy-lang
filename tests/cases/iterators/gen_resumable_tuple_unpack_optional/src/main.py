@@ -1,6 +1,9 @@
 # Tuple-unpack for-loop with pointer-repr Optional elements
 # (tuple[P | None, P | None]) read across a yield -- exercises the
 # optional_to_ptr target binding (distinct from the plain-reference alias).
+# Reads only: the frame binds the pointer into its COPY of the tuple, so a
+# write through it would not reach the source list
+# (BUGS.md#frame-tuple-unpack-optional-element-aliases-copy).
 from typing import Iterator, Optional
 from tpy import int32
 

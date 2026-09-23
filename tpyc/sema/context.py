@@ -41,6 +41,7 @@ from ..parse import (
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
     TpyUnaryOp, TpyIfExpr, TpyTupleLiteral, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
+    TpyGeneratorExpression,
     is_parse_node,
     is_property_getter_read,
 )
@@ -318,6 +319,49 @@ def iter_borrow_storage(expr: TpyExpr) -> str | None:
     return _borrow_storage_root(expr)
 
 
+def _root_name_of_expr(expr: TpyExpr) -> str | None:
+    """Extract the root TpyName from a chain of field/subscript accesses.
+
+    e.g. p.inner.v -> "p", c.items[0] -> "c", x -> "x".
+    Returns None for non-name roots (calls, literals, etc.).
+
+    Transparent to a borrowing @auto_readonly accessor call (`o.b.get()` -> "o"):
+    the result borrows the receiver, so it is the same storage object. This
+    serves both the mutation-root callers (a write through the result mutates
+    the receiver) and the borrow-source callers (the result borrows the
+    receiver's storage); both want the receiver's root.
+
+    Unbound-self field access (BaseN.field, set by sema) reports "self"
+    since the implicit receiver is `this` -- the syntactic root name is
+    the ancestor class, but the mutation travels through self.
+    """
+    while True:
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            if (isinstance(expr, TpyFieldAccess)
+                    and expr.unbound_self_parent_type is not None):
+                return "self"
+            expr = expr.obj
+        elif _is_borrowing_auto_readonly_accessor(expr):
+            # An @auto_readonly accessor (Box.get / Rc.get / Deref) whose result
+            # borrows its receiver is transparent for mutation rooting: writing
+            # through `o.b.get().v` mutates `o`, so the root is the receiver's.
+            expr = expr.obj
+        else:
+            break
+    return expr.name if isinstance(expr, TpyName) else None
+
+
+def _is_borrowing_auto_readonly_accessor(expr: TpyExpr) -> bool:
+    """Whether a mutation through this call's result roots back to the receiver.
+
+    Only a borrowing accessor (result aliases the receiver) qualifies; a
+    value-returning @auto_readonly clone hands back a copy that can't.
+    """
+    return (isinstance(expr, TpyMethodCall)
+            and expr.resolved_function_info is not None
+            and expr.resolved_function_info.borrows_receiver_via_auto_readonly)
+
+
 def _borrow_storage_roots(expr: TpyExpr) -> list[str]:
     """Storage keys borrowed by ONE argument position.
 
@@ -368,6 +412,9 @@ def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
         args = [expr.left if rb.is_reverse else expr.right]
     elif isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
         fi, obj, args = expr.resolved_unaryop.method.root, expr.operand, []
+    elif (isinstance(expr, TpyGeneratorExpression)
+          and expr.frame_creation is not None):
+        return call_borrow_operands(expr.frame_creation)
     else:
         return None
     return None if fi is None else CallOperands(fi, obj, args)
@@ -505,13 +552,19 @@ def combine_loan_info(a: LoanInfo, b: LoanInfo) -> LoanInfo:
     # The element hop is a property of the PLACE, not of the kind, so it
     # survives whichever kind wins: one of the two loans points into an
     # element, and the merged loan is clobbered by everything either was.
-    # For the same reason the merged loan may name an element only when both
-    # legs named the same one; otherwise it stands for two places and must
-    # answer with no index at all. So a merged element loan can carry any
-    # kind and no index: every consumer of `on_element` must handle an
-    # UNKNOWN index relation whatever the kind says.
+    # For the same reason the merged loan may name an element only when the
+    # legs that point into an element named the same one; otherwise it stands
+    # for two places and must answer with no index at all. A leg on the whole
+    # container (an ITER loan without the hop, an ALIAS) makes no element
+    # claim and leaves the index alone; an ELEMENT or PTR leg points into an
+    # element it does not index, so it keeps the merged index unknown. So a
+    # merged element loan can carry any kind and no index: every consumer of
+    # `on_element` must handle an UNKNOWN index relation whatever the kind
+    # says.
     on_element = a.on_element or b.on_element
-    elem_index = a.elem_index if a.elem_index == b.elem_index else None
+    indices = {leg.elem_index for leg in (a, b)
+               if leg.on_element or leg.kind in (BorrowKind.ELEMENT, BorrowKind.PTR)}
+    elem_index = indices.pop() if len(indices) == 1 else None
     if on_element != winner.on_element or elem_index != winner.elem_index:
         winner = replace(winner, on_element=on_element, elem_index=elem_index)
     return winner
@@ -552,7 +605,8 @@ class BorrowTracker:
 
     def add_borrow(self, storage: str, borrower: str, kind: BorrowKind = BorrowKind.ALIAS,
                    *, on_element: bool = False,
-                   elem_index: 'tuple[str, int | str] | None' = None) -> None:
+                   elem_index: 'tuple[str, int | str] | None' = None,
+                   merge: bool = False) -> None:
         """Record that ``borrower`` borrows from ``storage`` (or, with
         ``on_element``, from the element ``elem_index`` of it).
 
@@ -561,12 +615,19 @@ class BorrowTracker:
         the hop: `combine_loan_info` carries it onto whichever kind wins a
         merge, so an ELEMENT or PTR loan can be on an element too, and with
         no index when the merged legs named different ones.
+
+        With ``merge``, a loan the borrower already holds on the storage is
+        combined with the new one (`combine_loan_info`) rather than replaced,
+        so a weaker loan never downgrades a stronger one.
         """
-        self.loans.setdefault(storage, {})[borrower] = LoanInfo(
-            kind, on_element, elem_index)
+        loan = LoanInfo(kind, on_element, elem_index)
+        holders = self.loans.setdefault(storage, {})
+        if merge and borrower in holders:
+            loan = combine_loan_info(holders[borrower], loan)
+        holders[borrower] = loan
         if self.current_stmt is not None:
             self.stmt_loans.setdefault(self.current_stmt, []).append(
-                (storage, borrower, kind))
+                (storage, borrower, loan.kind))
 
     def remove_borrower(self, borrower: str) -> None:
         """Remove all borrows held by ``borrower`` (e.g. on reassignment)."""
@@ -576,6 +637,17 @@ class BorrowTracker:
                 to_clean.append(storage)
         for storage in to_clean:
             del self.loans[storage]
+
+    def loans_held_by(self, borrower: str) -> dict[str, LoanInfo]:
+        """Every loan ``borrower`` holds, by storage."""
+        return {storage: holders[borrower]
+                for storage, holders in self.loans.items() if borrower in holders}
+
+    def reinstate(self, borrower: str, loans: dict[str, LoanInfo]) -> None:
+        """Put back loans `loans_held_by` returned. Not a new registration,
+        so nothing is recorded against the current statement."""
+        for storage, loan in loans.items():
+            self.loans.setdefault(storage, {})[borrower] = loan
 
     def rebind_borrower(self, borrower: str, value: TpyExpr | None) -> None:
         """Release old binding loans unless the binding retains itself."""
@@ -1147,6 +1219,17 @@ class BindingProvenance:
 _DEFAULT_PROVENANCE = BindingProvenance()
 
 
+class NestedMutationMark(NamedTuple):
+    """One mutation mark made inside a nested def, kept for the replay into
+    the enclosing function. `receiver` is `self_names_receiver()`'s answer
+    for a mark on `self`, taken where the mark was made."""
+    name: str
+    through_field: bool
+    structural: bool
+    via_element: bool
+    receiver: bool
+
+
 class DeferredGenericYieldSettle(NamedTuple):
     """One generator parked for the module-end generic-yield-slot verdict.
 
@@ -1420,6 +1503,11 @@ class FunctionTrackingState:
     # enclosing METHOD's receiver (not an ordinary local named self), so
     # assignment sites can reject rebinds with the receiver message.
     outer_self_is_receiver: bool = False
+    # Inside a generator expression's frame: the source's iteration loans on
+    # storage the body also names -- a capture or a module global -- which
+    # the frame's own loop holds next to its loan on the source param, since
+    # the two names reach one container.
+    genexpr_source_loans: tuple[tuple[str, LoanInfo], ...] = ()
     outer_scope_locals: set[str] = field(default_factory=set)
     current_nonlocal_names: set[str] = field(default_factory=set)
     # Union of nonlocal targets across all nested defs analyzed so far in
@@ -1456,10 +1544,10 @@ class FunctionTrackingState:
     own_ns: 'Namespace | None' = None
     # Mutation marks attempted while analyzing a nested-def body (recorded on
     # the NESTED tracking state, which is otherwise discarded on restore).
-    # Entries are (name, through_field, structural). _analyze_nested_def
-    # replays the captured/nonlocal/self subset into the enclosing state so
-    # closure mutations reach the method's const/param-mutation facts.
-    nested_mutation_marks: list[tuple[str, bool, bool, bool]] = field(default_factory=list)
+    # _analyze_nested_def replays the captured, nonlocal and receiver subset
+    # into the enclosing state so closure mutations reach the method's
+    # const/param-mutation facts.
+    nested_mutation_marks: list[NestedMutationMark] = field(default_factory=list)
 
     # --- Per-local escape/ownership provenance (see BindingProvenance) ---
     # One record per local; absent name == default. Mutate only via the
@@ -1983,7 +2071,7 @@ class SemanticContext:
     # --- Generator-expression functions ---
     # Set by the analyzer: registers and analyzes a genexpr's function at the
     # expression that creates it, under a function state of its own.
-    analyze_genexpr_function: 'Callable[[TpyFunction], None] | None' = None
+    analyze_genexpr_function: 'Callable[[TpyFunction, tuple[tuple[str, LoanInfo], ...]], None] | None' = None
     genexpr_counter: int = 0
     # genexpr function -> the function or method whose emitted body creates
     # its frame (through any nested def or genexpr between them); None at
@@ -2826,6 +2914,25 @@ class SemanticContext:
         prior = self.top_level_decls.get(name)
         self.top_level_decls[name] = line if prior is None else min(prior, line)
 
+    def self_names_receiver(self) -> bool:
+        """True when the name `self` here is a method receiver -- this
+        method's, or an enclosing method's read from a nested def -- rather
+        than an ordinary param or capture that happens to be named `self`
+        (a free function's param, a generator expression's capture, a nested
+        def's own param, which shadows the enclosing method's receiver)."""
+        own = self.func.current_param_name_to_idx.get("self")
+        if own is not None and own >= 0:
+            return False
+        return self.receiver_self_in_scope() or self.func.outer_self_is_receiver
+
+    def self_receiver_index(self) -> int | None:
+        """The index mutation facts file a write through `self` under: -1
+        for a receiver (the self_mutated flag), the param's own index where
+        `self` is an ordinary param, None where it is neither."""
+        if self.self_names_receiver():
+            return -1
+        return self.func.current_param_name_to_idx.get("self")
+
     def mark_param_mutated(self, name: str, *, through_field: bool = False,
                            via_element: bool = False) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
@@ -2851,10 +2958,12 @@ class SemanticContext:
         combinator) needs: the callee's own advance of the combinator is not
         a write into the caller's containers.
         """
+        receiver = name == "self" and self.self_names_receiver()
         if self.func.in_nested_def:
-            self.func.nested_mutation_marks.append(
-                (name, through_field, False, via_element))
-        if name == "self":
+            self.func.nested_mutation_marks.append(NestedMutationMark(
+                name, through_field=through_field, structural=False,
+                via_element=via_element, receiver=receiver))
+        if receiver:
             self.func.current_self_mutated = True
             if via_element:
                 self.func.current_elem_mutated_param_names.add(name)
@@ -2897,9 +3006,12 @@ class SemanticContext:
         mark_param_mutated which also fires for element-ref taking (a = items[0]).
         Traces loop variables back to their source iterables transitively.
         """
+        receiver = name == "self" and self.self_names_receiver()
         if self.func.in_nested_def:
-            self.func.nested_mutation_marks.append((name, False, True, False))
-        if name == "self":
+            self.func.nested_mutation_marks.append(NestedMutationMark(
+                name, through_field=False, structural=True,
+                via_element=False, receiver=receiver))
+        if receiver:
             self.func.current_self_struct_mutated = True
             return
         if name in self.func.current_param_names and name not in self.func.current_rebound_params:

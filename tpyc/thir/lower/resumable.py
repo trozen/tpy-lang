@@ -1622,18 +1622,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # are bare `=` from P*-shaped sources -- the local twin of the
             # Optional-ptr param admission. Kept OUT of ptr_frame_locals:
             # the loop-var-only arms (advance admission, value-yield deref,
-            # record-yield names) must not see it. CONTAINER inners join
-            # the F1 records at this LOCAL arm only (`const std::vector<
-            # int32_t>* h;` -- the optional_to_ptr bind + `(*h)` for-head
-            # deref); `_optional_ptr_borrow` itself stays narrow -- many
-            # binding-level consumers key F1 renders on it.
-            _opt_b = _optional_ptr_borrow(ltype, analyzer)
-            if _opt_b is None:
-                _ow = _optional_ptr_borrow_wide(ltype, analyzer)
-                if _ow is not None:
-                    if _f1_container_ref(unwrap_readonly(_ow.inner)):
-                        _opt_b = _ow
-            if _opt_b is not None:
+            # record-yield names) must not see it. A container inner is the
+            # same binding (`const std::vector<int32_t>* h;` -- the
+            # optional_to_ptr bind + `(*h)` for-head deref).
+            if _optional_ptr_borrow(ltype, analyzer) is not None:
                 opt_ptr_locals.add(lname)
                 continue
             return _reject("res.local_storage")

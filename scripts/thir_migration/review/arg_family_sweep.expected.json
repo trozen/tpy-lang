@@ -80,9 +80,9 @@
   "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "array_i__mut__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::array<int32_t, 2>){call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])}]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__mut__copy_call__fn": [
   "ok",
@@ -319,6 +319,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "array_i__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "array_i__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "array_i__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "array_i__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "array_i__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "array_i__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "array_i__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "array_i__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "array_i__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -400,9 +440,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "array_i__mut__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk, [])}]) print(%k0.tag [raw])"
  ],
  "array_i__mut__own_call__fn": [
   "ok",
@@ -410,9 +450,9 @@
   "call(CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk, [])}])"
  ],
  "array_i__mut__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::array<int32_t, 2>){call(mk, [])}])"
  ],
  "array_i__mut__own_call__genrec": [
   "ok",
@@ -480,9 +520,9 @@
   "call(CALLEE, [%pv])"
  ],
  "array_i__mut__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}]) print(%k0.tag [raw])"
  ],
  "array_i__mut__prop_own__fn": [
   "ok",
@@ -490,9 +530,9 @@
   "call(CALLEE, [%argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}])"
  ],
  "array_i__mut__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}])"
  ],
  "array_i__mut__prop_own__genrec": [
   "ok",
@@ -560,7 +600,7 @@
   ""
  ],
  "array_i__mut__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "",
   ""
  ],
@@ -570,7 +610,7 @@
   ""
  ],
  "array_i__mut__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -596,6 +636,46 @@
  ],
  "array_i__mut__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "array_i__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "array_i__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "array_i__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "array_i__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "array_i__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "array_i__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "array_i__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "array_i__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -720,9 +800,9 @@
   "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "array_i__ro__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__ro__copy_call__fn": [
   "ok",
@@ -745,7 +825,7 @@
   "method_call(%t, CALLEE, [call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__ro__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.call:call.builtin_special",
   "",
   ""
  ],
@@ -959,6 +1039,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "array_i__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "array_i__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "array_i__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "array_i__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "array_i__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "array_i__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "array_i__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "array_i__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "array_i__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -1040,9 +1160,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "array_i__ro__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(mk, [])]) print(%k0.tag [raw])"
  ],
  "array_i__ro__own_call__fn": [
   "ok",
@@ -1050,9 +1170,9 @@
   "call(CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk, [])}])"
  ],
  "array_i__ro__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::array<int32_t, 2>){call(mk, [])}])"
  ],
  "array_i__ro__own_call__genrec": [
   "ok",
@@ -1065,9 +1185,9 @@
   "method_call(%t, CALLEE, [call(mk, [])])"
  ],
  "array_i__ro__own_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, ["
  ],
  "array_i__ro__own_call__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -1120,9 +1240,9 @@
   "call(CALLEE, [%pv])"
  ],
  "array_i__ro__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_own, [])]) print(%k0.tag [raw])"
  ],
  "array_i__ro__prop_own__fn": [
   "ok",
@@ -1130,9 +1250,9 @@
   "call(CALLEE, [%argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}])"
  ],
  "array_i__ro__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}])"
  ],
  "array_i__ro__prop_own__genrec": [
   "ok",
@@ -1200,9 +1320,9 @@
   ""
  ],
  "array_i__ro__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "array_i__ro__temp_accessor__fn": [
   "reject:expr.method_call:arg.lends_from_temporary",
@@ -1210,7 +1330,7 @@
   ""
  ],
  "array_i__ro__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -1236,6 +1356,46 @@
  ],
  "array_i__ro__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "array_i__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "array_i__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "array_i__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "array_i__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "array_i__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "array_i__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "array_i__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "array_i__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -1719,6 +1879,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "bigint__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "bigint__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "bigint__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "bigint__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "bigint__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "bigint__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "bigint__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "bigint__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "bigint__ro__nested_field__ctor": [
   "ok",
   "",
@@ -2039,6 +2239,46 @@
   "",
   "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
+ "bigint__ro__temp_field__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [call(mk_b, [])._v]) print(%k0.tag [raw])"
+ ],
+ "bigint__ro__temp_field__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [call(mk_b, [])._v])"
+ ],
+ "bigint__ro__temp_field__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), call(mk_b, [])._v])"
+ ],
+ "bigint__ro__temp_field__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [call(mk_b, [])._v])"
+ ],
+ "bigint__ro__temp_field__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [call(mk_b, [])._v])"
+ ],
+ "bigint__ro__temp_field__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk_b, [])._v]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, g"
+ ],
+ "bigint__ro__temp_field__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [call(mk_b, [])._v])"
+ ],
+ "bigint__ro__temp_field__static": [
+  "ok",
+  "",
+  "call(CALLEE, [call(mk_b, [])._v])"
+ ],
  "bigint__ro__ternary_calls__ctor": [
   "ok",
   "",
@@ -2202,7 +2442,7 @@
  "bytearray__mut__copy_call__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [call(copy [template '::tpy::ByteArray({0})'], [%s0])]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__mut__copy_call__fn": [
   "ok",
@@ -2210,9 +2450,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__mut__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__mut__copy_call__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -2242,7 +2482,7 @@
  "bytearray__mut__ctor_rvalue__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}]) print(%k0.tag [raw])"
  ],
  "bytearray__mut__ctor_rvalue__fn": [
   "ok",
@@ -2250,9 +2490,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}])"
  ],
  "bytearray__mut__ctor_rvalue__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}])"
  ],
  "bytearray__mut__ctor_rvalue__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -2362,7 +2602,7 @@
  "bytearray__mut__empty_literal__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [call(bytearray [template '::tpy::ByteArray()'], [])]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}]) print(%k0.tag [raw])"
  ],
  "bytearray__mut__empty_literal__fn": [
   "ok",
@@ -2370,9 +2610,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}])"
  ],
  "bytearray__mut__empty_literal__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}])"
  ],
  "bytearray__mut__empty_literal__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -2599,6 +2839,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "bytearray__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "bytearray__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "bytearray__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "bytearray__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "bytearray__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "bytearray__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "bytearray__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "bytearray__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "bytearray__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_nonf1",
   "",
@@ -2680,9 +2960,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "bytearray__mut__own_call__ctor": [
-  "reject:expr.call:call.ret_type.record_other",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ByteArray){call(mk, [])}]) print(%k0.tag [raw])"
  ],
  "bytearray__mut__own_call__fn": [
   "ok",
@@ -2690,9 +2970,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){call(mk, [])}])"
  ],
  "bytearray__mut__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){call(mk, [])}])"
  ],
  "bytearray__mut__own_call__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -2760,9 +3040,9 @@
   "call(CALLEE, [%pv])"
  ],
  "bytearray__mut__prop_own__ctor": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}]) print(%k0.tag [raw])"
  ],
  "bytearray__mut__prop_own__fn": [
   "ok",
@@ -2770,9 +3050,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}])"
  ],
  "bytearray__mut__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}])"
  ],
  "bytearray__mut__prop_own__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -2920,17 +3200,17 @@
   ""
  ],
  "bytearray__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "",
   ""
  ],
  "bytearray__mut__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.record_nonf1",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "bytearray__mut__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -2956,6 +3236,46 @@
  ],
  "bytearray__mut__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "bytearray__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_nonf1",
+  "",
+  ""
+ ],
+ "bytearray__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_nonf1",
+  "",
+  ""
+ ],
+ "bytearray__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "bytearray__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "bytearray__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "bytearray__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_nonf1",
+  "",
+  ""
+ ],
+ "bytearray__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "bytearray__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -3130,9 +3450,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__ro__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__ro__copy_call__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -3145,7 +3465,7 @@
   ""
  ],
  "bytearray__ro__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.record_nonf1",
+  "reject:expr.call:call.builtin_special",
   "",
   ""
  ],
@@ -3170,9 +3490,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}])"
  ],
  "bytearray__ro__ctor_rvalue__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}])"
  ],
  "bytearray__ro__ctor_rvalue__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -3185,7 +3505,7 @@
   ""
  ],
  "bytearray__ro__ctor_rvalue__nested": [
-  "reject:expr.call:call.ctor_arg.record_nonf1",
+  "reject:expr.call:call.callee_kind",
   "",
   ""
  ],
@@ -3290,9 +3610,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}])"
  ],
  "bytearray__ro__empty_literal__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}])"
  ],
  "bytearray__ro__empty_literal__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -3305,7 +3625,7 @@
   ""
  ],
  "bytearray__ro__empty_literal__nested": [
-  "reject:expr.call:call.ctor_arg.record_nonf1",
+  "reject:expr.call:call.callee_kind",
   "",
   ""
  ],
@@ -3519,6 +3839,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "bytearray__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "bytearray__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "bytearray__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "bytearray__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "bytearray__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "bytearray__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "bytearray__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "bytearray__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "bytearray__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_nonf1",
   "",
@@ -3600,9 +3960,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "bytearray__ro__own_call__ctor": [
-  "reject:expr.call:call.ret_type.record_other",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(mk, [])]) print(%k0.tag [raw])"
  ],
  "bytearray__ro__own_call__fn": [
   "ok",
@@ -3610,9 +3970,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){call(mk, [])}])"
  ],
  "bytearray__ro__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){call(mk, [])}])"
  ],
  "bytearray__ro__own_call__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -3625,9 +3985,9 @@
   ""
  ],
  "bytearray__ro__own_call__nested": [
-  "reject:expr.call:call.ctor_arg.record_nonf1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, ["
  ],
  "bytearray__ro__own_call__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -3690,9 +4050,9 @@
   "call(CALLEE, [%argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}])"
  ],
  "bytearray__ro__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}])"
  ],
  "bytearray__ro__prop_own__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -3845,12 +4205,12 @@
   ""
  ],
  "bytearray__ro__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.record_nonf1",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "bytearray__ro__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -3876,6 +4236,46 @@
  ],
  "bytearray__ro__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "bytearray__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_nonf1",
+  "",
+  ""
+ ],
+ "bytearray__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_nonf1",
+  "",
+  ""
+ ],
+ "bytearray__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "bytearray__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "bytearray__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "bytearray__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_nonf1",
+  "",
+  ""
+ ],
+ "bytearray__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "bytearray__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -4439,6 +4839,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "bytes__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "bytes__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "bytes__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "bytes__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "bytes__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "bytes__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "bytes__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "bytes__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "bytes__ro__nested_field__ctor": [
   "ok",
   "",
@@ -4799,6 +5239,46 @@
   "",
   "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
+ "bytes__ro__temp_field__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [call(mk_b, [])._v [storage]]) print(%k0.tag [raw])"
+ ],
+ "bytes__ro__temp_field__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
+ "bytes__ro__temp_field__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), call(mk_b, [])._v [storage]])"
+ ],
+ "bytes__ro__temp_field__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
+ "bytes__ro__temp_field__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
+ "bytes__ro__temp_field__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk_b, [])._v [storage]]) -> Own[DynP])])]) print(method_call(method_call(method_c"
+ ],
+ "bytes__ro__temp_field__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
+ "bytes__ro__temp_field__static": [
+  "ok",
+  "",
+  "call(CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
  "bytes__ro__ternary_calls__ctor": [
   "ok",
   "",
@@ -5035,6 +5515,46 @@
   ""
  ],
  "callable__ro__narrowed_opt__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "",
+  ""
+ ],
+ "callable__ro__narrowed_opt_param__ctor": [
+  "reject:expr.call:call.ctor_arg.other_callabletype",
+  "",
+  ""
+ ],
+ "callable__ro__narrowed_opt_param__fn": [
+  "reject:expr.call:call.arg_shape.other_callabletype",
+  "",
+  ""
+ ],
+ "callable__ro__narrowed_opt_param__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "callable__ro__narrowed_opt_param__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "callable__ro__narrowed_opt_param__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "callable__ro__narrowed_opt_param__nested": [
+  "reject:expr.call:call.ctor_arg.other_callabletype",
+  "",
+  ""
+ ],
+ "callable__ro__narrowed_opt_param__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "callable__ro__narrowed_opt_param__static": [
   "reject:expr.method_call:method.qualcall.arg.other.expr.name",
   "",
   ""
@@ -5319,6 +5839,46 @@
   "",
   ""
  ],
+ "callable__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.other_callabletype",
+  "",
+  ""
+ ],
+ "callable__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.other_callabletype",
+  "",
+  ""
+ ],
+ "callable__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "callable__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "callable__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "callable__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.other_callabletype",
+  "",
+  ""
+ ],
+ "callable__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "callable__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "",
+  ""
+ ],
  "callable__ro__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.other_callabletype",
   "",
@@ -5440,19 +6000,19 @@
   "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "deref_list__mut__copy_call__ctor": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(DL){copy[DL](%s0)}]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__mut__copy_call__fn": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(DL){copy[DL](%s0)}]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__mut__copy_call__gen": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(DL){copy[DL](%s0)}]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__mut__copy_call__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -5799,6 +6359,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "deref_list__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "deref_list__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "deref_list__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "deref_list__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "deref_list__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "deref_list__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "deref_list__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "deref_list__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "deref_list__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -6119,6 +6719,46 @@
   "",
   ""
  ],
+ "deref_list__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "deref_list__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "deref_list__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "deref_list__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "deref_list__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "deref_list__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "deref_list__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "deref_list__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "",
+  ""
+ ],
  "deref_list__mut__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -6280,19 +6920,19 @@
   "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "deref_list__ro__copy_call__ctor": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [copy[DL](%s0)]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__ro__copy_call__fn": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(DL){copy[DL](%s0)}]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__ro__copy_call__gen": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(DL){copy[DL](%s0)}]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__ro__copy_call__genrec": [
   "reject:expr.method_call:call.builtin_special",
@@ -6639,6 +7279,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "deref_list__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "deref_list__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "deref_list__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "deref_list__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "deref_list__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "deref_list__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "deref_list__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "deref_list__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "deref_list__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -6959,6 +7639,46 @@
   "",
   ""
  ],
+ "deref_list__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "deref_list__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "deref_list__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "deref_list__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "deref_list__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "deref_list__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "deref_list__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "deref_list__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "",
+  ""
+ ],
  "deref_list__ro__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -7120,19 +7840,19 @@
   "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "deref_rec__mut__copy_call__ctor": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(DR){copy[DR](%s0)}]) print(%k0.tag [raw]) print(%s0.x [raw])"
  ],
  "deref_rec__mut__copy_call__fn": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(DR){copy[DR](%s0)}]) print(%s0.x [raw])"
  ],
  "deref_rec__mut__copy_call__gen": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(DR){copy[DR](%s0)}]) print(%s0.x [raw])"
  ],
  "deref_rec__mut__copy_call__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -7479,6 +8199,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "deref_rec__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "deref_rec__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "deref_rec__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "deref_rec__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "deref_rec__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "deref_rec__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "deref_rec__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "deref_rec__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "deref_rec__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -7799,6 +8559,46 @@
   "",
   ""
  ],
+ "deref_rec__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "deref_rec__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "deref_rec__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "deref_rec__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "deref_rec__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "deref_rec__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "deref_rec__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "deref_rec__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "",
+  ""
+ ],
  "deref_rec__mut__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -7960,19 +8760,19 @@
   "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "deref_rec__ro__copy_call__ctor": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [copy[DR](%s0)]) print(%k0.tag [raw]) print(%s0.x [raw])"
  ],
  "deref_rec__ro__copy_call__fn": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(DR){copy[DR](%s0)}]) print(%s0.x [raw])"
  ],
  "deref_rec__ro__copy_call__gen": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(DR){copy[DR](%s0)}]) print(%s0.x [raw])"
  ],
  "deref_rec__ro__copy_call__genrec": [
   "reject:expr.method_call:call.builtin_special",
@@ -8319,6 +9119,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "deref_rec__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "deref_rec__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "deref_rec__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "deref_rec__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "deref_rec__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "deref_rec__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "deref_rec__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "deref_rec__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "deref_rec__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -8639,6 +9479,46 @@
   "",
   ""
  ],
+ "deref_rec__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "deref_rec__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "deref_rec__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "deref_rec__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "deref_rec__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "deref_rec__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "deref_rec__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "deref_rec__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "",
+  ""
+ ],
  "deref_rec__ro__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -8735,12 +9615,12 @@
   ""
  ],
  "dict_si__mut__borrow_method__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "dict_si__mut__borrow_method__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -8840,9 +9720,9 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}])"
  ],
  "dict_si__mut__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(%k0.tag [raw]) print(call(len [tpy::"
  ],
  "dict_si__mut__copy_call__fn": [
   "ok",
@@ -8850,19 +9730,19 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__mut__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(call(len [tpy::_"
+ ],
+ "dict_si__mut__copy_call__genrec": [
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
- "dict_si__mut__copy_call__genrec": [
-  "ok",
-  "",
-  "method_call(%g, CALLEE, [call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
- ],
  "dict_si__mut__copy_call__meth": [
-  "ok",
+  "reject:expr.method_call:method.arg_shape",
   "",
-  "method_call(%t, CALLEE, [call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  ""
  ],
  "dict_si__mut__copy_call__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -9159,6 +10039,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "dict_si__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "dict_si__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "dict_si__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "dict_si__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "dict_si__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "dict_si__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "dict_si__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "dict_si__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "dict_si__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -9240,9 +10160,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "dict_si__mut__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}]) print(%k0.tag [raw])"
  ],
  "dict_si__mut__own_call__fn": [
   "ok",
@@ -9250,17 +10170,17 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}])"
  ],
  "dict_si__mut__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}])"
  ],
  "dict_si__mut__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "dict_si__mut__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -9320,9 +10240,9 @@
   "call(CALLEE, [%pv])"
  ],
  "dict_si__mut__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}]) print(%k0.tag [raw])"
  ],
  "dict_si__mut__prop_own__fn": [
   "ok",
@@ -9330,17 +10250,17 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}])"
  ],
  "dict_si__mut__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}])"
  ],
  "dict_si__mut__prop_own__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "dict_si__mut__prop_own__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -9375,12 +10295,12 @@
   ""
  ],
  "dict_si__mut__prop_ref__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "dict_si__mut__prop_ref__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -9440,27 +10360,27 @@
   "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "dict_si__mut__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "",
   ""
  ],
  "dict_si__mut__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.container",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "dict_si__mut__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "dict_si__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "dict_si__mut__temp_accessor__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -9476,6 +10396,46 @@
  ],
  "dict_si__mut__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "dict_si__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "dict_si__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "dict_si__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "dict_si__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "dict_si__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "dict_si__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "dict_si__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "dict_si__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -9680,9 +10640,9 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}])"
  ],
  "dict_si__ro__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ro__copy_call__fn": [
   "ok",
@@ -9690,9 +10650,9 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ro__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(call(len [tpy::_"
  ],
  "dict_si__ro__copy_call__genrec": [
   "ok",
@@ -9705,7 +10665,7 @@
   "method_call(%t, CALLEE, [call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ro__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.call:call.builtin_special",
   "",
   ""
  ],
@@ -9999,6 +10959,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "dict_si__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "dict_si__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "dict_si__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "dict_si__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "dict_si__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "dict_si__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "dict_si__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "dict_si__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "dict_si__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -10080,9 +11080,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "dict_si__ro__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(mk, [])]) print(%k0.tag [raw])"
  ],
  "dict_si__ro__own_call__fn": [
   "ok",
@@ -10090,24 +11090,24 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}])"
  ],
  "dict_si__ro__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}])"
  ],
  "dict_si__ro__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [call(mk, [])])"
  ],
  "dict_si__ro__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [call(mk, [])])"
  ],
  "dict_si__ro__own_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, ["
  ],
  "dict_si__ro__own_call__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -10160,7 +11160,7 @@
   "call(CALLEE, [%pv])"
  ],
  "dict_si__ro__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -10170,9 +11170,9 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}])"
  ],
  "dict_si__ro__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}])"
  ],
  "dict_si__ro__prop_own__genrec": [
   "reject:expr.method_call:method.ret_type",
@@ -10280,17 +11280,17 @@
   "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "dict_si__ro__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
  "dict_si__ro__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.container",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "dict_si__ro__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -10316,6 +11316,46 @@
  ],
  "dict_si__ro__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "dict_si__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "dict_si__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "dict_si__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "dict_si__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "dict_si__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "dict_si__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "dict_si__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "dict_si__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -10719,6 +11759,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "gen_rec__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "gen_rec__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "gen_rec__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "gen_rec__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "gen_rec__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "gen_rec__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "gen_rec__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "gen_rec__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "gen_rec__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -11036,6 +12116,46 @@
  ],
  "gen_rec__mut__temp_accessor__static": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
+  "",
+  ""
+ ],
+ "gen_rec__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "gen_rec__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "gen_rec__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "gen_rec__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "gen_rec__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "gen_rec__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "gen_rec__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "gen_rec__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
   "",
   ""
  ],
@@ -11439,6 +12559,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "gen_rec__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "gen_rec__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "gen_rec__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "gen_rec__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "gen_rec__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "gen_rec__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "gen_rec__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "gen_rec__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "gen_rec__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -11756,6 +12916,46 @@
  ],
  "gen_rec__ro__temp_accessor__static": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
+  "",
+  ""
+ ],
+ "gen_rec__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "gen_rec__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "gen_rec__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "gen_rec__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "gen_rec__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "gen_rec__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "gen_rec__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "gen_rec__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
   "",
   ""
  ],
@@ -12279,6 +13479,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "i32__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "i32__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "i32__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "i32__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "i32__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "i32__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "i32__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "i32__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "i32__ro__nested_field__ctor": [
   "ok",
   "",
@@ -12599,6 +13839,46 @@
   "",
   "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
+ "i32__ro__temp_field__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [call(mk_b, [])._v]) print(%k0.tag [raw])"
+ ],
+ "i32__ro__temp_field__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [call(mk_b, [])._v])"
+ ],
+ "i32__ro__temp_field__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), call(mk_b, [])._v])"
+ ],
+ "i32__ro__temp_field__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [call(mk_b, [])._v])"
+ ],
+ "i32__ro__temp_field__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [call(mk_b, [])._v])"
+ ],
+ "i32__ro__temp_field__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk_b, [])._v]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, g"
+ ],
+ "i32__ro__temp_field__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [call(mk_b, [])._v])"
+ ],
+ "i32__ro__temp_field__static": [
+  "ok",
+  "",
+  "call(CALLEE, [call(mk_b, [])._v])"
+ ],
  "i32__ro__ternary_calls__ctor": [
   "ok",
   "",
@@ -12695,12 +13975,12 @@
   ""
  ],
  "list_i__mut__borrow_method__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_i__mut__borrow_method__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -13199,6 +14479,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "list_i__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "list_i__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "list_i__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "list_i__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "list_i__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "list_i__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "list_i__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "list_i__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "list_i__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -13280,9 +14600,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "list_i__mut__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){call(mk, [])}]) print(%k0.tag [raw])"
  ],
  "list_i__mut__own_call__fn": [
   "ok",
@@ -13290,17 +14610,17 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t>){call(mk, [])}])"
  ],
  "list_i__mut__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){call(mk, [])}])"
  ],
  "list_i__mut__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_i__mut__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -13360,9 +14680,9 @@
   "call(CALLEE, [%pv])"
  ],
  "list_i__mut__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}]) print(%k0.tag [raw])"
  ],
  "list_i__mut__prop_own__fn": [
   "ok",
@@ -13370,17 +14690,17 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "list_i__mut__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "list_i__mut__prop_own__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_i__mut__prop_own__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -13415,12 +14735,12 @@
   ""
  ],
  "list_i__mut__prop_ref__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_i__mut__prop_ref__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -13480,27 +14800,27 @@
   ""
  ],
  "list_i__mut__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "",
   ""
  ],
  "list_i__mut__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.container",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_i__mut__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_i__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_i__mut__temp_accessor__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -13516,6 +14836,46 @@
  ],
  "list_i__mut__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "list_i__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_i__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "list_i__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "list_i__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_i__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_i__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_i__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "list_i__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -14119,6 +15479,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "list_i__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "list_i__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "list_i__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "list_i__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "list_i__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "list_i__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "list_i__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "list_i__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "list_i__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -14200,9 +15600,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "list_i__ro__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(mk, [])]) print(%k0.tag [raw])"
  ],
  "list_i__ro__own_call__fn": [
   "ok",
@@ -14210,24 +15610,24 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t>){call(mk, [])}])"
  ],
  "list_i__ro__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){call(mk, [])}])"
  ],
  "list_i__ro__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [call(mk, [])])"
  ],
  "list_i__ro__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [call(mk, [])])"
  ],
  "list_i__ro__own_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, ["
  ],
  "list_i__ro__own_call__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -14280,7 +15680,7 @@
   "call(CALLEE, [%pv])"
  ],
  "list_i__ro__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -14290,9 +15690,9 @@
   "call(CALLEE, [%argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "list_i__ro__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "list_i__ro__prop_own__genrec": [
   "reject:expr.method_call:method.ret_type",
@@ -14400,17 +15800,17 @@
   ""
  ],
  "list_i__ro__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
  "list_i__ro__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.container",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_i__ro__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -14436,6 +15836,46 @@
  ],
  "list_i__ro__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "list_i__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_i__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "list_i__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "list_i__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_i__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_i__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_i__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "list_i__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -15039,6 +16479,46 @@
   "not stored in a field, forwarded to another Own[T], or returned",
   "call(CALLEE, [move(*%o0)])"
  ],
+ "list_i_own__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}]) print(%k0.tag [raw])"
+ ],
+ "list_i_own__mut__narrowed_opt_param__fn": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
+ "list_i_own__mut__narrowed_opt_param__gen": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
+ "list_i_own__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
+ "list_i_own__mut__narrowed_opt_param__meth": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
+ "list_i_own__mut__narrowed_opt_param__nested": [
+  "reject:expr.call:call.ctor_arg.own_container",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__narrowed_opt_param__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__narrowed_opt_param__static": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
  "list_i_own__mut__nested_field__ctor": [
   "reject:stmt.var_decl:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
@@ -15356,6 +16836,46 @@
  ],
  "list_i_own__mut__temp_accessor__static": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__temp_field__ctor": [
+  "reject:stmt.var_decl:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__temp_field__fn": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "list_i_own__mut__temp_field__genrec": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__temp_field__meth": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.own_container",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__mut__temp_field__static": [
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -15959,6 +17479,46 @@
   "not stored in a field, forwarded to another Own[T], or returned",
   "call(CALLEE, [move(*%o0)])"
  ],
+ "list_i_own__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}]) print(%k0.tag [raw])"
+ ],
+ "list_i_own__ro__narrowed_opt_param__fn": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
+ "list_i_own__ro__narrowed_opt_param__gen": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
+ "list_i_own__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
+ "list_i_own__ro__narrowed_opt_param__meth": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
+ "list_i_own__ro__narrowed_opt_param__nested": [
+  "reject:expr.call:call.ctor_arg.own_container",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__narrowed_opt_param__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__narrowed_opt_param__static": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
+ ],
  "list_i_own__ro__nested_field__ctor": [
   "reject:stmt.var_decl:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
@@ -16276,6 +17836,46 @@
  ],
  "list_i_own__ro__temp_accessor__static": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__temp_field__ctor": [
+  "reject:stmt.var_decl:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__temp_field__fn": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "list_i_own__ro__temp_field__genrec": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__temp_field__meth": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.own_container",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "list_i_own__ro__temp_field__static": [
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16879,6 +18479,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "list_i_ro__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "list_i_ro__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "list_i_ro__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "list_i_ro__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "list_i_ro__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "list_i_ro__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "list_i_ro__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "list_i_ro__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "list_i_ro__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -16975,14 +18615,14 @@
   ""
  ],
  "list_i_ro__ro__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [call(mk, [])])"
  ],
  "list_i_ro__ro__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [call(mk, [])])"
  ],
  "list_i_ro__ro__own_call__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -17199,6 +18839,46 @@
   "",
   ""
  ],
+ "list_i_ro__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_i_ro__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "list_i_ro__ro__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "list_i_ro__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_i_ro__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_i_ro__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_i_ro__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "list_i_ro__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "",
+  ""
+ ],
  "list_i_ro__ro__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -17295,12 +18975,12 @@
   ""
  ],
  "list_r__mut__borrow_method__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_r__mut__borrow_method__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -17759,6 +19439,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "list_r__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "list_r__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "list_r__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "list_r__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "list_r__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "list_r__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "list_r__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "list_r__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "list_r__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -17840,9 +19560,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "list_r__mut__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<R>){call(mk, [])}]) print(%k0.tag [raw])"
  ],
  "list_r__mut__own_call__fn": [
   "ok",
@@ -17850,17 +19570,17 @@
   "call(CALLEE, [%argtmp(std::vector<R>){call(mk, [])}])"
  ],
  "list_r__mut__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){call(mk, [])}])"
  ],
  "list_r__mut__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_r__mut__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -17920,9 +19640,9 @@
   "call(CALLEE, [%pv])"
  ],
  "list_r__mut__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<R>){method_call(%b, v_own, [])}]) print(%k0.tag [raw])"
  ],
  "list_r__mut__prop_own__fn": [
   "ok",
@@ -17930,17 +19650,17 @@
   "call(CALLEE, [%argtmp(std::vector<R>){method_call(%b, v_own, [])}])"
  ],
  "list_r__mut__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){method_call(%b, v_own, [])}])"
  ],
  "list_r__mut__prop_own__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_r__mut__prop_own__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -17975,12 +19695,12 @@
   ""
  ],
  "list_r__mut__prop_ref__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_r__mut__prop_ref__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -18000,27 +19720,27 @@
   ""
  ],
  "list_r__mut__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "",
   ""
  ],
  "list_r__mut__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.container",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_r__mut__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_r__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "list_r__mut__temp_accessor__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -18036,6 +19756,46 @@
  ],
  "list_r__mut__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "list_r__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_r__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "list_r__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "list_r__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_r__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_r__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_r__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "list_r__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -18599,6 +20359,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "list_r__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "list_r__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "list_r__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "list_r__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "list_r__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "list_r__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "list_r__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "list_r__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "list_r__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -18680,9 +20480,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "list_r__ro__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(mk, [])]) print(%k0.tag [raw])"
  ],
  "list_r__ro__own_call__fn": [
   "ok",
@@ -18690,24 +20490,24 @@
   "call(CALLEE, [%argtmp(std::vector<R>){call(mk, [])}])"
  ],
  "list_r__ro__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){call(mk, [])}])"
  ],
  "list_r__ro__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [call(mk, [])])"
  ],
  "list_r__ro__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [call(mk, [])])"
  ],
  "list_r__ro__own_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, ["
  ],
  "list_r__ro__own_call__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -18760,7 +20560,7 @@
   "call(CALLEE, [%pv])"
  ],
  "list_r__ro__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -18770,9 +20570,9 @@
   "call(CALLEE, [%argtmp(std::vector<R>){method_call(%b, v_own, [])}])"
  ],
  "list_r__ro__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){method_call(%b, v_own, [])}])"
  ],
  "list_r__ro__prop_own__genrec": [
   "reject:expr.method_call:method.ret_type",
@@ -18840,17 +20640,17 @@
   ""
  ],
  "list_r__ro__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
  "list_r__ro__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.container",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_r__ro__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -18876,6 +20676,46 @@
  ],
  "list_r__ro__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "list_r__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_r__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "list_r__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "list_r__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_r__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "list_r__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "list_r__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "list_r__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -19069,6 +20909,16 @@
   "",
   "method_call(%g, CALLEE, [*%o0])"
  ],
+ "open_t__ro__narrowed_opt_param__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "open_t__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
  "open_t__ro__nested_field__gen": [
   "reject:expr.call:call.generic_arg_shape",
   "",
@@ -19168,6 +21018,16 @@
   "ok",
   "",
   "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
+ ],
+ "open_t__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "open_t__ro__temp_field__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [call(mk_b, [])._v])"
  ],
  "open_t__ro__ternary_calls__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -19629,6 +21489,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "proto_p__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "proto_p__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "proto_p__ro__narrowed_opt_param__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "proto_p__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "proto_p__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "proto_p__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "proto_p__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "proto_p__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "proto_p__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.protocol.static",
   "",
@@ -19949,6 +21849,46 @@
   "",
   ""
  ],
+ "proto_p__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.protocol.static",
+  "",
+  ""
+ ],
+ "proto_p__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.protocol.static",
+  "",
+  ""
+ ],
+ "proto_p__ro__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "proto_p__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "proto_p__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "proto_p__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.protocol.static",
+  "",
+  ""
+ ],
+ "proto_p__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "proto_p__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "",
+  ""
+ ],
  "proto_p__ro__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.protocol.static",
   "",
@@ -20110,19 +22050,19 @@
   "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "rec__mut__copy_call__ctor": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R){copy[R](%s0)}]) print(%k0.tag [raw]) print(%s0.x [raw])"
  ],
  "rec__mut__copy_call__fn": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(R){copy[R](%s0)}]) print(%s0.x [raw])"
  ],
  "rec__mut__copy_call__gen": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R){copy[R](%s0)}]) print(%s0.x [raw])"
  ],
  "rec__mut__copy_call__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -20468,6 +22408,46 @@
   "ok",
   "",
   "call(CALLEE, [*%o0])"
+ ],
+ "rec__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "rec__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "rec__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "rec__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "rec__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "rec__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "rec__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "rec__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
  ],
  "rec__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -20829,6 +22809,46 @@
   "",
   ""
  ],
+ "rec__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "rec__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "rec__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "rec__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "rec__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "rec__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "rec__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "rec__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "",
+  ""
+ ],
  "rec__mut__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -20990,19 +23010,19 @@
   "call(CALLEE, [%s0]) call(inner, [])"
  ],
  "rec__ro__copy_call__ctor": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [copy[R](%s0)]) print(%k0.tag [raw]) print(%s0.x [raw])"
  ],
  "rec__ro__copy_call__fn": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(R){copy[R](%s0)}]) print(%s0.x [raw])"
  ],
  "rec__ro__copy_call__gen": [
-  "reject:expr.call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R){copy[R](%s0)}]) print(%s0.x [raw])"
  ],
  "rec__ro__copy_call__genrec": [
   "reject:expr.method_call:call.builtin_special",
@@ -21348,6 +23368,46 @@
   "ok",
   "",
   "call(CALLEE, [*%o0])"
+ ],
+ "rec__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "rec__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "rec__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "rec__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "rec__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "rec__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "rec__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "rec__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
  ],
  "rec__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -21709,6 +23769,46 @@
   "",
   ""
  ],
+ "rec__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "rec__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "rec__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "rec__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "rec__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "rec__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "rec__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "rec__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "",
+  ""
+ ],
  "rec__ro__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -22029,6 +24129,46 @@
   "",
   ""
  ],
+ "rec_opt__ro__narrowed_opt_param__ctor": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "rec_opt__ro__narrowed_opt_param__fn": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "rec_opt__ro__narrowed_opt_param__gen": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "rec_opt__ro__narrowed_opt_param__genrec": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "rec_opt__ro__narrowed_opt_param__meth": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "rec_opt__ro__narrowed_opt_param__nested": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "rec_opt__ro__narrowed_opt_param__proto": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "rec_opt__ro__narrowed_opt_param__static": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
  "rec_opt__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.optional",
   "",
@@ -22345,6 +24485,46 @@
   ""
  ],
  "rec_opt__ro__temp_accessor__static": [
+  "reject:expr.method_call:method.qualcall.arg.optional",
+  "",
+  ""
+ ],
+ "rec_opt__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.optional",
+  "",
+  ""
+ ],
+ "rec_opt__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.optional",
+  "",
+  ""
+ ],
+ "rec_opt__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "rec_opt__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "rec_opt__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "rec_opt__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.optional",
+  "",
+  ""
+ ],
+ "rec_opt__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "rec_opt__ro__temp_field__static": [
   "reject:expr.method_call:method.qualcall.arg.optional",
   "",
   ""
@@ -22869,6 +25049,46 @@
   "not stored in a field, forwarded to another Own[T], or returned",
   "call(CALLEE, [move(*%o0)])"
  ],
+ "rec_own__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){*%pv}]) print(%k0.tag [raw])"
+ ],
+ "rec_own__mut__narrowed_opt_param__fn": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE, [%argtmp(R move){*%pv}])"
+ ],
+ "rec_own__mut__narrowed_opt_param__gen": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){*%pv}])"
+ ],
+ "rec_own__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "method_call(%g, CALLEE, [%argtmp(R move){*%pv}])"
+ ],
+ "rec_own__mut__narrowed_opt_param__meth": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "method_call(%t, CALLEE, [%argtmp(R move){*%pv}])"
+ ],
+ "rec_own__mut__narrowed_opt_param__nested": [
+  "reject:expr.call:call.ctor_arg.own_record_f1",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__narrowed_opt_param__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__narrowed_opt_param__static": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE, [%argtmp(R move){*%pv}])"
+ ],
  "rec_own__mut__nested_field__ctor": [
   "reject:stmt.var_decl:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
@@ -23226,6 +25446,46 @@
  ],
  "rec_own__mut__temp_accessor__static": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__temp_field__ctor": [
+  "reject:stmt.var_decl:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__temp_field__fn": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "rec_own__mut__temp_field__genrec": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__temp_field__meth": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.own_record_f1",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__mut__temp_field__static": [
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -23749,6 +26009,46 @@
   "not stored in a field, forwarded to another Own[T], or returned",
   "call(CALLEE, [move(*%o0)])"
  ],
+ "rec_own__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){*%pv}]) print(%k0.tag [raw])"
+ ],
+ "rec_own__ro__narrowed_opt_param__fn": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE, [%argtmp(R move){*%pv}])"
+ ],
+ "rec_own__ro__narrowed_opt_param__gen": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){*%pv}])"
+ ],
+ "rec_own__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "method_call(%g, CALLEE, [%argtmp(R move){*%pv}])"
+ ],
+ "rec_own__ro__narrowed_opt_param__meth": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "method_call(%t, CALLEE, [%argtmp(R move){*%pv}])"
+ ],
+ "rec_own__ro__narrowed_opt_param__nested": [
+  "reject:expr.call:call.ctor_arg.own_record_f1",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__narrowed_opt_param__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__narrowed_opt_param__static": [
+  "ok",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  "call(CALLEE, [%argtmp(R move){*%pv}])"
+ ],
  "rec_own__ro__nested_field__ctor": [
   "reject:stmt.var_decl:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
@@ -24106,6 +26406,46 @@
  ],
  "rec_own__ro__temp_accessor__static": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__temp_field__ctor": [
+  "reject:stmt.var_decl:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__temp_field__fn": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "rec_own__ro__temp_field__genrec": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__temp_field__meth": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.own_record_f1",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "not stored in a field, forwarded to another Own[T], or returned",
+  ""
+ ],
+ "rec_own__ro__temp_field__static": [
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -24629,6 +26969,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "rec_ro__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "rec_ro__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "rec_ro__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "rec_ro__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "rec_ro__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "rec_ro__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "rec_ro__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "rec_ro__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "rec_ro__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
   "",
@@ -24986,6 +27366,46 @@
  ],
  "rec_ro__ro__temp_accessor__static": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
+  "",
+  ""
+ ],
+ "rec_ro__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "rec_ro__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.record_f1",
+  "",
+  ""
+ ],
+ "rec_ro__ro__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "rec_ro__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "rec_ro__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "rec_ro__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.record_f1",
+  "",
+  ""
+ ],
+ "rec_ro__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "rec_ro__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.record_f1",
   "",
   ""
  ],
@@ -25365,12 +27785,12 @@
   ""
  ],
  "set_i__mut__borrow_method__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "set_i__mut__borrow_method__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -25470,9 +27890,9 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}])"
  ],
  "set_i__mut__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__mut__copy_call__fn": [
   "ok",
@@ -25480,19 +27900,19 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__mut__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
+ ],
+ "set_i__mut__copy_call__genrec": [
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
- "set_i__mut__copy_call__genrec": [
-  "ok",
-  "",
-  "method_call(%g, CALLEE, [call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
- ],
  "set_i__mut__copy_call__meth": [
-  "ok",
+  "reject:expr.method_call:method.arg_shape",
   "",
-  "method_call(%t, CALLEE, [call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  ""
  ],
  "set_i__mut__copy_call__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -25829,6 +28249,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "set_i__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "set_i__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "set_i__mut__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "set_i__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "set_i__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "set_i__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "set_i__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "set_i__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "set_i__mut__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -25910,9 +28370,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "set_i__mut__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}]) print(%k0.tag [raw])"
  ],
  "set_i__mut__own_call__fn": [
   "ok",
@@ -25920,17 +28380,17 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}])"
  ],
  "set_i__mut__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}])"
  ],
  "set_i__mut__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "set_i__mut__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -25990,9 +28450,9 @@
   "call(CALLEE, [%pv])"
  ],
  "set_i__mut__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}]) print(%k0.tag [raw])"
  ],
  "set_i__mut__prop_own__fn": [
   "ok",
@@ -26000,17 +28460,17 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "set_i__mut__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "set_i__mut__prop_own__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "set_i__mut__prop_own__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -26045,12 +28505,12 @@
   ""
  ],
  "set_i__mut__prop_ref__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "set_i__mut__prop_ref__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -26110,27 +28570,27 @@
   "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "set_i__mut__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "",
   ""
  ],
  "set_i__mut__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.container",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "set_i__mut__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "set_i__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "set_i__mut__temp_accessor__meth": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -26146,6 +28606,46 @@
  ],
  "set_i__mut__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "set_i__mut__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "set_i__mut__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "set_i__mut__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "set_i__mut__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "set_i__mut__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "set_i__mut__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "set_i__mut__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "set_i__mut__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -26350,9 +28850,9 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}])"
  ],
  "set_i__ro__copy_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])]) print(%k0.tag [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ro__copy_call__fn": [
   "ok",
@@ -26360,9 +28860,9 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ro__copy_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ro__copy_call__genrec": [
   "ok",
@@ -26375,7 +28875,7 @@
   "method_call(%t, CALLEE, [call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ro__copy_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.call:call.builtin_special",
   "",
   ""
  ],
@@ -26709,6 +29209,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "set_i__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "set_i__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "set_i__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "set_i__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "set_i__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "set_i__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "set_i__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "set_i__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "set_i__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
   "",
@@ -26790,9 +29330,9 @@
   "call(CALLEE, [%b._v])"
  ],
  "set_i__ro__own_call__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [call(mk, [])]) print(%k0.tag [raw])"
  ],
  "set_i__ro__own_call__fn": [
   "ok",
@@ -26800,24 +29340,24 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}])"
  ],
  "set_i__ro__own_call__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}])"
  ],
  "set_i__ro__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [call(mk, [])])"
  ],
  "set_i__ro__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [call(mk, [])])"
  ],
  "set_i__ro__own_call__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, ["
  ],
  "set_i__ro__own_call__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -26870,7 +29410,7 @@
   "call(CALLEE, [%pv])"
  ],
  "set_i__ro__prop_own__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -26880,9 +29420,9 @@
   "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "set_i__ro__prop_own__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "set_i__ro__prop_own__genrec": [
   "reject:expr.method_call:method.ret_type",
@@ -26990,17 +29530,17 @@
   "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "set_i__ro__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
  "set_i__ro__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.container",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
  "set_i__ro__temp_accessor__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -27026,6 +29566,46 @@
  ],
  "set_i__ro__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "set_i__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "set_i__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.container",
+  "",
+  ""
+ ],
+ "set_i__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "set_i__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "set_i__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "set_i__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.container",
+  "",
+  ""
+ ],
+ "set_i__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "set_i__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -27589,6 +30169,46 @@
   "",
   "call(CALLEE, [coerce(%o0 -> Span)])"
  ],
+ "span_i__mut__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [coerce(%pv -> Span)]) print(%k0.tag [raw])"
+ ],
+ "span_i__mut__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [coerce(%pv -> Span)])"
+ ],
+ "span_i__mut__narrowed_opt_param__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "span_i__mut__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [coerce(%pv -> Span)])"
+ ],
+ "span_i__mut__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [coerce(%pv -> Span)])"
+ ],
+ "span_i__mut__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(%pv -> Span)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc,"
+ ],
+ "span_i__mut__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [coerce(%pv -> Span)])"
+ ],
+ "span_i__mut__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [coerce(%pv -> Span)])"
+ ],
  "span_i__mut__nested_field__ctor": [
   "reject:stmt.var_decl:field.result_type",
   "",
@@ -27670,14 +30290,14 @@
   "call(CALLEE, [coerce(%b._v -> Span)])"
  ],
  "span_i__mut__own_call__ctor": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [coerce(call(mk, []) -> Span)]) print(%k0.tag [raw])"
  ],
  "span_i__mut__own_call__fn": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__mut__own_call__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -27685,29 +30305,29 @@
   ""
  ],
  "span_i__mut__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__mut__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__mut__own_call__nested": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(call(mk, []) -> Span)]) -> Own[DynP])])]) print(method_call(method_call(method_"
  ],
  "span_i__mut__own_call__proto": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__mut__own_call__static": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__mut__param__ctor": [
   "ok",
@@ -27906,6 +30526,46 @@
  ],
  "span_i__mut__temp_accessor__static": [
   "reject:expr.method_call:method.ret_type",
+  "",
+  ""
+ ],
+ "span_i__mut__temp_field__ctor": [
+  "reject:stmt.var_decl:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__mut__temp_field__fn": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__mut__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "span_i__mut__temp_field__genrec": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__mut__temp_field__meth": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__mut__temp_field__nested": [
+  "reject:stmt.var_decl:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__mut__temp_field__proto": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__mut__temp_field__static": [
+  "reject:stmt.expr_stmt:field.result_type",
   "",
   ""
  ],
@@ -28469,6 +31129,46 @@
   "",
   "call(CALLEE, [coerce(%o0 -> Span)])"
  ],
+ "span_i__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [coerce(%pv -> Span)]) print(%k0.tag [raw])"
+ ],
+ "span_i__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [coerce(%pv -> Span)])"
+ ],
+ "span_i__ro__narrowed_opt_param__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "span_i__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [coerce(%pv -> Span)])"
+ ],
+ "span_i__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [coerce(%pv -> Span)])"
+ ],
+ "span_i__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(%pv -> Span)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc,"
+ ],
+ "span_i__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [coerce(%pv -> Span)])"
+ ],
+ "span_i__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [coerce(%pv -> Span)])"
+ ],
  "span_i__ro__nested_field__ctor": [
   "reject:stmt.var_decl:field.result_type",
   "",
@@ -28550,14 +31250,14 @@
   "call(CALLEE, [coerce(%b._v -> Span)])"
  ],
  "span_i__ro__own_call__ctor": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [coerce(call(mk, []) -> Span)]) print(%k0.tag [raw])"
  ],
  "span_i__ro__own_call__fn": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__ro__own_call__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -28565,29 +31265,29 @@
   ""
  ],
  "span_i__ro__own_call__genrec": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__ro__own_call__meth": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__ro__own_call__nested": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(call(mk, []) -> Span)]) -> Own[DynP])])]) print(method_call(method_call(method_"
  ],
  "span_i__ro__own_call__proto": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__ro__own_call__static": [
-  "reject:expr.call:call.ret_type.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [coerce(call(mk, []) -> Span)])"
  ],
  "span_i__ro__param__ctor": [
   "ok",
@@ -28786,6 +31486,46 @@
  ],
  "span_i__ro__temp_accessor__static": [
   "reject:expr.method_call:method.ret_type",
+  "",
+  ""
+ ],
+ "span_i__ro__temp_field__ctor": [
+  "reject:stmt.var_decl:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__ro__temp_field__fn": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__ro__temp_field__gen": [
+  "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
+  "",
+  ""
+ ],
+ "span_i__ro__temp_field__genrec": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__ro__temp_field__meth": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__ro__temp_field__nested": [
+  "reject:stmt.var_decl:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__ro__temp_field__proto": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "span_i__ro__temp_field__static": [
+  "reject:stmt.expr_stmt:field.result_type",
   "",
   ""
  ],
@@ -29389,6 +32129,46 @@
   "",
   "call(CALLEE, [*%o0])"
  ],
+ "str__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "str__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "str__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "str__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "str__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "str__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "str__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "str__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "str__ro__nested_field__ctor": [
   "ok",
   "",
@@ -29788,6 +32568,46 @@
   "ok",
   "",
   "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
+ ],
+ "str__ro__temp_field__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [call(mk_b, [])._v [storage]]) print(%k0.tag [raw])"
+ ],
+ "str__ro__temp_field__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
+ "str__ro__temp_field__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), call(mk_b, [])._v [storage]])"
+ ],
+ "str__ro__temp_field__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
+ "str__ro__temp_field__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
+ "str__ro__temp_field__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [call(mk_b, [])._v [storage]]) -> Own[DynP])])]) print(method_call(method_call(method_c"
+ ],
+ "str__ro__temp_field__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [call(mk_b, [])._v [storage]])"
+ ],
+ "str__ro__temp_field__static": [
+  "ok",
+  "",
+  "call(CALLEE, [call(mk_b, [])._v [storage]])"
  ],
  "str__ro__ternary_calls__ctor": [
   "ok",
@@ -30389,6 +33209,46 @@
   "",
   ""
  ],
+ "str_own__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [form_convert[storage](*%pv)]) print(%k0.tag [raw])"
+ ],
+ "str_own__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [form_convert[storage](*%pv)])"
+ ],
+ "str_own__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), form_convert[storage](*%pv)])"
+ ],
+ "str_own__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [form_convert[storage](*%pv)])"
+ ],
+ "str_own__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [form_convert[storage](*%pv)])"
+ ],
+ "str_own__ro__narrowed_opt_param__nested": [
+  "reject:expr.call:call.ctor_arg.own_str",
+  "",
+  ""
+ ],
+ "str_own__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [form_convert[storage](*%pv)])"
+ ],
+ "str_own__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [form_convert[storage](*%pv)])"
+ ],
  "str_own__ro__nested_field__ctor": [
   "ok",
   "",
@@ -30788,6 +33648,46 @@
   "ok",
   "",
   "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
+ ],
+ "str_own__ro__temp_field__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::string move){call(mk_b, [])._v [storage]}]) print(%k0.tag [raw])"
+ ],
+ "str_own__ro__temp_field__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [%argtmp(std::string move){call(mk_b, [])._v [storage]}])"
+ ],
+ "str_own__ro__temp_field__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::string move){call(mk_b, [])._v [storage]}])"
+ ],
+ "str_own__ro__temp_field__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [%argtmp(std::string move){call(mk_b, [])._v [storage]}])"
+ ],
+ "str_own__ro__temp_field__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [%argtmp(std::string move){call(mk_b, [])._v [storage]}])"
+ ],
+ "str_own__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.own_str",
+  "",
+  ""
+ ],
+ "str_own__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "str_own__ro__temp_field__static": [
+  "ok",
+  "",
+  "call(CALLEE, [%argtmp(std::string move){call(mk_b, [])._v [storage]}])"
  ],
  "str_own__ro__ternary_calls__ctor": [
   "ok",
@@ -31389,6 +34289,46 @@
   "",
   "call(CALLEE, [coerce(*%o0 -> StrView)])"
  ],
+ "strview__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [coerce(*%pv -> StrView)]) print(%k0.tag [raw])"
+ ],
+ "strview__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [coerce(*%pv -> StrView)])"
+ ],
+ "strview__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(*%pv -> StrView)])"
+ ],
+ "strview__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [coerce(*%pv -> StrView)])"
+ ],
+ "strview__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [coerce(*%pv -> StrView)])"
+ ],
+ "strview__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(*%pv -> StrView)]) -> Own[DynP])])]) print(method_call(method_call(method_call("
+ ],
+ "strview__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [coerce(*%pv -> StrView)])"
+ ],
+ "strview__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [coerce(*%pv -> StrView)])"
+ ],
  "strview__ro__nested_field__ctor": [
   "ok",
   "",
@@ -31788,6 +34728,46 @@
   "ok",
   "",
   "call(CALLEE, [coerce(method_call(call(mk_b, []), v, []) -> StrView)])"
+ ],
+ "strview__ro__temp_field__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [coerce(call(mk_b, [])._v [storage] -> StrView)]) print(%k0.tag [raw])"
+ ],
+ "strview__ro__temp_field__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [coerce(call(mk_b, [])._v [storage] -> StrView)])"
+ ],
+ "strview__ro__temp_field__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(call(mk_b, [])._v [storage] -> StrView)])"
+ ],
+ "strview__ro__temp_field__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [coerce(call(mk_b, [])._v [storage] -> StrView)])"
+ ],
+ "strview__ro__temp_field__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [coerce(call(mk_b, [])._v [storage] -> StrView)])"
+ ],
+ "strview__ro__temp_field__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(call(mk_b, [])._v [storage] -> StrView)]) -> Own[DynP])])]) print(method_call(m"
+ ],
+ "strview__ro__temp_field__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [coerce(call(mk_b, [])._v [storage] -> StrView)])"
+ ],
+ "strview__ro__temp_field__static": [
+  "ok",
+  "",
+  "call(CALLEE, [coerce(call(mk_b, [])._v [storage] -> StrView)])"
  ],
  "strview__ro__ternary_calls__ctor": [
   "ok",
@@ -32309,6 +35289,46 @@
   "",
   ""
  ],
+ "tup_is__ro__narrowed_opt_param__ctor": [
+  "ok",
+  "",
+  "%k0: CALLEE = ctor(CALLEE, [*%pv]) print(%k0.tag [raw])"
+ ],
+ "tup_is__ro__narrowed_opt_param__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
+ "tup_is__ro__narrowed_opt_param__gen": [
+  "ok",
+  "",
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), *%pv])"
+ ],
+ "tup_is__ro__narrowed_opt_param__genrec": [
+  "ok",
+  "",
+  "method_call(%g, CALLEE, [*%pv])"
+ ],
+ "tup_is__ro__narrowed_opt_param__meth": [
+  "ok",
+  "",
+  "method_call(%t, CALLEE, [*%pv])"
+ ],
+ "tup_is__ro__narrowed_opt_param__nested": [
+  "ok",
+  "",
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [*%pv]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get,"
+ ],
+ "tup_is__ro__narrowed_opt_param__proto": [
+  "ok",
+  "",
+  "method_call(%pp, CALLEE, [*%pv])"
+ ],
+ "tup_is__ro__narrowed_opt_param__static": [
+  "ok",
+  "",
+  "call(CALLEE, [*%pv])"
+ ],
  "tup_is__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
   "",
@@ -32628,6 +35648,46 @@
   "ok",
   "",
   "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
+ ],
+ "tup_is__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.tuple",
+  "",
+  ""
+ ],
+ "tup_is__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.tuple",
+  "",
+  ""
+ ],
+ "tup_is__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "tup_is__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "tup_is__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "tup_is__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.tuple",
+  "",
+  ""
+ ],
+ "tup_is__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "tup_is__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "",
+  ""
  ],
  "tup_is__ro__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -33149,6 +36209,46 @@
   "",
   ""
  ],
+ "tup_ri__ro__narrowed_opt_param__ctor": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:name.optval_read",
+  "",
+  ""
+ ],
+ "tup_ri__ro__narrowed_opt_param__fn": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:name.optval_read",
+  "",
+  ""
+ ],
+ "tup_ri__ro__narrowed_opt_param__gen": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:name.optval_read",
+  "",
+  ""
+ ],
+ "tup_ri__ro__narrowed_opt_param__genrec": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:name.optval_read",
+  "",
+  ""
+ ],
+ "tup_ri__ro__narrowed_opt_param__meth": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:name.optval_read",
+  "",
+  ""
+ ],
+ "tup_ri__ro__narrowed_opt_param__nested": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:name.optval_read",
+  "",
+  ""
+ ],
+ "tup_ri__ro__narrowed_opt_param__proto": [
+  "sema:Type Impl does not conform to protocol Reader in argument 'pp'",
+  "",
+  ""
+ ],
+ "tup_ri__ro__narrowed_opt_param__static": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:name.optval_read",
+  "",
+  ""
+ ],
  "tup_ri__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
   "",
@@ -33466,6 +36566,46 @@
  ],
  "tup_ri__ro__temp_accessor__static": [
   "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "",
+  ""
+ ],
+ "tup_ri__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.tuple",
+  "",
+  ""
+ ],
+ "tup_ri__ro__temp_field__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [form_convert[const borrow](call(mk_b, [])._v)])"
+ ],
+ "tup_ri__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "tup_ri__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "tup_ri__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "tup_ri__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.tuple",
+  "",
+  ""
+ ],
+ "tup_ri__ro__temp_field__proto": [
+  "sema:Type Impl does not conform to protocol Reader in argument 'pp'",
+  "",
+  ""
+ ],
+ "tup_ri__ro__temp_field__static": [
+  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
   "",
   ""
  ],
@@ -33989,6 +37129,46 @@
   "",
   ""
  ],
+ "uni_rec__ro__narrowed_opt_param__ctor": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_rec__ro__narrowed_opt_param__fn": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_rec__ro__narrowed_opt_param__gen": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_rec__ro__narrowed_opt_param__genrec": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_rec__ro__narrowed_opt_param__meth": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_rec__ro__narrowed_opt_param__nested": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_rec__ro__narrowed_opt_param__proto": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_rec__ro__narrowed_opt_param__static": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
  "uni_rec__ro__nested_field__ctor": [
   "reject:expr.call:call.ctor_arg.union",
   "",
@@ -34305,6 +37485,46 @@
   ""
  ],
  "uni_rec__ro__temp_accessor__static": [
+  "reject:expr.method_call:method.qualcall.arg.union",
+  "",
+  ""
+ ],
+ "uni_rec__ro__temp_field__ctor": [
+  "reject:expr.call:call.ctor_arg.union",
+  "",
+  ""
+ ],
+ "uni_rec__ro__temp_field__fn": [
+  "reject:expr.call:call.arg_shape.union",
+  "",
+  ""
+ ],
+ "uni_rec__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "uni_rec__ro__temp_field__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "uni_rec__ro__temp_field__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "uni_rec__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.union",
+  "",
+  ""
+ ],
+ "uni_rec__ro__temp_field__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "uni_rec__ro__temp_field__static": [
   "reject:expr.method_call:method.qualcall.arg.union",
   "",
   ""
@@ -34829,6 +38049,46 @@
   "",
   ""
  ],
+ "uni_vals__ro__narrowed_opt_param__ctor": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_vals__ro__narrowed_opt_param__fn": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_vals__ro__narrowed_opt_param__gen": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_vals__ro__narrowed_opt_param__genrec": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_vals__ro__narrowed_opt_param__meth": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_vals__ro__narrowed_opt_param__nested": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_vals__ro__narrowed_opt_param__proto": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
+ "uni_vals__ro__narrowed_opt_param__static": [
+  "reject:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not",
+  "",
+  ""
+ ],
  "uni_vals__ro__nested_field__ctor": [
   "reject:stmt.var_decl:field.result_type",
   "",
@@ -35148,6 +38408,46 @@
   "ok",
   "",
   "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
+ ],
+ "uni_vals__ro__temp_field__ctor": [
+  "reject:stmt.var_decl:field.result_type",
+  "",
+  ""
+ ],
+ "uni_vals__ro__temp_field__fn": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "uni_vals__ro__temp_field__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "uni_vals__ro__temp_field__genrec": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "uni_vals__ro__temp_field__meth": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "uni_vals__ro__temp_field__nested": [
+  "reject:expr.call:call.ctor_arg.union",
+  "",
+  ""
+ ],
+ "uni_vals__ro__temp_field__proto": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
+ ],
+ "uni_vals__ro__temp_field__static": [
+  "reject:stmt.expr_stmt:field.result_type",
+  "",
+  ""
  ],
  "uni_vals__ro__ternary_calls__ctor": [
   "reject:expr.ifexpr",

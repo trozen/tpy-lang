@@ -10,6 +10,12 @@ void fill(std::vector<int32_t>& xs) {
     xs.push_back(9);
 }
 
+// def mk() -> Own[list[int32]]:
+//     return [1, 2]
+std::vector<int32_t> mk() {
+    return {1, 2};
+}
+
 // def main() -> None:
 //     w = W()
 //     # free function at a mutated slot -- the family that already admitted it
@@ -30,6 +36,13 @@ void fill(std::vector<int32_t>& xs) {
 //     # constructor, bytearray field
 //     bt = BufTaker(w.buf)  # tpyc: ok
 //     print("ctor_bytearray", len(w.buf), bt.n)
+//     # constructor, an explicit COPY of the field: the temp is what the ctor
+//     # appends to, the field stays
+//     ct = ListTaker(copy(w.items))  # tpyc: ok
+//     print("ctor_copy_temp", w.items, ct.n)
+//     # constructor, an owning call rvalue
+//     ot = ListTaker(mk())  # tpyc: ok
+//     print("ctor_own_call", ot.n)
 void main() {
     W w = W();
     ::tpyapp::main::fill(w.items);
@@ -44,6 +57,12 @@ void main() {
     std::cout << "ctor_reclist" << " " << ::tpy::__len__(w.recs) << " " << rt.n << "\n";
     BufTaker bt = BufTaker(w.buf);
     std::cout << "ctor_bytearray" << " " << ::tpy::__len__(w.buf) << " " << bt.n << "\n";
+    std::vector<int32_t> __tmp_1 = std::vector<int32_t>(w.items);
+    ListTaker ct = ListTaker(__tmp_1);
+    std::cout << "ctor_copy_temp" << " " << ::tpy::ListPrinter(w.items) << " " << ct.n << "\n";
+    std::vector<int32_t> __tmp_2 = ::tpyapp::main::mk();
+    ListTaker ot = ListTaker(__tmp_2);
+    std::cout << "ctor_own_call" << " " << ot.n << "\n";
 }
 
 // main()

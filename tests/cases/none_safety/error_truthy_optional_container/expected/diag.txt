@@ -1,1 +1,1 @@
-main.py:7: error: in function 'probe': this construct is not yet supported by C++ code generation (stmt.if:cond.name)
+main.py:9: error: in function 'probe': this construct is not yet supported by C++ code generation (stmt.if:cond.name)

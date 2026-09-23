@@ -191,6 +191,9 @@ deleted from `BUGS.md`, and the box here is ticked with the merge commit.
   drifts. Prerequisites: TODO: "Make the tuple RENDER 3-valued instead of
   stacking booleans over it" and TODO: "Sema mirrors codegen's tuple-render
   pair at a different breadth". Needs `/tpy-add-feature`. Size: 2-3 weeks.
+  Also owns the container FIELD as a borrow-tuple element: the bind is the
+  record's (`T*`), the READER of a container element is what is missing
+  (`btuple.elem_container_field` in the lowering).
 - [ ] **U6 -- `str` / `bytes` view elements** (D3, D4). A view element at a
   tuple param and a view-safe local, as the scalar has. ABI change with wide
   snapshot churn, and it needs the loan a view inside a tuple takes on its

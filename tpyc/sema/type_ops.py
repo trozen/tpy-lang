@@ -61,6 +61,27 @@ def signature_may_return_borrow(fi: 'FunctionInfo') -> bool:
     return not ret.is_value_type()
 
 
+def frame_yield_may_borrow(typ: TpyType) -> bool:
+    """Whether a generator frame's yielded value can reference storage the
+    frame does not own: a view, a pointer, a reference-type element handed
+    out through the borrow slot, or a composite holding one. Unlike a
+    function return, a yielded `str` is the owned string -- the view form is
+    typed `StrView` there.
+    """
+    t = unwrap_ref_type(unwrap_readonly(typ))
+    if isinstance(t, OwnType):
+        return False
+    if is_borrowing_view_type(t) or isinstance(t, PtrType):
+        return True
+    if isinstance(t, TupleType):
+        return any(frame_yield_may_borrow(e) for e in t.element_types)
+    if isinstance(t, OptionalType):
+        return frame_yield_may_borrow(t.inner)
+    if isinstance(t, UnionType):
+        return any(frame_yield_may_borrow(m) for m in t.members)
+    return not t.is_value_type()
+
+
 def partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     """Substitute known type params, preserve unknown TypeParamRefs as-is."""
     if isinstance(typ, TypeParamRef):

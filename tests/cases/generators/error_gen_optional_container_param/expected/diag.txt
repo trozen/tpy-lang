@@ -1,1 +1,0 @@
-main.py:9: error: in function 'twice': this construct is not yet supported by C++ code generation (res.param_type:optional)

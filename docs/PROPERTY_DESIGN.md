@@ -57,7 +57,7 @@ a case under `tests/cases/records/`:
 |------|-----|-------------|
 | local decl | `local_decl.lends_from_temporary` | (the base case) |
 | branch-first decl | `local_decl.lends_from_temporary` | `_hoisted_decl` |
-| free-call argument | `call.arg_shape.container` (the arg-shape gate speaks first for this shape) | `_arg` |
+| free-call argument | `arg.lends_from_temporary` | `_arg` |
 | stub-method argument | `arg.lends_from_temporary` | `_method_arg` |
 | retaining builtin | `arg.lends_from_temporary` | `_retaining_builtin` |
 | for-each / comprehension | `foreach.iter_lends_from_temporary` | `_foreach`, `_comp` |

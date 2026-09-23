@@ -1,4 +1,4 @@
-# The RECORD payload of warn_return_container_borrow_dunder: a user `__add__`
+# The RECORD payload of error_return_container_borrow_dunder: a user `__add__`
 # that returns a BORROW aliases an operand, so an `Own[Acc]` return slot copies
 # it and warns. Sema reads the dunder through the same provenance rule the
 # method-call spelling takes -- the dunder borrows an ARGUMENT (its operand),

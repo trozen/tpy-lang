@@ -19,6 +19,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def fill(xs: list[int32]) -> None:
 void fill(std::vector<int32_t>& xs);
+// def mk() -> Own[list[int32]]:
+std::vector<int32_t> mk();
 // def main() -> None:
 void main();
 

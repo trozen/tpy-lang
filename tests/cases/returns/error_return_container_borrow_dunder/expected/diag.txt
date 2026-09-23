@@ -1,2 +1,2 @@
-main.py:24: warning: copies list[int32] into owned storage; use copy() to make this explicit
-main.py:24: error: in function 'borrowed': this construct is not yet supported by C++ code generation (stmt.return:binop.shape.+.record)
+main.py:26: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:26: error: in function 'borrowed': this construct is not yet supported by C++ code generation (stmt.return:binop.shape.+.record)

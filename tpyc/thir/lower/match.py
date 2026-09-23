@@ -84,7 +84,6 @@ from .predicates import (
     _eligible_scalar,
     _enum_member_cpp,
     _f1_record,
-    _move_through_type,
     record_like,
     _optional_ptr_borrow_name,
     _poly_subject_const,
@@ -1164,7 +1163,7 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             continue
         # Captures sharing a move target must still satisfy their capture-write gates.
         family_ok = ((record_like(vtype, analyzer) or _container_scalar_read(vtype, analyzer))
-                     if name in captures else _move_through_type(vtype, analyzer))
+                     if name in captures else record_like(vtype, analyzer))
         if not (is_plain_nonvalue(vtype) and family_ok):
             return None
         if lc.func.is_generator or lc.func.is_async:

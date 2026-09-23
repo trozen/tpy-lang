@@ -88,8 +88,13 @@ Scripts (run from the repo root with `uv run python`):
   builtin containers and `bytearray`, and the recursive-union wrapper
   (`Json`, a tripwire: on the axis by value form, not admissible as a
   record or a container); a `subclass_local` source measures the upcast
-  rows. So "the record twin of this row admits and the container twin does
-  not" is a diff of this table, not a review discovery.
+  rows. Two source shapes exist for the BINDING each kind takes rather than
+  for the expression: `narrowed_opt_param`, an `Optional[T]` parameter
+  proven non-None (the pointer-repr borrow binding, where `narrowed_opt` is
+  a value slot), and `temp_field`, a field read off a call rvalue (beside the
+  `temp_accessor` property read). So "the record twin of this row admits and
+  the container twin does not" is a diff of this table, not a review
+  discovery.
   Committed as `arg_family_sweep.expected.json` and gated by
   `tests/test_arg_family_sweep.py`. Run it as
   `uv run python scripts/thir_migration/review/arg_family_sweep.py` to check,

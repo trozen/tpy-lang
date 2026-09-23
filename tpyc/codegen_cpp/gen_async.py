@@ -4955,15 +4955,13 @@ class AsyncCoroCodegen:
         CPython takes `iter(source)` where the genexpr is written, and a
         begin/end pair over a BORROWED container points outside the frame, so
         seeding early does not pin the frame. (A container grown while the
-        genexpr is live invalidates the pair -- no loan covers a genexpr's
-        source yet, BUGS.md#combinator-arg-no-iteration-loan; a first-pull
-        seed would shorten that window by the stretch before the first pull,
-        not close it.) A source the frame owns is seeded at the first pull: its
-        iterators would point into the frame, which may still move before then."""
-        if not func.is_genexpr or not func.body:
-            return None
-        loop = func.body[0]
-        if not (isinstance(loop, TpyForEach) and isinstance(loop.iterable, TpyName)):
+        genexpr is live invalidates the pair. The creation's iteration loan
+        reports a loop body that grows it, and the frame loop's loans on the
+        captures naming the source report the frame's own body.) A source
+        the frame owns is seeded at the first pull: its iterators would point
+        into the frame, which may still move before then."""
+        loop = func.genexpr_loop
+        if loop is None or not isinstance(loop.iterable, TpyName):
             return None
         infos = list(rcfg.resumable_state(func).for_info_by_uid.items())
         if len(infos) != 1:

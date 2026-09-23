@@ -1,7 +1,9 @@
 # An OWNING call's container result handed straight to a mutable method
-# parameter: the rvalue cannot bind the `list[int32]&` slot and the method
-# family has no hoisting row for a call rvalue, so it rejects at the call's
-# return type. Binding the result to a local first compiles.
+# parameter: the method family has no hoisting row for a call rvalue at a
+# mutated slot, so it rejects at the argument shape -- the same stop its
+# record twin `k.take(mk_rec())` and the copy spelling `k.fill(copy(d))`
+# take (BUGS.md#record-rvalue-at-mutated-method-slot-unhoisted). Binding
+# the result to a local first compiles.
 from tpy import Own, int32
 
 
@@ -17,7 +19,7 @@ def mk() -> Own[list[int32]]:
 
 def main() -> None:
     k = K()
-    print(k.fill(mk()))  # tpyc: error(/call\.ret_type\.container/)
+    print(k.fill(mk()))  # tpyc: error(/method\.arg_shape/)
 
 
 main()

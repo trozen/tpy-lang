@@ -5880,7 +5880,12 @@ class MutationCallEdge:
     """Records parameter flow through a function call (for mutation propagation)."""
     callee_fi: 'FunctionInfo'
     param_map: dict[int, int]  # callee_param_idx -> caller_param_idx; caller -1 = self passed as arg
-    receiver_is_self: bool = False  # True when callee is called as self.method()
+    # The caller param a receiver rooted at `self` is (`self.m()`,
+    # `self.f.m()`, `super().m()`): -1 for a method's own receiver (folded
+    # into self_mutated), the param's index where `self` is an ordinary param
+    # (a generator expression's capture); None when the receiver is not
+    # rooted at `self`.
+    receiver_idx: int | None = None
     # Callee params bound through a call that LENDS the caller's storage (a
     # combinator, a borrow-returning call): only the callee's element
     # mutation of such a param reaches the caller's storage.
@@ -5997,6 +6002,11 @@ class FunctionInfo:
     # Param indices whose storage the return value borrows from (8b).
     # -1 = self (methods only); 0, 1, ... = regular params.
     # None = not yet analyzed; frozenset() = no borrow (value/local return).
+    held_whole_params: frozenset[int] = frozenset()
+    # The part of return_borrows_from the result holds only as a reference to
+    # the whole object: it neither iterates that storage nor hands out a
+    # reference into it, so growing it leaves the result valid (a genexpr's
+    # captures, read afresh at each pull).
     # Phase 1 local facts (set during sema, consumed by Phase 2 propagation)
     direct_mutated_params: Optional[frozenset[int]] = None
     direct_structural_mutated_params: Optional[frozenset[int]] = None
@@ -6227,6 +6237,13 @@ def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
     (BUGS.md#pending-generic-receiver-call-borrow-unregistered).
     """
     return fi.root.return_borrows_from or frozenset()
+
+
+def held_whole_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
+    """The recorded sources the result keeps a whole-object reference to
+    and nothing more (see `FunctionInfo.held_whole_params`); root-read like
+    `recorded_return_borrow_sources`."""
+    return fi.root.held_whole_params
 
 
 def return_const_projected(fi: FunctionInfo) -> bool:

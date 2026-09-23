@@ -63,7 +63,7 @@ from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import _expr_to_narrowing_key, bound_names_of, walrus_names_of
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
+from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
 from ..value_category import (is_rvalue_source, async_result_aliases,
                              return_type_is_cpp_ref)
 from .alias_rebind import bind_kind_of
@@ -74,6 +74,9 @@ from .local_deduction import collect_pending_source_types, mark_pending_list_mut
 from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import resolve_overload
+from .type_ops import frame_yield_may_borrow
+from .scope_tracker import lend_roots
+from .iter_loans import iterated_storage, register_iteration_loans
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -2694,7 +2697,6 @@ class ExpressionAnalyzer:
         A rvalue operand (fresh coro from `await f()`) has no durable root
         and is left alone.
         """
-        from .statements import _root_name_of_expr
         obj_root = _root_name_of_expr(operand)
         if obj_root is None:
             return
@@ -2895,8 +2897,7 @@ class ExpressionAnalyzer:
                     val_inner = (expr.value.expr
                                  if isinstance(expr.value, TpyCoerce)
                                  else expr.value)
-                    # Local import: statements <-> expressions circular dodge
-                    # (same as _root_name_of_expr; see TODO).
+                    # Local import: statements imports this module.
                     from .statements import _register_call_result_borrow
                     _register_call_result_borrow(self.ctx, name, val_inner)
             # For a collapsed per-element-Own borrow tuple, the walrus result
@@ -3617,7 +3618,8 @@ class ExpressionAnalyzer:
         # are capturable too: the frame takes a reference either way.
         assigned = (self.ctx.func.definitely_assigned
                     | (self.ctx.func.outer_scope_locals or set()))
-        captures = [n for n in sorted(_nested_def_free_names(func)) if n in assigned]
+        free_names = _nested_def_free_names(func)
+        captures = [n for n in sorted(free_names) if n in assigned]
         reads = tuple(TpyName(name, loc=loc) for name in captures)
         narrowed: list[str] = []
         rebindable = [n for n in captures if self._capture_may_be_rebound(n)]
@@ -3647,20 +3649,43 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(read, captured)
             func.params.append((read.name, captured))
         func.capture_params = tuple(captures)
+        # The frame iterates the source through its own param while the body
+        # may name the same container itself -- a capture, or a module global
+        # it reads directly; the loop's loan on the param alone would not see
+        # a growth through that name. A name free in the body resolves there
+        # to the same storage it does here.
+        source_loans = () if range_args else tuple(
+            (key, loan)
+            for key, loan in iterated_storage(self.ctx, gen.iterable).loans
+            if _storage_root(key) in free_names)
         assert self.ctx.analyze_genexpr_function is not None
-        self.ctx.analyze_genexpr_function(func)
+        self.ctx.analyze_genexpr_function(func, source_loans)
         assert func.generator_yield_type is not None
         # Creating the frame hands the source and the captures to the function
         # the way a call hands over its arguments, so its mutation facts reach
         # this function the same way: a body that mutates through its loop var
-        # or a capture keeps the enclosing param a mutable borrow.
+        # or a capture keeps the enclosing param a mutable borrow, and one that
+        # may grow or rewrite a capture conflicts with the loans held on it here
+        # and demotes the views borrowed out of it.
         fis = self.ctx.registry.get_function(func.name)
         if fis:
             creation = TpyCall(TpyName(func.name, loc=loc),
                                (range_args or [gen.iterable]) + list(reads), loc=loc)
             creation.resolved_function_info = fis[-1]
+            # The frame iterates only its source and reads a capture afresh at
+            # each pull, so a capture is held whole -- unless the yield may
+            # point into it (`ys[i][1:]` views an element of `ys`).
+            lent = ({r.name for r in lend_roots(self.ctx, expr.element_expr)}
+                    if frame_yield_may_borrow(func.generator_yield_type)
+                    else set())
+            n_source = len(range_args) or 1
+            fis[-1].root.held_whole_params = frozenset(
+                n_source + k for k, name in enumerate(captures)
+                if name not in lent)
+            self.calls._check_borrow_arg_conflicts(creation)
             self.calls._check_loop_var_arg_mutation(creation)
             self.calls._record_mutation_call_edges(creation)
+            expr.frame_creation = creation
         expr.frame_func = func
         expr.frame_captures = reads
         expr.frame_rebindable = tuple(rebindable)
@@ -3938,6 +3963,7 @@ class ExpressionAnalyzer:
             self.ctx.func.consumed_loop_vars.discard(n)
 
         with self.scopes.comprehension_scope() as inner_scope:
+            self._register_comp_iter_loans(gen, names)
             if gen.unpack_vars is not None:
                 if not isinstance(elem_type, TupleType):
                     raise self.ctx.error(
@@ -3965,6 +3991,23 @@ class ExpressionAnalyzer:
                 and not any(n in self.ctx.func.mutated_loop_vars for n in names)):
             gen.const_loop_var = True
         return result
+
+    def _register_comp_iter_loans(self, gen: TpyComprehensionGenerator,
+                                  names: list[str]) -> None:
+        """The comprehension's iteration loan -- the one a `for` over the same
+        source files, so its condition or element growing the source is
+        diagnosed the same way.
+
+        A source rooted at a name spelled like one of the targets
+        (`[grow(c) for c in c]`) is the ENCLOSING binding of that name, which
+        the comprehension's own code cannot reach by name, so no loan is filed
+        on it: inside the scope that name is the target."""
+        iterable_type = self.ctx.get_expr_type(gen.iterable)
+        assert iterable_type is not None
+        # `loan.unplaceable` needs no stamp here: a chain too deep for a loan
+        # key never lowers as a comprehension source.
+        register_iteration_loans(self.ctx, gen.iterable, iterable_type,
+                                 excluded_roots=names)
 
     def _analyze_comp_body(
         self,

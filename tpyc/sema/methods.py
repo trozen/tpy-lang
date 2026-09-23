@@ -40,9 +40,8 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .type_ops import seeded_arg_hint
-from .statements import (
-    _root_name_of_expr, _is_self_call_deferred, _local_traces_to_self,
-)
+from .context import _root_name_of_expr
+from .statements import _is_self_call_deferred, _local_traces_to_self
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -961,7 +960,7 @@ class MethodAnalyzer:
                         else:
                             # For self.field.method() and loop_var.method() (where the
                             # loop var iterates over a self field), defer self-mutation
-                            # to Phase 2 via call edges (receiver_is_self=True, recorded
+                            # to Phase 2 via call edges (a receiver_idx, recorded
                             # by _record_mutation_call_edges). Phase 2 only sets
                             # self_mutated when the callee actually mutates its self,
                             # enabling readonly inference for methods like __json_encode__
