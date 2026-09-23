@@ -490,8 +490,9 @@ def _run_cli(is_runner: bool) -> int:
     parser.add_argument("--no-pch", dest="pch", action="store_false", default=True,
                         help="Disable precompiled header caching")
     parser.add_argument("--rebuild", action="store_true",
-                        help="Ignore the up-to-date check and rebuild from scratch "
-                             "(escape hatch, e.g. after upgrading a system library)")
+                        help="Ignore the up-to-date check and rebuild from scratch, "
+                             "precompiled header included (escape hatch, e.g. "
+                             "after upgrading a system library)")
     parser.add_argument("--no-bundle-runtime", dest="bundle_runtime",
                         action="store_false", default=True,
                         help="Don't copy runtime headers into the output directory")
@@ -1015,7 +1016,7 @@ def _run_cli(is_runner: bool) -> int:
                 t_pch_start = time.monotonic()
                 pch_path = get_or_build_pch(
                     cpp_config, runtime_dir / "cpp" / "include", opt_flags,
-                    pch_dir=layout.build_dir / "pch",
+                    pch_dir=layout.build_dir / "pch", force=args.rebuild,
                 )
                 t_pch = time.monotonic() - t_pch_start
                 if pch_path:

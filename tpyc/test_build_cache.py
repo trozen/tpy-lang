@@ -9,7 +9,8 @@ import pytest
 
 from tpyc.build_cache import (
     SCHEMA_VERSION, BuildManifest, check_up_to_date, compute_build_dir,
-    dir_listing_entry, file_entry, manifest_path, write_manifest,
+    dir_listing_entry, file_entry, manifest_path, toolchain_entry,
+    write_manifest,
 )
 from tpyc.modules.resolver import ModuleResolver
 
@@ -299,3 +300,20 @@ def test_macro_edited_after_compile_misses(tmp_path):
         edit_before_record=lambda app: _edit(
             app / "tagmac.py", MACRO_SRC + "\n# changed\n"))
     assert check_up_to_date(build, key) is None
+
+
+def test_toolchain_entry_resolves_bare_name_and_explicit_path(tmp_path, monkeypatch):
+    """Both spellings of a compiler command identify the same binary by its
+    resolved path and stat, and an unknown command yields None."""
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    cxx = bindir / "fake-c++"
+    cxx.write_text("#!/bin/sh\nexit 0\n")
+    cxx.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bindir))
+    st = os.stat(cxx)
+    expected = {"resolved": str(cxx), "size": st.st_size, "mtime_ns": st.st_mtime_ns}
+    assert toolchain_entry("fake-c++") == expected
+    assert toolchain_entry(str(cxx)) == expected
+    assert toolchain_entry("no-such-c++") is None
+    assert toolchain_entry(str(bindir / "missing")) is None

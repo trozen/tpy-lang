@@ -53,6 +53,10 @@ g++ -std=c++23 -g -O0 -I ... -c module.cpp
   GCC compares contents instead, so its `.gch` travels between checkouts.
   Any cache that shares a `.gch` machine-wide must key on the include root
   (`toolchain.pch_is_path_sensitive`).
+- `toolchain.get_or_build_pch` writes a `tpy_pch.stamp` next to the `.gch`
+  (include root, compiler command and binary identity, `-std`, flags) and
+  rebuilds on any mismatch, so a per-program `__tpyc__/.../pch/` dir survives
+  switching compiler checkouts or toolchains. `tpy --rebuild` forces it.
 
 ### 2. Parallel Compilation
 
