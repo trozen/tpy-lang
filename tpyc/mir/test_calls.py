@@ -220,7 +220,7 @@ def test_covered_caller_need_not_have_usable_summary(artifacts: Artifacts) -> No
     ("recurse_a", "recursive or recursion-dependent call"),
     ("recurse_b", "recursive or recursion-dependent call"),
     ("recurse_user", "recursive or recursion-dependent call"),
-    ("temporary", "call needs borrowed record name"),
+    ("temporary", "summary storage or value shape"),
 ])
 def test_unproven_calls_never_acquire_empty_effects(artifacts: Artifacts, name: str, reason: str) -> None:
     result = artifacts[1].summaries[th.THIRFunctionIdentity("main", name)]
@@ -301,7 +301,6 @@ def test_call_coverage_checks_selected_signature_and_contract(artifacts: Artifac
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("temporary", "call needs borrowed record name"),
     ("global_argument", "call global argument"),
     ("optional_scalar_argument", "call needs unwrapped scalar binding"),
     ("optional_record_argument", "call needs unwrapped record binding"),

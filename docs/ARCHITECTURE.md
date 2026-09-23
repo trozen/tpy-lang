@@ -147,9 +147,19 @@ not reuse the parameter-flow-filtered mutation graph. Pending, opaque and
 known-empty remain distinct. Known reader-only, normal-returning scalar-result
 calls become `MIRCall` operations, with argument liveness and unknown result
 values. Each body retains its immutable summary entries for standalone
-validation and analysis. Recursion, general effects/exits and named argument
-temporaries remain outside this slice. No summary feeds back into production
+validation and analysis. Recursion and general effects/exits remain outside
+this slice. No summary feeds back into production
 sema, and no new checker authority is introduced.
+
+Named scalar-field record arguments additionally share a prepared THIR storage
+plan with C++ emission (`MIR_NAMED_ARGUMENT_STORAGE_PLAN.md`). The shared queue
+retains declaration scopes and ordered eager/lazy initialization anchors;
+emission verifies its actual events against those identities. MIR consumes
+that plan for pure constructors at known readonly reader calls, including
+synthetic elif scopes and fresh while-condition activations. An outer-region
+backedge bridge ends one activation before the next begins. Optional lazy
+backing uses existing engagement facts. Unknown producers leave the body
+unplanned; no C++ names, strings or emission logs supply MIR storage facts.
 
 `mir/liveness.py` computes backward may-liveness over validated MIR with a
 predecessor worklist. Its immutable result includes block entry/exit sets,

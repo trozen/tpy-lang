@@ -1,6 +1,6 @@
 # Named argument storage: shared placement and MIR consumption
 
-Status: step 1 implemented; bounded MIR consumer in progress.
+Status: implemented bounded named-argument storage coverage.
 Follows the [dependency investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md)
 and the implemented [call interface](MIR_CALL_SUMMARY_INTERFACE_PLAN.md).
 This covers part of W1, not all of M3. Tuple completeness remains separate.
@@ -44,9 +44,9 @@ Invariant: each admitted named temporary has one semantic storage identity,
 declaration scope and ordered initialization site, shared by C++ emission
 and MIR; no consumer reconstructs them from generated names or C++ text.
 
-Extract a structured preparation interface from the existing `TempState`
-pending queues, conditional regions and flush decisions. Prepare an immutable
-body-level THIR temporary plan before C++ printing. Emission consumes the
+The preparation interface shares `TempState`'s pending queues, conditional
+regions and flush decisions. An immutable body-level THIR temporary plan is
+prepared before C++ printing. Emission consumes the
 plan's decisions; the captured THIR artifact supplies the same plan to MIR.
 MIR still consumes THIR, not an emission log or a separately rendered body.
 
@@ -117,37 +117,35 @@ must likewise come from the shared plan. A function with these owned temps
 can be analyzed as a caller but remains opaque as a callee under M4.1's
 current no-owned-storage summary contract.
 
-## Two implementation steps
+## Producer and consumer
 
-1. **Shared THIR placement plan and emission integration.** Extract the
-   scheduling decisions; supply typed anchors, storage identities and scope
-   structure; validate complete plans. Make emission use those decisions
-   without output changes. Pin preparation/emission agreement, unsupported
-   sibling handling and all boundary shapes above before MIR consumes them.
-2. **Bounded MIR consumer.** Admit named hook-free record construction at
-   known scalar-result ordinary calls; lower planned storage and initialization
-   schedules; integrate regions, engagement, argument uses and diagnostics in
-   the debug dump. Cover eager and deferred forms together with conditions,
-   repeated activation and negative controls.
+THIR preparation supplies validated typed anchors, storage identities and
+scope structure. Emission uses them without changing output. The bounded MIR
+consumer lowers the same storage and initialization schedules into existing
+regions and engagement operations, retaining argument uses in the debug dump.
 
-Step 1 is a refactor gate, not permission to change generated behavior. If
-its extraction needs new source semantics or changes output, stop and
-reassess the design. Each step should remain independently verifiable.
-
-The shared queue now prepares declaration and initialization anchors before
+The shared queue determines declaration and initialization scheduling before
 printing. Emission consumes optional-backing and synthetic-scope decisions
-and checks actual registration, lazy-prefix and flush events against the
-plan, including anchor identity, block parentage and order. Unknown producers
-leave the body unplanned. Focused THIR and existing temporary snapshots pass
-without snapshot changes; the bounded source fixture also emits identical
-C++ with preparation enabled and disabled.
+and checks actual registration, lazy-prefix and flush events against the plan,
+including anchor identity, block parentage and order. The supported body
+structure is traversed by both preparation and emission; these checks guard
+against drift between those traversals.
+
+The MIR consumer uses existing record storage, borrowing, optional engagement
+and region operations. Its initial whole-body plan covers ordinary statements
+and if/while bodies. Any unhandled producer or statement kind, including for,
+try, with, match and nested definitions, leaves the whole body unplanned.
+Lazy while conditions are source-pinned using a ternary;
+the existing frontend rejects the boolean `and` spelling with a record
+constructor argument; see
+[`while-bool-record-argument-rejects`](../BUGS.md#while-bool-record-argument-rejects).
 
 ## Factored scope matrix
 
 A cell is admitted only when every axis below admits it. Existing MIR
 features outside the new materialization are not implicitly widened.
 
-| Axis | Proposed coverage | Excluded / tracked scope |
+| Axis | Implemented coverage | Excluded / tracked scope |
 | --- | --- | --- |
 | Caller | Ordinary free functions, methods, constructor tails; supported branch/loop body statements | Module, closure, comprehension, match: W2/W5; generator/async: W4; context manager, try/finally, error-return: W3; member/base initializers have no body flush point |
 | Callee | Exact ordinary function with finalized M4 reader-only, normal-returning bool/int32 summary | Method/static/constructor/native/protocol/callback/generic callees and general effects: M2/M4 |
@@ -158,9 +156,11 @@ features outside the new materialization are not implicitly widened.
 | Spelling | Direct and imported aliases with the same verified constructor/callee facts | Module-qualified constructor routes without those facts remain uncovered under M2/M4; no inference from the spelling |
 
 A broader expression that could reorder observable inline work across a
-hoisted initializer stays uncovered without an ordering proof. This includes
-mutation of a constructor operand and possible exceptions in the enclosing
-expression, even when the constructor and called function themselves are pure.
+hoisted initializer stays uncovered without an ordering proof. Mutation of a
+constructor operand is excluded. Early construction is unobservable only
+because its operands are stable and its initialization has no hooks or
+effects; this is not a general no-exception guarantee for surrounding input
+reads. Callees still require the normal-return-only summary contract.
 Reordered keyword arguments need every reordered evaluation to be unobservable.
 Existing source acceptance and general Python/C++ keyword-argument ordering are not
 claimed by this subset.
@@ -197,34 +197,25 @@ MIR. Do not have compiler tests load snippet files. Test missing/foreign or
 incomplete anchors, invalid access, uninitialized reads, early scope ends,
 retained aliases and excluded summaries. Keep ordinary source cases only
 where they pin additional observable behavior; add at most one condensed
-case for an identified gap. No snapshot refresh is pre-approved.
-
-Update LANGUAGE_FEATURES, ARCHITECTURE and the M3 checklist with implemented
-coverage when it lands. Run focused gates during development, full forced
-verification after final changes, cumulative specialist review and readiness.
+case for an identified gap.
 
 ## Evidence and risk
 
 Source inspection confirms the queues and flush points in `TempState`,
 `TempSink`, `_emit_if`, `_emit_while` and the conditional expression renderers.
 Standalone probes using `@nocopy Cell` match CPython for eager, lazy, elif
-and while callers; emitted C++ has the scopes described above. Current MIR
-covers the reader leaves and declines the temporary-bearing calls.
+and while callers; emitted C++ has the scopes described above. MIR covers
+those bounded temporary-bearing callers and the reader leaves.
 
-Independent CPython-parity design assessment: match for the bounded slice,
-subject to the enclosing-expression ordering gate, non-raising operations,
-exact access preservation and no identity/reference escape. Longer C++ block
+The bounded slice preserves CPython behavior through the enclosing-expression
+ordering gate, pure construction, exact access preservation and exclusion of
+identity/reference escape. Longer C++ block
 lifetime is unobservable only because lifecycle hooks and escaping references
 are excluded. Preserving C++ text alone does not prove Python ordering.
 
-Confidence: medium. The semantic contract and existing MIR primitives are
-verified; the significant risk is extracting the shared preparation interface
-without duplicating emitter traversal decisions or altering excluded paths.
-The cheapest implementation gate is the first step's focused emission
-byte-comparison across eager/lazy, if/elif/while and relocated-temp controls.
-That gate must pass before broadening MIR coverage.
-
-The existing THIRArgTemp docstring incorrectly says while/elif temps are
-always rejected; correct that stale documentation during the refactor.
-Other tracked hazards remain in the dependency investigation; this proposal
-neither fixes them nor assumes their source shapes work.
+The main maintenance risk is extending supported body structure without
+updating both preparation and emission verification. Planned/unplanned C++
+comparisons, anchor-identity corruption tests, and structural lifetime tests
+pin that contract. Broader coverage must preserve it. Other tracked hazards
+remain in the dependency investigation; this subset does not assume those
+source shapes work.

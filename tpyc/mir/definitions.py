@@ -40,7 +40,7 @@ class MIRConstructorDefinition:
 
 
 def constructor_initialization(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
-    plain(ctor, {"record_name", "params", "mil_inits", "body", "record_layout"})
+    plain(ctor, {"record_name", "params", "mil_inits", "body", "record_layout", "temp_plan"})
     layout = ctor.record_layout
     require(ctor, isinstance(layout, th.THIRRecordLayout), "missing record layout")
     typ = layout.type

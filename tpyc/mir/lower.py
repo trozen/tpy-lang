@@ -9,6 +9,7 @@ from ..codegen_cpp.forms import LoopBinding, loop_binding_kind
 from ..type_def_registry import is_list, is_array, is_set, is_dict
 from ..parse import RebindStorage, SourceLocation
 from ..thir import nodes as th
+from ..thir.temp_plan import if_chain, validate_plan
 from ..typesys import (
     BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, NominalType, TpyType,
     NoneType, OptionalType, ReadonlyType, TupleType, UnionType, VoidType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
@@ -65,6 +66,7 @@ class _Coverage:
         self.active_temporaries: list[th.THIRCtorCall] | None = None
         self.summaries = summaries if summaries is not None else {}
         self.calls: IdentityMap[th.THIRCall, MIRCallSummary] = IdentityMap()
+        self.argument_temporaries: IdentityMap[th.THIRArgTemp, th.THIRBorrowedRecord] = IdentityMap()
 
     def call(self, expr: th.THIRCall) -> None:
         _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
@@ -88,6 +90,9 @@ class _Coverage:
                          "call needs unwrapped scalar binding")
                 _require(arg, self.expr(arg) == typ, "call scalar argument mismatch")
             else:
+                if isinstance(arg, th.THIRArgTemp):
+                    self.argument_temporary(arg, ref)
+                    continue
                 _require(arg, isinstance(arg, (th.THIRName, th.THIRSelf))
                          and arg.form is th.Form.BORROW, "call needs borrowed record name")
                 source_name = arg.name if isinstance(arg, th.THIRName) else "self"
@@ -98,6 +103,48 @@ class _Coverage:
                 _require(arg, actual.type == ref.type and (not actual.readonly or ref.readonly),
                          "call record argument mismatch")
         self.calls[expr] = summary
+
+    def argument_temporary(self, arg: th.THIRArgTemp, reference: th.THIRBorrowedRecord) -> None:
+        _require(arg, self.fn.temp_plan is not None, "named argument needs complete temporary plan")
+        placement = self.fn.temp_plan.placement(arg)
+        _plain(arg, {"init", "cpp_type", "movable"})
+        _require(arg, arg.form is th.Form.BORROW and isinstance(arg.init, th.THIRCtorCall)
+                 and arg.result_type == reference.type and reference.readonly,
+                 "named argument needs readonly record constructor")
+        self.record_value(arg.init, reference.type)
+        # Narrowed wrapper reads still require a selection proof.
+        for operand in arg.init.args:
+            _require(operand, _literal(operand) or isinstance(operand, th.THIRName)
+                     and operand.global_binding is None and operand.name not in self.optionals
+                     and operand.name not in self.unions, "named constructor needs stable scalar operands")
+        definition = self.records[reference.type]
+        _require(arg, not placement.optional or definition.layout.movable and arg.would_bank(),
+                 "deferred argument needs movable backing")
+        self.argument_temporaries[arg] = reference
+
+    def ordered_temporary_expression(self, expr: th.THIRExpr) -> bool:
+        match expr:
+            case th.THIRName():
+                return (expr.global_binding is None and expr.name not in self.optionals
+                        and expr.name not in self.unions and expr.name not in self.payload_aliases)
+            case th.THIRLiteral() | th.THIRSelf():
+                return True
+            case th.THIRCoerce():
+                return self.ordered_temporary_expression(expr.expr)
+            case th.THIRUnaryNot():
+                return self.ordered_temporary_expression(expr.operand)
+            case th.THIRArgTemp():
+                return expr in self.argument_temporaries
+            case th.THIRCall():
+                return expr in self.calls and all(self.ordered_temporary_expression(arg) for arg in expr.args)
+            case th.THIRBinOp():
+                return all(self.ordered_temporary_expression(arg) for arg in (expr.left, expr.right))
+            case th.THIRValueSelect():
+                return all(self.ordered_temporary_expression(arg) for arg in (expr.lhs, expr.rhs))
+            case th.THIRIfExpr():
+                return all(self.ordered_temporary_expression(arg) for arg in (expr.cond, expr.then, expr.orelse))
+            case _:
+                return False
 
     def global_binding(self, expr: th.THIRName | th.THIRModuleVar | th.THIRWalrus,
                        *, write: bool = False) -> TpyType:
@@ -116,6 +163,8 @@ class _Coverage:
 
     def check(self) -> None:
         fn = self.fn
+        if fn.temp_plan is not None:
+            validate_plan(fn.body, fn.temp_plan)
         _require(fn, fn.error_return_cpp is None, "error-return body")
         _require(fn, not fn.layout.hoisted_locals, "hoisted declarations")
         _require(fn, fn.return_type in (BOOL, INT32) or isinstance(fn.return_type, VoidType),
@@ -158,6 +207,9 @@ class _Coverage:
                 _require(fn, p.type in (BOOL, INT32), "unsupported parameter type")
                 self.bindings[p.name] = p.type
         self.declarations(fn.body, 0)
+        if self.argument_temporaries:
+            _require(fn, len(self.argument_temporaries) == len(fn.temp_plan.placements),
+                     "temporary plan contains unsupported argument storage")
 
     def declarations(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
         for stmt in stmts:
@@ -776,6 +828,7 @@ class _Coverage:
     def full_expression(self, expr: th.THIRExpr, *, discard: bool = False) -> TpyType:
         assert self.active_temporaries is None
         self.active_temporaries = []
+        before = len(self.argument_temporaries)
         try:
             if discard and isinstance(expr, th.THIRCtorCall):
                 typ = self.temporary(expr).type
@@ -783,6 +836,9 @@ class _Coverage:
                 typ = self.expr(expr)
             if self.active_temporaries:
                 self.full_expressions.add(expr)
+            if len(self.argument_temporaries) != before:
+                _require(expr, self.ordered_temporary_expression(expr),
+                         "named argument crosses unproven evaluation order")
             return typ
         finally:
             self.active_temporaries = None
@@ -1205,6 +1261,36 @@ class _Builder:
         self.globals: dict[MIRGlobalId, MIRSlotId] = {}
         self.full_expressions = coverage.full_expressions
         self.calls = coverage.calls
+        self.argument_temporaries = coverage.argument_temporaries
+        self.temp_plan = fn.temp_plan if self.argument_temporaries else None
+        self.temp_regions = {0: self.region}
+        self.temp_storage: dict[int, MIRSlotId] = {}
+        self.temp_holders: dict[int, MIRSlotId] = {}
+
+    def declare_temporaries(self, stmt: th.THIRStmt) -> None:
+        if self.temp_plan is None:
+            return
+        for placement in self.temp_plan.declarations.get(stmt, ()):
+            reference = self.argument_temporaries[placement.node]
+            assert self.temp_regions[placement.scope] == self.region
+            storage = self.slot(reference.type, MIRSlotKind.LOCAL, storage=True,
+                                storage_duration=self.region if self.region.index else MIRStorageDuration.BODY,
+                                record_storage=(MIRRecordStorageKind.OPTIONAL if placement.optional
+                                                else MIRRecordStorageKind.DIRECT))
+            self.temp_storage[placement.index] = storage
+            self.temp_holders[placement.index] = self.slot(reference.type, reference=reference)
+            if placement.optional:
+                self.current.statements.append(MIRRecordStorageInit(MIRPlace(storage), placement.node.loc))
+        self.initialize_temporaries(stmt)
+
+    def initialize_temporaries(self, anchor: th.THIRNode) -> None:
+        if self.temp_plan is None:
+            return
+        for placement in self.temp_plan.initializations.get(anchor, ()):
+            storage = self.temp_storage[placement.index]
+            mode = MIRRecordWriteMode.OPTIONAL_ASSIGN if placement.optional else self.initial_mode()
+            self.write(storage, self.record_value(placement.node.init), placement.node.loc, MIRRecordWrite(mode))
+            self.write(self.temp_holders[placement.index], MIRBorrow(MIRPlace(storage)), placement.node.loc)
 
     def block(self) -> _Block:
         block = _Block(MIRBlockId(self.body, len(self.blocks)), self.region)
@@ -1404,12 +1490,15 @@ class _Builder:
         return dest
 
     def expr(self, expr: th.THIRExpr) -> MIRSlotId:
+        self.initialize_temporaries(expr)
         typ = INT32 if isinstance(expr.result_type, IntLiteralType) else expr.result_type
         loc = expr.loc
         match expr:
             case th.THIRCall():
                 summary = self.calls[expr]
                 arguments = tuple(self.expr(arg) if ref is None else
+                                  self.temp_holders[self.temp_plan.placement(arg).index]
+                                  if isinstance(arg, th.THIRArgTemp) else
                                   self.bindings[arg.name if isinstance(arg, th.THIRName) else "self"]
                                   for arg, ref in zip(expr.args, summary.parameters))
                 return self.result(typ, MIRCall(summary, arguments), loc)
@@ -1520,6 +1609,8 @@ class _Builder:
                 # Coverage already inspected every retained unreachable node.
                 break
             loc = stmt.loc
+            if not isinstance(stmt, (th.THIRIf, th.THIRWhile)):
+                self.declare_temporaries(stmt)
             match stmt:
                 case th.THIRNoOpStmt():
                     continue
@@ -1651,6 +1742,9 @@ class _Builder:
                 case th.THIRReturn():
                     self.end(MIRReturn(self.full_expression_value(stmt.value) if stmt.value is not None else None, loc))
                 case th.THIRIf():
+                    if self.temp_plan is not None:
+                        self.planned_if(stmt)
+                        continue
                     self.hoists(stmt)
                     cond = self.full_expression_value(stmt.condition)
                     yes, no = self.block(), self.block()
@@ -1670,6 +1764,9 @@ class _Builder:
                     else:
                         self.current = None
                 case th.THIRWhile():
+                    if self.temp_plan is not None and self.temp_plan.scope(stmt, "iteration") is not None:
+                        self.planned_while(stmt)
+                        continue
                     self.hoists(stmt)
                     cond_block, body, normal, after = self.block(), self.block(), self.block(), self.block()
                     self.end(MIRGoto(cond_block.id, loc))
@@ -1677,12 +1774,12 @@ class _Builder:
                     self.branch(self.full_expression_value(stmt.condition), body.id, normal.id, loc)
                     self.current = body
                     self.loops.append((cond_block.id, after.id))
-                    self.scoped(stmt.body)
+                    self.scoped(stmt.body, stmt, "loop")
                     self.loops.pop()
                     if self.current is not None:
                         self.end(MIRGoto(cond_block.id, loc))
                     self.current = normal
-                    self.scoped(stmt.orelse)
+                    self.scoped(stmt.orelse, stmt if stmt.orelse else None, "else")
                     if self.current is not None:
                         self.end(MIRGoto(after.id, loc))
                     self.current = after
@@ -1696,6 +1793,63 @@ class _Builder:
                     self.end(MIRGoto(self.loops[-1][0], loc))
                 case _:
                     raise AssertionError("coverage and statement lowering disagree")
+
+    def planned_if(self, stmt: th.THIRIf) -> None:
+        self.hoists(stmt)
+        chain = if_chain(stmt)
+        join = self.block()
+
+        def arm(index: int) -> None:
+            node = chain[index]
+            self.declare_temporaries(node)
+            condition = self.full_expression_value(node.condition)
+            yes, no = self.block(), self.block()
+            self.branch(condition, yes.id, no.id, node.loc)
+            self.current = yes
+            self.scoped(node.then_body, node, "then")
+            if self.current is not None:
+                self.end(MIRGoto(join.id, node.loc))
+            self.current = no
+            if index + 1 < len(chain):
+                next_node = chain[index + 1]
+                if self.temp_plan.scope(next_node, "condition") is not None:
+                    with self.scope(next_node, "condition"):
+                        arm(index + 1)
+                else:
+                    arm(index + 1)
+            else:
+                if node.else_body:
+                    self.scoped(node.else_body, node, "else")
+                if self.current is not None:
+                    self.end(MIRGoto(join.id, node.loc))
+
+        arm(0)
+        self.current = join
+
+    def planned_while(self, stmt: th.THIRWhile) -> None:
+        self.hoists(stmt)
+        bridge, condition, normal, after = self.block(), self.block(), self.block(), self.block()
+        self.end(MIRGoto(bridge.id, stmt.loc))
+        self.current = bridge
+        self.end(MIRGoto(condition.id, stmt.loc))
+        self.current = condition
+        with self.scope(stmt, "iteration"):
+            self.declare_temporaries(stmt)
+            value = self.full_expression_value(stmt.condition)
+            body = self.block()
+            self.branch(value, body.id, normal.id, stmt.loc)
+            self.current = body
+            self.loops.append((bridge.id, after.id))
+            self.stmts(stmt.body)
+            self.loops.pop()
+            if self.current is not None:
+                self.end(MIRGoto(bridge.id, stmt.loc))
+        self.current = normal
+        if stmt.orelse:
+            self.scoped(stmt.orelse, stmt, "else")
+        if self.current is not None:
+            self.end(MIRGoto(after.id, stmt.loc))
+        self.current = after
 
     def range_loop(self, stmt: th.THIRForRange) -> None:
         loc = stmt.loc
@@ -1790,19 +1944,23 @@ class _Builder:
                                                               MIRConstant(default.value), stmt.loc))
 
     @contextmanager
-    def scope(self) -> Iterator[None]:
+    def scope(self, owner: th.THIRStmt | None = None, role: str = "") -> Iterator[None]:
         bindings, storage, region = self.bindings.copy(), self.storage.copy(), self.region
         assert self.current is not None and not self.current.statements
         self.region = MIRRegionId(self.body, len(self.regions))
         self.regions.append(MIRRegion(self.region, region, self.current.id))
         self.current.region = self.region
+        if self.temp_plan is not None and owner is not None:
+            index = self.temp_plan.scope(owner, role)
+            assert index is not None and self.temp_regions[self.temp_plan.scopes[index].parent] == region
+            self.temp_regions[index] = self.region
         try:
             yield
         finally:
             self.bindings, self.storage, self.region = bindings, storage, region
 
-    def scoped(self, stmts: tuple[th.THIRStmt, ...]) -> None:
-        with self.scope():
+    def scoped(self, stmts: tuple[th.THIRStmt, ...], owner: th.THIRStmt | None = None, role: str = "") -> None:
+        with self.scope(owner, role):
             self.stmts(stmts)
 
     def build(self, initialization: MIRConstructorDefinition | None = None) -> MIRFunction:
@@ -1915,7 +2073,7 @@ def lower_constructor(ctor: th.THIRConstructor, body: MIRBodyId, *,
         initialization = constructor_initialization(ctor)
         fn = th.THIRFunction(
             f"{ctor.record_name}.__init__", ctor.params, VoidType(), ctor.body, th.THIRFunctionLayout(),
-            receiver=th.THIRBorrowedRecord(initialization.layout.type, False))
+            receiver=th.THIRBorrowedRecord(initialization.layout.type, False), temp_plan=ctor.temp_plan)
         coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions(), summaries)
         coverage.check()
         coverage.records[initialization.layout.type] = initialization

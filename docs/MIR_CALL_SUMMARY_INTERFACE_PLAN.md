@@ -158,6 +158,11 @@ remain uncovered. No claim about general Python/C++ argument evaluation order
 follows from this side-effect-free subset. Future argument lowering must model
 the actual producer's sequencing and lazy placement, including kwargs.
 
+The subsequent [named-storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md)
+implements that placement contract for bounded pure record constructors.
+Their callers can now have covered MIR while remaining opaque as callees
+under this interface's no-owned-storage summary extractor.
+
 At the call, evaluate scalar inputs and borrow holders, keeping their owners
 live through the operation. A harmless callee does not make an argument use
 optional: lifetime, engagement and availability checks still apply. The result
@@ -188,9 +193,9 @@ admission yet. Include unsupported and malformed boundary tests.
 aliased calls, unconditional dependency inventory, recursive/missing/opaque
 cases, real MIRCall and all affected analyses, debug integration and docs.
 
-Named-temp placement facts and storage integration follow as a separate M3
-batch after this interface works. They must model both eager and lazy backing
-and actual emitted blocks; the call work must not absorb tuple completeness.
+The separate [named-storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md)
+uses this interface for eager/lazy backing with actual emitted block lifetime.
+Broader materialization and tuple completeness remain separate.
 
 | Axis | First batch | Explicit remaining work |
 | --- | --- | --- |
@@ -234,8 +239,9 @@ to reference those same objects. Their scalar results carry no borrowed roots.
 The bounded summary size depends on the signature, not forwarding depth.
 
 Embedded source tests pin direct/forward/imported calls, ordinary method and
-constructor-tail callers, loop callers, recursive/opaque dependencies and
-named-temp exclusion. Internal checks pin missing/foreign/effectful summaries,
+constructor-tail callers, loop callers and recursive/opaque dependencies.
+Named-storage coverage has its own tests in the linked follow-up. Internal
+checks pin missing/foreign/effectful summaries,
 argument liveness, expired backing retention and unknown boolean results.
 The `@nocopy` source witness and generated reference-parameter assertion pin
 the call's no-copy boundary. Existing snippet snapshots are unchanged; no new

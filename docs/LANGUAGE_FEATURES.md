@@ -8792,8 +8792,17 @@ extractor; M4.2 admits direct ordinary calls to known reader-only scalar-result
 callees through `--dump-mir`, including forward definitions and imported aliases.
 Arguments are stable scalar/record names or scalar literals. Calls retain their
 argument uses and produce unknown scalar values. Recursive, effectful, throwing
-or incompletely summarized callees remain uncovered. Named argument temporary
-storage follows separately; normal compilation and checker authority are unchanged.
+or incompletely summarized callees remain uncovered. The
+[named argument storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) adds
+hook-free scalar-field record constructors as readonly borrowed arguments,
+with stable bool/int32 constructor operands. Shared THIR placement retains
+eager block lifetime, lazy optional backing, synthetic elif scopes and fresh
+while-condition activations. Ordinary functions, methods and constructor
+tails use the same consumer; owning callers remain opaque as callees.
+Any unhandled producer or statement kind (including for, try, with, match and
+nested definitions) leaves the whole body unplanned. Richer argument payloads
+and unproven evaluation order remain uncovered. Normal compilation and checker
+authority are unchanged.
 
 When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
 

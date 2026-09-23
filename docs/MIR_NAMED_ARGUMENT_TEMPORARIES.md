@@ -1,13 +1,10 @@
 # Named argument temporaries: dependency investigation
 
-Status: dependency investigation; named argument storage remains uncovered.
-Named-temp implementation scope is not approved. This records a W1 dependency in
-[the M3 completion plan](MIR_M3_COMPLETION_PLAN.md), not another completed
-increment. Tuple completeness remains separate.
-
-The proposed [storage implementation plan](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md)
-defines the shared placement authority and bounded MIR consumer. It awaits
-implementation approval.
+Status: historical dependency investigation, followed by the implemented
+[storage plan and bounded MIR consumer](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md).
+The boundary observations below describe the baseline before that extension.
+Broader W1 work in [the M3 completion plan](MIR_M3_COMPLETION_PLAN.md) remains
+open. Tuple completeness remains separate.
 
 ## Concrete boundary
 
@@ -77,16 +74,17 @@ Existing tracked hazards include `BUGS.md#const-ref-arg-temporary-stored`,
 `BUGS.md#resumable-delegate-temp-source-dangles`. This investigation does not
 fix them or assume every possible source position already lowers.
 
-## Recommended order
+## Dependency order
 
-Do not add isolated temp machinery and describe it as source coverage.
 The M3/M4 call interface is the prerequisite, as allowed by the existing
-[analysis plan](MIR_ANALYSIS_PLAN.md). Named-temp integration needs its own
-bounded design approval before implementation.
+[analysis plan](MIR_ANALYSIS_PLAN.md). The subsequent
+[bounded storage design](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) supplies shared
+placement and MIR consumption.
 
 The [first call-summary batch](MIR_CALL_SUMMARY_INTERFACE_PLAN.md) implements
 local evidence, workspace orchestration and the bounded consumer
-for stable arguments. The temporary-bearing callers above remain uncovered.
+for stable arguments. The storage extension covers the temporary-bearing
+callers above, with the remaining boundaries documented in its scope matrix.
 
 1. Define how MIR receives finalized callee effects, returned/retained
    dependencies and exit behavior. Reuse semantic identities and existing

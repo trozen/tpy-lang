@@ -77,18 +77,18 @@ the others visible.
   The approved [M3.22/M3.23 batch](MIR_M3_EXPRESSION_TEMPORARIES_PLAN.md)
   models hook-free record constructor full-expression temporaries. M3.22
   supplies the internal lowering contract; M3.23 connects scalar constructor
-  reads/discards in ordinary expressions and conditions. Named argument
-  temporaries and aggregate materialization remain open.
-  The proposed [named argument storage plan](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md)
-  separates a shared THIR placement/scheduling refactor from its MIR consumer;
-  implementation awaits approval.
+  reads/discards in ordinary expressions and conditions. Aggregate
+  materialization remains open.
+  The [named argument storage plan](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md)
+  adds shared THIR placement and bounded MIR consumption of hook-free
+  scalar-field record arguments at known readonly reader calls. Eager/lazy
+  initialization, if/elif scopes and fresh while activations are covered;
+  unplanned bodies and richer argument materialization remain open.
   The [named argument temporary investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md)
   identified the need for the M3/M4 call-summary interface. M4.1/M4.2 now
-  cover bounded calls with stable arguments; named temporary arguments remain
-  excluded. Eager and deferred
-  argument backing must follow actual emitted block scopes, not the existing
-  full-expression lifetime. The proposed integration design awaits approval;
-  the call interface alone does not close it.
+  cover bounded calls with stable arguments. The named-storage consumer uses
+  that interface while retaining actual emitted block lifetime rather than
+  full-expression lifetime. These slices do not close W1.
   [M3.18](MIR_M3_TUPLE_ALIAS_PLAN.md) additionally covers fixed whole aliases
   of body-local constructor tuples; alias reseating, owning tuple rebinding
   and hoists remain open, including the source defects listed in that plan.
@@ -185,7 +185,9 @@ The [M4.1/M4.2 call-summary batch](MIR_CALL_SUMMARY_INTERFACE_PLAN.md)
 defines the interface needed before named argument storage can gain useful
 source coverage. It keeps interprocedural orchestration in workspace analysis
 and extracts local evidence from validated MIR. Both increments are implemented;
-named-temp integration and the general M4 summary obligations remain open.
+the [bounded named-storage consumer](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) now
+uses that interface. Broader argument shapes and general M4 summary
+obligations remain open.
 
 Batch work around shared invariants. Specify commit boundaries before coding,
 review the cumulative batch, and run the full forced suite after its final
