@@ -79,6 +79,7 @@ class _Coverage:
         summary = entry.summary
         _require(expr, summary_problem(summary) is None and summary.callee == callee,
                  "call summary signature or contract mismatch")
+        _require(expr, callee.signature.borrowed_result is None, "borrowed call result not covered")
         for write in summary.writes:
             for field in write.path:
                 definition = self.definitions.get(expr, field.owner)
@@ -175,8 +176,13 @@ class _Coverage:
             validate_plan(fn.body, fn.temp_plan)
         _require(fn, fn.error_return_cpp is None, "error-return body")
         _require(fn, not fn.layout.hoisted_locals, "hoisted declarations")
-        _require(fn, fn.return_type in (BOOL, INT32) or isinstance(fn.return_type, VoidType),
-                 "unsupported return type")
+        result = fn.resolved_callee.signature.borrowed_result if fn.resolved_callee is not None else None
+        if result is not None:
+            self.reference(fn, result, fn.return_type)
+            self.records[result.type] = self.definitions.get(fn, result.type)
+        else:
+            _require(fn, fn.return_type in (BOOL, INT32) or isinstance(fn.return_type, VoidType),
+                     "unsupported return type")
         if fn.receiver is not None:
             self.reference(fn, fn.receiver, fn.receiver.type)
             self.bindings["self"] = fn.receiver.type
@@ -470,6 +476,19 @@ class _Coverage:
         _require(expr, name in self.references, "unknown reference source")
         self.reference(expr, self.references[name], expr.result_type)
         return name
+
+    def borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> None:
+        _require(expr, expr.form is th.Form.BORROW, "borrowed result needs reference form")
+        self.reference(expr, result, expr.result_type)
+        match expr:
+            case th.THIRIfExpr():
+                _plain(expr, {"cond", "then", "orelse"})
+                _require(expr, self.expr(expr.cond) == BOOL, "condition requires bool")
+                self.borrowed_expression(expr.then, result)
+                self.borrowed_expression(expr.orelse, result)
+            case _:
+                source = self.references[self.reference_name(expr)]
+                _require(expr, not source.readonly or result.readonly, "return increases access")
 
     def borrow_binding(self, stmt: th.THIRStmt, *, declaration: bool = False) -> None:
         storage = stmt.storage_borrow is not None
@@ -1092,6 +1111,8 @@ class _Coverage:
                 _plain(stmt, {"value"})
                 if stmt.value is None:
                     _require(stmt, isinstance(self.fn.return_type, VoidType), "missing return value")
+                elif self.fn.resolved_callee is not None and self.fn.resolved_callee.signature.borrowed_result is not None:
+                    self.borrowed_expression(stmt.value, self.fn.resolved_callee.signature.borrowed_result)
                 else:
                     _require(stmt, self.full_expression(stmt.value) == self.fn.return_type, "return type mismatch")
             case th.THIRForRange():
@@ -1469,6 +1490,23 @@ class _Builder:
         self.current.terminator = term
         self.current = None
 
+    def borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> MIRSlotId:
+        match expr:
+            case th.THIRIfExpr():
+                condition = self.expr(expr.cond)
+                dest = self.slot(result.type, reference=result)
+                yes, no, join = self.block(), self.block(), self.block()
+                self.branch(condition, yes.id, no.id, expr.loc)
+                for block, arm in ((yes, expr.then), (no, expr.orelse)):
+                    self.current = block
+                    source = self.borrowed_expression(arm, result)
+                    self.write(dest, MIRAlias(source), arm.loc)
+                    self.end(MIRGoto(join.id, arm.loc))
+                self.current = join
+                return dest
+            case _:
+                return self.bindings[expr.name if isinstance(expr, th.THIRName) else "self"]
+
     def result(self, typ: TpyType, value: MIRRvalue, loc: SourceLocation | None) -> MIRSlotId:
         dest = self.slot(typ)
         self.write(dest, value, loc)
@@ -1759,7 +1797,10 @@ class _Builder:
                         else:
                             self.expr(stmt.expr)
                 case th.THIRReturn():
-                    self.end(MIRReturn(self.full_expression_value(stmt.value) if stmt.value is not None else None, loc))
+                    result = self.fn.resolved_callee.signature.borrowed_result if self.fn.resolved_callee is not None else None
+                    value = (None if stmt.value is None else self.borrowed_expression(stmt.value, result)
+                             if result is not None else self.full_expression_value(stmt.value))
+                    self.end(MIRReturn(value, loc))
                 case th.THIRIf():
                     if self.temp_plan is not None:
                         self.planned_if(stmt)
@@ -2031,7 +2072,8 @@ class _Builder:
         fn = MIRFunction(self.body, self.fn.return_type, self.reachable_slots(blocks, receiver_init), tuple(blocks),
                          self.blocks[0].id, tuple(d.layout for d in self.records.values()), receiver_init, kind,
                          tuple(r for r in self.regions if r.entry in reachable),
-                         tuple({s.callee.identity: s for s in self.calls.values()}.values()))
+                         tuple({s.callee.identity: s for s in self.calls.values()}.values()),
+                         self.fn.resolved_callee.signature.borrowed_result if self.fn.resolved_callee is not None else None)
         validate_function(fn)
         return fn
 

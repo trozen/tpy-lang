@@ -5,10 +5,11 @@ from typing import TYPE_CHECKING
 from ...parse.nodes import TpyFunction
 from ...symbol_binding import SymbolKind
 from ...typesys import (
-    AnyType, FunctionInfo, FunctionLinkage, RefType, TpyType, contains_pending_leaf, contains_type_param,
+    AnyType, FunctionInfo, FunctionLinkage, ReadonlyType, RefType, TpyType, contains_pending_leaf, contains_type_param,
     is_fn_type, is_protocol_type, unwrap_readonly, unwrap_ref_type,
 )
 from ..nodes import THIRCallableSignature, THIRFunctionIdentity, THIRResolvedCallee
+from .storage import borrowed_record
 
 if TYPE_CHECKING:
     from ...sema.analyzer import SemanticAnalyzer
@@ -79,5 +80,8 @@ def resolved_callee(fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
     if any(contains_type_param(t) or contains_pending_leaf(t) or _implicit_template_type(t) or _stale_reference(t)
            for t in (*types, fi.return_type)):
         return None
+    result = (borrowed_record(fi.return_type,
+                             declaration.is_readonly or isinstance(unwrap_ref_type(fi.return_type), ReadonlyType),
+                             analyzer) if isinstance(fi.return_type, (RefType, ReadonlyType)) else None)
     return THIRResolvedCallee(THIRFunctionIdentity(module, root.name),
-                              THIRCallableSignature(types, fi.return_type))
+                              THIRCallableSignature(types, fi.return_type, result))

@@ -160,6 +160,13 @@ dependencies and storage engagement. Eager operand order and named-argument
 materialization retain conservative effect-aware gates. Layouts and mutable
 access are checked before these richer summaries can be consumed.
 
+M4.5 adds whole-parameter borrowed-record return evidence
+(`MIR_BORROWED_RETURN_PLAN.md`). The resolved THIR signature retains emitted
+result access; MIR carries that fact into standalone return validation.
+Leaf summaries collect origins from pre-return dependency states, preserving
+alias joins independently of read/write effects. Borrowed call-result
+consumption is the subsequent M4.6 step.
+
 Named scalar-field record arguments additionally share a prepared THIR storage
 plan with C++ emission (`MIR_NAMED_ARGUMENT_STORAGE_PLAN.md`). The shared queue
 retains declaration scopes and ordered eager/lazy initialization anchors;

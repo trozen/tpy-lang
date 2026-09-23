@@ -709,6 +709,7 @@ class THIRFunctionIdentity:
 class THIRCallableSignature:
     param_types: tuple[TpyType, ...]
     return_type: TpyType
+    borrowed_result: THIRBorrowedRecord | None = None
 
 
 @dataclass(frozen=True)

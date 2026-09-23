@@ -8840,6 +8840,11 @@ Broader effects remain uncovered. These are analysis-only extensions; source
 behavior and production checking are unchanged.
 See the [call-effect batch](MIR_CALL_EFFECTS_PLAN.md).
 
+The [borrowed-return batch](MIR_BORROWED_RETURN_PLAN.md) adds
+parameter-derived plain-record return summaries. M4.5 preserves emitted result
+access and extracts direct/conditional/alias return roots from validated MIR.
+M4.6 caller alias propagation remains pending. Production behavior is unchanged.
+
 The [named argument storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) adds
 hook-free scalar-field record constructors as readonly borrowed arguments,
 with stable bool/int32 constructor operands. Shared THIR placement retains

@@ -1719,6 +1719,10 @@ alongside related feature work; only the big-rock deferrals live here.
   `docs/MIR_CALL_EFFECTS_PLAN.md` records the implemented M4.3/M4.4
   typed scalar-field writes, forwarding and void setters; broader roots, storage
   invalidation, escapes and exit-specific cleanup remain open.
+  `docs/MIR_BORROWED_RETURN_PLAN.md` records M4.5/M4.6: whole-parameter
+  borrowed-record return summaries are implemented; caller holders and forwarding
+  remain next. Projected/aggregate/owned results, temporary actuals,
+  broader callees and escape channels stay in the M2/M4/W5 backlog.
   Cleanup: share common CFG assembly between `_Builder.planned_if` /
   `planned_while` and the ordinary if/while arms in `mir/lower.py`, preserving
   their different emitted scope boundaries and existing plain-body graphs.

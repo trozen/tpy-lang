@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 from ..parse import SourceLocation
-from ..thir.nodes import Form
+from ..thir.nodes import Form, THIRBorrowedRecord
 from ..typesys import NominalType, TpyType
 from .call_contract import MIRCallSummary
 
@@ -473,6 +473,7 @@ class MIRFunction:
     kind: MIRBodyKind = MIRBodyKind.FREE_FUNCTION
     regions: tuple[MIRRegion, ...] = ()
     call_summaries: tuple[MIRCallSummary, ...] = ()
+    borrowed_result: THIRBorrowedRecord | None = None
 
 
 @dataclass(frozen=True)

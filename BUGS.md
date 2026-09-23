@@ -19,6 +19,22 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 
 ## Compiler bugs
 
+- **[MED small] (ill-formed C++, toolchain-caught) Binding a borrowed result from an `@readonly` free function drops return constness.** [`readonly-free-return-binding-drops-const`]
+  With a plain reference-type `Cell`, a free function decorated `@readonly`
+  and defined as `def keep(cell: Cell) -> Cell: return cell` emits
+  `const Cell& keep(const Cell& cell)`, but the caller's
+  `saved = keep(cell)` emits `Cell& saved = keep(cell)`. The C++ compiler
+  rejects the binding for discarding qualifiers, even when the caller only
+  reads `saved.value`.
+  Free-function signature emission projects constness from the declaration's
+  `is_readonly`, while the inferred local binding misses that projected return
+  access. An explicit `readonly[Cell]` return annotation works in the probe.
+  Audit the shared result-access decision across declaration, reseat,
+  forwarding and sibling callable forms before fixing individual consumers.
+  A selected signature fact
+  must preserve emitted access and refuse mismatched caller bindings.
+  Needs `/tpy-fix-bug`.
+
 - **[LOW small] (rejects valid code, loud) Discarding a tuple-returning call with a record constructor argument is rejected.** [`discarded-tuple-call-rejects`] With a hook-free `Cell(value: int32)` and `def pair(cell: Cell) -> tuple[int32, int32]: return cell.value, 1`, the expression statement `pair(Cell(1))` inside an ordinary function fails with `expr.call:call.ret_type.tuple`. The result is unused, but the call must still run with its argument evaluated. This is an existing frontend/THIR-lowering rejection before MIR, found during named-argument storage review on 2026-09-23. Handle in the separate tuple-completeness work: audit discarded call results alongside binding, unpacking and return positions, preserving argument evaluation and temporary lifetime. Needs `/tpy-fix-bug`.
 
 - **[LOW small] (rejects valid code, loud) A record constructor argument in a boolean-combined while condition rejects, while the equivalent ternary condition compiles.** [`while-bool-record-argument-rejects`] With a hook-free `Cell(value: int32)` and `positive(cell: Cell) -> bool` returning `cell.value > 0`, `while flag and positive(Cell(value)):` fails with `stmt.while:expr.call:call.arg_shape.record_f1`. The same loop using `while positive(Cell(value)) if flag else False:` compiles, as does the direct condition `while positive(Cell(value)):`. A return-position boolean combination also compiles. This is a frontend admission difference, before MIR; the named-storage work preserves the current source boundary. Reproduced during its scope probes on 2026-09-23. Audit condition-position argument lowering alongside ordinary lazy operands before extending the gate; preserve deferred construction and fresh per-iteration storage.

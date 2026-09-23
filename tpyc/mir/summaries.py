@@ -1,7 +1,7 @@
 """Local effect/exit evidence from validated MIR, without callee scheduling."""
 
 from ..thir import nodes as th
-from ..typesys import BOOL, INT32, VoidType, unwrap_readonly, unwrap_ref_type
+from ..typesys import BOOL, INT32, unwrap_readonly, unwrap_ref_type
 from .call_contract import MIRCallSummary, MIRParameterWrite, MIRSummaryResult, MIRSummaryState, summary_problem
 from .call_effects import resolve_call_writes
 from .coverage import MIRUnsupported
@@ -10,7 +10,7 @@ from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref,
-    MIRField, MIRFunction, MIRNot, MIRNotCovered, MIRPoint, MIRRead, MIRSlotKind, MIRValueKind,
+    MIRField, MIRFunction, MIRNot, MIRNotCovered, MIRPoint, MIRRead, MIRReturn, MIRPlace, MIRSlotKind, MIRValueKind,
     statement_call,
 )
 from .validate import _cyclic_blocks, successors, validate_function
@@ -23,9 +23,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     callee = declaration.resolved_callee
     if (callee is None or body.kind is not MIRBodyKind.FREE_FUNCTION
             or declaration.receiver is not None or body.receiver_init is not None
-            or (body.return_type not in (BOOL, INT32) and not isinstance(body.return_type, VoidType))
+            or body.borrowed_result != callee.signature.borrowed_result
             or callee.signature.return_type != body.return_type):
-        return MIRSummaryResult.opaque("summary needs resolved ordinary scalar-or-void definition")
+        return MIRSummaryResult.opaque("summary definition or result contract mismatch")
     params = tuple(s for s in body.slots if s.kind is MIRSlotKind.PARAMETER)
     if (len(params) != len(declaration.params)
             or callee.signature.param_types != tuple(p.type for p in declaration.params)):
@@ -63,6 +63,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         return MIRSummaryResult.opaque(f"summary dependencies: {dependencies.reason}")
     parameters = {slot.id: i for i, slot in enumerate(params)}
     writes: set[MIRParameterWrite] = set()
+    returns: set[int] = set()
 
     def include_writes(origins: frozenset[MIRReferent] | None) -> str | None:
         if origins is None:
@@ -80,6 +81,16 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         return None
 
     for block in body.blocks:
+        if body.borrowed_result is not None and isinstance(block.terminator, MIRReturn):
+            state = dependencies.referents.get(MIRPoint(block.id, len(block.statements)))
+            if state is not None:
+                origins = resolve_referents(MIRPlace(block.terminator.value), state, slots)
+                if not origins:
+                    return MIRSummaryResult.opaque("summary missing return origin")
+                for origin in origins:
+                    if (not origin.external or origin.place.root not in parameters or origin.place.projections):
+                        return MIRSummaryResult.opaque("summary unsupported return origin")
+                    returns.add(parameters[origin.place.root])
         for index, stmt in enumerate(block.statements):
             state = dependencies.referents.get(MIRPoint(block.id, index), {})
             if (call := statement_call(stmt)) is not None:
@@ -119,7 +130,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     return MIRSummaryResult.opaque("summary unsupported operation")
     summary = MIRCallSummary(callee, tuple(p.borrowed_record for p in declaration.params),
                              frozenset(range(len(params))), frozenset(writes), frozenset(),
-                             frozenset(), frozenset(), True)
+                             frozenset(returns), frozenset(), True)
     problem = summary_problem(summary)
     if problem is not None:
         return MIRSummaryResult.opaque(problem)

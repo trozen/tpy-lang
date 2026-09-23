@@ -28,7 +28,7 @@ from .nodes import (
 from .presence import MIRPresence, _analyze_presence
 from .coverage import owned_tuple, scalar_wrapper
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .call_contract import summary_problem
+from .call_contract import result_problem, summary_problem
 
 
 class MIRValidationError(ValueError):
@@ -220,8 +220,7 @@ def _validate_structure(fn: MIRFunction) -> None:
     _require((fn.kind is MIRBodyKind.CONSTRUCTOR) == (fn.receiver_init is not None),
              "constructor entry mismatch")
     _require(bool(fn.id.module and fn.id.declaration), "empty body identity")
-    _require(fn.return_type in (INT32, BOOL) or isinstance(fn.return_type, VoidType),
-             "unsupported return type")
+    _require(result_problem(fn.return_type, fn.borrowed_result) is None, "unsupported return type or access")
     slots = {s.id: s for s in fn.slots}
     blocks = {b.id: b for b in fn.blocks}
     _require(len(slots) == len(fn.slots), "duplicate slot ID")
@@ -230,6 +229,8 @@ def _validate_structure(fn: MIRFunction) -> None:
     regions = _region_structure(fn)
     records = {r.type: r for r in fn.records}
     _require(len(records) == len(fn.records), "duplicate record layout")
+    _require(fn.borrowed_result is None or fn.borrowed_result.type in records,
+             "missing borrowed return record layout")
     field_types: dict[MIRFieldId, TpyType] = {}
     for record in fn.records:
         _require(isinstance(record.type, NominalType) and record.type.qualified_name() is not None
@@ -872,6 +873,12 @@ def _validate_structure(fn: MIRFunction) -> None:
             case MIRReturn():
                 if term.value is None:
                     _require(isinstance(fn.return_type, VoidType), "missing return value")
+                elif fn.borrowed_result is not None:
+                    source = slots[term.value]
+                    _require(source.value_kind is MIRValueKind.BORROWED_RECORD
+                             and source.type == fn.borrowed_result.type
+                             and (not source.readonly or fn.borrowed_result.readonly),
+                             "borrowed return type or access mismatch")
                 else:
                     _require(slot_type(term.value) == fn.return_type and slots[term.value].value_kind is MIRValueKind.SCALAR,
                              "return type mismatch")

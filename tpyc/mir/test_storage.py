@@ -295,11 +295,9 @@ class Child(Cell):
 @pytest.mark.parametrize("body,reason", [
     ("    created = Cell(1)\n    return created.value\n", "missing constructor definition"),
     ("    return touch(cell)\n", "call needs finalized known summary"),
-    ("    return cell\n", "unsupported return type"),
 ])
 def test_excluded_storage_operations(body: str, reason: str) -> None:
-    returns = "Cell" if body == "    return cell\n" else "int32"
-    compiler, modules = _compile(SOURCE + f"\ndef excluded(cell: Cell) -> {returns}:\n" + body)
+    compiler, modules = _compile(SOURCE + "\ndef excluded(cell: Cell) -> int32:\n" + body)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")
     not_covered(fn, reason)

@@ -55,6 +55,8 @@ def dump_function(fn: MIRFunction) -> str:
     validate_function(fn)
     lines = [f"fn {fn.id.module}::{fn.id.declaration} -> {fn.return_type}",
              f"entry bb{fn.entry.index}"]
+    if fn.borrowed_result is not None:
+        lines.append("result borrowed " + ("readonly" if fn.borrowed_result.readonly else "mutable"))
     for slot in fn.slots:
         name = f" {slot.name}" if slot.name is not None else ""
         if slot.global_id is not None:

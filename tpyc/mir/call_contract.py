@@ -6,7 +6,7 @@ from enum import Enum, auto
 from ..thir.nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRFieldIdentity, THIRFunctionIdentity, THIRResolvedCallee,
 )
-from ..typesys import BOOL, INT32, NominalType, VoidType, unwrap_readonly, unwrap_ref_type
+from ..typesys import BOOL, INT32, NominalType, ReadonlyType, RefType, TpyType, VoidType, unwrap_readonly, unwrap_ref_type
 
 
 @dataclass(frozen=True)
@@ -32,6 +32,19 @@ class MIRCallSummary:
     normal_return_only: bool
 
 
+def result_problem(typ: TpyType, ref: THIRBorrowedRecord | None) -> str | None:
+    if ref is None:
+        return None if typ in (BOOL, INT32) or isinstance(typ, VoidType) else "unsupported return type"
+    if (not isinstance(ref, THIRBorrowedRecord) or type(ref.readonly) is not bool
+            or not isinstance(typ, (RefType, ReadonlyType))
+            or not isinstance(ref.type, NominalType) or ref.type in (BOOL, INT32)
+            or ref.type.type_args or ref.type.is_protocol
+            or unwrap_readonly(unwrap_ref_type(typ)) != ref.type
+            or isinstance(unwrap_ref_type(typ), ReadonlyType) and not ref.readonly):
+        return "invalid borrowed result"
+    return None
+
+
 def summary_problem(summary: MIRCallSummary) -> str | None:
     """Validate the bounded contract without re-proving its supplying body."""
     if not isinstance(summary, MIRCallSummary) or not isinstance(summary.callee, THIRResolvedCallee):
@@ -45,11 +58,11 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
                    for indices in (summary.reads, summary.invalidates,
                                    summary.returns, summary.retains))):
         return "invalid call summary identity or facts"
-    if ((signature.return_type not in (BOOL, INT32) and not isinstance(signature.return_type, VoidType))
+    if (result_problem(signature.return_type, signature.borrowed_result) is not None
             or len(summary.parameters) != len(signature.param_types)
             or summary.reads != frozenset(range(len(summary.parameters)))
             or not isinstance(summary.writes, frozenset)
-            or any((summary.invalidates, summary.returns, summary.retains))
+            or any((summary.invalidates, summary.retains))
             or summary.normal_return_only is not True):
         return "unsupported call summary contract"
     for typ, ref in zip(signature.param_types, summary.parameters):
@@ -61,6 +74,15 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
               or not isinstance(bare, NominalType) or bare in (BOOL, INT32)
               or type(ref.readonly) is not bool):
             return "unsupported record call parameter"
+    result = signature.borrowed_result
+    if (result is None and summary.returns or result is not None and not summary.returns):
+        return "missing or unexpected return origins"
+    for index in summary.returns:
+        if not 0 <= index < len(summary.parameters):
+            return "invalid return parameter"
+        source = summary.parameters[index]
+        if source is None or source.type != result.type or source.readonly and not result.readonly:
+            return "unsupported return origin type or access"
     for write in summary.writes:
         if (not isinstance(write, MIRParameterWrite) or type(write.parameter) is not int
                 or not 0 <= write.parameter < len(summary.parameters)

@@ -83,6 +83,11 @@ These are dependency groups, not one-commit promises. M5 still owns source
 diagnostics and the explicit authority switch. Call summaries alone will not
 fix expression sequencing or materialized-argument destruction timing.
 
+The [M4.5/M4.6 borrowed-return batch](MIR_BORROWED_RETURN_PLAN.md)
+starts the storage/escape group with whole-parameter result dependencies and
+caller holder propagation. Leaf extraction is implemented; caller consumption
+remains the second step.
+
 ## First batch representation and proof
 
 ### Typed may-write paths
