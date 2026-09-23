@@ -1,10 +1,12 @@
 # A FIELD read at a ctor parameter the constructor MUTATES. The ctor family's
 # mutated-slot rule is about temporaries -- a mutable `T&` cannot bind one --
 # and a field read off a named receiver is an lvalue, so it binds here exactly
-# as it already does at a free function's and a method's mutated slot.
+# as it already does at a free function's and a method's mutated slot. A
+# TEMPORARY at the same slot -- an explicit copy, an owning call -- hoists to
+# a named temp the ctor then binds, the record rvalue's render.
 # The constructor appends through the parameter and the caller prints the
 # FIELD afterwards, so a silent copy loses the appended element.
-from tpy import int32
+from tpy import Own, copy, int32
 
 
 class Rec:
@@ -73,6 +75,10 @@ def fill(xs: list[int32]) -> None:
     xs.append(9)
 
 
+def mk() -> Own[list[int32]]:
+    return [1, 2]
+
+
 def main() -> None:
     w = W()
     # free function at a mutated slot -- the family that already admitted it
@@ -93,6 +99,13 @@ def main() -> None:
     # constructor, bytearray field
     bt = BufTaker(w.buf)  # tpyc: ok
     print("ctor_bytearray", len(w.buf), bt.n)
+    # constructor, an explicit COPY of the field: the temp is what the ctor
+    # appends to, the field stays
+    ct = ListTaker(copy(w.items))  # tpyc: ok
+    print("ctor_copy_temp", w.items, ct.n)
+    # constructor, an owning call rvalue
+    ot = ListTaker(mk())  # tpyc: ok
+    print("ctor_own_call", ot.n)
 
 
 main()

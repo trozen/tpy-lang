@@ -240,9 +240,9 @@
   "%x: Array = method_call(%b, v_m, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "array_i__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [meth"
  ],
  "array_i__ctor__borrow_method__field_write": [
   "ok",
@@ -413,6 +413,36 @@
   "ok",
   "",
   "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+ ],
+ "array_i__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: Array = *%pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "array_i__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "array_i__ctor__narrowed_opt_param__field_write": [
+  "ok",
+  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "array_i__ctor__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
+  "",
+  ""
+ ],
+ "array_i__ctor__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "*%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "array_i__ctor__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__ctor__obj_field__decl_alias": [
   "ok",
@@ -594,15 +624,45 @@
   "",
   ""
  ],
+ "array_i__ctor__temp_field__decl_alias": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "array_i__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "array_i__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  ""
+ ],
+ "array_i__ctor__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
+  "",
+  ""
+ ],
+ "array_i__ctor__temp_field__recv_mut": [
+  "reject:stmt.assign:setitem.recv.field_chain",
+  "",
+  ""
+ ],
+ "array_i__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "array_i__fn__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: Array = method_call(%b, v_m, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "array_i__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [meth"
  ],
  "array_i__fn__borrow_method__field_write": [
   "ok",
@@ -783,6 +843,36 @@
   "ok",
   "",
   "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+ ],
+ "array_i__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: Array = *%pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "array_i__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "array_i__fn__narrowed_opt_param__field_write": [
+  "ok",
+  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "array_i__fn__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
+  "",
+  ""
+ ],
+ "array_i__fn__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "*%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "array_i__fn__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__fn__obj_field__decl_alias": [
   "ok",
@@ -991,6 +1081,41 @@
  ],
  "array_i__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "array_i__fn__temp_field__decl_alias": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "array_i__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "array_i__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  ""
+ ],
+ "array_i__fn__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
+  "",
+  ""
+ ],
+ "array_i__fn__temp_field__recv_mut": [
+  "reject:stmt.assign:setitem.recv.field_chain",
+  "",
+  ""
+ ],
+ "array_i__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'Array[int32, 2]' ",
+  "",
+  ""
+ ],
+ "array_i__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -1235,9 +1360,9 @@
   "%x: Array = method_call(%b, v_m, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "array_i__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [meth"
  ],
  "array_i__meth__borrow_method__field_write": [
   "ok",
@@ -1418,6 +1543,36 @@
   "ok",
   "",
   "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+ ],
+ "array_i__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: Array = *%pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "array_i__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "array_i__meth__narrowed_opt_param__field_write": [
+  "ok",
+  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "array_i__meth__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
+  "",
+  ""
+ ],
+ "array_i__meth__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "*%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "array_i__meth__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__meth__obj_field__decl_alias": [
   "ok",
@@ -1629,15 +1784,50 @@
   "",
   ""
  ],
+ "array_i__meth__temp_field__decl_alias": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "array_i__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "array_i__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  ""
+ ],
+ "array_i__meth__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
+  "",
+  ""
+ ],
+ "array_i__meth__temp_field__recv_mut": [
+  "reject:stmt.assign:setitem.recv.field_chain",
+  "",
+  ""
+ ],
+ "array_i__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'Array[int32, 2]' ",
+  "",
+  ""
+ ],
+ "array_i__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "array_i__nested__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: Array = method_call(%b, v_m, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [meth"
  ],
  "array_i__nested__borrow_method__field_write": [
   "ok",
@@ -1788,6 +1978,36 @@
   "ok",
   "",
   "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw]) ca"
+ ],
+ "array_i__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "array_i__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "array_i__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  ""
+ ],
+ "array_i__nested__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
+  "",
+  ""
+ ],
+ "array_i__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "array_i__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
  ],
  "array_i__nested__obj_field__decl_alias": [
   "ok",
@@ -1996,6 +2216,41 @@
  ],
  "array_i__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "array_i__nested__temp_field__decl_alias": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "array_i__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "array_i__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  ""
+ ],
+ "array_i__nested__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
+  "",
+  ""
+ ],
+ "array_i__nested__temp_field__recv_mut": [
+  "reject:stmt.assign:setitem.recv.field_chain",
+  "",
+  ""
+ ],
+ "array_i__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'Array[int32, 2]' ",
+  "",
+  ""
+ ],
+ "array_i__nested__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -2275,9 +2530,9 @@
   "%x: bytearray = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(cal"
  ],
  "bytearray__ctor__borrow_method__field_write": [
   "ok",
@@ -2539,6 +2794,36 @@
   "",
   ""
  ],
+ "bytearray__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: bytearray = *%pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "bytearray__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "bytearray__ctor__narrowed_opt_param__field_write": [
+  "ok",
+  "copies bytearray into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "bytearray__ctor__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
+  "",
+  ""
+ ],
+ "bytearray__ctor__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "bytearray__ctor__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "bytearray__ctor__obj_field__decl_alias": [
   "ok",
   "",
@@ -2749,15 +3034,45 @@
   "",
   ""
  ],
+ "bytearray__ctor__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: bytearray = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+ ],
+ "bytearray__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "bytearray__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies bytearray into field; use copy() to make this explicit",
+  ""
+ ],
+ "bytearray__ctor__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
+  "",
+  ""
+ ],
+ "bytearray__ctor__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [coerce(lit(9) -> uint8)])"
+ ],
+ "bytearray__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "",
+  ""
+ ],
  "bytearray__fn__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: bytearray = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(cal"
  ],
  "bytearray__fn__borrow_method__field_write": [
   "ok",
@@ -3039,6 +3354,36 @@
   "",
   ""
  ],
+ "bytearray__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: bytearray = *%pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "bytearray__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "bytearray__fn__narrowed_opt_param__field_write": [
+  "ok",
+  "copies bytearray into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "bytearray__fn__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
+  "",
+  ""
+ ],
+ "bytearray__fn__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "bytearray__fn__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "bytearray__fn__obj_field__decl_alias": [
   "ok",
   "",
@@ -3280,6 +3625,41 @@
   ""
  ],
  "bytearray__fn__temp_accessor__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "",
+  ""
+ ],
+ "bytearray__fn__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: bytearray = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+ ],
+ "bytearray__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "bytearray__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies bytearray into field; use copy() to make this explicit",
+  ""
+ ],
+ "bytearray__fn__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
+  "",
+  ""
+ ],
+ "bytearray__fn__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [coerce(lit(9) -> uint8)])"
+ ],
+ "bytearray__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
+  "",
+  ""
+ ],
+ "bytearray__fn__temp_field__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
   "",
   ""
@@ -3560,9 +3940,9 @@
   "%x: bytearray = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(cal"
  ],
  "bytearray__meth__borrow_method__field_write": [
   "ok",
@@ -3844,6 +4224,36 @@
   "",
   ""
  ],
+ "bytearray__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: bytearray = *%pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "bytearray__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "bytearray__meth__narrowed_opt_param__field_write": [
+  "ok",
+  "copies bytearray into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "bytearray__meth__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
+  "",
+  ""
+ ],
+ "bytearray__meth__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "bytearray__meth__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "bytearray__meth__obj_field__decl_alias": [
   "ok",
   "",
@@ -4089,15 +4499,50 @@
   "",
   ""
  ],
+ "bytearray__meth__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: bytearray = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+ ],
+ "bytearray__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "bytearray__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies bytearray into field; use copy() to make this explicit",
+  ""
+ ],
+ "bytearray__meth__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
+  "",
+  ""
+ ],
+ "bytearray__meth__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [coerce(lit(9) -> uint8)])"
+ ],
+ "bytearray__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
+  "",
+  ""
+ ],
+ "bytearray__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "",
+  ""
+ ],
  "bytearray__nested__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: bytearray = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(cal"
  ],
  "bytearray__nested__borrow_method__field_write": [
   "ok",
@@ -4349,6 +4794,36 @@
   "",
   ""
  ],
+ "bytearray__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "bytearray__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "bytearray__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies bytearray into field; use copy() to make this explicit",
+  ""
+ ],
+ "bytearray__nested__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
+  "",
+  ""
+ ],
+ "bytearray__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "bytearray__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
  "bytearray__nested__obj_field__decl_alias": [
   "ok",
   "",
@@ -4590,6 +5065,41 @@
   ""
  ],
  "bytearray__nested__temp_accessor__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "",
+  ""
+ ],
+ "bytearray__nested__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: bytearray = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+ ],
+ "bytearray__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "bytearray__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies bytearray into field; use copy() to make this explicit",
+  ""
+ ],
+ "bytearray__nested__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
+  "",
+  ""
+ ],
+ "bytearray__nested__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+ ],
+ "bytearray__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
+  "",
+  ""
+ ],
+ "bytearray__nested__temp_field__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
   "",
   ""
@@ -5134,6 +5644,36 @@
   "",
   ""
  ],
+ "deref_list__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: DL = *%pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%pv])]) [raw])"
+ ],
+ "deref_list__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "deref_list__ctor__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DL into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_list__ctor__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_list__ctor__narrowed_opt_param__recv_mut": [
+  "reject:expr.method_call:method.marker.deref.plain",
+  "",
+  ""
+ ],
+ "deref_list__ctor__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.marker.deref.recv_shape",
+  "",
+  ""
+ ],
  "deref_list__ctor__obj_field__decl_alias": [
   "ok",
   "",
@@ -5341,6 +5881,36 @@
  ],
  "deref_list__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "deref_list__ctor__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: DL = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "deref_list__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "deref_list__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DL into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_list__ctor__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_list__ctor__temp_field__recv_mut": [
+  "reject:expr.method_call:method.marker.deref.recv_shape",
+  "",
+  ""
+ ],
+ "deref_list__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -5634,6 +6204,36 @@
   "",
   ""
  ],
+ "deref_list__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: DL = *%pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%pv])]) [raw])"
+ ],
+ "deref_list__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "deref_list__fn__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DL into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_list__fn__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_list__fn__narrowed_opt_param__recv_mut": [
+  "reject:expr.method_call:method.marker.deref.plain",
+  "",
+  ""
+ ],
+ "deref_list__fn__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.marker.deref.recv_shape",
+  "",
+  ""
+ ],
  "deref_list__fn__obj_field__decl_alias": [
   "ok",
   "",
@@ -5876,6 +6476,41 @@
  ],
  "deref_list__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "deref_list__fn__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: DL = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "deref_list__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "deref_list__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DL into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_list__fn__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_list__fn__temp_field__recv_mut": [
+  "reject:expr.method_call:method.marker.deref.recv_shape",
+  "",
+  ""
+ ],
+ "deref_list__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'DL' is returned b",
+  "",
+  ""
+ ],
+ "deref_list__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -6439,6 +7074,36 @@
   "",
   ""
  ],
+ "deref_list__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: DL = *%pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%pv])]) [raw])"
+ ],
+ "deref_list__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "deref_list__meth__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DL into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_list__meth__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_list__meth__narrowed_opt_param__recv_mut": [
+  "reject:expr.method_call:method.marker.deref.plain",
+  "",
+  ""
+ ],
+ "deref_list__meth__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.marker.deref.recv_shape",
+  "",
+  ""
+ ],
  "deref_list__meth__obj_field__decl_alias": [
   "ok",
   "",
@@ -6681,6 +7346,41 @@
  ],
  "deref_list__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "deref_list__meth__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: DL = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "deref_list__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "deref_list__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DL into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_list__meth__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_list__meth__temp_field__recv_mut": [
+  "reject:expr.method_call:method.marker.deref.recv_shape",
+  "",
+  ""
+ ],
+ "deref_list__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'DL' is returned b",
+  "",
+  ""
+ ],
+ "deref_list__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -6944,6 +7644,36 @@
   "",
   ""
  ],
+ "deref_list__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "deref_list__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "deref_list__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies DL into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_list__nested__narrowed_opt_param__match_capture": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "deref_list__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "deref_list__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
  "deref_list__nested__obj_field__decl_alias": [
   "ok",
   "",
@@ -7186,6 +7916,41 @@
  ],
  "deref_list__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "deref_list__nested__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: DL = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+ ],
+ "deref_list__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "deref_list__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DL into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_list__nested__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_list__nested__temp_field__recv_mut": [
+  "reject:expr.method_call:method.marker.deref.recv_shape",
+  "",
+  ""
+ ],
+ "deref_list__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'DL' is returned b",
+  "",
+  ""
+ ],
+ "deref_list__nested__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -7729,6 +8494,36 @@
   "",
   "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(%o0, lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%o0->x [raw])"
  ],
+ "deref_rec__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: DR = *%pv %x.x = coerce(lit(9) -> int32) print(%pv->x [raw])"
+ ],
+ "deref_rec__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "deref_rec__ctor__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DR into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_rec__ctor__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_rec__ctor__narrowed_opt_param__recv_mut": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "",
+  ""
+ ],
+ "deref_rec__ctor__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(%pv, lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%pv->x [raw])"
+ ],
  "deref_rec__ctor__obj_field__decl_alias": [
   "ok",
   "",
@@ -7936,6 +8731,36 @@
  ],
  "deref_rec__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "deref_rec__ctor__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: DR = call(mk_b, [])._v %x.x = coerce(lit(9) -> int32)"
+ ],
+ "deref_rec__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "deref_rec__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DR into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_rec__ctor__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_rec__ctor__temp_field__recv_mut": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "",
+  ""
+ ],
+ "deref_rec__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -8229,6 +9054,36 @@
   "",
   "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(%o0, lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%o0->x [raw])"
  ],
+ "deref_rec__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: DR = *%pv %x.x = coerce(lit(9) -> int32) print(%pv->x [raw])"
+ ],
+ "deref_rec__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "deref_rec__fn__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DR into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_rec__fn__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_rec__fn__narrowed_opt_param__recv_mut": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "",
+  ""
+ ],
+ "deref_rec__fn__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(%pv, lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%pv->x [raw])"
+ ],
  "deref_rec__fn__obj_field__decl_alias": [
   "ok",
   "",
@@ -8471,6 +9326,41 @@
  ],
  "deref_rec__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "deref_rec__fn__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: DR = call(mk_b, [])._v %x.x = coerce(lit(9) -> int32)"
+ ],
+ "deref_rec__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "deref_rec__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DR into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_rec__fn__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_rec__fn__temp_field__recv_mut": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "",
+  ""
+ ],
+ "deref_rec__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'DR' is returned b",
+  "",
+  ""
+ ],
+ "deref_rec__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -9034,6 +9924,36 @@
   "",
   "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(%o0, lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%o0->x [raw])"
  ],
+ "deref_rec__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: DR = *%pv %x.x = coerce(lit(9) -> int32) print(%pv->x [raw])"
+ ],
+ "deref_rec__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "deref_rec__meth__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DR into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_rec__meth__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_rec__meth__narrowed_opt_param__recv_mut": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "",
+  ""
+ ],
+ "deref_rec__meth__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(%pv, lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%pv->x [raw])"
+ ],
  "deref_rec__meth__obj_field__decl_alias": [
   "ok",
   "",
@@ -9276,6 +10196,41 @@
  ],
  "deref_rec__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "deref_rec__meth__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: DR = call(mk_b, [])._v %x.x = coerce(lit(9) -> int32)"
+ ],
+ "deref_rec__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "deref_rec__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DR into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_rec__meth__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_rec__meth__temp_field__recv_mut": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "",
+  ""
+ ],
+ "deref_rec__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'DR' is returned b",
+  "",
+  ""
+ ],
+ "deref_rec__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -9539,6 +10494,36 @@
   "",
   "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(%o0, lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%o0->x [raw]) call(nested_inner, [])"
  ],
+ "deref_rec__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "deref_rec__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "deref_rec__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies DR into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_rec__nested__narrowed_opt_param__match_capture": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "deref_rec__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "deref_rec__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
  "deref_rec__nested__obj_field__decl_alias": [
   "ok",
   "",
@@ -9781,6 +10766,41 @@
  ],
  "deref_rec__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "deref_rec__nested__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: DR = call(mk_b, [])._v %x.x = coerce(lit(9) -> int32) call(nested_inner, [])"
+ ],
+ "deref_rec__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "deref_rec__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies DR into field; use copy() to make this explicit",
+  ""
+ ],
+ "deref_rec__nested__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "deref_rec__nested__temp_field__recv_mut": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "",
+  ""
+ ],
+ "deref_rec__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'DR' is returned b",
+  "",
+  ""
+ ],
+ "deref_rec__nested__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -10060,9 +11080,9 @@
   "%x: dict = method_call(%b, v_m, []) %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "dict_si__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: dict = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
  ],
  "dict_si__ctor__borrow_method__field_write": [
   "ok",
@@ -10263,6 +11283,36 @@
   "ok",
   "",
   "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::_"
+ ],
+ "dict_si__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: dict = *%pv %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "dict_si__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "dict_si__ctor__narrowed_opt_param__field_write": [
+  "ok",
+  "copies dict[str, int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "dict_si__ctor__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
+  "",
+  ""
+ ],
+ "dict_si__ctor__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "*%pv[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "dict_si__ctor__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::_"
  ],
  "dict_si__ctor__obj_field__decl_alias": [
   "ok",
@@ -10474,15 +11524,45 @@
   "",
   ""
  ],
+ "dict_si__ctor__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: dict = call(mk_b, [])._v %x[str('z')] = coerce(lit(9) -> int32)"
+ ],
+ "dict_si__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "dict_si__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies dict[str, int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "dict_si__ctor__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
+  "",
+  ""
+ ],
+ "dict_si__ctor__temp_field__recv_mut": [
+  "reject:stmt.assign:setitem.recv.field_chain",
+  "",
+  ""
+ ],
+ "dict_si__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "dict_si__fn__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: dict = method_call(%b, v_m, []) %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "dict_si__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: dict = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
  ],
  "dict_si__fn__borrow_method__field_write": [
   "ok",
@@ -10693,6 +11773,36 @@
   "ok",
   "",
   "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::_"
+ ],
+ "dict_si__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: dict = *%pv %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "dict_si__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "dict_si__fn__narrowed_opt_param__field_write": [
+  "ok",
+  "copies dict[str, int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "dict_si__fn__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
+  "",
+  ""
+ ],
+ "dict_si__fn__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "*%pv[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "dict_si__fn__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::_"
  ],
  "dict_si__fn__obj_field__decl_alias": [
   "ok",
@@ -10936,6 +12046,41 @@
  ],
  "dict_si__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "dict_si__fn__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: dict = call(mk_b, [])._v %x[str('z')] = coerce(lit(9) -> int32)"
+ ],
+ "dict_si__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "dict_si__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies dict[str, int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "dict_si__fn__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
+  "",
+  ""
+ ],
+ "dict_si__fn__temp_field__recv_mut": [
+  "reject:stmt.assign:setitem.recv.field_chain",
+  "",
+  ""
+ ],
+ "dict_si__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
+  "",
+  ""
+ ],
+ "dict_si__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -11215,9 +12360,9 @@
   "%x: dict = method_call(%b, v_m, []) %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "dict_si__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: dict = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
  ],
  "dict_si__meth__borrow_method__field_write": [
   "ok",
@@ -11428,6 +12573,36 @@
   "ok",
   "",
   "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::_"
+ ],
+ "dict_si__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: dict = *%pv %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "dict_si__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "dict_si__meth__narrowed_opt_param__field_write": [
+  "ok",
+  "copies dict[str, int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "dict_si__meth__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
+  "",
+  ""
+ ],
+ "dict_si__meth__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "*%pv[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "dict_si__meth__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::_"
  ],
  "dict_si__meth__obj_field__decl_alias": [
   "ok",
@@ -11674,15 +12849,50 @@
   "",
   ""
  ],
+ "dict_si__meth__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: dict = call(mk_b, [])._v %x[str('z')] = coerce(lit(9) -> int32)"
+ ],
+ "dict_si__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "dict_si__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies dict[str, int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "dict_si__meth__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
+  "",
+  ""
+ ],
+ "dict_si__meth__temp_field__recv_mut": [
+  "reject:stmt.assign:setitem.recv.field_chain",
+  "",
+  ""
+ ],
+ "dict_si__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
+  "",
+  ""
+ ],
+ "dict_si__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "dict_si__nested__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: dict = method_call(%b, v_m, []) %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: dict = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
  ],
  "dict_si__nested__borrow_method__field_write": [
   "ok",
@@ -11863,6 +13073,36 @@
   "ok",
   "",
   "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::_"
+ ],
+ "dict_si__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "dict_si__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "dict_si__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies dict[str, int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "dict_si__nested__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
+  "",
+  ""
+ ],
+ "dict_si__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "dict_si__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
  ],
  "dict_si__nested__obj_field__decl_alias": [
   "ok",
@@ -12106,6 +13346,41 @@
  ],
  "dict_si__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "dict_si__nested__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: dict = call(mk_b, [])._v %x[str('z')] = coerce(lit(9) -> int32) call(nested_inner, [])"
+ ],
+ "dict_si__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "dict_si__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies dict[str, int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "dict_si__nested__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
+  "",
+  ""
+ ],
+ "dict_si__nested__temp_field__recv_mut": [
+  "reject:stmt.assign:setitem.recv.field_chain",
+  "",
+  ""
+ ],
+ "dict_si__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
+  "",
+  ""
+ ],
+ "dict_si__nested__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -12619,6 +13894,36 @@
   "",
   ""
  ],
+ "gen_rec__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: Box = *%pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+ ],
+ "gen_rec__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "gen_rec__ctor__narrowed_opt_param__field_write": [
+  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "",
+  ""
+ ],
+ "gen_rec__ctor__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "gen_rec__ctor__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->get, []).x = binop(method_call(%pv, ->get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+ ],
+ "gen_rec__ctor__narrowed_opt_param__tuple_elem": [
+  "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
+  "",
+  ""
+ ],
  "gen_rec__ctor__obj_field__decl_alias": [
   "ok",
   "",
@@ -12826,6 +14131,36 @@
  ],
  "gen_rec__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "gen_rec__ctor__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: Box = call(mk_b, [])._v method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+ ],
+ "gen_rec__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "gen_rec__ctor__temp_field__field_write": [
+  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "",
+  ""
+ ],
+ "gen_rec__ctor__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "gen_rec__ctor__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, get, []).x = binop(method_call(call(mk_b, [])._v, get, []).x, +, lit(1))"
+ ],
+ "gen_rec__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -13084,6 +14419,36 @@
   "",
   ""
  ],
+ "gen_rec__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: Box = *%pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+ ],
+ "gen_rec__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "gen_rec__fn__narrowed_opt_param__field_write": [
+  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "",
+  ""
+ ],
+ "gen_rec__fn__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "gen_rec__fn__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->get, []).x = binop(method_call(%pv, ->get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+ ],
+ "gen_rec__fn__narrowed_opt_param__tuple_elem": [
+  "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
+  "",
+  ""
+ ],
  "gen_rec__fn__obj_field__decl_alias": [
   "ok",
   "",
@@ -13326,6 +14691,41 @@
  ],
  "gen_rec__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "gen_rec__fn__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: Box = call(mk_b, [])._v method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+ ],
+ "gen_rec__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "gen_rec__fn__temp_field__field_write": [
+  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "",
+  ""
+ ],
+ "gen_rec__fn__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "gen_rec__fn__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, get, []).x = binop(method_call(call(mk_b, [])._v, get, []).x, +, lit(1))"
+ ],
+ "gen_rec__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
+  "",
+  ""
+ ],
+ "gen_rec__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -13854,6 +15254,36 @@
   "",
   ""
  ],
+ "gen_rec__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: Box = *%pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+ ],
+ "gen_rec__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "gen_rec__meth__narrowed_opt_param__field_write": [
+  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "",
+  ""
+ ],
+ "gen_rec__meth__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "gen_rec__meth__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->get, []).x = binop(method_call(%pv, ->get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+ ],
+ "gen_rec__meth__narrowed_opt_param__tuple_elem": [
+  "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
+  "",
+  ""
+ ],
  "gen_rec__meth__obj_field__decl_alias": [
   "ok",
   "",
@@ -14099,6 +15529,41 @@
   "",
   ""
  ],
+ "gen_rec__meth__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: Box = call(mk_b, [])._v method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+ ],
+ "gen_rec__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "gen_rec__meth__temp_field__field_write": [
+  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "",
+  ""
+ ],
+ "gen_rec__meth__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "gen_rec__meth__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, get, []).x = binop(method_call(call(mk_b, [])._v, get, []).x, +, lit(1))"
+ ],
+ "gen_rec__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
+  "",
+  ""
+ ],
+ "gen_rec__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "gen_rec__nested__borrow_method__decl_alias": [
   "ok",
   "",
@@ -14320,6 +15785,36 @@
   "method_call(%o0, ->get, []).x = binop(method_call(%o0, ->get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__narrowed_opt__tuple_elem": [
+  "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
+  "",
+  ""
+ ],
+ "gen_rec__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "gen_rec__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "gen_rec__nested__narrowed_opt_param__field_write": [
+  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "",
+  ""
+ ],
+ "gen_rec__nested__narrowed_opt_param__match_capture": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "gen_rec__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "gen_rec__nested__narrowed_opt_param__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
   "",
   ""
@@ -14566,6 +16061,41 @@
  ],
  "gen_rec__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "gen_rec__nested__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: Box = call(mk_b, [])._v method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) call(nested_inner, [])"
+ ],
+ "gen_rec__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "gen_rec__nested__temp_field__field_write": [
+  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "",
+  ""
+ ],
+ "gen_rec__nested__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "gen_rec__nested__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, get, []).x = binop(method_call(call(mk_b, [])._v, get, []).x, +, lit(1)) call(nested_inner, [])"
+ ],
+ "gen_rec__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
+  "",
+  ""
+ ],
+ "gen_rec__nested__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -14845,7 +16375,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_i__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -15079,6 +16609,36 @@
   "",
   ""
  ],
+ "list_i__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: list = *%pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_i__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "list_i__ctor__narrowed_opt_param__field_write": [
+  "ok",
+  "copies list[int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "list_i__ctor__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_i__ctor__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_i__ctor__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "list_i__ctor__obj_field__decl_alias": [
   "ok",
   "",
@@ -15289,13 +16849,43 @@
   "",
   ""
  ],
+ "list_i__ctor__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: list = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "list_i__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_i__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies list[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_i__ctor__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_i__ctor__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "list_i__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "list_i__fn__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_i__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -15544,6 +17134,36 @@
   "",
   ""
  ],
+ "list_i__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: list = *%pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_i__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "list_i__fn__narrowed_opt_param__field_write": [
+  "ok",
+  "copies list[int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "list_i__fn__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_i__fn__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_i__fn__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "list_i__fn__obj_field__decl_alias": [
   "ok",
   "",
@@ -15786,6 +17406,41 @@
  ],
  "list_i__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "list_i__fn__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: list = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "list_i__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_i__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies list[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_i__fn__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_i__fn__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "list_i__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
+  "",
+  ""
+ ],
+ "list_i__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -16065,7 +17720,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_i__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -16310,6 +17965,36 @@
   "method_call(%o0, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "list_i__meth__narrowed_opt__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
+ "list_i__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: list = *%pv method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_i__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "list_i__meth__narrowed_opt_param__field_write": [
+  "ok",
+  "copies list[int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "list_i__meth__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_i__meth__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_i__meth__narrowed_opt_param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
   "",
   ""
@@ -16559,13 +18244,48 @@
   "",
   ""
  ],
+ "list_i__meth__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: list = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "list_i__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_i__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies list[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_i__meth__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_i__meth__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [coerce(lit(9) -> int32)])"
+ ],
+ "list_i__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
+  "",
+  ""
+ ],
+ "list_i__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "list_i__nested__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -16781,6 +18501,36 @@
  ],
  "list_i__nested__narrowed_opt__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
+ "list_i__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "list_i__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "list_i__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies list[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_i__nested__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_i__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "list_i__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
   "",
   ""
  ],
@@ -17029,6 +18779,41 @@
   "",
   ""
  ],
+ "list_i__nested__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: list = call(mk_b, [])._v method_call(%x, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+ ],
+ "list_i__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_i__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies list[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_i__nested__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_i__nested__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+ ],
+ "list_i__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
+  "",
+  ""
+ ],
+ "list_i__nested__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "list_r__async__borrow_method__decl_alias": [
   "reject:res.alias_bind",
   "",
@@ -17225,7 +19010,7 @@
   ""
  ],
  "list_r__async__own_call__tuple_elem": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -17270,7 +19055,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_r__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -17474,6 +19259,36 @@
   "",
   ""
  ],
+ "list_r__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: list = *%pv method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_r__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "list_r__ctor__narrowed_opt_param__field_write": [
+  "ok",
+  "copies list[R] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "list_r__ctor__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_r__ctor__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_r__ctor__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "list_r__ctor__obj_field__decl_alias": [
   "ok",
   "",
@@ -17654,13 +19469,43 @@
   "",
   ""
  ],
+ "list_r__ctor__temp_field__decl_alias": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_r__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_r__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies list[R] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_r__ctor__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_r__ctor__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
+ ],
+ "list_r__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "",
+  ""
+ ],
  "list_r__fn__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_r__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -17879,6 +19724,36 @@
   "",
   ""
  ],
+ "list_r__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: list = *%pv method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_r__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "list_r__fn__narrowed_opt_param__field_write": [
+  "ok",
+  "copies list[R] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "list_r__fn__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_r__fn__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_r__fn__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "list_r__fn__obj_field__decl_alias": [
   "ok",
   "",
@@ -18089,6 +19964,41 @@
   "",
   ""
  ],
+ "list_r__fn__temp_field__decl_alias": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_r__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_r__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies list[R] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_r__fn__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_r__fn__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
+ ],
+ "list_r__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'list[R]' is retur",
+  "",
+  ""
+ ],
+ "list_r__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "",
+  ""
+ ],
  "list_r__gen__borrow_method__decl_alias": [
   "reject:res.alias_bind",
   "",
@@ -18280,7 +20190,7 @@
   ""
  ],
  "list_r__gen__own_call__tuple_elem": [
-  "reject:expr.call:call.ret_type.container",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -18330,7 +20240,7 @@
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "list_r__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -18549,6 +20459,36 @@
   "",
   ""
  ],
+ "list_r__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: list = *%pv method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_r__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "list_r__meth__narrowed_opt_param__field_write": [
+  "ok",
+  "copies list[R] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "list_r__meth__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_r__meth__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "list_r__meth__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "list_r__meth__obj_field__decl_alias": [
   "ok",
   "",
@@ -18759,13 +20699,48 @@
   "",
   ""
  ],
+ "list_r__meth__temp_field__decl_alias": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_r__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_r__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies list[R] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_r__meth__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_r__meth__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
+ ],
+ "list_r__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'list[R]' is retur",
+  "",
+  ""
+ ],
+ "list_r__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "",
+  ""
+ ],
  "list_r__nested__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: list = method_call(%b, v_m, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -18951,6 +20926,36 @@
  ],
  "list_r__nested__narrowed_opt__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
+ "list_r__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "list_r__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "list_r__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies list[R] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_r__nested__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_r__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "list_r__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
   "",
   ""
  ],
@@ -19160,6 +21165,41 @@
   ""
  ],
  "list_r__nested__temp_accessor__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "",
+  ""
+ ],
+ "list_r__nested__temp_field__decl_alias": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_r__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "list_r__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies list[R] into field; use copy() to make this explicit",
+  ""
+ ],
+ "list_r__nested__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
+  "",
+  ""
+ ],
+ "list_r__nested__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) call(nested_inner, [])"
+ ],
+ "list_r__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'list[R]' is retur",
+  "",
+  ""
+ ],
+ "list_r__nested__temp_field__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
   "",
   ""
@@ -19704,6 +21744,36 @@
   "",
   "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(%o0, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%o0->x [raw])"
  ],
+ "rec__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: R = *%pv %x.x = binop(%x.x, +, lit(1)) print(%pv->x [raw])"
+ ],
+ "rec__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "rec__ctor__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies R into field; use copy() to make this explicit",
+  ""
+ ],
+ "rec__ctor__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "rec__ctor__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "%pv->x = binop(%pv->x, +, lit(1)) print(%pv->x [raw])"
+ ],
+ "rec__ctor__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(%pv, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%pv->x [raw])"
+ ],
  "rec__ctor__obj_field__decl_alias": [
   "ok",
   "",
@@ -19941,6 +22011,36 @@
  ],
  "rec__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "rec__ctor__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: R = call(mk_b, [])._v %x.x = binop(%x.x, +, lit(1))"
+ ],
+ "rec__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "rec__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies R into field; use copy() to make this explicit",
+  ""
+ ],
+ "rec__ctor__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "rec__ctor__temp_field__recv_mut": [
+  "ok",
+  "",
+  "call(mk_b, [])._v.x = binop(call(mk_b, [])._v.x, +, lit(1))"
+ ],
+ "rec__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -20234,6 +22334,36 @@
   "",
   "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(%o0, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%o0->x [raw])"
  ],
+ "rec__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: R = *%pv %x.x = binop(%x.x, +, lit(1)) print(%pv->x [raw])"
+ ],
+ "rec__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "rec__fn__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies R into field; use copy() to make this explicit",
+  ""
+ ],
+ "rec__fn__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "rec__fn__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "%pv->x = binop(%pv->x, +, lit(1)) print(%pv->x [raw])"
+ ],
+ "rec__fn__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(%pv, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%pv->x [raw])"
+ ],
  "rec__fn__obj_field__decl_alias": [
   "ok",
   "",
@@ -20506,6 +22636,41 @@
  ],
  "rec__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "rec__fn__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: R = call(mk_b, [])._v %x.x = binop(%x.x, +, lit(1))"
+ ],
+ "rec__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "rec__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies R into field; use copy() to make this explicit",
+  ""
+ ],
+ "rec__fn__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "rec__fn__temp_field__recv_mut": [
+  "ok",
+  "",
+  "call(mk_b, [])._v.x = binop(call(mk_b, [])._v.x, +, lit(1))"
+ ],
+ "rec__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
+  "",
+  ""
+ ],
+ "rec__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -21069,6 +23234,36 @@
   "",
   "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(%o0, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%o0->x [raw])"
  ],
+ "rec__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: R = *%pv %x.x = binop(%x.x, +, lit(1)) print(%pv->x [raw])"
+ ],
+ "rec__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "rec__meth__narrowed_opt_param__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies R into field; use copy() to make this explicit",
+  ""
+ ],
+ "rec__meth__narrowed_opt_param__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "rec__meth__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "%pv->x = binop(%pv->x, +, lit(1)) print(%pv->x [raw])"
+ ],
+ "rec__meth__narrowed_opt_param__tuple_elem": [
+  "ok",
+  "",
+  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(%pv, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%pv->x [raw])"
+ ],
  "rec__meth__obj_field__decl_alias": [
   "ok",
   "",
@@ -21344,6 +23539,41 @@
   "",
   ""
  ],
+ "rec__meth__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: R = call(mk_b, [])._v %x.x = binop(%x.x, +, lit(1))"
+ ],
+ "rec__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "rec__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies R into field; use copy() to make this explicit",
+  ""
+ ],
+ "rec__meth__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "rec__meth__temp_field__recv_mut": [
+  "ok",
+  "",
+  "call(mk_b, [])._v.x = binop(call(mk_b, [])._v.x, +, lit(1))"
+ ],
+ "rec__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
+  "",
+  ""
+ ],
+ "rec__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "rec__nested__borrow_method__decl_alias": [
   "ok",
   "",
@@ -21603,6 +23833,36 @@
   "ok",
   "",
   "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(%o0, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%o0->x [raw]) call(nested_inner, [])"
+ ],
+ "rec__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "rec__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "rec__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies R into field; use copy() to make this explicit",
+  ""
+ ],
+ "rec__nested__narrowed_opt_param__match_capture": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "rec__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "rec__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
  ],
  "rec__nested__obj_field__decl_alias": [
   "ok",
@@ -21876,6 +24136,41 @@
  ],
  "rec__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "rec__nested__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: R = call(mk_b, [])._v %x.x = binop(%x.x, +, lit(1)) call(nested_inner, [])"
+ ],
+ "rec__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "rec__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies R into field; use copy() to make this explicit",
+  ""
+ ],
+ "rec__nested__temp_field__match_capture": [
+  "reject:stmt.match",
+  "",
+  ""
+ ],
+ "rec__nested__temp_field__recv_mut": [
+  "ok",
+  "",
+  "call(mk_b, [])._v.x = binop(call(mk_b, [])._v.x, +, lit(1)) call(nested_inner, [])"
+ ],
+ "rec__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
+  "",
+  ""
+ ],
+ "rec__nested__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -22375,9 +24670,9 @@
   "%x: set = method_call(%b, v_m, []) method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "set_i__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: set = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tp"
  ],
  "set_i__ctor__borrow_method__field_write": [
   "ok",
@@ -22609,6 +24904,36 @@
   "",
   ""
  ],
+ "set_i__ctor__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: set = *%pv method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "set_i__ctor__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "set_i__ctor__narrowed_opt_param__field_write": [
+  "ok",
+  "copies set[int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "set_i__ctor__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
+  "",
+  ""
+ ],
+ "set_i__ctor__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "set_i__ctor__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "set_i__ctor__obj_field__decl_alias": [
   "ok",
   "",
@@ -22819,15 +25144,45 @@
   "",
   ""
  ],
+ "set_i__ctor__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: set = call(mk_b, [])._v method_call(%x, insert, [coerce(lit(9) -> int32)])"
+ ],
+ "set_i__ctor__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "set_i__ctor__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies set[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "set_i__ctor__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
+  "",
+  ""
+ ],
+ "set_i__ctor__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, insert, [coerce(lit(9) -> int32)])"
+ ],
+ "set_i__ctor__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "set_i__fn__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: set = method_call(%b, v_m, []) method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "set_i__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: set = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tp"
  ],
  "set_i__fn__borrow_method__field_write": [
   "ok",
@@ -23074,6 +25429,36 @@
   "",
   ""
  ],
+ "set_i__fn__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: set = *%pv method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "set_i__fn__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "set_i__fn__narrowed_opt_param__field_write": [
+  "ok",
+  "copies set[int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "set_i__fn__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
+  "",
+  ""
+ ],
+ "set_i__fn__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "set_i__fn__narrowed_opt_param__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
  "set_i__fn__obj_field__decl_alias": [
   "ok",
   "",
@@ -23316,6 +25701,41 @@
  ],
  "set_i__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "set_i__fn__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: set = call(mk_b, [])._v method_call(%x, insert, [coerce(lit(9) -> int32)])"
+ ],
+ "set_i__fn__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "set_i__fn__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies set[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "set_i__fn__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
+  "",
+  ""
+ ],
+ "set_i__fn__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, insert, [coerce(lit(9) -> int32)])"
+ ],
+ "set_i__fn__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
+  "",
+  ""
+ ],
+ "set_i__fn__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -23595,9 +26015,9 @@
   "%x: set = method_call(%b, v_m, []) method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "set_i__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: set = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tp"
  ],
  "set_i__meth__borrow_method__field_write": [
   "ok",
@@ -23840,6 +26260,36 @@
   "method_call(%o0, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "set_i__meth__narrowed_opt__tuple_elem": [
+  "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
+ "set_i__meth__narrowed_opt_param__decl_alias": [
+  "ok",
+  "",
+  "%x: set = *%pv method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "set_i__meth__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.var_decl:decl.branch_slot_type",
+  "",
+  ""
+ ],
+ "set_i__meth__narrowed_opt_param__field_write": [
+  "ok",
+  "copies set[int32] into field; use copy() to make this explicit",
+  "%h.f = *%pv print(call(len [tpy::__len__], [%h.f]) [raw])"
+ ],
+ "set_i__meth__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
+  "",
+  ""
+ ],
+ "set_i__meth__narrowed_opt_param__recv_mut": [
+  "ok",
+  "",
+  "method_call(%pv, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+ ],
+ "set_i__meth__narrowed_opt_param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
   "",
   ""
@@ -24089,15 +26539,50 @@
   "",
   ""
  ],
+ "set_i__meth__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: set = call(mk_b, [])._v method_call(%x, insert, [coerce(lit(9) -> int32)])"
+ ],
+ "set_i__meth__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "set_i__meth__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies set[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "set_i__meth__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
+  "",
+  ""
+ ],
+ "set_i__meth__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, insert, [coerce(lit(9) -> int32)])"
+ ],
+ "set_i__meth__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
+  "",
+  ""
+ ],
+ "set_i__meth__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
+  "",
+  ""
+ ],
  "set_i__nested__borrow_method__decl_alias": [
   "ok",
   "",
   "%x: set = method_call(%b, v_m, []) method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: set = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tp"
  ],
  "set_i__nested__borrow_method__field_write": [
   "ok",
@@ -24311,6 +26796,36 @@
  ],
  "set_i__nested__narrowed_opt__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
+  "",
+  ""
+ ],
+ "set_i__nested__narrowed_opt_param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "set_i__nested__narrowed_opt_param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "set_i__nested__narrowed_opt_param__field_write": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "copies set[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "set_i__nested__narrowed_opt_param__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
+  "",
+  ""
+ ],
+ "set_i__nested__narrowed_opt_param__recv_mut": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "set_i__nested__narrowed_opt_param__tuple_elem": [
+  "reject:stmt.nested_def:nesteddef.param_type",
   "",
   ""
  ],
@@ -24556,6 +27071,41 @@
  ],
  "set_i__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "",
+  ""
+ ],
+ "set_i__nested__temp_field__decl_alias": [
+  "ok",
+  "",
+  "%x: set = call(mk_b, [])._v method_call(%x, insert, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+ ],
+ "set_i__nested__temp_field__decl_reassigned": [
+  "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "set_i__nested__temp_field__field_write": [
+  "reject:stmt.assign:assign.field_write_shape",
+  "copies set[int32] into field; use copy() to make this explicit",
+  ""
+ ],
+ "set_i__nested__temp_field__match_capture": [
+  "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
+  "",
+  ""
+ ],
+ "set_i__nested__temp_field__recv_mut": [
+  "ok",
+  "",
+  "method_call(call(mk_b, [])._v, insert, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+ ],
+ "set_i__nested__temp_field__return_borrow": [
+  "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
+  "",
+  ""
+ ],
+ "set_i__nested__temp_field__tuple_elem": [
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ]

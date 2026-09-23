@@ -3267,12 +3267,6 @@ def _f1_container_ref(t: TpyType | None) -> bool:
             and t.value_form() is ValueForm.BORROW_REF)
 
 
-def _move_through_type(typ: TpyType, analyzer) -> bool:
-    """Payload families admitted by the local move and match storage adapters."""
-    return ((isinstance(typ, NominalType) and _f1_record(typ, analyzer))
-            or _f1_container_ref(unwrap_readonly(unwrap_send_sync(typ))))
-
-
 def _bytes_family_ref(t: 'TpyType | None') -> bool:
     """The bytes family's REFERENCE-typed member -- `bytearray`, named by two
     facts rather than by qname: it is on the reference axis
@@ -3334,6 +3328,18 @@ def record_like(t: TpyType | None, analyzer) -> bool:
     return (td.cpp_formatter is not None
             and t.value_form() is ValueForm.BORROW_REF)
 
+
+def _storage_family_ok(t: TpyType | None, analyzer) -> bool:
+    """`record_like` at a slot that OWNS the object's storage (a plain value
+    decl): a record always; a container only when the storage sinks spell
+    its element family (`_storage_call_ret`) -- the one container fact a
+    storage decl asks, because the element reads that follow render off
+    the spelled slot type."""
+    if not record_like(t, analyzer):
+        return False
+    if not _f1_container_ref(_binding_peel(t)):
+        return True
+    return _storage_call_ret(t, analyzer) is not None
 
 
 
@@ -4237,17 +4243,16 @@ def _opt_pointee_wide(inner: 'TpyType | None', analyzer) -> bool:
     predicate serves the return facts, the decl/reseat rows, the None-test
     rows, the print OPT_PTR row (whose Formatter template args are a pure
     function of the pointee type), the param pointer seed and the
-    deref-name arg row. The narrow `_optional_ptr_borrow` keeps the F1
-    slice for the arg faces whose renders ARE pointee-shaped (the ctor
-    temp's spelled type).
+    deref-name arg row. The narrower `_optional_ptr_borrow` is the
+    BINDING class -- the record-or-container pointee a name binds as `T*`
+    -- and stays out of the wrapper / open-param / protocol / scalar rows
+    this one serves.
 
     "Typically", not "always", and the list above is illustrative, not the
     consumer set: this and `_optional_ptr_borrow_wide` are called from ~30
     sites across checks / statements / expressions / resumable / context.
-    Three of them are NOT member-shape-blind, so do not widen the class on
+    Two of them are NOT member-shape-blind, so do not widen the class on
     the strength of the blindness argument alone -- check them:
-      * `resumable.py` re-narrows the wide verdict to list/dict/set inners
-        for the OPT_PTR frame-local arm;
       * `resumable.py`'s narrowed-for-iterable arm uses it to select the
         pointer form, whose leaf carries a deref the value form does not;
       * one `statements.py` BRANCH_RVALUE reseat row uses it NEGATIVELY, to
@@ -4349,12 +4354,13 @@ def _comp_shadow_pointers(pointers, declared, analyzer) -> frozenset:
 
 
 def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
-    """The pointer-repr `Optional[F1-record]` BORROW binding type -- the C++
-    shape of an `A | None` param or an OPTIONAL_TO_PTR local (a bare
-    `A*` / `const A*`), or None. An own-optional (`Optional[Own[A]]` /
-    `Own[A | None]`) is storage-repr (`std::optional<A>`) and excluded --
-    the OwnType check is defensive on top of `uses_pointer_repr` (an Own
-    inner must never slip in via `_f1_record`'s own Own-unwrap)."""
+    """The pointer-repr `Optional[record-or-container]` BORROW binding type
+    -- the C++ shape of an `A | None` param or an OPTIONAL_TO_PTR local (a
+    bare `A*` / `const A*`, `std::vector<T>*`), or None. An own-optional
+    (`Optional[Own[A]]` / `Own[A | None]`) is storage-repr
+    (`std::optional<A>`) and excluded -- the OwnType check is defensive on
+    top of `uses_pointer_repr` (an Own inner must never slip in via
+    `record_like`'s own Own-peel)."""
     if not isinstance(t, TpyType):
         return None
     t = unwrap_readonly(unwrap_send_sync(t))
@@ -4363,10 +4369,7 @@ def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
     inner = unwrap_readonly(t.inner)
     if isinstance(inner, OwnType):
         return None
-    # Record slice on purpose: an `Optional[container]` pointee has its own
-    # pointer route (the setitem / aug-assign / field-write consumers), and
-    # this predicate only selects the record one.
-    return t if _f1_record(inner, analyzer) else None
+    return t if record_like(inner, analyzer) else None
 
 def _optional_ptr_borrow_name(e: TpyExpr, declared: dict[str, TpyType],
                               analyzer) -> 'OptionalType | None':
@@ -10312,29 +10315,25 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                              analyzer, *,
                              frame_capturing: bool = False,
                              upcast_ok: bool = False) -> 'NominalType | None':
-    """The record-rvalue arg-temp row (the free-call `is_ref_param() +
-    is_temporary_expr` cascade arm): a record RVALUE -- a ctor
-    `A(7)` or a by-value record-returning call `make(7)` -- into a
-    SAME-nominal plain record slot hoists `A __tmp_N = A(7);` and passes the
-    temp name -- mutated (`A&`) and const (`const A&`) slots alike (the
-    hoist is mutation-blind). A readonly (`readonly[A]`) slot hoists only for
-    a frame-capturing callee (`frame_capturing`) -- a sync callee binds the
-    rvalue inline on the const ref (statement lifetime, CPython drop
-    timing; the `own.readonly_ctor` bare arm admits that shape).
-    `TempState.create` renders the slot type's bare `to_cpp()`, which the F1
-    restriction keeps equal to the ctor's own spelling (raw name
-    same-module, `native_cpp_names` qualification cross-module).
-    A SUBCLASS-typed rvalue declares the CHILD's type (`Dog __tmp_1 =
-    Dog();` into a `const Animal&` slot -- the `temps.create(arg_type, ..)`
-    upcast temp; C++'s implicit derived-to-base binding does the rest), so
-    the CHILD type is returned -- but ONLY on the FREE-call row
+    """The one-object rvalue arg-temp row (the free-call `is_ref_param() +
+    is_temporary_expr` cascade arm): a record or container RVALUE -- a ctor
+    `A(7)` or a by-value call `make(7)` -- into a SAME-nominal reference
+    slot hoists `A __tmp_N = A(7);` / `std::vector<T> __tmp_N = mk();` and
+    passes the temp name -- mutated (`A&`) and const (`const A&`) slots
+    alike (the hoist is mutation-blind). A readonly (`readonly[A]`) slot
+    hoists only for a frame-capturing callee (`frame_capturing`) -- a sync
+    callee binds the rvalue inline on the const ref (statement lifetime,
+    CPython drop timing; the `own.readonly_ctor` bare arm admits that
+    shape). A SUBCLASS-typed rvalue declares the CHILD's type (`Dog __tmp_1
+    = Dog();` into a `const Animal&` slot -- the `temps.create(arg_type,
+    ..)` upcast temp; C++'s implicit derived-to-base binding does the
+    rest), so the CHILD type is returned -- but ONLY on the FREE-call row
     (`upcast_ok`): the ctor mutated-slot row spells the SLOT type instead
     (`Base __tmp_1 = Child();`), so the ctor consumers keep the
     same-nominal slice. A borrow-returning call is not an rvalue source (it
-    binds or copies without this temp) and rejects. Shared by the local slot
-    classifier
-    and `_lower_call_arg`; recursive lowering validates the source
-    call's arguments."""
+    binds or copies without this temp) and rejects. Shared by the local
+    slot classifier and `_lower_call_arg`; recursive lowering validates the
+    source call's arguments."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -10342,10 +10341,8 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     if isinstance(pt, ReadonlyType) and not frame_capturing:
         return None
     pt = unwrap_readonly(pt)
-    if not (isinstance(pt, NominalType) and pt.is_user_record
-            and pt.is_ref_param()):
-        return None
-    if not _f1_record(pt, analyzer):
+    if not (isinstance(pt, NominalType) and pt.is_ref_param()
+            and record_like(pt, analyzer)):
         return None
     # TpyMethodCall: the module-qualified ctor spelling (`pcre2.Code(7)`);
     # the shape half of each consumer keeps other method-call sources out.
@@ -10357,7 +10354,7 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     if at == pt:
         return pt
     if (upcast_ok
-            and isinstance(at, NominalType) and _f1_record(at, analyzer)
+            and isinstance(at, NominalType) and record_like(at, analyzer)
             and analyzer.registry.is_subclass_of(at, pt)):
         return at
     return None

@@ -1607,8 +1607,7 @@ def _bare_nonvalue_name_alias_ok(init: TpyExpr, target_type: TpyType | None,
     if init.name not in declared and init.name not in prescan.param_names:
         note_detail("decl.name_alias_global_src")
         return False
-    return (record_like(target_type, analyzer)
-            or _alias_ref_container(target_type))
+    return record_like(target_type, analyzer)
 
 
 def _borrow_dunder_source(init: TpyExpr, analyzer) -> bool:
@@ -1857,32 +1856,25 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # reference and take the lift rows further down. It is held out here
         # rather than re-answered, so the two conventions stay one decision.
         #
-        # A borrow-record-returning free call (`p = shared(x)` -> `Pair& p =
-        # shared(x);` -- the classifier's lvalue-source verdict). REF_ALIAS
-        # only: the reassigned POINTER shape reseats via `&(call)`, a lift
-        # the slice does not carry (tagged). Const rides `_f1_is_const`'s
-        # raw-sema check (a `readonly[T]` return arrives ReadonlyType-
-        # wrapped) plus the readonly-method ref-return branch: a readonly
-        # callee returning a C++ reference binds const. A borrow-returning
-        # METHOD call binds the same
-        # alias (`num = h.get_item()` -> `MyNumber& num = h.get_item();`,
-        # a substituted T-return); a container-returning one binds the
-        # container alias (`std::vector<T>& items = c.get_item();`). Other
-        # call bindings (an OPTIONAL_TO_PTR optional return) fall through
-        # untagged so the generic probe's family drilldown names them.
+        # A borrow-returning call (`p = shared(x)` -> `Pair& p = shared(x);`,
+        # `std::vector<T>& items = c.get_item();` -- the classifier's
+        # lvalue-source verdict). Const rides `_f1_is_const`'s raw-sema
+        # check (a `readonly[T]` return arrives ReadonlyType-wrapped) plus
+        # the readonly-method ref-return branch: a readonly callee returning
+        # a C++ reference binds const. Other call bindings (an
+        # OPTIONAL_TO_PTR optional return) fall through untagged so the
+        # generic probe's family drilldown names them.
         if binding is LocalBinding.REF_ALIAS and (
-                _f1_record(target_type, analyzer)
+                record_like(target_type, analyzer)
                 # A borrow-returning genrec method call binds the same alias
                 # (`g = h.get()` -> `Tree<int32_t>& g = h.get();`) -- the
                 # wrapper struct is one C++ value type, the reference binds
                 # like any record's.
                 or isinstance(unwrap_readonly(unwrap_send_sync(target_type)),
-                              RecursiveAliasInstanceType)
-                or (isinstance(stmt.init, TpyMethodCall)
-                    and _alias_ref_container(target_type))):
+                              RecursiveAliasInstanceType)):
             return binding
-        if binding is LocalBinding.POINTER and _f1_record(target_type,
-                                                          analyzer):
+        if binding is LocalBinding.POINTER and record_like(target_type,
+                                                           analyzer):
             # The reassigned flavor reseats via `&(call)`: admitted for a
             # borrow-returning call (`Point* first = &(get_first(data));`
             # -- the PTR_ADDR emit over the bare borrow-call render).
@@ -1943,8 +1935,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # a mutable receiver would be ill-formed C++).
         if (binding is LocalBinding.REF_ALIAS
                 and is_property_getter_read(stmt.init)
-                and (_alias_ref_container(target_type)
-                     or record_like(target_type, analyzer))):
+                and record_like(target_type, analyzer)):
             return binding
         # A REF_ALIAS field off an admitted METHOD-CALL receiver
         # (`j = h.peek().jar` -> `Jar& j = h.peek().jar;`): the field
@@ -1971,8 +1962,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and not _const_borrow_call_result(stmt.init.obj, analyzer)
                 and _indirect_field_receiver_ok(stmt.init, declared,
                                                 analyzer, pointers)
-                and (_alias_ref_container(target_type)
-                     or record_like(target_type, analyzer))):
+                and record_like(target_type, analyzer)):
             return binding
         # An OPTIONAL_TO_PTR lift whose field source hangs off a CONTAINER-
         # ELEMENT subscript (`box = self.slots[i].box` -> `Box<AnyTask>* box
@@ -2082,8 +2072,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # `_f1_is_const`'s dunder arms: a readonly dunder's borrow
         # return binds const.
         if (binding is LocalBinding.REF_ALIAS
-                and (_alias_ref_container(target_type)
-                     or record_like(target_type, analyzer))
+                and record_like(target_type, analyzer)
                 and ((isinstance(stmt.init, TpyBinOp)
                       and stmt.init.op in ("&&", "||"))
                      or isinstance(stmt.init, TpyIfExpr)
@@ -2100,8 +2089,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and stmt.init.name not in pointers
                 and (stmt.init.name in declared
                      or stmt.init.name in prescan.param_names)
-                and (record_like(target_type, analyzer)
-                     or _alias_ref_container(target_type))):
+                and record_like(target_type, analyzer)):
             return binding
         # `p2: Point = ptr` off a `Ptr[Point]` binding -- the deref
         # auto-coercion's INLINE flavor as a borrow-local SOURCE. The
@@ -4321,13 +4309,14 @@ def _plain_free_callee_ok(e: TpyCall, analyzer) -> bool:
 
 
 def _record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
-    """Shallow shape of a by-value record-returning free call.
+    """Shallow shape of a by-value free call returning a record or a
+    container -- the one-object rvalue the hoisting rows name a temp for.
 
     Argument subtrees are lowered by their own call arms.
     """
     if not isinstance(e, TpyCall):
         return False
-    if not (_f1_record(analyzer.get_expr_type(e), analyzer)
+    if not (record_like(analyzer.get_expr_type(e), analyzer)
             and is_rvalue_source(analyzer, e)):
         return False
     return _rvalue_free_call_shape(e, analyzer)
@@ -5592,7 +5581,7 @@ def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     (`_readonly_container_rvalue_arg`); non-empty rejects. EXCEPT for a
     FRAME-CAPTURING callee (`frame_capturing`): there the statement-scoped
     inline `const T&` bind would dangle, so the readonly
-    slot's literal hoists like a mutable one (`_container_call_temp_arg`'s
+    slot's literal hoists like a mutable one (`_record_rvalue_temp_slot`'s
     rule)."""
     if (not frame_capturing and isinstance(ptype, TpyType) and isinstance(
             unwrap_ref_type(unwrap_send_sync(ptype)), ReadonlyType)):
@@ -6574,29 +6563,19 @@ def _record_rvalue_temp_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer, *,
                             upcast_ok: bool = False,
                             frame_capturing: bool = False) -> bool:
-    """Gate arm for the record-rvalue temp row. Constructor arguments are
-    validated under `_RecordCtorUse.RECORD_TEMP` during recursive lowering;
-    by-value record calls retain their callee and argument checks here.
-    `upcast_ok` (the FREE-call gate only) admits the CHILD-typed upcast
-    temp slice; the ctor gate/rows stay same-nominal (their mutated-slot
-    row spells the SLOT type -- a different render). `frame_capturing`
-    widens to readonly slots (a borrowing generator/coro factory hoists
-    where a sync callee would bind the const ref inline)."""
-    if _record_rvalue_temp_slot(a, ptype, analyzer,
-                                upcast_ok=upcast_ok,
-                                frame_capturing=frame_capturing) is None:
-        return False
-    return ((isinstance(a, TpyCall)
-             and (_ctor_shape_ok(a, analyzer)
-                  or _ctor_instantiation_ok(a, analyzer)
-                  or _typed_dict_ctor_call(a, analyzer) is not None))
-            or _module_qual_ctor_shape(a, analyzer)
-            or _record_rvalue_call_shape(a, analyzer)
-            # An Own-rvalue METHOD call (`read_rc(Rc.new(Counter(3)))` ->
-            # `Rc<Counter> __tmp_N = Rc<Counter>::new_<Counter>(...);` + the
-            # bare temp name): the same create-lend-drop temp; the
-            # method-call lowering validates callee/args recursively.
-            or _method_rvalue_record_like(a, analyzer))
+    """Gate arm for the one-object rvalue temp row: the slot predicate is
+    the whole verdict. It already requires a call or method-call source
+    that is an rvalue of the slot's type; the source's own lowering
+    validates callee and arguments when the temp's init lowers (a record
+    ctor's under `_RecordCtorUse.RECORD_TEMP`), so no callee shape is
+    pinned here. `upcast_ok` (the FREE-call gate only) admits the
+    CHILD-typed upcast temp slice; the ctor gate/rows stay same-nominal
+    (their mutated-slot row spells the SLOT type -- a different render).
+    `frame_capturing` widens to readonly slots (a borrowing generator/coro
+    factory hoists where a sync callee would bind the const ref inline)."""
+    return _record_rvalue_temp_slot(a, ptype, analyzer,
+                                    upcast_ok=upcast_ok,
+                                    frame_capturing=frame_capturing) is not None
 
 
 def _coro_factory_structural_arg(a: TpyExpr, proto, analyzer) -> bool:
@@ -10991,8 +10970,9 @@ def _x_insert_own_slot(req: _ArgReq) -> bool:
 
 
 def _x_comp_slot_const(req: _ArgReq) -> bool:
-    """The `container_comp` cell's slot guard: the comprehension's stmt-expr
-    is a PRVALUE, so the slot must be a const borrow -- a mutated
+    """The slot guard of the cells whose render binds a PRVALUE in place
+    (`container_comp`, `container_slot_call_rvalue`): the slot must be a
+    const borrow -- a mutated
     `std::vector<T>&` slot cannot bind one and the C++ is ill-formed. A
     builtin stub carries no signature-const facts and every container slot it
     spells is a `const T&` (the cell's own premise, unstated until the two
@@ -12010,13 +11990,15 @@ def _r_bytes_literal_value_opt(req: _ArgReq) -> bool:
     return _bytes_literal_value_opt_arg(req.a, req.ptype)
 
 
-def _r_optional_ptr_container(req: _ArgReq) -> bool:
-    return _optional_ptr_container_arg(req.a, req.ptype, req.locals_,
-                                       req.analyzer)
-
-
-def _r_optional_ptr_container_literal(req: _ArgReq) -> bool:
-    return _optional_ptr_container_literal_arg(req.a, req.ptype, req.analyzer)
+def _r_optional_ptr_container_temp(req: _ArgReq) -> bool:
+    # The literal half of the shared 'container_temp' face: the method
+    # position's render arm hoists a LITERAL's typed temp; a
+    # container-returning call at the same slot has no method-position
+    # render yet.
+    return (isinstance(req.a, (TpyArrayLiteral, TpyDictLiteral,
+                               TpySetLiteral))
+            and _optional_ptr_arg_face(req.a, req.ptype, req.locals_,
+                                       req.analyzer) == 'container_temp')
 
 
 def _r_optional_ptr_scalar_temp(req: _ArgReq) -> bool:
@@ -12559,8 +12541,10 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
                 extra=_x_insert_own_slot),
         _ArgRow("ptr_pass_through", _r_ptr_pass_through),
         _ArgRow("container_pass_through", _r_container_pass_through),
+        # The bare render binds a PRVALUE, which only a const slot takes --
+        # the same slot guard the comprehension cell carries.
         _ArgRow("container_slot_call_rvalue", _r_container_slot_call_rvalue,
-                face="arg.container_call_rvalue"),
+                face="arg.container_call_rvalue", extra=_x_comp_slot_const),
         _ArgRow("own_record_rvalue", _r_own_record_rvalue),
         _ArgRow("copy_own", _r_copy_own),
         _ArgRow("own_move", _r_own_move),
@@ -12884,16 +12868,12 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # the same row the ctor arg ladder carries.
         _ArgRow("bytes_literal_value_opt", _r_bytes_literal_value_opt,
                 face="method.bytes_literal_value_opt"),
-        # The pointer-repr Optional[container] slot faces: `None` ->
-        # `nullptr`, a bare matching container name -> `&(name)` (the
-        # free-call rows), and (temps only) a container literal ->
-        # the `&(__tmp_N)` typed temp (`s.get(url, None, {...})`).
-        # The shared optptr.none/name witnesses also fire from free-call
-        # corpus sites, so the METHOD-position name face is guarded by
-        # its unit pin, not the zero-witness metric.
-        _ArgRow("optional_ptr_container", _r_optional_ptr_container),
-        _ArgRow("optional_ptr_container_literal",
-                _r_optional_ptr_container_literal, extra=_x_temps_ok),
+        # The temp-bearing container LITERAL face of the pointer-repr
+        # Optional slot (`s.get(url, None, {...})` -> the `&(__tmp_N)` typed
+        # temp); the `None` / bare-name faces ride `optional_ptr_no_temp`
+        # above for a container pointee as for a record one.
+        _ArgRow("optional_ptr_container_temp",
+                _r_optional_ptr_container_temp, extra=_x_temps_ok),
         # ... and the scalar-pointee sibling of that temp face
         # (`c.set(int32(99))` at a `T | None` slot resolved to
         # `const int32_t*`). The ladder's own `optional_ptr_no_temp` row
@@ -13982,63 +13962,6 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     return True
 
 
-def _optional_ptr_container_slot(ptype: 'TpyType | None',
-                                 analyzer) -> 'OptionalType | None':
-    """A pointer-repr Optional slot with a CONTAINER inner (`list[T] | None`
-    -> `const std::vector<T>*`), or None -- `_optional_ptr_arg_slot`
-    narrowed to the container half of the reference axis. Three faces are
-    lowered for it: the `nullptr` literal, the bare-container-name
-    address-of (`&(name)`), and the temps-gated container-LITERAL temp
-    (`&(__tmp_N)`).
-
-    NOT merged into the shared accessor, whose pointee class is already
-    wider: every consumer here sits ABOVE a record arm that renders the same
-    faces for a record pointee, so widening this gate would preempt those
-    arms rather than unite with them."""
-    pt = _optional_ptr_arg_slot(ptype, analyzer)
-    if pt is None:
-        return None
-    return pt if _f1_container_ref(unwrap_readonly(pt.inner)) else None
-
-
-def _optional_ptr_container_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                declared: dict[str, TpyType],
-                                analyzer) -> bool:
-    """Admission twin of the container-inner optional-ptr rows in
-    `_lower_call_arg`: a `None` literal, or a NAME declared as the matching
-    bare container (an optional-declared or narrowed name stays rejected --
-    its C++ binding is already the pointer / needs the pass face)."""
-    ot = _optional_ptr_container_slot(ptype, analyzer)
-    if ot is None:
-        return False
-    if isinstance(a, TpyNoneLiteral):
-        return True
-    if not isinstance(a, TpyName) or a.name == "self":
-        return False
-    dt = declared.get(a.name)
-    if dt is None:
-        return False
-    du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-    return du == unwrap_readonly(ot.inner)
-
-
-def _optional_ptr_container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                        analyzer) -> bool:
-    """A container LITERAL into a pointer-repr Optional[container] slot
-    (`s.get(url, {"db": "das"})` at a `dict[str, str] | None` param): the
-    typed temp hoists at the statement flush and its address passes
-    (`__tmp_N = ordered_map<...>({...}); s.get(url, &(__tmp_1))` -- the
-    optional-ptr temporary face). Temp-hoisting, so admitted
-    only under temps_ok (callers gate); element admission is the shared
-    container-literal slice against the slot's inner."""
-    ot = _optional_ptr_container_slot(ptype, analyzer)
-    if ot is None:
-        return False
-    if not isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
-        return False
-    return _container_literal_shape_ok(a, unwrap_readonly(ot.inner), analyzer)
-
-
 def _struct_proto_union_arg(a: TpyExpr, ptype: 'TpyType | None',
                             locals_: dict[str, TpyType], analyzer) -> bool:
     """A bare in-scope NAME into a slot that is a UNION of STRUCTURAL
@@ -14317,11 +14240,13 @@ def _container_method_recv(recv_type: 'TpyType | None', analyzer,
         return True
     # A NARROWED pointer-repr `Optional[container]` NAME receiver (`xs.append(
     # x)` under `xs is not None` on `list[str] | None` -> the `T*` binding's
-    # `xs->push_back`): the proven pointer dispatches on the payload, the
-    # container twin of the record arm's `_optional_ptr_borrow` unwrap. Sema
-    # forbids the un-narrowed call, so reaching lowering implies the proof.
-    if (method is not None
-            and _optional_ptr_container_slot(recv_type, analyzer) is not None
+    # `xs->push_back`): the proven pointer dispatches on the payload -- the
+    # shared Optional-ptr binding, asked here which method TABLE its pointee
+    # dispatches to. Sema forbids the un-narrowed call, so reaching lowering
+    # implies the proof.
+    opt = _optional_ptr_borrow(recv_type, analyzer) if method is not None else None
+    if (opt is not None
+            and _builtin_container_type(unwrap_readonly(opt.inner), analyzer)
             and _witness("method.opt_ptr_container_recv")):
         return True
     # An `Own[container]` binding dispatches its methods on the payload
@@ -15683,11 +15608,11 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
             and _optional_ptr_borrow_name(a, locals_, analyzer) is not None
             and isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 analyzer.get_expr_type(a)))), OptionalType)):
-        # An UN-narrowed pointer-repr Optional[F1-record] NAME prints the
-        # whole pointer via `::tpy::print_optional(...)` (the record inner
-        # streams through its own operator<<, so the CTAD form -- container
-        # inners never reach here, `_optional_ptr_borrow` is record-only).
-        # A NARROWED occurrence stays deferred (witnessed at lowering).
+        # An UN-narrowed pointer-repr Optional NAME prints the whole pointer
+        # via `::tpy::print_optional(...)` -- the record inner streams
+        # through its own operator<<, a container inner through the wrapper
+        # the print-form classifier picks for the pointee. A NARROWED
+        # occurrence stays deferred (witnessed at lowering).
         return True
     at = analyzer.get_expr_type(a)
     # A raw `Any` value streams via `tpy::Any`'s operator<< (PrintForm.RAW) --

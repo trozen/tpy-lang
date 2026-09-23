@@ -269,6 +269,7 @@ class Source(NamedTuple):
     wrap: tuple[str, ...] = ()
     post: tuple[str, ...] = ()
     param: bool = False
+    param_ty: str = "@TY@"      # the parameter's annotation when `param`
 
 
 # `@SEED@` / `@TY@` / `@LIT@` / `@EMPTY@` / `@COMP@` / `@CTOR@` / `@SLICE@`
@@ -282,6 +283,10 @@ SOURCES: tuple[Source, ...] = (
     Source("subclass_local", "s0", need="sub", pre=("s0 = @SUB@",),
            post=("print(@OBS_s0@)",)),
     Source("param", "pv", param=True),
+    # An Optional PARAMETER proven non-None: the pointer-repr borrow binding
+    # (`T*`), where the narrowed local above is a value-repr slot.
+    Source("narrowed_opt_param", "pv", need="field", param=True,
+           param_ty="Optional[@TY@]", wrap=("if pv is not None:",)),
     Source("obj_field", "b._v", need="field", pre=("b = B()",)),
     Source("nested_field", "w.inner._v", need="field", pre=("w = W()",)),
     Source("subscript", "xs[0]", need="list", pre=("xs = [@SEED@]",)),
@@ -295,6 +300,9 @@ SOURCES: tuple[Source, ...] = (
     Source("own_call", "mk()", need="field"),
     Source("ctor_rvalue", "@CTOR@", need="ctor"),
     Source("temp_accessor", "mk_b().v", need="field"),
+    # The FIELD of a call rvalue, beside the property above: a field read has
+    # its own receiver gate.
+    Source("temp_field", "mk_b()._v", need="field"),
     Source("literal", "@LIT@", need="lit"),
     Source("empty_literal", "@EMPTY@", need="empty"),
     Source("comprehension", "@COMP@", need="comp"),
@@ -654,7 +662,8 @@ def build_program(slot: Slot, mut: bool, group: str,
     for source, family in cells:
         src, fam = by_name[source], FAMILY_BY_NAME[family]
         start = len(lines) + 1
-        params = list(fam.params) + (["pv: " + kind.ty] if src.param else [])
+        params = list(fam.params) + (
+            ["pv: " + _subst(src.param_ty, kind)] if src.param else [])
         lines += ["def cell_%s__%s(%s) -> None:"
                   % (source, family, ", ".join(params))]
         lines += ["    " + h for h in fam.head]

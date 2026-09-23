@@ -1,7 +1,10 @@
 # A container local whose first init is a container-RETURNING call and which is
 # later rebound by name, or hoisted out of a try, takes the same pointer-slot
 # decl a record local takes -- `T __slot_N = init;` + `T* x = &__slot_N;`, or
-# `T* x = &*(__slot_N = init);` for the hoisted flavour.
+# `T* x = &*(__slot_N = init);` for the hoisted flavour. A BORROW-returning
+# first init takes the record's other pointer form, `T* x = &(call);`.
+from typing import Sized
+
 from tpy import int32, Own, Array
 
 
@@ -57,6 +60,37 @@ def rebound_array(other: Array[int32, 2]) -> None:
     a[0] = 9
 
 
+def longer(a: list[int32], b: list[int32]) -> list[int32]:
+    return a if len(a) > len(b) else b
+
+
+def rebound_borrow(other: list[int32]) -> None:
+    # A borrow-returning first init: the pointer takes the callee's lvalue
+    # (`&(longer(..))`), the rebind reseats it at `other`, and each append
+    # lands in the caller's object it aliased at the time.
+    xs = [1, 2, 3]
+    ys = [1]
+    zs = longer(xs, ys)  # tpyc: ok
+    zs.append(7)
+    zs = other
+    zs.append(9)
+    print("borrow_first", xs, ys)
+
+
+def identity[T: Sized](x: T) -> T:
+    return x
+
+
+def rebound_generic_borrow(other: list[int32]) -> None:
+    # the same pointer form off a GENERIC identity's borrow: the rebind
+    # reseats it at `other`, the source keeps its length
+    src = [4, 5]
+    zs = identity(src)  # tpyc: ok
+    zs = other
+    zs.append(11)
+    print("generic_borrow_first", src)
+
+
 def hoisted() -> int32:
     # The try-block decl hoists to a function-top `std::optional<T>` slot; the
     # later same-name decl fills a second one.
@@ -85,6 +119,8 @@ def main() -> None:
     rebound_bytes(b)
     a: Array[int32, 2] = [1, 2]
     rebound_array(a)
+    rebound_borrow(xs)
+    rebound_generic_borrow(xs)
     print(len(xs), len(d), len(s), len(b), a[0])
     print(hoisted())
 

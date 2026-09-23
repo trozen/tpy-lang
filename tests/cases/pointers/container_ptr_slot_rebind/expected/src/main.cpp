@@ -91,6 +91,49 @@ void rebound_array(std::array<int32_t, 2>& other) {
     ::tpy::__setitem__((*a), 0, 9);
 }
 
+// def longer(a: list[int32], b: list[int32]) -> list[int32]:
+//     return a if len(a) > len(b) else b
+std::vector<int32_t>& longer(std::vector<int32_t>& a, std::vector<int32_t>& b) {
+    return (((::tpy::__len__(a) > ::tpy::__len__(b))) ? (a) : (b));
+}
+
+// def rebound_borrow(other: list[int32]) -> None:
+//     # A borrow-returning first init: the pointer takes the callee's lvalue
+//     # (`&(longer(..))`), the rebind reseats it at `other`, and each append
+//     # lands in the caller's object it aliased at the time.
+//     xs = [1, 2, 3]
+//     ys = [1]
+//     zs = longer(xs, ys)  # tpyc: ok
+//     zs.append(7)
+//     zs = other
+//     zs.append(9)
+//     print("borrow_first", xs, ys)
+void rebound_borrow(std::vector<int32_t>& other) {
+    std::vector<int32_t> xs = {1, 2, 3};
+    std::vector<int32_t> ys = {1};
+    std::vector<int32_t>* zs = &(::tpyapp::main::longer(xs, ys));
+    zs->push_back(7);
+    zs = &(other);
+    zs->push_back(9);
+    std::cout << "borrow_first" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(ys) << "\n";
+}
+
+// def rebound_generic_borrow(other: list[int32]) -> None:
+//     # the same pointer form off a GENERIC identity's borrow: the rebind
+//     # reseats it at `other`, the source keeps its length
+//     src = [4, 5]
+//     zs = identity(src)  # tpyc: ok
+//     zs = other
+//     zs.append(11)
+//     print("generic_borrow_first", src)
+void rebound_generic_borrow(std::vector<int32_t>& other) {
+    std::vector<int32_t> src = {4, 5};
+    std::vector<int32_t>* zs = &(::tpyapp::main::identity<std::vector<int32_t>>(src));
+    zs = &(other);
+    zs->push_back(11);
+    std::cout << "generic_borrow_first" << " " << ::tpy::ListPrinter(src) << "\n";
+}
+
 // def hoisted() -> int32:
 //     # The try-block decl hoists to a function-top `std::optional<T>` slot; the
 //     # later same-name decl fills a second one.
@@ -139,6 +182,8 @@ int32_t hoisted() {
 //     rebound_bytes(b)
 //     a: Array[int32, 2] = [1, 2]
 //     rebound_array(a)
+//     rebound_borrow(xs)
+//     rebound_generic_borrow(xs)
 //     print(len(xs), len(d), len(s), len(b), a[0])
 //     print(hoisted())
 void main() {
@@ -152,6 +197,8 @@ void main() {
     ::tpyapp::main::rebound_bytes(b);
     std::array<int32_t, 2> a = {1, 2};
     ::tpyapp::main::rebound_array(a);
+    ::tpyapp::main::rebound_borrow(xs);
+    ::tpyapp::main::rebound_generic_borrow(xs);
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(d) << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(b) << " " << ::tpy::__getitem__(a, 0) << "\n";
     std::cout << ::tpyapp::main::hoisted() << "\n";
 }

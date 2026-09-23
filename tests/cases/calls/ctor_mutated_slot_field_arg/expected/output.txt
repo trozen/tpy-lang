@@ -4,3 +4,5 @@ ctor_dict {'a': 1, 'b': 2} 2
 ctor_set 2 2
 ctor_reclist 2 2
 ctor_bytearray 2 2
+ctor_copy_temp [1, 9, 9] 4
+ctor_own_call 3

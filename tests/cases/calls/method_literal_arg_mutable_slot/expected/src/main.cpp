@@ -10,6 +10,20 @@ int32_t sink(int32_t n) {
     return n;
 }
 
+// def mk() -> Own[list[int32]]:
+//     return [1, 2]
+std::vector<int32_t> mk() {
+    return {1, 2};
+}
+
+// def push_free(xs: list[int32]) -> int32:
+//     xs.append(9)
+//     return len(xs)
+int32_t push_free(std::vector<int32_t>& xs) {
+    xs.push_back(9);
+    return ::tpy::__len__(xs);
+}
+
 // def main() -> None:
 //     k = K()
 //     # method, named receiver
@@ -26,6 +40,25 @@ int32_t sink(int32_t n) {
 //     print("temp_recv", K().fill([1, 2]))  # tpyc: ok
 //     # method whose slot stays mutable only because the return borrows it
 //     print("lend_back", len(k.pick([3, 4])))  # tpyc: ok
+//     # ... and the borrowed result BOUND: the declaration is a flush position
+//     # too, so the literal hoists to a named temporary the alias then outlives
+//     got = k.pick([3, 4])  # tpyc: ok
+//     got.append(5)
+//     print("lend_back_bound", got)
+//     # ... and bound from a callee that lends the receiver's own storage: the
+//     # alias sees the append, and the receiver's field shows it
+//     kept = k.stash([6])  # tpyc: ok
+//     kept.append(7)
+//     print("lend_back_stash", k.items)
+//     # an owning call and an explicit copy as the temporary: bound in place
+//     # at a const method slot, hoisted at a generic function's mutable slot
+//     # and at a free function's, the call's result bound to a local (the
+//     # static method's slot has no such row yet)
+//     print("own_call_const_meth", k.total(mk()))  # tpyc: ok
+//     print("own_call_generic", push_gen(1, mk()))  # tpyc: ok
+//     src: list[int32] = [1, 2, 3]
+//     n = push_free(copy(src))  # tpyc: ok
+//     print("copy_free_bound", n, src)
 //     # method call nested in another call's argument list
 //     print("nested_arg", sink(k.fill([1, 2])))  # tpyc: ok
 //     # static method (a qualified call, not a receiver call)
@@ -51,12 +84,27 @@ void main() {
     std::cout << "temp_recv" << " " << K().fill(__tmp_6) << "\n";
     std::vector<int32_t> __tmp_7 = {3, 4};
     std::cout << "lend_back" << " " << ::tpy::__len__(k.pick(__tmp_7)) << "\n";
-    std::vector<int32_t> __tmp_8 = {1, 2};
-    std::cout << "nested_arg" << " " << ::tpyapp::main::sink(k.fill(__tmp_8)) << "\n";
-    std::vector<int32_t> __tmp_9 = {1, 2};
-    std::cout << "static_list" << " " << K::fill_static(__tmp_9) << "\n";
-    ::tpy::ordered_map<std::string, int32_t> __tmp_10 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    std::cout << "static_dict" << " " << K::fill_static_dict(__tmp_10) << "\n";
+    std::vector<int32_t> __tmp_8 = {3, 4};
+    std::vector<int32_t>& got = k.pick(__tmp_8);
+    got.push_back(5);
+    std::cout << "lend_back_bound" << " " << ::tpy::ListPrinter(got) << "\n";
+    std::vector<int32_t> __tmp_9 = {6};
+    std::vector<int32_t>& kept = k.stash(__tmp_9);
+    kept.push_back(7);
+    std::cout << "lend_back_stash" << " " << ::tpy::ListPrinter(k.items) << "\n";
+    std::cout << "own_call_const_meth" << " " << k.total(::tpyapp::main::mk()) << "\n";
+    std::vector<int32_t> __tmp_10 = ::tpyapp::main::mk();
+    std::cout << "own_call_generic" << " " << ::tpyapp::main::push_gen<int32_t>(1, __tmp_10) << "\n";
+    std::vector<int32_t> src = {1, 2, 3};
+    std::vector<int32_t> __tmp_11 = std::vector<int32_t>(src);
+    int32_t n = ::tpyapp::main::push_free(__tmp_11);
+    std::cout << "copy_free_bound" << " " << n << " " << ::tpy::ListPrinter(src) << "\n";
+    std::vector<int32_t> __tmp_12 = {1, 2};
+    std::cout << "nested_arg" << " " << ::tpyapp::main::sink(k.fill(__tmp_12)) << "\n";
+    std::vector<int32_t> __tmp_13 = {1, 2};
+    std::cout << "static_list" << " " << K::fill_static(__tmp_13) << "\n";
+    ::tpy::ordered_map<std::string, int32_t> __tmp_14 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
+    std::cout << "static_dict" << " " << K::fill_static_dict(__tmp_14) << "\n";
     std::cout << "const_slot" << " " << k.total({1, 2, 3}) << "\n";
     std::cout << "readonly_slot" << " " << k.ro({4, 5}) << "\n";
 }

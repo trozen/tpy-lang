@@ -817,8 +817,17 @@ predicate where the site's whole decision is "record or container"; the
 migration-era type-arg spelling fence is not part of it, because every render
 spells a type through the resolver (`lc.render_type`) rather than the bare
 `to_cpp()` the fence guarded; `_f1_record` stays where the render needs a
-record fact or where a record route and a container route still exist side by
-side and the gate only selects between them; per-TypeDef facts carry the
+record fact (fields, member-init, parents, protocol conformance, the `Deref`
+target, a record's `operator<<`, the upcast, arrow-ness via
+`_record_class_binding`); where a record route and a container route once ran
+side by side the routes are one path -- the borrow-local rungs, the owned decl,
+the move-through and hoist flavors, the rvalue-call argument temp, the
+Optional-ptr borrow binding -- and the one container-specific conjunct a merged
+route may carry is the element family a STORAGE slot spells
+(`_storage_family_ok`: `record_like` plus `_storage_call_ret` for a container),
+because the element reads that follow render off the spelled slot type. The
+five selectors still standing are each owned by a named unit (TODO.md, "THE
+NEXT ORDER" item 1). Per-TypeDef facts carry the
 residue a family list used to stand in for (`cpp_formatter`,
 `param_cpp_formatter` / `param_mut_cpp_formatter`, `subscript_borrows`), and a
 resolved stub method's `FunctionInfo` carries the rest. The element family is the

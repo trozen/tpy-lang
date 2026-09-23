@@ -51,12 +51,12 @@ std::tuple<const Point*, const Point*> first_two(const std::vector<Point>& items
 //     print("caller after bump:", rd.read())
 //
 //     xs = [1, 2, 3]
-//     # this section alone re-invokes: binding a CONTAINER borrow return to a
-//     # local still rejects (`decl.container_call_borrow`), so there is no live
-//     # binding to read across the write
-//     print("free:", view_items(xs)[0], sum_items(xs))
+//     # the container borrow binds a const alias (`const std::vector<T>&`),
+//     # kept live across the write like the record's
+//     vs = view_items(xs)  # tpyc: ok
+//     print("free:", vs[0], sum_items(xs))
 //     xs[0] = 40
-//     print("free after write:", view_items(xs)[0], sum_items(xs))
+//     print("free after write:", vs[0], sum_items(xs))
 //
 //     ps = [Point(7), Point(8)]
 //     pair = first_two(ps)
@@ -74,9 +74,10 @@ void main() {
     rd.reg.bump();
     std::cout << "caller after bump:" << " " << rd.read() << "\n";
     std::vector<int32_t> xs = {1, 2, 3};
-    std::cout << "free:" << " " << ::tpy::__getitem__(::tpyapp::main::view_items(xs), 0) << " " << ::tpyapp::main::sum_items(xs) << "\n";
+    const std::vector<int32_t>& vs = ::tpyapp::main::view_items(xs);
+    std::cout << "free:" << " " << ::tpy::__getitem__(vs, 0) << " " << ::tpyapp::main::sum_items(xs) << "\n";
     ::tpy::__setitem__(xs, 0, 40);
-    std::cout << "free after write:" << " " << ::tpy::__getitem__(::tpyapp::main::view_items(xs), 0) << " " << ::tpyapp::main::sum_items(xs) << "\n";
+    std::cout << "free after write:" << " " << ::tpy::__getitem__(vs, 0) << " " << ::tpyapp::main::sum_items(xs) << "\n";
     std::vector<Point> ps = {Point(7), Point(8)};
     auto pair = ::tpyapp::main::first_two(ps);
     std::cout << "tuple:" << " " << std::get<0>(pair)->x << " " << std::get<1>(pair)->x << "\n";

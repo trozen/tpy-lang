@@ -5,6 +5,11 @@ meth_set 3
 meth_nested 3
 temp_recv 3
 lend_back 2
+lend_back_bound [3, 4, 5]
+lend_back_stash [6, 7]
+own_call_const_meth 3
+own_call_generic 3
+copy_free_bound 4 [1, 2, 3]
 nested_arg 3
 static_list 3
 static_dict 2

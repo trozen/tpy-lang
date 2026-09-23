@@ -1,1 +1,1 @@
-main.py:38: error: in function 'main': this construct is not yet supported by C++ code generation (expr.method_call:call.arg_shape.container)
+main.py:36: error: in function 'main': this construct is not yet supported by C++ code generation (expr.method_call:arg.lends_from_temporary)

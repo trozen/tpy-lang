@@ -275,8 +275,8 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    _storage_family_ok,
     _own_return_const_projected,
-    _move_through_type,
     _binding_peel,
     _narrow_alias_name,
     _fresh_narrow_local,
@@ -3243,7 +3243,7 @@ def _move_through_source(stmt: TpyVarDecl, typ: TpyType,
                            lc: '_LowerCtx') -> bool:
     return (stmt.name in lc.prescan.move_through
             and isinstance(stmt.init, TpyName)
-            and _move_through_type(typ, lc.analyzer))
+            and record_like(typ, lc.analyzer))
 
 
 def _owned_local_decl(stmt: TpyVarDecl, vtype: TpyType, lc: '_LowerCtx',
@@ -3620,7 +3620,7 @@ def _nonvalue_hoist_flavor(name: str, var_type: TpyType,
         return HoistFlavor.RESUMABLE
     if name in lc.prescan.move_through:
         # Sema's ordinary move bindings consume owned, unreassigned sources.
-        return (HoistFlavor.OPT_STORAGE if _move_through_type(var_type, analyzer)
+        return (HoistFlavor.OPT_STORAGE if record_like(var_type, analyzer)
                 else HoistFlavor.MOVE_THROUGH)
     borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
     if borrow_decls.get(name, False):
@@ -4029,25 +4029,23 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
                           declared: dict[str, TpyType], analyzer,
                           narrowed: 'set[str] | frozenset[str]'
                           = frozenset()) -> bool:
-    """A single-assignment owned record local from a record-rvalue init --
-    `Box b = Box(n);` / `Box x = make(1);`, the binding classifier's
-    plain-value-local arm (no indirection, dot access; sema's movable set
-    already tracks it for last-use moves). Reassigned names take the
-    REBIND_SLOT machinery, hoisted / move-through ones their own arms.
-    Wrapper-annotated decls (`readonly[T]` / `Own[T]` locals) are sema
-    errors, so `_var_decl_type`'s unwrapping never smuggles one in; the
-    bare-NominalType check is defensive."""
+    """A single-assignment owned local from a record-or-container rvalue
+    init -- `Box b = Box(n);` / `Box x = make(1);` / `std::vector<T> xs =
+    mk();`, the binding classifier's plain-value-local arm (no indirection,
+    dot access; sema's movable set already tracks it for last-use moves).
+    Reassigned names take the REBIND_SLOT machinery, hoisted / move-through
+    ones their own arms. Wrapper-annotated decls (`readonly[T]` / `Own[T]`
+    locals) are sema errors, so `_var_decl_type`'s unwrapping never
+    smuggles one in; the bare-NominalType check is defensive."""
     return (stmt.name not in prescan.reassigned
             and stmt.name not in prescan.hoisted
             and stmt.name not in prescan.move_through
             and isinstance(vtype, NominalType)
-            # Record slice on purpose: a container rvalue decl has its own
-            # arm, and this one only selects the record route.
-            and _f1_record(vtype, analyzer)
+            and _storage_family_ok(vtype, analyzer)
             and stmt.init is not None
             and (_record_rvalue_source_shape(stmt.init, analyzer)
                  or _method_rvalue_record_like(stmt.init, analyzer)
-                 # A record field off an RVALUE call receiver (`jar =
+                 # A field off an RVALUE call receiver (`jar =
                  # s.get(url).cookies` -- member of a dying temporary): the
                  # only legal emit is the plain copy decl (C++ moves the
                  # xvalue member). A BORROW-returning
@@ -4055,8 +4053,8 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
                  # is the REF_ALIAS value-position design stop.
                  or (isinstance(stmt.init, TpyFieldAccess)
                      and _field_over_call_ok(stmt.init, analyzer)
-                     and _f1_record(analyzer.get_expr_type(stmt.init),
-                                    analyzer)
+                     and _storage_family_ok(
+                         analyzer.get_expr_type(stmt.init), analyzer)
                      and is_rvalue_source(analyzer, stmt.init))))
 
 def _own_opt_record_call_slot(stmt: TpyVarDecl, vtype: 'TpyType | None',
@@ -4249,11 +4247,15 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         # REF_ALIAS only, so the OPTIONAL_TO_PTR property row keeps its
         # optional_to_ptr lift arm below.
         _witness("decl.record_borrow_call")
+        # Declarations drain argument temporaries before binding the alias:
+        # a literal argument hoists to a named temp the borrow then outlives
+        # (`std::vector<int32_t>& items = identity(__tmp_1);`).
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype,
             init=_lower_expr(
                 stmt.init, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
+                use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                             allow_temps=True)),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if binding is LocalBinding.REF_ALIAS:
@@ -10611,41 +10613,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                  or stmt.name in lc.prescan.move_through)):
                         note_detail("decl.container_call_reassigned")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
-                    # A BORROW container return binds a `T&` alias
-                    # (`std::vector<int32_t>& items = identity<...>(t);`)
-                    # -- the container twin of decl.record_borrow_call.
-                    # Readonly-wrapped returns keep the reject (the const
-                    # spelling is unverified).
+                    # A BORROW container return binds the `T&` alias through
+                    # the shared borrow-local rung (`decl.record_borrow_call`)
+                    # before this cascade is reached; one that gets here is
+                    # a borrow the storage decl below would COPY, so it stops.
                     if not is_rvalue_source(analyzer, stmt.init):
-                        _cbc_fi = getattr(stmt.init,
-                                          "resolved_function_info", None)
-                        _cbc_rt = getattr(_cbc_fi, "return_type", None)
-                        # The const fact has TWO spellings: the declared
-                        # ReadonlyType wrap AND fi.is_readonly (the
-                        # @readonly method's implicit const twin) -- both
-                        # keep the reject (a `T&` binding a `const T&`
-                        # would be a loud divergence).
-                        if (isinstance(unwrap_ref_type(_cbc_rt)
-                                       if isinstance(_cbc_rt, TpyType)
-                                       else None, ReadonlyType)
-                                or (_cbc_fi is not None
-                                    and return_const_projected(_cbc_fi))):
-                            note_detail("decl.container_call_borrow")
-                            raise ThirUnsupported(stmt_reject_reason(stmt))
-                        lc.ref_alias_locals.add(stmt.name)
-                        declared[stmt.name] = vtype
-                        _witness("decl.container_borrow_call")
-                        return THIRVarDecl(
-                            name=stmt.name, resolved_type=vtype,
-                            init=_lower_expr(
-                                stmt.init, lc, declared,
-                                use=_ExprUse(
-                                    result=_ExprResultUse.BORROW_BIND,
-                                    allow_temps=True)),
-                            cpp_type=lc.render_type(vtype),
-                            form=Form.BORROW,
-                            cpp_local_representation=LocalBinding.REF_ALIAS,
-                            loc=loc)
+                        note_detail("decl.container_call_borrow")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
                     storage_call = True
                     _witness("decl.storage_call")
                 else:

@@ -4,7 +4,9 @@
 # warn_return_record_borrow_dunder, which lowers). This one stays an `error_`
 # case because the CONTAINER-payload dunder has no render at that slot in
 # EITHER spelling -- `copy(p + q)` rejects at the same place
-# (BUGS.md#dunder-borrow-container-own-return), so the case pins that reject.
+# (BUGS.md#dunder-borrow-container-own-return), so the case pins that reject
+# -- the record slice kept on purpose at the binop result gate, see
+# BUGS.md#binop-borrow-result-alias-bound-const.
 # Only the reject: the harness replaces accumulated warnings with the error
 # text when a CompileError follows, so the warning cannot be annotated here.
 from tpy import Own, int32

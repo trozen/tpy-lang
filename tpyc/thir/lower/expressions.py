@@ -634,10 +634,7 @@ from .checks import (
     copy_construct_source,
     copy_construct_form,
     copy_call_arg,
-    _optional_ptr_container_slot,
     _owned_str_slot,
-    _optional_ptr_container_arg,
-    _optional_ptr_container_literal_arg,
     _FSTRING_INELIGIBLE,
     _call_arity_ok,
     _call_ret_reject,
@@ -1057,8 +1054,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or (use.admits(SinkForm.BORROW_RET_PASSTHROUGH)
                   and fi is not None
                   and call_returns_cpp_ref(analyzer, fi)
-                  and (record_like(ret, analyzer)
-                       or _alias_ref_container(ret))
+                  and record_like(ret, analyzer)
                   and _witness("call.borrow_ret_passthrough"))
               # The FIELD-READ receiver twin (the dedicated flag --
               # `ret_param_ref(shared).n` composes the member read over the
@@ -3710,6 +3706,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         elif (_f1_record(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                   rtype))) if rtype is not None else None, analyzer)
               and rb is not None):
+            # Record slice on purpose: a CONTAINER result reaches this arm
+            # only from a user dunder returning a borrow of a field, whose
+            # alias is bound const -- a write through it fails the C++ build
+            # instead of stopping here
+            # (BUGS.md#binop-borrow-result-alias-bound-const).
             # A RECORD-result dunder (`a // b` -> Meters via the injected
             # `({self}).__floordiv__({0})` template; `td1 + td2` via the
             # @native operator template): the template render is shared with
@@ -10237,10 +10238,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # (`s.get(url, None, {...})` -- the optional-ptr arg's
                 # temporary face); the temp init is the target-threaded
                 # literal render spelled at the slot's INNER.
-                mcont = _optional_ptr_container_slot(ptype, lc.analyzer)
+                mcont = _optional_ptr_arg_slot(ptype, lc.analyzer)
                 if (mcont is not None
-                        and _optional_ptr_container_literal_arg(
-                            a, mcont, lc.analyzer)):
+                        and isinstance(a, (TpyArrayLiteral, TpyDictLiteral,
+                                           TpySetLiteral))
+                        and _optional_ptr_arg_face(a, ptype, declared,
+                                                   lc.analyzer)
+                        == 'container_temp'):
                     inner = unwrap_readonly(mcont.inner)
                     minit = _lower_expr(
                         a, lc, declared,
@@ -13126,40 +13130,6 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     )
 
 
-def _container_call_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
-                             analyzer, *,
-                             frame_capturing: bool = False) -> 'TpyType | None':
-    """A container-returning rvalue CALL into a plain free call's concrete
-    container ref param (`f(list(argv[i:]))`) hoists a `__tmp_N` ref-param
-    temp. Returns the unwrapped slot type when the row applies --
-    the ONE fact shared by gate admission and the ArgTemp lowering arm.
-    Exact slot/result match only; borrow (`T&`) returns are excluded
-    (they bind the ref param bare, no temp)."""
-    if not isinstance(a, (TpyCall, TpyMethodCall)) or ptype is None:
-        return None
-    pr = unwrap_ref_type(unwrap_send_sync(ptype))
-    # The hoist applies to MUTABLE-ref params (`is_ref_param()`) always, and
-    # for readonly reference slots only when the callee is a frame-capturing
-    # factory (`frame_capturing`): there the statement-scoped inline
-    # `const T&` bind would dangle. A sync callee keeps the inline bind
-    # (CPython drop timing), so the row must decline it here too.
-    if not (isinstance(pr, TpyType)
-            and (pr.is_ref_param()
-                 or (frame_capturing and is_readonly_ref_param(pr)))):
-        return None
-    slot = unwrap_readonly(pr)
-    # The NON-RECORD half of the reference axis: a record rvalue at a ref
-    # param has its own rows in the arg ladder, so the two stay disjoint.
-    if not _f1_container_ref(slot):
-        return None
-    at = analyzer.get_expr_type(a)
-    atb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-           if at is not None else None)
-    if atb != slot or not is_rvalue_source(analyzer, a):
-        return None
-    return slot
-
-
 def _lower_static_isinstance(e: TpyCall, lc: '_LowerCtx',
                              rtype: 'TpyType | None') -> 'THIRCall | None':
     """The STATIC type-param isinstance family (`isinstance(x, Animal)` /
@@ -13362,9 +13332,6 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                     readonly_target=readonly_target) is not None:
                 # witnessed at the arm (arg.own_union_storage_name)
                 ok = True
-            if not ok and _optional_ptr_container_arg(
-                    a, ptype, declared, analyzer):
-                ok = True  # witnessed at the lowering rows (optptr.none/name)
             if not ok and temp_args and _union_ctor_temp_arg(
                     a, ptype, analyzer):
                 ok = True  # witnessed at the lowering arm (unionlift.ctor_temp)
@@ -13376,10 +13343,6 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                     a, ptype, analyzer) is not None:
                 # witnessed at the arm (unionlift.dict_literal_temp)
                 ok = True
-            if not ok and temp_args and _container_call_temp_arg(
-                    a, ptype, analyzer,
-                    frame_capturing=frame_capturing) is not None:
-                ok = True  # witnessed at the ArgTemp arm (argtemp.container_call)
             if not ok and isinstance(a, TpyName) and a.name != "self":
                 # A NAME bound to the still-open slot type -- the callable
                 # -param invocation inside a generic body (`f(init)` at a
@@ -13768,26 +13731,6 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                                    init=lowered, form=Form.BORROW,
                                    movable=unwrap_ref_type(slot).is_movable(),
                                    loc=getattr(a, "loc", None))
-    if (isinstance(a, (TpyCall, TpyMethodCall)) and temp_args
-            and (kind is None or kind[0] not in ("native", "native_c", "template"))):
-        # The call-rvalue sibling of the literal ArgTemp arm above:
-        # `std::vector<T> __tmp_N = <call>; f(__tmp_N)`.
-        slot = _container_call_temp_arg(a, ptype, lc.analyzer,
-                                        frame_capturing=frame_capturing)
-        if slot is not None:
-            _witness("argtemp.container_call")
-            lowered = _lower_expr(
-                a, lc, declared,
-                # The temp is a NAMED LOCAL the call then binds, so the sink
-                # is the argument's and not a transient one -- name it, or a
-                # borrow of storage the statement kills would be copied into
-                # the temp before the argument row is ever asked. `forms=`
-                # keeps the empty verdict this site always had.
-                use=_ExprUse(result=_ExprResultUse.STORAGE,
-                             pos=SinkPos.CALL_ARG, forms=_NO_FORMS))
-            return THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot), movable=unwrap_ref_type(slot).is_movable(),
-                               init=lowered, form=Form.BORROW,
-                               loc=getattr(a, "loc", None))
     dc = _deref_coerce_arg(a, ptype, declared, lc.analyzer)
     if dc is not None:
         # The deref auto-coercion name: a Ptr source renders the inline
@@ -15348,38 +15291,35 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                           upcast_ok=True)
         if (rec_pt is not None and isinstance(a, TpyMethodCall)
                 and not _module_qual_ctor_shape(a, lc.analyzer)):
-            # Method-call sources split three ways: a module-qualified CTOR
-            # hoists (above), a NATIVE/template record call renders INLINE
-            # (`samestat(s, ::tpystd::os::stat(d))` -- the
-            # _native_record_call_arg row below), and a PLAIN Own-returning
-            # method (`read_rc(Rc.new(Counter(3)))`) hoists the
-            # create-lend-drop temp like a ctor rvalue.
-            _mfi = a.resolved_function_info
-            plain_own_method = (
-                # Marker/qualified callee args render INLINE
-                # (`samestat(s, ::tpystd::os::stat(d))` -- the
-                # qualcall loop has no temp machinery), so the hoist is a
-                # FREE-call-position row only.
-                not marker_arg
-                and _method_rvalue_record_like(a, lc.analyzer)
-                and _mfi is not None and _mfi.native_name is None
-                and not _mfi.native_function and _mfi.cpp_template is None)
-            if not plain_own_method:
+            # A METHOD-call rvalue hoists the create-lend-drop temp like a
+            # ctor rvalue (`read_rc(Rc.new(Counter(3)))`, `use(xs.copy())`)
+            # -- the slot predicate already said the slot is a mutable ref
+            # (or a frame-capturing const one), where only a named temp
+            # binds. Not at a marker/qualified callee's argument: that loop
+            # has no temp machinery, so the hoist is a FREE-call-position
+            # row only.
+            if marker_arg or not is_rvalue_source(lc.analyzer, a):
                 rec_pt = None
         if rec_pt is not None:
             _witness("argtemp.record_rvalue")
+            # The temp is a NAMED LOCAL the call then binds, so every
+            # non-ctor source names the STORAGE sink (a call's result gate
+            # -- a plain by-value call, `copy(x)`, `list(xs)`, a
+            # module-qualified ctor on the marker path -- answers for that
+            # sink); the record CTOR path is result-blind and keeps the
+            # ctor-arg validation use.
+            _ctor_fi = (a.resolved_function_info
+                        if isinstance(a, TpyCall) else None)
+            _plain_ctor = _ctor_fi is not None and _ctor_fi.is_constructor
             return THIRArgTemp(
                 result_type=rec_pt, cpp_type=lc.render_type(rec_pt), movable=unwrap_ref_type(rec_pt).is_movable(),
-                # A module-qualified ctor source (TpyMethodCall) lowers via
-                # the marker path, whose result gate needs the temp's
-                # STORAGE sink named; the TpyCall ctor path is result-blind.
                 init=_lower_expr(
                     a, lc, declared,
-                    use=(replace(_RECORD_TEMP_FLUSH_USE,
-                                 result=_ExprResultUse.STORAGE,
-                                 pos=SinkPos.CALL_ARG, forms=_NO_FORMS)
-                         if isinstance(a, TpyMethodCall)
-                         else _RECORD_TEMP_FLUSH_USE)),
+                    use=(_RECORD_TEMP_FLUSH_USE if _plain_ctor
+                         else replace(_RECORD_TEMP_FLUSH_USE,
+                                      result=_ExprResultUse.STORAGE,
+                                      pos=SinkPos.CALL_ARG,
+                                      forms=_NO_FORMS))),
                 form=Form.BORROW,
                 loc=getattr(a, "loc", None))
         ut = _value_union_temp_slot(a, ptype, declared, lc.analyzer)
@@ -15860,24 +15800,6 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                  temp_args=temp_args)
     if lift is not None:
         return lift
-    # The container twin of the pointer-repr Optional faces below: only the
-    # `nullptr` literal and the bare-container-name address-of are lowered
-    # (`sum_list(&(data))` / `sum_list(nullptr)`); admission pinned the shape.
-    # The container-LITERAL typed-temp face lives on the METHOD arg path
-    # (`_method_arg`'s temp rows), the position that witnesses it.
-    cont_ot = _optional_ptr_container_slot(ptype, lc.analyzer)
-    if cont_ot is not None and _optional_ptr_container_arg(
-            a, cont_ot, declared, lc.analyzer):
-        loc = getattr(a, "loc", None)
-        if isinstance(a, TpyNoneLiteral):
-            _witness("optptr.none")
-            return THIROptionalPtrArg(result_type=cont_ot, form=Form.BORROW,
-                                      loc=loc)
-        _witness("optptr.name")
-        return THIROptionalPtrArg(result_type=cont_ot, form=Form.BORROW,
-                                  value=_lower_expr(a, lc, declared,
-                                                    use=_NESTED_ARG_USE),
-                                  addr_of=True, loc=loc)
     if (isinstance(a, (TpyCall, TpyMethodCall))
             and not (isinstance(a, TpyCall)
                      and a.resolved_function_info is not None
@@ -16932,10 +16854,17 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         # THIS type render its own boolean test? Computed once, so no arm can
         # answer it differently for its own syntactic shape.
         native_scalar = _native_cond_scalar(et, lc.analyzer)
-        ptr_optional = (
-            isinstance(e, TpyName) and isinstance(et, OptionalType)
-            and _optional_ptr_borrow_name(
-                e, declared, lc.analyzer) is not None)
+        ptr_opt = (_optional_ptr_borrow_name(e, declared, lc.analyzer)
+                   if isinstance(e, TpyName) and isinstance(et, OptionalType)
+                   else None)
+        # The bare pointer test is the whole truth for a record pointee
+        # (non-None is truthy) but only half of it for a container's: `if
+        # xs:` on `list[T] | None` is also the emptiness test, which sema
+        # attaches no mode for, so that shape keeps rejecting here
+        # (BUGS.md#optional-container-truthiness-drops-emptiness).
+        ptr_optional = (ptr_opt is not None
+                        and (mode is not None
+                             or _record_class_binding(ptr_opt.inner)))
         if ptr_optional:
             pass
         elif unary_operand:

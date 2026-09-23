@@ -3,8 +3,7 @@
 # method keeps its auto-const, and a caller that only reads the borrow stays
 # const too. The constness is pinned by the committed .hpp; the sections here
 # pin the aliasing half -- each borrow is BOUND before the owner is mutated and
-# read again after, so a silent copy would print the stale value (the free
-# function is the exception; see its section).
+# read again after, so a silent copy would print the stale value.
 from tpy import int32, readonly
 
 
@@ -76,12 +75,12 @@ def main() -> None:
     print("caller after bump:", rd.read())
 
     xs = [1, 2, 3]
-    # this section alone re-invokes: binding a CONTAINER borrow return to a
-    # local still rejects (`decl.container_call_borrow`), so there is no live
-    # binding to read across the write
-    print("free:", view_items(xs)[0], sum_items(xs))
+    # the container borrow binds a const alias (`const std::vector<T>&`),
+    # kept live across the write like the record's
+    vs = view_items(xs)  # tpyc: ok
+    print("free:", vs[0], sum_items(xs))
     xs[0] = 40
-    print("free after write:", view_items(xs)[0], sum_items(xs))
+    print("free after write:", vs[0], sum_items(xs))
 
     ps = [Point(7), Point(8)]
     pair = first_two(ps)
