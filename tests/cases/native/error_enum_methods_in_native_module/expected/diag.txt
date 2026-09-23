@@ -1,0 +1,1 @@
+main.py:7: error: methods on enum 'Color' not allowed in native_module ('main' is declaration-only)

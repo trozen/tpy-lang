@@ -21,9 +21,9 @@ from .parse import (
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyRaise,
     TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith, TpyNonlocal,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr, TpyFunction,
-    TpyBoolLiteral, TpyAssert,
+    TpyBoolLiteral, TpyAssert, TpyTupleLiteral,
 )
-from .parse.nodes import stmts_have_any_suspension
+from .parse.nodes import stmts_have_any_suspension, written_names
 
 # source_name -> set[alias_name] reverse map
 _Aliases = dict[str, set[str]]
@@ -649,12 +649,24 @@ def collect_finally_return_candidates(stmts: list[TpyStmt]) -> IdentitySet:
     reference-type shapes.
     """
     out: IdentitySet = IdentitySet()
-    rebound = _collect_nested_def_nonlocal_rebinds(stmts)
-    _walk_finally_returns(stmts, 0, out, rebound, suppressed=False)
+    rebound = collect_nested_def_nonlocal_rebinds(stmts)
+    _walk_finally_returns(stmts, 0, out, rebound, IdentitySet(),
+                          suppressed=False)
     return out
 
 
-def _collect_nested_def_nonlocal_rebinds(stmts: list[TpyStmt]) -> set[str]:
+def collect_finally_rebound_returns(stmts: list[TpyStmt]) -> IdentitySet:
+    """The returned name members that a finally REBINDS -- the ones kept on
+    the eager capture, which copies them before the chain."""
+    kept: IdentitySet = IdentitySet()
+    rebound = collect_nested_def_nonlocal_rebinds(stmts)
+    _walk_finally_returns(stmts, 0, IdentitySet(), rebound, kept,
+                          suppressed=False)
+    return kept
+
+
+def collect_nested_def_nonlocal_rebinds(stmts: list[TpyStmt], *,
+                                        include_del: bool = False) -> set[str]:
     """Nonlocal names a nested def REBINDS (assigns the name itself, not a
     field). Such a rebind overwrites the outer local's storage in place (the
     reassigned-var scan does not see nested-def writes, so the local has no
@@ -662,6 +674,9 @@ def _collect_nested_def_nonlocal_rebinds(stmts: list[TpyStmt]) -> set[str]:
     borrow; those names keep the eager capture. Mutation-only nonlocal use
     (`b.n += 1`) does NOT exclude -- that is the aliasing deferral exists
     for. Name-level aug-assign counts as a rebind conservatively.
+    `include_del` also counts a nested `nonlocal x; del x`; the finally
+    return candidacy leaves it out, since its own closure-del guard rejects
+    that shape.
     """
     rebound: set[str] = set()
 
@@ -683,6 +698,8 @@ def _collect_nested_def_nonlocal_rebinds(stmts: list[TpyStmt]) -> set[str]:
                     assigned.update(n for n in s.targets if n is not None)
                 elif isinstance(s, TpyForEach):
                     assigned.add(s.var)
+                elif include_del and isinstance(s, TpyDelVar):
+                    assigned.update(s.names)
                 for b in s.sub_bodies():
                     walk(b)
 
@@ -700,15 +717,71 @@ def _collect_nested_def_nonlocal_rebinds(stmts: list[TpyStmt]) -> set[str]:
     return rebound
 
 
+def collect_deleted_names(stmts: list[TpyStmt]) -> set[str]:
+    """Names a `del` in this body (not a nested def's) unbinds."""
+    out: set[str] = set()
+
+    def walk(body: list[TpyStmt]) -> None:
+        for s in body:
+            if isinstance(s, TpyDelVar):
+                out.update(s.names)
+            if isinstance(s, TpyNestedDef):
+                continue
+            for b in s.sub_bodies():
+                walk(b)
+
+    walk(stmts)
+    return out
+
+
+def tuple_literal_leaves(expr: TpyExpr, path: tuple[int, ...] = ()
+                         ) -> 'list[tuple[tuple[int, ...], TpyExpr]]':
+    """The non-tuple members of a (possibly nested) tuple literal with their
+    index paths, left to right -- the order the literal evaluates them."""
+    if not isinstance(expr, TpyTupleLiteral):
+        return [(path, expr)]
+    out: list[tuple[tuple[int, ...], TpyExpr]] = []
+    for i, e in enumerate(expr.elements):
+        out.extend(tuple_literal_leaves(e, path + (i,)))
+    return out
+
+
+def _finally_rebinds(body: list[TpyStmt]) -> set[str]:
+    """Names a finally body rebinds at name level (a nested def's body is its
+    own scope). A deferred return aliases the local's storage, so a rebind
+    there would overwrite the pending object in place -- CPython's pending
+    return keeps the object it named -- and such a name keeps the eager
+    capture. `del` stays out: it is rejected against a deferred return."""
+    out: set[str] = set()
+    for s in body:
+        names = written_names(s) if not isinstance(s, TpyDelVar) else set()
+        if isinstance(s, TpyAugAssign) and isinstance(s.target, TpyName):
+            # Left to sema: only it knows whether the operator updates in
+            # place or rebinds (`__iadd__` vs `__add__`).
+            names.discard(s.target.name)
+        out |= names
+        if isinstance(s, TpyNestedDef):
+            continue
+        for b in s.sub_bodies():
+            out |= _finally_rebinds(b)
+    return out
+
+
 def _walk_finally_returns(stmts: list[TpyStmt], finally_depth: int,
                           out: IdentitySet, rebound: set[str],
-                          *, suppressed: bool) -> None:
+                          kept: IdentitySet, *, suppressed: bool) -> None:
     for stmt in stmts:
         if isinstance(stmt, TpyReturn):
-            if (not suppressed and finally_depth > 0
-                    and isinstance(stmt.value, TpyName)
-                    and stmt.value.name not in rebound):
-                out.add(stmt.value)
+            if not suppressed and finally_depth > 0:
+                # A returned tuple literal's name members are the same
+                # pending-return aliases, one per element.
+                for _, leaf in tuple_literal_leaves(stmt.value):
+                    if not isinstance(leaf, TpyName):
+                        continue
+                    if leaf.name in rebound:
+                        kept.add(leaf)
+                    else:
+                        out.add(leaf)
         elif isinstance(stmt, TpyNestedDef):
             # A nested def's returns exit the inner function; the enclosing
             # finallies never run for them. Its own analysis pass covers it.
@@ -716,21 +789,22 @@ def _walk_finally_returns(stmts: list[TpyStmt], finally_depth: int,
         elif isinstance(stmt, TpyTry) and stmt.finally_body:
             sub_suppressed = (suppressed
                               or stmts_have_any_suspension(stmt.finally_body))
+            inner = rebound | _finally_rebinds(stmt.finally_body)
             _walk_finally_returns(stmt.try_body, finally_depth + 1, out,
-                                  rebound, suppressed=sub_suppressed)
+                                  inner, kept, suppressed=sub_suppressed)
             for h in stmt.handlers:
                 _walk_finally_returns(h.body, finally_depth + 1, out,
-                                      rebound, suppressed=sub_suppressed)
+                                      inner, kept, suppressed=sub_suppressed)
             _walk_finally_returns(stmt.else_body, finally_depth + 1, out,
-                                  rebound, suppressed=sub_suppressed)
+                                  inner, kept, suppressed=sub_suppressed)
             # A return in the finally body itself overrides at chain position
             # (no deferral); only outer finallies apply to it.
             _walk_finally_returns(stmt.finally_body, finally_depth, out,
-                                  rebound, suppressed=sub_suppressed)
+                                  rebound, kept, suppressed=sub_suppressed)
         else:
             for body in stmt.sub_bodies():
                 _walk_finally_returns(body, finally_depth, out,
-                                      rebound, suppressed=suppressed)
+                                      rebound, kept, suppressed=suppressed)
 
 
 def _analyze_with(

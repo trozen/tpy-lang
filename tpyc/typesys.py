@@ -3096,8 +3096,8 @@ def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
     Both `tuple[Own[T], ...]` and `Own[tuple[T, ...]]` imply per-element
     move semantics: the value tuple owns its elements, so non-value
     elements need ownership transfer at construction. For `Own[Tuple]`
-    we synthesize an Own-wrapped inner tuple so the existing per-element
-    `Own[T]` handling (sema's `_check_own_lvalue_return` and
+    we synthesize an Own-wrapped inner tuple so the per-element `Own[T]`
+    handling (sema's `check_tuple_literal_members` and
     `_annotate_tuple_elem_capture`) covers both shapes uniformly.
     """
     if isinstance(expected, TupleType):
@@ -5161,6 +5161,12 @@ class ViewVarInfo:
     # promotes the local to owned storage. Literal / Final sources have
     # static storage and never set this.
     frame_unsafe_source: bool = False
+    # What every binding of this view reads from, for the hoist rule: the
+    # storage roots it views, resolved at the binding (a view name is
+    # followed through its own entries), or unknown -- no binding recorded,
+    # or a source with no root the rule can place -- which owns once hoisted.
+    hoist_roots: set[str] = field(default_factory=set)
+    hoist_unknown: bool = False
     resolved_type: Optional[TpyType] = None
 
 
@@ -5212,7 +5218,7 @@ _ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
 })
 
 # View-type family descriptors (must follow singleton definitions)
-from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type
+from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type, enum_info_of as _enum_info_of
 STR_FAMILY = ViewTypeFamily(
     owned_type=STR, view_type=STRVIEW, promote_param_match=_is_string_type,
     is_any_member=is_any_str_type,
@@ -5784,6 +5790,7 @@ class RecordInfo:
     module: str | None = None  # Public module name (collapses private submodules via public_module_name); used for qualified_name() and codegen C++ namespace
     defining_module: str | None = None  # Raw (uncollapsed) module where the class was declared; used by re-export logic to look up the record through ModuleInfo.records
     exposed_to_host: bool = False  # True for a bare `@export` class in an ext_module: exposed as a CPython type (PyType_FromSpec). Mirrors TpyFunction.exposed_to_host.
+    enum_companion_of: str | None = None  # The enum whose body's methods this record carries (`__enum_<Name>`); never bound by name, reached through EnumInfo.companion
     # Field names (declared on THIS record) that some body assigns outside an
     # `__init__` with a bare-`self` receiver -- i.e. the field can be REBOUND
     # after construction. Populated during Phase-1 body analysis at the
@@ -5801,6 +5808,12 @@ class RecordInfo:
         typing.overload) and should not generate C++ code.
         """
         return self.builtin_type_key is not None and not self.methods and not self.fields
+
+    @property
+    def display_name(self) -> str:
+        """The name a diagnostic spells: an enum's companion is the enum the
+        user wrote, never its internal record name."""
+        return self.enum_companion_of or self.name
 
     @property
     def materializes_defaults(self) -> bool:
@@ -7097,6 +7110,16 @@ class TypeRegistry:
         if qname:
             return self._qname_index.get(qname)
         return None
+
+    def receiver_record(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
+        """The record whose methods and properties a receiver of `tpy_type`
+        resolves against: `get_record_for_type`, except that an enum answers
+        its companion record. Only method / property lookup reads it -- an
+        enum is never a record to the storage and lowering gates."""
+        einfo = _enum_info_of(tpy_type)
+        if einfo is not None:
+            return einfo.companion
+        return self.get_record_for_type(tpy_type)
 
     def scan_by_short_name(self, name: str) -> Optional[ProtocolInfo]:
         """Resolve a module-local short name (or import alias) to a

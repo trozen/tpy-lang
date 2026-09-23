@@ -36,7 +36,7 @@ void show(const std::tuple<const P*, const P*>& p) {
 //
 //     d: dict[int32, tuple[P | None, P | None]] = {}
 //     # rvalue tuple literal -> storage-form lift required
-//     d[int32(0)] = (a, b)
+//     d[int32(0)] = (a, b)  # tpyc: warning(/copies P \| None into container \(tuple element 0\)/)
 //     d[int32(1)] = (a, None)
 //     d[int32(2)] = (None, None)
 //

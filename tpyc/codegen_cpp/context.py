@@ -15,7 +15,7 @@ from typing import Callable, Iterator, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo, INT32,
-    AliasRef, RecursiveUnionInfo,
+    AliasRef, RecursiveUnionInfo, RecordInfo,
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type, is_own_pointer_repr_optional,
     polymorphic_source_is_pointer,
@@ -574,29 +574,60 @@ def static_method_callee_cpp(registry, implicit_stdlib_modules: 'set[str]',
     to avoid include cycles), so the class qualifies explicitly there.
     `owner` is sema's resolved record, used when the receiver's spelling
     names no record of its own (`cls` inside a @classmethod)."""
+    class_cpp, record_info = static_class_cpp(
+        registry, implicit_stdlib_modules, module_name, class_name, owner)
+    if record_info and record_info.is_native:
+        cpp_method = (fi.native_name if fi and fi.native_name
+                      else escape_cpp_name(method))
+        return f"{class_cpp}::{cpp_method}"
+    return f"{class_cpp}::{escape_cpp_name(method)}"
+
+
+def static_class_cpp(registry, implicit_stdlib_modules: 'set[str]',
+                     module_name: str, class_name: str,
+                     owner=None) -> 'tuple[str, RecordInfo | None]':
+    """The CLASS half of a same-module static call (`Rec.m(...)`), with the
+    record it resolved to: an enum's companion is spelled from sema's owner
+    (never from the receiver, which names the enum); a native record spells
+    its C++ class; an implicit-stdlib peer qualifies explicitly (it emits no
+    `using` alias, to avoid include cycles)."""
+    if owner is not None and owner.enum_companion_of is not None:
+        return enum_companion_cpp(owner, module_name), owner
     record_info = registry.get_record(class_name)
     if record_info is None and owner is not None:
         record_info = owner
         class_name = owner.name
     if record_info and record_info.is_native:
-        cpp_method = (fi.native_name if fi and fi.native_name
-                      else escape_cpp_name(method))
-        return f"{record_info.native_name}::{cpp_method}"
+        return record_info.native_name, record_info
     if (record_info is not None
             and record_info.module is not None
             and record_info.module in implicit_stdlib_modules
             and record_info.module != module_name):
-        class_name = qualified_cpp_name(record_info.module, record_info.name)
-    return f"{class_name}::{escape_cpp_name(method)}"
+        return qualified_cpp_name(record_info.module, record_info.name), record_info
+    return class_name, record_info
+
+
+def enum_companion_cpp(owner, module_name: str | None) -> str:
+    """The C++ spelling of an enum's companion record: bare in its own
+    module, else qualified by the module that DECLARES it -- an importer
+    (or a re-exporter) has a `using` alias for the enum only, and two
+    modules' same-named enums share the companion's short name."""
+    if owner.module == module_name:
+        return escape_cpp_name(owner.name)
+    return qualified_cpp_name(owner.module, owner.name)
 
 
 def module_static_class_cpp(registry, user_module: str,
-                            class_short: str) -> str:
+                            class_short: str, owner=None) -> str:
     """The module-qualified static call's CLASS spelling (`m.Cls.m(...)`):
     a native record spells its C++ class name, everything else qualifies
     through the module namespace (`::tpyapp::m::Cls`). Only the CLASS
     composition lives here; the caller appends the method half
-    (`fi.native_name or escape_cpp_name(method)`) and any targs."""
+    (`fi.native_name or escape_cpp_name(method)`) and any targs. `owner` is
+    sema's resolved record; an enum's companion (`m.Color.m(...)`) is spelled
+    from it, never from the receiver's spelling."""
+    if owner is not None and owner.enum_companion_of is not None:
+        return enum_companion_cpp(owner, None)
     record_info = registry.find_record_by_qname(f"{user_module}.{class_short}")
     if record_info and record_info.is_native and record_info.native_name:
         return record_info.native_name

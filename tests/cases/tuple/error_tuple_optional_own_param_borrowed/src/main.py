@@ -1,6 +1,8 @@
 # Per-element ownership check at an Own[tuple[T | None, ...]] call site:
 # borrowed lvalues at non-last-use are rejected with a copy() hint. Mirrors
 # the existing return-path check in error_tuple_own_outer_no_copy.
+# TO BE FIXED: the scalar twin WARNS and copies here; this error becomes that
+# warning (BUGS.md#borrowed-tuple-at-own-call-arg, plan unit U3 D1).
 from tpy import int32, Own
 
 

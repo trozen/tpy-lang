@@ -63,7 +63,7 @@ from ..namespace import NameBinding, BindingKind
 from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
-    attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of,
+    attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
     is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
     is_varargs,
@@ -273,6 +273,18 @@ def build_record_self_type(record: TpyRecord, qname: str | None = None) -> Nomin
         )
         return NominalType(record.name, type_args, _module_qname=qname)
     return NominalType(record.name, _module_qname=qname)
+
+
+def receiver_self_type(record: 'TpyRecord | RecordInfo', registry) -> TpyType:
+    """The type `self` and `Self` name in a method of `record`: the record's
+    own Self type, or the enum for an enum's companion record."""
+    if record.enum_companion_of is not None:
+        enum_t = registry.get_enum(record.enum_companion_of)
+        assert enum_t is not None, record.enum_companion_of
+        return enum_t
+    info = registry.get_record(record.name)
+    return build_record_self_type(
+        record, qname=info.qualified_name() if info is not None else None)
 
 
 def _validate_dyn_dunder_kind(record: 'TpyRecord', dunder_name: str) -> object:
@@ -1109,7 +1121,7 @@ class TypeRegistrar:
             if m.name == "__await__":
                 raise SemanticError(
                     f"user-defined '__await__' is not yet supported "
-                    f"(method on '{record.name}'); v1 only supports the "
+                    f"(method on '{record.display_name}'); v1 only supports the "
                     f"structural Awaitable protocol via `poll(self, "
                     f"waker: Waker) -> Own[Poll[T]]`",
                     m.loc or record.loc,
@@ -1224,7 +1236,7 @@ class TypeRegistrar:
                 continue
             if method.name in seen_method_names:
                 raise SemanticError(
-                    f"Method '{method.name}' defined twice in class '{record.name}'",
+                    f"Method '{method.name}' defined twice in class '{record.display_name}'",
                     method.loc or record.loc,
                 )
             seen_method_names.add(method.name)
@@ -1276,11 +1288,7 @@ class TypeRegistrar:
                 init_params.append((fld.name, fld.type, default))
 
         # Build the Self type for this record (used to substitute SelfType in methods)
-        stub_info = self.ctx.registry.get_record(record.name)
-        record_self_type = build_record_self_type(
-            record,
-            qname=stub_info.qualified_name() if stub_info is not None else None,
-        )
+        record_self_type = receiver_self_type(record, self.ctx.registry)
 
         # Pre-compute ids of mutable clones from @auto_readonly (flagged by the parser).
         # Used below to prevent implicit_readonly from clobbering is_readonly=False on these
@@ -1327,14 +1335,14 @@ class TypeRegistrar:
                 for pname, ptype in method.params:
                     if _contains_self_type(ptype):
                         raise SemanticError(
-                            f"Self type cannot be used in @staticmethod '{record.name}.{method.name}' "
+                            f"Self type cannot be used in @staticmethod '{record.display_name}.{method.name}' "
                             f"parameter '{pname}'",
                             method.loc or record.loc,
                         )
                 if _contains_self_type(method.return_type):
                     raise SemanticError(
                         f"Self type cannot be used as return type of "
-                        f"@staticmethod '{record.name}.{method.name}'",
+                        f"@staticmethod '{record.display_name}.{method.name}'",
                         method.loc or record.loc,
                     )
             # Substitute Self -> record type and resolve cross-module protocol flags
@@ -1350,7 +1358,7 @@ class TypeRegistrar:
                 if has_auto_readonly(ptype):
                     raise SemanticError(
                         f"Internal error: unresolved 'auto_readonly[T]' in parameter "
-                        f"'{pname}' of '{record.name}.{method.name}'",
+                        f"'{pname}' of '{record.display_name}.{method.name}'",
                         method.loc or record.loc,
                     )
                 if not contains_type_param(ptype):
@@ -1376,7 +1384,7 @@ class TypeRegistrar:
                 is_iter_method = method.name == "__iter__" and isinstance(method_return, NominalType) and method_return.qualified_name() in (qnames.ITERATOR, qnames.ITERABLE)
                 if not (pi and pi.is_dynamic) and not is_native_stub and not is_iter_method and not method.is_generator:
                     raise SemanticError(
-                        f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
+                        f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.display_name}.{method.name}'. "
                         f"Only @dynamic protocols can be used as return types",
                         method.loc or record.loc,
                     )
@@ -1439,13 +1447,13 @@ class TypeRegistrar:
             if has_auto_readonly(method_return):
                 raise SemanticError(
                     f"'auto_readonly[T]' in return type is only allowed on "
-                    f"@auto_readonly methods ('{record.name}.{method.name}')",
+                    f"@auto_readonly methods ('{record.display_name}.{method.name}')",
                     method.loc or record.loc,
                 )
             if has_auto_own(method_return):
                 raise SemanticError(
                     f"'auto_own[T]' in return type is only allowed on "
-                    f"auto_own[Self] methods ('{record.name}.{method.name}')",
+                    f"auto_own[Self] methods ('{record.display_name}.{method.name}')",
                     method.loc or record.loc,
                 )
             method.params = method_params
@@ -1454,18 +1462,18 @@ class TypeRegistrar:
             if method.name in CONST_PARAMS_METHODS:
                 if isinstance(method_return, OwnType):
                     raise SemanticError(
-                        f"'{method.name}' must return self ('{record.name}'), "
+                        f"'{method.name}' must return self ('{record.display_name}'), "
                         f"not Own[{method_return.wrapped}] -- inplace methods return self, not a new value",
                         method.loc or record.loc,
                     )
                 if isinstance(method_return, VoidType):
                     raise SemanticError(
-                        f"'{method.name}' must return self ('{record.name}'), not None",
+                        f"'{method.name}' must return self ('{record.display_name}'), not None",
                         method.loc or record.loc,
                     )
                 if not (isinstance(method_return, NominalType) and method_return.name == record.name):
                     raise SemanticError(
-                        f"'{method.name}' must return self ('{record.name}'), "
+                        f"'{method.name}' must return self ('{record.display_name}'), "
                         f"got '{method_return}'",
                         method.loc or record.loc,
                     )
@@ -1584,14 +1592,14 @@ class TypeRegistrar:
                     func_info.inline_body = non_doc[0].expr
                 else:
                     raise SemanticError(
-                        f"@inline method '{record.name}.{method.name}' must have a single "
+                        f"@inline method '{record.display_name}.{method.name}' must have a single "
                         f"call expression as its body.",
                         method.loc or record.loc,
                     )
             # Validate: FStr params require @inline
             elif func_info.has_fstr_param and not method.is_stub:
                 raise SemanticError(
-                    f"Method '{record.name}.{method.name}' has FStr parameter but is "
+                    f"Method '{record.display_name}.{method.name}' has FStr parameter but is "
                     f"not marked @inline. FStr parameters require @inline.",
                     method.loc or record.loc,
                 )
@@ -1966,6 +1974,7 @@ class TypeRegistrar:
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None,
             defining_module=self.ctx.module_name,
             exposed_to_host=record.exposed_to_host,
+            enum_companion_of=record.enum_companion_of,
         )
         # Adopt the pre-populated skeleton when available so peer
         # registries that captured a reference during bind_imports
@@ -1976,12 +1985,20 @@ class TypeRegistrar:
             if existing_skeleton is not None:
                 info = _adopt_skeleton(existing_skeleton, info)
         self.ctx.registry.register_record(info)
-        self.ctx.global_ns.bind_record(info)
+        if record.enum_companion_of is not None:
+            # Reached only through its enum: no name binding and no module
+            # attribute, so Python code cannot spell it, and an importer of
+            # the enum reaches it through the shared EnumInfo.
+            td = type_def_of(receiver_self_type(record, self.ctx.registry))
+            assert td is not None and td.enum is not None
+            td.enum = dc_replace(td.enum, companion=info)
+        else:
+            self.ctx.global_ns.bind_record(info)
         # Per-module attribute table (Phase 1). Local definition: no
         # defining_module override, so binding is "owned by this module".
         # Skips builtin records (int32, list, ...) -- those are
         # attached to TypeDef and don't surface as module attributes.
-        if not record.builtin_type_key:
+        if not record.builtin_type_key and record.enum_companion_of is None:
             install_binding(
                 self.ctx.module_attributes, record.name,
                 SymbolKind.RECORD, info,

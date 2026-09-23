@@ -1,0 +1,1 @@
+main.py:19: error: non-copyable type 'G' is used after this point and cannot be moved into tuple element 0 Own[G]. Remove later uses or restructure the code.

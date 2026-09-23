@@ -29,7 +29,7 @@ from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
 from ..parse.nodes import RecordLinkage, OverloadForm
-from .registration import build_record_self_type, _vararg_span_type
+from .registration import receiver_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
     TpyFieldAccess, TpyName, TpyCall, TpyLambda,
@@ -3078,11 +3078,7 @@ class SemanticAnalyzer:
             local_ns = Namespace(parent=self.ctx.global_ns)
             self.ctx.func.current_ns = local_ns
             if not method.is_staticmethod:
-                info = self.ctx.registry.get_record(record.name)
-                self_named = build_record_self_type(
-                    record,
-                    qname=info.qualified_name() if info is not None else None,
-                )
+                self_named = receiver_self_type(record, self.ctx.registry)
                 self_type = self._normalize_param_type(self_named, method.is_readonly)
                 scope.define("self", self_type)
                 self.ctx.func.var_scope_depth["self"] = scope.depth
@@ -3093,8 +3089,14 @@ class SemanticAnalyzer:
                 # a RECORD binding, so every consumer that already handles a
                 # bare class name (constructor calls, class constants,
                 # ClassVar writes, static dispatch) resolves it unchanged.
-                cls_info = self.ctx.registry.get_record(record.name)
-                if cls_info is not None:
+                # On an enum's companion it names the ENUM the same way
+                # (`cls.Red`, `cls(1)`, `cls[s]`, `cls.other()`).
+                if record.enum_companion_of is not None:
+                    local_ns.bind(NameBinding(
+                        kind=BindingKind.ENUM, name="cls",
+                        enum_type=receiver_self_type(record, self.ctx.registry),
+                        is_sema_alias=True))
+                elif (cls_info := self.ctx.registry.get_record(record.name)) is not None:
                     local_ns.bind(NameBinding(
                         kind=BindingKind.RECORD, name="cls", record_info=cls_info,
                         is_sema_alias=True))

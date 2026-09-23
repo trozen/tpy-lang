@@ -1312,7 +1312,10 @@ class FunctionTrackingState:
     # finally-deferred return in the corresponding try borrowed: `del` of
     # such a name inside the finally would free storage the pending return
     # still reads (CPython keeps the object alive via the stashed reference).
-    pending_return_borrows: list[frozenset[str]] = field(default_factory=list)
+    # One map per enclosing finally being analysed: a name a pending
+    # deferred return borrows -> (the return as a diagnostic quotes it, the
+    # (return, tuple member path or None) sites that defer it).
+    pending_return_borrows: list[dict[str, tuple[str, list[tuple['TpyReturn', 'tuple[int, ...] | None']]]]] = field(default_factory=list)
 
     # --- List/dict/set literal tracking ---
     variable_to_literal: dict[str, int] = field(default_factory=dict)
@@ -1429,6 +1432,28 @@ class FunctionTrackingState:
 
     # --- Prescan / last-use ---
     current_reassigned_vars: set[str] = field(default_factory=set)
+    # Names a nested def rebinds via `nonlocal`: the reassigned-var scan does
+    # not look into nested defs, and the closure may run at any point, so a
+    # view borrowing such a name's storage is treated as reseated.
+    nested_nonlocal_rebinds: set[str] = field(default_factory=set)
+    # The enclosing function's `nested_nonlocal_rebinds`, seeded into a nested
+    # def: a sibling closure it calls can rebind a name it captured.
+    enclosing_nonlocal_rebinds: set[str] = field(default_factory=set)
+    # Names a `del` in this body unbinds: the value is destroyed there, so
+    # like a rebind it ends the storage a view or `const&` of it reads.
+    deleted_names: set[str] = field(default_factory=set)
+    # Name -> (family, var_id) of every str/bytes view entry registered for
+    # it in this body; a name bound in several blocks has several entries
+    # that share one hoisted slot.
+    view_ids_by_name: dict[str, list[tuple[ViewTypeFamily, int]]] = field(
+        default_factory=dict)
+    # The storage roots each live for-each variable iterates, as its own loop
+    # bound it (None: nothing placeable); `loop_var_iterable` keeps the last
+    # loop's entry for a reused name.
+    loop_var_iter_roots: dict[str, 'set[str] | None'] = field(default_factory=dict)
+    # `with ... as name` targets: they point into the manager's result, which
+    # no borrow is recorded for.
+    with_target_names: set[str] = field(default_factory=set)
     # What each binding of a name puts in its storage (`alias_rebind.BindKind`),
     # keyed by the binding node (var-decl, assign, walrus); the alias-rebind
     # storage pass reads it after the walk.
@@ -2039,6 +2064,9 @@ class SemanticContext:
     # TpyReturn.finally_deferred_capture (codegen then materializes the
     # return value after the inline finally chain).
     finally_return_candidates: IdentitySet = field(default_factory=IdentitySet)
+    # The returned name members a finally REBINDS: they keep the eager
+    # capture, a copy, which a non-copyable type cannot take.
+    finally_rebound_returns: IdentitySet = field(default_factory=IdentitySet)
 
     # This module's bodied functions/methods whose body
     # analysis has not run yet -- their return_borrows_from is still None
@@ -2100,6 +2128,10 @@ class SemanticContext:
 
     # --- Branch-declared variable tracking ---
     if_branch_decls: IdentityMap = field(default_factory=IdentityMap)
+    # Per branching statement, the names first bound inside it that it did
+    # NOT hoist: their storage is the block's. A loop-body local hoisted to
+    # that statement must not take them for outer storage.
+    block_locals_of: IdentityMap = field(default_factory=IdentityMap)
 
     # --- Extern symbol tracking ---
     extern_symbols: dict[str, str] = field(default_factory=dict)
@@ -3118,6 +3150,14 @@ class SemanticContext:
         if family.pending_type_class is PendingStrType:
             return self.str_vars
         return self.bytes_vars
+
+    def is_reseated(self, name: str) -> bool:
+        """Whether `name`'s storage can be replaced or destroyed at some point
+        of this body whose order against a use is not tracked: a rebind, a
+        nested def's `nonlocal` rebind, or a `del`."""
+        return (name in self.func.current_reassigned_vars
+                or name in self.func.nested_nonlocal_rebinds
+                or name in self.func.deleted_names)
 
     def view_needs_owned(self, info: ViewVarInfo) -> bool:
         """Whether the facts recorded so far force this view local to OWN.

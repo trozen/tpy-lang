@@ -1,0 +1,32 @@
+instance: <Red> Color.Blue <Blue> warm
+defaults: <Red>-<Red> <Red>+<Red>+<Red> <Red> <Red>.<Red>
+posonly: 0 4
+tuple: <Red> 0
+truthy: True False True
+intenum: 4 1 High Low High
+type: Color.Blue None Color.Red Color.Blue Color.Red Color.Red Color.Red
+member: Color.Red Color.Blue Color.Red
+effect: Color.Red <Blue> 2
+checked: 1
+checked: bad
+order: 4 ['pick', 'arg']
+shapes: <Red> <Blue>
+property call: 1
+generic alias: [9, 10] [9, 10]
+capture: RED 2 3 2
+property: True False False
+name: red BLUE red
+narrowed: <Blue>
+container: <Blue> cold
+record: <Blue>/<Red>/<Blue>
+comprehension: ['<Red>', '<Blue>']
+closure: <Blue>
+match: <Red>
+with: <Blue>
+try: <Blue>
+finally: <Red>
+generator: ['<Red>', '<Blue>']
+async: <Red><Blue>
+loop: <Red> warm
+loop: <Blue> cold
+module: <Red> <Red>

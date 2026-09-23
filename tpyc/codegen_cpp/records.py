@@ -28,7 +28,7 @@ from ..parse import (
 )
 from ..identity_map import IdentityMap
 from ..namespace import Namespace
-from ..sema.registration import build_record_self_type
+from ..sema.registration import build_record_self_type, receiver_self_type
 
 from .. import qnames
 from . import emit_prims
@@ -401,6 +401,12 @@ class RecordGenerator:
             elif fld.is_factory_default:
                 default = f" = {factory_default_to_cpp(fld.type)}"
             out.write(f"{INDENT}{cpp_type} {escape_cpp_name(fld.name)}{default};\n")
+        if record.enum_companion_of is not None:
+            # An enum's companion wraps the member it is called on: a call
+            # renders `__enum_E{recv}.m(args)`, so the receiver is a postfix
+            # expression sequenced before the arguments, as a record's is.
+            enum_t = receiver_self_type(record, self.ctx.analyzer.registry)
+            out.write(f"{INDENT}{self.types.type_to_cpp(enum_t)} self;\n")
 
         # @native records skip emission -- the user's header owns the storage.
         # Use the expression generator so tuples / type-coerced literals emit

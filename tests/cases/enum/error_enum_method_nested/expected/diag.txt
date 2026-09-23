@@ -1,0 +1,1 @@
+main.py:7: error: Methods on a nested enum are not supported yet ('Kind' inside 'Outer') -- declare the enum at module level

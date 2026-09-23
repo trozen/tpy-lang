@@ -1,0 +1,1 @@
+main.py:12: error: 'label' on enum 'Color': @override / @auto_readonly do not apply to an enum method (nothing is inherited and the member is passed by value)

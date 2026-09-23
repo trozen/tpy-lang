@@ -590,7 +590,7 @@ class MethodAnalyzer:
         if expr.subscript_callee is not None:
             has_field = False
             if isinstance(obj_type, NominalType):
-                record = self.ctx.registry.get_record_for_type(obj_type)
+                record = self.ctx.registry.receiver_record(obj_type)
                 has_field = (record is not None
                     and (self.protocols.lookup_record_field(record, expr.method) is not None
                          or self.protocols.lookup_record_property(record, expr.method) is not None))
@@ -1137,6 +1137,9 @@ class MethodAnalyzer:
             if import_info:
                 record_info = self.ctx.registry.find_record_by_qname(
                     f"{import_info[0]}.{import_info[1]}")
+        elif binding and binding.kind == BindingKind.ENUM:
+            # `Color.m()` / `cls.m()`: the enum's methods are its companion's.
+            record_info = self.ctx.registry.receiver_record(binding.enum_type)
 
         if record_info is None:
             return None
@@ -1198,7 +1201,7 @@ class MethodAnalyzer:
 
         if expr.type_args or expr.type_args_parse_error:
             raise self.ctx.error(
-                f"'{record_info.name}' is not generic and does not accept type arguments",
+                f"'{record_info.display_name}' is not generic and does not accept type arguments",
                 expr,
             )
 
@@ -1229,6 +1232,11 @@ class MethodAnalyzer:
         record_info = self.ctx.registry.find_record_by_qname(
             f"{module_name}.{class_short}")
         if record_info is None:
+            enum_t = self.ctx.registry.find_enum_by_qname(
+                f"{module_name}.{class_short}")
+            if enum_t is not None:
+                record_info = self.ctx.registry.receiver_record(enum_t)
+        if record_info is None:
             return None
         return (module_name, class_short, record_info)
 
@@ -1247,7 +1255,7 @@ class MethodAnalyzer:
         - First arg must syntactically be the name `self` -- arbitrary unbound
           calls (e.g. `Named.describe(other_instance)`) are rejected.
         """
-        parent_name = record_info.name
+        parent_name = record_info.display_name
         method_name = expr.method
 
         # Must be inside an instance method
@@ -1288,8 +1296,16 @@ class MethodAnalyzer:
         # Ancestor check (strict: excludes current record itself)
         if not self.ctx.registry.is_subclass_of_record(current_rec, record_info):
             raise self.ctx.error(
-                f"'{parent_name}' is not an ancestor of '{current_rec.name}'; "
-                f"cannot call '{parent_name}.{method_name}(self, ...)' here",
+                # An enum cannot be subclassed, so `self.m()` means the same
+                # call; on a record an override would change which one runs.
+                (f"'{parent_name}.{method_name}(self, ...)' calls a method of "
+                 f"'{parent_name}' itself; call 'self.{method_name}(...)' instead"
+                 if current_rec is record_info and record_info.enum_companion_of
+                 else f"'{parent_name}.{method_name}(self, ...)' calls a method of "
+                 f"'{parent_name}' itself, which is not supported"
+                 if current_rec is record_info else
+                 f"'{parent_name}' is not an ancestor of '{current_rec.display_name}'; "
+                 f"cannot call '{parent_name}.{method_name}(self, ...)' here"),
                 expr,
             )
 
@@ -1393,11 +1409,11 @@ class MethodAnalyzer:
             if n_given != n_class and n_given != n_total:
                 if new_method_params:
                     raise self.ctx.error(
-                        f"'{record_info.name}.{method.name}' expects {n_class} class type arguments "
+                        f"'{record_info.display_name}.{method.name}' expects {n_class} class type arguments "
                         f"or {n_total} total (class + method), got {n_given}",
                         expr)
                 raise self.ctx.error(
-                    f"'{record_info.name}' expects {n_class} type arguments, got {n_given}",
+                    f"'{record_info.display_name}' expects {n_class} type arguments, got {n_given}",
                     expr)
 
         virtual_func = FunctionInfo(
@@ -1870,7 +1886,7 @@ class MethodAnalyzer:
                                   is_readonly_receiver: bool = False,
                                   is_consuming_receiver: bool = False) -> TpyType | None:
         """Analyze instance method call on any type (builtin or user record)."""
-        record_info = self.ctx.registry.get_record_for_type(obj_type)
+        record_info = self.ctx.registry.receiver_record(obj_type)
         if not record_info:
             return None
         # TypedDict: td.get("key") / td.get("key", default)

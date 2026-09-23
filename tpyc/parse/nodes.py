@@ -893,12 +893,19 @@ class TpyTupleUnpack(TpyStmt):
     # borrowed. Sema sets it off the enclosing `TpyForEach.is_tuple_unpack`,
     # so a macro-built loop head is marked like a parsed one.
     is_loop_head: bool = False
+    # Set by sema at a loop head: the names the loop body rebinds. Each for
+    # head declares its targets afresh, so a sibling loop reusing a name is
+    # not a rebind of this binding.
+    loop_body_rebinds: frozenset[str] = frozenset()
     # Set by sema:
     target_types: list[TpyType] = field(default_factory=list)
     is_new: list[bool] = field(default_factory=list)
     is_owned: list[bool] = field(default_factory=list)
     is_ref: list[bool] = field(default_factory=list)
     is_const_ref: list[bool] = field(default_factory=list)
+    # A borrowed target the name is later rebound in: it binds a pointer
+    # local, since a reference alias would write the rebind through.
+    is_rebound: list[bool] = field(default_factory=list)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value]
@@ -978,6 +985,10 @@ class TpyReturn(TpyStmt):
     # the inline finally chain and materializes (moves) the return value
     # after it, so finally mutations stay visible (CPython aliasing).
     finally_deferred_capture: bool = False
+    # With the stamp on a returned tuple literal: the index paths of the
+    # members that are such locals (each captured by pointer before the
+    # chain); every other member is evaluated into a temporary there.
+    finally_deferred_leaves: tuple[tuple[int, ...], ...] = ()
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value] if self.value else []
@@ -1750,6 +1761,17 @@ class TpyRecord:
     # TpyFunction.exposed_to_host; the record keeps DEFAULT linkage (the glue
     # is separate). Set only by the parser inside an ext_module.
     exposed_to_host: bool = False
+    # Set on the companion record an `Enum` body's methods live on
+    # (`__enum_<Name>`): the enum's name. The companion is never bound in the
+    # module namespace; only the enum's EnumInfo reaches it.
+    enum_companion_of: str | None = None
+
+    @property
+    def display_name(self) -> str:
+        """The name a diagnostic spells: an enum's companion is the enum the
+        user wrote, never its internal record name."""
+        return self.enum_companion_of or self.name
+
     # The class body's leading string literal. A function/method keeps its
     # docstring as `body[0]`, but a record has no statement body to read it
     # back from, so the text is captured here at parse time. Consumed only by
@@ -1827,6 +1849,8 @@ class TpyEnum:
     # reason TpyRecord's is: there is no statement body to read it back
     # from. Consumed only by the CPython-extension glue.
     docstring: str | None = None
+    # The record carrying the body's `def`s, or None when it declares none.
+    companion: 'TpyRecord | None' = None
     loc: SourceLocation | None = None
 
 

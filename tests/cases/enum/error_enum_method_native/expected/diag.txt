@@ -1,0 +1,1 @@
+main.py:12: error: 'label' on enum 'Color': @native / @cpp_template are not supported on enum methods

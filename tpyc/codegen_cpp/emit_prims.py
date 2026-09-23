@@ -42,7 +42,7 @@ from ..parse.nodes import (
 from ..prescan import parse_deref_view_key
 from ..sema.literal_utils import (fixed_int_literal_value_from_expr,
                                   literal_value_from_expr)
-from ..sema.registration import build_record_self_type
+from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
 from ..typesys import (
     BIGINT, FLOAT, AnyType, FloatLiteralType, IntLiteralType, LiteralType,
@@ -849,17 +849,13 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
         ctx.in_method = True
         # `self` resolves to the enclosing record's type during the body
         # so `lookup_var_type('self')` can drive `isinstance(self, Sub)`
-        # polymorphic dispatch. None for static methods (no self). Use
-        # `build_record_self_type` so the NominalType carries the proper
-        # qname + generic type-param refs, matching how sema constructs
-        # self's type -- avoids future cross-module short-name collision
-        # risk if polymorphic-source predicates ever route through qname
-        # equality.
+        # polymorphic dispatch. None for static methods (no self). Built by
+        # sema's own helper so it matches how sema typed `self`.
         if owning_record_name is not None:
             rec_info = ctx.analyzer.registry.get_record(owning_record_name)
             if rec_info is not None:
-                ctx.current_method_record_type = build_record_self_type(
-                    rec_info, qname=rec_info.qualified_name())
+                ctx.current_method_record_type = receiver_self_type(
+                    rec_info, ctx.analyzer.registry)
             else:
                 ctx.current_method_record_type = NominalType(owning_record_name)
     compute_borrow_tuple_const(ctx, types, func)

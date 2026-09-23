@@ -127,8 +127,9 @@ compiler and toolchain identity, options) next to the binary and, when
 nothing changed, executes the binary directly (~100ms startup instead of a
 rebuild). Anything changed -- a source edit, a new file that shadows an
 imported module, a compiler upgrade, different flags -- triggers a normal
-rebuild. `--rebuild` forces one; it's also the escape hatch for the
-(ccache-grade) blind spots: system-mode third-party libraries
+rebuild. `--rebuild` forces one, precompiled header included; it's also
+the escape hatch for the (ccache-grade) blind spots: system-mode
+third-party libraries
 (`--pcre2=system` etc.) resolve at link time outside the tracked inputs,
 and compile-affecting environment variables (`CPATH`,
 `CPLUS_INCLUDE_PATH`, `LIBRARY_PATH`, `CCACHE_*`) are not part of the

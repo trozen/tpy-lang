@@ -1,0 +1,1 @@
+main.py:12: error: Unknown type: __enum_Color

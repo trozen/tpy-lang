@@ -256,8 +256,7 @@ def for_in_while() -> None:
 
 
 # A tuple-unpack target bound only in the while body, read after the loop
-# (value elements: a str view target dangles into the per-iteration tuple,
-# BUGS.md#loop-body-view-unpack-target-dangles, the same for both loops).
+# (int32 elements, copied out of the per-iteration tuple).
 def while_unpack() -> None:
     n = 40
     i = 0
@@ -505,9 +504,8 @@ def sib_ptr() -> None:
     print("sib_ptr", q.n, pics[1].n)
 
 
-# Free function, a tuple-unpack target and the tuple itself (value elements:
-# a str view target would dangle into the per-iteration tuple either way,
-# BUGS.md#loop-body-view-unpack-target-dangles).
+# Free function, a tuple-unpack target and the tuple itself (int32 elements,
+# copied out of the per-iteration tuple).
 def sib_unpack() -> None:
     n = 40
     for i in range(2):

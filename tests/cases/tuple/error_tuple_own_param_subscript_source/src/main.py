@@ -2,6 +2,8 @@
 # element source. Subscript isn't a TpyName, so the is_auto_moved
 # fast-path (which gates on TpyName + last_use) must correctly fall
 # through to the borrowed-source diagnostic rather than short-circuit.
+# TO BE FIXED: the scalar twin WARNS and copies here; this error becomes that
+# warning (BUGS.md#borrowed-tuple-at-own-call-arg, plan unit U3 D1).
 from tpy import int32, Own
 
 

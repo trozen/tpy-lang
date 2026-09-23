@@ -1,5 +1,7 @@
 # A borrowed (param) member returned by NAME into a per-element-Own tuple
 # needs explicit copy() -- same as the literal `return (b, 0)` form.
+# TO BE FIXED: the scalar twin WARNS and copies here; this error becomes that
+# warning (BUGS.md#borrowed-tuple-at-own-call-arg, plan unit U3 D1).
 from tpy import int32, Own
 
 

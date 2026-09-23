@@ -65,8 +65,9 @@ from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
 from ..value_category import (is_rvalue_source, async_result_aliases,
-                             return_type_is_cpp_ref)
+                             return_type_is_cpp_ref, peel_value_wrappers)
 from .alias_rebind import bind_kind_of
+from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
@@ -750,7 +751,8 @@ class ExpressionAnalyzer:
                     return self._apply_own_wrapper(expr, result)
                 if binding.kind == BindingKind.BUILTIN:
                     return binding.type
-                if (expr.name == "cls" and binding.kind == BindingKind.RECORD
+                if (expr.name == "cls"
+                        and binding.kind in (BindingKind.RECORD, BindingKind.ENUM)
                         and self.ctx.func.current_function is not None
                         and self.ctx.func.current_function.is_classmethod):
                     raise self.ctx.error(
@@ -873,15 +875,11 @@ class ExpressionAnalyzer:
             self.ctx.func.definitely_assigned.add(name)
         # Register for codegen pre-declaration at the binding's anchor
         self.ctx.record_branch_decls(decl_stmt, {name: var_type})
-        # NB: a str/bytes view target first-declared in a loop BODY from an
-        # owned-temp source, hoisted here and used after the loop, dangles into
-        # the dead per-iteration `__tup`
-        # (`BUGS.md#loop-body-view-unpack-target-dangles`). The branch path's
-        # blanket promotion cannot simply be applied here: measured, it also
-        # OWNS the safe leaked-loop-var case (`for k, v in pairs` aliasing the
-        # live container), which `tuple/tuple_unpack_loopvar_after` pins as a
-        # zero-copy view. Telling them apart needs the unpack's own
-        # `source_binds_by_ref`, which this read site cannot see.
+        # A str/bytes view now declared outside the loop body stays a view
+        # only over storage that outlives the body; a body local that is not
+        # hoisted itself is out of scope here, so the rule owns over it.
+        self.calls.deduction.own_hoisted_view(
+            name, self.ctx.block_locals_of.get(decl_stmt, frozenset()))
         # Mark the original for-loop's var for hoisted codegen (hidden counter)
         if isinstance(orig_stmt, TpyForEach) and name == orig_stmt.var:
             orig_stmt.hoist_loop_var = True
@@ -1759,7 +1757,7 @@ class ExpressionAnalyzer:
             return None
 
         if isinstance(typ, NominalType) and typ.is_record:
-            record = self.ctx.registry.get_record_for_type(typ)
+            record = self.ctx.registry.receiver_record(typ)
             if not record:
                 return None
             # Multi-base same-name ambiguity: when the child doesn't declare
@@ -1988,8 +1986,8 @@ class ExpressionAnalyzer:
         # caller fall through to a generic "can't treat class as value".
         if not self.ctx.registry.is_subclass_of_record(current_rec, record_info):
             raise self.ctx.error(
-                f"'{record_info.name}' is not an ancestor of '{current_rec.name}'; "
-                f"cannot access '{record_info.name}.{expr.field}' here",
+                f"'{record_info.display_name}' is not an ancestor of '{current_rec.display_name}'; "
+                f"cannot access '{record_info.display_name}.{expr.field}' here",
                 expr,
             )
 
@@ -2035,6 +2033,13 @@ class ExpressionAnalyzer:
                     if expr.field in enum_info_of(enum_type).members:
                         expr.enum_member_of = enum_type
                         return enum_type
+                    companion = self.ctx.registry.receiver_record(enum_type)
+                    if (companion is not None
+                            and companion.get_method_overloads(expr.field)):
+                        raise self.ctx.error(
+                            f"'{enum_type.name}.{expr.field}' is a method; an enum "
+                            f"method cannot be used as a value yet -- call it",
+                            expr)
                     raise self.ctx.error(
                         f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)
 
@@ -2133,9 +2138,21 @@ class ExpressionAnalyzer:
                 return STRVIEW
             elif expr.field == "value":
                 return enum_info_of(actual_type).underlying_type
-            raise self.ctx.error(
-                f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
-                f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
+            # A property of the enum's companion falls through to the record
+            # lookup below; a plain method read is not a value yet.
+            companion = self.ctx.registry.receiver_record(actual_type)
+            if (companion is not None
+                    and self.protocols.lookup_record_property(companion, expr.field) is not None):
+                pass
+            elif companion is None or not companion.get_method_overloads(expr.field):
+                raise self.ctx.error(
+                    f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
+                    f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
+            else:
+                raise self.ctx.error(
+                    f"'{expr.field}' is a method of enum '{actual_type.name}'; "
+                    f"an enum method cannot be used as a value yet -- call it",
+                    expr)
 
         # Deref chain loop -- resolves through Ptr (mutable and readonly) and any Deref[T] type
         current_type = actual_type
@@ -2887,6 +2904,14 @@ class ExpressionAnalyzer:
             # borrow fact and registers the alias for mutation tracking,
             # exactly like `v = h.view()` would.
             self.ctx.func.bind_kinds[expr] = bind_kind_of(self.ctx, expr.value)
+            # The walrus binds a fresh local, so its literal members take the
+            # local sink's copy rule, as the decl `u = (1, (2, c))` does.
+            bound_lit = peel_value_wrappers(expr.value)
+            bound_tuple = unwrap_readonly(resolved)
+            if (isinstance(bound_lit, TpyTupleLiteral)
+                    and isinstance(bound_tuple, TupleType)):
+                self.compat.check_tuple_literal_members(
+                    bound_lit, bound_tuple, TupleSink.LOCAL, "owned storage")
             if not unwrap_readonly(resolved).is_value_type():
                 if is_rvalue_source(self.ctx, expr.value):
                     self.ctx.func.owned_locals.add(name)
@@ -4008,6 +4033,10 @@ class ExpressionAnalyzer:
         # key never lowers as a comprehension source.
         register_iteration_loans(self.ctx, gen.iterable, iterable_type,
                                  excluded_roots=names)
+        # The targets' element origin is not recorded here, so a view hoist
+        # must not read the roots an earlier `for` over the same name left.
+        for name in names:
+            self.ctx.func.loop_var_iter_roots[name] = None
 
     def _analyze_comp_body(
         self,

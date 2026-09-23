@@ -21,11 +21,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .modules.resolver import ModuleResolver
+from .toolchain import compiler_binary_identity
 
 SCHEMA_VERSION = 1
 MANIFEST_NAME = "build-manifest.json"
@@ -126,14 +126,11 @@ def toolchain_entry(argv0: str) -> dict | None:
     changes the key); this entry catches the resolved binary itself being
     replaced in place.
     """
-    resolved = shutil.which(argv0)
-    if resolved is None:
+    ident = compiler_binary_identity([argv0])
+    if ident is None:
         return None
-    try:
-        st = os.stat(resolved)
-    except OSError:
-        return None
-    return {"resolved": resolved, "size": st.st_size, "mtime_ns": st.st_mtime_ns}
+    resolved, size, mtime_ns = ident
+    return {"resolved": resolved, "size": size, "mtime_ns": mtime_ns}
 
 
 def compute_build_dir(output_dir: Path, module_name: str, variant: str,

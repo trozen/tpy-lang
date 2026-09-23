@@ -85,7 +85,9 @@ free function, method, constructor, module-level statement, generator body, asyn
 comprehension, closure, context-manager body, `try`/`finally`, `@error_return` body, `match`
 arm. Across the value shapes too -- scalar, tuple, `Optional`, union, `str`/`bytes`, `Own[T]`,
 `readonly[T]`, `Ptr`/`Span`, `Box`/`Rc` -- and across the slot kinds: local, param, return,
-field, container element, global. And across the SPELLINGS of the construct: bare name,
+field, container element, global (a global cell that diverges is filed against TODO.md's
+"Module scope is the body of __tpy_init" design entry, not patched per shape: globals rank
+last). And across the SPELLINGS of the construct: bare name,
 module-qualified, nested class, aliased import, the result of a macro or `@inline` expansion.
 The compiler decides each fact once and every position consumes that decision; a position with
 its own copy of the logic is where the next divergence lives.

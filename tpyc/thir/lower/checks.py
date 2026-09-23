@@ -160,6 +160,7 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _enum_prop_wrap,
     _container_ternary_arg,
     _inst_slice_arg_ok,
     _protocol_union_arg,
@@ -8464,6 +8465,11 @@ def _method_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
     receiver). Container, bytearray, view, Ptr-valued and protocol/tparam fields
     route their own families over the same bare member read; an Optional field
     is deferred (it would need the outer `(*obj)` / deref_check unwrap)."""
+    if _enum_prop_wrap(recv, analyzer) is not None:
+        # A member's `.name` / `.value` (`e.name.lower()`): a str / scalar
+        # VALUE wrapped over the member, whose own read keeps its gates;
+        # the view / scalar family gates the method over it.
+        return _witness("method.recv.enum_prop")
     if (getattr(recv, "dyn_getattr_call", None) is not None
             and isinstance(recv.obj, TpyName)
             and (_resolved_str_value(analyzer.get_expr_type(recv), analyzer)
@@ -9128,7 +9134,8 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                         or fi.linkage != FunctionLinkage.DEFAULT):
                     return None
                 cpp_class = module_static_class_cpp(
-                    analyzer.registry, e.user_module_call, e.obj.field)
+                    analyzer.registry, e.user_module_call, e.obj.field,
+                    owner=e.static_call_owner)
                 cpp_method = (fi.native_name if fi.native_name
                               else escape_cpp_name(e.method))
                 return ("qualified", f"{cpp_class}::{cpp_method}")
@@ -10720,6 +10727,7 @@ def _method_call_arg_ok(
                 and not isinstance(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(_so_occ))), OptionalType)):
             recv = unwrap_readonly(_unwrap_own(unwrap_readonly(_so.inner)))
+    recv = _enum_receiver(e.obj, analyzer) or recv
     if (isinstance(recv, UnionType) and isinstance(e.obj, TpyName)
             and e.obj.name not in narrowed):
         # The assign-narrowed union receiver's arg-gate half: dispatch the
@@ -10733,7 +10741,7 @@ def _method_call_arg_ok(
                         if not is_void_like_type(m))
                 and record_like(_anu_b, analyzer)):
             recv = _anu_b
-    ri = analyzer.registry.get_record_for_type(recv)
+    ri = analyzer.registry.receiver_record(recv)
     if ri is None:
         # An unresolved receiver rejects EVERY arg of the call, so without a
         # tag the whole body rejects under the bare statement reason and the
@@ -13518,6 +13526,16 @@ def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
     return literal_mangled_name(e.method, fi)
 
 
+def _enum_receiver(recv: TpyExpr, analyzer) -> 'TpyType | None':
+    """The enum a method receiver reads as at this occurrence, or None. An
+    enum member is a value with no binding form, so its receiver is keyed on
+    the occurrence type (a narrowed `Optional[enum]` name reads the enum)
+    and admitted and lowered as any enum argument is."""
+    t = analyzer.get_expr_type(recv)
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))) if t is not None else None
+    return t if t is not None and is_enum_type(t) else None
+
+
 def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                  analyzer, *, use: _ExprUse,
                                  result_use: _ExprResultUse,
@@ -13637,6 +13655,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                 and not isinstance(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(occ))), OptionalType)):
             recv_t = unwrap_readonly(_unwrap_own(unwrap_readonly(so.inner)))
+    recv_t = _enum_receiver(recv, analyzer) or recv_t
     if (isinstance(recv_t, UnionType) and isinstance(recv, TpyName)
             and recv.name not in narrowed):
         # An ASSIGN-narrowed ptr-variant union NAME receiver (`c: Circle |
@@ -13657,13 +13676,16 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     # TPy-defined methods render the same plain member call as an F1
     # record's; the record-info guard keeps TypeDef-only value types (str /
     # bytes / span -- their methods take dispatch arms) out.
+    # An enum member's methods are its companion record's; the method-call
+    # lowering wraps the member in the companion.
     if not (isinstance(recv_t, NominalType)
             and (_f1_record(recv_t, analyzer)
-                 or _builtin_value_record(recv_t, analyzer))):
+                 or _builtin_value_record(recv_t, analyzer)
+                 or is_enum_type(recv_t))):
         # The drill's "which methods block" discriminant: name the receiver
         # family AND the method, so e.g. str methods rank individually.
         return note_detail(f"method.{_recv_family(recv_t, analyzer)}.{e.method}")
-    ri = analyzer.registry.get_record_for_type(recv_t)
+    ri = analyzer.registry.receiver_record(recv_t)
     if ri is None:
         return False
     # A @native record's instance method (the file-handle `fh.write(...)` /
@@ -14792,7 +14814,7 @@ def _raw_record_fi_for_type(t: 'TpyType | None', method_name: str,
         rt = unwrap_readonly(rt.wrapped)
     if not isinstance(rt, NominalType):
         return None
-    ri = analyzer.registry.get_record_for_type(rt)
+    ri = analyzer.registry.receiver_record(rt)
     if ri is None:
         return None
     overloads = analyzer.registry.get_method_overloads_with_parents(

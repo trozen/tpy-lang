@@ -1,0 +1,1 @@
+main.py:9: error: 'Red' is defined both as a member and as a method of enum 'Color'

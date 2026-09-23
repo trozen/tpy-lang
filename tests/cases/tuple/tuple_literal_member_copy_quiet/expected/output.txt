@@ -1,0 +1,15 @@
+yield_copy 1
+yield_fresh 5
+yield_last_use 777
+yield_last_use 777
+yield_mixed_borrow 80
+yield_values two
+arg_quiet 3
+setitem_copy 3 1
+setitem_fresh 8 2
+setitem_last_use 9 3
+field_fresh 11
+field_last_use 12
+local_alias 21
+walrus_alias 9
+walrus_alias 99

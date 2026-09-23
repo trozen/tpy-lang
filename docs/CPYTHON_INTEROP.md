@@ -668,7 +668,8 @@ is **strict by type** (the arg must be an instance of the enum; a bare int is a
 `TypeError`, unlike a lenient `int` param and unlike the untyped Python source
 where `f(1)` runs -- documented, ext-only-tested divergence). **Deferred:**
 nested/cross-module enums (a cross-module enum param is a located error),
-`bytes`/`BytesView` constants. Data-carrying (algebraic) enum variants do not
+enums with methods (the recreated CPython enum would lack them; a located
+error), `bytes`/`BytesView` constants. Data-carrying (algebraic) enum variants do not
 exist in TPy (members are always int-valued), so there is nothing to
 wrapper-per-variant.
 

@@ -535,7 +535,10 @@ IR/regions)** (Section IV) and the **Mutable Span + `__span__`** primitive above
 ### Enums
 
 **Done.** Int-based enums (`enum class` in C++) with `auto()`, `Enum.member` access,
-cross-module import, `==`/`!=` comparison, `print()` support, `isinstance()` narrowing.
+cross-module import, `==`/`!=` comparison, `print()` support, `isinstance()` narrowing,
+and methods (instance / `@property` / `@staticmethod` / `@classmethod`, emitted on a
+companion struct wrapping the member by value, since a C++ `enum class` carries no
+members).
 Stepping stone to union types and match/case.
 
 ---

@@ -1,0 +1,1 @@
+main.py:11: error: 'label' on enum 'Color': decorator 'cache' is not supported on enum methods

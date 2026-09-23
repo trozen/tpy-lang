@@ -80,6 +80,7 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     return_const_projected,
+    unwrap_qualifiers,
     AnyType,
     BIGINT,
     BOOL,
@@ -172,7 +173,10 @@ from ...typesys import (is_polymorphic_subclass_fact,
 from ...codegen_cpp.type_resolution import resolve_stmt_recorded_type
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp import emit_prims, resumable_cfg as rcfg
-from ...liveness import stmts_terminate, try_terminates_ignoring_finally
+from ...liveness import (
+    collect_nested_def_nonlocal_rebinds, stmts_terminate,
+    try_terminates_ignoring_finally, tuple_literal_leaves,
+)
 from ...value_category import (
     call_returns_cpp_ref, for_source_is_rvalue, is_rvalue_source, wants_move,
     property_access_returns_cpp_ref,
@@ -255,6 +259,8 @@ from ..nodes import (
     THIRResumableReturn,
     THIRReturn,
     THIRFinallyDeferredReturn,
+    DeferredPartKind,
+    DeferredTuplePart,
     THIRTupleLiteral,
     THIRTupleStorageAlias,
     THIRSelf,
@@ -554,6 +560,8 @@ from .checks import (
     _user_iterator_iterable,
 )
 from .expressions import (
+    _subscript_yields_borrow_ptr,
+    _self_capture_cpp,
     _whole_optional_bare,
     _is_own_param,
     _lower_module_var,
@@ -2366,8 +2374,9 @@ def _standalone_unpack_target_binds(
       aims at static storage, as `g: T = other_global` does.
 
     A borrow (`is_ref`) F1-record target aliases the source tuple element,
-    lifted through the caller's `tuple_to_pointer` source wrap; other borrow
-    targets stay deferred."""
+    lifted through the caller's `tuple_to_pointer` source wrap ("ref"), or
+    binds a pointer local at it when sema marked the name rebound ("ptr"); other
+    borrow targets stay deferred."""
     out: list[tuple[TpyType | None, str | None]] = []
     for i, name in enumerate(stmt.targets):
         if name is None:
@@ -2383,6 +2392,10 @@ def _standalone_unpack_target_binds(
             # `-> tuple[Tree[int32], int32]`): the capture's slot IS a live
             # `X&`, so the target re-binds it through `unwrap_ref` -- a
             # reference alias. The OWNED flavor moves out instead ("move").
+            # A reassigned name would write through that alias; the scalar
+            # wrapper alias has no pointer-local form either, so both reject.
+            if i < len(stmt.is_rebound) and stmt.is_rebound[i]:
+                return None
             out.append((tt, "unwrap_ref"))
             continue
         if i < len(stmt.is_ref) and stmt.is_ref[i]:
@@ -2405,7 +2418,10 @@ def _standalone_unpack_target_binds(
                     continue
                 return None
             if record_like(tt, analyzer):
-                out.append((tt, "ref"))
+                # A reassigned name rebinds; a reference alias would write
+                # the new value THROUGH into the element's referent.
+                rebound = i < len(stmt.is_rebound) and stmt.is_rebound[i]
+                out.append((tt, "ptr" if rebound else "ref"))
             elif _optional_ptr_borrow(tt, analyzer) is not None:
                 out.append((tt, "opt_ptr"))
             else:
@@ -2474,6 +2490,15 @@ def _standalone_unpack_target_binds(
         out.append((tt, "cref" if cref else "value"))
     return out
 
+def _register_rebound_unpack_target(name: str, lc: '_LowerCtx') -> None:
+    """A rebound borrow unpack target is the reassigned scalar alias's
+    pointer local: a later `x = y` re-points it, and an rvalue rebind takes
+    the rebind slot."""
+    lc.pointers.add(name)
+    if name in lc.prescan.rvalue_reassigned:
+        lc.rebind_slot_locals.add(name)
+
+
 def _lvalue_tuple_ternary(v: TpyExpr, declared: dict[str, TpyType],
                           pointers: AbstractSet[str],
                           narrowed: AbstractSet[str], analyzer, *,
@@ -2488,10 +2513,10 @@ def _lvalue_tuple_ternary(v: TpyExpr, declared: dict[str, TpyType],
     A str/bytes element is the carve-out, at any depth of the element tree:
     its target is a VIEW into the holder, so a const-ref holder makes the
     target alias the SELECTED SOURCE and a reseat of that source before the
-    read shows the new value where CPython keeps the old (the class of
-    BUGS.md#tuple-unpack-view-outlives-reseat, reachable here through the
-    select). Such a tuple keeps the owning holder, whose copy the view
-    outlives.
+    read shows the new value where CPython keeps the old (sema demotes a
+    view target on a reseat of its source only for a NAME source, not
+    through the select). Such a tuple keeps the owning holder, whose copy
+    the view outlives.
 
     `owning_targets` is the position's answer to the question the carve-out
     is really asking: a frame field and a module-level global are OWNING
@@ -5613,12 +5638,15 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     # (`self_captures_this`: the body renders the receiver through `this`, so
     # the capture is the pointer -- alias semantics in every capture mode).
     # Only the PLAIN method receiver is admitted; the resumable `__self` frame
-    # member spells its own form.
-    self_capture_this = (lc.self_receiver == "self" and lc.self_cpp == "this"
-                         and lc.self_is_pointer)
-    if "self" in stmt.captured_names and not self_capture_this:
+    # member spells its own form. An enum companion's `self` is a by-value
+    # member of a temporary wrapper, so it is copied (`self = self`).
+    self_capturable = ((lc.self_receiver == "self" and lc.self_cpp == "this"
+                        and lc.self_is_pointer)
+                       or lc.member_self)
+    if "self" in stmt.captured_names and not self_capturable:
         note_detail("nesteddef.self_capture")
         raise ThirUnsupported(stmt_reject_reason(stmt))
+    self_capture = _self_capture_cpp(lc)
     # A narrowed capture's reads rename to an OUTER extraction alias (or the
     # poly-narrow `(*__p_ptr)` spelling) the capture list does not carry, so
     # it rejects.
@@ -5635,7 +5663,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
             parts = []
             for n in stmt.captured_names:
                 if n == "self":
-                    parts.append("this")
+                    parts.append(self_capture)
                     continue
                 cpp_n = escape_cpp_name(n)
                 if n in stmt.ref_captures:
@@ -5647,7 +5675,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
             capture = f"[{', '.join(parts)}]"
         else:
             capture = "[" + ", ".join(
-                "this" if n == "self" else f"&{escape_cpp_name(n)}"
+                self_capture if n == "self" else f"&{escape_cpp_name(n)}"
                 for n in stmt.captured_names) + "]"
     else:
         capture = "[]"
@@ -7488,6 +7516,89 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                      else TupleSourceBind.RVALUE), loc=loc)
 
 
+def _alias_into_rebound_tuple_slot(stmt: TpyVarDecl, init: TpySubscript,
+                                   lc: '_LowerCtx',
+                                   declared: dict[str, TpyType]) -> bool:
+    """Whether the alias `stmt` (`a = root[i].f[j]...`) points into a tuple
+    held by value in a frame slot that a rebind can overwrite while the alias
+    is live. The path of subscript and field hops from the root to the
+    element must cross a tuple (the root counts); a first hop that yields a
+    borrowed pointer ends it, since the element then lives outside the slot.
+    Paths through records and containers only are NOT covered, and a rebind
+    of such a root clobbers a multi-hop alias the same way
+    (BUGS.md#nested-list-literal-alias-rebind-clobbers)."""
+    hops: list[TpyExpr] = []
+    e: TpyExpr = init
+    while isinstance(e, (TpySubscript, TpyFieldAccess)):
+        hops.append(e)
+        e = e.obj
+    if not isinstance(e, TpyName):
+        return False
+    root = e.name
+    if root not in lc.frame_slots:
+        return False
+    hops.reverse()
+    if (isinstance(hops[0], TpySubscript)
+            and _subscript_yields_borrow_ptr(hops[0], lc)):
+        return False
+    holders = [declared.get(root)] + [lc.analyzer.get_expr_type(h)
+                                      for h in hops[:-1]]
+    if not any(isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
+                          TupleType)
+               for t in holders if t is not None):
+        return False
+    # The reassigned-var scan does not see a nested def's `nonlocal` rebind.
+    if (root not in lc.prescan.reassigned
+            and root not in collect_nested_def_nonlocal_rebinds(
+                lc.func.body)):
+        return False
+    return _rebind_can_follow(lc.func.body, stmt, root)
+
+
+def _rebind_can_follow(body: list[TpyStmt], at: TpyStmt, name: str) -> bool:
+    """Whether some write of `name` can execute after statement `at`: one
+    later in program order, or one in the BODY of a loop that also encloses
+    `at` (the back edge runs it again after `at`; a loop's `else` runs once,
+    after the body). A nested def that rebinds the name through `nonlocal`
+    counts wherever it sits, since it can be called at any point. True when
+    `at` is not found, the safe answer for the caller's reject."""
+    at_loops: 'tuple[int, ...] | None' = None
+    writes: list[tuple[bool, tuple[int, ...]]] = []
+
+    def walk(stmts: list[TpyStmt], loops: tuple[int, ...]) -> None:
+        nonlocal at_loops
+        for s in stmts:
+            if s is at:
+                at_loops = loops
+            if isinstance(s, TpyNestedDef):
+                if name in collect_nested_def_nonlocal_rebinds([s]):
+                    writes.append((True, loops))
+                continue
+            if name in _written_names(s):
+                writes.append((at_loops is not None, loops))
+            if isinstance(s, (TpyForEach, TpyWhile)):
+                walk(s.body, loops + (id(s),))
+                walk(s.orelse or [], loops)
+                continue
+            if isinstance(s, TpyTry):
+                # `sub_bodies()` lists `finally` before the handlers, but it
+                # runs after all of them.
+                walk(s.try_body, loops)
+                for h in s.handlers:
+                    walk(h.body, loops)
+                walk(s.else_body, loops)
+                walk(s.finally_body, loops)
+                continue
+            for b in s.sub_bodies():
+                walk(b, loops)
+
+    walk(body, ())
+    if at_loops is None:
+        return True
+    return any(after or set(loops) & set(at_loops)
+               for after, loops in writes)
+
+
 def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
                       declared: dict[str, TpyType]) -> THIRStmt:
     """Pointer-alias frame bind (`a = items[0]` -> `a = &(<lvalue>);`):
@@ -7510,7 +7621,22 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
             # suspension exactly as the one-hop receiver's does.
             and _chained_subscript_recv_type(
                 init.obj, declared, analyzer, lc.pointers) is not None):
+        elem_is_ptr = _subscript_yields_borrow_ptr(init, lc)
+        if _alias_into_rebound_tuple_slot(stmt, init, lc, declared):
+            # An element held BY VALUE in a tuple frame slot the body can
+            # rebind after this alias: the rebind writes the new tuple into
+            # the same slot, so the alias would observe the new element
+            # where CPython's keeps the old object. Taking storage of its
+            # own per rebind needs the per-element ownership verdict at each
+            # site (BUGS.md#resumable-alias-identity).
+            note_detail("alias.rebound_tuple_slot_elem")
+            raise ThirUnsupported("res.alias_bind")
         src = _lower_expr(init, lc, declared, subscript_prechecked=True)
+        if elem_is_ptr and isinstance(src, THIRSubscript):
+            # The element already IS the `T*`: the address-of below must
+            # re-address its pointee (`&((*std::get<0>(p)))`), not the
+            # element slot, which would make a `T**`.
+            src = replace(src, deref=True)
     elif (isinstance(init, TpyName) and init.name in lc.alias_ptr_locals):
         # An alias-of-an-alias bind (`a = __unpack_0_0;` -- the desugared
         # tuple-literal unpack's user-name assign): both fields are `T*`,
@@ -8048,14 +8174,7 @@ def _finally_deferred_recipe(
     if not isinstance(value, TpyName):
         return None
     name = value.name
-    # Any rename layer would change the name's base render; none of those
-    # shapes is stamped today -- reject rather than
-    # bake the wrong spelling. A forwarded proto-param alias has no storage
-    # of its own, so its reads resolve to the backing param -- another rename.
-    if (name in lc.narrow.narrowed or name in lc.narrow.spelled
-            or name in lc.walrus_slot_locals or name in lc.walrus_predeclared
-            or name in lc.forwarded_map
-            or name not in declared):
+    if _deferred_name_renamed(name, lc, declared):
         return None
     ret = _fn_return_type(lc)
     ret_u = unwrap_ref_type(ret) if ret is not None else None
@@ -8073,21 +8192,12 @@ def _finally_deferred_recipe(
         if isinstance(ret_u, (OptionalType, TupleType, UnionType)):
             return None
         return THIRFinallyDeferredReturn(
-            capture=THIRSelf(result_type=declared[name], form=Form.BORROW,
-                             cpp=lc.self_cpp, deref=lc.self_is_pointer,
-                             loc=getattr(value, "loc", None)),
+            capture=_deferred_self_base(value, lc, declared),
             indirect=False, optional_move=False, loc=loc)
-    indirect = name in lc.pointers
-    # A resumable frame slot reads `(*name)`, which is the local's own
-    # spelling rather than a pointer wrap -- so it rides the capture
-    # expression and a C++-local shadow of the field can still suppress it at
-    # emit. The two are exclusive by frame classification; a name carrying
-    # both would render a double deref, so refuse it rather than guess.
-    frame_slot = name in lc.frame_slots
-    if frame_slot and indirect:
+    captured = _deferred_capture_base(value, lc, declared)
+    if captured is None:
         return None
-    base = THIRName(result_type=declared[name], name=name, deref=frame_slot,
-                    loc=getattr(value, "loc", None))
+    base, indirect = captured
     if isinstance(ret_u, OptionalType) and not ret_u.uses_pointer_repr():
         if not indirect:
             return None
@@ -8099,8 +8209,192 @@ def _finally_deferred_recipe(
                                      optional_move=False, loc=loc)
 
 
+def _deferred_self_base(value: TpyName, lc: _LowerCtx,
+                        declared: dict) -> THIRSelf:
+    """The consuming receiver's capture base: the receiver read every other
+    `self` site emits (there is no C++ local called `self`)."""
+    return THIRSelf(result_type=declared[value.name], form=Form.BORROW,
+                    cpp=lc.self_cpp, deref=lc.self_is_pointer,
+                    loc=getattr(value, "loc", None))
+
+
+def _deferred_name_renamed(name: str, lc: _LowerCtx, declared: dict) -> bool:
+    """Whether a deferred local reads through a rename layer (a narrowing, a
+    walrus slot, a forwarded proto-param alias), whose base render the
+    capture's `&(name)` would get wrong -- both recipes decline such a
+    name, which rejects the return."""
+    if name == lc.self_receiver:
+        return name not in declared
+    return (name in lc.narrow.narrowed or name in lc.narrow.spelled
+            or name in lc.walrus_slot_locals or name in lc.walrus_predeclared
+            or name in lc.forwarded_map
+            or name not in declared)
+
+
+def _deferred_capture_base(value: TpyName, lc: _LowerCtx, declared: dict
+                           ) -> 'tuple[THIRName, bool] | None':
+    """The deferred local's own render and whether it is pointer-bound (the
+    capture then takes the address of `(*name)`); None when the name carries
+    a spelling the capture cannot take the address of."""
+    name = value.name
+    if name == lc.self_receiver and name in declared:
+        return _deferred_self_base(value, lc, declared), False
+    indirect = name in lc.pointers
+    # A resumable frame slot reads `(*name)`, which is the local's own
+    # spelling rather than a pointer wrap -- so it rides the capture
+    # expression and a C++-local shadow of the field can still suppress it at
+    # emit. The two are exclusive by frame classification; a name carrying
+    # both would render a double deref, so refuse it rather than guess.
+    frame_slot = name in lc.frame_slots
+    if frame_slot and indirect:
+        return None
+    if name not in declared:
+        return None
+    return (THIRName(result_type=declared[name], name=name,
+                     deref=frame_slot, loc=getattr(value, "loc", None)),
+            indirect)
+
+
+def _peel_tpy_coerce(e: TpyExpr) -> TpyExpr:
+    while isinstance(e, TpyCoerce):
+        e = e.expr
+    return e
+
+
+def _finally_deferred_tuple_recipe(
+        ret: TpyReturn, value: 'THIRExpr | None', lc: _LowerCtx,
+        declared: dict, loc) -> 'THIRFinallyDeferredReturn | None':
+    """The per-member form of the scalar recipe for a returned tuple literal
+    (sema's `finally_deferred_leaves`), built over the literal's ordinary
+    lowering `value`: a deferred member is captured by pointer, every other
+    member is evaluated into a temporary before the chain, in the literal's
+    order, and the tuple is rebuilt after it. None when the lowered literal
+    is not a shape the parts can be read off."""
+    src = _peel_tpy_coerce(ret.value)
+    leaf_names = {path: _peel_tpy_coerce(leaf)
+                  for path, leaf in tuple_literal_leaves(src)}
+    deferred = set(ret.finally_deferred_leaves)
+    if () in deferred:
+        # `return t`: the scalar recipe over the whole local, when its
+        # storage is the return's own C++ type; a borrow-form or differently
+        # spelled local would need a conversion the capture cannot hold.
+        inner = value.value if isinstance(value, THIRMove) else value
+        ret_t = _fn_return_type(lc)
+        if not (isinstance(src, TpyName) and isinstance(inner, THIRName)
+                and src.name in lc.storage_tuple_locals
+                and src.name in declared and ret_t is not None
+                and lc.render_type(declared[src.name])
+                == lc.render_type(unwrap_ref_type(ret_t))):
+            return None
+        captured = _deferred_capture_base(src, lc, declared)
+        if captured is None:
+            return None
+        return THIRFinallyDeferredReturn(capture=captured[0],
+                                         indirect=captured[1], loc=loc)
+    if not all(isinstance(leaf_names.get(p), TpyName) for p in deferred):
+        return None
+
+    def build(node: THIRExpr, path: tuple[int, ...]
+              ) -> 'tuple[str, tuple[DeferredTuplePart, ...]] | None':
+        if isinstance(node, THIRTupleLiteral):
+            tt = unwrap_qualifiers(node.result_type)
+            if not isinstance(tt, TupleType):
+                return None
+            cpp = tt.to_cpp()
+            elem_cpps = [unwrap_qualifiers(et).to_cpp()
+                         for et in tt.element_types]
+            wraps: list[str | None] = [None] * len(node.elements)
+        elif isinstance(node, THIRBorrowTupleLiteral):
+            cpp = node.spelled_cpp
+            elem_cpps = list(node.elem_cpps)
+            ew = node.elem_wraps or (None,) * len(node.elements)
+            wraps = ["&({0})" if lift else w
+                     for lift, w in zip(node.addr_of, ew)]
+        else:
+            return None
+        if len(elem_cpps) != len(node.elements):
+            return None
+        parts: list[DeferredTuplePart] = []
+        for i, elem in enumerate(node.elements):
+            p = path + (i,)
+            if p in deferred and _deferred_name_renamed(
+                    leaf_names[p].name, lc, declared):
+                # Declined like the scalar: an eager copy would lose the
+                # finally's mutation silently.
+                return None
+            elif p in deferred:
+                inner = elem.value if isinstance(elem, THIRMove) else elem
+                if (not isinstance(inner, (THIRName, THIRSelf))
+                        or wraps[i] is not None):
+                    return None
+                captured = _deferred_capture_base(leaf_names[p], lc,
+                                                  declared)
+                if captured is None:
+                    return None
+                base, indirect = captured
+                parts.append(DeferredTuplePart(
+                    kind=DeferredPartKind.CAPTURE, expr=base,
+                    indirect=indirect))
+            elif any(d[:len(p)] == p for d in deferred):
+                if wraps[i] is not None:
+                    return None
+                sub = build(elem, p)
+                if sub is None:
+                    return None
+                parts.append(DeferredTuplePart(
+                    kind=DeferredPartKind.TUPLE, cpp_type=sub[0],
+                    parts=sub[1]))
+            elif (wraps[i] is None
+                  and isinstance(_peel_thir_coerce(elem), THIRLiteral)):
+                parts.append(DeferredTuplePart(kind=DeferredPartKind.INLINE,
+                                               expr=elem))
+            else:
+                et = getattr(elem, "result_type", None)
+                trivial = wraps[i] is not None or (
+                    et is not None and unwrap_qualifiers(et).is_value_type()
+                    and not unwrap_qualifiers(et).is_expensive_copy())
+                parts.append(DeferredTuplePart(
+                    kind=DeferredPartKind.TEMP, expr=elem,
+                    cpp_type=elem_cpps[i], wrap=wraps[i], move=not trivial))
+        return cpp, tuple(parts)
+
+    built = build(value, ()) if value is not None else None
+    if built is None:
+        return None
+    return THIRFinallyDeferredReturn(tuple_cpp=built[0], tuple_parts=built[1],
+                                     loc=loc)
+
+
+def _peel_thir_coerce(e: THIRExpr) -> THIRExpr:
+    while isinstance(e, THIRCoerce):
+        e = e.expr
+    return e
+
+
+def _lower_deferred_tuple_return(stmt: TpyReturn, scope: '_LowerScope',
+                                 lc: _LowerCtx, declared: dict,
+                                 loc) -> THIRStmt:
+    """A stamped tuple return: the value lowers through the ordinary return
+    arms, then its members are split into the deferred parts. Sema stamps
+    only shapes the parts can be read off, so a value that does not split
+    rejects rather than falling back to an eager capture, which would copy
+    members the finally chain can still change."""
+    eager = _lower_stmt_dispatch(stmt, scope, deferred_tuple_eager=True)
+    if not (isinstance(eager, THIRReturn) and eager.value is not None):
+        note_detail("return.finally_deferred_tuple")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    deferred = _finally_deferred_tuple_recipe(stmt, eager.value, lc,
+                                              declared, loc)
+    if deferred is None:
+        note_detail("return.finally_deferred_tuple")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    _witness("ret.finally_deferred_tuple")
+    return deferred
+
+
 def _resumable_deferred_recipe(ret: TpyReturn, lc: _LowerCtx,
-                               declared: dict
+                               declared: dict,
+                               value: 'THIRExpr | None' = None,
                                ) -> 'THIRFinallyDeferredReturn | None':
     """The finally-deferred capture recipe a routed frame's return
     scaffolding consults, or None when sema did not stamp this return.
@@ -8111,8 +8405,12 @@ def _resumable_deferred_recipe(ret: TpyReturn, lc: _LowerCtx,
     that no gate can observe."""
     if not ret.finally_deferred_capture:
         return None
-    recipe = _finally_deferred_recipe(ret.value, lc, declared,
-                                      getattr(ret, "loc", None))
+    if ret.finally_deferred_leaves:
+        recipe = _finally_deferred_tuple_recipe(ret, value, lc, declared,
+                                                getattr(ret, "loc", None))
+    else:
+        recipe = _finally_deferred_recipe(ret.value, lc, declared,
+                                          getattr(ret, "loc", None))
     if recipe is None:
         note_detail("return.finally_deferred_capture")
         raise ThirUnsupported(stmt_reject_reason(ret))
@@ -8399,7 +8697,8 @@ def _augassign_recv_is_accessor(target: TpyExpr) -> bool:
     return False
 
 
-def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
+def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
+                         deferred_tuple_eager: bool = False) -> THIRStmt:
     lc = scope.lc
     declared = scope.declared
     analyzer = lc.analyzer
@@ -8469,9 +8768,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported("res.leaf_return")
             value = (_lower_resumable_return_value(stmt, lc, declared)
                      if _return_carries_value(stmt, lc) else None)
+            deferred = _resumable_deferred_recipe(stmt, lc, declared, value)
             node = THIRResumableReturn(
-                ast_stmt=stmt, value=value, loc=loc,
-                deferred=_resumable_deferred_recipe(stmt, lc, declared))
+                ast_stmt=stmt, value=value, loc=loc, deferred=deferred)
             lc.nested_returns.append(node)
             _witness("res.nested_return")
             return node
@@ -12667,7 +12966,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 value=THIRMove(result_type=src.result_type, value=src,
                                form=src.form, loc=loc),
                 loc=loc)
-        if stmt.finally_deferred_capture:
+        if (stmt.finally_deferred_capture and stmt.finally_deferred_leaves
+                and not deferred_tuple_eager):
+            return _lower_deferred_tuple_return(stmt, scope, lc, declared,
+                                                loc)
+        if stmt.finally_deferred_capture and not stmt.finally_deferred_leaves:
             deferred = _finally_deferred_recipe(stmt.value, lc, declared, loc)
             if deferred is None:
                 # Stamped but outside the two recipes (a rename layer on the
@@ -15344,6 +15647,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 declared[name] = tt
                 _witness("stmt.tuple_unpack.unwrap_ref_target")
                 continue
+            if bind == "ptr":
+                target_cpps.append(None)
+                bind_tags.append(bind)
+                declared[name] = tt
+                _register_rebound_unpack_target(name, lc)
+                _witness("stmt.tuple_unpack.ptr_target")
+                continue
             if bind == "ptr_variant":
                 # Own[A | B] element: the target binds the POINTER variant
                 # and the element lifts through `to_ptr_variant`. Registered
@@ -15420,7 +15730,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         _witness("stmt.tuple_unpack")
         source_wrap_cpp = None
         ref_name_source = False
-        if any(b in ("ref", "opt_ptr", "global_ptr") for b in bind_tags):
+        if any(b in ("ref", "ptr", "opt_ptr", "global_ptr")
+               for b in bind_tags):
             # Borrow/opt-ptr targets read `std::get<i>` off the borrow pointer
             # tuple. Two source forms qualify, both name-only:
             #   * a value-tuple STORAGE local -- lifted via tuple_to_pointer to
@@ -15569,9 +15880,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # (`const auto& __tup_N = (*r);`) -- the deref verdict is
                 # the name arm's, never spelled here, and the const-ref
                 # bind keeps a str element from copying into the holder.
-                # A view target aliases that storage, so a reseat of the
-                # source while the target is live is UB:
-                # BUGS.md#tuple-unpack-view-outlives-reseat.
+                # A view target aliases that storage; sema registers it as
+                # a borrower of `r`, so a reseat of `r` while it is live
+                # makes it own.
                 narrowed_vot_src = _lower_expr(stmt.value, lc, declared)
                 _witness("stmt.tuple_unpack.narrowed_value_opt_source")
             return THIRTupleUnpack(
@@ -15792,7 +16103,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         if name in declared:
                             raise ThirUnsupported("stmt.tuple_unpack")
                         target_cpps.append(cpp)
-                        target_binds.append("ref")
+                        if i < len(up.is_rebound) and up.is_rebound[i]:
+                            target_binds.append("ptr")
+                            _register_rebound_unpack_target(name, lc)
+                            _witness("foreach.ptr_unpack_target")
+                        else:
+                            target_binds.append("ref")
                     elif name in declared:
                         target_cpps.append(None)
                         target_binds.append("assign")
@@ -15823,7 +16139,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # ELEMENT flags, not the binds: a discarded owned
                     # element still forces the copy head.
                     head_bind = TupleSourceBind.NAME_COPY
-                if any(b in ("ref", "opt_ptr", "frame_ptr_elem")
+                if any(b in ("ref", "ptr", "opt_ptr", "frame_ptr_elem")
                        for b in target_binds):
                     if route.iter_proto:
                         # An iter-proto element (`std::tuple<..., T*>` off a

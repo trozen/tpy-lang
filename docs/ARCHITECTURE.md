@@ -560,7 +560,10 @@ writing one.
   behavior lives in `TypeDef`, the subclass has nothing left to
   justify its existence.
 - **Enums are `NominalType`.** Members and underlying type belong
-  on `TypeDef.enum`, not on a separate subclass.
+  on `TypeDef.enum`, not on a separate subclass. An enum's methods live on
+  a companion record (`EnumInfo.companion`) that method and property
+  lookup reach through `TypeRegistry.receiver_record`; `get_record_for_type`
+  never answers it, so no record gate sees an enum as a record.
 - **Wrappers stay structural.** `Ptr`, `Own`, `Optional`, `Union`,
   `Tuple`, `Callable`, `Readonly` all have structural identity.
 - **Literal types are structural.** `IntLiteralType(value)` /

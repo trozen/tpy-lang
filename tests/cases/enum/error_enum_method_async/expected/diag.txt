@@ -1,0 +1,1 @@
+main.py:10: error: 'fetch' on enum 'Color': async methods on enums are not supported yet -- use a module-level function taking the enum

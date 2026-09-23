@@ -59,6 +59,7 @@ from .overloads import (
 from .context import _root_name_of_expr
 from .statements import _is_self_call_deferred
 from .scope_tracker import lend_roots
+from .compatibility import TupleSink
 from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import partial_substitute, post_substitute_hint, seeded_arg_hint
 from .send_chain import why_not_send, why_not_sync, render_chain
@@ -3014,21 +3015,15 @@ class CallAnalyzer:
 
         Each Own-wrapped element must be at last use, an explicit copy(),
         a fresh rvalue (literal/constructor), or None. Mirrors the
-        per-element check the return path applies via own_tuple_target.
+        per-element check the return path applies via own_tuple_target; a
+        member of a nested value tuple is owned storage inside the owned
+        argument, so it takes the storage copy warning.
         """
         target = own_tuple_target(ptype)
         if target is None:
             return
-        for i, et in enumerate(target.element_types):
-            if not isinstance(et, OwnType):
-                continue
-            if i >= len(literal.elements):
-                continue
-            elem = literal.elements[i]
-            self.compat.check_own_lvalue_into_own(
-                et, elem, f"argument '{pname}' tuple element {i}",
-                action="pass",
-            )
+        self.compat.check_tuple_literal_members(
+            literal, target, TupleSink.ARG, "owned storage", pname=pname)
 
     def _derive_ctor_arg_hints(self, expr: TpyCall) -> list[TpyType | None]:
         """Derive per-argument type hints from __init__ param types.

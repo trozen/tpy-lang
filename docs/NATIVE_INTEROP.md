@@ -230,6 +230,7 @@ class Tag(Enum):
 **Restrictions.**
 - Only `@native` is allowed on enum classes; other decorators and any `@native` kwargs (`binding=`, `function=`, `cpp_return_type=`) are rejected.
 - `auto()` is idiomatic; `native_member("cpp_name")` is also implicit. Explicit integer values are accepted and are verified against the C++ side via a per-member `static_assert` in the generated `.cpp`. Mixing `auto()`/`native_member()` with explicit integers in the same body is rejected.
+- Methods in a `@native` enum body are rejected, as bodied methods on a `@native` class are: a `@native` type is declaration-only. Use a module-level function taking the enum.
 - Nested `@native` enums (inside a class body) are not supported. Declare them at module top level using the fully-qualified C++ name (e.g. `@native("ns::Container::Kind") class Kind(Enum): ...`) -- the qname encodes the C++ nesting, so TPy structure does not need to mirror C++ structure.
 - `IntEnum` with an explicit mixin (`class E(int8, Enum):`) selects the underlying integer type; it must match the C++ side's underlying type.
 - Multiple TPy modules binding to the same C++ enum produce duplicate `EnumUtil<E>` definitions at link time (same constraint as duplicate `@native` records). Declare each binding in one TPy module and import from there.

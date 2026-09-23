@@ -346,12 +346,13 @@ int main() {
 """
 
 
-def _toolchain_probe_id(compiler: list[str]) -> str | None:
-    """Probe-cache key: resolved binary path + stat + probe source + flags.
+def compiler_binary_identity(compiler: list[str]) -> tuple[str, int, int] | None:
+    """(resolved path, size, mtime_ns) of the compiler binary.
 
-    Same identity notion as build_cache.toolchain_entry: a replaced binary
-    at the same path (new size/mtime) re-probes; an untouched one never
-    does. None when the binary cannot be resolved at all.
+    The one identity notion for the PCH stamp, the toolchain probe cache and
+    build_cache.toolchain_entry: a replaced binary at the same path (new
+    size/mtime) is a different compiler; an untouched one never is. None
+    when the binary cannot be resolved at all.
     """
     argv0 = compiler[0]
     if os.path.sep in argv0:
@@ -364,9 +365,17 @@ def _toolchain_probe_id(compiler: list[str]) -> str | None:
         st = os.stat(resolved)
     except OSError:
         return None
+    return resolved, st.st_size, st.st_mtime_ns
+
+
+def _toolchain_probe_id(compiler: list[str]) -> str | None:
+    """Probe-cache key: compiler binary identity + probe source + flags."""
+    ident = compiler_binary_identity(compiler)
+    if ident is None:
+        return None
+    resolved, size, mtime_ns = ident
     key = "\0".join(
-        [resolved, str(st.st_size), str(st.st_mtime_ns),
-         *compiler[1:], _PROBE_SOURCE])
+        [resolved, str(size), str(mtime_ns), *compiler[1:], _PROBE_SOURCE])
     return hashlib.sha256(key.encode()).hexdigest()[:24]
 
 
@@ -670,52 +679,98 @@ def pch_is_path_sensitive(config: CppCompilerConfig) -> bool:
     return _detect_compiler_family(tuple(config.compiler)) != "gcc"
 
 
-def get_or_build_pch(
-    config: CppCompilerConfig,
-    runtime_include_dir: Path,
-    opt_flags: list[str],
-    pch_dir: Path,
-) -> Path | None:
-    """Return path to cached PCH header (with .gch next to it), or None on failure.
-
-    The PCH is stored in pch_dir (typically inside the build output directory).
-    Rebuilds only when runtime headers are newer than the cached .gch.
-    """
-    pch_dir.mkdir(parents=True, exist_ok=True)
-    pch_header = pch_dir / "tpy_pch.hpp"
-    pch_gch = pch_dir / "tpy_pch.hpp.gch"
-
-    # Staleness check
-    if pch_gch.exists():
-        pch_mtime = pch_gch.stat().st_mtime
-        runtime_tpy = runtime_include_dir / "tpy"
-        stale = any(h.stat().st_mtime > pch_mtime
-                    for h in runtime_tpy.glob("**/*.hpp"))
-        if not stale:
-            return pch_header
-
-    pch_header.write_text('#include <tpy/tpy.hpp>\n')
+def _pch_family_flags(config: CppCompilerConfig) -> list[str]:
     # Clang embeds the input header's mtime in the .gch and rejects the PCH
     # if it differs at consume time, even when content is byte-identical. The
     # cache that stores this .gch is content-addressed, so a fresh checkout
     # that only bumps tpy.hpp's mtime would invalidate every cached clang PCH.
     # -fno-pch-timestamp drops the timestamp so validation falls to content
     # (what ccache does); GCC already validates by content and needs nothing.
-    family_flags: list[str] = []
     if _detect_compiler_family(tuple(config.compiler)) == "clang":
-        family_flags = ["-Xclang", "-fno-pch-timestamp"]
-    cmd = [
+        return ["-Xclang", "-fno-pch-timestamp"]
+    return []
+
+
+def _pch_build_flags(config: CppCompilerConfig, runtime_include_dir: Path,
+                     opt_flags: list[str]) -> list[str]:
+    """The PCH compile command up to (excluding) the input/output paths."""
+    return [
         *config.compiler, f"-std={config.std}",
         *config.extra_flags,
         *config.warn_flags,
         *opt_flags,
-        *family_flags,
+        *_pch_family_flags(config),
         "-I", str(runtime_include_dir),
+    ]
+
+
+def _pch_stamp(config: CppCompilerConfig, runtime_include_dir: Path,
+               opt_flags: list[str]) -> str:
+    """Everything a .gch is only valid for: the exact build command (compiler,
+    -std, flags, include root) plus the compiler binary's identity and the
+    resolved include root. Stored next to the .gch; a mismatch means the .gch
+    belongs to another checkout or configuration and must not be consumed."""
+    return repr((
+        _pch_build_flags(config, runtime_include_dir, opt_flags),
+        compiler_binary_identity(config.compiler),
+        str(runtime_include_dir.resolve()),
+    ))
+
+
+def pch_is_current(
+    config: CppCompilerConfig,
+    runtime_include_dir: Path,
+    opt_flags: list[str],
+    pch_dir: Path,
+) -> bool:
+    """True when pch_dir holds a .gch built for exactly this configuration
+    and include root, and no runtime header changed since."""
+    pch_gch = pch_dir / "tpy_pch.hpp.gch"
+    stamp_path = pch_dir / "tpy_pch.stamp"
+    if not (pch_gch.exists() and (pch_dir / "tpy_pch.hpp").exists()):
+        return False
+    try:
+        if stamp_path.read_text() != _pch_stamp(config, runtime_include_dir, opt_flags):
+            return False
+    except OSError:
+        return False
+    pch_mtime = pch_gch.stat().st_mtime
+    runtime_tpy = runtime_include_dir / "tpy"
+    return not any(h.stat().st_mtime > pch_mtime
+                   for h in runtime_tpy.glob("**/*.hpp"))
+
+
+def get_or_build_pch(
+    config: CppCompilerConfig,
+    runtime_include_dir: Path,
+    opt_flags: list[str],
+    pch_dir: Path,
+    force: bool = False,
+) -> Path | None:
+    """Return path to cached PCH header (with .gch next to it), or None on failure.
+
+    The PCH is stored in pch_dir (typically inside the build output directory).
+    Reused only when pch_is_current(); `force` rebuilds unconditionally.
+    """
+    pch_dir.mkdir(parents=True, exist_ok=True)
+    pch_header = pch_dir / "tpy_pch.hpp"
+    pch_gch = pch_dir / "tpy_pch.hpp.gch"
+    stamp_path = pch_dir / "tpy_pch.stamp"
+
+    if not force and pch_is_current(config, runtime_include_dir, opt_flags, pch_dir):
+        return pch_header
+
+    # A failed build must not leave a stamp certifying a stale .gch.
+    stamp_path.unlink(missing_ok=True)
+    pch_header.write_text('#include <tpy/tpy.hpp>\n')
+    cmd = [
+        *_pch_build_flags(config, runtime_include_dir, opt_flags),
         "-x", "c++-header",
         str(pch_header), "-o", str(pch_gch),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
+        stamp_path.write_text(_pch_stamp(config, runtime_include_dir, opt_flags))
         return pch_header
     return None
 

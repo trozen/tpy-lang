@@ -1,0 +1,21 @@
+plain payload-number-1-long-enough-to-defeat-sso 1 2
+narrowed found-payload-1-long-enough-to-defeat-sso 1
+narrowed_none found-payload-3-long-enough-to-defeat-sso 3
+bytes_elem b'bytes-payload-long-enough-to-defeat-small-buffers-1' 1
+loop_reseat payload-number-0-long-enough-to-defeat-sso 0
+loop_reseat payload-number-10-long-enough-to-defeat-sso 10
+loop_reseat payload-number-11-long-enough-to-defeat-sso 11
+closure_reseat payload-number-1-long-enough-to-defeat-sso 1
+closure_subscript payload-number-1-long-enough-to-defeat-sso
+del_unpack payload-number-1-long-enough-to-defeat-sso 1
+del_subscript payload-number-2-long-enough-to-defeat-sso
+del_field named-holder-long-enough-to-defeat-sso
+del_method_view method-view-holder-long-enough-to-defeat-sso
+del_hoisted_method_view hoisted-method-view-holder-long-enough-sso
+nested_del payload-number-1-long-enough-to-defeat-sso 1
+sibling_closure payload-number-1-long-enough-to-defeat-sso 1
+closure_reads payload-number-1-long-enough-to-defeat-sso 1 1
+method payload-number-1-long-enough-to-defeat-sso 1 2
+no_reseat payload-number-1-long-enough-to-defeat-sso 1
+subscript_twin payload-number-1-long-enough-to-defeat-sso 2
+gen payload-number-1-long-enough-to-defeat-sso

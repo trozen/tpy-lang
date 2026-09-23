@@ -37,6 +37,7 @@ def _fmt_ms(seconds: float) -> str:
 
 
 from . import get_runtime_dir
+from .toolchain import get_or_build_pch, pch_is_current
 
 
 class BackendResult:
@@ -404,45 +405,22 @@ class CompileBackend(REPLBackend):
         return cache_dir
 
     def _pch_is_stale(self) -> bool:
-        cache_dir = self._get_pch_cache_dir()
-        pch_gch = cache_dir / "tpy_pch.hpp.gch"
-        if not pch_gch.exists():
-            return True
-        runtime_dir = get_runtime_dir()
-        runtime_include = runtime_dir / "cpp" / "include" / "tpy"
-        pch_mtime = pch_gch.stat().st_mtime
-        return any(h.stat().st_mtime > pch_mtime
-                   for h in runtime_include.glob("**/*.hpp"))
+        return not pch_is_current(
+            self._config, get_runtime_dir() / "cpp" / "include",
+            list(self._OPT_FLAGS), self._get_pch_cache_dir())
 
     def _setup_pch(self) -> None:
-        runtime_dir = get_runtime_dir()
         cache_dir = self._get_pch_cache_dir()
-        pch_header = cache_dir / "tpy_pch.hpp"
-        pch_gch = cache_dir / "tpy_pch.hpp.gch"
-
         if not self._pch_needs_build:
-            self._pch_path = pch_header
+            self._pch_path = cache_dir / "tpy_pch.hpp"
             return
 
-        pch_header.write_text('#include <tpy/tpy.hpp>\n')
-        cmd = [
-            *self._config.compiler, f"-std={self._config.std}",
-            *self._config.extra_flags,
-            *self._OPT_FLAGS,
-            "-I", str(runtime_dir / "cpp" / "include"),
-            "-x", "c++-header",
-            str(pch_header), "-o", str(pch_gch),
-        ]
-
         t0 = time.monotonic()
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        self._pch_path = get_or_build_pch(
+            self._config, get_runtime_dir() / "cpp" / "include",
+            list(self._OPT_FLAGS), cache_dir)
         elapsed = time.monotonic() - t0
-
-        if result.returncode == 0:
-            self._pch_path = pch_header
-            self._pch_build_time = elapsed
-        else:
-            self._pch_build_time = -1.0  # signal failure
+        self._pch_build_time = elapsed if self._pch_path is not None else -1.0
 
 
 # ---------------------------------------------------------------------------

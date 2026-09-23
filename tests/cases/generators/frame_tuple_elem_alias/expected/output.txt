@@ -1,0 +1,31 @@
+ro_param 4
+ro_param 5
+mut_param 3
+mut_param 50
+mut_param after 50
+co_param 51 51
+method 1
+method 52
+method after 52
+nested 1
+nested 53
+nested after 53
+frame_local 1
+frame_local 2
+frame_local after 54
+mixed_borrowed 5
+mixed_borrowed 55
+mixed_borrowed after 55
+owning_no_rebind 2
+owning_no_rebind 7
+mixed_owned_no_rebind 1
+mixed_owned_no_rebind 8
+mixed_borrowed_rebound 5
+mixed_borrowed_rebound 6
+mixed_borrowed_rebound 70
+rebind_before_alias 8
+rebind_before_alias 5
+alias_after_last_rebind 4
+alias_after_last_rebind 7
+orelse_alias 11
+orelse_alias 5

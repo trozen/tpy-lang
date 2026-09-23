@@ -2,6 +2,8 @@
 # function parameter (borrowed, never an Own local) as the source is
 # rejected the same way as a non-last-use Own local. This is the most
 # common Python shape that hits the diagnostic.
+# TO BE FIXED: the scalar twin WARNS and copies here; this error becomes that
+# warning (BUGS.md#borrowed-tuple-at-own-call-arg, plan unit U3 D1).
 from tpy import int32, Own
 
 

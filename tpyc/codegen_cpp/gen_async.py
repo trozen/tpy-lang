@@ -3237,12 +3237,13 @@ class AsyncCoroCodegen:
                 # whole body when it cannot build one.
                 recipe = self._leaf.render_deferred_return(stmt)
             if recipe is not None:
-                ptr, capture_rhs, deferred_materialize = recipe
+                captures, deferred_materialize = recipe
                 chain = io.StringIO()
                 terminated = emit_prims.emit_finally_chain(self.ctx, chain,
                                                            indent)
                 maybe_unused = "[[maybe_unused]] " if terminated else ""
-                out.write(f"{indent}{maybe_unused}auto* {ptr} = {capture_rhs};\n")
+                for line in captures:
+                    out.write(f"{indent}{maybe_unused}{line}\n")
                 out.write(chain.getvalue())
             else:
                 expr_cpp = self._async_return_value_cpp(stmt, ret_type,
@@ -3254,7 +3255,7 @@ class AsyncCoroCodegen:
                                                            indent)
                 maybe_unused = "[[maybe_unused]] " if terminated else ""
                 # For deferral-INELIGIBLE reference shapes (declared unions,
-                # tuples, ...) this eager capture is a KNOWN-WRONG pre-chain
+                # ...) this eager capture is a KNOWN-WRONG pre-chain
                 # COPY: a finally mutation of the local is invisible in the
                 # returned object (CPython's pending return aliases) --
                 # tracked in BUGS.md; a move here would be worse (the

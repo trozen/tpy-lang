@@ -237,6 +237,13 @@ def _validate_exposed_enums(compiled: 'CompiledModule') -> None:
     for enum in compiled.ast.enums:
         if not enum.exposed_to_host:
             continue
+        if enum.companion is not None:
+            loc = enum.loc.line if enum.loc else None
+            raise CompileError(
+                f"@export enum '{enum.name}': an enum with methods cannot be "
+                "exposed to CPython yet (the CPython side is recreated as a "
+                "bare IntEnum/Enum, so its methods would be missing there)",
+                compiled.name, compiled.path, lineno=loc)
         if enum.is_native:
             loc = enum.loc.line if enum.loc else None
             raise CompileError(

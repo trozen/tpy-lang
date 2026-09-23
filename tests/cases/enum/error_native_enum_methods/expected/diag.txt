@@ -1,0 +1,1 @@
+main.py:12: error: Methods on @native enum 'E' are not supported: a @native type is declaration-only -- use a module-level function taking the enum
