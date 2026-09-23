@@ -124,6 +124,8 @@ _LEAF_VALUE_NAMES = {
     'TryTier', 'ValueRange', 'BindingProvenance', '_ModuleInitSentinel',
     'EphemeralKind',
     'LoopClauseEdges',  # sets of names only
+    'LoanInfo',         # a borrow kind, a flag and an index key
+    'NestedMutationMark',  # a name and four flags
 }
 _CONTAINER_NAMES = {'list', 'dict', 'set', 'frozenset', 'tuple'}
 

@@ -214,7 +214,14 @@ class ScopeTracker:
 
     @contextmanager
     def comprehension_scope(self) -> Iterator[Scope]:
-        """Create an inner scope for a comprehension (no loop_depth bump)."""
+        """Create an inner scope for a comprehension (no loop_depth bump).
+
+        The iterator loan the comprehension files expires here, as a `for`'s
+        does in `loop_scope`. Unlike a loop, nothing restores an ENCLOSING
+        loop's loan afterwards (no exit-facts merge follows an expression),
+        so the loans held on entry are put back rather than dropped.
+        """
+        enclosing_iter_loans = self.ctx.func.borrow_tracker.loans_held_by(ITER_BORROWER)
         inner_scope = Scope(self.ctx.func.current_scope)
         old_scope = self.ctx.func.current_scope
         old_ns = self.ctx.func.current_ns
@@ -233,6 +240,11 @@ class ScopeTracker:
             self.ctx.in_comprehension -= 1
             self.ctx.func.current_scope = old_scope
             self.ctx.func.current_ns = old_ns
+            # Re-read: a trial scope or a nested def inside the comprehension
+            # restores the function state as a deep copy.
+            bt = self.ctx.func.borrow_tracker
+            bt.remove_borrower(ITER_BORROWER)
+            bt.reinstate(ITER_BORROWER, enclosing_iter_loans)
 
     @contextmanager
     def lambda_scope(self) -> Iterator[Scope]:

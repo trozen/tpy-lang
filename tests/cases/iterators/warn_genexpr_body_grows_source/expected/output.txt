@@ -1,0 +1,47 @@
+module: 6
+module_src: 0
+in_loop_callee: 3
+in_loop_direct: 3
+in_loop_late: 3
+element_loan: 3
+method: 103
+gen_body: 3
+async_body: 3
+view_demoted: the original label, long enough to be on the heap 1
+view_demoted_direct: the original label, long enough to be on the heap 1
+in_comprehension: 2
+in_nested_def: 3
+src_nested_def: 0
+ctor_loan: 3
+view_kept: kept 2
+other_capture_grows: 33
+after_loop: 43
+self_drain: 35 [1]
+self_via_callee: 30 [1, 7, 7]
+self_via_method: 30 [1, 7, 7, 9, 9]
+free_self: 109 [1, 7, 7, 9]
+src_pop: 3
+src_callee: 0
+src_callee_late: 0
+src_field: 6
+src_dict_view: 0
+src_unpack: 0
+src_for_over: 0
+src_gen_body: 0
+src_async_body: 0
+src_range: 14
+src_other_capture: 63
+src_reads: 3
+ctor_push: 2 [1, 2, 9, 9]
+view_via_method: the original tag, long enough to live on the heap 3
+iter_self: 21
+rec: 3 [1, 2, 9, 9, 9, 9, 9, 9, 9, 9]
+iter_two_hop: 75
+view_other: a label long enough to live on the heap 1 [1, 2, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+free_self_walk: 21
+free_self_param: 21
+count_into: 11 5
+count_direct: 11 6
+global_src_pop: 6
+global_src_callee: 0
+global_other_grows: 6 [0, 7, 7, 7]

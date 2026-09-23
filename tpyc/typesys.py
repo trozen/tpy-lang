@@ -5880,7 +5880,12 @@ class MutationCallEdge:
     """Records parameter flow through a function call (for mutation propagation)."""
     callee_fi: 'FunctionInfo'
     param_map: dict[int, int]  # callee_param_idx -> caller_param_idx; caller -1 = self passed as arg
-    receiver_is_self: bool = False  # True when callee is called as self.method()
+    # The caller param a receiver rooted at `self` is (`self.m()`,
+    # `self.f.m()`, `super().m()`): -1 for a method's own receiver (folded
+    # into self_mutated), the param's index where `self` is an ordinary param
+    # (a generator expression's capture); None when the receiver is not
+    # rooted at `self`.
+    receiver_idx: int | None = None
     # Callee params bound through a call that LENDS the caller's storage (a
     # combinator, a borrow-returning call): only the callee's element
     # mutation of such a param reaches the caller's storage.

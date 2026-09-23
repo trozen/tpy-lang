@@ -1654,6 +1654,16 @@ class TpyFunction:
     loc: SourceLocation | None = None
 
     @property
+    def genexpr_loop(self) -> 'TpyForEach | None':
+        """The loop a generator expression's function is: its whole body, the
+        source's for-each around the filters and the yield. None for any
+        other function."""
+        if not self.is_genexpr or not self.body:
+            return None
+        loop = self.body[0]
+        return loop if isinstance(loop, TpyForEach) else None
+
+    @property
     def is_overload_stub(self) -> bool:
         return self.overload_form is not None
 

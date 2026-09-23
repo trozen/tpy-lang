@@ -84,7 +84,7 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
 from ..diagnostics import Scope, Diagnostic, SemanticError
 from .. import qnames
 from .context import (
-    SemanticContext, RecordContext, DeferredGenericYieldSettle,
+    SemanticContext, RecordContext, DeferredGenericYieldSettle, LoanInfo,
     MODULE_INIT_CONTEXT, contains_pending_leaf)
 from . import own_copy
 from .type_ops import TypeOperations
@@ -1634,13 +1634,15 @@ class SemanticAnalyzer:
             self.ctx.restore_function_state(live)
         self.ctx.deferred_generic_yield_settles.clear()
 
-    def _analyze_function(self, func: TpyFunction) -> None:
+    def _analyze_function(self, func: TpyFunction, *,
+                          genexpr_source_loans: tuple[tuple[str, LoanInfo], ...] = ()) -> None:
         """Analyze a function body."""
         # Stub functions (extern imports with ... body) have no body to analyze
         if func.is_stub:
             return
 
         self.ctx.reset_function_tracking()
+        self.ctx.func.genexpr_source_loans = genexpr_source_loans
         own_copy_mark = self.ctx.own_copy_mark()
 
         self.ctx.func.current_function = func
@@ -1727,8 +1729,8 @@ class SemanticAnalyzer:
             func.generator_locals = [
                 (n, resolve_int_literals(t, self.ctx.default_int_for_literal))
                 for n, t in func.generator_locals]
-            loop = func.body[0]
-            if isinstance(loop, TpyForEach) and loop.elem_type is not None:
+            loop = func.genexpr_loop
+            if loop is not None and loop.elem_type is not None:
                 loop.elem_type = resolve_int_literals(
                     loop.elem_type, self.ctx.default_int_for_literal)
         self.compat.drain_deferred_escape_checks()
@@ -1808,7 +1810,9 @@ class SemanticAnalyzer:
         self.ctx.func.current_scope = None
         self.ctx.func.current_ns = None
 
-    def _analyze_genexpr_function(self, func: TpyFunction) -> None:
+    def _analyze_genexpr_function(
+            self, func: TpyFunction,
+            source_loans: tuple[tuple[str, LoanInfo], ...]) -> None:
         """Analyze a generator expression's function at the expression that
         creates it, in the middle of the enclosing body's analysis.
 
@@ -1834,7 +1838,7 @@ class SemanticAnalyzer:
         self.ctx.is_top_level = False
         self.ctx.for_head_bodies = []
         try:
-            self._analyze_function(func)
+            self._analyze_function(func, genexpr_source_loans=source_loans)
         finally:
             self._genexpr_enclosing.pop()
             self.ctx.func = live
@@ -1883,7 +1887,9 @@ class SemanticAnalyzer:
         body_params = func.params
         func.params = list(resolved_params)
         try:
-            self.registrar.register_function(func)
+            # Named by a per-module counter, so the declaration is unique and
+            # the FunctionInfo can answer that it is a genexpr's frame.
+            self.registrar.register_function(func, unique_declaration=True)
         finally:
             func.params = body_params
         func.return_type = make_ref(func.return_type)

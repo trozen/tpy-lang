@@ -56,7 +56,8 @@ from .overloads import (
     _classify_overload, _score, _expand_arg_types_with_kwargs,
     _scalar_widening_cost,
 )
-from .statements import _root_name_of_expr, _is_self_call_deferred
+from .context import _root_name_of_expr
+from .statements import _is_self_call_deferred
 from .scope_tracker import lend_roots
 from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import partial_substitute, post_substitute_hint, seeded_arg_hint
@@ -612,6 +613,34 @@ def _repr_fallback_template(typ: TpyType) -> str | None:
     return None
 
 
+def _is_genexpr_frame(fi: FunctionInfo) -> bool:
+    """Whether `fi` is the frame function of a generator expression, whose
+    params past the source are captures rather than parameters the user
+    wrote."""
+    declaration = fi.root.declaration
+    return declaration is not None and declaration.is_genexpr
+
+
+def _edges_reach_param(fi: FunctionInfo, idx: int) -> bool:
+    """Whether a call `fi` makes hands on its param `idx` -- as an argument
+    or as the receiver -- so that Phase 2 may still find it written where
+    the direct facts do not."""
+    return any(idx in edge.param_map.values() or edge.receiver_idx == idx
+               for edge in fi.call_edges or ())
+
+
+def _borrowed_container_passed_warning(storage: str, fi: FunctionInfo,
+                                       param_idx: int) -> str:
+    """The warning for a call that may invalidate references into a
+    borrowed container it is handed; spelled once for the immediate and the
+    Phase-2 verdict."""
+    if _is_genexpr_frame(fi):
+        return (f"Borrowed container '{storage}' is mutated by a generator "
+                f"expression that captures it (may invalidate references)")
+    param_name = fi.params[param_idx].name if param_idx < len(fi.params) else "?"
+    return (f"Passing borrowed container '{storage}' to non-readonly parameter "
+            f"'{param_name}' (function may invalidate references)")
+
 class CallAnalyzer:
     """Function and constructor call analysis."""
 
@@ -662,10 +691,8 @@ class CallAnalyzer:
             effective_mp = fi.structural_mutated_params if fi.structural_mutated_params is not None else fi.mutated_params
             if effective_mp is not None and param_idx not in effective_mp:
                 continue
-            param_name = fi.params[param_idx].name if param_idx < len(fi.params) else "?"
             self.ctx.warning_from_loc(
-                f"Passing borrowed container '{storage}' to non-readonly parameter "
-                f"'{param_name}' (function may invalidate references)",
+                _borrowed_container_passed_warning(storage, fi, param_idx),
                 loc,
             )
         self.pending_borrow_checks.clear()
@@ -3214,7 +3241,8 @@ class CallAnalyzer:
 
         During sema, mutated_params holds direct facts only (Phase 1). If the
         param is directly mutated, we emit immediately. If not directly mutated
-        but the callee has call edges (transitive mutation possible), we defer
+        but a call the callee makes reaches the param -- as an argument or as
+        the receiver of `self.m()` -- (transitive mutation possible), we defer
         the check until Phase 2 resolves the final facts.
         """
         fi = expr.resolved_function_info
@@ -3235,6 +3263,14 @@ class CallAnalyzer:
             # readonly[T] param -- function promises not to mutate
             if isinstance(param.type, ReadonlyType):
                 continue
+            reached = _edges_reach_param(fi, i)
+            # A generator expression's frame is analyzed where it is written,
+            # so its own writes are known here and its signature need not
+            # stand in for them: a capture the body neither writes nor hands
+            # to a call keeps the views borrowed out of it.
+            if (_is_genexpr_frame(fi) and fi.direct_mutated_params is not None
+                    and i not in fi.direct_mutated_params and not reached):
+                continue
             self._demote_views_at_mutable_arg(param, arg)
             if not isinstance(arg, TpyName):
                 continue
@@ -3242,13 +3278,13 @@ class CallAnalyzer:
             storage = bt.effective_storage(arg.name)
             needs_check = bt.has_element_borrow(storage)
             if effective_mp is not None and i not in effective_mp:
-                # Direct facts say "not structurally mutated". If callee has call edges
-                # and Phase 2 hasn't finalized yet, transitive propagation
-                # might still add this param -- defer.
-                if needs_check and fi.call_edges and effective_direct is not None:
+                # Direct facts say "not structurally mutated". If a call the
+                # callee makes reaches this param and Phase 2 hasn't finalized
+                # yet, transitive propagation might still add it -- defer.
+                if needs_check and reached and effective_direct is not None:
                     loc = getattr(expr, 'loc', None)
                     self.pending_borrow_checks.append((fi, i, storage, loc))
-                if fi.call_edges:
+                if reached:
                     self.ctx.mark_all_view_borrowers_mutated(storage)
                 continue
             if effective_mp is None and effective_direct is None:
@@ -3263,10 +3299,7 @@ class CallAnalyzer:
                 continue
             if needs_check:
                 self.ctx.warning(
-                    f"Passing borrowed container '{storage}' to non-readonly parameter "
-                    f"'{param.name}' (function may invalidate references)",
-                    expr,
-                )
+                    _borrowed_container_passed_warning(storage, fi, i), expr)
             self.ctx.mark_all_view_borrowers_mutated(storage)
 
     def _demote_views_at_mutable_arg(self, param: ParamInfo, arg: TpyExpr) -> None:
@@ -3372,19 +3405,17 @@ class CallAnalyzer:
         # loop_var.method() over self.field, and super().method() (the synthetic
         # super() proxy resolves to self). Phase 2 propagates self-mutation through
         # these.
-        receiver_is_self = False
+        receiver_idx: int | None = None
         if isinstance(expr, TpyMethodCall):
-            if expr.super_parent_type is not None:
-                receiver_is_self = True
-            else:
-                obj_root = _root_name_of_expr(expr.obj)
-                if obj_root is not None and _is_self_call_deferred(
+            obj_root = _root_name_of_expr(expr.obj)
+            if expr.super_parent_type is not None or (
+                    obj_root is not None and _is_self_call_deferred(
                         expr.obj, obj_root, self.ctx.func.loop_var_iterable,
-                        self.ctx.func.borrow_tracker):
-                    receiver_is_self = True
+                        self.ctx.func.borrow_tracker)):
+                receiver_idx = self.ctx.self_receiver_index()
 
         # Nothing to record if no params flow through and no self-call
-        if not name_to_idx and not receiver_is_self:
+        if not name_to_idx and receiver_idx is None:
             return
 
         param_map: dict[int, int] = {}
@@ -3485,14 +3516,14 @@ class CallAnalyzer:
                         param_map[i] = caller_idx
                     elif param_map[i] != caller_idx:
                         extra_param_edges.append((i, caller_idx))
-        if param_map or receiver_is_self:
+        if param_map or receiver_idx is not None:
             # Edge stores the canonical so Phase 2 reads facts as they evolve.
             callee = fi.root
             assert callee.canonical_fi is None, (
                 f"non-collapsed canonical_fi chain on {callee.name}")
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee, param_map=param_map,
-                                 receiver_is_self=receiver_is_self,
+                                 receiver_idx=receiver_idx,
                                  lent=frozenset(lent))
             )
         for callee_idx, caller_idx in extra_param_edges:
@@ -3500,7 +3531,6 @@ class CallAnalyzer:
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee,
                                  param_map={callee_idx: caller_idx},
-                                 receiver_is_self=False,
                                  lent=frozenset(lent & {callee_idx}))
             )
 

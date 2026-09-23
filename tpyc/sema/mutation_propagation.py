@@ -125,8 +125,8 @@ class _Facts:
                     continue
                 self.mutated.add(caller_idx)
                 self.elem.add(caller_idx)
-            if edge.receiver_is_self:
-                self.self_mutated = True
+            if edge.receiver_idx is not None:
+                self.mutated.add(edge.receiver_idx)
         else:
             for callee_idx, caller_idx in edge.param_map.items():
                 # A param bound through a lending call reaches the caller's
@@ -144,28 +144,38 @@ class _Facts:
                     self.elem.add(caller_idx)
             # Propagate self-mutation: if callee mutates its self and is called
             # as self.method(), the caller also mutates self.
-            if edge.receiver_is_self and callee.self_mutated:
-                self.self_mutated = True
+            if edge.receiver_idx is not None and callee.self_mutated:
+                self.mutated.add(edge.receiver_idx)
+                if callee_emp is not None and -1 in callee_emp:
+                    self.elem.add(edge.receiver_idx)
         # Structural mutation propagation: more specific than mutated_params.
+        # -1 in a callee's structural set is its own receiver.
         if callee_smp is not None:
             for callee_idx, caller_idx in edge.param_map.items():
                 if callee_idx in callee_smp and callee_idx not in edge.lent:
                     self.structural.add(caller_idx)
+            if edge.receiver_idx is not None and -1 in callee_smp:
+                self.structural.add(edge.receiver_idx)
         elif callee_mp is None:
             # Unknown callee: conservative -- treat all flowing params as structurally mutated
             stub = is_bodyless_binding(callee)
             for callee_idx, caller_idx in edge.param_map.items():
                 if not (stub and callee_idx in edge.lent):
                     self.structural.add(caller_idx)
+            if edge.receiver_idx is not None:
+                self.structural.add(edge.receiver_idx)
 
     def store(self, fi: FunctionInfo) -> bool:
         """Write the facts to `fi`; True when any of them changed."""
-        # Sentinel -1 means "self" was passed as a function argument and the
-        # callee mutated that parameter.  Convert to self_mutated flag.
+        # Sentinel -1 means the receiver: `self` passed as an argument, or
+        # the receiver of a `self.m()` call. Convert to the self_mutated flag;
+        # the structural and element sets keep it, as the direct facts do, so
+        # a caller reaching this receiver through its own `self.m()` sees
+        # what the callee does to it. `mutated` has the flag as its encoding.
         for lattice in (self.mutated, self.structural, self.elem):
             if -1 in lattice:
                 self.self_mutated = True
-                lattice.discard(-1)
+        self.mutated.discard(-1)
         new = (frozenset(self.mutated), frozenset(self.structural),
                frozenset(self.elem), self.self_mutated)
         old = (fi.mutated_params, fi.structural_mutated_params,
@@ -218,8 +228,9 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
                         facts.mutated.add(caller_idx)
                         facts.structural.add(caller_idx)
                         facts.elem.add(caller_idx)
-                    if edge.receiver_is_self:
-                        facts.self_mutated = True
+                    if edge.receiver_idx is not None:
+                        facts.mutated.add(edge.receiver_idx)
+                        facts.structural.add(edge.receiver_idx)
             facts.store(fi)
 
 

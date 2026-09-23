@@ -560,7 +560,7 @@ Top-level analyzers (one module each):
 `type_ops`, `compatibility`, `protocols`, `narrowing`, `overloads`,
 `operators`, `expressions`, `calls`, `methods`, `statements`,
 `match`, `registration`, `list_literals`, `local_deduction`,
-`init_tracker`, `scope_tracker`, `flow_facts`, `value_range`,
+`init_tracker`, `scope_tracker`, `iter_loans`, `flow_facts`, `value_range`,
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
 `frame_traits`, `own_copy`, `context`. Error classes live in

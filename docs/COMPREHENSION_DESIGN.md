@@ -264,6 +264,29 @@ an owned value (e.g. `[make_thing(x) for x in inputs]` where `make_thing` return
 `Own[Thing]`). Copying a `@nocopy` loop variable into the result is an error,
 same as `items.append(nocopy_ref)` would be.
 
+### Iteration loan and loop-variable writes
+
+A list, set or dict comprehension borrows its source exactly as a `for` over it
+does: `register_iteration_loans` (`tpyc/sema/iter_loans.py`) files the ITER
+borrow when `comprehension_scope` opens, and it is held while the conditions and
+the element run. So growing the source there warns (`Mutation of 'xs' while
+iterating over it`, or `Passing borrowed container 'xs' to non-readonly
+parameter` through a mutating callee), and the borrow ends with the
+comprehension. An enclosing loop's borrow of the same storage is merged, not
+replaced (`for v in xss[0]:` around `[... for w in xss ...]` keeps the element
+borrow), and the scope's exit puts back exactly the borrows held on entry.
+
+A source rooted at a name spelled like one of the targets (`[grow(c) for c in
+c]`) is the ENCLOSING binding of that name, which the comprehension's own code
+cannot reach by name, so no loan is filed on it: inside the scope the name is
+the target, and a write through the target is not growth of the source.
+
+The loop variable records no source: a write through it does not reach a
+parameter source or an enclosing loop variable, so `[c.bump(1) for c in cs]`
+over a parameter keeps `cs` const and fails the build
+(`BUGS.md#comprehension-loop-var-mutation-not-propagated`, whose design notes
+say why the name-keyed fact the `for` statement uses is not enough here).
+
 ### Edge case: empty iterable
 
 `[f(x) for x in empty_list]` where `empty_list: list[int32]` works fine -- the
@@ -551,8 +574,28 @@ a genexpr:
   body's business, and a rebind between two pulls is visible in the body.
 
 Creating the frame hands the source and the captures over the way a call hands
-over its arguments, and is recorded as one: a body that mutates through its
-loop var or through a capture keeps the enclosing param a mutable borrow.
+over its arguments, and is checked as one, with the three checks every call
+site runs:
+
+- **Mutation facts.** A body that mutates through its loop var or through a
+  capture keeps the enclosing param a mutable borrow, except when its source is an
+  ENCLOSING loop var (`BUGS.md#genexpr-over-loop-var-param-stays-const`).
+- **Conflicts with live loans.** A body that may grow or rewrite a capture on
+  which a loan is live where the expression is written (`for v in xs: n +=
+  sum(1 for _ in range(1) if grow(xs))`) warns *Borrowed container 'xs' is
+  mutated by a generator expression that captures it*. A str/bytes view
+  borrowed out of such a capture is demoted to an owned copy. The frame is
+  analyzed right there, so its own facts stand in for its signature: a
+  capture that the body neither writes nor hands to a call (as an argument or
+  as the receiver of `self.m()`) keeps its views. A write through a callee is
+  judged once Phase 2 has the callee's facts.
+- **The source's own iteration.** Inside the frame, the source param and a
+  name the body reads can reach one container: a capture, or a module global
+  the body reads directly. So the frame's loop holds the source's iteration
+  loans (`iterated_storage`) on that name as well as its own loan on the
+  source param. A body that grows its own source (`sum(v for v in xs if
+  grow(xs))`, `v + xs.pop()`) gets the verdict of a `for` over that source,
+  at the mutating line.
 
 ```cpp
 template <typename F_k>
