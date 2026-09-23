@@ -151,6 +151,12 @@ validation and analysis. Recursion and general effects/exits remain outside
 this slice. No summary feeds back into production
 sema, and no new checker authority is introduced.
 
+M4.3 adds typed parameter-relative scalar-field may-writes to leaf summaries,
+including void setters (`MIR_CALL_EFFECTS_PLAN.md`). Existing dependency facts
+resolve writes through aliases at their program points. Call lowering and
+standalone validation still require scalar reader summaries until the writing
+consumer is implemented; a richer certificate alone cannot widen admission.
+
 Named scalar-field record arguments additionally share a prepared THIR storage
 plan with C++ emission (`MIR_NAMED_ARGUMENT_STORAGE_PLAN.md`). The shared queue
 retains declaration scopes and ordered eager/lazy initialization anchors;

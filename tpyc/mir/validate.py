@@ -27,7 +27,7 @@ from .nodes import (
 from .presence import MIRPresence, _analyze_presence
 from .coverage import owned_tuple, scalar_wrapper
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .call_contract import summary_problem
+from .call_contract import reader_call_problem, summary_problem
 
 
 class MIRValidationError(ValueError):
@@ -242,6 +242,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                      "invalid record layout field")
             seen.add(member.id)
             field_types[member.id] = member.type
+    for summary in fn.call_summaries:
+        for write in summary.writes:
+            for field in write.path:
+                _require(field_types.get(MIRFieldId(field.owner, field.name)) == field.type,
+                         "call write field does not match record layout")
     global_ids: set[MIRGlobalId] = set()
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
@@ -787,6 +792,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(value.summary in call_summaries,
                              "call summary does not belong to this body")
                     summary = value.summary
+                    problem = reader_call_problem(summary)
+                    _require(problem is None, problem or "unsupported call consumer")
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.SCALAR
                              and target_type == summary.callee.signature.return_type,
                              "call result type or target mismatch")

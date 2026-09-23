@@ -8820,6 +8820,11 @@ independence; repeated writes retain the selected backing's identity. Broader
 move sources and owning aggregate operations remain outside this coverage.
 Source behavior, C++ emission and checker authority are unchanged.
 
+M4.3 extracts typed bool/int32-field may-writes from borrowed parameters,
+including writes through conditional aliases and void-returning setters.
+Call consumers still admit only scalar readers; source behavior is unchanged.
+See the [call-effect batch](MIR_CALL_EFFECTS_PLAN.md).
+
 The [M4.1/M4.2 interface](MIR_CALL_SUMMARY_INTERFACE_PLAN.md) supplies
 analysis-only MIR for direct ordinary calls with scalar results and
 proven absence of external mutation, retention and exceptional exits. It

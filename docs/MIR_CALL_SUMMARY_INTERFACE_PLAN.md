@@ -1,6 +1,8 @@
 # M3/M4 call-summary interface: first consumer
 
-Status: M4.1 and M4.2 implemented. See also the
+Status: M4.1 and M4.2 implemented. M4.3 adds typed leaf writes and void
+summaries while retaining the scalar-reader consumer boundary; see
+[call effects](MIR_CALL_EFFECTS_PLAN.md). See also the
 [named argument temporary investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md).
 This is architectural analysis work, not a language-rule change. The
 bounded interface does not complete M3 or M4.

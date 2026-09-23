@@ -215,8 +215,7 @@ def test_covered_caller_need_not_have_usable_summary(artifacts: Artifacts) -> No
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("write", "summary external write or storage operation"),
-    ("effect", "call needs finalized known summary"),
+    ("effect", "call needs scalar reader summary"),
     ("recurse_a", "recursive or recursion-dependent call"),
     ("recurse_b", "recursive or recursion-dependent call"),
     ("recurse_user", "recursive or recursion-dependent call"),
@@ -228,9 +227,30 @@ def test_unproven_calls_never_acquire_empty_effects(artifacts: Artifacts, name: 
     assert result.reason == reason
 
 
+@pytest.mark.parametrize("bad_field", [False, True])
+def test_valid_writer_summary_does_not_bypass_reader_consumer(artifacts: Artifacts, bad_field: bool) -> None:
+    workspace = artifacts[1]
+    summary = workspace.summaries[th.THIRFunctionIdentity("main", "write")].summary
+    assert summary is not None and summary.writes
+    if bad_field:
+        write, = summary.writes
+        summary = replace(summary, writes=frozenset({replace(
+            write, path=(replace(write.path[0], name="missing"),))}))
+    body = body_named(workspace, "forward")
+    layout = artifacts[2].get(body, summary.parameters[0].type).layout
+    body = replace(body, records=(layout,),
+                   call_summaries=(summary,), blocks=tuple(replace(block, statements=tuple(
+        replace(stmt, value=replace(stmt.value, summary=summary))
+        if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall) else stmt
+        for stmt in block.statements)) for block in body.blocks))
+    reason = "call write field does not match record layout" if bad_field else "call needs scalar reader summary"
+    with pytest.raises(MIRValidationError, match=reason):
+        validate_function(body)
+
+
 @pytest.mark.parametrize(("damage", "reason"), [
     ("missing", "call summary does not belong"), ("foreign", "call summary does not belong"),
-    ("effects", "unsupported call summary contract"), ("arity", "call arity mismatch"),
+    ("effects", "invalid call write path"), ("arity", "call arity mismatch"),
     ("duplicate", "duplicate call summary identity"), ("result", "call result type or target mismatch"),
     ("storage", "call record argument mismatch"),
 ])

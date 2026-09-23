@@ -30,7 +30,7 @@ from .nodes import (
 )
 from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
-from .call_contract import MIRCallSummary, MIRSummaryResult, MIRSummaryState, summary_problem
+from .call_contract import MIRCallSummary, MIRSummaryResult, MIRSummaryState, reader_call_problem, summary_problem
 from .validate import MIRDefiniteAssignmentError, MIRPresenceError, statement_reads, successors, validate_function
 
 
@@ -78,6 +78,8 @@ class _Coverage:
         summary = entry.summary
         _require(expr, summary_problem(summary) is None and summary.callee == callee,
                  "call summary signature or contract mismatch")
+        problem = reader_call_problem(summary)
+        _require(expr, problem is None, problem or "unsupported call consumer")
         _require(expr, expr.result_type == callee.signature.return_type
                  and len(expr.args) == len(summary.parameters), "call signature mismatch")
         for arg, typ, ref in zip(expr.args, callee.signature.param_types, summary.parameters):

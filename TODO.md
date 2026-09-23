@@ -1716,6 +1716,10 @@ alongside related feature work; only the big-rock deferrals live here.
   extension (`docs/MIR_FOR_ARGUMENT_STORAGE_PLAN.md`) connects existing
   range/native body and else scopes. Loop-head materialization, richer
   argument forms and unplanned bodies remain open.
+  Approved M4 batch: `docs/MIR_CALL_EFFECTS_PLAN.md` covers typed
+  scalar-field writes (M4.3 implemented), forwarding and void setters
+  (M4.4 in progress); broader roots, storage
+  invalidation, escapes and exit-specific cleanup remain open.
   Cleanup: share common CFG assembly between `_Builder.planned_if` /
   `planned_while` and the ordinary if/while arms in `mir/lower.py`, preserving
   their different emitted scope boundaries and existing plain-body graphs.

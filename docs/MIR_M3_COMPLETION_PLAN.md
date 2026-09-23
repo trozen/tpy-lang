@@ -87,6 +87,10 @@ the others visible.
   The [ordinary-for storage extension](MIR_FOR_ARGUMENT_STORAGE_PLAN.md)
   connects the shared plan to existing range/native loop bodies and else
   scopes; loop-head materialization remains separate.
+  The [range-head investigation](MIR_RANGE_HEAD_STORAGE_PLAN.md) found that
+  constructor-argument bounds also need source lowering, operand sequencing
+  and explicit cleanup boundaries; general call-effect design is recommended
+  before implementing that extension.
   The [named argument temporary investigation](MIR_NAMED_ARGUMENT_TEMPORARIES.md)
   identified the need for the M3/M4 call-summary interface. M4.1/M4.2 now
   cover bounded calls with stable arguments. The named-storage consumer uses
@@ -191,6 +195,12 @@ and extracts local evidence from validated MIR. Both increments are implemented;
 the [bounded named-storage consumer](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) now
 uses that interface. Broader argument shapes and general M4 summary
 obligations remain open.
+
+The approved [call-effect batch](MIR_CALL_EFFECTS_PLAN.md) extends that interface
+with typed scalar-field writes, alias-aware forwarding and ordinary void
+setters. M4.3 leaf extraction is implemented; M4.4 call consumption and
+forwarding are in progress. Exception/cleanup, storage
+invalidation and escaping dependencies remain separate M3/M4 obligations.
 
 Batch work around shared invariants. Specify commit boundaries before coding,
 review the cumulative batch, and run the full forced suite after its final

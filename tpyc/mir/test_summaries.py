@@ -6,8 +6,8 @@ import pytest
 
 from ..thir.testutil import _compile, _entry
 from ..thir.nodes import THIRFunction
-from ..typesys import BOOL
-from .call_contract import MIRSummaryResult, MIRSummaryState
+from ..typesys import BOOL, INT32
+from .call_contract import MIRSummaryResult, MIRSummaryState, summary_problem
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
@@ -19,8 +19,10 @@ SOURCE = '''from tpy import int32
 
 class Cell:
     value: int32
+    other: int32
     def __init__(self, value: int32):
         self.value = value
+        self.other = 0
 
 def read(cell: Cell) -> int32:
     return cell.value
@@ -42,6 +44,26 @@ def literal() -> bool:
 def write(cell: Cell) -> int32:
     cell.value = 3
     return cell.value
+
+def setter(cell: Cell, value: int32):
+    cell.value = value
+
+def conditional(left: Cell, right: Cell, flag: bool):
+    alias = left
+    if flag:
+        alias = right
+    alias.value = 4
+    if flag:
+        left.other = 5
+
+def reseated(left: Cell, right: Cell):
+    alias = left
+    alias.value = 4
+    alias = right
+    alias.other = 5
+
+def empty():
+    pass
 
 def loop(flag: bool) -> int32:
     while flag:
@@ -73,7 +95,7 @@ def artifacts() -> Artifacts:
     return functions, bodies, definitions
 
 
-@pytest.mark.parametrize("name", ["read", "selected", "scalar", "literal"])
+@pytest.mark.parametrize("name", ["read", "selected", "scalar", "literal", "empty"])
 def test_leaf_evidence_is_known(artifacts: Artifacts, name: str) -> None:
     functions, bodies, definitions = artifacts
     body = bodies[name]
@@ -88,7 +110,7 @@ def test_leaf_evidence_is_known(artifacts: Artifacts, name: str) -> None:
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("write", "external write"), ("loop", "cyclic control flow"),
+    ("loop", "cyclic control flow"),
     ("owned", "storage or value shape"), ("global_read", "global access"),
 ])
 def test_covered_mir_is_not_a_harmlessness_proof(artifacts: Artifacts, name: str, reason: str) -> None:
@@ -97,6 +119,47 @@ def test_covered_mir_is_not_a_harmlessness_proof(artifacts: Artifacts, name: str
     result = summarize_function(functions[name], bodies[name], definitions)
     assert result.state is MIRSummaryState.OPAQUE and reason in result.reason
     assert result.summary is None
+
+
+@pytest.mark.parametrize(("name", "expected"), [
+    ("write", {(0, "value")}), ("setter", {(0, "value")}),
+    ("conditional", {(0, "value"), (1, "value"), (0, "other")}),
+    ("reseated", {(0, "value"), (1, "other")}),
+])
+def test_writes_follow_aliases_at_each_write(artifacts: Artifacts, name: str,
+                                          expected: set[tuple[int, str]]) -> None:
+    functions, bodies, definitions = artifacts
+    result = summarize_function(functions[name], bodies[name], definitions)
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    summary = result.summary
+    assert {(w.parameter, w.path[0].name) for w in summary.writes} == expected
+    assert all(len(w.path) == 1 and w.path[0].type == INT32
+               and w.path[0].owner == summary.parameters[w.parameter].type for w in summary.writes)
+    assert summary.invalidates == summary.retains == summary.returns == frozenset()
+    assert summary_problem(summary) is None
+
+
+@pytest.mark.parametrize("damage", ["index", "bool_index", "empty", "nested", "owner", "readonly", "untyped"])
+def test_malformed_write_contract(artifacts: Artifacts, damage: str) -> None:
+    functions, bodies, definitions = artifacts
+    summary = summarize_function(functions["write"], bodies["write"], definitions).summary
+    write, = summary.writes
+    match damage:
+        case "index":
+            write = replace(write, parameter=1)
+        case "bool_index":
+            write = replace(write, parameter=False)
+        case "empty":
+            write = replace(write, path=())
+        case "nested":
+            write = replace(write, path=write.path * 2)
+        case "owner":
+            write = replace(write, path=(replace(write.path[0], owner=BOOL),))
+        case "readonly":
+            summary = replace(summary, parameters=(replace(summary.parameters[0], readonly=True),))
+        case "untyped":
+            write = 0
+    assert summary_problem(replace(summary, writes=frozenset({write}))) is not None
 
 
 def test_missing_or_mismatched_definition_cannot_supply_empty_effects(artifacts: Artifacts) -> None:
