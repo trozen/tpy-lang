@@ -132,9 +132,11 @@ structure is traversed by both preparation and emission; these checks guard
 against drift between those traversals.
 
 The MIR consumer uses existing record storage, borrowing, optional engagement
-and region operations. Its initial whole-body plan covers ordinary statements
-and if/while bodies. Any unhandled producer or statement kind, including for,
-try, with, match and nested definitions, leaves the whole body unplanned.
+and region operations. Its whole-body plan covers ordinary statements and
+if/while bodies, plus the bounded range/native body and else scopes in the
+[for-loop extension](MIR_FOR_ARGUMENT_STORAGE_PLAN.md). Any unhandled producer
+or statement kind, including try, with, match and nested definitions, leaves
+the whole body unplanned. Loop-head argument materialization remains excluded.
 Lazy while conditions are source-pinned using a ternary;
 the existing frontend rejects the boolean `and` spelling with a record
 constructor argument; see
@@ -152,7 +154,7 @@ features outside the new materialization are not implicitly widened.
 | Shape | Verified hook-free record with bool/int32 fields; stable scalar local/parameter names or literals as constructor operands; preserve readonly borrowing | Tuple, Optional/union argument payloads, str/bytes, Own transfer, Ptr/Span, Box/Rc, containers, inherited/generic/hooked records: W1/M2/M4/W5; optional implementation backing is not Optional argument admission |
 | Result/use | Borrowed argument to scalar-result call; already-covered scalar local, reassignment, return, field RHS and conditions | Reference result, storage in fields/container elements/globals/captures: W5/M4; scalar result placement does not admit those reference escapes |
 | Evaluation | Eager and lazy supported expressions with proven prelude/prefix order; multiple pure named temps | Effectful/nested constructor arguments, named temps in range/iterator acquisition, value-select LHS hoists and chained-compare statement expressions need their own placement audit: W1/W2/M4 |
-| Lifetime | Actual lexical blocks, synthetic elif block, fresh while activation; normal exit/break/continue/return | Partial construction, exceptions and custom cleanup: W3/M4; frame persistence: W4 |
+| Lifetime | Actual lexical blocks, synthetic elif block, fresh while/for body activation; normal exit/break/continue/return | Partial construction, exceptions and custom cleanup: W3/M4; frame persistence: W4 |
 | Spelling | Direct and imported aliases with the same verified constructor/callee facts | Module-qualified constructor routes without those facts remain uncovered under M2/M4; no inference from the spelling |
 
 A broader expression that could reorder observable inline work across a

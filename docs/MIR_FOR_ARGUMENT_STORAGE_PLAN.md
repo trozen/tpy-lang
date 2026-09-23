@@ -1,6 +1,6 @@
 # Named argument storage in ordinary for-loops
 
-Status: THIR placement and emission checks implemented; MIR mapping follows.
+Status: implemented for the bounded range/native loop subset below.
 Extends [named argument placement](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) and
 the existing [ordinary for-loop CFG](MIR_M3_ORDINARY_FOR_PLAN.md).
 This advances W1/W2; it does not complete either package.
@@ -78,27 +78,27 @@ structural acceptance does not widen MIR's type or effect contract.
 
 ## Delivery and verification
 
-1. Extend THIR preparation and emission scope checks, preserving C++ bytes.
-   Cover both loop kinds, both body/else positions, and invalid/foreign scope
-   evidence before connecting the MIR consumer.
-2. Map those identities to the existing MIR regions. Cover actual source
-   lowering, repeated activation, retained-alias scope ends and excluded
-   heads/metadata. Each step finishes as one commit on a stacked branch.
+THIR preparation and emission share the counter/body/else identities, with
+invalid/foreign evidence rejected and C++ bytes preserved. The MIR consumer
+maps these identities to its existing regions; actual source lowering,
+repeated activation, retained-alias scope ends and excluded heads/metadata
+are checked independently.
 
-Embedded source fixtures belong to compiler tests; do not load snippet files.
-Check zero/one/multiple iterations, ascending/descending ranges, written and
+Embedded source fixtures in `tpyc/thir/test_for_temp_plan.py` and
+`tpyc/mir/test_for_argument_storage.py` check ascending/descending ranges, written and
 hoisted targets, captured bounds, nested mixed loops, lazy branches, early
-return and inner-else transfers. Compare C++ with preparation enabled/disabled.
-Use structural MIR assertions for declaration versus initialization, fresh
+return and inner-else transfers. C++ is compared with preparation enabled/disabled.
+Structural MIR assertions check declaration versus initialization, fresh
 body activation and end events; pure readers make those differences mostly
-invisible to output tests. Pin actual MIR coverage, not just successful C++.
+invisible to output tests. Source tests pin actual MIR coverage and exclusions.
 
-Keep `@nocopy` records at argument and iteration boundaries and check borrowed
-parameter spelling; use mutation-observing source controls where already
-available. Internal retained-holder tests include scalar, singleton/mixed
-tuple, Optional and union holders without admitting new argument shapes.
-Reuse existing ordinary-loop and temporary snapshots; add a source case only
-for an uncovered observable obligation. No existing snapshot changes expected.
+The `control_flow/for_argument_storage` snippet checks zero/one/multiple trips,
+uses `@nocopy` records at argument and iteration boundaries, and observes
+mutations through borrowed elements. Its snapshots pin reference parameters.
+The for-specific retained-holder test checks a scalar alias across body end;
+the existing `tpyc/mir/test_argument_storage.py` tests exercise scalar,
+singleton/mixed tuple, Optional and union holders against the shared scope-end
+analysis without admitting new argument shapes.
 
 ## Pitfalls and risk
 
@@ -110,8 +110,8 @@ for an uncovered observable obligation. No existing snapshot changes expected.
   mapping; unsupported positions remain explicit in the matrix.
 - `conditional-operand-evaluates-in-place`: pin lazy initialization anchors,
   skipped payload construction and re-entry; output parity alone is not proof.
-- `generic-equals-monomorphic-twin`: generic source emission remains unchanged;
-  open generic MIR stays excluded, with generic/concrete emission controls.
+- `generic-equals-monomorphic-twin`: open generic MIR stays excluded; this
+  extension adds no generic resolution or argument-spelling rules.
 - `view-not-copy`, `hidden-allocation`, `generated-cpp-readability`: compare
   emitted bytes; no view/ownership or allocation policy changes.
 - `runtime-template-kind-matrix`: no runtime template changes; native source
@@ -125,6 +125,5 @@ for an uncovered observable obligation. No existing snapshot changes expected.
 The main risk is confusing the range counter's lifetime with the body's, or
 leaving else under the loop scope. Shared parent checks, malformed-plan tests
 and transfer-edge assertions guard both. Preparation still has bounded linear
-body walks, with no new interprocedural scan. The CPython-parity design
-assessment found no new divergence in this slice; exceptional cleanup and
-observable hooks remain outside its proof.
+body walks, with no new interprocedural scan. Exceptional cleanup and
+observable hooks remain outside this bounded proof.

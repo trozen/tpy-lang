@@ -323,15 +323,9 @@ def rejected() -> int32:
         return read(Cell(value))
     return 0
 ''', "named argument needs complete temporary plan", None),
-    ('''def rejected(value: int32) -> int32:
-    result = 0
-    for index in range(2):
-        result = read(Cell(value))
-    return result
-''', "named argument needs for-loop scope mapping", None),
 ], ids=["order-proof", "record-layout-summary", "record-hook-summary", "effectful-summary",
         "unsupported-result-form", "owned-parameter-summary", "global-constructor-input",
-        "unplanned-optional-narrowing", "unplanned-union-narrowing", "unplanned-for-body"])
+        "unplanned-optional-narrowing", "unplanned-union-narrowing"])
 def test_source_boundaries_reject_at_the_expected_gate(
         extra: str, reason: str, blocked_callee: str | None) -> None:
     compiler, modules = _compile(SOURCE + extra)

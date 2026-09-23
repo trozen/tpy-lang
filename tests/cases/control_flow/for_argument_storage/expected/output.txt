@@ -1,0 +1,5 @@
+range 1 1 10 0
+native 8 8
+nested 7 0 7
+constructor 2
+method 4

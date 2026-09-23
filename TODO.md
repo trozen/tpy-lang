@@ -1712,8 +1712,10 @@ alongside related feature work; only the big-rock deferrals live here.
   value shapes and generic obligations keep the general M4 work open.
   `docs/MIR_NAMED_ARGUMENT_STORAGE_PLAN.md` implements the bounded W1 follow-up:
   one shared THIR declaration/initialization plan and a bounded MIR consumer
-  for eager/lazy named record arguments in if/while bodies. Richer argument
-  forms and unplanned bodies remain open.
+  for eager/lazy named record arguments in if/while bodies. The ordinary-for
+  extension (`docs/MIR_FOR_ARGUMENT_STORAGE_PLAN.md`) connects existing
+  range/native body and else scopes. Loop-head materialization, richer
+  argument forms and unplanned bodies remain open.
   Cleanup: share common CFG assembly between `_Builder.planned_if` /
   `planned_while` and the ordinary if/while arms in `mir/lower.py`, preserving
   their different emitted scope boundaries and existing plain-body graphs.

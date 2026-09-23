@@ -8836,7 +8836,11 @@ with stable bool/int32 constructor operands. Shared THIR placement retains
 eager block lifetime, lazy optional backing, synthetic elif scopes and fresh
 while-condition activations. Ordinary functions, methods and constructor
 tails use the same consumer; owning callers remain opaque as callees.
-Any unhandled producer or statement kind (including for, try, with, match and
+The [ordinary-for extension](MIR_FOR_ARGUMENT_STORAGE_PLAN.md) covers named
+arguments in existing range/native loop bodies and else blocks, preserving
+the counter/iterator residence and fresh body activations. Named temporaries
+in loop heads remain uncovered.
+Any unhandled producer or statement kind (including try, with, match and
 nested definitions) leaves the whole body unplanned. Richer argument payloads
 and unproven evaluation order remain uncovered. Normal compilation and checker
 authority are unchanged.

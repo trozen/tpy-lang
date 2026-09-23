@@ -157,7 +157,10 @@ retains declaration scopes and ordered eager/lazy initialization anchors;
 emission verifies its actual events against those identities. MIR consumes
 that plan for pure constructors at known readonly reader calls, including
 synthetic elif scopes and fresh while-condition activations. An outer-region
-backedge bridge ends one activation before the next begins. Optional lazy
+backedge bridge ends one activation before the next begins. Ordinary range
+and native loops also map planned body/else scopes to existing MIR regions;
+range counter scope remains the body's parent, while native iterator storage
+keeps its outer residence (`MIR_FOR_ARGUMENT_STORAGE_PLAN.md`). Optional lazy
 backing uses existing engagement facts. Unknown producers leave the body
 unplanned; no C++ names, strings or emission logs supply MIR storage facts.
 

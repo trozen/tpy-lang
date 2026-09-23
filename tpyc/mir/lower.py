@@ -1105,7 +1105,6 @@ class _Coverage:
                 raise MIRUnsupported(stmt, "unsupported statement")
 
     def range_loop(self, stmt: th.THIRForRange, loops: int) -> None:
-        _require(stmt, self.fn.temp_plan is None, "named argument needs for-loop scope mapping")
         _plain(stmt, {"var", "elem_type", "start", "stop", "start_is_literal", "stop_is_literal",
                       "body", "step_kind", "orelse", "hoist_loop_var", "target_written",
                       "hoist_decls", "hoisted_bindings"})
@@ -1134,7 +1133,6 @@ class _Coverage:
         self.scoped(stmt.orelse, loops)
 
     def native_loop(self, stmt: th.THIRForEach, loops: int) -> None:
-        _require(stmt, self.fn.temp_plan is None, "named argument needs for-loop scope mapping")
         _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var", "iterable_lvalue",
                       "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings", "iteration"})
         fact = stmt.iteration
@@ -1861,7 +1859,7 @@ class _Builder:
         entry, normal, after = self.block(), self.block(), self.block()
         self.end(MIRGoto(entry.id, loc))
         self.current = entry
-        with self.scope():
+        with self.scope(stmt, "counter"):
             direct = not (stmt.hoist_loop_var or stmt.target_written)
             counter = self.slot(INT32, MIRSlotKind.LOCAL, stmt.var if direct else None)
             self.write(counter, MIRRead(MIRPlace(start)), loc)
@@ -1875,7 +1873,7 @@ class _Builder:
             self.branch(cond, body.id, normal.id, loc)
             self.current = body
             self.loops.append((advance.id, after.id))
-            with self.scope():
+            with self.scope(stmt, "loop"):
                 if not direct:
                     if not stmt.hoist_loop_var:
                         self.bindings[stmt.var] = self.slot(INT32, MIRSlotKind.LOCAL, stmt.var)
@@ -1888,7 +1886,7 @@ class _Builder:
             self.write(counter, MIRRangeAdvance(counter, step), loc)
             self.end(MIRGoto(head.id, loc))
         self.current = normal
-        self.scoped(stmt.orelse)
+        self.scoped(stmt.orelse, stmt if stmt.orelse else None, "else")
         if self.current is not None:
             self.end(MIRGoto(after.id, loc))
         self.current = after
@@ -1905,7 +1903,7 @@ class _Builder:
         self.branch(self.result(BOOL, MIRIteratorHasNext(iterator), loc), body.id, normal.id, loc)
         self.current = body
         self.loops.append((advance.id, after.id))
-        with self.scope():
+        with self.scope(stmt, "loop"):
             if not stmt.hoist_loop_var:
                 reference = fact.element if isinstance(fact.element, th.THIRBorrowedRecord) else None
                 self.bindings[stmt.var] = self.slot(stmt.elem_type, MIRSlotKind.LOCAL, stmt.var, reference)
@@ -1918,7 +1916,7 @@ class _Builder:
         self.write(iterator, MIRIteratorAdvance(iterator), loc)
         self.end(MIRGoto(head.id, loc))
         self.current = normal
-        self.scoped(stmt.orelse)
+        self.scoped(stmt.orelse, stmt if stmt.orelse else None, "else")
         if self.current is not None:
             self.end(MIRGoto(after.id, loc))
         self.current = after
