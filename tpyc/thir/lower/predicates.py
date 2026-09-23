@@ -7984,12 +7984,13 @@ def _btuple_literal_elems_rvalue(a: 'TpyTupleLiteral', slot: 'TupleType',
                                  analyzer) -> bool:
     """The plain-record sibling of `_tuple_elem_slots_ptr_optional`: every
     non-value element slot is an F1 record AND its literal element is an
-    rvalue source (a fresh ctor call). The CONST_REF storage rule that
-    keeps plain-record LVALUE members out (see the sibling's docstring)
-    cannot fire on an rvalue -- it rides the `tuple_value_to_borrow`
-    source-tuple path, whose per-element admission the borrow builder
-    still owns. F1 (not just is_user_record) because the double-convert
-    spells the element types."""
+    rvalue source (a fresh ctor call) or a borrowed member sema declared a
+    copy of, which builds as one. The CONST_REF storage rule that keeps
+    plain-record LVALUE members out (see the sibling's docstring) cannot
+    fire on an rvalue -- it rides the `tuple_value_to_borrow` source-tuple
+    path, whose per-element admission the borrow builder still owns. F1
+    (not just is_user_record) because the double-convert spells the element
+    types."""
     if len(a.elements) != len(slot.element_types):
         return False
     for el, t in zip(a.elements, slot.element_types):
@@ -7998,7 +7999,8 @@ def _btuple_literal_elems_rvalue(a: 'TpyTupleLiteral', slot: 'TupleType',
         bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
         if not _f1_record(bare, analyzer):
             return False
-        if not is_rvalue_source(analyzer, el):
+        if not (is_rvalue_source(analyzer, el)
+                or el in analyzer.ctx.own_element_copies):
             return False
     return True
 

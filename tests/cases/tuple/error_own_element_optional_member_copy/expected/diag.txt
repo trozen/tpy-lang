@@ -1,0 +1,3 @@
+main.py:19: warning: copies P | None into owned storage (argument 't' tuple element 0); use copy() to make this explicit
+main.py:19: warning: copies P | None into owned storage (argument 't' tuple element 1); use copy() to make this explicit
+main.py:19: error: in function 'f': this construct is not yet supported by C++ code generation (expr.tuple_literal)

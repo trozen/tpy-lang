@@ -120,16 +120,16 @@
   "differs"
  ],
  "borrow__collection__T_lit": [
-  "Cannot pass borrowed value as argument 'value' tuple element 0 Own[Cell] without",
-  "",
-  "",
-  ""
+  "ok",
+  "copies Cell into owned storage (argument 'value' tuple element 0); use copy() to",
+  "std::vector<std::tuple<Cell, int32_t>> probe_xs = std::vector<std::tuple<Cell, int32_t>>{} | probe_xs.push_back(::tpy::tuple_to_storage_move<std::tuple<Cell, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<Cell*, int32_t>>(std::tuple<Cell, int32_t>{Cell(b), 1}))) | std::get<0>(::tpy::__getitem__(probe_xs, 0)).n = 9",
+  "differs"
  ],
  "borrow__collection__T_local": [
-  "expr.method_call:method.arg_shape",
+  "ok",
   "copies Cell into owned storage (tuple element 0); use copy() to make this explic",
-  "",
-  ""
+  "std::vector<std::tuple<Cell, int32_t>> probe_xs = std::vector<std::tuple<Cell, int32_t>>{} | probe_xs.push_back(::tpy::tuple_to_storage<std::tuple<Cell, int32_t>>(t)) | std::get<0>(::tpy::__getitem__(probe_xs, 0)).n = 9",
+  "differs"
  ],
  "borrow__field__S": [
   "ok",
@@ -307,7 +307,7 @@
  ],
  "mixed__collection__T_local": [
   "expr.method_call:method.arg_shape",
-  "",
+  "copies Cell into owned storage (tuple element 1); use copy() to make this explic",
   "",
   ""
  ],

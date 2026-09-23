@@ -67,12 +67,11 @@ Right: the same question at the unpack, so a live source lifts to `tuple_to_poin
 elements alias, and only the last-use source moves. Same axis, other shapes: `def f(x: Own[Box])` renders `Box&&` and the body may
 move `x`, while the `Own` element of `def f(p: tuple[Own[Box], Box])` can be neither unpacked,
 consumed nor written through; `xs.append(v)` at `list[Box]` warns and copies, while at
-`list[tuple[Box, Box]]` the literal `xs.append((v, v))` is a hard error, a local `xs.append(t)` an
-unsupported-construct reject and only the call result `xs.append(make(v))` warns like the scalar;
+`list[tuple[Box, Box]]` the literal `xs.append((v, v))` was a hard error, a local `xs.append(t)` an
+unsupported-construct reject and only the call result `xs.append(make(v))` warned like the scalar;
 `a: str = v` is `std::string_view a = v` while `t: tuple[str] = (v,)` is
 `std::tuple<std::string>(std::string(v))`.
-(open: `BUGS.md#consume-own-element-of-mixed-tuple`, `BUGS.md#borrowed-tuple-at-own-call-arg`,
-`BUGS.md#str-tuple-element-local-owned`)
+(open: `BUGS.md#consume-own-element-of-mixed-tuple`, `BUGS.md#str-tuple-element-local-owned`)
 
 **Check.** Wrap the subject in `(x,)` and `(x, 1)` and diff the three variants' emitted C++ for
 the element at the same position: a different storage form, deref, view or move verdict is the

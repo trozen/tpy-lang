@@ -568,6 +568,8 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 
 
 from .checks import (
+    declared_name_copy,
+    own_btuple_borrow_name_arg,
     _enum_receiver,
     _is_move_source_facts,
     _own_opt_ptr_name_move_arg_facts,
@@ -842,6 +844,16 @@ def lower_copy_construct(src: TpyExpr, payload: TpyType, lc: '_LowerCtx',
                     value=_lower_expr(src, lc, declared, use=src_use),
                     cpp_type=lc.render_type(payload), form=Form.STORAGE,
                     loc=loc)
+
+
+def own_element_copy_type(member: TpyExpr, analyzer) -> TpyType:
+    """The type a borrowed tuple member sema declared a copy of builds as:
+    the implicit copy renders as its explicit `copy(member)` would, which
+    spells the SOURCE's type (a literal-seeded container resolved) -- so a
+    sink admits it only where that is the slot's own payload."""
+    st = analyzer.get_expr_type(member)
+    st = resolve_pending_container(st, analyzer) or st
+    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
 
 
 def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
@@ -1456,8 +1468,12 @@ def _own_tuple_move_arg(a: TpyExpr, ptype: 'TpyType | None',
     (`consume(std::move(t))` on `tuple[Own[A], Own[A]]` -> the
     `std::tuple<A, A>&&` param): the movable binding is consumed whole at
     its last use. `_is_move_source` carries the movable/last-use
-    verdict."""
+    verdict; a name whose element copy sema declared holds borrows, which
+    no move can hand over (a resumable frame's slot is movable all the
+    same)."""
     if _own_tuple_shape_match(a, ptype, lc, declared) is None:
+        return False
+    if a in lc.analyzer.ctx.own_element_copies:
         return False
     return _is_move_source(a, lc)
 
@@ -1465,12 +1481,12 @@ def _own_tuple_borrow_lift_arg(a: TpyExpr, ptype: 'TpyType | None',
                                lc: '_LowerCtx',
                                declared: dict[str, TpyType]) -> bool:
     """A BORROW-form Own-element tuple NAME at the `std::tuple<...>&&`
-    slot: the F3 `tuple_to_storage` lift copies the referents in (the
-    warned copy). STORAGE-form bindings stay out -- a movable last use
-    rides `_own_tuple_move_arg`, and a still-live storage binding needs
-    the `auto(p)` decay-copy instead."""
+    slot whose copy sema declared: the F3 `tuple_to_storage` lift copies the
+    referents in (the warned copy). STORAGE-form bindings stay out -- a
+    movable last use rides `_own_tuple_move_arg`, and a still-live storage
+    binding needs the `auto(p)` decay-copy instead."""
     au = _own_tuple_shape_match(a, ptype, lc, declared)
-    if au is None:
+    if au is None or not declared_name_copy(a, lc.analyzer):
         return False
     if (a.name in lc.pointers or a.name in lc.storage_tuple_locals
             or _is_own_param(a.name, lc)):
@@ -12437,6 +12453,30 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         elif target_readonly and mode == TupleElemCapture.REF:
             mode = TupleElemCapture.CONST_REF
         captures.append(mode)
+        member = e.elements[i]
+        if consuming and member in analyzer.ctx.own_element_copies:
+            # A borrowed member sema declared a copy of: it constructs into
+            # the helper's source tuple exactly as its explicit `copy(p)`
+            # would, so the storage lift moves the COPY -- never the borrowed
+            # object.
+            payload = unwrap_readonly(unwrap_ref_type(
+                et_bare.inner if isinstance(et_bare, OptionalType)
+                else et_bare))
+            if not (own_element_copy_type(member, analyzer) == payload
+                    and payload.value_form() is ValueForm.BORROW_REF
+                    and TupleType._element_is_pointer_repr(payload)):
+                note_detail("btuple.elem_copy_source")
+                raise ThirUnsupported("expr.tuple_literal")
+            ptr_base = lc.render_type(payload)
+            parts.append(f"{ptr_base}*")
+            src_parts.append(ptr_base)
+            lowered.append(_lower_copy_special(
+                member, "copy", payload, lc, declared,
+                getattr(member, "loc", None)))
+            lifts.append(False)
+            wraps.append(None)
+            any_rvalue = True
+            continue
         if mode == TupleElemCapture.VALUE:
             lowered.append(_lower_container_elem(
                 e.elements[i], slot.element_types[i], lc, declared,
@@ -14631,6 +14671,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     mslot = _unwrap_own(pslot.element_types[i])
                     mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                         mslot)))
+                    if sub in lc.analyzer.ctx.own_element_copies:
+                        # A borrowed member sema declared a copy of: it
+                        # builds exactly as its explicit `copy(p)` would.
+                        if own_element_copy_type(sub, lc.analyzer) != mbare:
+                            note_detail("arg.own_element_copy_source")
+                            own_elems_ok = False
+                            break
+                        continue
                     if (not mbare.is_value_type()
                             # An `Own[P] | None` slot takes the element by
                             # VALUE, with copy-vs-move decided off sema's
@@ -14656,7 +14704,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     return THIRTupleLiteral(
                         result_type=pslot,
                         elements=tuple(
-                            _lower_container_elem(
+                            _lower_copy_special(
+                                a.elements[i], "copy",
+                                _unwrap_own(pslot.element_types[i]), lc,
+                                declared, getattr(a.elements[i], "loc", None))
+                            if (a.elements[i]
+                                in lc.analyzer.ctx.own_element_copies)
+                            else _lower_container_elem(
                                 a.elements[i],
                                 _unwrap_own(pslot.element_types[i]),
                                 lc, declared, tuple_elem=True,
@@ -14670,6 +14724,17 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                             for i in range(len(a.elements))),
                         loc=getattr(a, "loc", None))
             raise ThirUnsupported("expr.tuple_literal")
+    _obn = own_btuple_borrow_name_arg(a, ptype, declared, lc.narrow.narrowed,
+                                      lc.storage_tuple_locals, lc.analyzer)
+    if _obn is not None and a.name not in lc.pointers:
+        # A BORROW-form tuple NAME at an Own[ptr-repr tuple] element slot
+        # (`xs.append(t)`): sema warned the copy, and the non-move storage
+        # lift makes it -- moving would empty objects the tuple borrows.
+        _witness("arg.own_btuple_borrow_name")
+        return THIRFormConvert(
+            result_type=_obn,
+            value=_lower_expr(a, lc, declared, allow_unrouted_name=True),
+            form=Form.STORAGE, move=False, loc=getattr(a, "loc", None))
     if isinstance(a, (TpySubscript, TpyCall, TpyMethodCall)):
         # Own[ptr-repr tuple] element slot, non-literal sources:
         # - a whole storage-tuple ELEMENT read (`pairs2.append(pairs[0])`)

@@ -850,9 +850,8 @@ class StatementAnalyzer:
                                  context: str,
                                  whole_slot: bool = True) -> None:
         """Check that an lvalue returned as Own[T] has explicit copy() or is
-        auto-moved. The WHOLE return slot copies and warns; one ELEMENT of a
-        returned `Own[tuple[...]]` still rejects (the per-element copy has no
-        render)."""
+        auto-moved; a borrowed one copies and warns, naming the element of a
+        returned tuple."""
         self.compat.check_own_lvalue_into_own(own_type, expr, context,
                                               action="return",
                                               whole_slot=whole_slot)
@@ -1774,7 +1773,8 @@ class StatementAnalyzer:
                     tuple_target = own_tuple_target(expected)
                     if tuple_target is not None:
                         self.compat.check_name_borrow_into_own(
-                            stmt.value.name, tuple_target, stmt.value, "return")
+                            stmt.value.name, tuple_target, stmt.value,
+                            return_slot=True)
                 # Returning an ephemeral generator/iterator borrow lets it escape
                 # its iteration step -- reject with the copy-out fix (before the
                 # generic dangling check so the specific message wins).

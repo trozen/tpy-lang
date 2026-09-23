@@ -1,2 +1,0 @@
-main.py:14: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:20: error: Cannot pass borrowed value as tuple element 0 Own[Box] without explicit copy(). The source is borrowed (parameter, attribute, or non-last-use variable); use 'copy(...)' to make an owned copy.

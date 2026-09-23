@@ -1,0 +1,1 @@
+main.py:21: error: @nocopy type 'Tok' cannot be passed as argument 't' tuple element 0 Own[Tok]. Only the original owner can be moved at its last use.

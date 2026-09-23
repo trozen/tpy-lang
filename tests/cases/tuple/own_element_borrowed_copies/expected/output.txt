@@ -1,0 +1,43 @@
+ret_literal 1 1 2
+ret_whole 1 2 1
+ret_whole_name 1 2 1
+ret_nested 1 1 50
+ret_name 1 2
+ret_alias 1 2
+ret_call_local 1 2
+ret_param 1 2
+ret_loop_var 1 2
+ret_branch 1 2
+ret_twice 2 1
+ret_finally 4 3
+ret_closure 1
+ret_match 1 2
+ret_async 1 2
+ret_async_name 1 2
+arg_async_name 2 1
+arg_local 2 1 1
+arg_optional 2 1
+arg_each 2 1
+arg_params 2 1
+arg_fields 2 1
+arg_call 2 1
+ret_call 1 2
+arg_subscripts 2 1
+arg_name 2 1
+arg_param_name 2 1
+arg_call_local 2 1
+arg_method_local 2 1
+arg_fields_optional 2 1
+arg_mixed 2 1
+arg_generator 2 1
+arg_generator 2 1
+give 21
+insert 2 1
+insert 2 1
+insert 2 1
+insert 2 1
+method 3 2
+ctor 2 3
+generic 0 3
+arg_error_return 4 3
+arg_with 4 3 1

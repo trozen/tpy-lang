@@ -11441,6 +11441,43 @@ def _r_own_btuple_nested_name(req: _ArgReq) -> bool:
                 req.locals_[a.name]))) == bare)
 
 
+def declared_name_copy(a: TpyExpr, analyzer) -> bool:
+    """A tuple NAME whose whole-tuple copy into an owning slot sema declared:
+    it warned every element the copy takes, and the binding holds no element
+    by value (`own_element_mixed`). The one admission test every name lift
+    shares -- a lift that skipped it copied undeclared or moved out of a
+    borrow."""
+    return (a in analyzer.ctx.own_element_copies
+            and a not in analyzer.ctx.own_element_mixed)
+
+
+def own_btuple_borrow_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               locals_: dict, narrowed: 'AbstractSet[str]',
+                               storage_tuple_locals: 'AbstractSet[str]',
+                               analyzer) -> 'TupleType | None':
+    """A BORROW-form tuple NAME (`t = (v, v)`, a tuple param) at a whole
+    `Own[ptr-repr tuple]` element slot (`xs.append(t)`) whose copy sema
+    declared: it lifts through the non-move `tuple_to_storage<S>(t)`, the
+    same lift a borrow-tuple-returning call takes there. Returns the slot's
+    tuple. An undeclared name keeps rejecting rather than copying unwarned."""
+    if not (isinstance(a, TpyName) and a.name in locals_
+            and a.name != "self" and a.name not in narrowed
+            and a.name not in storage_tuple_locals
+            and declared_name_copy(a, analyzer)):
+        return None
+    bare = _own_slot_ptr_repr_tuple(ptype)
+    if bare is None:
+        return None
+    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    return bare if au == bare else None
+
+
+def _r_own_btuple_borrow_name(req: _ArgReq) -> bool:
+    return own_btuple_borrow_name_arg(
+        req.a, req.ptype, req.locals_, req.narrowed,
+        req.storage_tuple_locals, req.analyzer) is not None
+
+
 def _r_own_tuple_call_rvalue(req: _ArgReq) -> bool:
     return _own_tuple_call_rvalue_arg(req.a, req.ptype, req.analyzer)
 
@@ -12702,6 +12739,12 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # form), so the local owns its members and copies bare (or
         # moves at a movable name's last use).
         _ArgRow("own_btuple_nested_name", _r_own_btuple_nested_name,
+                extra=_x_insert_own_slot),
+        # A BORROW-form tuple NAME at the same Own element slot
+        # (`xs.append(t)` -> `push_back(tuple_to_storage<S>(t))`): the
+        # warned copy, lifted like the borrow-tuple CALL above.
+        _ArgRow("own_btuple_borrow_name", _r_own_btuple_borrow_name,
+                face="arg.own_btuple_borrow_name",
                 extra=_x_insert_own_slot),
         # An owning CALL whose result IS the Own element slot
         # (`pairs.append(make_pair(1, 10))` at `Own[tuple[int32,

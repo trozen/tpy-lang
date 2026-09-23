@@ -1,0 +1,4 @@
+fresh_copy 21 1
+last_use 21
+give 21
+ret_moves 2 1

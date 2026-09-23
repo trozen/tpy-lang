@@ -907,6 +907,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # An Own-element tuple PARAM name at the widened value-tuple return:
     # the bare name (the rvalue-ref binding is already storage form).
     "ret.own_tuple_param",
+    # A BORROW-form Own-element tuple NAME at the same return: the warned
+    # copy lifts through `tuple_to_storage<S>(pair)`.
+    "ret.own_tuple_borrow_lift",
+    # ... and at a whole Own[ptr-repr tuple] ELEMENT slot (`xs.append(t)`
+    # -> `push_back(tuple_to_storage<S>(t))`).
+    "arg.own_btuple_borrow_name",
     # F1-record element/value slot: a record RVALUE (exact or covariant
     # upcast) forwarded bare by the checked `__setitem__`
     # (`::tpy::__setitem__(s._pool, key, Box<Conn>(std::move(conn)));`).

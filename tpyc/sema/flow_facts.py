@@ -266,8 +266,7 @@ def _combine_bp(
         param_derived=param,
         owns_fresh_idx=_min_idx(a.owns_fresh_idx, b.owns_fresh_idx),
         owning_storage=a.owning_storage or b.owning_storage,
-        borrow_into_own_idxs=a.borrow_into_own_idxs | b.borrow_into_own_idxs,
-        copies_into_own_idxs=a.copies_into_own_idxs | b.copies_into_own_idxs,
+        copy_into_own_idxs=a.copy_into_own_idxs | b.copy_into_own_idxs,
         borrow_source_roots=a.borrow_source_roots | b.borrow_source_roots,
     )
 

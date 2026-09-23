@@ -1,7 +1,8 @@
 # Tuple completion plan
 
 Status: OPEN. Scope decided 2026-09-21; U0 done, U1 is next.
-Measured on `04a797ddf2` (2026-09-21). Every figure here is valid for that
+Measured on `04a797ddf2` (2026-09-21); the matrix cells re-run 2026-09-23
+on `b7fa3e92cb` (U3 D1). Every figure here is valid for that
 tree only -- re-run the matrix before acting on a cell.
 
 The tracked plan for making a tuple element behave as designed. `RELEASE_PLAN.md`
@@ -34,16 +35,18 @@ the raw grid.
 | element form | param | return | field | collection | local | global |
 |---|---|---|---|---|---|---|
 | `Own[T]` (ref) | ok | ok | ok (both reject) | ok (both reject) | ok (both reject) | ok (both reject) |
-| borrow (ref) | ok alias | ok alias | ok copy+warn | D1 | ok alias | ok alias |
+| borrow (ref) | ok alias | ok alias | ok copy+warn | ok copy+warn | ok alias | ok alias |
 | value type | ok | ok | ok | ok | ok | ok |
 | `int` (BigInt) | ok | ok | ok | ok | ok | ok |
 | `str` | D3 | ok | ok | ok | D4 | ok |
 | `bytes` | D3, D6 | ok (D6) | ok (D6) | ok (D6) | D4, D6 | D6 |
 | mixed Own+borrow | D5 | ok | ok copy+warn | D1 | ok alias | D2 |
 
-- **D1** `BUGS.md#borrowed-tuple-at-own-call-arg` -- a borrowed tuple at an
-  owning container insert: literal source is a hard error, a local source an
-  unsupported-construct reject, only the call source warns like the scalar.
+- **D1** -- a MIXED tuple LOCAL (an owned element beside a borrowed one,
+  from a literal or a call) at an owning container insert (`xs.append(t)`)
+  or a whole-tuple return warns its borrowed elements and then rejects
+  (loud); the call source copies and warns like the scalar. The all-borrow
+  row took the scalar's warning in U3 D1.
 - **D2** `BUGS.md#global-tuple-ref-storage-form` -- the MIXED tuple global
   (an owned element beside a borrowed one, from a call) copies its borrowed
   element SILENTLY; the all-borrow tuple global is a tuple of pointer slots
@@ -262,9 +265,11 @@ per shape; the mixed tuple global (D2) waits on that entry.
     the rebind after it (`x = Box(5)`) sits behind the same reject
   - [ ] element read off a container: `t = xs[0]` on `list[tuple[Box, int32]]`
     [`decl.slot_type`]
-  - [ ] `xs.append(t)` with a local or param tuple [`method.arg_shape`];
-    a nested literal `xs.append((1, (2, c)))` / `sink((1, (2, c)))` at an
-    `Own` tuple slot [`expr.tuple_literal`] (sema warns the nested copy)
+  - [ ] `xs.append(t)` with a MIXED tuple local bound from a call (an owned
+    element beside a borrowed one) [`method.arg_shape`, after the warning];
+    the all-borrow local and parameter lower since U3 D1. A nested literal
+    `xs.append((1, (2, c)))` / `sink((1, (2, c)))` at an `Own` tuple slot
+    [`expr.tuple_literal`] (sema warns the nested copy)
   - [ ] `d["a"] = (b, 1)` [`setitem.family`]
   - [ ] an `Optional` element local: `t: tuple[Box | None, int32] = (b, 1)`
     [`decl.slot_type`]
@@ -291,15 +296,21 @@ per shape; the mixed tuple global (D2) waits on that entry.
   - [ ] an owning tuple off a METHOD: `t = h.meth()` for
     `-> tuple[Own[Box], int32]` [`method.ret_type`], the free twin compiles
 - [ ] **U3 -- policy decisions, then the flips.** Each is small once decided;
-  none is decided. Present each on its own, leading with the generated code.
-  - [ ] D1 tier: the per-element arg check follows the scalar WARN tier
-    (`BUGS.md#borrowed-tuple-at-own-call-arg`; eight `error_` cases stop
-    erroring, `@nocopy` sources keep erroring). One element slot has two
-    verdicts today: `xs.append((2, c))` (the ARG sink, `list.append` takes
-    `Own[T]`) errors, while `[(1, c)]` and `{1: (4, c)}` (the CONTAINER sink)
-    warn for the same borrowed `c` into the same storage.
-  - [ ] TODO: "Decide ONE policy for a borrow-returning call at a
-    tuple-element `Own[T]` slot" -- errors today where the scalar warns.
+  D1 is decided and done, the rest are not. Present each on its own, leading
+  with the generated code.
+  - [x] D1 tier (`tuple-own-warn-tier`): every tuple-element `Own` slot,
+    return and argument, direct and nested, literal or name, takes the
+    scalar's copy warning; a non-copyable element keeps the error. It also
+    decided the borrow-returning-call member (warns). `tests/cases/tuple/
+    own_element_borrowed_copies` holds a section per position; a tuple local
+    bound from a borrow-returning call now warns at every slot. Left loud:
+    the call-bound mixed local at an insert (D1 above), a list-literal local
+    copied into `Own[list]` element slots (`ys = [1, 2]; return (ys, ys)`,
+    `BUGS.md#array-literal-in-own-tuple-return`), an Optional member
+    (`BUGS.md#optional-member-own-copy-no-render`), `yield t`
+    (`BUGS.md#yield-tuple-name-own-element`) and a name nested in a returned
+    literal (`BUGS.md#nested-tuple-name-own-return`); a global name copies
+    unwarned (`BUGS.md#global-tuple-name-own-return-unwarned`).
   - [ ] TODO: "Warn at the mixed-tuple module GLOBAL as a stopgap" -- only
     worth taking if D2's full fix slips out of 0.6.0.
   - [ ] The `Optional`-wrapped mixed return ABI (`tuple[Own[A], B] | None`),

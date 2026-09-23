@@ -1195,9 +1195,9 @@ class BindingProvenance:
         owns fresh non-value storage -- borrowing it across a yield/return
         dangles), `owning_storage` (bound from an owning-tuple call -- a
         borrow-form return would address into the dying local),
-        `borrow_into_own_idxs` (plain-borrow elements -- REJECTED at a
-        NAME->Own[T] slot) and `copies_into_own_idxs` (owned-by-reference
-        elements -- WARNED, the copy-into-owned analog).
+        `copy_into_own_idxs` (elements held by reference -- a plain borrow,
+        or an owned source not moved in -- which COPY at a NAME->Own[T] slot
+        and warn, the copy-into-owned analog).
 
     Absent name == default record by construction: callers prune all-default
     records, so a name's membership and its facts stay equivalent under both
@@ -1208,8 +1208,7 @@ class BindingProvenance:
     param_derived: bool = False
     owns_fresh_idx: int | None = None
     owning_storage: bool = False
-    borrow_into_own_idxs: frozenset[int] = frozenset()
-    copies_into_own_idxs: frozenset[int] = frozenset()
+    copy_into_own_idxs: frozenset[int] = frozenset()
     # HAZARD (UNION): storage roots a borrow-form tuple local's element
     # pointers alias (terminal roots, pre-expanded at record time). The
     # mark functions trace a yield/return of the bare name through it.
@@ -1740,13 +1739,9 @@ class FunctionTrackingState:
         bp = self.binding_provenance.get(name)
         return bp is not None and bp.owning_storage
 
-    def bp_borrow_into_own_idxs(self, name: str) -> frozenset[int]:
+    def bp_copy_into_own_idxs(self, name: str) -> frozenset[int]:
         bp = self.binding_provenance.get(name)
-        return bp.borrow_into_own_idxs if bp is not None else frozenset()
-
-    def bp_copies_into_own_idxs(self, name: str) -> frozenset[int]:
-        bp = self.binding_provenance.get(name)
-        return bp.copies_into_own_idxs if bp is not None else frozenset()
+        return bp.copy_into_own_idxs if bp is not None else frozenset()
 
     def bp_set_tuple_member(
         self,
@@ -1754,8 +1749,7 @@ class FunctionTrackingState:
         *,
         owns_fresh_idx: int | None,
         owning_storage: bool,
-        borrow_into_own_idxs: frozenset[int],
-        copies_into_own_idxs: frozenset[int],
+        copy_into_own_idxs: frozenset[int],
         borrow_source_roots: frozenset[str],
     ) -> None:
         # All tuple-member hazard fields are (re)derived together per
@@ -1766,8 +1760,7 @@ class FunctionTrackingState:
             name,
             owns_fresh_idx=owns_fresh_idx,
             owning_storage=owning_storage,
-            borrow_into_own_idxs=borrow_into_own_idxs,
-            copies_into_own_idxs=copies_into_own_idxs,
+            copy_into_own_idxs=copy_into_own_idxs,
             borrow_source_roots=borrow_source_roots,
         )
 
@@ -2056,6 +2049,14 @@ class SemanticContext:
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: IdentitySet = field(default_factory=IdentitySet)
+    # Sources that COPY into an `Own` tuple-element slot, as declared by the
+    # warning: a tuple-literal member, or a tuple name some element of which
+    # arrives borrowed. The lowering builds exactly these copies -- never a
+    # move out of storage that outlives the call, never an undeclared copy.
+    own_element_copies: IdentitySet = field(default_factory=IdentitySet)
+    # The declared-copy NAMES among them whose binding also holds an element
+    # by value (mixed): no whole-tuple lift may build their copy.
+    own_element_mixed: IdentitySet = field(default_factory=IdentitySet)
     # The `return <name>` values under a non-suspending finally
     # (liveness.collect_finally_return_candidates; every such return -- the
     # finally can reach the local through aliases/closures, so candidacy is

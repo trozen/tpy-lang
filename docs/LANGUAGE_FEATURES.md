@@ -345,15 +345,30 @@ lands in owned storage warns -- at a field, a subscript store
 (`d[0] = (a, 1)`), a container literal, a member of a nested value tuple at
 any sink, and an `Own` element of a yielded tuple (`yield (1, c)`,
 `yield (t[0], t[1])`), exactly as `yield c` into `Iterator[Own[C]]` warns.
-An `Own` element of a RETURNED literal or of an `Own[tuple[...]]` argument
--- `append` / `insert` included, since their slot is `Own[T]` -- keeps that
-slot's stricter rule: a DIRECT borrowed member is an error
-(`BUGS.md#borrowed-tuple-at-own-call-arg` tracks the tier), while a member
-nested a level down is storage inside the owned value and warns. The same
-owned local used twice (`return (b, b)`) warns at each copy, since CPython
-returns one object twice, and is an error when the type cannot be copied at
-all (`@nocopy`, or a record with `__del__`). A fresh member, an owned local
-at its last use, and `copy()` stay quiet.
+An `Own` element of a RETURNED tuple or of an `Own[tuple[...]]` argument
+-- `append` / `insert` included, since their slot is `Own[T]` -- takes the
+`Own[T]` slot's rule exactly as the scalar does: a borrowed member (a
+parameter, a field or subscript read, a borrow-returning call, a local not
+at its last use) is COPIED and warns `copies C into owned storage (tuple
+element 1); use copy() to make this explicit`, direct or nested, whether the
+tuple is a literal or a name (a local built from one or from a call that
+returns a borrowing tuple, a tuple parameter, a loop variable). The same
+owned local used twice (`return (b, b)`, or a consuming method's
+`(self.a, self.a)`) warns at
+each copy, since CPython returns one object twice. A type that cannot be
+copied at all (`@nocopy`, or a record with `__del__`) is an error instead. A
+fresh member, an owned local at its last use, and `copy()` stay quiet. A
+tuple PARAMETER passed whole to an `Own`-element argument warns once for the
+whole tuple (`copies tuple[C, int32] into owned storage`) rather than per
+element. Not yet covered: a tuple name that also OWNS an element (`t =
+(Box(1), p)`, or a call returning `tuple[Own[Box], Box]`) at a whole-tuple
+slot -- its borrowed elements warn, then the compile rejects, since copying
+the whole tuple would copy the owned element too -- a tuple name nested in a returned literal
+(`BUGS.md#nested-tuple-name-own-return`), `yield t`
+(`BUGS.md#yield-tuple-name-own-element`), an Optional member
+(`BUGS.md#optional-member-own-copy-no-render`) -- these reject loudly -- and
+a module-global name, which copies unwarned
+(`BUGS.md#global-tuple-name-own-return-unwarned`).
 
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
@@ -1293,7 +1308,7 @@ a, b = (items[0], items[1])  # a aliases items[0], b aliases items[1]
 
 Ownership transfer (all three forms produce identical codegen):
 
-- `tuple[Own[T], Own[T], ...]` -- per-element Own. Each non-value element is moved into the value tuple; `@nocopy` elements at last-use are auto-moved. An *owned* source element (an `Own[T]` param/return, or an owned local) bound into a tuple by NAME at its **last use** MOVES into the tuple, which then owns the element (storage form) -- the local analog of the scalar field/return auto-move; the moved tuple local then returns / passes by name into an `Own[T]` slot with no copy (`pair = (ob, 0); return pair` / `sink(pair)`). An owned source that is **not** at last use COPIES into the `Own[T]` slot with the same `copies ... into owned storage; use copy()` warning the scalar `T -> Own[T]` coercion gives (it stays usable after). A *borrowed* (param / attribute / non-last-use) reference element placed into an `Own[T]` return / call-arg slot requires explicit `copy()` -- rejected for both a tuple literal and a NAME-bound source (the latter via a construction-time hazard that propagates through alias / ternary / loop paths). This is STRICTER than the scalar, which warns and copies at the same `Own[T]` return and argument slots (`copies C into owned storage; use copy()`); the tuple element is to take the scalar's warning, `@nocopy` sources keeping the error (`BUGS.md#borrowed-tuple-at-own-call-arg`). (Fields are storage form regardless of an `Own` annotation, so a reference element copied into a tuple *field* is the ordinary field-copy warning, not an `Own`-slot rule.)
+- `tuple[Own[T], Own[T], ...]` -- per-element Own. Each non-value element is moved into the value tuple; `@nocopy` elements at last-use are auto-moved. An *owned* source element (an `Own[T]` param/return, or an owned local) bound into a tuple by NAME at its **last use** MOVES into the tuple, which then owns the element (storage form) -- the local analog of the scalar field/return auto-move; the moved tuple local then returns / passes by name into an `Own[T]` slot with no copy (`pair = (ob, 0); return pair` / `sink(pair)`). An owned source that is **not** at last use COPIES into the `Own[T]` slot with the same `copies ... into owned storage; use copy()` warning the scalar `T -> Own[T]` coercion gives (it stays usable after). A *borrowed* (param / attribute / non-last-use) reference element placed into an `Own[T]` return / call-arg slot COPIES with the scalar's warning (`copies C into owned storage (tuple element 0); use copy()`) -- for a tuple literal and for a NAME-bound source alike (the latter via a construction-time hazard -- from the literal's members, or the plain reference elements of a borrowing call's return -- that propagates through alias / ternary / loop paths, or the declared elements of a tuple parameter or loop variable); a non-copyable element is an error. (Fields are storage form regardless of an `Own` annotation, so a reference element copied into a tuple *field* is the ordinary field-copy warning, not an `Own`-slot rule.)
 - `Own[tuple[T, T, ...]]` -- outer Own. Equivalent to per-element Own for non-value elements; the value tuple owns its contents.
 - `tuple[T, T, ...]` in field/owning-destination context -- last-use owned locals auto-move into the slot, matching scalar `field: T` semantics ("a tuple field of N objects behaves like N scalar fields"). An `Own[T]` annotation on field elements is rejected as redundant (the field owns its value regardless).
 - `copy(t)` over a whole tuple with reference elements (a literal `copy((x, ref))` or a tuple local/field) produces an owned storage-form tuple, copying each element by value -- equivalent to copying per element (`(x, copy(ref))`). The element is stored by value, so the copy is independent of the source.

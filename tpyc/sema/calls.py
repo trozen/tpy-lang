@@ -2933,7 +2933,7 @@ class CallAnalyzer:
                     and any(isinstance(et, OwnType)
                             for et in name_target.element_types)):
                 self.compat.check_name_borrow_into_own(
-                    arg.name, name_target, arg, "pass")
+                    arg.name, name_target, arg)
                 # The `std::tuple<...>&&` param binds only an rvalue, so a
                 # movable owned-tuple source NOT at its last use can't move in:
                 # a @nocopy tuple is a clean use-after-move error, a copyable one

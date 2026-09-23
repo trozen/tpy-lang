@@ -485,6 +485,7 @@ from .context import (
     ValueOptKind,
 )
 from .checks import (
+    own_btuple_borrow_name_arg,
     _chained_subscript_recv_type,
     _const_borrow_call_result,
     _container_comp_arg,
@@ -571,6 +572,7 @@ from .expressions import (
     _constructs_value,
     _flush_witness,
     _own_tuple_shape_match,
+    _own_tuple_borrow_lift_arg,
     _ptr_read_derefs,
     _lower_isinstance_cond,
     _narrow_member_cpp,
@@ -587,7 +589,9 @@ from .expressions import (
     _lower_dyn_own_conformer,
     _lower_class_const_write_target,
     _lower_copy_record,
+    _lower_copy_special,
     lower_copy_construct,
+    own_element_copy_type,
     _lower_ctor_call_args,
     _lower_container_elem,
     _lower_elem_into_any,
@@ -7090,6 +7094,14 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         value = _lower_tuple_literal(ret.value, ret_vt, lc, declared)
         _witness("res.return_tuple_literal")
         return value
+    if (ret_vt is not None and isinstance(ret.value, TpyName)
+            and _own_tuple_borrow_lift_arg(ret.value, ret_vt, lc, declared)):
+        # The sync return's declared-copy lift: a borrow-form tuple name
+        # into Own element slots copies through `tuple_to_storage<S>(t)`.
+        # The position-blind decl below would bind it bare, and a borrow
+        # tuple does not convert to the storage one.
+        _witness("ret.own_tuple_borrow_lift")
+        return _own_tuple_name_copy(ret.value, ret_vt, lc, declared)
     ret_gt = lc.prescan.ret_generic_tuple
     if ret_gt is not None and isinstance(ret.value, TpyTupleLiteral):
         # A generic tuple literal renders the spelled brace-init with
@@ -7099,6 +7111,9 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         value = _lower_generic_tuple_literal(ret.value, ret_gt, lc, declared)
         _witness("res.return_generic_tuple")
         return value
+    if _unlifted_declared_copy(ret.value, lc):
+        note_detail("return.own_element_copy_source")
+        raise ThirUnsupported(stmt_reject_reason(ret))
     # A str-family FIELD source reads bare into the scaffolding's
     # `<ret_cpp> __tpy_async_ret = <value>;` decl (`__self.name`), the same
     # read the sync return tail prechecks -- the frame's receiver respelling
@@ -7746,6 +7761,29 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         target=THIRName(name=stmt.name, result_type=declared[stmt.name],
                         loc=stmt.loc),
         value=value, loc=stmt.loc)
+
+
+def _unlifted_declared_copy(value: 'TpyExpr | None',
+                            lc: '_LowerCtx') -> bool:
+    """A BORROW-form tuple name whose element copy sema declared, reaching a
+    return's bare tail: every slot that can build the copy lifted it before,
+    so a bare render here would hand a tuple of pointers to a slot that owns
+    (a mixed `-> tuple[Own[P], P]` return, say) -- reject it at the statement
+    instead of in the C++ build. A storage-form binding (a loop variable over
+    stored tuples) copies correctly bare."""
+    return (isinstance(value, TpyName)
+            and value in lc.analyzer.ctx.own_element_copies
+            and value.name not in lc.storage_tuple_locals)
+
+
+def _own_tuple_name_copy(source: TpyName, slot: TpyType, lc: '_LowerCtx',
+                         declared: dict[str, TpyType]) -> THIRExpr:
+    """The declared-copy lift of a tuple NAME into an owning return:
+    `tuple_to_storage<S>(t)` copies each borrowed element."""
+    value = _lower_expr(source, lc, declared, allow_unrouted_name=True)
+    return THIRFormConvert(
+        result_type=unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))),
+        value=value, form=Form.STORAGE, loc=getattr(source, "loc", None))
 
 
 def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
@@ -13170,6 +13208,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # fires for a const source returning a const-element tuple. The source is
             # a storage-tuple alias local (`return t`) or a field read (`return h.pair`).
             if isinstance(stmt.value, TpyName):
+                if _unlifted_declared_copy(stmt.value, lc):
+                    # A MIXED return slot owns an element the name borrows.
+                    note_detail("return.own_element_copy_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
                 if stmt.value.name not in lc.storage_tuple_locals:
                     # A local already bound in BORROW form (an `auto` decl off
                     # a ref-element tuple) needs no lift -- it returns bare.
@@ -14278,7 +14320,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                              is not None
                              and _own_tuple_shape_match(
                                  source, ret_vt, lc, declared) is not None
-                             and _witness("ret.own_tuple_param"))))
+                             and _witness("ret.own_tuple_param"))
+                         # ... and a BORROW-form one (`auto pair =
+                         # std::tuple<Box*, int32_t>{&(b), 0}`) whose copy
+                         # sema declared: it lifts through the storage
+                         # conversion, as the same name does at an owning
+                         # argument.
+                         or _own_tuple_borrow_lift_arg(
+                             source, ret_vt, lc, declared)))
             elif isinstance(source, (TpyCall, TpyMethodCall)):
                 # Free and module-qualified stub calls alike
                 # (`return math.frexp(2.0)` -- the module-attr call parses
@@ -14295,6 +14344,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             if not tuple_ok:
                 note_detail("return.tuple_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+            if (isinstance(source, TpyName)
+                    and _own_tuple_borrow_lift_arg(
+                        source, ret_vt, lc, declared)):
+                _witness("ret.own_tuple_borrow_lift")
+                return THIRReturn(
+                    value=_own_tuple_name_copy(source, ret_vt, lc, declared),
+                    loc=loc)
             if isinstance(source, TpyTupleLiteral):
                 try:
                     # The return is a statement flush point, so an element's
@@ -14374,6 +14430,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # rules (a non-value member must be an RVALUE -- a NAME member
             # would take the borrow ladder's different render).
             source = stmt.value
+            if (isinstance(source, TpyName)
+                    and source.name not in lc.pointers
+                    and own_btuple_borrow_name_arg(
+                        source, lc.func.return_type, declared,
+                        lc.narrow.narrowed, lc.storage_tuple_locals,
+                        analyzer) is not None):
+                # A borrow-form tuple NAME at the whole `Own[tuple[...]]`
+                # return: the same declared-copy lift as per-element slots.
+                _witness("ret.own_tuple_borrow_lift")
+                return THIRReturn(
+                    value=_own_tuple_name_copy(source, ret_ost, lc, declared),
+                    loc=loc)
             ost_ok = (isinstance(source, TpyTupleLiteral)
                       and len(source.elements) == len(ret_ost.element_types))
             if ost_ok:
@@ -14385,6 +14453,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     mslot = _unwrap_own(ret_ost.element_types[i])
                     mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                         mslot)))
+                    if sub in analyzer.ctx.own_element_copies:
+                        # A borrowed member sema declared a copy of: it
+                        # builds exactly as its explicit `copy(p)` would.
+                        if own_element_copy_type(sub, analyzer) != mbare:
+                            note_detail("return.own_element_copy_source")
+                            ost_ok = False
+                            break
+                        continue
                     if (not mbare.is_value_type()
                             and not is_rvalue_source(analyzer, sub)
                             # ... or a movable NAME at its last use: the
@@ -14410,10 +14486,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 value=THIRTupleLiteral(
                     result_type=ret_ost,
                     elements=tuple(
-                        _lower_container_elem(source.elements[i],
-                                              _unwrap_own(
-                                                  ret_ost.element_types[i]),
-                                              lc, declared, tuple_elem=True)
+                        _lower_copy_special(
+                            source.elements[i], "copy",
+                            _unwrap_own(ret_ost.element_types[i]), lc,
+                            declared, getattr(source.elements[i], "loc",
+                                              None))
+                        if source.elements[i] in analyzer.ctx.own_element_copies
+                        else _lower_container_elem(source.elements[i],
+                                                   _unwrap_own(
+                                                       ret_ost.element_types[i]),
+                                                   lc, declared, tuple_elem=True)
                         for i in range(len(source.elements))),
                     loc=loc),
                 loc=loc)
@@ -14744,6 +14826,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
              or lc.prescan.ret_bytes is not None)
             and isinstance(stmt.value, TpyFieldAccess)
             and _witness("ret.viewfam_field_recv"))
+        if _unlifted_declared_copy(stmt.value, lc):
+            note_detail("return.own_element_copy_source")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         value = (_flush_witness(
                     "flush.return",
                     _lower_expr(

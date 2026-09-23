@@ -1,0 +1,2 @@
+main.py:24: warning: copies P into owned storage (tuple element 1); use copy() to make this explicit
+main.py:24: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.return:return.tuple_source)
