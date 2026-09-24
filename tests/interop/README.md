@@ -15,8 +15,8 @@ uv run python tests/update_snapshots.py -k funcs    # regenerate expected/
 
 For each case directory (any `tests/interop/<case>/` whose `src/` holds a
 `driver.py`) the harness mirrors the main snapshot harness. Inputs -- the
-`# tpy: ext_module` module, `driver.py`, optional `ext_checks.py` -- live in
-`src/`, mirroring the `tests/cases` input/output split; `expected/` and the
+`# tpy: ext_module` module (its filename is the import name), `driver.py`,
+optional `ext_checks.py` -- live in `src/`, mirroring the `tests/cases` input/output split; `expected/` and the
 gitignored `__tpyc__/` build output stay at the case root:
 
 - **comp/snapshot** (always): `tpyc` emits the module `.hpp`/`.cpp` and the
@@ -38,7 +38,8 @@ gitignored `__tpyc__/` build output stay at the case root:
   The link recipe is per-target (`shared_link_flags`): ELF `-shared`, Mach-O
   `-bundle -undefined dynamic_lookup`. Windows is the remaining gap, so the
   phase still skips there; the snapshot, cpy-parity, and facade self-check
-  run everywhere.
+  run everywhere. Under `--build-only` or a cross toolchain only the
+  snapshot half runs.
 - **cpy-parity** (always, cheap): the *same* `driver.py` over the TPy source
   (via the `lib/cpy` stubs) must reproduce the ext-exec output snapshot.
 - **ext_checks.py** (ext-only, if present): runs against the built `.so`.
