@@ -10,13 +10,17 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import select
 import shlex
+import stat
 import subprocess
+import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, wait as wait_futures
 from dataclasses import dataclass, field
+from decimal import Decimal
 from pathlib import Path
 from typing import Callable
 
@@ -158,15 +162,10 @@ def _rsync_literal(path: str) -> str:
 
 def rsync_argv(remote: RemoteHost, checkout: Path, ignore: tuple[str, ...],
                git_only: tuple[str, ...] | list[str] = ()) -> list[str]:
-    """Mirror the checkout into the tree. gitignore files act as per-directory
-    filters, and `--delete` without `--delete-excluded` leaves ignored files
-    the host already has (build output, caches) in place across syncs.
-    `git_only` (see sync_excludes) is hidden on the sender side only, so a
-    copy an earlier sync shipped is deleted from the host like any other
-    file that is gone."""
-    argv = ["rsync", "-a", "--delete", "--exclude=.git", "--filter=:- .gitignore"]
-    argv += [f"--exclude={pattern}" for pattern in ignore]
-    argv += [f"--filter=-s /{_rsync_literal(path)}" for path in git_only]  # anchored
+    """Mirror the checkout into the tree. `--delete` without
+    `--delete-excluded` leaves ignored files the host already has (build
+    output, caches) in place across syncs."""
+    argv = ["rsync", "-a", "--delete", *sync_filters(ignore, git_only)]
     mkdir = remote_shell(remote.host, f"mkdir -p {shlex.quote(remote.tree)} && rsync")
     argv += [f"--rsync-path={mkdir}", "-e", f"ssh -F {shlex.quote(remote.ssh_config)}"]
     argv += [f"{checkout}/", f"{remote.host.ssh}:{remote.tree}/"]
@@ -219,11 +218,74 @@ def after_sync_command(remote: RemoteHost, settings: ProjectSettings, digest: st
     return f"cd {shlex.quote(remote.tree)} && " + " && ".join(parts)
 
 
-def written_files_command(remote: RemoteHost) -> str:
-    """Paths under the tree with an mtime after the stamp: what the run wrote.
-    Synced files keep their local mtimes, which predate the stamp."""
-    return (f"cd {shlex.quote(remote.tree)} && "
-            f"find . -type f -newer {shlex.quote(remote.stamp)} -print0")
+def host_files_command(remote: RemoteHost) -> str:
+    """The stamp's mtime on one line, then every non-directory under the
+    tree (files, symlinks) with its own mtime, NUL-separated. One newer
+    than the stamp is what the run wrote (synced entries keep their local
+    mtimes, which predate the stamp); a synced entry missing from the
+    listing is what the run deleted."""
+    return (f"cd {shlex.quote(remote.tree)} && find {shlex.quote(remote.stamp)} -printf '%T@\\n' "
+            f"&& find . ! -type d -printf '%T@\\t%p\\0'")
+
+
+def parse_host_files(output: str) -> tuple[str, dict[str, str]]:
+    """(stamp mtime, {path: mtime}) from host_files_command's output; the
+    mtimes stay strings compared as decimals, since find prints them
+    with nanoseconds and a float would round the same second away."""
+    stamp, _, rest = output.partition("\n")
+    files: dict[str, str] = {}
+    for entry in rest.split("\0"):
+        if not entry:
+            continue
+        mtime, _, path = entry.partition("\t")
+        files[path[2:] if path.startswith("./") else path] = mtime
+    return stamp.strip(), files
+
+
+def _newer(mtime: str, than: str) -> bool:
+    return Decimal(mtime) > Decimal(than)
+
+
+def sync_filters(ignore: tuple[str, ...], git_only: tuple[str, ...] | list[str]) -> list[str]:
+    """The rsync arguments that decide what the sync sends. gitignore files
+    act as per-directory filters; `git_only` (see sync_excludes) is hidden
+    on the sender side only, so a copy an earlier sync shipped is deleted
+    from the host like any other file that is gone."""
+    argv = ["--exclude=.git", "--filter=:- .gitignore"]
+    argv += [f"--exclude={pattern}" for pattern in ignore]
+    argv += [f"--filter=-s /{_rsync_literal(path)}" for path in git_only]  # anchored
+    return argv
+
+
+def synced_listing(checkout: Path, ignore: tuple[str, ...],
+                   git_only: tuple[str, ...] | list[str]) -> set[str] | None:
+    """What the sync sends, from rsync itself: a dry run with the same
+    filters into an empty directory names every entry it would transfer.
+    Directories (trailing slash) are left out; files, symlinks and the
+    rest are what a host can lose. Names come back the way the host's
+    find prints them: `-8` stops rsync escaping non-ASCII bytes (it does
+    so for every one under a C locale), and the `\\#ooo` escapes it still
+    uses for control characters are turned back into bytes. None when
+    rsync is missing or fails outright; a partial listing (a file
+    vanished or unreadable mid-scan, exit 23 or 24) is kept."""
+    with tempfile.TemporaryDirectory(prefix="pytest-hosts-empty-") as empty:
+        try:
+            proc = subprocess.run(["rsync", "-a", "-n", "-8", "--out-format=%n",
+                                   *sync_filters(ignore, git_only), f"{checkout}/", f"{empty}/"],
+                                  capture_output=True)
+        except OSError:
+            return None
+    partial = proc.returncode in (23, 24) and proc.stdout  # a missing checkout is 23 with nothing
+    if proc.returncode != 0 and not partial:
+        return None
+    entries = (_rsync_unescape(line).decode("utf-8", "surrogateescape")
+               for line in proc.stdout.split(b"\n"))
+    return {entry for entry in entries if entry and not entry.endswith("/")}
+
+
+def _rsync_unescape(name: bytes) -> bytes:
+    """rsync prints a byte it will not show as `\\#ooo` (octal)."""
+    return re.sub(rb"\\#([0-7]{3})", lambda m: bytes([int(m.group(1), 8)]), name)
 
 
 def drop_ignored(checkout: Path, paths: list[str]) -> list[str]:
@@ -269,6 +331,7 @@ class HostSession:
     pytest_version: str | None = None  # the tree's; None until after_sync
     ran_tests: int = 0
     pulled: list[str] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
     pull_error: str | None = None
     dropped: str | None = None  # why this host is not part of the run
 
@@ -307,6 +370,7 @@ class Session:
     hosts: list[HostSession] = field(default_factory=list)
     started_at: float = 0.0
     git_only: list[str] = field(default_factory=list)  # sync_excludes, once per session
+    synced_files: set[str] | None = None  # synced_listing at sync time; None without rsync
     _lock: threading.Lock = field(default_factory=threading.Lock)
     # Set when any host fails or the user interrupts: a host still queued
     # for a slot must stop waiting, or the pool never joins and the other
@@ -318,14 +382,19 @@ class Session:
             self.report(f"hosts| {line}")
 
     def run(self, argv: list[str], *, check: bool = True, timeout: int = COMMAND_TIMEOUT,
-            what: str = "", stdin: str | None = None) -> subprocess.CompletedProcess:
+            what: str = "", stdin: str | None = None, text: bool = True) -> subprocess.CompletedProcess:
+        """`text=False` for output that may carry any file name: the caller
+        decodes it with surrogate escapes instead of failing on one byte."""
         try:
-            proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, input=stdin)
+            proc = subprocess.run(argv, capture_output=True, text=text, timeout=timeout,
+                                  input=stdin.encode() if stdin is not None and not text else stdin)
         except subprocess.TimeoutExpired:
             raise HostError(f"{what} gave no answer in {timeout}s") from None
         if check and proc.returncode != 0:
-            detail = (proc.stderr or proc.stdout).strip()
-            raise HostError(f"{what} failed (exit {proc.returncode}): {detail}")
+            detail = proc.stderr or proc.stdout
+            if not text:
+                detail = detail.decode("utf-8", "replace")
+            raise HostError(f"{what} failed (exit {proc.returncode}): {detail.strip()}")
         return proc
 
     # -- steps, one host each --
@@ -456,6 +525,10 @@ class Session:
         write_ssh_config()
         self.started_at = time.time()
         self.git_only = sync_excludes(self.checkout)
+        self.synced_files = synced_listing(self.checkout, self.settings.ignore, self.git_only)
+        if self.synced_files is None:
+            self.say("could not list what the sync sends; files the run deletes on a host "
+                     "will not be deleted here")
         self.hosts = [HostSession(remote=r) for r in self.remotes]
 
         def one(hs: HostSession) -> None:
@@ -484,13 +557,16 @@ class Session:
         return self.hosts
 
     def pull(self, hs: HostSession) -> None:
-        """Bring back what the run wrote. The remote version wins; a local
-        file also modified since the session started is overwritten with a
-        warning. Files the run did not write are never touched."""
-        proc = self.run(ssh_argv(hs.remote, written_files_command(hs.remote)),
-                        what=f"{hs.name}: listing written files")
-        paths = [p[2:] if p.startswith("./") else p for p in proc.stdout.split("\0") if p]
-        paths = drop_ignored(self.checkout, sorted(paths))
+        """Bring back what the run wrote, and delete what it deleted. The
+        remote version wins; a local file also modified since the session
+        started is overwritten with a warning, but one the host deleted is
+        kept. Files the run did not touch are never touched here either."""
+        proc = self.run(ssh_argv(hs.remote, host_files_command(hs.remote)),
+                        what=f"{hs.name}: listing the tree", text=False)
+        stamp, host_files = parse_host_files(proc.stdout.decode("utf-8", "surrogateescape"))
+        self.delete_what_the_run_deleted(hs, host_files)
+        paths = sorted(path for path, mtime in host_files.items() if _newer(mtime, stamp))
+        paths = drop_ignored(self.checkout, paths)
         if not paths:
             return
         for path in paths:
@@ -506,6 +582,30 @@ class Session:
         hs.pulled = paths
         for path in paths:
             self.say(f"{hs.name} -> {path}")
+
+    def delete_what_the_run_deleted(self, hs: HostSession, host_files: dict[str, str]) -> None:
+        """An entry the sync sent (rsync's own listing at sync time) that the
+        host no longer has was deleted by the run, so it goes locally too:
+        regular files and symlinks, the link itself. One changed locally
+        since the session started is the local side's to keep; one born
+        locally since was never sent and is not looked at."""
+        if self.synced_files is None:
+            return
+        for path in sorted(self.synced_files - set(host_files)):
+            local = self.checkout / path
+            try:
+                st = os.lstat(local)
+            except OSError:
+                continue
+            if not (stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode)):
+                continue
+            if st.st_mtime > self.started_at:
+                self.say(f"{hs.name}: {path} was deleted on the host but changed locally "
+                         f"during the run; kept")
+                continue
+            local.unlink()
+            hs.deleted.append(path)
+            self.say(f"{hs.name} -x {path} (deleted by the run)")
 
     def pull_all(self) -> None:
         """Best effort, so it also runs after Ctrl-C and internal errors. Only

@@ -19,7 +19,7 @@ project, the session is distributed. Otherwise nothing changes.
     pytest -n 4                 # command-line -n: local only, no hosts
     pytest --hosts-local        # local only, config's local worker count
     PYTEST_HOSTS=0 pytest       # same, for a whole shell or a wrapper
-    pytest --hosts-no-pull      # leave files the remote run wrote there
+    pytest --hosts-no-pull      # do not mirror what the run wrote/deleted
     pytest --hosts-no-wait      # fail instead of queueing on a busy host
     pytest --hosts-setup        # force the setup command this run
     pytest --hosts-only=NAME    # this run: only that host, no local workers
@@ -65,7 +65,7 @@ unknown key is rejected with the list of valid ones.
     setup_when = ["pyproject.toml", "uv.lock"]  # re-run setup when these change
     env = []                              # controller env vars forwarded to remote workers
     ignore = ["examples", "tmp"]          # sync ignores on top of .gitignore
-    pull = true                           # pull back files the remote run wrote
+    pull = true                           # mirror what the remote run wrote or deleted
 
 Rules:
 
@@ -162,15 +162,22 @@ ordinary pytest config warning.
    synced too and the tree's copy is used. Values of the `env` list are
    read in the same hook and injected into each remote spec.
 6. Session end, also on Ctrl-C and internal errors (best effort): list
-   files under the tree newer than the stamp, drop the ones the
-   checkout's `git check-ignore` covers (outside a git checkout nothing
-   is dropped), rsync that list back unconditionally, print each path.
-   A file the remote run wrote wins over the local copy, with a warning
-   when the local file was also modified after the session started.
-   Files the run did not write are never touched. Release the slot.
+   the tree's files with their mtimes. Those newer than the stamp are
+   what the run wrote: drop the ones the checkout's `git check-ignore`
+   covers (outside a git checkout nothing is dropped), rsync that list
+   back unconditionally, print each path. A file the remote run wrote
+   wins over the local copy, with a warning when the local file was also
+   modified after the session started. An entry the sync sent (rsync's
+   own dry-run listing with the same filters, taken at sync time, so it
+   is exact for symlinks and for every ignore rule rsync reads its own
+   way) that the tree no longer has is what the run deleted: it is
+   deleted locally too and printed, unless it changed locally after the
+   session started, which keeps it with a warning. Files the run did
+   not touch are never touched. Release the slot.
 7. Terminal summary, each line prefixed `hosts|`: the local worker
-   count of tests, then one line per host with the tests it ran and the
-   files pulled back, or `pull-back FAILED`; a dropped host says why.
+   count of tests, then one line per host with the tests it ran, the
+   files pulled back and deleted, or `pull-back FAILED`; a dropped host
+   says why.
 
 ## Constraints learned the hard way
 

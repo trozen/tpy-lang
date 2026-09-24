@@ -207,6 +207,8 @@ def remote_project(pytester, monkeypatch):
         ignore = ["scratch"]
     """))
     (checkout / ".gitignore").write_text("*.log\n__pycache__/\n")
+    (checkout / "to-delete.txt").write_text("synced, then deleted by the run")
+    (checkout / "alias.txt").symlink_to("pyproject.toml")  # a synced symlink must survive
     (checkout / "junk.log").write_text("ignored by gitignore")
     (checkout / "scratch").mkdir()
     (checkout / "scratch" / "big.bin").write_text("ignored by config")
@@ -224,6 +226,10 @@ def remote_project(pytester, monkeypatch):
                 # by rootdir: lands in the tree on a remote worker, so it must be pulled back
                 root = session.config.rootpath
                 (root / f"out-{wid}.txt").write_text("from " + wid)
+                if str(root) != os.getcwd():  # a remote worker: delete a synced file there
+                    (root / "to-delete.txt").unlink(missing_ok=True)
+                else:  # the local worker: a file born during the run, absent on the host
+                    (root / "born-locally.txt").write_text("mine")
                 (root / "shared.txt").write_text("from " + wid)
                 (root / f"scratch-{wid}.log").write_text("gitignored, stays remote")
     """))
@@ -287,8 +293,16 @@ def test_distributed_session_over_fake_ssh(remote_project, monkeypatch):
     assert (parent / "demo" / "scratch-gw1.log").exists()
     result.stdout.fnmatch_lines(["hosts| box: shared.txt also changed locally*remote version wins",
                                  "hosts| box -> out-gw1.txt", "hosts| box -> out-gw2.txt",
-                                 "hosts| local: * tests", "hosts| box: * tests, * file(s) pulled back"])
+                                 "hosts| local: * tests", "hosts| box: * tests, * file(s) pulled back*"])
     assert (checkout / "shared.txt").read_text() in ("from gw1", "from gw2")
+    # a synced file the run deleted on the host is deleted locally; a file
+    # born locally during the run, which the host never had, survives
+    assert not (checkout / "to-delete.txt").exists()
+    assert (checkout / "born-locally.txt").read_text() == "mine"
+    assert (checkout / "alias.txt").is_symlink()
+    assert not [l for l in result.outlines if "born-locally.txt" in l]  # never sent, never mentioned
+    result.stdout.fnmatch_lines(["hosts| box -x to-delete.txt (deleted by the run)",
+                                 "hosts| box: * tests, * file(s) pulled back, 1 deleted"])
     tallies = {line.split()[1].rstrip(":"): int(line.split()[2])
                for line in result.outlines if line.startswith("hosts|") and " tests" in line}
     assert tallies["local"] + tallies["box"] == 4 and tallies["box"] >= 1
@@ -425,7 +439,7 @@ def test_failed_pull_back_is_reported(remote_project, monkeypatch):
     monkeypatch.setenv("FAKE_SSH_FAIL_MATCH", "find .")  # the written-files listing
     result = run(pytester)
     result.assert_outcomes(passed=4)
-    result.stdout.fnmatch_lines(["hosts| box: pull-back failed: box: listing written files failed (exit 3)*",
+    result.stdout.fnmatch_lines(["hosts| box: pull-back failed: box: listing the tree failed (exit 3)*",
                                  "hosts| box: * tests, pull-back FAILED"])
     assert not list(checkout.glob("out-gw[12].txt"))
 
@@ -452,6 +466,7 @@ def test_pull_false_leaves_remote_output(remote_project):
     result.assert_outcomes(passed=4)
     assert not list(checkout.glob("out-gw[12].txt"))
     assert "pulled back" not in result.stdout.str()
+    assert (checkout / "to-delete.txt").exists()  # deletions are not mirrored either
 
 
 @needs_tools

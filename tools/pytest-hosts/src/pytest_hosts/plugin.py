@@ -27,7 +27,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     group.addoption("--hosts-only", metavar="NAME", default=None,
                     help="this run: only the named configured host, no local workers")
     group.addoption("--hosts-no-pull", action="store_true", default=False,
-                    help="leave files the remote run wrote on the host")
+                    help="do not mirror what the remote run wrote or deleted back here")
     group.addoption("--hosts-no-wait", action="store_true", default=False,
                     help="fail instead of queueing when every slot of a host is busy")
     group.addoption("--hosts-setup", action="store_true", default=False,
@@ -265,6 +265,8 @@ def pytest_terminal_summary(terminalreporter, config: pytest.Config) -> None:
         line = f"{hs.name}: {tally.get(hs.name, 0)} tests"
         if hs.pulled:
             line += f", {len(hs.pulled)} file(s) pulled back"
+        if hs.deleted:
+            line += f", {len(hs.deleted)} deleted"
         if hs.pull_error:
             line += ", pull-back FAILED"
         lines.append(line)

@@ -59,7 +59,7 @@ setup = "uv sync -q"                          # run in the synced tree via bash 
 setup_when = ["pyproject.toml", "uv.lock"]    # re-run setup when these change
 env = []                                      # controller env vars forwarded to remote workers
 ignore = []                                   # sync ignores on top of .gitignore
-pull = true                                   # pull back files the remote run wrote
+pull = true                                   # mirror what the remote run wrote or deleted
 """
 
 Workers = int | str  # an int, or "auto"

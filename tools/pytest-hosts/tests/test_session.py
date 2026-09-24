@@ -136,9 +136,16 @@ def test_quoting_survives_odd_paths():
     assert argv[argv.index("-e") + 1] == "ssh -F '/c f'"
 
 
-def test_written_files_and_pull_argv():
-    cmd = session.written_files_command(REMOTE)
-    assert cmd == f"cd {REMOTE.tree} && find . -type f -newer {REMOTE.stamp} -print0"
+def test_host_files_and_pull_argv():
+    cmd = session.host_files_command(REMOTE)
+    assert cmd == (f"cd {REMOTE.tree} && find {REMOTE.stamp} -printf '%T@\\n' "
+                   f"&& find . ! -type d -printf '%T@\\t%p\\0'")
+    stamp, files = session.parse_host_files(
+        "1700000000.5000000000\n1700000001.25\t./a/b.txt\x001699999999.0\t./c.txt\x00")
+    assert stamp == "1700000000.5000000000"
+    assert files == {"a/b.txt": "1700000001.25", "c.txt": "1699999999.0"}
+    assert session._newer(files["a/b.txt"], stamp) and not session._newer(files["c.txt"], stamp)
+    assert session._newer("1700000000.500000001", stamp)  # nanoseconds, not float rounding
     argv = session.pull_argv(REMOTE, Path("/home/me/src/demo"))
     assert argv[:5] == ["rsync", "-a", "--ignore-times", "--from0", "--files-from=-"]
     assert "--update" not in argv  # the remote version wins by design
@@ -390,6 +397,7 @@ def test_prepare_releases_when_one_host_fails_while_another_queues(fake_holder, 
     monkeypatch.setattr(s, "probe", probe)
     monkeypatch.setattr(session, "write_ssh_config", lambda: "/c")
     monkeypatch.setattr(session, "sync_excludes", lambda checkout: [])  # git, not the fake holder
+    monkeypatch.setattr(session, "synced_listing", lambda *a: set())
     outcome: list[object] = []
 
     def run():  # a watchdog thread: a regression must fail, not hang the suite
@@ -432,3 +440,66 @@ def test_run_converts_a_timeout_into_a_host_error():
     s = make_session()
     with pytest.raises(session.HostError, match="x gave no answer in 1s"):
         s.run(["sleep", "5"], timeout=1, what="x")
+
+
+def test_synced_listing_is_rsyncs_own_view(tmp_path, monkeypatch):
+    """Symlinks, a `!` negation rsync does not read as git does, a nested
+    .gitignore pattern rsync matches at any depth, an ignore pattern and a
+    git-only exclude: the listing says what rsync would send, not git."""
+    repo = tmp_path / "repo"
+    (repo / "sub" / "src" / "foo").mkdir(parents=True)
+    (repo / "examples").mkdir()
+    (repo / "nested").mkdir()
+    (repo / "a.txt").write_text("")
+    (repo / "link").symlink_to("a.txt")
+    (repo / ".gitignore").write_text("*.log\n!keep.log\n")
+    (repo / "run.log").write_text("")
+    (repo / "keep.log").write_text("")  # git would keep it; rsync's filter drops it
+    (repo / "sub" / ".gitignore").write_text("foo/bar\n")
+    (repo / "sub" / "src" / "foo" / "bar").write_text("")  # rsync excludes at any depth
+    (repo / "examples" / "ex.py").write_text("")
+    (repo / "nested" / "other.py").write_text("")
+    (repo / "caf\u00e9.txt").write_text("")  # non-ASCII: escaped by rsync under a C locale
+    (repo / "new\nline.txt").write_text("")  # a control character: always escaped
+    monkeypatch.setenv("LC_ALL", "C")
+    listing = session.synced_listing(repo, ("examples",), ["nested"])
+    assert listing == {"a.txt", "link", ".gitignore", "sub/.gitignore", "caf\u00e9.txt",
+                       "new\nline.txt"}
+    assert session.synced_listing(tmp_path / "missing", (), []) is None
+
+
+def test_deletions_follow_the_run_but_local_changes_stay(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    for name in ("gone.txt", "kept.txt", "changed.txt", "examples/ex.py"):
+        (repo / name).parent.mkdir(exist_ok=True)
+        (repo / name).write_text("x")
+    old = time.time() - 100
+    for name in ("gone.txt", "kept.txt", "examples/ex.py"):
+        os.utime(repo / name, (old, old))
+    s = session.Session(checkout=repo, settings=cfg.ProjectSettings(ignore=("examples",)),
+                        remotes=(REMOTE,), report=lambda line: None, source_host="l")
+    s.started_at = time.time() - 50
+    (repo / "lnk").symlink_to("kept.txt")
+    os.utime(repo / "lnk", (old, old), follow_symlinks=False)
+    (repo / "kept.txt").touch()  # a fresh target: the link's own mtime must decide
+    (repo / "dangling").symlink_to("nowhere")
+    os.utime(repo / "dangling", (old, old), follow_symlinks=False)
+    s.synced_files = session.synced_listing(repo, ("examples",), [])
+    assert "lnk" in s.synced_files and "examples/ex.py" not in s.synced_files
+    (repo / "changed.txt").touch()  # changed during the run
+    (repo / "born.txt").write_text("")  # born during the run: never sent, never looked at
+    hs = session.HostSession(remote=REMOTE)
+    host_files = {"kept.txt": "1"}  # the run deleted gone.txt, changed.txt and the symlink
+    lines = []
+    s.report = lines.append
+    s.delete_what_the_run_deleted(hs, host_files)
+    assert hs.deleted == ["dangling", "gone.txt", "lnk"]
+    assert not (repo / "gone.txt").exists() and not (repo / "lnk").is_symlink()
+    assert not (repo / "dangling").is_symlink()
+    assert (repo / "kept.txt").read_text() == "x"  # the link's target is untouched
+    assert (repo / "kept.txt").exists() and (repo / "changed.txt").exists()
+    assert (repo / "examples" / "ex.py").exists() and (repo / "born.txt").exists()
+    assert any("changed.txt was deleted on the host but changed locally" in l for l in lines)
+    assert not any("born.txt" in l for l in lines)

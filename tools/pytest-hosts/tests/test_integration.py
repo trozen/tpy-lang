@@ -5,6 +5,7 @@ otherwise."""
 import contextlib
 import io
 import os
+import re
 import socket
 import subprocess
 import textwrap
@@ -34,6 +35,7 @@ def real_project(pytester, monkeypatch):
         [hosts.box]
         ssh = "{HOST}"
         workers = 12                # past sshd's 10 sessions per connection
+        slots = 2                   # the box's real gate has two; queue behind one, not both
         [projects.pytest-hosts-integration]
         local = 1
         hosts.box = {{}}
@@ -82,6 +84,7 @@ def test_real_host_session(real_project, monkeypatch):
     rc, status = cli("status")
     assert rc == 0, status
     assert "box: reachable" in status
+    free_before = re.search(r"(\d)/2 slot\(s\) free", status).group(1)
 
     result = pytester.runpytest_subprocess("-p", "no:cacheprovider")
     result.assert_outcomes(passed=12)
@@ -90,7 +93,7 @@ def test_real_host_session(real_project, monkeypatch):
     assert "mux_client" not in out and "disabling multiplexing" not in result.stderr.str()
     # the tree's pytest is pinned to the controller's, so the fast path applies
     assert "xdist ships its own" not in out
-    result.stdout.fnmatch_lines(["hosts| box: slot 0, 12 workers, tree */pytest-hosts-integration, setup ran",
+    result.stdout.fnmatch_lines(["hosts| box: slot *, 12 workers, tree */pytest-hosts-integration, setup ran",
                                  "hosts| box -> out-gw1.txt",
                                  "hosts| local: * tests", "hosts| box: * tests, 12 file(s) pulled back"])
     remote_host = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST, "hostname"],
@@ -114,7 +117,8 @@ def test_real_host_session(real_project, monkeypatch):
     assert "setup ran" not in result.stdout.str()
 
     rc, status = cli("status")
-    assert "1/1 slot(s) free" in status and "tree present, venv present" in status
+    assert f"{free_before}/2 slot(s) free" in status  # this session released its slot
+    assert "tree present, venv present" in status
     rc, _ = cli("clean")
     assert rc == 0
     rc, status = cli("status")
