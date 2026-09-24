@@ -69,7 +69,10 @@ Compare the branch's *intent* (the conversation / commit messages) against what 
 - If `/tpy-review` has not been run on this branch, recommend running it before merge -- this gate assumes it has.
 - For findings already triaged: confirm every "handle now" item was actually fixed, and every "file and defer" item actually landed in `BUGS.md` / `TODO.md`.
 - Any unresolved manual review comments.
-- **MECHANICALLY check what is unreviewed -- do not answer this from memory.** Identify the SHA the last review round used as its base, then `git log --oneline <that-sha>..HEAD` and `git diff <that-sha> --stat`. **A review round can never cover its own output**, so the fixes it produced, the docs written from it, and everything after are unreviewed by construction, and each subsequent round pushes the frontier further behind HEAD. Report the range and its diffstat in the verdict even when it is empty. Whether it needs another round is a judgement call keyed on the **blast radius** of what is in it, not its line count: a tail touching `tpyc/`, `lib/tpy/`, `runtime/` or committed snapshots is another round over exactly that range (say NOT READY); a tail of tests, scripts, docs or review-fix application whose verifiable parts were verified (gates green, tables byte-identical) is not, and the verdict says which in one line.
+- **Unreviewed tail -- judged, not forced.** Take the HEAD the last review round reviewed (its report names it) and list the branch's own work since then: `git log --first-parent --no-merges <sha>..HEAD` plus each master merge's resolution (`git show --remerge-diff <merge>`); master's commits are not tail. A round never covers its own output, so its fixes are always in the tail. Report the range in one line and decide by content:
+  - tests, docs, scripts, snapshot regeneration, or review fixes the round itself specified -> no further round.
+  - small mechanical compiler edits (a rename, a moved helper, a one-line guard) -> no further round; name them.
+  - substantial new logic in `tpyc/`, `lib/tpy/` or `runtime/` no round has seen -> one more `/tpy-review` round over the tail only (unless the rounds so far are not converging: then stop per `/tpy-review`'s convergence rule).
 
 ### 6. Retrospective -- would you build it this way again?
 
@@ -83,12 +86,13 @@ Honest self-critique. For each non-trivial design choice in the diff, ask: knowi
 
 ### 7. Verdict
 
-A crisp readiness call -- no manufactured issues. Omit empty sections.
+A crisp readiness call -- no manufactured issues. The first word is the verdict, and it is one call: READY or NOT READY; technicalities go underneath as notes, never into the headline. Omit empty sections.
 
 ```
 # /tpy-ready: <READY | NOT READY>
 
-Branch: <1-2 line summary> | <diff --stat one-liner>
+<what now works: 1-3 bullets, each a 1-3 line Python example and the key generated C++ line>
+<diff --stat one-liner>
 
 ## Blockers (fix before merge) -- <N>
 - <item> (file:line if specific)
@@ -113,7 +117,7 @@ Distinct from "File as followup" above (which is the bookkeeping list of items t
 
 - **READY:** end with "Ready -- run `/prep-merge` when you want to squash." Do NOT auto-run `/prep-merge` -- it's a separate explicit step with its own suspicious-file gate.
 - **NOT READY:** list blockers. Offer to fix the "fix now" ones and file the followups (on approval). Any commits follow the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask on master/main).
-- If the branch is clean, a one-liner is the whole report: `# /tpy-ready: READY -- nothing outstanding, run /prep-merge.`
+- If the branch is clean, the report is the verdict line plus the what-now-works bullets: `# /tpy-ready: READY -- nothing outstanding.`
 
 ## Important
 

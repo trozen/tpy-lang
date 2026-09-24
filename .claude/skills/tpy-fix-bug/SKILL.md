@@ -284,15 +284,22 @@ parallel code path the proper fix has to remove) is not.
 ## Phase 7: Present and wait
 
 Write the analysis (compressed for localized bugs) and present it.
-**Lead with the bug shown concretely, not described abstractly.**
-Open the report with a minimal code example the user can read at a
-glance: the reproducer snippet, plus what it does now (the wrong
-output, or the error + where it surfaces) versus what it should do.
-Follow it with a one-sentence summary naming the symptom and the
-affected feature. The user must be able to grasp *what is broken*
-from the example and confirm scope ("yes, that's the bug") in
-seconds, before reading any analysis. The example shows the visible
-symptom, not the root cause.
+**Lead with code, not with the compiler.** Before any compiler detail
+the report shows, in this order:
+
+1. **The bug** -- the minimal reproducer and what it does now (wrong
+   output, or the error and where it surfaces) versus what it should do.
+2. **What works after the fix** -- the Python shapes whose behavior
+   changes, each a short snippet with its post-fix behavior (output,
+   accepted/rejected, diagnostic text), including the sibling shapes the
+   fix covers and any that stay rejected.
+3. **Generated C++ before/after** -- for the key shape(s), the few
+   emitted lines that change (or one line saying the render is
+   unchanged).
+
+Then one sentence naming the symptom and the affected feature. The user
+must be able to confirm "that's the bug, and that's how it should work"
+from the examples alone.
 
 **Keep the analysis itself terse.** Convey the most important info
 in short bullets; the user will ask follow-up questions for
@@ -331,10 +338,12 @@ rating (a snippet to compile, a file to read, a test to run). A Low
 rating on an architectural fix means the default recommendation is the
 more-analysis path, not the fix.
 
-Beyond that leading reproducer, do NOT paste large code excerpts,
-internal trace dumps, or full file lists. The small illustrative
-example up front is required; the Phase 2 trace and file dumps are
-not -- the user will ask if they want that depth.
+The code examples up front are required; compiler internals (the
+Phase 2 trace, function names, file dumps) are not -- the user will ask
+if they want that depth. An open decision is never buried in the
+bullets: present each on its own, one at a time -- the Python shape,
+the C++ each option yields, labelled options with consequences,
+recommendation first.
 
 **Proposed branch line.** Check `git branch --show-current` and pick:
 

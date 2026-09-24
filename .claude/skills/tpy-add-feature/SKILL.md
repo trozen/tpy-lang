@@ -289,15 +289,20 @@ Flag this as a design-level question rather than force-fitting.
 
 ## Phase 6: Present and wait
 
-Write the design (compressed for localized features) and present it
-to the user. **Lead with the feature shown concretely, not described
-abstractly.** Open the report with the minimal Python example from
-Phase 1 -- the user-facing usage that becomes valid (or the surface
-that changes), plus a one-line sketch of what it compiles to when
-that aids understanding. Follow it with a one-sentence summary of the
-surface. The user must be able to grasp *what the feature does* from
-the example and confirm scope ("yes, that's the feature") in seconds,
-before reading any design details.
+Write the design (compressed for localized features) and present it.
+**Lead with code, not with the compiler.** Before any design detail the
+report shows, in this order:
+
+1. **What will work** -- the Python shapes that become valid or change,
+   each a short snippet with its behavior (output, or the diagnostic for
+   what stays rejected), including the sibling shapes the design covers
+   and the ones it leaves out.
+2. **Generated C++** -- for the key shape(s), the few lines the feature
+   emits, and before/after where existing code changes render.
+
+Then one sentence summarizing the surface. The user must be able to
+confirm "that's the feature, and that's how it should compile" from
+the examples alone.
 
 **Keep the design itself terse.** Convey the most important info
 in short bullets; the user will ask follow-up questions for
@@ -334,10 +339,12 @@ rating (a snippet to compile, a file to read, an existing test to
 inspect). A Low rating on an architectural design means the default
 recommendation is the more-analysis path, not the build.
 
-Beyond that leading example, do NOT paste large code sketches,
-exhaustive sibling-survey results, or full design-doc-style
-elaboration. The minimal example up front is required; deeper
-sketches are not -- the user will ask if they want depth.
+The code examples up front are required; compiler internals,
+exhaustive sibling-survey results and design-doc-style elaboration are
+not -- the user will ask if they want depth. An open decision is never
+buried in the bullets: present each on its own, one at a time -- the
+Python shape, the C++ each option yields, labelled options with
+consequences, recommendation first.
 
 **Proposed branch line.** Check `git branch --show-current` and pick:
 

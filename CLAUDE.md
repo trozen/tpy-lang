@@ -53,6 +53,24 @@ In all cases: never `--amend`, rebase, force-push, or commit changes you didn't 
 
 **Branch/merge workflow skills.** `/tpy-merge-master` merges `master` into the current working branch and verifies the result (semantic-conflict check over the files/functionality both sides touched, not just a textual merge). `/tpy-review` runs the multi-agent defect review; `/tpy-ready` is the merge-readiness + retrospective gate; `/prep-merge` squashes the branch into a clean commit ready for master. Typical order on a finished branch: `/tpy-merge-master` (pull in master) -> `/tpy-review` -> `/tpy-ready` -> `/prep-merge`.
 
+### Working with the user
+
+The user reviews three things: whether the generated C++ is right, whether the language behavior makes sense, and the compiler's general architecture -- its core data structures, generic implementation over special cases, apparent code smells. Shape everything presented for that.
+
+- **Lead with code.** Analyses, designs, branch summaries and decisions show what works (Python snippets with their behavior) and the generated C++ (before/after) before any compiler internals; the mechanism comes last, in a few bullets that name the core data structures touched and say whether the change goes through an existing generic path or adds a special case (and why).
+- **Decisions stand alone.** A decision the user must make goes in its own message, one at a time: the Python shape, the C++ each option yields, labelled options with consequences, recommendation first -- never buried in a status report.
+- **Verdict first.** "Is it ready / reviewed / merged?" is answered in the first word; notes go underneath.
+
+### Orchestration (default for non-trivial units)
+
+This governs how an agreed unit is executed, not when to start one. A unit starts only after the user has approved its analysis or design (`/tpy-fix-bug`, `/tpy-add-feature`) and said go; a question, a "what's next?" or a discussion is not a go -- answer it and wait. Once started, unless the user says otherwise:
+
+- You orchestrate; implementation, exploration and review go to subagents on the Opus model.
+- Subagent worktrees: create them yourself (`git worktree add <path> -b <branch> <sha>`, then `uv sync`) and put "verify `git rev-parse HEAD` is <sha>, else stop" in the brief -- `isolation: worktree` roots at the main checkout's HEAD, not at your branch. Integrate their work into ONE working branch.
+- Every brief says: tests through `rpytest` only, never a local `uv run pytest`.
+- Every batch goes through `/tpy-review` with its recommendations applied. At the end: `/tpy-merge-master` if master moved, then `/tpy-ready`. `/prep-merge` only when the user asks.
+- Stop and ask only for decisions where your confidence is not high (per "Working with the user").
+
 ### Common commands
 
 ```bash

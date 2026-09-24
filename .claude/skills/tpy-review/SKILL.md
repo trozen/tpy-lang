@@ -29,7 +29,16 @@ If `$ARGUMENTS` is non-empty, use it; otherwise use `master`. Resolve to a stabl
 
 If there are uncommitted changes, the review covers both committed and uncommitted state (`git diff <BASE>` without a second ref).
 
-**On a branch reviewed more than once, keep the base FIXED at the branch point -- do not advance it to the previous round's output.** A diff EXCLUDES its base, so basing round N+1 on round N's fix commit means nobody ever reviews that commit: the fixes a review produces fall into the next review's blind spot, and the gap looks correct because each range starts exactly where the last one ended. One branch accumulated five such commits that way, one of them a render-path refactor. Cumulative diffs re-show approved hunks, which is a cheap skim next to a commit nobody reads. If a later round's cumulative diff really is too large, the alternative is a mandatory closing round scoped to the whole branch before `/prep-merge` -- not a moving base.
+**Follow-up rounds review only the tail** since the HEAD the previous round reviewed (its report names it; if unknown, use the branch point) -- never since the previous round's fix commit, which a diff would exclude. The tail is the branch's own work: `git log --first-parent --no-merges <sha>..HEAD` plus each master merge's conflict resolution (`git show --remerge-diff <merge>`); master's commits brought in by a merge are not tail.
+
+**Convergence, not a fixed cap.** Rounds should converge: each finds fewer and smaller defects, and a round that finds nothing to fix ends the reviewing. Usually no more than three rounds are needed; a complex unit may need more, and that is a judgement call. When follow-up rounds keep finding NEW real defects instead of converging, stop before the next round: that points at the initial plan or analysis, not at the fixes. Re-examine the plan before doing anything else, and show the user that reasoning:
+
+- **What the rounds found** -- the defects of each round, grouped into the recurring class(es).
+- **Why the plan produced them** -- which assumption, missed sibling, wrong invariant or wrong layer of the original analysis lets that class keep appearing.
+- **Was the plan right?** -- a verdict: the approach holds and only its coverage was incomplete, or the approach itself is wrong.
+- **What now** -- recommended next step (extend the plan and re-review, re-plan via `/tpy-fix-bug` / `/tpy-add-feature`, or back out), with the Python shapes and generated C++ that the corrected plan would change.
+
+Then wait for the user's decision.
 
 ### 2. Classify changed files
 
@@ -126,7 +135,7 @@ Omit empty severity sections. If everything is clean: `# /tpy-review report: all
 
 ### 7. Recommend a sign-off plan
 
-After the report, add a short **Recommendation** section: a single flat bullet list the user can scan and approve in one pass, without re-reading the findings above. This is the skill's takeaway -- the user shouldn't have to synthesize the report themselves.
+After the report, add a short **Recommendation** section: a single flat bullet list the user can scan in one pass, without re-reading the findings above. This is the skill's takeaway -- the user shouldn't have to synthesize the report themselves.
 
 Each bullet: one action + one short reason. No file:line refs here (they're in the report above), no per-specialist attribution, no severity tags. Order by what should happen first.
 
@@ -187,30 +196,24 @@ Output: the recommendation list with each item annotated `[meta: keep]`, `[meta:
 
 Fold the verdicts into the printed Recommendation. Keep the meta-reviewer's one-line reason next to any downgraded or dropped item so the user sees the dissent rather than a silent edit. Append the "Dropped (low confidence)" list (if any) under the report so cuts are visible, not silent.
 
-### 9. Ask the user
+### 9. Apply by default
 
-After printing the Recommendation section, ask which subset to act on. Mention the default options inline (one line each):
+Do not ask which subset to act on: go straight to step 10 with every "Handle now" and "File and defer" bullet; "Skip" bullets are dropped.
 
-- **"go ahead"** / "proceed" / "yes" -- implement every "Handle now" bullet AND file every "File and defer" bullet into `BUGS.md` (defects) or `TODO.md` (gaps) per its bucket. "Track or skip" items are dropped per the recommendation.
-- **named subset** -- the user names which bullets to skip, add, or re-bucket; act on that modified set.
-- **"no"** / "stop" -- end the skill; the user handles followup manually.
+Set aside only bullets that need the user: a significant design decision, a language-semantics change (new warning, new reject of valid Python, a CPython divergence), or a low-confidence call. Step 10 applies and commits everything else first; the turn then ends with those decisions, one at a time.
 
-If only "Track or skip" items remain (no Handle now, no File and defer), no prompt is needed -- end with a one-liner ("nothing to act on; safe to commit") and stop.
-
-### 10. Execute on approval
-
-Only after explicit approval:
+### 10. Execute
 
 - Apply each "Handle now" item in order. If an item turns out to need real design analysis or root-cause work (not a mechanical fix), STOP and surface to the user -- recommend invoking `/tpy-fix-bug` or `/tpy-add-feature` for that item rather than improvising.
 - File each "File and defer" item into `BUGS.md` or `TODO.md` using the existing structure of each file (one-line summary, short context, `file:line` where relevant). Don't double-file.
 - Run targeted `uv run pytest -k <pattern>` for cases plausibly affected as you make changes. After all items are applied, run `uv run pytest` once to confirm nothing else regressed.
 - If a fix changes expected output for *existing* test snapshots, consult the user before running `update_snapshots.py` (per CLAUDE.md's snapshot policy).
 
-Once all approved items in this round are applied and the suite is green, commit them as a SINGLE commit, following the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask first on `master`/`main` or any branch tracking a remote). One commit for the whole review round -- never a separate tiny commit per finding/item. Do NOT push. (The single-commit rule is the point: this is an automated review pass, so batching its applied fixes into one commit is fine and expected -- what to avoid is the per-remark commit spam.)
+Once all items in this round are applied and the suite is green, commit them as a SINGLE commit, following the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask first on `master`/`main` or any branch tracking a remote). One commit for the whole review round -- never a separate tiny commit per finding/item. Do NOT push. (The single-commit rule is the point: this is an automated review pass, so batching its applied fixes into one commit is fine and expected -- what to avoid is the per-remark commit spam.) End with one line: what was applied, what was filed, and the HEAD this round reviewed -- the next round's base.
 
 ## Important
 
-- During the review phase (steps 1-9), do NOT run `uv run pytest`, regenerate snapshots, or make code changes. Specialists are forbidden from these and so are you. The developer runs the suite before requesting review; flag concerns rather than verifying via pytest.
-- Step 10 (post-approval execution) is the ONLY phase where code changes and pytest are allowed, and only on the user-approved subset.
-- Never commit during the review phase (steps 1-9). Commit only at the END of step 10, once, for the whole round (branch-aware per CLAUDE.md: auto-commit on a temporary working branch, ask elsewhere). Never make a separate commit per finding/item, and never push.
+- During the review phase (steps 1-8), do NOT run `uv run pytest`, regenerate snapshots, or make code changes. Specialists are forbidden from these and so are you. The developer runs the suite before requesting review; flag concerns rather than verifying via pytest.
+- Step 10 is the ONLY phase where code changes and pytest are allowed; it runs by default (step 9).
+- Never commit during the review phase (steps 1-8). Commit only at the END of step 10, once, for the whole round (branch-aware per CLAUDE.md: auto-commit on a temporary working branch, ask elsewhere). Never make a separate commit per finding/item, and never push.
 - Do NOT regenerate snapshots unless an approved "Handle now" item explicitly calls for it, and ask first.
