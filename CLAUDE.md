@@ -66,7 +66,7 @@ This governs how an agreed unit is executed, not when to start one. A unit start
 
 - You orchestrate; implementation, exploration and review go to subagents on the Opus model.
 - Subagent worktrees: create them yourself (`git worktree add <path> -b <branch> <sha>`, then `uv sync`) and put "verify `git rev-parse HEAD` is <sha>, else stop" in the brief -- `isolation: worktree` roots at the main checkout's HEAD, not at your branch. Integrate their work into ONE working branch.
-- Every brief says: tests through `rpytest` only, never a local `uv run pytest`.
+- Every brief says: tests through plain `uv run pytest`, never with `-n` (see "Agent testing workflow").
 - Every batch goes through `/tpy-review` with its recommendations applied. At the end: `/tpy-merge-master` if master moved, then `/tpy-ready`. `/prep-merge` only when the user asks.
 - Set decisions aside per "Decide what the user would decide"; everything else runs to the end.
 
@@ -126,11 +126,16 @@ Harness-emitted status lines (cache builds, toolchain/ccache status, the active-
 
 ### Agent testing workflow
 
-**Running tests**: prefer `rpytest <args>` over `uv run pytest <args>` (a drop-in for `uv run pytest` only) -- it offloads the build+run to a remote host to free this machine's CPU. It *always* offloads: if the build host is unreachable it hard-errors (never silently runs locally). Exactly two things call for a local `uv run pytest` instead: `rpytest` is not on `PATH`; or the run must write on this host (the broker forwards `UPDATE_EXPECTED`, so snapshot updates offload fine). Unit-tests-only runs (`tpyc/`) offload fine too and `rpytest tpyc/` is the default there as well; running them locally is merely an option, since they need no toolchain and would otherwise queue behind a full suite on the single-job broker.
+**Running tests**: plain `uv run pytest <args>`. The `pytest-hosts` plugin (`tools/pytest-hosts/README.md`) spreads the session over a few local workers and the remote build hosts named in the developer's `~/.config/pytest-hosts/hosts.toml`; `uv run pytest-hosts` shows the resolved setup and `pytest-hosts status` the hosts. Rules:
 
-**CPU awareness**: never start a new test run while a previous one is still running. Wait for it, or stop a run *you* started through its harness task. Never pattern-kill (`pkill -f pytest` or similar): other sessions' runs are not yours to stop, and the nightly's `docker run` client is on this host too. Concurrent test suites saturate all cores and slow everything down for all agents and the user.
+- **Never type `-n`.** A typed `-n` means a local-only run with that many workers -- `-n auto` saturates this machine.
+- `--hosts-local` keeps a quick, small run off the hosts. `--cxx` must resolve on every worker, so a toolchain a host lacks needs `--hosts-local`.
+- Snapshot updates (`UPDATE_EXPECTED=1 uv run pytest -k <name>`) pull the regenerated files back, `tests/interop` included. Afterwards check the summary for `pull-back FAILED` (the session still exits green) and `git status` for expected files the regeneration removed: deletions on a host are not pulled back.
+- A host takes a limited number of concurrent sessions; a further run queues (`busy, queued...`) until a slot frees.
 
-**During development**, run targeted subsets with `-k pattern` (the new tests you're adding, or categories likely affected by your changes). **Final verification**: run the full suite once, after all changes are done, before reporting complete -- through `rpytest` unless one of the two local-run reasons above applies. Use `--force-exec` to re-run exec for every case regardless of the execution cache.
+**CPU awareness**: never start a new test run while a previous one is still running. Wait for its completion notification (never poll with `pgrep`/`sleep` loops), or stop a run *you* started through its harness task. Never pattern-kill (`pkill -f pytest` or similar): other sessions' runs are not yours to stop, and the nightly's `docker run` client is on this host too. Concurrent test suites saturate all cores and slow everything down for all agents and the user.
+
+**During development**, run targeted subsets with `-k pattern` (the new tests you're adding, or categories likely affected by your changes). **Final verification**: run the full suite once, after all changes are done, before reporting complete. Use `--force-exec` to re-run exec for every case regardless of the execution cache.
 
 ### Snapshot policy
 

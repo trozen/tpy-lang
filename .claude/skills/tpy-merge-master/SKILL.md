@@ -71,7 +71,6 @@ A textually-merged tree can be semantically broken. Work the interference + adja
   - Import or module-path changes on one side, referenced by the other.
   - A sema fact / AST field / codegen helper added on one side that the other side's new code should be using but isn't (this repo's tight coupling makes this common -- see CLAUDE.md "Bug-fix / Feature discipline").
 - **Compile/test check.** This is a compiler; "nothing broke" means it still builds and tests pass.
-  - First be CPU-aware: per CLAUDE.md, do **not** start a test run if one is already running (`pgrep -f pytest`).
   - Run a *targeted* subset over the affected areas first: `uv run pytest -k <pattern>` for the touched cases/categories, or rebuild a representative example if codegen was touched.
   - Recommend a final full `uv run pytest` before merge is considered done. Run it yourself only if the user asks, or auto-run on a temporary working branch if that matches how the session has been operating -- otherwise list it as an open item.
 - **Hybrid depth.** Reason inline by default. If the interference set is large (more than ~8 files) or touches core sema/codegen structure, ALSO dispatch one fresh-context `general-purpose` Agent with the interference diffstat + both-side intent summaries (NOT the whole diff) to independently hunt for semantic conflicts you may have rationalized away. Fold its findings in. State the trigger in one line.
