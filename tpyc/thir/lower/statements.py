@@ -4023,8 +4023,12 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
             note_detail("error_return.bind_slot")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         decl_cpp = lc.render_type(unwrap_ref_type(var_type))
+        # A ValueType record copies on rebind, so it keeps the plain value
+        # slot; only a reference record needs per-site storage. The gate is
+        # `classify_local_binding`'s own predicate.
         if (name in lc.prescan.rvalue_reassigned
                 and _f1_record(inner, analyzer)
+                and is_plain_nonvalue(inner)
                 and not (lc.func.is_generator or lc.func.is_async)):
             # An rvalue-reassigned record binds as a pointer-local over
             # per-site storage (the F2d shape), so a later rebind under a
@@ -4852,6 +4856,10 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
     rejected), mirroring `_opt_slot_rvalue_shape`'s discipline."""
     analyzer = lc.analyzer
     if not isinstance(vtype, NominalType) or not record_like(vtype, analyzer):
+        return None
+    # A ValueType record copies, so it binds as a plain value local; this
+    # is the predicate `classify_local_binding` gates on.
+    if not is_plain_nonvalue(vtype):
         return None
     hoisted = stmt.name in lc.prescan.hoisted
     reassigned = stmt.name in lc.prescan.reassigned

@@ -2175,15 +2175,17 @@ def main():
   the buffer rather than copying it
 - `alias = h` when `h` is used later creates a `T&` reference (borrow); aliases
   created this way cannot be consumed
-- an alias that is itself REASSIGNED (`x = a` then `x = b`) binds a reseatable
-  pointer local instead (`std::vector<int32_t>* x = &(a); x = &(b);`), so a
-  mutation through it lands on whichever source it currently names, matching
-  CPython -- record and container (`list` / `dict` / `set` / `bytearray` /
+- an alias of a reference type that is itself REASSIGNED (`x = a` then `x = b`)
+  binds a reseatable pointer local instead (`std::vector<int32_t>* x = &(a);
+  x = &(b);`), so a mutation through it lands on whichever source it currently
+  names, matching CPython -- record and container (`list` / `dict` / `set` / `bytearray` /
   `Array`) pointees alike, in a function, method, constructor or `if` arm,
   from a parameter or local NAME and from a container element (`x = rows[0];
   x = rows[1]`). A FIELD source (`x = h.f0` then `x = h.f1`) is refused at the
   reassignment, and so is a `readonly` source -- the reseat has no const
-  pointer form
+  pointer form. A `ValueType` record local is not an alias: it stays a plain
+  value and copies on rebind (see "Plain value locals" under `ValueType`).
+
 - Returning a @nocopy local at last use works (C++ NRVO/implicit move)
 - Auto-move is suppressed when T& aliases of the source variable are still live
   (prevents dangling references through aliases)
@@ -3388,6 +3390,7 @@ class Vec2(ValueType):
 
 - **C++ `tpy::is_value_type` specialization** -- generated code specializes the trait so the runtime recognizes the type as a value type
 - **Copy warning suppression** -- no "copies X into field" warnings for `ValueType` records, since copy-vs-share is unobservable for value types
+- **Plain value locals** -- a `ValueType` record local binds as a plain C++ value, so reassigning it (`a = b`, including after an `@error_return` bind) copies instead of reseating a pointer
 - **`T: ValueType` bounds** -- generic type parameters bounded by `ValueType` also suppress copy warnings:
 
 ```python
