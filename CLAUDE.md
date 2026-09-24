@@ -64,11 +64,12 @@ The user reviews three things: whether the generated C++ is right, whether the l
 
 This governs how an agreed unit is executed, not when to start one. A unit starts only after the user has approved its analysis or design (`/tpy-fix-bug`, `/tpy-add-feature`) and said go; a question, a "what's next?" or a discussion is not a go -- answer it and wait. Once started, unless the user says otherwise:
 
-- You orchestrate; implementation, exploration and review go to subagents on the Opus model.
-- Subagent worktrees: create them yourself (`git worktree add <path> -b <branch> <sha>`, then `uv sync`) and put "verify `git rev-parse HEAD` is <sha>, else stop" in the brief -- `isolation: worktree` roots at the main checkout's HEAD, not at your branch. Integrate their work into ONE working branch.
+- You orchestrate; implementation, exploration and review go to your own harness's subagents (in Claude Code: on the Opus model).
+- Subagent worktrees: create them yourself (`git worktree add <path> -b <branch> <sha>`, then `uv sync`) and put "verify `git rev-parse HEAD` is <sha>, else stop" in the brief -- in Claude Code, `isolation: worktree` roots at the main checkout's HEAD, not at your branch. Integrate their work into ONE working branch.
 - Every brief says: tests through plain `uv run pytest`, never with `-n` (see "Agent testing workflow").
 - Every batch goes through `/tpy-review` with its recommendations applied. At the end: `/tpy-merge-master` if master moved, then `/tpy-ready`. `/prep-merge` only when the user asks.
 - Set decisions aside per "Decide what the user would decide"; everything else runs to the end.
+- **Second opinion from the other harness**, read-only: from Claude Code `codex exec --sandbox read-only "<prompt>"`, from Codex `claude -p --permission-mode plan "<prompt>"`. Suggest it in one line, and run it on the user's yes, before presenting an architectural plan with competing designs or Medium/Low confidence, when review rounds stop converging, or before a language-rule change.
 
 ### Common commands
 
