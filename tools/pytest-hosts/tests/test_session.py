@@ -60,6 +60,40 @@ def test_rsync_argv():
     assert argv[argv.index("-e") + 1] == "ssh -F /rt/ssh_config"
 
 
+def test_sync_excludes_what_git_hides_and_rsync_would_ship(tmp_path):
+    """Nested repositories (worktree or clone), paths ignored only through
+    info/exclude, and a wildcard-named one; a plain untracked directory and
+    a .gitignore-ignored path (rsync's own filter handles it) are left to
+    rsync."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "--allow-empty", "-m", "root"],
+                   check=True, env={**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x",
+                                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x"})
+    subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", ".claude/worktrees/agent-1"],
+                   check=True, capture_output=True)
+    sibling = tmp_path / "sibling"  # a worktree outside the checkout is not nested
+    subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", str(sibling)],
+                   check=True, capture_output=True)
+    subprocess.run(["git", "init", "-q", str(repo / "vendor" / "clone")], check=True)
+    subprocess.run(["git", "init", "-q", str(repo / "wt" / "x*[1]")], check=True)
+    (repo / "scratch").mkdir()
+    (repo / "scratch" / "new.py").write_text("")  # untracked, still ours
+    (repo / ".gitignore").write_text("*.log\n")
+    (repo / "run.log").write_text("")  # rsync's own filter drops it
+    (repo / ".git" / "info" / "exclude").write_text("**/.claude/worktrees/\neditor-cache/\n")
+    (repo / "editor-cache").mkdir()
+    (repo / "editor-cache" / "state").write_text("")  # ignored where rsync cannot see
+    excludes = session.sync_excludes(repo)
+    assert excludes == [".claude/worktrees/agent-1", "editor-cache/state", "vendor/clone", "wt/x*[1]"]
+    argv = session.rsync_argv(REMOTE, repo, (), excludes)
+    assert "--filter=-s /.claude/worktrees/agent-1" in argv  # sender-side: the host copy is deleted
+    assert "--filter=-s /wt/x\\*\\[1]" in argv  # wildcards taken literally
+    assert not any("run.log" in a or "scratch" in a for a in argv)
+    assert session.sync_excludes(tmp_path / "not-a-repo") == []
+
+
 def test_setup_hash_tracks_inputs(tmp_path):
     (tmp_path / "pyproject.toml").write_text("a")
     one = session.setup_hash(SETTINGS, tmp_path)
@@ -355,6 +389,7 @@ def test_prepare_releases_when_one_host_fails_while_another_queues(fake_holder, 
             raise session.HostError("broken: unreachable")
     monkeypatch.setattr(s, "probe", probe)
     monkeypatch.setattr(session, "write_ssh_config", lambda: "/c")
+    monkeypatch.setattr(session, "sync_excludes", lambda checkout: [])  # git, not the fake holder
     outcome: list[object] = []
 
     def run():  # a watchdog thread: a regression must fail, not hang the suite

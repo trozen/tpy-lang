@@ -125,7 +125,13 @@ ordinary pytest config warning.
    ssh or rsync round trip (sync, setup, the pull-back) is capped at
    thirty minutes for the same reason.
 3. Sync the checkout with `rsync -a --delete` over an ssh ControlMaster,
-   using the repo's gitignore rules as filters, into
+   using the repo's gitignore rules as filters, plus what git leaves out
+   that those filters cannot see: paths ignored through `info/exclude`
+   or a global excludes file, and any nested repository (a worktree a
+   tool parked in the tree, or a clone: git lists it as one untracked
+   directory, and a host could not tell its files from ours once every
+   `.git` marker is excluded). Those are hidden on the sender side only,
+   so a copy an earlier sync shipped is deleted from the host. Into
    `<root>/<hash8(source hostname + absolute path)>/<repo>`. Two
    worktrees or two source machines never share a tree. The tree keeps
    the checkout's own directory name because xdist rewrites path args to
@@ -208,6 +214,11 @@ ordinary pytest config warning.
   `~/.cache` on whichever machine ran the case, so a case that ran
   remotely is not cached locally next time, and the "skipped via cache"
   tally moves with the split. The pull-back covers the tree only.
+- rsync's `:- .gitignore` filter reads `.gitignore` files only, never
+  `info/exclude` or a global excludes file; the sync asks git for what
+  those hide (git's untracked listing minus the same listing restricted
+  to `.gitignore`) and filters it by name. The pull-back's
+  `git check-ignore` honours all three sources by itself.
 - The pull-back lists files newer than a stamp touched on the host after
   the sync, while synced files keep their controller-side mtimes. A
   controller clock running ahead of the host's by more than the sync

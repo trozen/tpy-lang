@@ -182,8 +182,18 @@ def remote_project(pytester, monkeypatch):
         hosts.box = {{}}
     """)
     checkout = pytester.mkdir("demo")
-    # a git checkout, so the pull-back filter has gitignore rules to apply
+    # a git checkout, so the pull-back filter has gitignore rules to apply;
+    # with a worktree parked inside it, which must not travel to the host
     subprocess.run(["git", "init", "-q", str(checkout)], check=True)
+    git_env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x"}
+    subprocess.run(["git", "-C", str(checkout), "commit", "-q", "--allow-empty", "-m", "root"],
+                   check=True, env=git_env)
+    subprocess.run(["git", "-C", str(checkout), "worktree", "add", "-q", ".claude/worktrees/parked"],
+                   check=True, capture_output=True)
+    (checkout / ".claude" / "worktrees" / "parked" / "other.py").write_text("# another branch\n")
+    # ignored the way this repo does it: through info/exclude, which rsync cannot see
+    (checkout / ".git" / "info" / "exclude").write_text("**/.claude/worktrees/\n")
     (checkout / "pyproject.toml").write_text(textwrap.dedent(f"""
         [project]
         name = "demo"
@@ -247,6 +257,7 @@ def test_distributed_session_over_fake_ssh(remote_project, monkeypatch):
     assert (parent / "demo" / "pyproject.toml").exists()
     assert not (parent / "demo" / "junk.log").exists()      # gitignore filter
     assert not (parent / "demo" / "scratch").exists()       # config ignore
+    assert not (parent / "demo" / ".claude" / "worktrees" / "parked").exists()  # parked worktree stays home
     assert (parent / "venv" / "bin" / "python").exists()   # beside the tree
     assert (parent / "stamp").exists()
     assert (parent / "setup.hash").exists()
@@ -291,12 +302,18 @@ def test_distributed_session_over_fake_ssh(remote_project, monkeypatch):
     # the remote output where it is
     for stale in checkout.glob("out-gw[12].txt"):
         stale.unlink()
+    # a copy an earlier sync shipped (before the exclusion existed) is
+    # deleted from the host on the next sync
+    stale = parent / "demo" / ".claude" / "worktrees" / "parked"
+    stale.mkdir(parents=True)
+    (stale / "other.py").write_text("stale\n")
     result = run(pytester, "--hosts-no-pull")
     result.assert_outcomes(passed=4)
     result.stdout.fnmatch_lines(["hosts| box: slot 0, 2 workers, tree */root/*/demo"])
     assert "setup ran" not in result.stdout.str()
     assert not list(checkout.glob("out-gw[12].txt"))
     assert "pulled back" not in result.stdout.str()
+    assert not stale.exists()
 
     # changing a setup_when input runs it again; --hosts-setup forces it
     (checkout / "pyproject.toml").write_text((checkout / "pyproject.toml").read_text() + "\n# x\n")

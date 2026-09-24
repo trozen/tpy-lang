@@ -120,12 +120,53 @@ def lock_command(host: HostConfig, slot: int) -> str:
             f"exec flock -n {lock_dir}/{slot} -c 'echo {LOCKED_TOKEN}; exec cat'")
 
 
-def rsync_argv(remote: RemoteHost, checkout: Path, ignore: tuple[str, ...]) -> list[str]:
+def _untracked(checkout: Path, *flags: str) -> set[str] | None:
+    """`git ls-files --others` with `flags`; None outside a git checkout."""
+    try:
+        proc = subprocess.run(["git", "-C", str(checkout), "ls-files", "--others", "-z", *flags],
+                              capture_output=True)
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    return {entry.decode("utf-8", "surrogateescape") for entry in proc.stdout.split(b"\0") if entry}
+
+
+def sync_excludes(checkout: Path) -> list[str]:
+    """Paths git leaves out of the checkout that rsync's `.gitignore` filter
+    would still ship: what git ignores through `info/exclude` or a global
+    excludes file (rsync reads only `.gitignore` files), and any nested
+    repository (a linked worktree a tool parked in the tree, or a clone),
+    which git lists as one untracked directory entry instead of its files.
+    Computed as rsync's view of the untracked files minus git's, so every
+    ignore source git knows is honoured without naming any. Neither view
+    collapses directories: `--directory` would stop at the topmost
+    untracked one and hide a nested repository below it."""
+    rsync_view = _untracked(checkout, "--exclude-per-directory=.gitignore")
+    git_view = _untracked(checkout, "--exclude-standard")
+    if rsync_view is None or git_view is None:
+        return []
+    hidden = rsync_view - git_view
+    repos = {entry for entry in git_view if entry.endswith("/")}
+    return sorted(entry.rstrip("/") for entry in hidden | repos)
+
+
+def _rsync_literal(path: str) -> str:
+    """A path as an rsync pattern: `*`, `?` and `[` would otherwise match."""
+    return "".join("\\" + c if c in "*?[" else c for c in path)
+
+
+def rsync_argv(remote: RemoteHost, checkout: Path, ignore: tuple[str, ...],
+               git_only: tuple[str, ...] | list[str] = ()) -> list[str]:
     """Mirror the checkout into the tree. gitignore files act as per-directory
     filters, and `--delete` without `--delete-excluded` leaves ignored files
-    the host already has (build output, caches) in place across syncs."""
+    the host already has (build output, caches) in place across syncs.
+    `git_only` (see sync_excludes) is hidden on the sender side only, so a
+    copy an earlier sync shipped is deleted from the host like any other
+    file that is gone."""
     argv = ["rsync", "-a", "--delete", "--exclude=.git", "--filter=:- .gitignore"]
     argv += [f"--exclude={pattern}" for pattern in ignore]
+    argv += [f"--filter=-s /{_rsync_literal(path)}" for path in git_only]  # anchored
     mkdir = remote_shell(remote.host, f"mkdir -p {shlex.quote(remote.tree)} && rsync")
     argv += [f"--rsync-path={mkdir}", "-e", f"ssh -F {shlex.quote(remote.ssh_config)}"]
     argv += [f"{checkout}/", f"{remote.host.ssh}:{remote.tree}/"]
@@ -265,6 +306,7 @@ class Session:
     only: str | None = None  # --hosts-only: this host was asked for by name
     hosts: list[HostSession] = field(default_factory=list)
     started_at: float = 0.0
+    git_only: list[str] = field(default_factory=list)  # sync_excludes, once per session
     _lock: threading.Lock = field(default_factory=threading.Lock)
     # Set when any host fails or the user interrupts: a host still queued
     # for a slot must stop waiting, or the pool never joins and the other
@@ -363,7 +405,8 @@ class Session:
         return False
 
     def sync(self, hs: HostSession) -> None:
-        self.run(rsync_argv(hs.remote, self.checkout, self.settings.ignore), what=f"{hs.name}: sync")
+        self.run(rsync_argv(hs.remote, self.checkout, self.settings.ignore, self.git_only),
+                 what=f"{hs.name}: sync")
 
     def after_sync(self, hs: HostSession) -> None:
         digest = setup_hash(self.settings, self.checkout)
@@ -412,6 +455,7 @@ class Session:
         first HostError after releasing whatever was taken."""
         write_ssh_config()
         self.started_at = time.time()
+        self.git_only = sync_excludes(self.checkout)
         self.hosts = [HostSession(remote=r) for r in self.remotes]
 
         def one(hs: HostSession) -> None:
