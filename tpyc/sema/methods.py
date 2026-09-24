@@ -17,6 +17,7 @@ from ..typesys import (
     is_callable_type, unwrap_own, ConcreteCoroType,
     RecordInfo,
     contains_type_param,
+    FloatLiteralType, resolve_int_literals,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -40,7 +41,7 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .type_ops import seeded_arg_hint
-from .context import _root_name_of_expr
+from .context import _root_name_of_expr, PENDING_CONTAINER_TYPES
 from .statements import (_is_self_call_deferred, _local_traces_to_self,
                          _receiver_leaves)
 
@@ -956,6 +957,15 @@ class MethodAnalyzer:
         deref_depth = 0
         while deref_depth <= 8:
             result = self._try_resolve_method(expr, current_type, is_readonly_receiver, is_consuming_receiver)
+            if (result is not None
+                    and isinstance(original_type, PENDING_CONTAINER_TYPES)
+                    and not isinstance(result, (IntLiteralType, FloatLiteralType))):
+                # A pending receiver binds its type params to its literal
+                # element types; a type the method builds from them (the list
+                # `copy()` returns) is concrete and resolves them as the
+                # receiver would by default. A bare element read stays a
+                # literal, which the reading site resolves in context.
+                result = resolve_int_literals(result, self.ctx.default_int_for_literal)
             if result is not None:
                 info = expr.resolved_function_info
                 if (info is not None and info.is_callable_value

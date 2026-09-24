@@ -281,18 +281,28 @@ class SinkForm(Enum):
     # the render. Narrower than the BORROW_BIND result use, which also
     # unlocks the record / container / pointer-repr-tuple field legs.
     FIELD_VALUE_TUPLE = auto()
-    # A record / container ternary rendered as a C++ prvalue `?:` -- its
-    # lvalue arm copied, its fresh arm moved -- which only a sink that
-    # direct-initializes storage of its own consumes: a ctor member-init and
-    # an `Own[T]` slot. A consumer that names the object (a binding, a
-    # receiver, a reference parameter) keeps the lvalue render.
+    # A record / container select (ternary or and/or) rendered as a C++
+    # prvalue `?:` whatever its operands: a fresh operand is built into the
+    # storage, an existing-object operand is COPIED (sema warns). Only a sink
+    # whose own storage copies what it is handed anyway takes it: a ctor
+    # member-init, an `Own[T]` argument, a `copy()` source, an owning async
+    # return. A consumer that names the object (a binding, a receiver, a
+    # reference parameter) keeps the lvalue render.
     SELECT_PRVALUE = auto()
+    # The same prvalue `?:`, taken only when EVERY operand is fresh, at a
+    # sink that direct-initializes owned storage but would alias an existing
+    # object under CPython: a plain local decl, a pointer-local's rebind
+    # slot, a frame slot write, an owning return, a nested select arm of a
+    # prvalue select. The select lowering decides freshness
+    # (`_select_prvalue_ok`); a select with an existing-object operand keeps
+    # the sink's other forms.
+    SELECT_FRESH_PRVALUE = auto()
     # A select whose fresh operand is emplaced into a slot hoisted before the
-    # statement (`THIRSlotEmplace`), at a local binding that either aliases
-    # it single-assignment in the statement's own block (the slot lives
-    # exactly as long as the alias) or copies it into its own storage. The
-    # other admitted consumers are the transient ones -- a slot outlives any
-    # temporary -- which need no row of their own.
+    # statement (`THIRSlotEmplace`), at a local binding that aliases it
+    # single-assignment in the statement's own block -- a `T&` alias -- so
+    # the slot lives exactly as long as the alias. The other admitted
+    # consumers are the transient ones -- a slot outlives any temporary --
+    # which need no row of their own.
     SELECT_SLOT = auto()
 
 
@@ -321,6 +331,8 @@ _ONLY_FIELD_RECV_BORROW: frozenset[SinkForm] = frozenset(
 _ONLY_ADDR_CALL: frozenset[SinkForm] = frozenset({SinkForm.ADDR_CALL})
 _ONLY_SELECT_PRVALUE: frozenset[SinkForm] = frozenset(
     {SinkForm.SELECT_PRVALUE})
+_ONLY_SELECT_FRESH_PRVALUE: frozenset[SinkForm] = frozenset(
+    {SinkForm.SELECT_FRESH_PRVALUE})
 _ONLY_SELECT_SLOT: frozenset[SinkForm] = frozenset({SinkForm.SELECT_SLOT})
 _ONLY_UNION_SUBJECT: frozenset[SinkForm] = frozenset({SinkForm.UNION_SUBJECT})
 _ONLY_TRUTHY_DISCARD: frozenset[SinkForm] = frozenset(

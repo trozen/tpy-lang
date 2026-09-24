@@ -457,12 +457,16 @@ class THIRValueSelect(THIRExpr):
     non-name LHS taking its own temp). A non-value select is a BORROW
     lvalue aliasing the chosen operand; an rvalue non-value RHS is a
     `THIRSlotEmplace`, so the select stays an lvalue and the RHS still
-    materializes lazily. Inline-isinstance LHS facts are gate-rejected."""
+    materializes lazily. At a direct-init sink a non-value select with a
+    fresh operand is a VALUE prvalue instead: the fresh RHS renders bare
+    and a fresh LHS, evaluated once into its temp, is moved out of it when
+    chosen (`lhs_move`). Inline-isinstance LHS facts are gate-rejected."""
     lhs: 'THIRExpr'
     rhs: 'THIRExpr'
     op: str
     truthy_mode: 'TruthinessMode | None' = None
     lhs_temp_cpp: 'str | None' = None
+    lhs_move: bool = False
     lhs_cast: 'str | None' = None
     rhs_cast: 'str | None' = None
     rhs_sv: bool = False

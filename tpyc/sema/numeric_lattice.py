@@ -107,7 +107,7 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
         return None
 
     # Literal families are handled by merge_literal_seed_target, not here.
-    # Defensive: callers (local_deduction, _ternary_common_type) already
+    # Defensive: callers (local_deduction, _select_join) already
     # resolve literals to concrete types before delegating; this guards
     # against future callers that forget.
     if info_a.family in ("int_literal", "float_literal"):

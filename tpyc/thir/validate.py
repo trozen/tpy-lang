@@ -298,7 +298,24 @@ def _check_hoists(owner: str, node: THIRIf | THIRWhile | THIRForRange | THIRForE
                 _fail(owner, node, "invalid physical wrapper default")
 
 
+def _select_ref_type(t: TpyType) -> TpyType:
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return unwrap_readonly(t.wrapped) if isinstance(t, OwnType) else t
+
+
 def _check_node(owner: str, node: THIRNode) -> None:
+    if (isinstance(node, (THIRIfExpr, THIRValueSelect))
+            and node.form is Form.VALUE):
+        # A prvalue `?:` of a reference type initializes its storage by
+        # guaranteed elision only when every arm is that type: an arm of
+        # another type would be converted into a temporary and copied or
+        # sliced, with nothing in the source saying so.
+        want = _select_ref_type(node.result_type)
+        if not want.is_value_type():
+            arms = ((node.then, node.orelse) if isinstance(node, THIRIfExpr)
+                    else (node.lhs, node.rhs))
+            if any(_select_ref_type(arm.result_type) != want for arm in arms):
+                _fail(owner, node, "prvalue select arm is not the select's own type")
     if isinstance(node, THIRCtorCall) and node.full_expression_storage is not None:
         fact = node.full_expression_storage
         if (not isinstance(fact, THIROwnedRecord) or not isinstance(fact.type, NominalType)

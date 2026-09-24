@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Callable
 from ..coercions import CoercionContext, resolve_coercion
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
 from ..parse.nodes import (TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess,
-                           TpyBinOp, TpyIfExpr, TpyNamedExpr)
+                           TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyArrayLiteral)
 from ..typesys import (
     recorded_return_borrow_sources,
 
@@ -28,6 +28,8 @@ from ..typesys import (
     make_array,
     NoneType,
     is_numeric_type,
+    is_any_float_type,
+    is_any_int_type,
     OptionalType,
     OwnType,
     PendingDictType,
@@ -595,6 +597,75 @@ class LocalTypeDeduction:
                     result = self._widen_inferred_type(info.element_type, param_type.type_args[0])
                     if result is not None:
                         info.element_type = result
+
+    def pin_pending_container(self, pending: TpyType, target: TpyType) -> bool:
+        """Resolve a pending container toward the concrete container `target`
+        it must share one C++ type with (the other operand of a select).
+
+        Returns False when an element type the container already committed
+        to disagrees with `target`'s -- the two cannot share a type then.
+        A literal element takes `target`'s element type only inside its own
+        numeric family and only when its value fits: `[5]` beside a
+        `list[float]` is a list of ints under CPython, and `[300]` has no
+        `list[uint8]` spelling."""
+        def literal_pins(lit: TpyType, want: TpyType) -> bool:
+            if isinstance(lit, IntLiteralType):
+                family_ok = is_any_int_type(want)
+            elif isinstance(lit, FloatLiteralType):
+                family_ok = is_any_float_type(want)
+            else:
+                return lit == want
+            return family_ok and self.compat.is_type_compatible(lit, want)
+
+        def pin(current: TpyType, want: TpyType,
+                leaves: list[TpyType] | None = None) -> TpyType | None:
+            if isinstance(current, UnknownElementType):
+                return want
+            if isinstance(current, (IntLiteralType, FloatLiteralType)):
+                # The recorded element type keeps one literal's value only,
+                # so each element's own literal is range-checked.
+                if all(literal_pins(t, want) for t in (leaves or [current])):
+                    return want
+                return None
+            return current if current == want else None
+
+        if isinstance(pending, PendingListType):
+            info = self.ctx.list_literals.get(pending.literal_id)
+            if info is None or not is_list(target):
+                # An Array target already pinned the elements while it
+                # matched the literal's size (`pending_list_matches_array`).
+                return True
+            elem = target.type_args[0]
+            if info.coerced_element_type is not None:
+                return info.coerced_element_type == elem
+            leaves = None
+            if isinstance(info.expr, (TpyArrayLiteral, TpyListRepeat)):
+                leaves = [unwrap_own(self.ctx.get_expr_type(x) or info.element_type)
+                          for x in info.expr.elements]
+            if pin(info.element_type, elem, leaves) is None:
+                return False
+            info.coerced_element_type = elem
+            return True
+        if isinstance(pending, PendingDictType) and is_dict(target):
+            info = self.ctx.dict_literals.get(pending.literal_id)
+            if info is None:
+                return True
+            key = pin(info.key_type, target.type_args[0])
+            value = pin(info.value_type, target.type_args[1])
+            if key is None or value is None:
+                return False
+            info.key_type, info.value_type = key, value
+            return True
+        if isinstance(pending, PendingSetType) and is_set(target):
+            info = self.ctx.set_literals.get(pending.literal_id)
+            if info is None:
+                return True
+            elem = pin(info.element_type, target.type_args[0])
+            if elem is None:
+                return False
+            info.element_type = elem
+            return True
+        return False
 
     def mark_list_different_size(self, literal_id: int) -> None:
         """Mark a pending list literal as needing list (different-size reassignment)."""

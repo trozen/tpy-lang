@@ -1,0 +1,1 @@
+main.py:8: error: Integer literal 300 is outside uint8 range [0, 255] in logical operand

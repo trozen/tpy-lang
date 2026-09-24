@@ -1,0 +1,20 @@
+receiver_pointer_local: 1 102
+local_records: 6 2
+local_containers: 2 2
+local_narrowed: 6 2
+local_narrowed_plain: 6 2
+local_none_arm: 6 False
+return_select: 6 2
+arg_select: 11 2
+receiver_mutate: 101 2
+receiver_read: 2
+receiver_pointer_local: 101 2
+local_records: 1 7
+local_containers: 1 3
+local_narrowed: 1 7
+local_narrowed_plain: 1 7
+local_none_arm: 1 True
+return_select: 1 7
+arg_select: 1 7
+receiver_mutate: 1 102
+receiver_read: 6

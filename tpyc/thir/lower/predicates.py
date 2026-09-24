@@ -50,6 +50,7 @@ from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...typesys import (
+    ConcreteFrameType,
     ConcreteGenType,
     return_const_projected,
     substitute_type_params_simple,
@@ -795,26 +796,39 @@ def _protocol_auto_slot(t: 'TpyType | None') -> bool:
             or isinstance(t, SelfType))
 
 
-def _container_rvalue_select(init: 'TpyExpr | None', t: 'TpyType | None',
-                             analyzer) -> bool:
-    """An ALL-RVALUE container and/or / ternary init (`x = [1,2] or [3,4]`,
-    `x = [1,2] if c else [3,4]`): the select is an rvalue (both operands
-    are), so the decl is the plain spelled copy -- the deref of the
-    pointer-select, or the bare ternary of spelled literals. Lvalue-operand
-    selects classify REF_ALIAS and never reach the slot gate."""
-    if init is None or t is None:
+def _select_node(e: 'TpyExpr | None') -> bool:
+    """A ternary or a Python `and` / `or` -- the two select spellings."""
+    return (isinstance(e, TpyIfExpr)
+            or (isinstance(e, TpyBinOp) and e.op in ("&&", "||")))
+
+
+def _rvalue_ref_init(e: 'TpyExpr | None', t: 'TpyType | None',
+                     analyzer) -> bool:
+    """A FRESH reference-type value built by an operator or a select -- a
+    record or a container, one row for both: a ternary or and/or whose
+    every operand is fresh (`C(1) if c else make()`, `[1] or [2]`) or an
+    operator result (`a + b` on an Own-returning dunder, a `list` concat).
+    It initializes owned storage directly, so an owning slot (a local, an
+    `Own` return, a rebind slot) takes it as the plain spelled copy and
+    renders a select as a prvalue. A select with an existing-object operand
+    is an lvalue, which a local aliases and an owning slot copies; a
+    BORROW-returning dunder aliases an operand. `is_rvalue_source` answers
+    both. `t` is the slot's type; None asks the expression's own."""
+    if not isinstance(e, (TpyIfExpr, TpyBinOp, TpyUnaryOp)):
         return False
+    if t is None:
+        t = analyzer.get_expr_type(e)
+        if t is None:
+            return False
     tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if not _f1_container_ref(tu):
+    if isinstance(tu, OwnType):
+        tu = unwrap_readonly(tu.wrapped)
+    tu = resolve_pending_container(tu, analyzer) or tu
+    # A generator / coroutine frame is spelled by codegen's frame naming,
+    # which a prvalue select slot cannot reach.
+    if isinstance(tu, ConcreteFrameType):
         return False
-    if isinstance(init, TpyBinOp):
-        # The and/or pointer-select AND the arithmetic-binop rvalue
-        # (`c = a + b` -> the list_concat prvalue) both land in the plain
-        # spelled copy decl; the binop render gates its own operand shapes.
-        return is_rvalue_source(analyzer, init)
-    if isinstance(init, TpyIfExpr):
-        return is_rvalue_source(analyzer, init)
-    return False
+    return record_like(tu, analyzer) and is_rvalue_source(analyzer, e)
 
 
 def _peel_readonly(t: 'TpyType') -> 'TpyType':
@@ -10653,19 +10667,22 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # unconditional and its init carries the (possibly wrapping) chain
         # render; str is the witnessed payload.
         return w if is_str_type(w) else None
-    # A TERNARY is admitted for the COPY half only: it binds as an lvalue
-    # reference the `T&&` slot cannot take, so `_maybe_move` never fires and
-    # the cascade always hoists `auto __tmp_N = ((c) ? (a) : (b));` + the
-    # move wrap. The move-source rows below all require a NAME, so widening
-    # the shape here cannot hand a ternary the temp-free render. A VALUE
+    # A SELECT (a ternary or an and/or) with an existing-object operand is
+    # admitted for the COPY half only: it binds as an lvalue reference the
+    # `T&&` slot cannot take, so `_maybe_move` never fires and the cascade
+    # always hoists `auto __tmp_N = ((c) ? (a) : (b));` + the move wrap. The
+    # move-source rows below all require a NAME, so widening the shape here
+    # cannot hand a select the temp-free render. An all-fresh select is a
+    # prvalue that binds the slot itself (`_own_record_rvalue_arg`). A VALUE
     # payload is excluded: its Own slot is a plain by-value param an lvalue
     # binds directly, so the copy arm (guarded on a non-value payload)
-    # never fires and the whole render is the bare ternary.
+    # never fires and the whole render is the bare select.
     if isinstance(a, (TpyCall, TpyMethodCall)):
         return _own_borrow_call_temp_slot(a, w, analyzer)
-    if not isinstance(a, (TpyName, TpyFieldAccess, TpyIfExpr)):
+    select = _select_node(a)
+    if not (select or isinstance(a, (TpyName, TpyFieldAccess))):
         return None
-    if isinstance(a, TpyIfExpr) and w.is_value_type():
+    if select and (w.is_value_type() or is_rvalue_source(analyzer, a)):
         return None
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
@@ -10846,6 +10863,9 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     inner = unwrap_readonly(ot.inner)
     if isinstance(a, TpyNoneLiteral):
         return 'none'
+    if isinstance(a, TpyIfExpr):
+        # A select: its lowered form decides bare vs `&(...)` vs reject.
+        return 'select'
     if isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
         # A container LITERAL at an Optional[container] slot hoists the
         # spelled typed temp and lifts its address

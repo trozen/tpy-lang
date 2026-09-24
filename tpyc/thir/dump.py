@@ -180,7 +180,8 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRValueSelect):
-        temp = (f" [lhs_temp {e.lhs_temp_cpp}]"
+        temp = (f" [lhs_temp {e.lhs_temp_cpp}"
+                f"{', moved' if e.lhs_move else ''}]"
                 if e.lhs_temp_cpp is not None else "")
         return (f"value_select({_expr(e.lhs)}, {e.op}, {_expr(e.rhs)}"
                 f"{temp})")

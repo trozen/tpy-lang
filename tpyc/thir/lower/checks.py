@@ -162,6 +162,8 @@ from ..nodes import (
 )
 from .predicates import (
     _enum_prop_wrap,
+    _rvalue_ref_init,
+    _select_node,
     _container_ternary_arg,
     _inst_slice_arg_ok,
     _protocol_union_arg,
@@ -1835,6 +1837,10 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         if (record_like(target_type, analyzer)
                 and _method_rvalue_record_like(stmt.init, analyzer)):
             return binding
+        # ... or a fresh operator result / all-fresh select of either family
+        # (`z = C(1) if c else make()`), its `?:` a prvalue into the slot.
+        if _rvalue_ref_init(stmt.init, target_type, analyzer):
+            return binding
         # A rebound container-literal local rides the same pointer-local
         # (`std::vector<T>* xs = &__slot_1; ... (*xs) = {...};`, or an own
         # slot where sema's storage verdict says so);
@@ -2438,8 +2444,8 @@ def _bytearray_value_slot_init(init: 'TpyExpr | None',
     `bytes` source at this slot is a sema error (it would alias under CPython
     and copy here), so the coerce leg routes only through the materialize
     disposition. The owned dunder RVALUE (`bb = ba + b"cd"`) is the shared
-    all-rvalue container select's (`_container_rvalue_select`), which renders
-    the same fresh buffer into the same slot."""
+    fresh reference-init row's (`_rvalue_ref_init`), which renders the same
+    fresh buffer into the same slot."""
     t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype)))
          if vtype is not None else None)
     if t is None or not _bytes_family_ref(t) or init is None:
@@ -4601,25 +4607,6 @@ def _rvalue_storage_decl_call(e: TpyExpr, analyzer) -> bool:
                 or _resolved_str_value(t, analyzer) is not None
                 or _resolved_bytes_value(t, analyzer) is not None)
     return shape_ok and is_rvalue_source(analyzer, e)
-
-
-def _rvalue_storage_decl_op(e: TpyExpr, analyzer) -> bool:
-    """A record-returning dunder BINOP or UNARYOP rvalue at a plain value decl
-    (`r = 4 | f` -> `Flags r = ((4) | (f));`, `neg = -v` -> `Vec2 neg = -(v);`):
-    the user dunder returns the record BY VALUE, so the decl is the same plain
-    spelled copy the call rows take. A BORROW-returning dunder
-    (`__add__ -> Acc&`) aliases an operand -- that decls
-    `const Acc& c = ((a) + (b));` instead, so `is_rvalue_source` (which reads the
-    dunder's return convention) is the whole discriminator."""
-    if not isinstance(e, (TpyBinOp, TpyUnaryOp)):
-        return False
-    ret = analyzer.get_expr_type(e)
-    if ret is None:
-        return False
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
-    if isinstance(t, OwnType):
-        t = unwrap_readonly(t.wrapped)
-    return record_like(t, analyzer) and is_rvalue_source(analyzer, e)
 
 
 def _native_iterable_iterator_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -6953,6 +6940,11 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     w = _own_slot_payload(ptype)
     if w is None:
         return False
+    if _select_node(a) and _rvalue_ref_init(a, w, analyzer):
+        # An all-fresh select, record or container: its prvalue `?:` binds
+        # the `T&&` slot like a ctor rvalue, the chosen operand built
+        # straight into the parameter.
+        return bool(_witness("own.select_rvalue"))
     w_container = _storage_call_ret(
         unwrap_readonly(unwrap_send_sync(w)), analyzer) is not None
     w_dyn = is_dyn_protocol(unwrap_readonly(unwrap_send_sync(w)))
@@ -7429,7 +7421,8 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
     face = _optional_ptr_arg_face(a, ptype, locals_, analyzer)
     if face is None:
         return False
-    if face == 'none':
+    if face in ('none', 'select'):
+        # A select's operands and form gate in its own lowering.
         return True
     if face == 'subscript':
         # `&(<lvalue record subscript>)` -- temp-free, so no flush position
@@ -8638,8 +8631,9 @@ def _scalar_call_recv_ok(t: 'TpyType | None', analyzer) -> bool:
 
 def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
                                 analyzer,
-                                pointers: 'AbstractSet[str]' = frozenset()
-                                ) -> bool:
+                                pointers: 'AbstractSet[str]' = frozenset(),
+                                binds_global: 'Callable[[str], bool] | None'
+                                = None) -> bool:
     """A non-name method receiver `<recv>.method(...)`. Two shapes admit:
     a one-level field access (`_method_field_receiver_ok`), and a
     container-element-record subscript `xs[i].m()` -- the subscript is a
@@ -8769,12 +8763,19 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
     if isinstance(recv, TpyFieldAccess):
         return _method_field_receiver_ok(recv, locals_, analyzer, pointers)
     if isinstance(recv, (TpyIfExpr, TpyNamedExpr)):
-        # A ternary / walrus over BARE value operands renders as the plain
-        # C++ select / comma form with `.` access. An operand
-        # that is a pointer-local or a narrowed Optional name renders through
-        # its pointer (`(*a)`), which this bare row does not spell, so those
+        # A ternary / walrus renders as the plain C++ select / comma form
+        # with `.` access. A ternary's operand renders are its own
+        # lowering's (a pointer-bound operand reads `(*a)` there); a walrus
+        # operand that is a pointer-local or a narrowed Optional name renders
+        # through its pointer, which this bare row does not spell, so those
         # stay out.
-        if not _select_operands_bare(recv, locals_, pointers):
+        # Only the body's own gate threads `binds_global`; a caller without
+        # the body's global seeding cannot tell a global operand apart.
+        if not ((binds_global is not None
+                 and _select_operands_local(recv, locals_, pointers,
+                                            binds_global))
+                if isinstance(recv, TpyIfExpr)
+                else _select_operands_bare(recv, locals_, pointers)):
             return False
         kind = _dot_receiver_value_kind(analyzer.get_expr_type(recv), analyzer)
         if kind == "str":
@@ -8825,6 +8826,22 @@ def _select_operands_bare(recv: TpyExpr, locals_: dict[str, TpyType],
         dt = unwrap_readonly(unwrap_ref_type(locals_[recv.name]))
         return not isinstance(dt, OptionalType)
     return True
+
+
+def _select_operands_local(recv: TpyExpr, locals_: dict[str, TpyType],
+                           pointers: 'AbstractSet[str]',
+                           binds_global: Callable[[str], bool]) -> bool:
+    """Every name operand of a ternary tree is a body-local binding. A module
+    global operand stays out: its select render has no witness as a
+    receiver. A walrus operand keeps the bare-operand rule."""
+    if isinstance(recv, TpyIfExpr):
+        return (_select_operands_local(recv.then_expr, locals_, pointers,
+                                       binds_global)
+                and _select_operands_local(recv.else_expr, locals_, pointers,
+                                           binds_global))
+    if isinstance(recv, TpyName):
+        return recv.name in locals_ and not binds_global(recv.name)
+    return _select_operands_bare(recv, locals_, pointers)
 
 def _method_call_receiver_ok(recv: TpyMethodCall, locals_: dict[str, TpyType],
                              analyzer) -> bool:

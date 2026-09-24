@@ -1,0 +1,1 @@
+main.py:9: error: Incompatible types in ternary expression: 'dict[str, int32]' and 'list'

@@ -335,6 +335,57 @@ class TestValidator:
                            match="pointer-lifted field-write"):
             validate_function(dataclasses.replace(fn, body=(bad,)))
 
+    # --- prvalue select: every arm is the select's own type, so the `?:`
+    # --- initializes its storage by elision; an arm of another type
+    # --- (a conversion, a slice) must not reach the emit.
+
+    _FRESH_SELECT = (
+        "from tpy import int32\n"
+        "class C:\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32) -> None:\n"
+        "        self.n = n\n"
+        "class D:\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32) -> None:\n"
+        "        self.n = n\n"
+        "def t(c: bool) -> None:\n"
+        "    z = C(3) if c else C(6)\n"
+        "    print(z.n)\n"
+        "def o() -> None:\n"
+        "    z = C(0) or C(5)\n"
+        "    print(z.n)\n")
+
+    def test_prvalue_ternary_arm_of_another_type_raises(self):
+        fn = _lower_fn(self._FRESH_SELECT
+                       + "def d(x: D) -> None:\n    print(x.n)\n", "t")
+        decl = fn.body[0]
+        sel = decl.init
+        assert sel.form is Form.VALUE
+        other = _lower_fn(self._FRESH_SELECT
+                          + "def d(x: D) -> None:\n    print(x.n)\n",
+                          "d").params[0].type
+        bad = dataclasses.replace(sel, orelse=dataclasses.replace(
+            sel.orelse, result_type=other))
+        with pytest.raises(THIRValidationError, match="prvalue select arm"):
+            validate_function(dataclasses.replace(
+                fn, body=(dataclasses.replace(decl, init=bad),) + fn.body[1:]))
+
+    def test_prvalue_value_select_arm_of_another_type_raises(self):
+        fn = _lower_fn(self._FRESH_SELECT
+                       + "def d(x: D) -> None:\n    print(x.n)\n", "o")
+        decl = fn.body[0]
+        sel = decl.init
+        assert sel.form is Form.VALUE
+        other = _lower_fn(self._FRESH_SELECT
+                          + "def d(x: D) -> None:\n    print(x.n)\n",
+                          "d").params[0].type
+        bad = dataclasses.replace(sel, rhs=dataclasses.replace(
+            sel.rhs, result_type=other))
+        with pytest.raises(THIRValidationError, match="prvalue select arm"):
+            validate_function(dataclasses.replace(
+                fn, body=(dataclasses.replace(decl, init=bad),) + fn.body[1:]))
+
     def test_borrow_at_mil_cell_raises(self):
         compiler, modules = _compile(_PTR_RECORDS)
         entry = _entry(modules)

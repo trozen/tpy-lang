@@ -1,0 +1,3 @@
+main.py:131: warning: Integer literal 10000000000 is outside default int32 range; inferring int (BigInt).
+main.py:132: warning: Integer literal 10000000000 is outside default int32 range; inferring int (BigInt).
+main.py:133: warning: Integer literal 10000000000 is outside default int32 range; inferring int (BigInt).

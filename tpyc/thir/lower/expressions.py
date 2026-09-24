@@ -408,6 +408,7 @@ from .predicates import (
     _record_getitem_idx_recv_ok,
     _own_bytes_identity_move_slot,
     _own_lvalue_temp_slot,
+    _select_node,
     _declared_type,
     _narrow_key_type,
     _NARROW_UNMIRRORED,
@@ -546,7 +547,7 @@ from .context import (_call_arg_forms, _ExprResultUse, _ExprUse, _LowerCtx,
                       _ONLY_BTUPLE_SLOT,
                       _ONLY_FIELD_RECV_BORROW, _ONLY_INDIRECT_READ,
                       _ONLY_PTR_OPT_PASSTHROUGH, _ONLY_SELECT_PRVALUE,
-                      _ONLY_SELECT_SLOT,
+                      _ONLY_SELECT_FRESH_PRVALUE, _ONLY_SELECT_SLOT,
                       _ONLY_TUPLE_SOURCE, _RecordCtorUse, CallArgKind,
                       SinkForm, SinkPos, ValueOptKind,
                       _POS_FORMS)
@@ -3102,7 +3103,8 @@ def _contains_isinstance_fact(e: TpyExpr) -> bool:
 def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
                         lc: '_LowerCtx', declared: dict[str, TpyType],
                         loc, *, temps_ok: bool = False,
-                        slot_ok: bool = False) -> THIRExpr:
+                        slot_ok: bool = False,
+                        prvalue_ok: bool = False) -> THIRExpr:
     """Value-position and/or -> THIRValueSelect (tier A: scalar / float /
     BigInt / str / bytes results -- the two view families share the
     `.empty()` truthiness and the view-vs-owned form split). Record results,
@@ -3133,7 +3135,9 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
             if _contains_isinstance_fact(e.left):
                 rej("valuesel.isinstance_lhs")
             return _lower_container_select(e, res_u, lc, declared, loc, rej,
-                                           slot_ok=slot_ok)
+                                           slot_ok=slot_ok,
+                                           prvalue_ok=prvalue_ok,
+                                           temps_ok=temps_ok)
         rej("valuesel.result_type")
     if _contains_isinstance_fact(e.left):
         rej("valuesel.isinstance_lhs")
@@ -3250,12 +3254,18 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
 
 def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
                             declared: dict[str, TpyType], loc,
-                            rej, *, slot_ok: bool = False) -> THIRExpr:
+                            rej, *, slot_ok: bool = False,
+                            prvalue_ok: bool = False,
+                            temps_ok: bool = False) -> THIRExpr:
     """Non-value and/or -- the reference slice over a
     container (list/dict/set) or F1-record result. An all-lvalue select is
     the truthy ternary aliasing the chosen operand
     (`((::tpy::__len__(a) != 0) ? a : b)`, a BORROW lvalue); an RVALUE RHS
-    takes a `THIRSlotEmplace` operand, materializing lazily so short-circuit holds. Truthiness comes from the
+    takes a `THIRSlotEmplace` operand, materializing lazily so short-circuit
+    holds. At a direct-init sink (`prvalue_ok`) a select with a fresh
+    operand is a prvalue instead, checked before the slot: the fresh
+    operand is built straight into the storage and a NAME operand is copied
+    by the `?:` (sema warned about that copy). Truthiness comes from the
     shared classifier over the LHS operand's type, so the select and a plain
     `if` spell the same test (`.empty()` for bytearray, `__bool__` /
     `__len__` for a dunder-carrying record, the folded `true` otherwise).
@@ -3299,13 +3309,20 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
                            TruthinessMode.ALWAYS_TRUE):
         rej("valuesel.ref_lhs")
 
+    lhs_fresh = is_rvalue_source(analyzer, e.left)
+    rhs_rvalue = is_rvalue_source(analyzer, e.right)
+    if prvalue_ok and (lhs_fresh or rhs_rvalue):
+        return _lower_container_select_prvalue(
+            e, rtu, lt, _ref_operand_type(e.right), truthy_mode, lc,
+            declared, loc, rej, lhs_fresh=lhs_fresh, rhs_fresh=rhs_rvalue,
+            temps_ok=temps_ok, lower_operand=_lower_operand)
+
     lhs_ok = (isinstance(e.left, TpyName)
               or (isinstance(e.left, TpyBinOp) and e.left.op in ("&&", "||"))
               or isinstance(e.left, (TpyArrayLiteral, TpyDictLiteral,
                                      TpySetLiteral)))
     if not lhs_ok:
         rej("valuesel.ref_shape")
-    rhs_rvalue = is_rvalue_source(analyzer, e.right)
     if not rhs_rvalue and not isinstance(e.right, TpyName):
         rej("valuesel.ref_shape")
     if rhs_rvalue and not slot_ok:
@@ -3333,6 +3350,71 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
         result_type=rtu, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
         truthy_mode=truthy_mode, lhs_temp_cpp=lhs_temp_cpp,
         form=Form.BORROW, loc=loc)
+
+
+def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
+                                    lt: 'TpyType', rt: 'TpyType',
+                                    truthy_mode: TruthinessMode,
+                                    lc: '_LowerCtx',
+                                    declared: dict[str, TpyType], loc, rej, *,
+                                    lhs_fresh: bool, rhs_fresh: bool,
+                                    temps_ok: bool,
+                                    lower_operand: Callable[[TpyExpr, 'TpyType'],
+                                                            THIRExpr]
+                                    ) -> THIRExpr:
+    """The prvalue render of a reference and/or at a direct-init sink
+    (`_lower_container_select`'s `prvalue_ok` mode):
+    `(::tpy::__bool__(a) ? a : C(2))`, or for a fresh LHS
+    `((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : T{3, 4})`.
+    The LHS is evaluated exactly once, into its temp, and moved out only
+    when it is chosen; the RHS stays in its branch. Every operand spells the
+    result's own C++ type, so the `?:` initializes the storage with no
+    conversion."""
+    analyzer = lc.analyzer
+    if (lc.render_type(lt) != lc.render_type(rtu)
+            or lc.render_type(rt) != lc.render_type(rtu)):
+        rej("valuesel.ref_mixed")
+    lhs_move = False
+    if isinstance(e.left, TpyName):
+        lowered_lhs = lower_operand(e.left, lt)
+        lhs_temp_cpp = None
+    elif lhs_fresh:
+        if not temps_ok:
+            # The LHS temp is declared at the enclosing statement's flush,
+            # which this position does not have (an async return renders
+            # into the frame skeleton's own line).
+            rej("valuesel.fresh_lhs_position")
+        if not rtu.is_movable():
+            # The chosen LHS leaves its temp by a move, which a `@nomove`
+            # type does not have.
+            rej("valuesel.nomove_fresh_lhs")
+        lowered_lhs = _lower_fresh_ref_value(e.left, rtu, lc, declared)
+        if lowered_lhs is None:
+            rej("valuesel.ref_fresh_operand")
+        lhs_temp_cpp = "auto&&"
+        lhs_move = True
+    elif isinstance(e.left, TpyBinOp) and e.left.op in ("&&", "||"):
+        # A nested LVALUE select: its chosen operand is existing storage,
+        # which the `?:` copies.
+        lowered_lhs = lower_operand(e.left, lt)
+        lhs_temp_cpp = "auto&&"
+    else:
+        rej("valuesel.ref_shape")
+    if rhs_fresh:
+        lowered_rhs = _lower_fresh_ref_arm(e.right, rtu, lc, declared)
+        if lowered_rhs is None:
+            rej("valuesel.ref_fresh_operand")
+    elif isinstance(e.right, TpyName):
+        lowered_rhs = lower_operand(e.right, rt)
+    else:
+        rej("valuesel.ref_shape")
+    _witness("binop.container_select_prvalue")
+    if truthy_mode is TruthinessMode.RECORD_BOOL:
+        _witness("binop.select_bool_dunder")
+    return THIRValueSelect(
+        result_type=rtu, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
+        truthy_mode=truthy_mode, lhs_temp_cpp=lhs_temp_cpp,
+        lhs_move=lhs_move, form=Form.VALUE, loc=loc)
 
 
 def _fold_literal_comparison(e: TpyBinOp,
@@ -3430,7 +3512,8 @@ def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  declared: dict[str, TpyType], loc, *,
                  fold_ok: bool = False, slot_threaded: bool = False,
-                 temps_ok: bool = False, slot_ok: bool = False) -> THIRExpr:
+                 temps_ok: bool = False, slot_ok: bool = False,
+                 prvalue_ok: bool = False) -> THIRExpr:
     # `temps_ok` rides the enclosing use's allow_temps: operand temps flush
     # at the enclosing statement, so a flushable position's right extends
     # into call-shaped operands. Cond positions thread False (unchanged).
@@ -3940,7 +4023,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # unchanged for the operand path above).
             return _lower_value_select(e, rtype, lc, declared, loc,
                                        temps_ok=logical_rhs_temps,
-                                       slot_ok=slot_ok)
+                                       slot_ok=slot_ok,
+                                       prvalue_ok=prvalue_ok)
         lt = _declared_type(e.left, declared, analyzer)
         rt = _declared_type(e.right, declared, analyzer)
         if (lt is None or not is_bool_type(lt)
@@ -5354,6 +5438,11 @@ def _check_cond_eager_temps(node: THIRExpr) -> None:
         # own ctor arg hoists a deferred temp, the eager decl reads it before
         # its emplace -- so the whole row stays fenced here.
         raise ThirUnsupported("unionlift.cond_defer", detail=True)
+    if isinstance(node, THIRValueSelect) and node.lhs_move:
+        # The fresh LHS is bound to an `auto&&` temp at the enclosing
+        # statement, which a reference cannot bank, so it would be built
+        # even when this operand is not chosen.
+        raise ThirUnsupported("valuesel.cond_fresh_lhs", detail=True)
     for f in dataclass_fields(node):
         v = getattr(node, f.name)
         if isinstance(v, THIRExpr):
@@ -7419,7 +7508,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             fold_ok=use.admits(SinkForm.LITERAL_FOLD),
                             slot_threaded=use.slot_target is not None,
                             temps_ok=use.allow_temps,
-                            slot_ok=_select_slot_ok(use, lc))
+                            slot_ok=_select_slot_ok(use, lc),
+                            prvalue_ok=_select_prvalue_ok(e, use, analyzer))
     if isinstance(e, TpyUnaryOp):
         # A negated int literal folds to a plain literal (the negated value
         # renders directly); otherwise only logical `not` is admitted (bool
@@ -7967,8 +8057,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return _lower_if_expr(e, rtype, lc, declared, loc,
                               cond_temps_ok=use.allow_temps,
                               elem_storage=elem_storage,
-                              prvalue_ok=use.admits(
-                                  SinkForm.SELECT_PRVALUE),
+                              prvalue_ok=_select_prvalue_ok(e, use, analyzer),
                               slot_ok=_select_slot_ok(use, lc))
     if isinstance(e, TpyCall):
         if not isinstance(e.func, TpyName):
@@ -9964,8 +10053,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                       # An enum member is the companion call's wrapped
                       # value, lowered and gated as any enum argument is.
                       _enum_receiver(e.obj, analyzer) is not None
-                      or _method_nonname_receiver_ok(e.obj, declared, analyzer,
-                                                  frozenset(lc.pointers))
+                      or _method_nonname_receiver_ok(
+                          e.obj, declared, analyzer, frozenset(lc.pointers),
+                          lc.prescan.binds_global)
                       # An unproven ptr-Optional CALL receiver: the raw
                       # `T*` result feeds the deref_check member render
                       # (`::tpy::deref_check(find(...)).mag()` -- the call
@@ -15787,6 +15877,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # -- reject honestly instead.
             note_detail("call.own_str_no_flush")
             raise ThirUnsupported(call_reject_reason("expr.call"))
+    if _select_node(a) and _own_record_rvalue_arg(a, ptype, declared,
+                                                  lc.analyzer):
+        # An all-fresh select at an `Own[T]` slot: the prvalue `?:` binds the
+        # `T&&` parameter directly, as a ctor rvalue does.
+        return _lower_expr(a, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        allow_temps=temp_args,
+                                        forms=_own_slot_forms))
     ro_cont = _readonly_container_rvalue_arg(a, ptype, lc.analyzer)
     if ro_cont is not None:
         # A container rvalue at a readonly slot binds INLINE: a NON-EMPTY
@@ -16004,6 +16102,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if opt_face == 'none':
             _witness("optptr.none")
             return THIROptionalPtrArg(result_type=ot, form=Form.BORROW, loc=loc)
+        if opt_face == 'select':
+            _witness("optptr.select")
+            return _to_opt_ptr(
+                _lower_expr(a, lc, declared,
+                            use=_ExprUse(pos=SinkPos.CALL_ARG)),
+                ot, lc.analyzer, loc)
         if opt_face == 'subscript':
             # A record-element lvalue subscript takes the address-of face:
             # `&(::tpy::__getitem__(c, i))`. subscript_prechecked lets the
@@ -17510,6 +17614,29 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
     raise ThirUnsupported("expr.ifexpr")
 
 
+def _to_opt_ptr(lowered: THIRExpr, popt: 'OptionalType', analyzer,
+                loc) -> THIRExpr:
+    """A lowered value converted to the `T*` a pointer-repr Optional slot
+    binds, decided by the value's LOWERED result type and form rather than
+    by its source syntax: an already-pointer Optional passes bare, a BORROW
+    lvalue of the pointee (or of a subclass, which the pointer conversion
+    upcasts) takes its address, and anything else -- a VALUE prvalue above
+    all, whose address would dangle at the end of the statement -- rejects."""
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lowered.result_type)))
+    inner = unwrap_readonly(popt.inner)
+    if (isinstance(rt, OptionalType) and rt.uses_pointer_repr()
+            and unwrap_readonly(rt.inner) == inner):
+        return lowered
+    if (lowered.form is Form.BORROW and not isinstance(rt, OptionalType)
+            and (rt == inner
+                 or (isinstance(rt, NominalType) and isinstance(inner, NominalType)
+                     and analyzer.registry.is_subclass_of_or_equal(rt, inner)))):
+        return THIROptionalPtrArg(result_type=popt, form=Form.BORROW,
+                                  value=lowered, addr_of=True, loc=loc)
+    note_detail("optptr.select_form")
+    raise ThirUnsupported("expr.ifexpr")
+
+
 def _lower_ptr_union_ternary_arm(arm: TpyExpr, u: 'UnionType',
                                  lc: '_LowerCtx',
                                  declared: dict[str, TpyType],
@@ -17641,17 +17768,29 @@ def _lower_record_prvalue_arm(arm: TpyExpr, rec_t: 'TpyType',
                               ) -> 'THIRExpr | None':
     """One record-ternary arm that renders a PRVALUE of `rec_t`, or None.
 
-    Two shapes: `copy(<record name>)`, the copy-construct `T(x)` -- including
-    a POINTER-local source, whose deref the value carries (`T((*p))`); and a
-    call / method-call returning the record BY VALUE (a ctor rvalue, an
-    `Own[T]`-returning factory). A `T&`-returning call is an lvalue and rides
-    the BORROW slice instead.
+    Three shapes: `copy(<record name>)`, the copy-construct `T(x)` --
+    including a POINTER-local source, whose deref the value carries
+    (`T((*p))`); a call / method-call returning the record BY VALUE (a ctor
+    rvalue, an `Own[T]`-returning factory); and a nested select of fresh
+    operands of `rec_t` (either family), itself a prvalue. A `T&`-returning
+    call is an lvalue and rides the BORROW slice instead.
 
     No ptr-variant carve-out: a variant binding read as a member record needs
     a preceding narrowing statement, which would already have broken the
     member-init list's leading run."""
     analyzer = lc.analyzer
     loc = getattr(arm, "loc", None)
+    if _select_node(arm):
+        at = analyzer.get_expr_type(arm)
+        at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+              if at is not None else None)
+        if (not is_rvalue_source(analyzer, arm)
+                or (resolve_pending_container(at, analyzer) or at) != rec_t):
+            return None
+        return _lower_expr(arm, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        slot_target=rec_t,
+                                        forms=_ONLY_SELECT_FRESH_PRVALUE))
     carg = copy_call_arg(arm, analyzer)
     if carg is not None:
         if not isinstance(carg, TpyName):
@@ -17700,13 +17839,15 @@ def _select_slot_ok(use: _ExprUse, lc: '_LowerCtx') -> bool:
 
     Two facts. LIFETIME: the slot lives until the end of that statement's
     block, so the consumer must be proven not to hold the result longer --
-    a local binding that aliases or copies it (`SELECT_SLOT`), a transient
+    a local binding that aliases it (`SELECT_SLOT`), or a transient
     consumer (one that may even borrow dying storage; a method receiver
-    additionally asks the callee, `method.recv.select_slot_lend`), or a
-    direct-init of owned storage (`SELECT_PRVALUE`). A coercion is none of
-    these: it can turn the select into a view (`Span`, `StrView`) a
-    longer-lived name holds. PLACEMENT: a declaration must land before the
-    select's statement and in its scope -- the sink's own flush right
+    additionally asks the callee, `method.recv.select_slot_lend`). A
+    direct-init of owned storage takes no slot at all: the select renders
+    as a prvalue there (`_select_prvalue_ok`), its fresh operand built
+    straight into the storage. A coercion is none of these: it can turn the
+    select into a view (`Span`, `StrView`) a longer-lived name holds.
+    PLACEMENT: a declaration must land before the select's statement and in
+    its scope -- the sink's own flush right
     (`use.allow_temps`, which every flushing position already carries), or
     a statement whose emitter declares pending slots before its first line
     (`lc.slot_hoist_ok`, set per statement kind) -- and never in a lambda's
@@ -17716,19 +17857,40 @@ def _select_slot_ok(use: _ExprUse, lc: '_LowerCtx') -> bool:
             or use.pos in (SinkPos.MIL_INIT, SinkPos.COERCE_INNER)):
         return False
     return (use.admits(SinkForm.SELECT_SLOT)
-            or use.admits(SinkForm.DYING_SOURCE_LEND)
-            or use.admits(SinkForm.SELECT_PRVALUE))
+            or use.admits(SinkForm.DYING_SOURCE_LEND))
+
+
+def _select_prvalue_ok(e: TpyExpr, use: _ExprUse, analyzer) -> bool:
+    """Whether a reference select renders as a prvalue `?:` at this sink:
+    at an owning sink (`SELECT_PRVALUE`) whatever its operands, at a
+    direct-init sink (`SELECT_FRESH_PRVALUE`) only when every operand is
+    fresh -- an existing-object operand there is one CPython would alias."""
+    if use.admits(SinkForm.SELECT_PRVALUE):
+        return True
+    return (use.admits(SinkForm.SELECT_FRESH_PRVALUE)
+            and is_rvalue_source(analyzer, e))
 
 
 def _lower_fresh_ref_arm(arm: TpyExpr, rec_t: 'TpyType', lc: '_LowerCtx',
                          declared: dict[str, TpyType]) -> 'THIRExpr | None':
-    """A fresh (rvalue) arm of a record / container ternary, lowered as the
-    value it initializes, or None: a record prvalue
+    """A fresh (rvalue) arm of a record / container select, lowered as the
+    value it initializes (`_lower_fresh_ref_value`), or None. The arm
+    evaluates lazily, so a temp it would hoist eagerly rejects
+    (`_check_cond_eager_temps`)."""
+    lowered = _lower_fresh_ref_value(arm, rec_t, lc, declared)
+    if lowered is not None:
+        _check_cond_eager_temps(lowered)
+    return lowered
+
+
+def _lower_fresh_ref_value(arm: TpyExpr, rec_t: 'TpyType', lc: '_LowerCtx',
+                           declared: dict[str, TpyType]) -> 'THIRExpr | None':
+    """A fresh (rvalue) record / container operand of a select, lowered as
+    the value it initializes, or None: a record prvalue
     (`_lower_record_prvalue_arm`), or any fresh container expression of the
-    ternary's type -- a list comprehension, a literal (spelling its type:
+    select's type -- a list comprehension, a literal (spelling its type:
     a bare brace-init cannot deduce in ternary context), a call, an
-    operator result. The arm evaluates lazily, so a temp it would hoist
-    eagerly rejects (`_check_cond_eager_temps`)."""
+    operator result."""
     analyzer = lc.analyzer
     prv = _lower_record_prvalue_arm(arm, rec_t, lc, declared)
     if prv is not None:
@@ -17760,7 +17922,6 @@ def _lower_fresh_ref_arm(arm: TpyExpr, rec_t: 'TpyType', lc: '_LowerCtx',
         lowered = _lower_expr(arm, lc, declared,
                               use=_ExprUse(result=_ExprResultUse.STORAGE,
                                            slot_target=rec_t))
-    _check_cond_eager_temps(lowered)
     return lowered
 
 
@@ -17925,9 +18086,9 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         # slice (a `T&` call result is an lvalue too); a fresh arm beside
         # one of them is emplaced into a slot so the `?:` stays an lvalue.
         #
-        # Two fresh arms are a prvalue: only the RECORD half rejects them
-        # here, a container result has the generic tail below as its
-        # renderer.
+        # Two fresh arms are a prvalue, which only a direct-init sink takes:
+        # elsewhere the RECORD half rejects them here, and a container
+        # result has the generic tail below as its renderer.
         _rec_result = _f1_record(rec_t, analyzer)
 
         def _rec_arm_borrow_call(arm) -> bool:
@@ -17982,9 +18143,27 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
             return THIRIfExpr(result_type=result_t, cond=cond,
                               then=then, orelse=orelse,
                               form=Form.BORROW, loc=loc)
+        fresh_arms = None
+        if prvalue_ok and not any(lvalue_arms):
+            # Every arm fresh at a direct-init sink: each arm builds the
+            # storage's own value, record or container alike, and C++17
+            # elides the `?:` of two same-type prvalues into it.
+            fresh_arms = (
+                _lower_fresh_ref_arm(e.then_expr, rec_t, lc, declared),
+                _lower_fresh_ref_arm(e.else_expr, rec_t, lc, declared))
+        if fresh_arms is not None and None not in fresh_arms:
+            _witness("ifexpr.record_prvalue")
+            return THIRIfExpr(result_type=result_t, cond=cond,
+                              then=fresh_arms[0], orelse=fresh_arms[1],
+                              form=Form.VALUE, loc=loc)
+        if fresh_arms is not None and _rec_result:
+            note_detail("ifexpr.fresh_prvalue_arm")
+            raise ThirUnsupported("expr.ifexpr")
         if prvalue_ok and not _rec_result:
-            # A container at a direct-init sink: the generic tail below
-            # renders the prvalue `?:`.
+            # A container at a direct-init sink with an lvalue arm, or a
+            # fresh arm shape the row above has no lowering for: the
+            # generic tail below renders (or rejects) the prvalue `?:`,
+            # copying an lvalue arm.
             pass
         elif prvalue_ok:
             # A direct-init sink (a ctor member-init, an `Own[T]` slot)
@@ -18019,8 +18198,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
             if vals is None:
                 note_detail("ifexpr.record_prvalue_arm")
                 raise ThirUnsupported("expr.ifexpr")
-            _witness("ifexpr.record_prvalue_name_arm" if any(lvalue_arms)
-                     else "ifexpr.record_prvalue")
+            _witness("ifexpr.record_prvalue_name_arm")
             return THIRIfExpr(result_type=result_t, cond=cond,
                               then=vals[0], orelse=vals[1],
                               form=Form.VALUE, loc=loc)

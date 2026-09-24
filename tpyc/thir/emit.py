@@ -1654,6 +1654,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.rhs_sv:
             rhs_r = f"std::string_view({rhs_r})"
         lhs_b = f"{e.lhs_cast}({lhs_r})" if e.lhs_cast else lhs_r
+        if e.lhs_move:
+            lhs_b = f"std::move({lhs_b})"
         rhs_b = f"{e.rhs_cast}({rhs_r})" if e.rhs_cast else rhs_r
         if _rhs_region.prefix:
             rhs_b = f"({_rhs_region.prefix}{rhs_b})"

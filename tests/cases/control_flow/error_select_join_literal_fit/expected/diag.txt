@@ -1,0 +1,1 @@
+main.py:9: error: Incompatible types in ternary expression: 'list[uint8]' and 'list[int32]'

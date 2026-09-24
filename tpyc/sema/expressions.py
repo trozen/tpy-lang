@@ -997,53 +997,193 @@ class ExpressionAnalyzer:
             return make_set(elem)
         return t
 
-    def _logical_op_result_type(self, left: TpyType, right: TpyType) -> TpyType:
-        """Determine result type for and/or operators.
+    def _select_default_type(self, t: TpyType,
+                             warn_node: TpyExpr | None = None) -> TpyType:
+        """The type a select operand has when nothing on the other side
+        resolves it: literals and pending containers at their defaults."""
+        if isinstance(t, IntLiteralType):
+            return self.ctx.default_int_for_literal(t, warn_node)
+        if isinstance(t, FloatLiteralType):
+            return FLOAT
+        if isinstance(t, PendingViewType):
+            return t.family.owned_type
+        return self._normalize_pending_container(t)
 
-        Python semantics: `x and y` returns an operand, not bool.
-        Same non-bool type -> return that type (enables value-context usage).
-        Different types or bool operands -> return bool.
-        """
-        # Bool operands: C++ &&/|| already correct
+    def _select_type_for_message(self, t: TpyType,
+                                 python_literals: bool = False) -> str:
+        if not (python_literals and isinstance(t, IntLiteralType)):
+            t = self._select_default_type(t)
+        t = resolve_int_literals(t, BIGINT if python_literals
+                                 else self.ctx.default_int_for_literal)
+        if isinstance(t, NominalType) and any(
+                isinstance(a, UnknownElementType) for a in t.type_args):
+            # An empty literal has no element type yet; `[]` is a `list`.
+            return t.name
+        return str(t)
+
+    def _select_types_for_message(self, t: TpyType,
+                                  e: TpyType) -> tuple[str, str]:
+        ts = self._select_type_for_message(t)
+        es = self._select_type_for_message(e)
+        if ts == es:
+            # Only a literal can make two unjoinable operands read alike at
+            # their defaults (`(4, "d")` beside a `tuple[int32, str]`); name
+            # it by its Python type, `int`.
+            ts = self._select_type_for_message(t, python_literals=True)
+            es = self._select_type_for_message(e, python_literals=True)
+        return ts, es
+
+    def _select_join(self, t: TpyType, e: TpyType,
+                     t_expr: TpyExpr, e_expr: TpyExpr) -> TpyType | None:
+        """The one result type of a select -- `a if c else b`, `a or b`,
+        `a and b` -- over operand types already stripped of Ref/Own, or None
+        when the operands have no common type.
+
+        A literal or a pending container resolves against the OTHER operand,
+        since the two must share one C++ type; readonly on either side stays
+        on a reference result, which may alias that side."""
+        if t == e:
+            return t
+        joined = self._select_join_bare(unwrap_readonly(t), unwrap_readonly(e),
+                                        t_expr, e_expr)
+        if (joined is not None and not joined.is_value_type()
+                and (isinstance(t, ReadonlyType) or isinstance(e, ReadonlyType))):
+            return ReadonlyType(joined)
+        return joined
+
+    def _select_join_bare(self, t: TpyType, e: TpyType,
+                          t_expr: TpyExpr, e_expr: TpyExpr) -> TpyType | None:
+        if t == e:
+            return t
+        if isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType):
+            # Each literal at its own default, so `0 or 10**10` and
+            # `10**10 or 0` both widen to the type that holds the big one.
+            td = self.ctx.default_int_for_literal(t, t_expr)
+            ed = self.ctx.default_int_for_literal(e, e_expr)
+            return td if td == ed else widen_numeric_types(td, ed)
+        if isinstance(t, IntLiteralType):
+            if is_integer_type(e) or is_float_type(e):
+                return e
+            t = self.ctx.default_int_for_literal(t, t_expr)
+        if isinstance(e, IntLiteralType):
+            if is_integer_type(t) or is_float_type(t):
+                return t
+            e = self.ctx.default_int_for_literal(e, e_expr)
+        if isinstance(t, FloatLiteralType) and isinstance(e, FloatLiteralType):
+            return FLOAT
+        if isinstance(t, FloatLiteralType):
+            if is_float_type(e):
+                return e
+            t = FLOAT
+        if isinstance(e, FloatLiteralType):
+            if is_float_type(t):
+                return t
+            e = FLOAT
+        # Both pending views of one family keep the pending type so view
+        # deduction can chain the result back to the operands' resolution.
+        if (isinstance(t, PendingViewType) and isinstance(e, PendingViewType)
+                and t.family is e.family):
+            return t
+        if isinstance(t, PendingViewType):
+            t = t.family.owned_type
+        if isinstance(e, PendingViewType):
+            e = e.family.owned_type
+        if isinstance(t, PENDING_CONTAINER_TYPES) or isinstance(e, PENDING_CONTAINER_TYPES):
+            return self._join_pending_containers(t, e)
+        if t == e:
+            return t
+        return widen_numeric_types(t, e)
+
+    def _join_pending_containers(self, t: TpyType, e: TpyType) -> TpyType | None:
+        tn = self._normalize_pending_container(t)
+        en = self._normalize_pending_container(e)
+        if (isinstance(t, PENDING_CONTAINER_TYPES)
+                and isinstance(e, PENDING_CONTAINER_TYPES)
+                and self._unify_literal_types(t, e) is not None and tn == en):
+            return tn
+        if self._pin_select_pending(t, en):
+            return en
+        if self._pin_select_pending(e, tn):
+            return tn
+        return None
+
+    def _pin_select_pending(self, pending: TpyType, target: TpyType) -> bool:
+        """Resolve a pending container operand to the other operand's concrete
+        container type, when it is that container spelled as a literal."""
+        if (not isinstance(pending, PENDING_CONTAINER_TYPES)
+                or isinstance(target, PENDING_CONTAINER_TYPES)
+                or contains_pending_leaf(target)
+                or any(isinstance(a, UnknownElementType)
+                       for a in target.inner_types())):
+            return False
+        if not self._pending_matches_hint(pending, target):
+            return False
+        if not self.compat.is_type_compatible(pending, target):
+            return False
+        return self.calls.deduction.pin_pending_container(pending, target)
+
+    def _commit_select(self, expr: TpyExpr, result: TpyType,
+                       operands: tuple[tuple[str, TpyType], ...],
+                       context: str) -> None:
+        """Make every operand of a select take the joined type, so the C++
+        select has one operand type (e.g. None -> std::optional<T>).
+        An and/or passes no operands: its value-select lowering casts mixed
+        scalar operands itself, and a coercion would also reach an and/or
+        that is only a condition."""
+        if is_list(result):
+            # A fixed-size literal operand would become an Array of its own
+            # size; the operands must share the one `list` type.
+            for pt in collect_pending_source_types(self.ctx, expr):
+                if isinstance(pt, PendingListType):
+                    info = self.ctx.list_literals.get(pt.literal_id)
+                    if info is not None:
+                        info.needs_list_type = True
+        for attr, operand_type in operands:
+            # A readonly qualifier on the result only restricts the use.
+            if unwrap_readonly(operand_type) != unwrap_readonly(result):
+                setattr(expr, attr, self.compat.coerce_expr(
+                    getattr(expr, attr), operand_type, result,
+                    context, coercion_ctx=CoercionContext.INIT))
+
+    def _logical_op_result_type(self, expr: TpyBinOp, left: TpyType,
+                                right: TpyType) -> TpyType:
+        """Result type of `a and b` / `a or b`: the operand it yields, joined
+        like a ternary's arms. Falls back to bool (the C++ &&/|| value) when
+        the operands have no common type or either is a bool."""
         if is_bool_type(left) or is_bool_type(right):
             return BOOL
-        # Resolve int literals to match concrete int type on the other side
-        if isinstance(left, IntLiteralType):
-            if is_integer_type(right):
-                left = right
-            elif isinstance(right, IntLiteralType):
-                return self.ctx.default_int_type
-            else:
-                return BOOL
-        elif isinstance(right, IntLiteralType):
-            if is_integer_type(left):
-                right = left
-            else:
-                return BOOL
-        # Normalize PendingViewType to its owned type for comparison; preserve
-        # the pending type when both sides are pending so view deduction can
-        # chain the result variable back to the operands' resolution.
-        if isinstance(left, PendingViewType) and isinstance(right, PendingViewType) and left.family is right.family:
-            return left
-        if isinstance(left, PendingViewType):
-            left = left.family.owned_type
-        if isinstance(right, PendingViewType):
-            right = right.family.owned_type
-        # Normalize pending container types to concrete types for equality comparison.
-        # Two PendingListType literals with the same element type (but different IDs
-        # or different IntLiteralType values like 1 vs 3) are compatible.
-        # Caller marks source literals via collect_pending_source_types.
-        left = self._normalize_pending_container(left)
-        right = self._normalize_pending_container(right)
-        # A borrow-form operand (a param is RefType[T]) and a value-form operand
-        # (a constructor / local is plain T) denote the same type; unwrap the
-        # borrow wrapper for the same-type check so `a or Box(5)` resolves to the
-        # record type rather than falling to the mixed-types bool branch. Own is
-        # intentionally NOT unwrapped: equating Own[T] with a borrow T here would
-        # let the borrow arm be value-copied instead of aliased.
-        if unwrap_ref_type(left) == unwrap_ref_type(right):
-            return left
-        return BOOL
+        lt = unwrap_own(unwrap_ref_type(left))
+        rt = unwrap_own(unwrap_ref_type(right))
+        if any(isinstance(unwrap_readonly(x), (NoneType, OptionalType, PtrType))
+               or is_union_or_optional_type(unwrap_readonly(x))
+               for x in (lt, rt)):
+            # A nullable operand's select typing is not designed yet.
+            return lt if lt == rt else BOOL
+        if self._int_float_mix(lt, rt):
+            # `3 or 2.5` is the int 3: a float result would print `3.0`.
+            return BOOL
+        result = self._select_join(lt, rt, expr.left, expr.right)
+        if result is None:
+            return BOOL
+        # The operands are not coerced, but a literal must still fit the
+        # joined type: `u or 300` over a uint8 would otherwise wrap.
+        for operand, operand_type in ((expr.left, lt), (expr.right, rt)):
+            if isinstance(operand_type, IntLiteralType):
+                self.compat.check_type_compatible(
+                    operand_type, result, "logical operand", operand.loc,
+                    source_expr=operand, coercion_ctx=CoercionContext.INIT)
+        self._commit_select(expr, result, (), "logical operand")
+        return result
+
+    @staticmethod
+    def _int_float_mix(a: TpyType, b: TpyType) -> bool:
+        def is_int(t: TpyType) -> bool:
+            return isinstance(t, IntLiteralType) or is_any_int_type(t)
+
+        def is_float(t: TpyType) -> bool:
+            return isinstance(t, FloatLiteralType) or is_any_float_type(t)
+        a, b = unwrap_readonly(a), unwrap_readonly(b)
+        return (is_int(a) and is_float(b)) or (is_float(a) and is_int(b))
 
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""
@@ -1464,18 +1604,8 @@ class ExpressionAnalyzer:
             raise self.ctx.error(f"Cannot use '{expr.op}' with non-iterable type {right_type}", expr)
 
         # Logical operators: Python semantics returns an operand, not bool.
-        # Same non-bool type -> return that type; otherwise -> bool.
         if expr.op in ("&&", "||"):
-            result = self._logical_op_result_type(left_type, right_type)
-            if is_list(result):
-                # Both ternary branches must share a C++ type; force sources to
-                # ListType so they don't independently become incompatible Arrays.
-                for t in collect_pending_source_types(self.ctx, expr):
-                    if isinstance(t, PendingListType):
-                        info = self.ctx.list_literals.get(t.literal_id)
-                        if info is not None:
-                            info.needs_list_type = True
-            return result
+            return self._logical_op_result_type(expr, left_type, right_type)
 
         # IntEnum arithmetic: coerce to underlying type, delegate to standard binop
         if expr.op in ("+", "-", "*", "//", "%"):
@@ -1714,6 +1844,11 @@ class ExpressionAnalyzer:
 
         # Logical not: validate operand type (Bool, numeric, Optional, or types with __bool__/__len__)
         if expr.op == "!":
+            # An and/or operand is tested operand by operand, as in an `if`,
+            # whatever the one type its value has.
+            if (isinstance(expr.operand, TpyBinOp)
+                    and expr.operand.op in ("&&", "||")):
+                return BOOL
             if (is_bool_type(effective_type)
                     or is_any_int_type(effective_type)
                     or is_any_float_type(effective_type)
@@ -3140,106 +3275,27 @@ class ExpressionAnalyzer:
 
         # Strip Ref/Own from branch types -- these are provenance qualifiers,
         # not part of the result type.  The ternary produces a value.
-        then_type = unwrap_ref_type(then_type)
-        if isinstance(then_type, OwnType):
-            then_type = then_type.wrapped
-        else_type = unwrap_ref_type(else_type)
-        if isinstance(else_type, OwnType):
-            else_type = else_type.wrapped
+        then_type = unwrap_own(unwrap_ref_type(then_type))
+        else_type = unwrap_own(unwrap_ref_type(else_type))
 
-        common = self._ternary_common_type(expr, then_type, else_type,
-                                           widen_numeric_types)
-
-        if is_list(common):
-            # Both ternary branches must share a C++ type; force sources to
-            # ListType so they don't independently become incompatible Arrays.
-            for t in collect_pending_source_types(self.ctx, expr):
-                if isinstance(t, PendingListType):
-                    info = self.ctx.list_literals.get(t.literal_id)
-                    if info is not None:
-                        info.needs_list_type = True
-
-        # Coerce branches to the common type so C++ ternary has
-        # matching branch types (e.g. None -> std::optional<T>).
-        if then_type != common:
-            expr.then_expr = self.compat.coerce_expr(
-                expr.then_expr, then_type, common,
-                "ternary branch", coercion_ctx=CoercionContext.INIT)
-        if else_type != common:
-            expr.else_expr = self.compat.coerce_expr(
-                expr.else_expr, else_type, common,
-                "ternary branch", coercion_ctx=CoercionContext.INIT)
-
+        common = self._select_join(then_type, else_type,
+                                   expr.then_expr, expr.else_expr)
+        if common is None:
+            t = self._select_default_type(then_type, expr.then_expr)
+            e = self._select_default_type(else_type, expr.else_expr)
+            if isinstance(e, NoneType):
+                common = make_union(t, NoneType())
+            elif isinstance(t, NoneType):
+                common = make_union(e, NoneType())
+            else:
+                ts, es = self._select_types_for_message(then_type, else_type)
+                raise self.ctx.error(
+                    f"Incompatible types in ternary expression: "
+                    f"'{ts}' and '{es}'", expr)
+        self._commit_select(expr, common,
+                            (("then_expr", then_type), ("else_expr", else_type)),
+                            "ternary branch")
         return common
-
-    def _ternary_common_type(
-        self, expr: TpyIfExpr,
-        then_type: TpyType, else_type: TpyType,
-        widen_numeric_types: object,
-    ) -> TpyType:
-        """Compute the common result type of a ternary expression's branches."""
-        if then_type == else_type:
-            return then_type
-
-        t, e = then_type, else_type
-
-        # IntLiteral resolution
-        if isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType):
-            return self.ctx.default_int_for_literal(t, expr.then_expr)
-        if isinstance(t, IntLiteralType):
-            if is_integer_type(e) or is_float_type(e):
-                return e
-            t = self.ctx.default_int_for_literal(t, expr.then_expr)
-        if isinstance(e, IntLiteralType):
-            if is_integer_type(t) or is_float_type(t):
-                return t
-            e = self.ctx.default_int_for_literal(e, expr.else_expr)
-
-        # FloatLiteral resolution: adapts to the concrete float type in context
-        if isinstance(t, FloatLiteralType) and isinstance(e, FloatLiteralType):
-            return FLOAT
-        if isinstance(t, FloatLiteralType):
-            if is_float_type(e):
-                return e
-            t = FLOAT
-        if isinstance(e, FloatLiteralType):
-            if is_float_type(t):
-                return t
-            e = FLOAT
-
-        # Normalize PendingViewType to its owned type for comparison; preserve
-        # the pending type when both sides are pending so view deduction can
-        # chain the result variable back to the operands' resolution.
-        if isinstance(t, PendingViewType) and isinstance(e, PendingViewType) and t.family is e.family:
-            return t
-        if isinstance(t, PendingViewType):
-            t = t.family.owned_type
-        if isinstance(e, PendingViewType):
-            e = e.family.owned_type
-        # Normalize pending container types to concrete types for equality comparison,
-        # resolving IntLiteralType elements so [1,2] and [3,4] both normalize to list[int].
-        t = self._normalize_pending_container(t)
-        e = self._normalize_pending_container(e)
-
-        if t == e:
-            return t
-
-        # Numeric widening (int32 + int64 -> int64, etc.)
-        widened = widen_numeric_types(t, e)
-        if widened is not None:
-            return widened
-
-        # T + None / None + T -> Optional[T]
-        if isinstance(e, NoneType):
-            return make_union(t, NoneType())
-        if isinstance(t, NoneType):
-            return make_union(e, NoneType())
-
-        raise self.ctx.error(
-            f"Incompatible types in ternary expression: "
-            f"'{t}' and '{e}'",
-            expr,
-        )
 
     def _resolve_literals_with_hint(self, t: TpyType, hint: TpyType | None) -> TpyType:
         """Resolve IntLiteralType / FloatLiteralType and pending container types

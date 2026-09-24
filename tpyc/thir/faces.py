@@ -227,6 +227,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.container_select",       # container and/or over lvalue
                                     # operands: the __len__-truthy
                                     # ternary aliasing the chosen side
+    "binop.container_select_prvalue",  # ... and its prvalue render at a
+                                    # direct-init sink: fresh operands built
+                                    # into the storage, a fresh LHS moved
+                                    # out of its once-evaluated temp
     "binop.select_bool_dunder",     # __bool__-record select: the
                                     # ::tpy::__bool__ truthy flavor
     "binop.protocol_raw",           # protocol-operand arith in a template
@@ -306,6 +310,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "optptr.name",                  # `&(name)`
     "optptr.subscript",             # `&(<lvalue record subscript>)`
     "optptr.call_pass",             # borrow-returning call passes bare
+    "optptr.select",                # select: bare `T*` or `&(<lvalue select>)`
     "argtemp.protocol_union_literal",  # container literal at a nullable
                                     # protocol ctor slot: typed temp + addr
     "argtemp.protocol_union_iter",  # dict-view / gen-factory rvalue at the
@@ -408,6 +413,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
+    "own.select_rvalue",            # all-fresh select into Own[T]: its
+                                    # prvalue binds the slot, no temp
     "own.native_record_rvalue",     # ... its @native Own-returning residue
     "own.opt_ptr_name_rebuild",     # ptr-repr Optional name into the
                                     # same slot: null-safe move rebuild
@@ -1962,6 +1969,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # an Own-returning user unary dunder is a fresh value, so the decl is the
     # plain spelled copy.
     "decl.rvalue_storage_unary",
+    # ... and the all-fresh SELECT sibling (`z = C(1) if c else make()`,
+    # `x = [1] or [2]` -> `C z = ((c) ? (C(1)) : (make()));`): the prvalue
+    # select initializes the local directly, record or container.
+    "decl.rvalue_storage_select",
     # Iterator-object local decl (`it = g()` / `it = obj.gen()` -> `auto it
     # = g();`): a generator/iterator factory result feeding the universal
     # __iter__/__next__ loop; single-assignment only.
@@ -2126,9 +2137,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # ... with a container LITERAL as that rvalue, its element types resolved
     # against the slot's inner (`xs = &*(__slot_N = {1, 2, 3});`).
     "reseat.opt_container_literal",
-    # ... with an Own-returning user dunder operator as the rvalue
-    # (`v = v + inc` -> `v = &*(__slot_N = (((*v)) + (inc)));`).
-    "reseat.rvalue_op",
     # Lvalue reseat of a slotless Optional local: lift a bare record param or an
     # F1-record field source via `x = &(...);`.
     "reseat.opt_lvalue",
@@ -2252,8 +2260,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.record",                # reference-axis lvalue ternary (record
                                     # or container): bare name / borrow-call
                                     # / element arms, a BORROW lvalue
-    "ifexpr.record_prvalue",        # F1-record PRVALUE ternary (copy /
-                                    # by-value call arms) at the MIL slot
+    "ifexpr.record_prvalue",        # all-fresh record / container PRVALUE
+                                    # ternary at a direct-init sink (ctor /
+                                    # by-value call / copy / literal arms)
     "decl.opt_ternary",             # OPTIONAL_TO_PTR local off a ternary:
                                     # binds the lowered `T*` ternary bare
     "decl.opt_storage_call",        # Own-declared optional call decl: the

@@ -319,7 +319,8 @@ from .predicates import (
     _eligible_value_union,
     _wrapper_member_ctor_slot,
     _wrapper_member_literal_slot,
-    _container_rvalue_select,
+    _rvalue_ref_init,
+    _select_node,
     _native_iter_value_slot,
     _own_record_tuple,
     _owned_container_slot,
@@ -477,6 +478,7 @@ from .context import (
     _ONLY_LITERAL_FOLD,
     _ONLY_PTR_OPT_PASSTHROUGH,
     _ONLY_SELECT_PRVALUE,
+    _ONLY_SELECT_FRESH_PRVALUE,
     _ONLY_SELECT_SLOT,
     _ONLY_RECORD_COPY,
     _ExprUse,
@@ -556,7 +558,6 @@ from .checks import (
     _dyn_own_handle_arg,
     _native_ctx_manager_ok,
     _native_record_rvalue_call_shape,
-    _rvalue_storage_decl_op,
     _rvalue_storage_decl_call,
     _scalar_aug_assign_ok,
     _str_aug_append_ok,
@@ -599,6 +600,7 @@ from .expressions import (
     _lower_container_elem,
     _lower_elem_into_any,
     _lower_expr,
+    _to_opt_ptr,
     lower_print_sink,
     _lower_field_source,
     _lower_lambda,
@@ -3107,6 +3109,10 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
         return True
     if _record_rvalue_source_shape(init, analyzer):
         return True
+    # A fresh operator result or all-fresh select of the slot's type
+    # (`v = v + inc`, `x = C(1) if c else make()`).
+    if _rvalue_ref_init(init, target_t, analyzer):
+        return True
     # `copy(x)` of a bare plain F1-record name: the copy-construct rvalue
     # (`__slot_N = Point(p)` / the engaging optional assign). The reseat
     # render intercepts the row itself (the special-builtin call gate
@@ -3154,10 +3160,12 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
 def _rebind_rvalue_use(init: TpyExpr, slot_t: TpyType) -> '_ExprUse':
     """A slot assign is a storage sink at statement position: a
     container-returning call needs the STORAGE result use (the storage-decl
-    sink's admission) and may hoist arg temps."""
+    sink's admission) and may hoist arg temps. Only a fresh value reaches a
+    slot, so a select there is all-fresh and renders its prvalue `?:`."""
     use = (_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True)
            if isinstance(init, (TpyCall, TpyMethodCall)) else _ExprUse())
-    return replace(use, pos=SinkPos.LOCAL_DECL, slot_target=slot_t)
+    return replace(use, pos=SinkPos.LOCAL_DECL, slot_target=slot_t,
+                   forms=_ONLY_SELECT_FRESH_PRVALUE)
 
 
 def _rebind_storage(stmt: 'TpyVarDecl | TpyAssign', name: str,
@@ -3185,9 +3193,8 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     # The source fills the SLOT, so it is admitted and lowered against what
     # the slot holds -- the pointee for a pointer-repr Optional local.
     slot_t = _rebind_slot_target(vtype, lc.analyzer)
-    if not (_rebind_rvalue_source_ok(stmt.init, slot_t, lc.analyzer,
-                                     frame_borrows_local=stmt.frame_borrows_local)
-            or _rvalue_storage_decl_op(stmt.init, lc.analyzer)):
+    if not _rebind_rvalue_source_ok(stmt.init, slot_t, lc.analyzer,
+                                    frame_borrows_local=stmt.frame_borrows_local):
         note_detail("res.rebind_ptr_source")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     value = _lower_storage_value(stmt.init, slot_t, lc, declared, loc,
@@ -4257,7 +4264,8 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         init = _lower_storage_value(
             stmt.init, vtype, lc, declared, loc,
             use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                         slot_target=vtype, allow_temps=True))
+                         slot_target=vtype, allow_temps=True,
+                         forms=_ONLY_SELECT_FRESH_PRVALUE))
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=init,
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
@@ -4477,11 +4485,15 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             is_const=is_const, cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.OPTIONAL_TO_PTR
             and isinstance(stmt.init, TpyIfExpr)):
-        # A ternary source: the ifexpr lowering normalized each arm to `T*`
-        # (per-arm optional_to_ptr / addr-of / nullptr), so the binding binds
-        # the lowered ternary bare -- a direct pointer assignment
-        # (`Box* t = ((c) ? (p) : (::tpy::optional_to_ptr(h.opt)));`).
-        src = _lower_expr(stmt.init, lc, declared)
+        # A ternary source binds the lowered select as the `T*`: bare when
+        # the ifexpr lowering already normalized each arm to it
+        # (`Box* t = ((c) ? (p) : (::tpy::optional_to_ptr(h.opt)));`), the
+        # address of the select when it is a pointee lvalue
+        # (`C* t = &(((c) ? (a) : (b)));`). No select slot: a plain pointer
+        # copy of the local can outlive the slot's block
+        # (BUGS.md#select-pointer-slot-gaps).
+        src = _to_opt_ptr(_lower_expr(stmt.init, lc, declared),
+                          vtype, lc.analyzer, loc)
         _witness("decl.opt_ternary")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
@@ -7906,12 +7918,14 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         _fsw_tuple_src = (isinstance(_fsw_slot, TupleType)
                           and not (isinstance(init, (TpyCall, TpyMethodCall))
                                    and _own_declared_call_ret(init)))
+        # The emplace direct-initializes the payload, so an all-fresh
+        # select renders its prvalue `?:` there.
         value = _lower_expr(init, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.STORAGE,
                                          allow_temps=True,
                                          pos=SinkPos.FRAME_SLOT_WRITE,
                                          forms=(None if _fsw_tuple_src
-                                                else _NO_FORMS)))
+                                                else _ONLY_SELECT_FRESH_PRVALUE)))
     _witness("res.frame_slot_write")
     # The brace-init prefix spells the SLOT, so it reads the resolved frame
     # local type -- a branch-declared container
@@ -10097,23 +10111,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     slot_cpp=lc.render_type(unwrap_readonly(decl_u.inner)),
                     loc=loc)
             if is_rvalue_source(analyzer, stmt.init):
-                # An Own-returning user dunder operator (`v = v + inc` ->
-                # `v = &*(__slot_N = (((*v)) + (inc)));`) is a fresh record
-                # value like the shared helper's other rvalue shapes; the
-                # decl twin is `_rvalue_storage_decl_op`. Admitted at THIS
-                # reseat only -- the slot-holding rebind is the witnessed
-                # sink. It stays OUT of `_rebind_rvalue_source_ok`: the
-                # opt-storage and branch-rvalue reseats share that predicate
-                # and build different nodes (a plain `name = <rvalue>;` and
-                # the lazily-slotted `name = &*(__slot_N = <rvalue>);`), so
-                # folding the disjunct in would admit the op shape at two
-                # sinks no witness or pin covers -- and would fire this
-                # face for renders that are not this reseat.
-                if not (_rebind_rvalue_source_ok(
-                            stmt.init, declared[stmt.name], analyzer,
-                            frame_borrows_local=stmt.frame_borrows_local)
-                        or (_rvalue_storage_decl_op(stmt.init, analyzer)
-                            and _witness("reseat.rvalue_op"))):
+                if not _rebind_rvalue_source_ok(
+                        stmt.init, declared[stmt.name], analyzer,
+                        frame_borrows_local=stmt.frame_borrows_local):
                     note_detail("decl.rebind_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 return THIRAssign(
@@ -11052,10 +11052,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 storage_call = True
                 _witness("decl.native_record_call")
             elif (_rvalue_storage_decl_call(stmt.init, analyzer)
-                  or _rvalue_storage_decl_op(stmt.init, analyzer)):
+                  or _rvalue_ref_init(stmt.init, vtype, analyzer)):
                 storage_call = True
                 _witness("decl.rvalue_storage_unary"
                          if isinstance(stmt.init, TpyUnaryOp)
+                         else "decl.rvalue_storage_select"
+                         if _select_node(stmt.init)
                          else "decl.rvalue_storage_call")
         # An iterator-object decl (`it = g()` / `it = obj.gen()`): the
         # generator/iterator factory result lands in an `auto` local that
@@ -11602,10 +11604,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     or (isinstance(vtype, NominalType)
                         and record_like(vtype, analyzer)
                         and _value_record_slot(vtype))
-                    # An all-rvalue container select / ternary init
-                    # (`x = [1,2] or [3,4]`): the plain spelled copy of
-                    # the pointer-select deref / bare literal ternary.
-                    or _container_rvalue_select(stmt.init, vtype, analyzer)
                     # A native-iterator value slot (`it = SpanIter(s)` /
                     # annotated `a.__iter__()`) spells the plain copy; a
                     # structural-protocol slot (`it = iter(c)`) spells
@@ -11806,20 +11804,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                     # arms' above: this general arm has
                                     # vetted no whole-tuple consumption and
                                     # no pointer binding, so it claims
-                                    # neither. The init is COPIED into the
-                                    # binding's own storage, so the slot of
-                                    # a select of fresh operands outlives its
-                                    # use; a select with an existing-object
-                                    # operand would copy that object where
-                                    # CPython binds it, so it takes no slot.
+                                    # neither. A select of fresh operands
+                                    # direct-initializes the binding's own
+                                    # storage (the prvalue `?:`); one with
+                                    # an existing-object operand would copy
+                                    # that object where CPython binds it,
+                                    # so it takes no select form.
                                     pos=SinkPos.LOCAL_DECL,
                                     forms=_decl_slot_forms(
                                         vtype, analyzer,
                                         whole_tuple_call=False,
                                         from_call=False, ptr_local=False)
-                                    | (_ONLY_SELECT_SLOT
-                                       if is_rvalue_source(analyzer, src)
-                                       else _NO_FORMS)),
+                                    | _ONLY_SELECT_FRESH_PRVALUE),
                                 allow_whole_optional=opt_slot,
                                 field_owned_str_ok=str_field_init,
                                 allow_union_divergent=_union_reassign_name))
@@ -13589,10 +13585,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                       subscript_prechecked=True),
                     addr_of=True, loc=loc)
             elif isinstance(stmt.value, TpyIfExpr):
-                # A ternary return passes bare: the ifexpr lowering already
+                # A ternary return: bare when the ifexpr lowering already
                 # normalized each arm to the return's `T*`
-                # (`return ((flag) ? (&(p)) : (nullptr));`).
-                pvalue = _lower_expr(stmt.value, lc, declared)
+                # (`return ((flag) ? (&(p)) : (nullptr));`), the address of
+                # a pointee lvalue select otherwise. The use admits no select
+                # slot: it would die before the caller reads the pointer.
+                pvalue = _to_opt_ptr(_lower_expr(stmt.value, lc, declared),
+                                     ret_popt, analyzer, loc)
                 _witness("ret.ptr_opt_ternary")
             elif (isinstance(stmt.value, (TpyCall, TpyMethodCall))
                     and not is_property_getter_read(stmt.value)
@@ -14052,17 +14051,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # return: the record rvalue passes through bare; the call
                 # re-validates itself during the value's lowering.
                 record_ok = bool(_witness("ret.record_call_storage"))
-            elif (isinstance(stmt.value, (TpyBinOp, TpyUnaryOp))
-                  and lc.prescan.ret_record_borrow is None
-                  and is_rvalue_source(analyzer, stmt.value)):
-                # `return a + b` / `return -v` at the Own[record] STORAGE
-                # return: an Own-returning user dunder yields a FRESH record,
-                # so the operator render passes through bare -- the return-slot
-                # twin of `_rvalue_storage_decl_op`. A BORROW-returning dunder
-                # aliases an operand (returning `const Acc&` there);
-                # `is_rvalue_source` reads the dunder's return convention and
-                # is the whole discriminator. The operand renders are the
-                # binop / unary arms' own business.
+            elif (lc.prescan.ret_record_borrow is None
+                  and _rvalue_ref_init(stmt.value, None, analyzer)):
+                # `return a + b` / `return -v` / `return C(1) if c else
+                # make()` at the Own STORAGE return: a fresh operator result
+                # or all-fresh select passes through bare -- the return-slot
+                # twin of the decl's `_rvalue_ref_init` row, a select
+                # rendering its prvalue `?:` (the generic tail's
+                # SELECT_FRESH_PRVALUE). The operand renders are the binop / unary
+                # / select arms' own business.
                 record_ok = bool(_witness("ret.record_op_storage"))
             elif (isinstance(stmt.value, (TpyCall, TpyMethodCall))
                   and lc.prescan.ret_record_borrow is not None
@@ -14928,6 +14925,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         use=_ExprUse(
                             result=_ExprResultUse.STORAGE,
                             allow_temps=True,
+                            # An owning return direct-initializes the
+                            # result, so a fresh select renders its prvalue
+                            # `?:` there.
+                            forms=(_ONLY_SELECT_FRESH_PRVALUE
+                                   if lc.prescan.ret_record_storage
+                                   is not None else None),
                             # A return value renders against the fn return
                             # type, so a both-literal binop never folds
                             # there (`return 2**40 + 1` renders the
