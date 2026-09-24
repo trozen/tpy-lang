@@ -56,6 +56,7 @@ from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
                      _native_iter_combinator)
 from .predicates import (
     _mixed_own_storage_source,
+    storage_tuple_name_source,
     _storage_opt_ternary_elem,
     _call_iterable_lvalue,
     _dict_view_iterable_ok,
@@ -622,11 +623,14 @@ def _comp_lowering_route(
                                           # node-gated like the other
                                           # shape-sensitive families: a tuple
                                           # LITERAL rides the storage-direct/
-                                          # borrow-ladder rows, a bare NAME
-                                          # the whole tuple_to_storage copy.
-                                          or (isinstance(
-                                                  init.element_expr,
-                                                  (TpyTupleLiteral, TpyName))
+                                          # borrow-ladder rows, a NAME (bare
+                                          # or under copy()) the whole
+                                          # tuple_to_storage copy.
+                                          or ((isinstance(init.element_expr,
+                                                          TpyTupleLiteral)
+                                               or storage_tuple_name_source(
+                                                   init.element_expr,
+                                                   analyzer) is not None)
                                               and isinstance(
                                                   unwrap_readonly(
                                                       unwrap_ref_type(

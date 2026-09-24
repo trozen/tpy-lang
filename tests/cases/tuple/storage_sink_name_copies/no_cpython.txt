@@ -1,0 +1,3 @@
+Every section stores a copy where CPython stores the very object the tuple
+local refers to, and warns it; the output IS that warned divergence, so a
+CPython run would only compare the divergence itself.

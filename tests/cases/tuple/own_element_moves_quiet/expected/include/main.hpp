@@ -16,6 +16,28 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t take(std::tuple<P, P> t);
 // def ret_moves() -> tuple[Own[P], int32]:
 std::tuple<P, int32_t> ret_moves();
+// def fresh_into_list() -> Own[list[tuple[P, P]]]:
+std::vector<std::tuple<P, P>> fresh_into_list();
+// def fresh_into_dict() -> Own[dict[int32, tuple[P, P]]]:
+::tpy::ordered_map<int32_t, std::tuple<P, P>> fresh_into_dict();
+// def copy_into_list(p: P) -> Own[list[tuple[P, P]]]:
+std::vector<std::tuple<P, P>> copy_into_list(P& p);
+// def copy_module_into_list(p: P) -> Own[list[tuple[P, P]]]:
+std::vector<std::tuple<P, P>> copy_module_into_list(P& p);
+// def copy_into_dict(p: P) -> Own[dict[int32, tuple[P, int32]]]:
+::tpy::ordered_map<int32_t, std::tuple<P, int32_t>> copy_into_dict(P& p);
+// def copy_into_comp(p: P) -> Own[list[tuple[P, P]]]:
+std::vector<std::tuple<P, P>> copy_into_comp(P& p);
+// def copy_into_append(p: P, xs: list[tuple[P, P]]) -> None:
+void copy_into_append(P& p, std::vector<std::tuple<P, P>>& xs);
+// def copy_return(p: P) -> Own[tuple[P, P]]:
+std::tuple<P, P> copy_return(P& p);
+// def copy_nested_member(p: P) -> Own[list[tuple[tuple[P, P], int32]]]:
+std::vector<std::tuple<std::tuple<P, P>, int32_t>> copy_nested_member(P& p);
+// def copy_param(t: tuple[P, P]) -> Own[list[tuple[P, P]]]:
+std::vector<std::tuple<P, P>> copy_param(const std::tuple<const P*, const P*>& t);
+// def values_into_list(n: int32) -> Own[list[tuple[int32, int32]]]:
+std::vector<std::tuple<int32_t, int32_t>> values_into_list(int32_t n);
 // def main() -> None:
 void main();
 

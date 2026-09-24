@@ -643,11 +643,13 @@ from .checks import (
     copy_construct_source,
     copy_construct_form,
     copy_call_arg,
+    storage_tuple_name_source,
     _owned_str_slot,
     _FSTRING_INELIGIBLE,
     _call_arity_ok,
     _call_ret_reject,
     _container_lit_elem_ok,
+    _storage_tuple_name_ok,
     _container_literal_arg,
     _container_literal_method_arg,
     _container_storage_call_rvalue,
@@ -2275,8 +2277,10 @@ def _btuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
     flavor (`take_mixed(make_mixed(b))` at `tuple[Own[Box], Box]`) -- the
     bare-bind admission shared by the free-call ladder and its render arm
     (call.btuple_pass). Element-blind render, so both shape keys bind the
-    same way."""
-    if not isinstance(a, (TpyCall, TpyMethodCall)):
+    same way. A `copy()` call is excluded: its result is a fresh STORAGE
+    tuple, which the borrow-form slot cannot bind."""
+    if (not isinstance(a, (TpyCall, TpyMethodCall))
+            or copy_call_arg(a, analyzer) is not None):
         return False
     pt = _ptr_optional_tuple(ptype)
     if pt is None:
@@ -9058,9 +9062,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
 
         # `copy(x)`: the bespoke special-builtin arm, shared with the
         # module-qualified spelling (`t.copy(s)`) via _lower_copy_special.
-        if (fi is not None and fi.qualified_name == qnames.COPY
-                and len(e.args) == 1 and not e.kwargs):
-            return _lower_copy_special(e.args[0], e.func_name, rtype, lc,
+        copy_src = copy_call_arg(e, analyzer)
+        if copy_src is not None:
+            return _lower_copy_special(copy_src, e.func_name, rtype, lc,
                                        declared, loc)
         ffold = _lower_float_str_fold(e.resolved_function_info, e.args,
                                       e.func_name, rtype, loc,
@@ -9835,9 +9839,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # The module-qualified copy spelling (`t.copy(s)`): the same
             # special-builtin arm as the free call, intercepted ahead of
             # the module dispatch.
-            if (_ffi is not None and _ffi.qualified_name == qnames.COPY
-                    and len(e.args) == 1 and not e.kwargs):
-                return _lower_copy_special(e.args[0], e.method, rtype, lc,
+            copy_src = copy_call_arg(e, analyzer)
+            if copy_src is not None:
+                return _lower_copy_special(copy_src, e.method, rtype, lc,
                                            declared, loc)
             # The overload-seam-aware verdict: a stub fi carries
             # is_generator=False while the impl is the generator.
@@ -11875,20 +11879,24 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                            loc=getattr(e, "loc", None))
     su_tup = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
         if slot is not None else None
-    if (isinstance(e, TpyName) and isinstance(su_tup, TupleType)
+    _tname = storage_tuple_name_source(e, lc.analyzer)
+    if (_tname is not None and isinstance(su_tup, TupleType)
             and su_tup.has_pointer_repr_element()
             and _value_tuple(su_tup, lc.analyzer) is None):
         # A bare NAME at a NON-VALUE tuple element slot (`[t for t in src]`
         # at `list[tuple[int32, Cell]]`): the whole borrow-form binding
         # copies into storage via the non-move tuple_to_storage (the
         # element wrap over the loop-var read). Only a declared, plain
-        # (non-pointer, non-narrowed) name is admitted.
-        if (e.name in declared and e.name not in lc.pointers
-                and e.name not in lc.narrow.narrowed
-                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    declared[e.name]))) == su_tup):
+        # (non-pointer, non-narrowed) name is admitted. A `copy()` wrapper
+        # is the copy() call's own storage value (its tuple-name row).
+        if (_storage_tuple_name_ok(e, su_tup, declared, lc.pointers,
+                                   lc.analyzer)
+                and _tname.name not in lc.narrow.narrowed):
+            if _tname is not e:
+                return _lower_copy_special(_tname, "copy", su_tup, lc,
+                                           declared, getattr(e, "loc", None))
             _witness("containerlit.tuple_name_storage")
-            inner = _lower_expr(e, lc, declared)
+            inner = _lower_expr(_tname, lc, declared)
             # A name that ALREADY reads storage form -- a loop var over a
             # storage container -- is copied by the element init itself, so
             # the bare read is the right render and a convert here would be
@@ -11900,7 +11908,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
             # a pointer-repr tuple GLOBAL never reaches `declared` (only a
             # value-tuple global is admitted), and a MIXED-render local rejects
             # at the decl arm, so neither can enter `storage_tuple_locals`.
-            if e.name in lc.storage_tuple_locals:
+            if _tname.name in lc.storage_tuple_locals:
                 return inner
             return THIRFormConvert(
                 result_type=su_tup,
@@ -16649,6 +16657,25 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
             elements=_copy_elems,
             addr_of=tuple(False for _ in _copy_elems),
             elem_wraps=(), loc=loc)
+    if (isinstance(stu, TupleType) and stu.has_pointer_repr_element()
+            and _value_tuple(stu, analyzer) is None
+            and isinstance(src, TpyName)
+            and src.name not in lc.narrow.narrowed
+            and _storage_tuple_name_ok(src, stu, declared, lc.pointers,
+                                       analyzer)):
+        # `copy(t)` of a tuple NAME with reference elements: the storage
+        # value is the copy. A borrow-form binding lifts through the NON-move
+        # `tuple_to_storage<S>(t)` (each pointee deref-copied, even at the
+        # name's last use); a binding that already reads storage
+        # copy-constructs.
+        _witness("call.copy_tuple_name")
+        _tn = _lower_expr(src, lc, declared)
+        if _tn.form is Form.STORAGE:
+            return THIRCall(result_type=rtype, callee=callee, args=(_tn,),
+                            cpp_template=f"{lc.render_type(stu)}({{0}})",
+                            loc=loc)
+        return THIRFormConvert(result_type=stu, value=_tn,
+                               form=Form.STORAGE, move=False, loc=loc)
     # `copy(x)` of a concrete container source (`copy(d.get(k, dflt))`):
     # the general `{arg_type.to_cpp()}(<deref read>)` tail
     # -> `std::vector<T>(<src>)`. Containers are never pointer-locals, so

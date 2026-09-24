@@ -831,7 +831,7 @@ class StatementAnalyzer:
                 and value.resolved_function_info.qualified_name == "tpy.copy"):
             return
         inner = value.args[0]
-        if self.compat.is_auto_move_use(inner):
+        if self.compat.auto_move_copied_elements(inner) == frozenset():
             self.ctx.warning(
                 f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
                 value,

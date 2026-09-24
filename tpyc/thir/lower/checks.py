@@ -244,6 +244,7 @@ from .predicates import (
     _field_receiver_ok,
     _field_receiver_or_unbound_self_ok,
     copy_call_arg,
+    storage_tuple_name_source,
     _tuple_literal_has_ref_elements,
     _btuple_literal_elems_rvalue,
     _tuple_elem_slots_ptr_optional,
@@ -740,6 +741,18 @@ def _record_source_call(e: TpyExpr, analyzer) -> bool:
         return _ctor_shape_ok(e, analyzer) or _ctor_instantiation_ok(e, analyzer)
     return _record_rvalue_call_shape(e, analyzer)
 
+def _storage_tuple_name_ok(e: TpyExpr, su: 'TpyType',
+                           declared: dict[str, TpyType],
+                           pointers: 'AbstractSet[str]', analyzer) -> bool:
+    """A plain tuple NAME (bare or under `copy()`) declared as exactly the
+    storage tuple slot `su` -- the containerlit.tuple_name_storage row."""
+    nm = storage_tuple_name_source(e, analyzer)
+    return (nm is not None and nm.name in declared
+            and nm.name not in pointers
+            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                declared[nm.name]))) == su)
+
+
 def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                            declared: dict[str, TpyType], analyzer, *,
                            threaded: bool, forced: bool,
@@ -1111,12 +1124,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                         # with `t = (2, c)` a borrow-tuple local): the
                         # whole non-move tuple_to_storage copy -- the
                         # containerlit.tuple_name_storage render.
-                        or (isinstance(sub, TpyName)
-                            and sub.name in declared
-                            and sub.name not in pointers
-                            and unwrap_readonly(unwrap_ref_type(
-                                unwrap_send_sync(declared[sub.name])))
-                            == mbare)):
+                        or _storage_tuple_name_ok(sub, mbare, declared,
+                                                  pointers, analyzer)):
                     return (note_detail("container_lit.elem.tuple")
                             if note else False)
             elif mfam not in (None, "record"):
@@ -1168,10 +1177,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # var element): the whole non-move tuple_to_storage copy (bare when
         # the binding already reads storage) -- the
         # containerlit.tuple_name_storage render arm's gate half.
-        if (isinstance(e, TpyName) and e.name in declared
-                and e.name not in pointers
-                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    declared[e.name]))) == su):
+        if _storage_tuple_name_ok(e, su, declared, pointers, analyzer):
             return True
         return note_detail("container_lit.elem.tuple") if note else False
     if fam == "container":

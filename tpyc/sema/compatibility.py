@@ -2217,6 +2217,17 @@ class TypeCompatibility:
             return False
         return not self.demoted_by_hidden_borrow(expr)
 
+    def auto_move_copied_elements(self, expr: 'TpyExpr | None'
+                                  ) -> frozenset[int] | None:
+        """For a name read that auto-moves, the tuple elements an owning sink
+        still copies: those the binding holds by reference (a borrowed name
+        or a borrowing call's element) are pointers, and the storage lift
+        deref-copies them at the last use too. Empty when the move copies
+        nothing; None when the read does not auto-move."""
+        if not self.is_auto_move_use(expr):
+            return None
+        return self.ctx.func.bp_copy_into_own_idxs(expr.name)
+
     def require_movable(self, expr: TpyExpr, context: str) -> None:
         """At a relocation point (the caller has confirmed `expr` auto-moves),
         reject a non-movable source with a clean field-chain diagnostic instead
@@ -3825,7 +3836,8 @@ class TypeCompatibility:
 
     def warn_pointer_repr_tuple_copy(self, source_expr: TpyExpr | None,
                                      tuple_type: TpyType, dest: str,
-                                     loc_node, elem_path: str = "") -> bool:
+                                     loc_node, elem_path: str = "", *,
+                                     only: frozenset[int] | None = None) -> bool:
         """Copy diagnostic for a whole value-tuple lvalue source with pointer-repr
         (reference) members stored into owned storage: each such member is
         deep-copied where CPython aliases. Warn per member (error for @nocopy);
@@ -3841,7 +3853,9 @@ class TypeCompatibility:
         an owning-tuple-call rvalue. A nested value-tuple element is walked
         into (the storage lift copies its reference members just the same);
         `elem_path` carries the outer indices so the message names the member
-        as `1.0` rather than restarting at `0`."""
+        as `1.0` rather than restarting at `0`. `only` restricts the
+        top-level elements considered to those the source holds by
+        reference."""
         if not (isinstance(tuple_type, TupleType)
                 and tuple_type.has_nested_pointer_repr_element()):
             return False
@@ -3866,6 +3880,8 @@ class TypeCompatibility:
         src_elems = self._borrow_carrying_call_elements(source_expr)
         fired = False
         for i, et in enumerate(tuple_type.element_types):
+            if only is not None and i not in only:
+                continue
             probe = src_elems[i] if src_elems is not None and i < len(src_elems) else et
             path = f"{elem_path}{i}"
             if not TupleType._element_is_pointer_repr(probe):
@@ -4072,8 +4088,18 @@ class TypeCompatibility:
         if isinstance(peeled, TpyTupleLiteral):
             return self.check_tuple_literal_members(
                 peeled, tuple_type, TupleSink.CONTAINER, dest, elem_path)
-        if ((self.is_lvalue(elem) and not self._is_auto_moved(elem))
-                or self._tuple_call_carries_borrow(elem)):
+        copied = (self.auto_move_copied_elements(elem)
+                  if self.is_lvalue(elem) else None)
+        if copied is not None:
+            # Only the elements the local holds by reference alias the
+            # caller, so only they warn. The owned ones are copied at the
+            # last use too, not moved:
+            # BUGS.md#tuple-local-last-use-copies-owned-elements.
+            if not copied:
+                return False
+            return self.warn_pointer_repr_tuple_copy(
+                elem, tuple_type, dest, elem, elem_path, only=copied)
+        if self.is_lvalue(elem) or self._tuple_call_carries_borrow(elem):
             return self.warn_pointer_repr_tuple_copy(
                 elem, tuple_type, dest, elem, elem_path)
         return False

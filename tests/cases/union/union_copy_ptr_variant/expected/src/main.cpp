@@ -24,6 +24,26 @@ void print_copy_param(::tpy::Union<const Cat*, const Dog*> pet) {
     }
 }
 
+// def copy_module_spelling(pet: Dog | Cat) -> None:
+//     # the module-qualified spelling at an annotated union local
+//     q: Dog | Cat = tpy.copy(pet)  # tpyc: ok
+//     if isinstance(pet, Dog):
+//         pet.name = "Moved"
+//     if isinstance(q, Dog):
+//         print("module", q.name)
+void copy_module_spelling(::tpy::Union<Cat*, Dog*> pet) {
+    ::tpy::Union<Cat, Dog> __slot_1 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet);
+    ::tpy::Union<Cat*, Dog*> q = ::tpy::to_ptr_variant(__slot_1);
+    if (std::holds_alternative<Dog*>(pet)) {
+        auto& __pet = *std::get<Dog*>(pet);
+        __pet.name = "Moved";
+    }
+    if (std::holds_alternative<Dog*>(q)) {
+        auto& __q = *std::get<Dog*>(q);
+        std::cout << "module" << " " << __q.name << "\n";
+    }
+}
+
 // def main() -> None:
 //     # Copy a Dog through a union-typed variable
 //     d = Dog("Rex")
@@ -59,6 +79,9 @@ void print_copy_param(::tpy::Union<const Cat*, const Dog*> pet) {
 //     if pet9 is not None:
 //         if isinstance(pet9, Dog):
 //             print(pet9.name)
+//
+//     # tpy.copy(...) takes the same copy as copy(...)
+//     copy_module_spelling(Dog("Spot"))
 void main() {
     Dog d = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
@@ -101,6 +124,8 @@ void main() {
             std::cout << __pet9.name << "\n";
         }
     }
+    Dog __tmp_1 = Dog("Spot");
+    ::tpyapp::main::copy_module_spelling(::tpy::Union<Cat*, Dog*>{&__tmp_1});
 }
 
 // main()

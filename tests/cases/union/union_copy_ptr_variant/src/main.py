@@ -1,4 +1,5 @@
 # copy() on pointer-variant union local: variant-aware deep copy
+import tpy
 from tpy import copy
 
 class Dog:
@@ -17,6 +18,14 @@ def print_copy_param(pet: Dog | Cat) -> None:
         print(pet2.name)
     elif isinstance(pet2, Cat):
         print(pet2.name)
+
+def copy_module_spelling(pet: Dog | Cat) -> None:
+    # the module-qualified spelling at an annotated union local
+    q: Dog | Cat = tpy.copy(pet)  # tpyc: ok
+    if isinstance(pet, Dog):
+        pet.name = "Moved"
+    if isinstance(q, Dog):
+        print("module", q.name)
 
 def main() -> None:
     # Copy a Dog through a union-typed variable
@@ -53,5 +62,8 @@ def main() -> None:
     if pet9 is not None:
         if isinstance(pet9, Dog):
             print(pet9.name)
+
+    # tpy.copy(...) takes the same copy as copy(...)
+    copy_module_spelling(Dog("Spot"))
 
 main()

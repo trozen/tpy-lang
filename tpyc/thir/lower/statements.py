@@ -10,7 +10,6 @@ from .storage import alias_binding, borrowed_record, full_expression_record, nat
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
-from ... import qnames
 from ...diagnostics import SemanticError
 from ...prescan import scan_reassigned_vars
 from ...parse.nodes import (
@@ -281,6 +280,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    copy_call_arg,
     _storage_family_ok,
     _own_return_const_projected,
     _binding_peel,
@@ -4669,11 +4669,9 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
         # `copy(pet)` of a ptr-variant union NAME: the slot init is the
         # to_value_variant deep copy (the copy-special ptr-variant arm),
         # feeding the same value-variant `__slot_N` + lift as any rvalue.
-        cfi = init.resolved_function_info if isinstance(init, TpyCall) else None
-        if (cfi is not None and cfi.qualified_name == qnames.COPY
-                and len(init.args) == 1 and not init.kwargs
-                and isinstance(init.args[0], TpyName)
-                and init.args[0].name in lc.ptr_variant_locals):
+        csrc = copy_call_arg(init, analyzer)
+        if (isinstance(csrc, TpyName)
+                and csrc.name in lc.ptr_variant_locals):
             return PtrSlotKind.UNION_RVALUE
         # An `Own[A | B]`-returning free call: the F1-record type gate of
         # `_record_rvalue_source_shape` cannot apply, so run the

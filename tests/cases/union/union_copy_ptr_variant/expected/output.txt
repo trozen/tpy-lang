@@ -3,3 +3,4 @@ Whiskers
 Fido
 Mittens
 Buddy
+module Spot

@@ -8008,17 +8008,27 @@ def _btuple_literal_elems_rvalue(a: 'TpyTupleLiteral', slot: 'TupleType',
 def copy_call_arg(e: TpyExpr, analyzer) -> 'TpyExpr | None':
     """The single argument of a `copy(x)` builtin call, or None.
 
-    The three copy-render predicates (`copy_construct_source`,
-    `copy_ctor_rvalue_source`, `copy_ptr_optional_peel`) each discriminate a
-    DIFFERENT branch of that render, but they share this entry test -- keeping
-    it in one place stops the guard itself from drifting between them."""
-    if not isinstance(e, TpyCall):
+    Keyed on the RESOLVED callee, so the module-qualified spelling
+    (`tpy.copy(x)`, a `TpyMethodCall`) is the same call as the free one --
+    the lowering routes both to one render through this test, and every
+    peel that reads it must see both or a peeled render lands on one
+    spelling and not the other."""
+    if not isinstance(e, (TpyCall, TpyMethodCall)):
         return None
     fi = e.resolved_function_info
     if (fi is None or fi.qualified_name != COPY_QNAME
             or len(e.args) != 1 or e.kwargs):
         return None
     return e.args[0]
+
+
+def storage_tuple_name_source(e: TpyExpr, analyzer) -> 'TpyName | None':
+    """The tuple NAME a storage element slot copies: the bare name, or the
+    argument of a `copy()` wrapper -- the non-move storage lift already IS
+    the copy, so the wrap only declares it. None for any other shape."""
+    ca = copy_call_arg(e, analyzer)
+    src = ca if ca is not None else e
+    return src if isinstance(src, TpyName) else None
 
 
 def copy_ptr_optional_peel(e: TpyExpr, analyzer) -> 'TpyExpr | None':

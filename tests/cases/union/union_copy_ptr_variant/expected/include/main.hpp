@@ -14,6 +14,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def print_copy_param(pet: Dog | Cat) -> None:
 void print_copy_param(::tpy::Union<const Cat*, const Dog*> pet);
+// def copy_module_spelling(pet: Dog | Cat) -> None:
+void copy_module_spelling(::tpy::Union<Cat*, Dog*> pet);
 // def main() -> None:
 void main();
 

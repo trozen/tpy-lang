@@ -145,6 +145,7 @@ from ..nodes import (
 from ...value_category import is_rvalue_source
 from .predicates import (
     _param_is_const,
+    copy_call_arg,
     _param_is_deep_const,
     _peel_coerce,
     _str_literal_value_opt_arg,
@@ -1102,21 +1103,15 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         return None
 
 def _unwrap_copy(expr: TpyExpr, analyzer) -> TpyExpr:
-    """Mirror of `CodeGenContext.unwrap_copy`: peel a `tpy.copy(x)` (the explicit
-    field-copy acknowledgment) to `x`, so a `self.f = copy(p)` initializer lowers
-    to the same `f(p)` direct-init the bare `self.f = p` does (the MIL copies
-    implicitly). Analyzer-pure (reads `imported_names`), so lowering classifies
-    without a CodeGenContext."""
+    """Peel a `copy(x)` / `tpy.copy(x)` (the explicit field-copy
+    acknowledgment) to `x`, so a `self.f = copy(p)` initializer lowers to the
+    same `f(p)` direct-init the bare `self.f = p` does (the MIL copies
+    implicitly)."""
     if isinstance(expr, TpyCoerce):
         inner = _unwrap_copy(expr.expr, analyzer)
         return inner if inner is not expr.expr else expr
-    if (isinstance(expr, TpyCall) and len(expr.args) == 1
-            and isinstance(expr.func, TpyName)
-            and expr.func_name in analyzer.imported_names):
-        mod, fn = analyzer.imported_names[expr.func_name]
-        if mod == "tpy" and fn == "copy":
-            return expr.args[0]
-    return expr
+    arg = copy_call_arg(expr, analyzer)
+    return arg if arg is not None else expr
 
 def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
                             own_param_names: set[str], lc: _LowerCtx,

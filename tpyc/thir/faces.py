@@ -2020,6 +2020,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy((1, b))` of a whole tuple LITERAL with a reference element ->
     # the storage brace `std::tuple<int32_t, Box>{1, b}` (per-element copy).
     "call.copy_tuple_storage",
+    # `copy(t)` of a tuple NAME with a reference element -> the non-move
+    # `tuple_to_storage<S>(t)` (a storage binding copy-constructs `S(t)`).
+    "call.copy_tuple_name",
     # A REAL scalar-cast coerce over a local name at an Own[scalar] slot
     # binds the cast rvalue bare (no copy at the slot); the
     # generic coerce-template render is the whole emit.
